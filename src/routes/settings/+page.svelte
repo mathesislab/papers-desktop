@@ -4,7 +4,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { mac, matches } from "$lib/keys";
 
@@ -61,17 +61,37 @@
   });
 
   onMount(() => {
-    refresh();
-    getVersion().then((v) => (version = v));
-    invoke<Update | null>("found_update").then((found) => (update = found));
+    load();
     const unlisten = [
       listen<Update | null>("update", (e) => (update = e.payload)),
       listen<[number, number | null]>("update-progress", (e) => {
         progress = { done: e.payload[0], total: e.payload[1] };
       }),
+      listen<string>("section", (e) => showSection(e.payload)),
     ];
     return () => unlisten.forEach((u) => u.then((f) => f()));
   });
+
+  /** Fill the window, then show it: it is made hidden, not to flash empty.
+   *  Its URL may name a section to show ("settings#updates"). */
+  async function load() {
+    await Promise.allSettled([
+      refresh(),
+      getVersion().then((v) => (version = v)),
+      invoke<Update | null>("found_update").then((found) => (update = found)),
+    ]);
+    await tick();
+    const window = getCurrentWindow();
+    await window.show();
+    await window.setFocus();
+    if (location.hash) showSection(location.hash.slice(1));
+  }
+
+  /** Scroll to a section; the updates also look for one, unless found. */
+  function showSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ block: "start" });
+    if (id === "updates" && !update && updating !== "checking" && updating !== "installing") checkUpdate();
+  }
 
   async function checkUpdate() {
     updating = "checking";
@@ -291,7 +311,7 @@
       </div>
     </section>
 
-    <section>
+    <section id="updates">
       <h2>Updates</h2>
       <div class="row">
         <span>

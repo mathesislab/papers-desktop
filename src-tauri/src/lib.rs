@@ -248,7 +248,7 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
 /// The settings window, from the panel (⌘,).
 #[tauri::command]
 async fn open_settings(app: AppHandle) {
-    settings_window(&app);
+    settings_window(&app, None);
 }
 
 /// Put a text of item `id` on the clipboard, with its HTML for a formatted
@@ -428,26 +428,32 @@ pub(crate) fn show_update(app: &AppHandle, available: Option<&Available>) {
     }
 }
 
-/// Show the settings window, made the first time.
-fn settings_window(app: &AppHandle) {
+/// Show the settings window, or a section of it ("updates"). The window is
+/// made hidden the first time: its page shows it once drawn, at the section.
+fn settings_window(app: &AppHandle, section: Option<&str>) {
     hide_window(app);
     if let Some(window) = app.get_webview_window(SETTINGS) {
         let _ = window.show();
         let _ = window.set_focus();
+        if let Some(section) = section {
+            let _ = app.emit_to(SETTINGS, "section", section);
+        }
         return;
     }
-    let window = WebviewWindowBuilder::new(app, SETTINGS, WebviewUrl::App("settings".into()))
+    let url = match section {
+        Some(section) => format!("settings#{section}"),
+        None => "settings".to_string(),
+    };
+    let window = WebviewWindowBuilder::new(app, SETTINGS, WebviewUrl::App(url.into()))
         .title("Papers Desktop Settings")
         .inner_size(560.0, 760.0)
         .resizable(false)
         .minimizable(false)
         .center()
+        .visible(false)
         .build();
-    match window {
-        Ok(window) => {
-            let _ = window.set_focus();
-        }
-        Err(e) => eprintln!("papers-desktop: cannot open the settings: {e}"),
+    if let Err(e) = window {
+        eprintln!("papers-desktop: cannot open the settings: {e}");
     }
 }
 
@@ -540,7 +546,8 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "search" => show(app),
-            "settings" | "updates" => settings_window(app),
+            "settings" => settings_window(app, None),
+            "updates" => settings_window(app, Some("updates")),
             "reload" => reload(app),
             "quit" => app.exit(0),
             _ => {}
