@@ -110,7 +110,7 @@
   }
 </script>
 
-<aside class="preview">
+<div class="preview">
   <div class="head">
     <button class="page" onclick={onopen} title="Open" style:width="{PAGE_WIDTH}px">
       {#if image}
@@ -166,18 +166,16 @@
     </div>
     {#if showBibtex}<pre class="bibtex">{bibtex ?? ""}</pre>{/if}
   </section>
-</aside>
+</div>
 
 <style>
   .preview {
-    flex: none;
-    width: 500px;
-    box-sizing: border-box;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 12px;
     padding: 14px 16px;
-    border-left: 1px solid var(--line);
     overflow-y: auto;
     -webkit-user-select: text;
     user-select: text;

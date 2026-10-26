@@ -420,8 +420,14 @@
         {/if}
       </footer>
     </div>
-    {#if preview && current}
-      <Preview item={current} marked={hits[selected].authors} onopen={() => run(actions[0])} />
+    {#if preview}
+      <aside class="pane">
+        {#if current}
+          <Preview item={current} marked={hits[selected].authors} onopen={() => run(actions[0])} />
+        {:else}
+          <p class="unselected">No paper selected</p>
+        {/if}
+      </aside>
     {/if}
   </div>
 </main>
@@ -468,6 +474,22 @@
     flex: 1;
     min-height: 0;
     display: flex;
+  }
+
+  /* the preview, beside the list: empty while no paper is selected, so the
+     list keeps its place */
+  .pane {
+    flex: none;
+    width: 500px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--line);
+  }
+  .unselected {
+    margin: auto;
+    color: var(--muted);
+    font-size: 13px;
   }
 
   /* the list, its action menu and footer keep their place when the preview opens */
