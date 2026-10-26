@@ -28,6 +28,9 @@ Settings… and Start at Login.
 
 `Ctrl` instead of `⌘` on Linux and Windows.
 
+The library reloads by itself when the bibtex file changes (a `papers`
+command, an editor, a sync client).
+
 Every word must match the author, year, key, title, keyword, journal or DOI;
 first authors, keys and exact words rank first. A DOI or a doi.org link
 finds its entry.

@@ -1,9 +1,10 @@
 mod settings;
 
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, RwLock};
 
-use papers_core::{Cite, Item, Library, Papers};
+use papers_core::{BibWatch, Cite, Item, Library, Papers};
 use serde::{Deserialize, Serialize};
 use settings::Settings;
 use tauri::image::Image;
@@ -47,6 +48,10 @@ struct AppState {
     papers: RwLock<Papers>,
     library: RwLock<Library>,
     status: RwLock<Status>,
+    /// the bibtex file of the library, replaced if the library changes
+    watch: Mutex<Option<BibWatch>>,
+    /// counts the reloads: one that ends after a newer one started is dropped
+    reloads: AtomicU64,
 }
 
 impl AppState {
@@ -179,26 +184,54 @@ fn set_preview(app: AppHandle, on: bool) -> Result<(), String> {
 }
 
 /// Re-read the settings and the library, in the background.
+/// Then watch the bibtex file, to reload when it changes.
 fn reload(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
-        set_status(&app, Status::Loading);
         let state = app.state::<AppState>();
+        let reload = state.reloads.fetch_add(1, Ordering::SeqCst) + 1;
+        set_status(&app, Status::Loading);
         let loaded = Settings::load(&state.settings_path).and_then(|settings| {
             let papers = settings.papers();
             *state.papers.write().unwrap() = papers.clone();
-            papers.load().map_err(|e| e.to_string())
+            let library = papers.load().map_err(|e| e.to_string())?;
+            Ok((papers, library))
         });
+        if state.reloads.load(Ordering::SeqCst) != reload {
+            return;
+        }
         let status = match loaded {
-            Ok(library) => {
+            Ok((papers, library)) => {
                 let count = library.len();
                 *state.library.write().unwrap() = library;
+                watch(&app, &papers);
                 Status::Ready { count }
             }
             Err(error) => Status::Failed { error },
         };
         set_status(&app, status);
     });
+}
+
+/// Watch the bibtex file of the library, unless it is watched already.
+fn watch(app: &AppHandle, papers: &Papers) {
+    let path = match papers.bibtex_path() {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("papers-desktop: no bibtex file to watch: {e}");
+            return;
+        }
+    };
+    let state = app.state::<AppState>();
+    let mut watch = state.watch.lock().unwrap();
+    if watch.as_ref().is_some_and(|w| w.path() == path) {
+        return;
+    }
+    let handle = app.clone();
+    match BibWatch::new(path, move || reload(&handle)) {
+        Ok(w) => *watch = Some(w),
+        Err(e) => eprintln!("papers-desktop: cannot watch the bibtex file: {e}"),
+    }
 }
 
 fn set_status(app: &AppHandle, status: Status) {
@@ -334,6 +367,8 @@ pub fn run() {
                 papers: RwLock::new(settings.papers()),
                 library: RwLock::new(Library::new(Vec::new())),
                 status: RwLock::new(Status::Loading),
+                watch: Mutex::new(None),
+                reloads: AtomicU64::new(0),
             });
             let hotkey = settings.hotkey;
             if let Err(e) = app.global_shortcut().register(hotkey.as_str()) {

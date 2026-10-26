@@ -7,10 +7,12 @@ mod cli;
 mod csl;
 mod item;
 mod search;
+mod watch;
 
 pub use cli::Papers;
 pub use item::{Cite, Item};
 pub use search::Library;
+pub use watch::BibWatch;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
