@@ -1,0 +1,90 @@
+[
+  {
+    "id": "feldmann2017",
+    "citation-key": "feldmann2017",
+    "type": "article-journal",
+    "author": [
+      {"family": "Feldmann", "given": "Johannes"},
+      {"family": "Levermann", "given": "Anders"}
+    ],
+    "title": "From cyclic ice streaming to {Heinrich}-like events",
+    "container-title": "The Cryosphere",
+    "DOI": "10.5194/tc-11-1913-2017",
+    "URL": "https://doi.org/10.5194/tc-11-1913-2017",
+    "issued": {"date-parts": [[2017]]},
+    "custom": {"file": ["/library/feldmann_and_levermann_2017.pdf"]}
+  },
+  {
+    "id": "vandenbroeke2009",
+    "citation-key": "vandenbroeke2009",
+    "type": "article-journal",
+    "author": [
+      {"family": "Broeke", "given": "Michiel", "non-dropping-particle": "van den"},
+      {"family": "Bamber", "given": "Jonathan"},
+      {"family": "Ettema", "given": "Janneke"}
+    ],
+    "title": "Partitioning recent Greenland mass loss",
+    "container-title": "Science",
+    "DOI": "10.1126/science.1178176",
+    "keyword": "greenland, mass balance",
+    "issued": {"date-parts": [[2009, 11]]}
+  },
+  {
+    "id": "robinson2012",
+    "citation-key": "robinson2012",
+    "type": "article-journal",
+    "author": [
+      {"family": "Robinson", "given": "Alexander"},
+      {"family": "Calov", "given": "Reinhard"},
+      {"family": "Ganopolski", "given": "Andrey"}
+    ],
+    "title": "Multistability and critical thresholds of the Greenland ice sheet",
+    "container-title": "Nature Climate Change",
+    "DOI": "10.1038/nclimate1449",
+    "issued": {"date-parts": [[2012]]},
+    "custom": {"file": ["/library/robinson_et_al_2012.pdf", "/library/robinson_et_al_2012--supp.pdf"]}
+  },
+  {
+    "id": "calov2015",
+    "citation-key": "calov2015",
+    "type": "article-journal",
+    "author": [
+      {"family": "Calov", "given": "Reinhard"},
+      {"family": "Robinson", "given": "Alexander"}
+    ],
+    "title": "Greenland ice sheet simulations",
+    "container-title": "Climate of the Past",
+    "issued": {"date-parts": [[2015]]}
+  },
+  {
+    "id": "muller2020",
+    "citation-key": "muller2020",
+    "type": "article-journal",
+    "author": [{"family": "Müller", "given": "Anna"}],
+    "title": "Ice sheet hysteresis",
+    "container-title": "Nature",
+    "issued": {"literal": "2020"}
+  },
+  {
+    "id": "ipcc2021",
+    "citation-key": "ipcc2021",
+    "type": "report",
+    "author": [{"literal": "IPCC"}],
+    "title": "Climate Change 2021: The Physical Science Basis",
+    "issued": {"date-parts": [[2021]]}
+  },
+  {
+    "id": "smith_handbook",
+    "citation-key": "smith_handbook",
+    "type": "book",
+    "editor": [{"family": "Smith", "given": "Jane"}],
+    "title": "Glaciology handbook",
+    "issued": {"literal": "None"}
+  },
+  {
+    "id": "10.1002/xyz.123",
+    "citation-key": "10.1002/xyz.123",
+    "type": "document",
+    "DOI": "10.1002/xyz.123"
+  }
+]
