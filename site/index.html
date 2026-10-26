@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Papers Desktop</title>
+<meta name="description" content="A search panel for your BibTeX library: find a paper in a keystroke, open its PDF, copy its citation or BibTeX. Plain .bib files, no database.">
+<link rel="icon" href="images/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#"><img src="images/logo.svg" alt="" width="28" height="28">Papers Desktop</a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#download">Download</a>
+    <a href="https://github.com/mathesislab/papers-desktop">Source</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero">
+  <h1>Your BibTeX library, a keystroke away</h1>
+  <p class="lead">Papers Desktop is a search panel for your <code>.bib</code> files and the PDFs they link to. Press
+    <kbd>⌥Space</kbd>, type a few letters of an author, a title or a year, and open the paper, or copy its
+    citation or its BibTeX. Your library stays plain files: no database, nothing to import.</p>
+  <p class="actions">
+    <a class="button primary" href="#download">Download</a>
+    <a class="button" href="https://github.com/mathesislab/papers-desktop">View source</a>
+  </p>
+  <div class="shot">
+    <img src="images/main.png" alt="The search panel: the papers of an author, newest first, and the preview of the first one with its first page and citation" width="2532" height="1012">
+  </div>
+</section>
+
+<section id="features" class="features">
+  <article class="feature wide">
+    <div>
+      <h2>Search the way you remember</h2>
+      <p>Every word must match, from the start of a word: <code>rob</code> finds Robinson. Filters narrow it down:
+        <code>f:</code> for the first author, <code>y:2010-2015</code> for years, <code>j:</code> for the journal,
+        quotes for a phrase, <code>-</code> to leave something out.</p>
+      <p>Results come newest first, with the matched words in bold. A strip shows the matches of each year: drag
+        across it to keep a range of years.</p>
+    </div>
+    <img src="images/years.png" alt="A search for Greenland between 2015 and 2020, the years kept highlighted on the strip of matches per year" loading="lazy" width="2532" height="1012">
+  </article>
+
+  <article class="feature wide reverse">
+    <div>
+      <h2>Cite in one key</h2>
+      <p>Open the PDF with <kbd>↵</kbd>, copy <code>[@key]</code> for Markdown, <code>\cite{key}</code> for LaTeX,
+        or the BibTeX entry. <kbd>⌘K</kbd> lists every action.</p>
+      <p>The preview shows the first page, the citation in your style (Copernicus by default) and the entry, as
+        formatted or as written in the file.</p>
+    </div>
+    <img src="images/actions.png" alt="The list of actions over the results: open the PDF, reveal it, open the DOI page, copy the key, [@key], \cite{key} or the BibTeX" loading="lazy" width="2532" height="1012">
+  </article>
+
+  <div class="grid">
+    <article class="feature">
+      <h3>Plain files</h3>
+      <p>Reads <code>.bib</code> files as they are, from papers, JabRef, BibDesk or a Zotero export. The PDFs stay
+        in your folders, where any app opens them.</p>
+    </article>
+    <article class="feature">
+      <h3>Always up to date</h3>
+      <p>Change a <code>.bib</code> file with any tool, or let a sync client do it: the panel reloads it at once.</p>
+    </article>
+    <article class="feature">
+      <h3>Several libraries</h3>
+      <p>Choose one or more <code>.bib</code> files; the panel searches them all.</p>
+    </article>
+    <article class="feature">
+      <h3>Quick</h3>
+      <p>A library of thousands of entries loads in a few tens of milliseconds, and the results follow your typing.</p>
+    </article>
+    <article class="feature">
+      <h3>Citation styles</h3>
+      <p>Copernicus, AGU, AMS, Nature, Science, APA and more are built in, and any
+        <a href="https://www.zotero.org/styles">CSL style</a> works.</p>
+    </article>
+    <article class="feature">
+      <h3>Share</h3>
+      <p>Copy a snippet with the title and its link, the link, the DOI or the citation.</p>
+    </article>
+    <article class="feature">
+      <h3>Out of the way</h3>
+      <p>It lives in the menu bar, opens with its hotkey and hides when you go back to work.</p>
+    </article>
+    <article class="feature">
+      <h3>Made with papers</h3>
+      <p>A companion of the <a href="https://github.com/perrette/papers">papers</a> command line, which adds PDFs to
+        the library with the right names. Papers Desktop needs nothing else to run.</p>
+    </article>
+    <article class="feature">
+      <h3>Open source</h3>
+      <p>Free software under the MIT license, written in Rust with <a href="https://tauri.app">Tauri</a>.</p>
+    </article>
+  </div>
+</section>
+
+<section id="download" class="download">
+  <h2>Download</h2>
+  <div class="platforms">
+    <article class="platform">
+      <h3>macOS</h3>
+      <p>For Macs with Apple silicon.</p>
+      <a class="button primary" href="https://github.com/mathesislab/papers-desktop/releases/latest/download/Papers-Desktop-macos-aarch64.dmg">Download for Mac</a>
+      <details>
+        <summary>First start</summary>
+        <p>Papers Desktop is not notarized by Apple yet, so macOS blocks it the first time. Drag it to Applications
+          and open it; then open System Settings → Privacy &amp; Security and click Open Anyway. Or, in Terminal:</p>
+        <pre><code>xattr -dr com.apple.quarantine "/Applications/Papers Desktop.app"</code></pre>
+        <p>Then choose your <code>.bib</code> files: menu-bar icon → Library Files…</p>
+      </details>
+    </article>
+    <article class="platform">
+      <h3>Linux</h3>
+      <p>A .deb for Ubuntu 22.04 or later, and Debian.</p>
+      <a class="button primary" href="https://github.com/mathesislab/papers-desktop/releases/latest/download/Papers-Desktop-linux-amd64.deb">Download for Linux</a>
+      <p class="alt"><a href="https://github.com/mathesislab/papers-desktop/releases/latest/download/Papers-Desktop-linux-amd64.AppImage">AppImage</a>, for other x86-64 distributions</p>
+      <details>
+        <summary>First start</summary>
+        <p>Install the .deb with</p>
+        <pre><code>sudo apt install ./Papers-Desktop-linux-amd64.deb</code></pre>
+        <p>and run <code>papers-desktop</code>, or make the AppImage executable (<code>chmod +x</code>) and run it.
+          The hotkey is <kbd>Ctrl+Alt+Space</kbd>. Under Wayland (Ubuntu's default) apps cannot take a global
+          hotkey: add a custom shortcut in Settings → Keyboard that runs <code>papers-desktop</code>, which shows
+          the panel.</p>
+      </details>
+    </article>
+  </div>
+  <p class="more">The Linux version is new: it is built and tested automatically, but has not yet been tried much
+    on real machines. Problems and feedback are welcome as
+    <a href="https://github.com/mathesislab/papers-desktop/issues">issues</a>.</p>
+  <p class="more">All versions are on the <a href="https://github.com/mathesislab/papers-desktop/releases">releases
+    page</a>. To build it yourself, see the <a href="https://github.com/mathesislab/papers-desktop#readme">README</a>.</p>
+</section>
+</main>
+
+<footer>
+  <p>Papers Desktop is free software under the <a href="https://github.com/mathesislab/papers-desktop/blob/main/LICENSE">MIT
+    license</a>. The bundled citation styles come from the <a href="https://citationstyles.org">Citation Style
+    Language</a> project, under CC BY-SA 3.0.</p>
+</footer>
+</body>
+</html>
