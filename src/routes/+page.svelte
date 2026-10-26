@@ -31,6 +31,8 @@
   let hits = $state<Hit[]>([]);
   let total = $state(0);
   let years = $state<YearCount[]>([]);
+  /** the hit selected: the first of a search; none (-1) of the recent
+   *  papers, until one is chosen */
   let selected = $state(0);
   let status = $state<Status>({ state: "loading" });
   let notice = $state<{ text: string; error: boolean } | null>(null);
@@ -156,7 +158,7 @@
     hits = found.hits;
     total = found.total;
     years = found.years;
-    selected = 0;
+    selected = q.trim() ? 0 : -1;
     menu = false;
     notice = null;
     list?.scrollTo(0, 0);
@@ -314,7 +316,7 @@
         />
       {/if}
       {#if hits.length}
-        {#if !query.trim()}<h3 class="recent">Recent</h3>{/if}
+        {#if !query.trim()}<h3 class="recent">Recent papers</h3>{/if}
         <ul bind:this={list} role="listbox">
           {#each hits as hit, i (hit.item.id)}
             <!-- the keys are handled on the window -->
@@ -363,7 +365,9 @@
             {/each}
           </dl>
           <p class="filters">
-            {#each filters as [prefix, field], i}{#if i}{" · "}{/if}<kbd>{prefix}</kbd>&nbsp;{field}{/each}
+            {#each filters as [prefix, field], i}{#if i}{" · "}{/if}<span class="filter"
+                ><kbd>{prefix}</kbd>&nbsp;{field}</span
+              >{/each}
           </p>
         </div>
       {:else if !hits.length}
@@ -556,9 +560,9 @@
 
   .recent {
     flex: none;
-    margin: 10px 18px 0;
-    color: var(--muted);
-    font-size: 11px;
+    margin: 12px 18px 0;
+    color: var(--fg);
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -599,6 +603,10 @@
     font-size: 11.5px;
     line-height: 1.6;
     text-align: center;
+  }
+  /* a line breaks between the filters, not inside one ("-" exclude) */
+  .filter {
+    white-space: nowrap;
   }
   .filters kbd {
     font-size: 11.5px;
