@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<rect id="background" width="1024" height="1024" rx="230" fill="#145A73"/>
+<rect id="back-sheet" x="356" y="146" width="452" height="590" rx="26" fill="#fff"/>
+<rect id="front-sheet" x="216" y="288" width="452" height="590" rx="26" fill="#fff" stroke="#145A73" stroke-width="44" paint-order="stroke"/>
+<g id="lines" fill="#145A73">
+<rect x="290" y="420" width="304" height="46"/>
+<rect x="290" y="532" width="304" height="46"/>
+<rect x="290" y="644" width="304" height="46"/>
+<rect x="290" y="756" width="176" height="46"/>
+</g>
+</svg>
