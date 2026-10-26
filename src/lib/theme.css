@@ -9,6 +9,10 @@
   --menu-bg: #ffffff;
   --accent: #2f6fde;
   --on-accent: #ffffff;
+  /* the row selected in a list: the accent in light mode, a softer blue in
+     dark mode, where the accent would draw the eye from the search field */
+  --selection: var(--accent);
+  --on-selection: var(--on-accent);
   --error: #c4321f;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
@@ -22,6 +26,8 @@
     --line: rgba(255, 255, 255, 0.08);
     --menu-bg: #323236;
     --accent: #3a78e6;
+    --selection: rgba(58, 120, 230, 0.4);
+    --on-selection: var(--fg);
     --error: #ff7a66;
   }
 }

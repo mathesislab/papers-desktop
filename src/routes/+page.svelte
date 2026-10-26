@@ -494,7 +494,10 @@
     padding: 7px 12px;
     border-radius: 7px;
   }
-  li.selected,
+  li.selected {
+    background: var(--selection);
+    color: var(--on-selection);
+  }
   .menu .selected {
     background: var(--accent);
     color: var(--on-accent);
