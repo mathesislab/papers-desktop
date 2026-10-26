@@ -94,9 +94,18 @@ macOS, [the Linux path is below](#linux)):
 
 Reload Library re-reads the settings and the library.
 
-## Requirements
+## Install
 
-- papers-cli 3.0 (`pip install --pre papers-cli`), with a default library
+papers-cli 3.0 (`pip install --pre papers-cli`) with a default library, then
+the app from the [GitHub release](https://github.com/mathesislab/papers-desktop/releases):
+
+- macOS (Apple Silicon): the `.dmg`. The app is not notarized: on first
+  launch, allow it in System Settings → Privacy & Security (*Open Anyway*).
+- Ubuntu: see [Linux](#linux).
+
+## Requirements (to build)
+
+- papers-cli 3.0, with a default library
 - Rust (stable) and Node.js
 
 ## Develop
@@ -120,7 +129,7 @@ where it is.
 
 On Ubuntu, from the [GitHub release](https://github.com/mathesislab/papers-desktop/releases):
 
-- the `.deb`: `sudo apt install ./papers-desktop_*.deb` (installs the
+- the `.deb`: `sudo apt install ./Papers.Desktop_*_amd64.deb` (installs the
   `papers-desktop` command), or
 - the AppImage: `chmod +x` it, then run it.
 

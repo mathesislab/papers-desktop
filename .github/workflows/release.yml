@@ -9,9 +9,33 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    # a manual run needs a tag selected: the release is named after the ref
+  draft:
+    # one draft release for the build jobs: each creating its own, they race
+    # and make two. A manual run needs a tag selected: the release is named
+    # after the ref.
     if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    steps:
+      - id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          find_draft() {
+            gh api "repos/$GITHUB_REPOSITORY/releases" \
+              --jq ".[] | select(.draft and .tag_name == \"$GITHUB_REF_NAME\") | .id" | head -1
+          }
+          id=$(find_draft)
+          if [ -z "$id" ]; then
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "$GITHUB_REF_NAME" --notes ""
+            id=$(find_draft)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: draft
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -48,9 +72,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "v__VERSION__"
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.draft.outputs.id }}
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
