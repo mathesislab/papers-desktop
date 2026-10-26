@@ -58,7 +58,11 @@ doi.org link finds its entry.
 
 Paste a reference (a DOI in it, or six words or more) to find the entries
 closest to it: the entry of its DOI, else those with most of its words,
-the names counting most.
+the names counting most. Text selected in another app is found the same
+way: on macOS, right-click it → Services → Search Papers (System Settings →
+Keyboard → Keyboard Shortcuts → Services → Text gives it a shortcut); on
+Linux, run `papers-desktop --selection` from a desktop shortcut
+([below](#linux)).
 
 Filters limit a word to one field, and quotes match a phrase:
 
@@ -184,7 +188,8 @@ The default hotkey is `Ctrl+Alt+Space`. Under Wayland (the default of Ubuntu)
 an app cannot grab a global hotkey: add a shortcut in Settings → Keyboard →
 View and Customize Shortcuts → Custom Shortcuts, with the command
 `papers-desktop` (or the path of the AppImage). It toggles the panel of the
-running app.
+running app. Another shortcut with `papers-desktop --selection` searches
+the selected text (the primary selection).
 
 The menu-bar (tray) icon needs AppIndicator support. Ubuntu ships it; on other
 GNOME desktops install the "AppIndicator and KStatusNotifierItem Support"

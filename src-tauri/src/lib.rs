@@ -1,4 +1,5 @@
 mod recent;
+mod selection;
 mod settings;
 mod styles;
 mod update;
@@ -468,6 +469,13 @@ fn toggle(app: &AppHandle) {
     }
 }
 
+/// Show the panel finding a text selected in another app: as a reference,
+/// or as a query when it is short.
+fn find(app: &AppHandle, text: String) {
+    show(app);
+    let _ = app.emit_to(PANEL, "find", text);
+}
+
 /// Show the panel on the screen of the mouse, centred, a fifth from the top.
 fn show(app: &AppHandle) {
     let Some(panel) = app.get_webview_window(PANEL) else {
@@ -548,7 +556,11 @@ pub fn run() {
     tauri::Builder::default()
         // a second launch toggles the panel of the running app: under Wayland
         // a desktop shortcut that launches the app stands in for the hotkey
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| toggle(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if !selection::from_args(app, &args) {
+                toggle(app);
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
@@ -591,6 +603,7 @@ pub fn run() {
                 eprintln!("papers-desktop: cannot register the hotkey {hotkey}: {e}");
             }
             tray(app.handle(), &hotkey)?;
+            selection::setup(app.handle());
             reload(app.handle());
             update::watch(app.handle());
             Ok(())

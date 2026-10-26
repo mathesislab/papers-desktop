@@ -177,6 +177,14 @@
     search();
   }
 
+  /** A text selected in another app: a reference, or a query when it is short. */
+  function find(text: string) {
+    if (isReference(text)) return findReference(text);
+    query = text.trim();
+    reference = false;
+    search();
+  }
+
   /** A reference pasted is found as one; anything else is pasted as usual. */
   function pasted(e: ClipboardEvent) {
     const text = e.clipboardData?.getData("text/plain") ?? "";
@@ -264,6 +272,9 @@
           resetStyle();
           search();
         }
+      }),
+      listen<string>("find", (e) => {
+        if (e.payload.trim()) find(e.payload);
       }),
       listen("shown", () => {
         menu = false;

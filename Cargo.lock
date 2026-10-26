@@ -2951,6 +2951,10 @@ dependencies = [
 name = "papers-desktop"
 version = "0.3.2"
 dependencies = [
+ "gtk",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "papers-core",
  "serde",
  "serde_json",
