@@ -8,9 +8,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
 use papers_core::{BibWatch, Cite, Found, Item, Library, Matching};
+use recent::Recent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use recent::Recent;
 use settings::Settings;
 use styles::Style;
 use tauri::image::Image;
@@ -95,6 +95,13 @@ fn search(state: State<AppState>, query: String) -> Found {
     }
     let matching = *state.matching.read().unwrap();
     library.search(&query, matching, MAX_RESULTS)
+}
+
+/// The entries closest to a reference, pasted.
+#[tauri::command]
+fn closest(state: State<AppState>, reference: String) -> Found {
+    let library = state.library.read().unwrap();
+    library.closest(&reference, MAX_RESULTS)
 }
 
 #[tauri::command]
@@ -595,6 +602,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             search,
+            closest,
             status,
             hide_panel,
             open,

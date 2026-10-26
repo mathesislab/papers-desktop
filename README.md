@@ -56,6 +56,10 @@ journal or the DOI, from the start of a word ("rob" finds Robinson). The
 matches are listed newest first, with the matched words in bold. A DOI or a
 doi.org link finds its entry.
 
+Paste a reference (a DOI in it, or six words or more) to find the entries
+closest to it: the entry of its DOI, else those with most of its words,
+the names counting most.
+
 Filters limit a word to one field, and quotes match a phrase:
 
 | Filter | Short | Matches |

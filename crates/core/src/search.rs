@@ -1,6 +1,6 @@
 //! Search the library: every term of the query must match (or must not, for
-//! an excluded term), and the matches come newest first. Each hit marks the
-//! words that matched, to show them.
+//! an excluded term), and the matches come newest first. Or find the entries
+//! closest to a reference. Each hit marks the words that matched, to show them.
 
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -11,8 +11,18 @@ use serde_json::Value;
 
 use crate::bib::{self, BibEntry};
 use crate::query::{self, Field, Pattern, Term};
+use crate::reference::Reference;
 use crate::text::{Matching, Span, Text, fold};
 use crate::{Item, Result, to_csl};
+
+/// What a word of a reference counts for, in the entry most like it.
+const FIRST_AUTHOR: f32 = 4.0;
+const AUTHOR: f32 = 3.0;
+const YEAR: f32 = 2.0;
+const TITLE: f32 = 1.0;
+const JOURNAL: f32 = 0.5;
+/// An entry closest to a reference counts at least this, and half of the best.
+const CLOSE: f32 = 3.0;
 
 #[derive(Default)]
 pub struct Library {
@@ -218,6 +228,42 @@ impl Library {
         }
     }
 
+    /// The entries closest to a reference, the best first: the entry of its
+    /// DOI, else those that have most of its words, names counting most.
+    pub fn closest(&self, reference: &str, limit: usize) -> Found {
+        let reference = Reference::parse(reference);
+        let entry_of_doi = reference.doi.as_ref().and_then(|doi| {
+            let mut fields = self.fields.iter();
+            fields.position(|f| f.doi == *doi || f.key == *doi)
+        });
+        let mut close: Vec<(f32, usize, Marks)> = match entry_of_doi {
+            Some(i) => vec![(0.0, i, Marks::default())],
+            None => self
+                .order
+                .iter()
+                .map(|&i| {
+                    let mut marks = Marks::default();
+                    (self.fields[i].likeness(&reference, &mut marks), i, marks)
+                })
+                .collect(),
+        };
+        if entry_of_doi.is_none() {
+            // stable: the equally close ones newest first
+            close.sort_by(|a, b| b.0.total_cmp(&a.0));
+            let best = close.first().map_or(0.0, |c| c.0);
+            close.retain(|c| c.0 >= CLOSE && c.0 >= best / 2.0);
+        }
+        Found {
+            total: close.len(),
+            hits: close
+                .into_iter()
+                .take(limit)
+                .map(|(_, i, marks)| self.marked_hit(i, &marks))
+                .collect(),
+            years: Vec::new(),
+        }
+    }
+
     fn marked_hit(&self, i: usize, marks: &Marks) -> Hit {
         let (item, fields) = (&self.items[i], &self.fields[i]);
         let authors = (0..item.authors.len()).map(|a| marks.authors.iter().any(|&(x, _)| x == a));
@@ -317,6 +363,38 @@ impl Fields {
             }
             _ => false,
         }
+    }
+
+    /// How much the entry is like a reference: each word of the reference
+    /// counts once, for what it is in the entry (an author, a word of the
+    /// title or journal), and so does the year.
+    fn likeness(&self, reference: &Reference, marks: &mut Marks) -> f32 {
+        let matching = Matching::WordStart;
+        let mut score = 0.0;
+        for w in &reference.words {
+            let mut counts: f32 = 0.0;
+            for (a, author) in self.authors.iter().enumerate() {
+                let words = author.find(w, matching);
+                if !words.is_empty() {
+                    counts = counts.max(if a == 0 { FIRST_AUTHOR } else { AUTHOR });
+                    marks
+                        .authors
+                        .extend(words.into_iter().map(|word| (a, word)));
+                }
+            }
+            if mark(&mut marks.title, self.title.find(w, matching)) {
+                counts = counts.max(TITLE);
+            }
+            if mark(&mut marks.container, self.container.find(w, matching)) {
+                counts = counts.max(JOURNAL);
+            }
+            score += counts;
+        }
+        if self.year.is_some_and(|y| reference.years.contains(&y)) {
+            marks.year = true;
+            score += YEAR;
+        }
+        score
     }
 
     fn mark_year(&self, marks: &mut Marks, matched: bool) -> bool {

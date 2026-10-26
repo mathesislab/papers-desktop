@@ -8,6 +8,7 @@ mod bib;
 mod fields;
 mod item;
 mod query;
+mod reference;
 mod search;
 mod text;
 mod to_csl;

@@ -10,6 +10,7 @@
   import { dragIcon } from "$lib/pdf";
   import Preview from "$lib/Preview.svelte";
   import Marked from "$lib/Marked.svelte";
+  import { isReference } from "$lib/reference";
   import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
   import YearStrip from "$lib/YearStrip.svelte";
   import type { Found, Hit, Item, Status, YearCount } from "$lib/types";
@@ -25,6 +26,8 @@
   };
 
   let query = $state("");
+  /** the query is a reference, pasted: the closest entries are found */
+  let reference = $state(false);
   let hits = $state<Hit[]>([]);
   let total = $state(0);
   let years = $state<YearCount[]>([]);
@@ -144,7 +147,11 @@
 
   async function search() {
     const q = query;
-    const found = await invoke<Found>("search", { query: q });
+    // an empty field holds no reference
+    if (!q.trim()) reference = false;
+    const found = reference
+      ? await invoke<Found>("closest", { reference: q })
+      : await invoke<Found>("search", { query: q });
     if (q !== query) return; // a newer search is on its way
     hits = found.hits;
     total = found.total;
@@ -163,6 +170,28 @@
     );
   }
 
+  /** Find the entries closest to a reference. */
+  function findReference(text: string) {
+    query = text.replace(/\s+/g, " ").trim();
+    reference = true;
+    search();
+  }
+
+  /** A reference pasted is found as one; anything else is pasted as usual. */
+  function pasted(e: ClipboardEvent) {
+    const text = e.clipboardData?.getData("text/plain") ?? "";
+    if (!isReference(text)) return;
+    e.preventDefault();
+    findReference(text);
+  }
+
+  /** Typed or pasted over the whole reference, the field holds a query again
+   *  (a reference pasted is not typed in: see `pasted`). */
+  function beforeinput() {
+    const all = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+    if (all) reference = false;
+  }
+
   /** A query edited by a click: search it, and give the field back its focus. */
   function edit(edited: string) {
     query = edited;
@@ -172,6 +201,8 @@
 
   /** A click on a year: only it; with ⇧, extend the range to it; with ⌥, exclude it. */
   function pickYear(year: number, e: MouseEvent) {
+    // the year filters are for queries
+    if (reference) return;
     if (e.altKey) edit(toggleExcluded(query, year));
     else if (e.shiftKey) edit(extendYears(query, year));
     else edit(toggleYear(query, year));
@@ -254,7 +285,9 @@
     bind:this={input}
     bind:value={query}
     oninput={search}
-    placeholder="Search papers"
+    onpaste={pasted}
+    onbeforeinput={beforeinput}
+    placeholder="Search papers, or paste a reference"
     spellcheck="false"
     autocomplete="off"
   />
@@ -352,6 +385,8 @@
             {notice.text}
           {:else if status.state === "loading"}
             Loading library…
+          {:else if status.state === "ready" && reference}
+            {total ? `Closest to the reference: ${total}` : "Nothing close to the reference"}
           {:else if status.state === "ready" && query.trim()}
             {total === hits.length ? total : `Newest ${hits.length} of ${total}`}
             {total === 1 ? "match" : "matches"}

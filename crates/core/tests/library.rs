@@ -150,7 +150,10 @@ fn fields() {
     assert_eq!(keys(&lib, "k:smith"), ["smith_handbook"]);
     assert_eq!(keys(&lib, "has:pdf"), ["feldmann2017", "robinson2012"]);
     assert_eq!(keys(&lib, "has:pages"), ["robinson2012"]);
-    assert_eq!(keys(&lib, "greenland -has:pdf"), ["calov2015", "vandenbroeke2009"]);
+    assert_eq!(
+        keys(&lib, "greenland -has:pdf"),
+        ["calov2015", "vandenbroeke2009"]
+    );
     assert!(keys(&lib, "has:abstract").is_empty());
     // the field of a filter only
     assert!(keys(&lib, "author:greenland").is_empty());
@@ -345,6 +348,50 @@ fn find_and_hit() {
     assert_eq!(marked(&hit.title), item.title);
     assert!(hit.subtitle.iter().all(|s| !s.mark));
     assert!(lib.hit("nothing").is_none());
+}
+
+#[test]
+fn closest() {
+    let lib = library();
+    let closest = |reference: &str| -> Vec<String> {
+        let found = lib.closest(reference, 50);
+        found.hits.into_iter().map(|h| h.item.key).collect()
+    };
+    // the entry of the DOI only
+    assert_eq!(
+        closest("Robinson et al., Nature Climate Change, doi:10.1038/nclimate1449."),
+        ["robinson2012"]
+    );
+    assert_eq!(
+        closest("see https://doi.org/10.1002/XYZ.123"),
+        ["10.1002/xyz.123"]
+    );
+    // without a DOI, or with one not in the library: by the words
+    let reference = "Robinson, A., Calov, R., and Ganopolski, A.: Multistability and \
+                     critical thresholds of the Greenland ice sheet, Nat. Clim. Change, 2, \
+                     429–432, 2012.";
+    assert_eq!(closest(reference), ["robinson2012", "calov2015"]);
+    assert_eq!(
+        closest(&format!("{reference} doi:10.9999/elsewhere")),
+        ["robinson2012", "calov2015"]
+    );
+    assert_eq!(
+        closest(
+            "Broeke, M. van den, et al. 2009: Partitioning recent Greenland mass loss. Science"
+        ),
+        ["vandenbroeke2009"]
+    );
+    assert!(closest("A completely different paper about lakes, 1999").is_empty());
+    // the words found are marked
+    let hit = lib.closest(reference, 1).hits.remove(0);
+    assert_eq!(
+        marked(&hit.title),
+        "*Multistability* and *critical* *thresholds* of the *Greenland* *ice* *sheet*"
+    );
+    assert_eq!(
+        marked(&hit.subtitle),
+        "*Robinson* *et al.* · *2012* · *Nature* *Climate* *Change*"
+    );
 }
 
 #[test]
