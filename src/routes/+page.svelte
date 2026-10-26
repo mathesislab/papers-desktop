@@ -7,7 +7,10 @@
   import type { Item, Status } from "$lib/types";
 
   type Action = {
-    label: (it: Item) => string;
+    /** in the list of shortcuts, and the label unless `label` is given */
+    name: string;
+    /** the label for one item, in the action menu and the footer */
+    label?: (it: Item) => string;
     shortcut: Shortcut;
     when?: (it: Item) => boolean;
     run: (it: Item) => Promise<void>;
@@ -38,30 +41,37 @@
 
   const actions: Action[] = [
     {
+      name: "Open PDF, else DOI page",
       label: (it) => (it.files.length ? "Open PDF" : "Open DOI page"),
       shortcut: { key: "Enter" },
       when: (it) => it.files.length > 0 || hasLink(it),
       run: call("open"),
     },
     {
-      label: () => (mac ? "Reveal in Finder" : "Show in folder"),
+      name: mac ? "Reveal in Finder" : "Show in folder",
       shortcut: { key: "Enter", mod: true },
       when: (it) => it.files.length > 0,
       run: call("reveal"),
     },
-    {
-      label: () => "Open DOI page",
-      shortcut: { key: "d", mod: true },
-      when: hasLink,
-      run: call("open_link"),
-    },
-    { label: () => "Copy key", shortcut: { key: "c", mod: true, shift: true }, run: copy("key") },
-    { label: () => "Copy [@key]", shortcut: { key: ".", mod: true }, run: copy("pandoc") },
-    { label: () => "Copy \\cite{key}", shortcut: { key: "l", mod: true }, run: copy("latex") },
-    { label: () => "Copy BibTeX", shortcut: { key: "b", mod: true }, run: copy("bibtex") },
+    { name: "Open DOI page", shortcut: { key: "d", mod: true }, when: hasLink, run: call("open_link") },
+    { name: "Copy key", shortcut: { key: "c", mod: true, shift: true }, run: copy("key") },
+    { name: "Copy [@key]", shortcut: { key: ".", mod: true }, run: copy("pandoc") },
+    { name: "Copy \\cite{key}", shortcut: { key: "l", mod: true }, run: copy("latex") },
+    { name: "Copy BibTeX", shortcut: { key: "b", mod: true }, run: copy("bibtex") },
   ];
   const menuShortcut: Shortcut = { key: "k", mod: true };
   const previewShortcut: Shortcut = { key: "p", mod: true };
+
+  /** the list shown in the empty panel */
+  const shortcuts: [string, string][] = [
+    ...actions.map((a): [string, string] => [a.name, label(a.shortcut)]),
+    ["Preview", label(previewShortcut)],
+    ["All actions", label(menuShortcut)],
+    ["Move", "↑ ↓"],
+    ["Close", "Esc"],
+  ];
+
+  const actionLabel = (a: Action, it: Item) => a.label?.(it) ?? a.name;
 
   // the preview stays on or off between sessions
   function storedPreview(): boolean {
@@ -206,7 +216,16 @@
       </ul>
     {:else}
       <div class="empty">
-        {#if query.trim() && status.state === "ready"}No match{/if}
+        {#if !query.trim()}
+          <dl class="shortcuts">
+            {#each shortcuts as [name, keys]}
+              <dt>{name}</dt>
+              <dd><kbd>{keys}</kbd></dd>
+            {/each}
+          </dl>
+        {:else if status.state === "ready"}
+          No match
+        {/if}
       </div>
     {/if}
     {#if preview && current}
@@ -225,7 +244,7 @@
           onclick={() => run(action)}
           onmouseenter={() => (menuSelected = i)}
         >
-          <span>{action.label(current)}</span>
+          <span>{actionLabel(action, current)}</span>
           <kbd>{label(action.shortcut)}</kbd>
         </div>
       {/each}
@@ -246,7 +265,7 @@
     </span>
     {#if current && !notice}
       <span class="hints">
-        {actions[0].label(current)} <kbd>{label(actions[0].shortcut)}</kbd>
+        {actionLabel(actions[0], current)} <kbd>{label(actions[0].shortcut)}</kbd>
         Preview <kbd>{label(previewShortcut)}</kbd>
         Actions <kbd>{label(menuShortcut)}</kbd>
       </span>
@@ -383,6 +402,23 @@
     justify-content: center;
     color: var(--muted);
     font-size: 14px;
+  }
+
+  .shortcuts {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 5px 28px;
+    margin: 0;
+    font-size: 13px;
+  }
+  .shortcuts dt {
+    text-align: right;
+  }
+  .shortcuts dd {
+    margin: 0;
+  }
+  .shortcuts kbd {
+    font-size: 13px;
   }
 
   .menu {
