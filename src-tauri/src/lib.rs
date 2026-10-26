@@ -7,9 +7,10 @@ use papers_core::{Cite, Item, Library, Papers};
 use serde::{Deserialize, Serialize};
 use settings::Settings;
 use tauri::image::Image;
+use tauri::ipc::Response;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WindowEvent};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
@@ -17,6 +18,10 @@ use tauri_plugin_opener::OpenerExt;
 
 const PANEL: &str = "panel";
 const MAX_RESULTS: usize = 50;
+/// panel size in logical pixels, as in tauri.conf.json; the preview widens it
+const PANEL_WIDTH: f64 = 720.0;
+const PANEL_HEIGHT: f64 = 460.0;
+const PREVIEW_WIDTH: f64 = 500.0;
 
 /// The library as the panel sees it, sent with the "status" event.
 #[derive(Debug, Clone, Serialize)]
@@ -47,14 +52,21 @@ struct AppState {
 impl AppState {
     fn item(&self, key: &str) -> Result<Item, String> {
         let library = self.library.read().unwrap();
-        library.get(key).cloned().ok_or_else(|| format!("{key}: not in the library"))
+        library
+            .get(key)
+            .cloned()
+            .ok_or_else(|| format!("{key}: not in the library"))
     }
 }
 
 #[tauri::command]
 fn search(state: State<AppState>, query: String) -> Vec<Item> {
     let library = state.library.read().unwrap();
-    library.search(&query, MAX_RESULTS).into_iter().cloned().collect()
+    library
+        .search(&query, MAX_RESULTS)
+        .into_iter()
+        .cloned()
+        .collect()
 }
 
 #[tauri::command]
@@ -83,8 +95,13 @@ fn open(app: AppHandle, state: State<AppState>, key: String) -> Result<(), Strin
 
 #[tauri::command]
 fn open_link(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
-    let link = state.item(&key)?.link().ok_or(format!("{key}: no DOI or URL"))?;
-    app.opener().open_url(link, None::<&str>).map_err(|e| e.to_string())?;
+    let link = state
+        .item(&key)?
+        .link()
+        .ok_or(format!("{key}: no DOI or URL"))?;
+    app.opener()
+        .open_url(link, None::<&str>)
+        .map_err(|e| e.to_string())?;
     hide_window(&app);
     Ok(())
 }
@@ -93,7 +110,9 @@ fn open_link(app: AppHandle, state: State<AppState>, key: String) -> Result<(), 
 fn reveal(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
     let item = state.item(&key)?;
     let file = item.files.first().ok_or(format!("{key}: no file"))?;
-    app.opener().reveal_item_in_dir(file).map_err(|e| e.to_string())?;
+    app.opener()
+        .reveal_item_in_dir(file)
+        .map_err(|e| e.to_string())?;
     hide_window(&app);
     Ok(())
 }
@@ -108,7 +127,9 @@ async fn copy(app: AppHandle, key: String, format: Format) -> Result<String, Str
         Format::Latex => item.cite(Cite::Latex),
         Format::Bibtex => bibtex(app.clone(), key).await?,
     };
-    app.clipboard().write_text(text.clone()).map_err(|e| e.to_string())?;
+    app.clipboard()
+        .write_text(text.clone())
+        .map_err(|e| e.to_string())?;
     Ok(text)
 }
 
@@ -120,6 +141,41 @@ async fn bibtex(app: AppHandle, key: String) -> Result<String, String> {
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())
+}
+
+/// The first PDF of an item, for the preview.
+#[tauri::command]
+async fn pdf(app: AppHandle, key: String) -> Result<Response, String> {
+    let item = app.state::<AppState>().item(&key)?;
+    let file = item
+        .files
+        .into_iter()
+        .find(|f| f.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
+        .ok_or(format!("{key}: no PDF"))?;
+    let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(file))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    Ok(Response::new(bytes))
+}
+
+/// Widen the panel for the preview, or narrow it back, around its centre.
+#[tauri::command]
+fn set_preview(app: AppHandle, on: bool) -> Result<(), String> {
+    let panel = app.get_webview_window(PANEL).ok_or("no panel")?;
+    let width = if on {
+        PANEL_WIDTH + PREVIEW_WIDTH
+    } else {
+        PANEL_WIDTH
+    };
+    let resize = || -> tauri::Result<()> {
+        let (position, old) = (panel.outer_position()?, panel.outer_size()?);
+        panel.set_size(LogicalSize::new(width, PANEL_HEIGHT))?;
+        let new = panel.outer_size()?;
+        let x = position.x + (old.width as i32 - new.width as i32) / 2;
+        panel.set_position(PhysicalPosition::new(x, position.y))
+    };
+    resize().map_err(|e| e.to_string())
 }
 
 /// Re-read the settings and the library, in the background.
@@ -198,7 +254,14 @@ fn hide_window(app: &AppHandle) {
 
 fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
-    let start_at_login = CheckMenuItem::with_id(app, "autostart", "Start at Login", true, autostart, None::<&str>)?;
+    let start_at_login = CheckMenuItem::with_id(
+        app,
+        "autostart",
+        "Start at Login",
+        true,
+        autostart,
+        None::<&str>,
+    )?;
     let menu = Menu::with_items(
         app,
         &[
@@ -226,7 +289,11 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
             "autostart" => {
                 let launch = app.autolaunch();
                 let enable = !launch.is_enabled().unwrap_or(false);
-                let _ = if enable { launch.enable() } else { launch.disable() };
+                let _ = if enable {
+                    launch.enable()
+                } else {
+                    launch.disable()
+                };
                 let _ = start_at_login.set_checked(launch.is_enabled().unwrap_or(enable));
             }
             "quit" => app.exit(0),
@@ -243,7 +310,10 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _, _| show(app)))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _, event| {
@@ -279,7 +349,16 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            search, status, hide_panel, open, open_link, reveal, copy, bibtex
+            search,
+            status,
+            hide_panel,
+            open,
+            open_link,
+            reveal,
+            copy,
+            bibtex,
+            pdf,
+            set_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

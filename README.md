@@ -23,6 +23,7 @@ Settings… and Start at Login.
 | `⌘.` | copy `[@key]` |
 | `⌘L` | copy `\cite{key}` |
 | `⌘B` | copy the BibTeX entry |
+| `⌘P` | show or hide the preview (first page, details, BibTeX) |
 | `⌘K` | list the actions |
 
 `Ctrl` instead of `⌘` on Linux and Windows.

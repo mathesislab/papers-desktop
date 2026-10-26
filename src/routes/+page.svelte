@@ -3,6 +3,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { onMount, tick } from "svelte";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
+  import Preview from "$lib/Preview.svelte";
   import type { Item, Status } from "$lib/types";
 
   type Action = {
@@ -19,6 +20,7 @@
   let notice = $state<{ text: string; error: boolean } | null>(null);
   let menu = $state(false);
   let menuSelected = $state(0);
+  let preview = $state(storedPreview());
   let input: HTMLInputElement;
   let list = $state<HTMLUListElement>();
 
@@ -59,6 +61,24 @@
     { label: () => "Copy BibTeX", shortcut: { key: "b", mod: true }, run: copy("bibtex") },
   ];
   const menuShortcut: Shortcut = { key: "k", mod: true };
+  const previewShortcut: Shortcut = { key: "p", mod: true };
+
+  // the preview stays on or off between sessions
+  function storedPreview(): boolean {
+    try {
+      return localStorage.getItem("preview") === "on";
+    } catch {
+      return false;
+    }
+  }
+
+  function setPreview(on: boolean) {
+    preview = on;
+    invoke("set_preview", { on });
+    try {
+      localStorage.setItem("preview", on ? "on" : "off");
+    } catch {}
+  }
 
   let current = $derived(items[selected]);
   let available = $derived(current ? actions.filter((a) => !a.when || a.when(current)) : []);
@@ -112,6 +132,9 @@
       e.preventDefault();
       menu = !menu && available.length > 0;
       menuSelected = 0;
+    } else if (matches(e, previewShortcut)) {
+      e.preventDefault();
+      setPreview(!preview);
     } else if (menu && e.key === "Enter") {
       e.preventDefault();
       run(available[menuSelected]);
@@ -126,6 +149,7 @@
 
   onMount(() => {
     invoke<Status>("status").then((s) => (status = s));
+    if (preview) invoke("set_preview", { on: true });
     const unlisten = [
       listen<Status>("status", (e) => {
         status = e.payload;
@@ -154,36 +178,41 @@
     autocomplete="off"
   />
 
-  {#if items.length}
-    <ul bind:this={list} role="listbox">
-      {#each items as item, i (item.key)}
-        <!-- the keys are handled on the window -->
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <li
-          role="option"
-          aria-selected={i === selected}
-          tabindex="-1"
-          class:selected={i === selected}
-          onclick={() => select(i)}
-          ondblclick={() => run(actions[0])}
-        >
-          <div class="text">
-            <div class="title">{item.title}</div>
-            <div class="subtitle">{item.subtitle}</div>
-          </div>
-          {#if item.files.length}
-            <span class="badge">PDF</span>
-          {:else if item.doi}
-            <span class="badge">DOI</span>
-          {/if}
-        </li>
-      {/each}
-    </ul>
-  {:else}
-    <div class="empty">
-      {#if query.trim() && status.state === "ready"}No match{/if}
-    </div>
-  {/if}
+  <div class="body">
+    {#if items.length}
+      <ul bind:this={list} role="listbox">
+        {#each items as item, i (item.key)}
+          <!-- the keys are handled on the window -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <li
+            role="option"
+            aria-selected={i === selected}
+            tabindex="-1"
+            class:selected={i === selected}
+            onclick={() => select(i)}
+            ondblclick={() => run(actions[0])}
+          >
+            <div class="text">
+              <div class="title">{item.title}</div>
+              <div class="subtitle">{item.subtitle}</div>
+            </div>
+            {#if item.files.length}
+              <span class="badge">PDF</span>
+            {:else if item.doi}
+              <span class="badge">DOI</span>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <div class="empty">
+        {#if query.trim() && status.state === "ready"}No match{/if}
+      </div>
+    {/if}
+    {#if preview && current}
+      <Preview item={current} onopen={() => run(actions[0])} />
+    {/if}
+  </div>
 
   {#if menu && current}
     <div class="menu" role="menu">
@@ -218,6 +247,7 @@
     {#if current && !notice}
       <span class="hints">
         {actions[0].label(current)} <kbd>{label(actions[0].shortcut)}</kbd>
+        Preview <kbd>{label(previewShortcut)}</kbd>
         Actions <kbd>{label(menuShortcut)}</kbd>
       </span>
     {/if}
@@ -287,8 +317,15 @@
     color: var(--muted);
   }
 
+  .body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+
   ul {
     flex: 1;
+    min-width: 0;
     margin: 0;
     padding: 6px;
     list-style: none;
