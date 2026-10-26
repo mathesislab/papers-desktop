@@ -289,7 +289,7 @@
             Install {update.version} and Restart
           </button>
         {:else}
-          <button disabled={updating === "checking"} onclick={checkUpdate}>Check for Updates</button>
+          <button disabled={updating === "checking"} onclick={checkUpdate}>Check for Updates Now</button>
         {/if}
       </div>
       {#if updating === "installing"}
