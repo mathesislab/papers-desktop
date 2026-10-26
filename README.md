@@ -10,14 +10,15 @@ are, and does not need papers or any other tool.
 
 Built with [Tauri 2](https://tauri.app) (Rust) and SvelteKit (TypeScript).
 
-The design and the plans (main window, editing, adding papers) are in
+Website and downloads: <https://mathesislab.github.io/papers-desktop/>. The
+design and the plans (main window, editing, adding papers) are in
 [docs/design.md](docs/design.md).
 
 ## Use
 
 The app lives in the menu bar (no Dock icon). `⌥Space` (`Ctrl+Alt+Space`
 elsewhere) shows the search panel; `↑`/`↓` move, `Esc` hides it. The
-menu-bar icon has Reload Library, Settings… and Start at Login.
+menu-bar icon has Settings… (also `⌘,` in the panel) and Reload Library.
 
 | Key | Action |
 |---|---|
@@ -71,9 +72,14 @@ filters.
 
 ## Settings
 
-`settings.json` in the app config directory, written on first run
+The settings window (menu-bar icon → Settings…, or `⌘,` in the panel) sets
+the `.bib` files of the library, the hotkey (click it and press the new
+keys), matching inside words, the citation style and Start at Login.
+Changes apply at once.
+
+They are kept in `settings.json` in the app config directory
 (`~/Library/Application Support/io.github.alex-robinson.papers-desktop/` on
-macOS, [the Linux path is below](#linux)):
+macOS, [the Linux path is below](#linux)), which can also be edited:
 
 ```json
 {
@@ -84,13 +90,12 @@ macOS, [the Linux path is below](#linux)):
 }
 ```
 
-- `bibtex`: the `.bib` files of the library, also chosen with *Library
-  Files…* in the menu-bar icon. When none is set, the app takes the default
+- `bibtex`: the `.bib` files of the library. When none is set, the app takes the default
   library of papers, if papers is set up. Relative links to files are
   relative to their `.bib` file; a key in two files gets a number
   (`smith2010#2`).
-- `hotkey`: read at startup only (quit and restart after a change).
-  `Alt+Space` on macOS, `Ctrl+Alt+Space` elsewhere.
+- `hotkey`: `Alt+Space` on macOS, `Ctrl+Alt+Space` elsewhere. Edited in the
+  file, it applies at the next start.
 - `matching`: `"word-start"` (default), or `"inside-words"` to also match
   inside words from three letters ("stab" finds Multistability).
 - `citation_style`: the style of the citation in the preview, one of the
@@ -100,7 +105,7 @@ macOS, [the Linux path is below](#linux)):
   `elsevier-harvard`, `chicago-author-date` — or the path of any `.csl` file
   (e.g. from the [Zotero style repository](https://www.zotero.org/styles)).
 
-Reload Library re-reads the settings and the library.
+Reload Library re-reads the file and the library.
 
 ## Install
 
@@ -110,8 +115,7 @@ From the [GitHub release](https://github.com/mathesislab/papers-desktop/releases
   launch, allow it in System Settings → Privacy & Security (*Open Anyway*).
 - Ubuntu: see [Linux](#linux).
 
-Then choose the `.bib` files of your library: menu-bar icon → *Library
-Files…*.
+Then choose the `.bib` files of your library: menu-bar icon → *Settings…*.
 
 ## Requirements (to build)
 

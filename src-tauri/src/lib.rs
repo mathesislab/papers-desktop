@@ -12,16 +12,19 @@ use settings::Settings;
 use styles::Style;
 use tauri::image::Image;
 use tauri::ipc::Response;
-use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WindowEvent};
+use tauri::{
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WebviewUrl,
+    WebviewWindowBuilder, WindowEvent, Wry,
+};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_clipboard_manager::ClipboardExt;
-use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
 const PANEL: &str = "panel";
+const SETTINGS: &str = "settings";
 const MAX_RESULTS: usize = 200;
 /// panel size in logical pixels, as in tauri.conf.json; the preview widens it
 const PANEL_WIDTH: f64 = 720.0;
@@ -57,6 +60,8 @@ struct AppState {
     watches: Mutex<Vec<BibWatch>>,
     /// counts the reloads: one that ends after a newer one started is dropped
     reloads: AtomicU64,
+    /// the menu item that shows the hotkey
+    search_item: Mutex<Option<MenuItem<Wry>>>,
 }
 
 impl AppState {
@@ -146,6 +151,58 @@ fn copy(
         .write_text(text.clone())
         .map_err(|e| e.to_string())?;
     Ok(text)
+}
+
+/// What the settings window shows.
+#[derive(Serialize)]
+struct SettingsView {
+    settings: Settings,
+    /// the bundled citation styles
+    styles: Vec<&'static str>,
+    start_at_login: bool,
+    /// to write paths with ~
+    home: Option<PathBuf>,
+}
+
+#[tauri::command]
+fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, String> {
+    Ok(SettingsView {
+        settings: Settings::load(&state.settings_path)?,
+        styles: styles::names(),
+        start_at_login: app.autolaunch().is_enabled().unwrap_or(false),
+        home: std::env::home_dir(),
+    })
+}
+
+/// Save the settings of the settings window, and apply them at once.
+#[tauri::command]
+fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
+    let old = Settings::load(&state.settings_path)?;
+    if settings.hotkey != old.hotkey {
+        set_hotkey(&app, &old.hotkey, &settings.hotkey)?;
+    }
+    settings.save(&state.settings_path)?;
+    reload(&app);
+    Ok(())
+}
+
+/// Start the app at login, or not; returns whether it does.
+#[tauri::command]
+fn set_start_at_login(app: AppHandle, on: bool) -> Result<bool, String> {
+    let launch = app.autolaunch();
+    if on {
+        launch.enable()
+    } else {
+        launch.disable()
+    }
+    .map_err(|e| e.to_string())?;
+    launch.is_enabled().map_err(|e| e.to_string())
+}
+
+/// The settings window, from the panel (⌘,).
+#[tauri::command]
+async fn open_settings(app: AppHandle) {
+    settings_window(&app);
 }
 
 /// Put a text on the clipboard: what the share menu of the preview copies.
@@ -280,32 +337,42 @@ fn watch(app: &AppHandle, bibs: &[PathBuf]) {
     }
 }
 
-/// Ask for the .bib files of the library, and keep them in the settings.
-fn choose_library(app: &AppHandle) {
-    let handle = app.clone();
-    app.dialog()
-        .file()
-        .set_title("The .bib files of the library")
-        .add_filter("BibTeX", &["bib"])
-        .pick_files(move |files| {
-            let Some(files) = files else { return };
-            let bibs: Vec<PathBuf> = files
-                .into_iter()
-                .filter_map(|f| f.into_path().ok())
-                .collect();
-            let path = &handle.state::<AppState>().settings_path;
-            let saved = Settings::load(path).and_then(|settings| {
-                Settings {
-                    bibtex: bibs,
-                    ..settings
-                }
-                .save(path)
-            });
-            match saved {
-                Ok(()) => reload(&handle),
-                Err(error) => set_status(&handle, Status::Failed { error }),
-            }
-        });
+/// Take a new global shortcut in place of the old one, which stays if the new
+/// one cannot be had (another app has it, or it is not a valid shortcut).
+fn set_hotkey(app: &AppHandle, old: &str, new: &str) -> Result<(), String> {
+    let shortcuts = app.global_shortcut();
+    let _ = shortcuts.unregister(old);
+    if let Err(e) = shortcuts.register(new) {
+        let _ = shortcuts.register(old);
+        return Err(format!("{new} cannot be the hotkey: {e}"));
+    }
+    if let Some(item) = app.state::<AppState>().search_item.lock().unwrap().as_ref() {
+        let _ = item.set_accelerator(Some(new));
+    }
+    Ok(())
+}
+
+/// Show the settings window, made the first time.
+fn settings_window(app: &AppHandle) {
+    hide_window(app);
+    if let Some(window) = app.get_webview_window(SETTINGS) {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return;
+    }
+    let window = WebviewWindowBuilder::new(app, SETTINGS, WebviewUrl::App("settings".into()))
+        .title("Papers Desktop Settings")
+        .inner_size(560.0, 600.0)
+        .resizable(false)
+        .minimizable(false)
+        .center()
+        .build();
+    match window {
+        Ok(window) => {
+            let _ = window.set_focus();
+        }
+        Err(e) => eprintln!("papers-desktop: cannot open the settings: {e}"),
+    }
 }
 
 fn set_status(app: &AppHandle, status: Status) {
@@ -367,51 +434,28 @@ const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
 const TRAY_ICON: &[u8] = include_bytes!("../icons/tray-light.png");
 
 fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
-    let autostart = app.autolaunch().is_enabled().unwrap_or(false);
-    let start_at_login = CheckMenuItem::with_id(
-        app,
-        "autostart",
-        "Start at Login",
-        true,
-        autostart,
-        None::<&str>,
-    )?;
+    let search = MenuItem::with_id(app, "search", "Search Papers", true, Some(hotkey))?;
     let menu = Menu::with_items(
         app,
         &[
-            &MenuItem::with_id(app, "search", "Search Papers", true, Some(hotkey))?,
-            &MenuItem::with_id(app, "library", "Library Files…", true, None::<&str>)?,
+            &search,
+            &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
             &MenuItem::with_id(app, "reload", "Reload Library", true, None::<&str>)?,
-            &MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?,
-            &start_at_login,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, "quit", "Quit Papers", true, None::<&str>)?,
         ],
     )?;
+    *app.state::<AppState>().search_item.lock().unwrap() = Some(search);
     TrayIconBuilder::with_id("tray")
         .icon(Image::from_bytes(TRAY_ICON)?)
         .icon_as_template(cfg!(target_os = "macos"))
         .tooltip("Papers")
         .menu(&menu)
         .show_menu_on_left_click(true)
-        .on_menu_event(move |app, event| match event.id().as_ref() {
+        .on_menu_event(|app, event| match event.id().as_ref() {
             "search" => show(app),
-            "library" => choose_library(app),
+            "settings" => settings_window(app),
             "reload" => reload(app),
-            "settings" => {
-                let path = app.state::<AppState>().settings_path.clone();
-                let _ = app.opener().open_path(path.to_string_lossy(), None::<&str>);
-            }
-            "autostart" => {
-                let launch = app.autolaunch();
-                let enable = !launch.is_enabled().unwrap_or(false);
-                let _ = if enable {
-                    launch.enable()
-                } else {
-                    launch.disable()
-                };
-                let _ = start_at_login.set_checked(launch.is_enabled().unwrap_or(enable));
-            }
             "quit" => app.exit(0),
             _ => {}
         })
@@ -455,6 +499,7 @@ pub fn run() {
                 status: RwLock::new(Status::Loading),
                 watches: Mutex::new(Vec::new()),
                 reloads: AtomicU64::new(0),
+                search_item: Mutex::new(None),
             });
             let hotkey = settings.hotkey;
             if let Err(e) = app.global_shortcut().register(hotkey.as_str()) {
@@ -482,7 +527,11 @@ pub fn run() {
             pdf,
             set_preview,
             csl,
-            citation_style
+            citation_style,
+            get_settings,
+            save_settings,
+            set_start_at_login,
+            open_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

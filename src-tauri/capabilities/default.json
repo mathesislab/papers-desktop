@@ -1,10 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the search panel",
-  "windows": ["panel"],
+  "description": "Capability for the search panel and the settings window",
+  "windows": ["panel", "settings"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "core:window:allow-close",
+    "opener:default",
+    "dialog:default"
   ]
 }

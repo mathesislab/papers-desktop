@@ -33,6 +33,11 @@ const BUNDLED: &[(&str, &str)] = &[
     ),
 ];
 
+/// The names of the bundled styles.
+pub fn names() -> Vec<&'static str> {
+    BUNDLED.iter().map(|(name, _)| *name).collect()
+}
+
 /// The citation processor takes this locale for every language.
 const LOCALE: &str = include_str!("../styles/locales-en-US.xml");
 

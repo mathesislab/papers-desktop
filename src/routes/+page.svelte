@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { onMount, tick } from "svelte";
+  import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { resetStyle } from "$lib/cite";
   import Preview from "$lib/Preview.svelte";
@@ -67,11 +68,13 @@
   ];
   const menuShortcut: Shortcut = { key: "k", mod: true };
   const previewShortcut: Shortcut = { key: "p", mod: true };
+  const settingsShortcut: Shortcut = { key: ",", mod: true };
 
   /** the list shown in the empty panel */
   const shortcuts: [string, string][] = [
     ...actions.map((a): [string, string] => [a.name, label(a.shortcut)]),
     ["Preview", label(previewShortcut)],
+    ["Settings", label(settingsShortcut)],
     ["All actions", label(menuShortcut)],
     ["Move", "↑ ↓"],
     ["Close", "Esc"],
@@ -181,6 +184,9 @@
     } else if (matches(e, previewShortcut)) {
       e.preventDefault();
       setPreview(!preview);
+    } else if (matches(e, settingsShortcut)) {
+      e.preventDefault();
+      invoke("open_settings");
     } else if (menu && e.key === "Enter") {
       e.preventDefault();
       run(available[menuSelected]);
@@ -342,36 +348,12 @@
 </main>
 
 <style>
-  :global(:root) {
-    --bg: rgba(246, 246, 248, 0.98);
-    --fg: #1d1d1f;
-    --muted: #6e6e73;
-    --border: rgba(0, 0, 0, 0.14);
-    --line: rgba(0, 0, 0, 0.08);
-    --menu-bg: #ffffff;
-    --accent: #2f6fde;
-    --on-accent: #ffffff;
-    --error: #c4321f;
-  }
-  @media (prefers-color-scheme: dark) {
-    :global(:root) {
-      --bg: rgba(38, 38, 40, 0.98);
-      --fg: #f2f2f4;
-      --muted: #9a9aa0;
-      --border: rgba(255, 255, 255, 0.16);
-      --line: rgba(255, 255, 255, 0.08);
-      --menu-bg: #323236;
-      --accent: #3a78e6;
-      --error: #ff7a66;
-    }
-  }
   :global(html, body) {
     margin: 0;
     height: 100%;
     overflow: hidden;
     background: transparent;
     color: var(--fg);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     -webkit-user-select: none;
     user-select: none;
     cursor: default;

@@ -15,9 +15,9 @@ pub struct Settings {
     /// the .bib files of the library (~ for the home directory); on first
     /// run, the default library of papers if there is one
     pub bibtex: Vec<PathBuf>,
-    /// global shortcut that shows the panel (read at startup only);
-    /// Alt+Space by default on macOS, Ctrl+Alt+Space elsewhere, where
-    /// Alt+Space opens the window menu
+    /// global shortcut that shows the panel: Alt+Space by default on macOS,
+    /// Ctrl+Alt+Space elsewhere, where Alt+Space opens the window menu (set
+    /// in the settings window, it applies at once; in the file, at the next start)
     pub hotkey: String,
     /// "word-start" (default), or "inside-words" to match inside words too
     pub matching: Matching,
