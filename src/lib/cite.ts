@@ -2,6 +2,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import CSL from "citeproc";
+import { plain, type Copy } from "$lib/clipboard";
 
 type Style = { name: string; style: string; locale: string };
 
@@ -52,4 +53,13 @@ export async function citation(id: string): Promise<string> {
   cache.set(id, html);
   if (cache.size > MAX_CACHED) cache.delete(cache.keys().next().value!);
   return html;
+}
+
+/** A citation to copy: its text, and its HTML without the block of the entry,
+ *  or its number in a numbered style. */
+export function toCopy(citation: string): Required<Copy> {
+  const doc = new DOMParser().parseFromString(citation, "text/html");
+  const entry = doc.querySelector(".csl-right-inline") ?? doc.querySelector(".csl-entry");
+  const html = (entry?.innerHTML ?? citation).trim();
+  return { text: plain(html), html };
 }

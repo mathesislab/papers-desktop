@@ -22,6 +22,7 @@
 
   let image = $state<string | null>(null);
   let citation = $state<string | null>(null);
+  let citationError = $state<string | null>(null);
   let style = $state("");
   let bibtex = $state<string | null>(null);
   let failed = $state(false);
@@ -60,6 +61,7 @@
     const id = item.id;
     image = cached(id) ?? null;
     citation = cite.cached(id) ?? null;
+    citationError = null;
     failed = false;
     let live = true;
     const timer = setTimeout(() => {
@@ -75,7 +77,7 @@
             style = await cite.styleName();
             if (live) citation = html;
           })
-          .catch((err) => live && (citation = `<span class="error">${escape(String(err))}</span>`));
+          .catch((err) => live && (citationError = String(err)));
       }
     }, DELAY);
     return () => {
@@ -97,10 +99,6 @@
   });
 
   const fileName = (path: string) => path.split(/[\\/]/).pop();
-
-  function escape(text: string): string {
-    return text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
-  }
 </script>
 
 <aside class="preview">
@@ -135,7 +133,11 @@
       <Share {item} {citation} />
     </div>
     <!-- citeproc-js escapes the fields of the entry -->
-    <div class="citation">{@html citation ?? ""}</div>
+    {#if citationError}
+      <div class="citation error">{citationError}</div>
+    {:else}
+      <div class="citation">{@html citation ?? ""}</div>
+    {/if}
   </section>
   <section>
     <div class="bibtex-head">
@@ -305,7 +307,7 @@
   .citation :global(.csl-right-inline) {
     display: inline;
   }
-  .citation :global(.error) {
+  .citation.error {
     color: var(--error);
   }
   .bibtex {

@@ -29,14 +29,17 @@ menu-bar icon has Settings… (also `⌘,` in the panel) and Reload Library.
 | `⌘.` | copy `[@key]` |
 | `⌘L` | copy `\cite{key}` |
 | `⌘B` | copy the BibTeX entry |
+| `⌘⌥C` | copy the citation, formatted |
 | `⌘P` | show or hide the preview (first page, details, citation, BibTeX) |
 | `⌘K` | list the actions |
 
 `Ctrl` instead of `⌘` on Linux and Windows.
 
 In the preview, *Share* copies a snippet (the title and its link), the
-link, the DOI or the citation; the BibTeX shows formatted, or raw as written
-in its `.bib` file.
+link, the DOI, the citation or its HTML; the BibTeX shows formatted, or raw
+as written in its `.bib` file. The citation and the snippet paste formatted
+(the title as a link) where formatting is possible, as plain text
+elsewhere.
 
 The library reloads by itself when a `.bib` file changes (papers, JabRef,
 an editor, a sync client).

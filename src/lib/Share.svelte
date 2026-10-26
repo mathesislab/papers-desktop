@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { toCopy } from "$lib/cite";
+  import { copy, escape, type Copy } from "$lib/clipboard";
   import type { Item } from "$lib/types";
 
   let {
@@ -16,18 +17,19 @@
   let root: HTMLElement;
 
   let link = $derived(item.doi ? `https://doi.org/${item.doi}` : item.url);
-  let citationText = $derived(
-    citation &&
-      (new DOMParser().parseFromString(citation, "text/html").body.textContent ?? "")
-        .replace(/\s+/g, " ")
-        .trim(),
-  );
+  let cited = $derived(citation ? toCopy(citation) : null);
   /** what each choice copies; nothing when the paper does not have it */
-  let choices = $derived([
-    { label: "Snippet (title + link)", text: link ? `${item.title}\n${link}` : item.title },
-    { label: "Link", text: link },
-    { label: "DOI", text: item.doi },
-    { label: "Citation", text: citationText },
+  let choices = $derived<{ label: string; copy: Copy | null }[]>([
+    {
+      label: "Snippet (title + link)",
+      copy: link
+        ? { text: `${item.title}\n${link}`, html: `<a href="${escape(link)}">${escape(item.title)}</a>` }
+        : { text: item.title },
+    },
+    { label: "Link", copy: link ? { text: link } : null },
+    { label: "DOI", copy: item.doi ? { text: item.doi } : null },
+    { label: "Citation", copy: cited },
+    { label: "Citation (HTML)", copy: cited && { text: cited.html } },
   ]);
 
   // another paper: the menu closes
@@ -36,9 +38,9 @@
     open = false;
   });
 
-  async function share(text: string) {
+  async function share(choice: Copy) {
     open = false;
-    await invoke("copy_text", { text });
+    await copy(choice);
     copied = true;
     setTimeout(() => (copied = false), 1200);
   }
@@ -63,9 +65,9 @@
       {#each choices as choice}
         <button
           role="menuitem"
-          disabled={!choice.text}
+          disabled={!choice.copy}
           onmousedown={(e) => e.preventDefault()}
-          onclick={() => choice.text && share(choice.text)}>{choice.label}</button
+          onclick={() => choice.copy && share(choice.copy)}>{choice.label}</button
         >
       {/each}
     </div>

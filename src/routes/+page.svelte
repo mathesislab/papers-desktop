@@ -4,7 +4,8 @@
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
-  import { resetStyle } from "$lib/cite";
+  import { citation, resetStyle, toCopy } from "$lib/cite";
+  import { copy as copyRich } from "$lib/clipboard";
   import Preview from "$lib/Preview.svelte";
   import Marked from "$lib/Marked.svelte";
   import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
@@ -39,10 +40,20 @@
   };
 
   const copy = (format: string) => async (it: Item) => {
-    const text = await invoke<string>("copy", { id: it.id, format });
+    copied(await invoke<string>("copy", { id: it.id, format }));
+  };
+
+  async function copyCitation(it: Item) {
+    const cited = toCopy(await citation(it.id));
+    await copyRich(cited);
+    copied(cited.text);
+  }
+
+  /** Tell what was copied, then go. */
+  function copied(text: string) {
     notice = { text: `Copied ${text.split("\n")[0]}`, error: false };
     setTimeout(() => invoke("hide_panel"), 400);
-  };
+  }
 
   const hasLink = (it: Item) => !!(it.doi || it.url);
 
@@ -65,6 +76,7 @@
     { name: "Copy [@key]", shortcut: { key: ".", mod: true }, run: copy("pandoc") },
     { name: "Copy \\cite{key}", shortcut: { key: "l", mod: true }, run: copy("latex") },
     { name: "Copy BibTeX", shortcut: { key: "b", mod: true }, run: copy("bibtex") },
+    { name: "Copy citation", shortcut: { key: "c", mod: true, alt: true }, run: copyCitation },
   ];
   const menuShortcut: Shortcut = { key: "k", mod: true };
   const previewShortcut: Shortcut = { key: "p", mod: true };

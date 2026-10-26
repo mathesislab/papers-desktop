@@ -227,10 +227,16 @@ async fn open_settings(app: AppHandle) {
     settings_window(&app);
 }
 
-/// Put a text on the clipboard: what the share menu of the preview copies.
+/// Put a text on the clipboard, with its HTML for a formatted paste: what the
+/// share menu of the preview copies, and the citations.
 #[tauri::command]
-fn copy_text(app: AppHandle, text: String) -> Result<(), String> {
-    app.clipboard().write_text(text).map_err(|e| e.to_string())
+fn copy_text(app: AppHandle, text: String, html: Option<String>) -> Result<(), String> {
+    let clipboard = app.clipboard();
+    match html {
+        Some(html) => clipboard.write_html(html, Some(text)),
+        None => clipboard.write_text(text),
+    }
+    .map_err(|e| e.to_string())
 }
 
 /// The BibTeX of an item: formatted, or `raw` as written in its .bib file.
