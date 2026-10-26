@@ -116,7 +116,7 @@
       <h2>{item.title}</h2>
       {#if item.authors.length}
         <p class="authors">
-          {#each item.authors as author, i}{#if i}, {/if}{#if marked[i]}<b>{author}</b>{:else}{author}{/if}{/each}
+          {#each item.authors as author, i}{#if i}{", "}{/if}{#if marked[i]}<b>{author}</b>{:else}{author}{/if}{/each}
         </p>
       {/if}
       {#if source}<p>{source}</p>{/if}
