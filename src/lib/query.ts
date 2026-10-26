@@ -33,6 +33,11 @@ export function extendYears(query: string, year: number): string {
   return range ? onlyYears(query, Math.min(range[0], year), Math.max(range[1], year)) : onlyYears(query, year);
 }
 
+/** All years again: no year filter, kept or excluded. */
+export function clearYears(query: string): string {
+  return tidy(query.replace(/(^|\s)-?(?:y|year):\S*/gi, " "));
+}
+
 /** Alt-click: exclude the year, or take it back. */
 export function toggleExcluded(query: string, year: number): string {
   if (excluded(year).test(query)) return tidy(query.replace(excluded(year), " "));

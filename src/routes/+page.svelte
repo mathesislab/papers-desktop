@@ -5,7 +5,7 @@
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import Preview from "$lib/Preview.svelte";
   import Marked from "$lib/Marked.svelte";
-  import { extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
+  import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
   import YearStrip from "$lib/YearStrip.svelte";
   import type { Found, Hit, Item, Status, YearCount } from "$lib/types";
 
@@ -136,19 +136,18 @@
     list?.scrollTo(0, 0);
   }
 
-  /** A click on a year: only it; with ⇧, extend the range to it; with ⌥, exclude it. */
-  function pickYear(year: number, e: MouseEvent) {
-    if (e.altKey) query = toggleExcluded(query, year);
-    else if (e.shiftKey) query = extendYears(query, year);
-    else query = toggleYear(query, year);
+  /** A query edited by a click: search it, and give the field back its focus. */
+  function edit(edited: string) {
+    query = edited;
     search();
     input.focus();
   }
 
-  function pickYears(from: number, to: number) {
-    query = onlyYears(query, from, to);
-    search();
-    input.focus();
+  /** A click on a year: only it; with ⇧, extend the range to it; with ⌥, exclude it. */
+  function pickYear(year: number, e: MouseEvent) {
+    if (e.altKey) edit(toggleExcluded(query, year));
+    else if (e.shiftKey) edit(extendYears(query, year));
+    else edit(toggleYear(query, year));
   }
 
   async function select(i: number) {
@@ -227,7 +226,12 @@
   <div class="body">
     <div class="results">
       {#if years.length > 1}
-        <YearStrip {years} onyear={pickYear} onrange={pickYears} />
+        <YearStrip
+          {years}
+          onyear={pickYear}
+          onrange={(from, to) => edit(onlyYears(query, from, to))}
+          onclear={() => edit(clearYears(query))}
+        />
       {/if}
       {#if hits.length}
         <ul bind:this={list} role="listbox">

@@ -5,12 +5,15 @@
     years,
     onyear,
     onrange,
+    onclear,
   }: {
     years: YearCount[];
     /** a click on a year, with its modifier keys */
     onyear: (year: number, e: MouseEvent) => void;
     /** a drag across the years */
     onrange: (from: number, to: number) => void;
+    /** the button that drops the year filters */
+    onclear: () => void;
   } = $props();
 
   let bars: HTMLDivElement;
@@ -86,6 +89,9 @@
   <div class="axis">
     <span>{years[0].year}</span>
     <span class="info">{info}</span>
+    {#if filtered}
+      <button class="clear" onmousedown={(e) => e.preventDefault()} onclick={onclear}>All years ✕</button>
+    {/if}
     <span>{years[years.length - 1].year}</span>
   </div>
 </div>
@@ -138,8 +144,24 @@
     font-variant-numeric: tabular-nums;
   }
   .info {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+    text-align: center;
+  }
+  .clear {
+    flex: none;
+    padding: 0 6px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
+    cursor: pointer;
+  }
+  .clear:hover {
+    border-color: var(--muted);
   }
 </style>

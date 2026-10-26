@@ -57,7 +57,8 @@ The year of each paper stands in a column on the left. Clicking a year
 keeps that year only (click again to undo), `⇧`-click stretches the year
 range to it, and `⌥`-click excludes it. Above the list, a strip shows the
 matches of each year (before the year filters): drag across it to keep a
-range of years, or click it like a year.
+range of years, or click it like a year; All years ✕ drops the year
+filters.
 
 ## Settings
 
