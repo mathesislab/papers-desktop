@@ -4,13 +4,15 @@
 
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 
+use crate::bib::{self, BibEntry};
 use crate::query::{self, Field, Pattern, Term};
 use crate::text::{Matching, Span, Text, fold};
-use crate::{Item, Result, csl};
+use crate::{Item, Result, to_csl};
 
 #[derive(Default)]
 pub struct Library {
@@ -18,9 +20,10 @@ pub struct Library {
     fields: Vec<Fields>,
     /// the items newest first, then by first author and title
     order: Vec<usize>,
-    by_key: HashMap<String, usize>,
-    /// the CSL-JSON of each item, as papers wrote it
-    csl: Vec<Value>,
+    by_id: HashMap<String, usize>,
+    /// the entry of each item, as parsed and as written
+    entries: Vec<BibEntry>,
+    bibs: Vec<PathBuf>,
 }
 
 /// The matches of a search, the first `limit` of them with their marks.
@@ -61,17 +64,36 @@ pub(crate) struct Marks {
 }
 
 impl Library {
-    /// The library of the CSL-JSON that `papers list --format csl-json` writes.
-    pub fn from_csl_json(json: &str) -> Result<Library> {
-        let csl: Vec<Value> = serde_json::from_str(json)?;
-        let entries = csl.iter().map(csl::Entry::deserialize);
+    /// The entries of these .bib files, in order.
+    pub fn load(bibs: &[PathBuf]) -> Result<Library> {
+        let mut entries = Vec::new();
+        for bib in bibs {
+            entries.extend(bib::read(bib)?);
+        }
+        // the key is the id, numbered when several entries have it
+        let mut count: HashMap<String, usize> = HashMap::new();
+        for e in &entries {
+            *count.entry(e.entry.key.clone()).or_default() += 1;
+        }
+        let mut seen: HashMap<String, usize> = HashMap::new();
         let items = entries
-            .map(|e| Ok(Item::from_csl(e?)))
-            .collect::<Result<_>>()?;
-        Ok(Library::new(items, csl))
+            .iter()
+            .map(|e| {
+                let key = &e.entry.key;
+                let n = seen.entry(key.clone()).or_default();
+                *n += 1;
+                let id = if count[key] > 1 {
+                    format!("{key}#{n}")
+                } else {
+                    key.clone()
+                };
+                Item::from_entry(e, id)
+            })
+            .collect();
+        Ok(Library::new(items, entries, bibs.to_vec()))
     }
 
-    fn new(items: Vec<Item>, csl: Vec<Value>) -> Library {
+    fn new(items: Vec<Item>, entries: Vec<BibEntry>, bibs: Vec<PathBuf>) -> Library {
         let fields = items.iter().map(Fields::new).collect();
         let mut order: Vec<usize> = (0..items.len()).collect();
         order.sort_by_cached_key(|&i| {
@@ -79,18 +101,24 @@ impl Library {
             let first = it.families.first().map(|f| fold(f)).unwrap_or_default();
             (Reverse(it.year), first, fold(&it.title))
         });
-        let by_key = items
+        let by_id = items
             .iter()
             .enumerate()
-            .map(|(i, it)| (it.key.clone(), i))
+            .map(|(i, it)| (it.id.clone(), i))
             .collect();
         Library {
             items,
             fields,
             order,
-            by_key,
-            csl,
+            by_id,
+            entries,
+            bibs,
         }
+    }
+
+    /// The .bib files of the library.
+    pub fn bibs(&self) -> &[PathBuf] {
+        &self.bibs
     }
 
     pub fn len(&self) -> usize {
@@ -101,13 +129,28 @@ impl Library {
         self.items.is_empty()
     }
 
-    pub fn get(&self, key: &str) -> Option<&Item> {
-        self.by_key.get(key).map(|&i| &self.items[i])
+    pub fn get(&self, id: &str) -> Option<&Item> {
+        self.by_id.get(id).map(|&i| &self.items[i])
     }
 
-    /// The CSL-JSON of an item, as papers wrote it: for a citation processor.
-    pub fn csl(&self, key: &str) -> Option<&Value> {
-        self.by_key.get(key).map(|&i| &self.csl[i])
+    /// The CSL-JSON of an item, for a citation processor.
+    pub fn csl(&self, id: &str) -> Option<Value> {
+        self.entry(id).map(|e| to_csl::entry_to_csl(&e.entry))
+    }
+
+    /// The BibTeX of an item, formatted.
+    pub fn bibtex(&self, id: &str) -> Option<String> {
+        let e = self.entry(id)?;
+        Some(e.entry.to_bibtex_string().unwrap_or_else(|_| e.raw.clone()))
+    }
+
+    /// The BibTeX of an item as written in its .bib file.
+    pub fn raw(&self, id: &str) -> Option<&str> {
+        self.entry(id).map(|e| e.raw.as_str())
+    }
+
+    fn entry(&self, id: &str) -> Option<&BibEntry> {
+        self.by_id.get(id).map(|&i| &self.entries[i])
     }
 
     pub fn search(&self, query: &str, matching: Matching, limit: usize) -> Found {

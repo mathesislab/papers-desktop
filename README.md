@@ -1,10 +1,12 @@
 # papers-desktop
 
-Desktop companion for the [papers](https://github.com/perrette/papers) CLI:
-a global-hotkey search panel over your papers library.
+A global-hotkey search panel over a BibTeX library: one or more `.bib` files
+and the PDFs they link to (JabRef-style `file` fields), as kept by
+[papers](https://github.com/perrette/papers), JabRef, BibDesk or a Zotero
+export.
 
-The `.bib` file and the PDF folder managed by `papers` stay the only source
-of truth; the app reads them through `papers list --format csl-json`.
+The `.bib` files stay the only source of truth: the app reads them as they
+are, and does not need papers or any other tool.
 
 Built with [Tauri 2](https://tauri.app) (Rust) and SvelteKit (TypeScript).
 
@@ -31,8 +33,8 @@ menu-bar icon has Reload Library, Settings… and Start at Login.
 
 `Ctrl` instead of `⌘` on Linux and Windows.
 
-The library reloads by itself when the bibtex file changes (a `papers`
-command, an editor, a sync client).
+The library reloads by itself when a `.bib` file changes (papers, JabRef,
+an editor, a sync client).
 
 Every word must match an author, the year, key, title, a keyword, the
 journal or the DOI, from the start of a word ("rob" finds Robinson). The
@@ -71,16 +73,18 @@ macOS, [the Linux path is below](#linux)):
 
 ```json
 {
-  "papers": "/path/to/bin/papers",
+  "bibtex": ["~/lit/papers.bib"],
   "hotkey": "Alt+Space",
   "matching": "word-start",
   "citation_style": "copernicus-publications"
 }
 ```
 
-- `papers`: the papers executable. Apps started from the Finder or at login
-  do not see the shell `PATH`, so the app looks it up once in your login
-  shell; set it here if that fails.
+- `bibtex`: the `.bib` files of the library, also chosen with *Library
+  Files…* in the menu-bar icon. When none is set, the app takes the default
+  library of papers, if papers is set up. Relative links to files are
+  relative to their `.bib` file; a key in two files gets a number
+  (`smith2010#2`).
 - `hotkey`: read at startup only (quit and restart after a change).
   `Alt+Space` on macOS, `Ctrl+Alt+Space` elsewhere.
 - `matching`: `"word-start"` (default), or `"inside-words"` to also match
@@ -96,16 +100,17 @@ Reload Library re-reads the settings and the library.
 
 ## Install
 
-papers-cli 3.0 (`pip install --pre papers-cli`) with a default library, then
-the app from the [GitHub release](https://github.com/mathesislab/papers-desktop/releases):
+From the [GitHub release](https://github.com/mathesislab/papers-desktop/releases):
 
 - macOS (Apple Silicon): the `.dmg`. The app is not notarized: on first
   launch, allow it in System Settings → Privacy & Security (*Open Anyway*).
 - Ubuntu: see [Linux](#linux).
 
+Then choose the `.bib` files of your library: menu-bar icon → *Library
+Files…*.
+
 ## Requirements (to build)
 
-- papers-cli 3.0, with a default library
 - Rust (stable) and Node.js
 
 ## Develop

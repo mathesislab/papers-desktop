@@ -1,17 +1,20 @@
 //! Library loading and search for papers-desktop.
 //!
-//! The papers CLI stays the only reader of the bibtex file: entries come in
-//! through `papers list --format csl-json` and become search [`Item`]s.
+//! The library is one or more .bib files, read as they are: the entries
+//! become search [`Item`]s, and keep their BibTeX and their CSL-JSON (for a
+//! citation processor).
 
-mod cli;
-mod csl;
+mod bib;
+mod fields;
 mod item;
 mod query;
 mod search;
 mod text;
+mod to_csl;
 mod watch;
 
-pub use cli::Papers;
+use std::path::PathBuf;
+
 pub use item::{Cite, Item};
 pub use search::{Found, Hit, Library, YearCount};
 pub use text::{Matching, Span};
@@ -19,12 +22,17 @@ pub use watch::BibWatch;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("could not run {cmd}: {source}")]
-    Spawn { cmd: String, source: std::io::Error },
-    #[error("{cmd} failed: {stderr}")]
-    Command { cmd: String, stderr: String },
-    #[error("invalid CSL-JSON: {0}")]
-    Csl(#[from] serde_json::Error),
+    #[error("{}: {source}", path.display())]
+    Read {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("{}, line {line}: {message}", path.display())]
+    Parse {
+        path: PathBuf,
+        line: usize,
+        message: String,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

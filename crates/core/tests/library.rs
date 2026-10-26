@@ -1,9 +1,15 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use papers_core::{Cite, Library, Matching, Papers, Span};
+use papers_core::{Cite, Error, Library, Matching, Span};
+
+fn fixture(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(name)
+}
 
 fn library() -> Library {
-    Library::from_csl_json(include_str!("fixtures/library.json")).unwrap()
+    Library::load(&[fixture("library.bib")]).unwrap()
 }
 
 fn keys(lib: &Library, query: &str) -> Vec<String> {
@@ -46,7 +52,21 @@ fn items() {
         [PathBuf::from("/library/feldmann_and_levermann_2017.pdf")]
     );
 
+    // relative links are relative to the .bib file
+    let it = lib.get("robinson2012").unwrap();
+    assert_eq!(
+        it.files,
+        [
+            PathBuf::from("/library/robinson_et_al_2012.pdf"),
+            fixture("papers/robinson_et_al_2012--supp.pdf"),
+        ]
+    );
+    assert_eq!(it.bib, fixture("library.bib"));
+    assert_eq!(lib.get("muller2020").unwrap().authors, ["Anna Müller"]);
+
     let it = lib.get("vandenbroeke2009").unwrap();
+    // a doi.org link is a DOI
+    assert_eq!(it.doi.as_deref(), Some("10.1126/science.1178176"));
     assert_eq!(it.authors[0], "Michiel van den Broeke");
     assert_eq!(it.subtitle, "van den Broeke et al. · 2009 · Science");
     assert_eq!(it.keywords, ["greenland", "mass balance"]);
@@ -290,24 +310,58 @@ fn cite_and_link() {
     assert_eq!(csl["author"][1]["family"], "Calov");
 }
 
-/// Loads the real library through the papers CLI: `cargo test -- --ignored`
+#[test]
+fn several_files() {
+    let lib = Library::load(&[fixture("library.bib"), fixture("other.bib")]).unwrap();
+    assert_eq!(lib.len(), 10);
+    assert_eq!(lib.bibs(), [fixture("library.bib"), fixture("other.bib")]);
+    // a key in two files: numbered ids, in the order of the files
+    assert!(lib.get("robinson2012").is_none());
+    assert_eq!(
+        lib.get("robinson2012#1").unwrap().bib,
+        fixture("library.bib")
+    );
+    let other = lib.get("robinson2012#2").unwrap();
+    assert_eq!(other.key, "robinson2012");
+    assert_eq!(other.files, [PathBuf::from("/elsewhere/robinson2012.pdf")]);
+    assert_eq!(other.container.as_deref(), Some("Nat. Clim. Change"));
+    assert_eq!(
+        lib.get("beckmann2019").unwrap().subtitle,
+        "Beckmann & Perrette · 2019 · EGU General Assembly"
+    );
+}
+
+#[test]
+fn bibtex() {
+    let lib = library();
+    // as written in the file
+    let raw = lib.raw("robinson2012").unwrap();
+    assert!(raw.starts_with("@article{robinson2012,\n author = {Robinson, Alexander"));
+    assert!(raw.ends_with("year = {2012}\n}"), "{raw:?}");
+    // formatted
+    let bibtex = lib.bibtex("muller2020").unwrap();
+    assert!(bibtex.starts_with("@article{muller2020,"), "{bibtex}");
+    assert!(bibtex.contains("Nature"), "{bibtex}");
+}
+
+#[test]
+fn errors() {
+    let missing = Library::load(&[fixture("missing.bib")]);
+    assert!(matches!(missing, Err(Error::Read { .. })));
+    let broken = Library::load(&[fixture("broken.bib")]).err().unwrap();
+    assert!(matches!(broken, Error::Parse { .. }), "{broken}");
+    assert!(broken.to_string().contains("broken.bib, line"), "{broken}");
+}
+
+/// Reads a real .bib: `PAPERS_BIB=path/to/library.bib cargo test -- --ignored`
 #[test]
 #[ignore]
 fn user_library() {
-    let papers = Papers::new(Papers::locate().expect("papers not found on the shell PATH"));
-    assert!(papers.bibtex_path().unwrap().exists());
-    let lib = papers.load().unwrap();
+    let bib = std::env::var("PAPERS_BIB").expect("PAPERS_BIB: the .bib file to read");
+    let start = std::time::Instant::now();
+    let lib = Library::load(&[PathBuf::from(bib)]).unwrap();
+    println!("{} entries in {:?}", lib.len(), start.elapsed());
     assert!(!lib.is_empty());
-    println!("{} entries", lib.len());
-    // exact key: robinson2012 only, not robinson2012a or robinson2012-supp
-    let key = lib.search("robinson", Matching::WordStart, 1).hits[0]
-        .item
-        .key
-        .clone();
-    let bibtex = papers.bibtex(&key).unwrap();
-    assert!(bibtex.starts_with('@'));
-    assert_eq!(bibtex.matches("\n@").count(), 0);
-    assert!(bibtex.contains(&format!("{{{key},")));
     for query in [
         "greenland ice sheet",
         "robinson",
@@ -319,7 +373,7 @@ fn user_library() {
         for h in found.hits {
             println!(
                 "  {} | {} | {}",
-                h.item.key,
+                h.item.id,
                 marked(&h.title),
                 marked(&h.subtitle)
             );

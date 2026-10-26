@@ -2,7 +2,6 @@
 //! or any .csl file.
 
 use std::fs;
-use std::path::PathBuf;
 
 use serde::Serialize;
 
@@ -52,7 +51,7 @@ impl Style {
     pub fn load(name: &str) -> Result<Style, String> {
         let style = match BUNDLED.iter().find(|(n, _)| *n == name) {
             Some((_, xml)) => xml.to_string(),
-            None => fs::read_to_string(expand(name)).map_err(|e| {
+            None => fs::read_to_string(crate::settings::expand(name)).map_err(|e| {
                 let names: Vec<_> = BUNDLED.iter().map(|(n, _)| *n).collect();
                 format!("citation style {name}: {e} (bundled: {})", names.join(", "))
             })?,
@@ -62,13 +61,5 @@ impl Style {
             style,
             locale: LOCALE.to_string(),
         })
-    }
-}
-
-/// A path, with ~ for the home directory.
-fn expand(path: &str) -> PathBuf {
-    match (path.strip_prefix("~/"), std::env::home_dir()) {
-        (Some(rest), Some(home)) => home.join(rest),
-        _ => PathBuf::from(path),
     }
 }

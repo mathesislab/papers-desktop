@@ -2,12 +2,10 @@
 
 ## Principles
 
-- `papers` is the only reader and writer of the library. The app reads the
-  entries with `papers list --format csl-json`, the bibtex file with
-  `papers config bibtex`, and one BibTeX entry with
-  `papers list --key KEY --strict --format bibtex`. It never writes the
-  bibtex file itself, so file naming, undo and the git history of papers
-  keep working.
+- The library is one or more `.bib` files, read as they are (with the
+  `biblatex` crate), and the files their entries link to. The app works out
+  of the box, with no other tool: papers, JabRef or any editor keeps the
+  `.bib` files. It writes nothing yet.
 - The PDFs stay plain files in the files directory: any viewer opens them.
 - `crates/core` (Rust, no user interface) loads, searches and watches the
   library, and works on any platform: other front ends (a Spotlight add-on,
@@ -44,8 +42,8 @@ Two windows with different jobs:
 
 A **paper tab** (card):
 
-- left: all the information of the paper — the BibTeX fields as papers
-  stores them (read from papers' BibTeX output, parsed in the core), the
+- left: all the information of the paper — the BibTeX fields of the entry
+  (parsed in the core), the
   files (open, reveal) and the tags;
 - right: the preview of the panel as it is (first page, citation, BibTeX
   folded).
@@ -54,7 +52,10 @@ It is read-only at first.
 
 ## Later: editing
 
-To decide before anything writes. Every change goes through papers:
+To decide before anything writes: through papers when it is installed (its
+file naming, undo and git history), and maybe natively for small changes
+(an entry rewritten in place, the rest of the file untouched). Through
+papers:
 
 - **Tags**: `papers tag KEY --add TAG` / `--rm TAG`, applied at once.
 - **Fields**: `papers edit KEY` takes the edited entry, either through the

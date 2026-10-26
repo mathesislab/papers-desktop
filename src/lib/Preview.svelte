@@ -1,12 +1,3 @@
-<script lang="ts" module>
-  const bibtexCache = new Map<string, string>();
-
-  /** Forget the BibTeX entries: the library changed. */
-  export function forgetBibtex() {
-    bibtexCache.clear();
-  }
-</script>
-
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import * as cite from "$lib/cite";
@@ -33,58 +24,57 @@
   let style = $state("");
   let bibtex = $state<string | null>(null);
   let failed = $state(false);
-  let showBibtex = $state(storedBibtex());
+  // the BibTeX stays open or closed, formatted or raw, between sessions
+  let showBibtex = $state(stored("bibtex", "open"));
+  let raw = $state(stored("bibtex-view", "raw"));
 
-  // the BibTeX stays open or closed between sessions
-  function storedBibtex(): boolean {
+  function stored(name: string, value: string): boolean {
     try {
-      return localStorage.getItem("bibtex") === "open";
+      return localStorage.getItem(name) === value;
     } catch {
       return false;
     }
   }
 
+  function store(name: string, value: string) {
+    try {
+      localStorage.setItem(name, value);
+    } catch {}
+  }
+
   function toggleBibtex() {
     showBibtex = !showBibtex;
-    try {
-      localStorage.setItem("bibtex", showBibtex ? "open" : "closed");
-    } catch {}
+    store("bibtex", showBibtex ? "open" : "closed");
+  }
+
+  function setRaw(on: boolean) {
+    raw = on;
+    store("bibtex-view", on ? "raw" : "formatted");
   }
 
   let hasPdf = $derived(item.files.some((f) => f.toLowerCase().endsWith(".pdf")));
   let source = $derived([item.container, item.year].filter(Boolean).join(" · "));
 
   $effect(() => {
-    const key = item.key;
-    const withBibtex = showBibtex;
-    image = cached(key) ?? null;
-    citation = cite.cached(key) ?? null;
-    bibtex = bibtexCache.get(key) ?? null;
+    const id = item.id;
+    image = cached(id) ?? null;
+    citation = cite.cached(id) ?? null;
     failed = false;
     let live = true;
     const timer = setTimeout(() => {
       if (hasPdf && !image) {
-        thumbnail(key, PAGE_WIDTH)
+        thumbnail(id, PAGE_WIDTH)
           .then((url) => live && (image = url))
           .catch(() => live && (failed = true));
       }
       if (citation === null) {
         cite
-          .citation(key)
+          .citation(id)
           .then(async (html) => {
             style = await cite.styleName();
             if (live) citation = html;
           })
           .catch((err) => live && (citation = `<span class="error">${escape(String(err))}</span>`));
-      }
-      // from papers, only when shown
-      if (withBibtex && bibtex === null) {
-        invoke<string>("bibtex", { key })
-          .then((text) => {
-            bibtexCache.set(key, text);
-            if (live) bibtex = text;
-          })
-          .catch((err) => live && (bibtex = String(err)));
       }
     }, DELAY);
     return () => {
@@ -92,6 +82,20 @@
       clearTimeout(timer);
     };
   });
+
+  // the BibTeX is in memory: no delay
+  $effect(() => {
+    if (!showBibtex) return;
+    let live = true;
+    invoke<string>("bibtex", { id: item.id, raw })
+      .then((text) => live && (bibtex = text))
+      .catch((err) => live && (bibtex = String(err)));
+    return () => {
+      live = false;
+    };
+  });
+
+  const fileName = (path: string) => path.split(/[\\/]/).pop();
 
   function escape(text: string): string {
     return text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
@@ -130,9 +134,20 @@
     <div class="citation">{@html citation ?? ""}</div>
   </section>
   <section>
-    <button class="disclosure" onclick={toggleBibtex} aria-expanded={showBibtex}>
-      <span class="caret" class:open={showBibtex}>▸</span> BibTeX
-    </button>
+    <div class="bibtex-head">
+      <button class="disclosure" onclick={toggleBibtex} aria-expanded={showBibtex}>
+        <span class="caret" class:open={showBibtex}>▸</span> BibTeX
+      </button>
+      {#if showBibtex}
+        <span class="views">
+          <button class:active={!raw} onclick={() => setRaw(false)}>formatted</button>
+          <button class:active={raw} onclick={() => setRaw(true)} title="As written in the file"
+            >raw</button
+          >
+        </span>
+        <span class="file" title={item.bib}>{fileName(item.bib)}</span>
+      {/if}
+    </div>
     {#if showBibtex}<pre class="bibtex">{bibtex ?? ""}</pre>{/if}
   </section>
 </aside>
@@ -233,6 +248,30 @@
   }
   .disclosure {
     cursor: pointer;
+  }
+  .bibtex-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .bibtex-head .file {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .views button {
+    padding: 0 5px;
+    border: none;
+    border-radius: 3px;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .views button.active {
+    background: var(--line);
+    color: var(--fg);
   }
   .caret {
     display: inline-block;

@@ -17,8 +17,8 @@ export function resetStyle() {
   cache.clear();
 }
 
-export function cached(key: string): string | undefined {
-  return cache.get(key);
+export function cached(id: string): string | undefined {
+  return cache.get(id);
 }
 
 /** The name of the style, once a citation was made. */
@@ -39,16 +39,17 @@ function load() {
   return engine;
 }
 
-/** The bibliography entry of `key`, as HTML (citeproc-js escapes the fields). */
-export async function citation(key: string): Promise<string> {
-  const hit = cache.get(key);
+/** The bibliography entry of item `id`, as HTML (citeproc-js escapes the fields). */
+export async function citation(id: string): Promise<string> {
+  const hit = cache.get(id);
   if (hit !== undefined) return hit;
-  const [{ engine: e }, item] = await Promise.all([load(), invoke<object>("csl", { key })]);
-  items.set(key, item);
-  e.updateItems([key]);
+  const [{ engine: e }, item] = await Promise.all([load(), invoke<object>("csl", { id })]);
+  // the CSL id is the key, which two .bib files may share
+  items.set(id, { ...item, id });
+  e.updateItems([id]);
   const bibliography = e.makeBibliography();
   const html = bibliography ? bibliography[1].join("").trim() : "";
-  cache.set(key, html);
+  cache.set(id, html);
   if (cache.size > MAX_CACHED) cache.delete(cache.keys().next().value!);
   return html;
 }

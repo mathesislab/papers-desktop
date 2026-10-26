@@ -4,7 +4,7 @@
   import { onMount, tick } from "svelte";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { resetStyle } from "$lib/cite";
-  import Preview, { forgetBibtex } from "$lib/Preview.svelte";
+  import Preview from "$lib/Preview.svelte";
   import Marked from "$lib/Marked.svelte";
   import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
   import YearStrip from "$lib/YearStrip.svelte";
@@ -34,11 +34,11 @@
   let list = $state<HTMLUListElement>();
 
   const call = (command: string) => async (it: Item) => {
-    await invoke(command, { key: it.key });
+    await invoke(command, { id: it.id });
   };
 
   const copy = (format: string) => async (it: Item) => {
-    const text = await invoke<string>("copy", { key: it.key, format });
+    const text = await invoke<string>("copy", { id: it.id, format });
     notice = { text: `Copied ${text.split("\n")[0]}`, error: false };
     setTimeout(() => invoke("hide_panel"), 400);
   };
@@ -202,7 +202,6 @@
         if (status.state === "ready") {
           // the settings or the entries may have changed
           resetStyle();
-          forgetBibtex();
           search();
         }
       }),
@@ -241,7 +240,7 @@
       {/if}
       {#if hits.length}
         <ul bind:this={list} role="listbox">
-          {#each hits as hit, i (hit.item.key)}
+          {#each hits as hit, i (hit.item.id)}
             <!-- the keys are handled on the window -->
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <li

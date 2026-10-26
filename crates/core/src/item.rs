@@ -5,7 +5,10 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::csl;
+use biblatex::{DateValue, Entry, PermissiveType};
+
+use crate::bib::BibEntry;
+use crate::fields::{Name, clean_doi, field, names, raw};
 use crate::search::Marks;
 use crate::text::{Span, Text};
 
@@ -23,8 +26,10 @@ pub enum Cite {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Item {
+    /// the key, unless another .bib file of the library has the same key
+    pub id: String,
     pub key: String,
-    /// CSL type, e.g. `article-journal`
+    /// bibtex entry type, e.g. `article`
     pub kind: String,
     pub title: String,
     /// display names, "Given Family"
@@ -36,6 +41,8 @@ pub struct Item {
     pub url: Option<String>,
     pub keywords: Vec<String>,
     pub files: Vec<PathBuf>,
+    /// the .bib file of the entry
+    pub bib: PathBuf,
     /// one line under the title: "Feldmann & Levermann · 2017 · Cryosphere"
     pub subtitle: String,
     /// family names with their particle ("van den Broeke"), in author order
@@ -60,44 +67,34 @@ impl Item {
         }
     }
 
-    pub(crate) fn from_csl(e: csl::Entry) -> Item {
-        let names = if e.author.is_empty() {
-            &e.editor
-        } else {
-            &e.author
-        };
-        let families: Vec<String> = names.iter().filter_map(family).collect();
-        let authors = names.iter().filter_map(display_name).collect();
-        let year = e.issued.as_ref().and_then(csl::Date::year);
-        let container = e
-            .container_title
-            .as_deref()
-            .map(clean)
-            .filter(|s| !s.is_empty());
-        let key = e.citation_key.unwrap_or(e.id);
-        let title = e.title.as_deref().map(clean).unwrap_or_default();
-        let keywords = e
-            .keyword
-            .as_deref()
-            .unwrap_or_default()
-            .split(',')
-            .map(str::trim)
-            .filter(|w| !w.is_empty())
-            .map(String::from)
-            .collect();
+    /// The item of an entry of a .bib file; `id` is unique in the library.
+    pub(crate) fn from_entry(e: &BibEntry, id: String) -> Item {
+        let entry = &e.entry;
+        let people = people(entry);
+        let key = entry.key.clone();
+        let title = field(entry, &["title"]).unwrap_or_else(|| key.clone());
+        let container = field(entry, &["journal", "journaltitle", "booktitle"]);
+        let keywords = field(entry, &["keywords"]).unwrap_or_default();
         let mut item = Item {
-            title: if title.is_empty() { key.clone() } else { title },
-            key,
-            kind: e.kind,
-            authors,
-            year,
+            id,
+            kind: entry.entry_type.to_string(),
+            title,
+            authors: people.iter().map(display_name).collect(),
+            year: year(entry),
             container,
-            doi: e.doi.filter(|s| !s.is_empty()),
-            url: e.url.filter(|s| !s.is_empty()),
-            keywords,
-            files: e.custom.file.into_iter().map(PathBuf::from).collect(),
+            doi: raw(entry, "doi").map(clean_doi),
+            url: raw(entry, "url"),
+            keywords: keywords
+                .split(',')
+                .map(str::trim)
+                .filter(|w| !w.is_empty())
+                .map(String::from)
+                .collect(),
+            files: e.files.clone(),
+            bib: e.bib.clone(),
             subtitle: String::new(),
-            families,
+            families: people.iter().map(Name::full_family).collect(),
+            key,
         };
         let spans = item.subtitle_spans(&Marks::default());
         item.subtitle = spans.into_iter().map(|s| s.text).collect();
@@ -143,28 +140,34 @@ impl Item {
     }
 }
 
-fn family(n: &csl::Name) -> Option<String> {
-    let family = match (&n.particle, &n.family, &n.literal) {
-        (Some(p), Some(f), _) => format!("{p} {f}"),
-        (None, Some(f), _) => f.clone(),
-        (_, None, Some(l)) => l.clone(),
-        _ => return None,
-    };
-    Some(clean(&family)).filter(|s| !s.is_empty())
+/// The authors, else the editors.
+fn people(entry: &Entry) -> Vec<Name> {
+    let authors = names(entry, "author");
+    if authors.is_empty() {
+        names(entry, "editor")
+    } else {
+        authors
+    }
 }
 
-fn display_name(n: &csl::Name) -> Option<String> {
-    let family = family(n)?;
-    Some(match n.given.as_deref().map(clean) {
-        Some(given) if !given.is_empty() => format!("{given} {family}"),
-        _ => family,
-    })
+/// "Given Family"
+fn display_name(name: &Name) -> String {
+    format!("{} {}", name.given, name.full_family())
+        .trim()
+        .to_string()
 }
 
-/// Strip the bibtex braces left in a field and collapse whitespace.
-fn clean(s: &str) -> String {
-    s.replace(['{', '}'], "")
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+/// The year of the date field, else the first four-digit number of the year field.
+fn year(entry: &Entry) -> Option<i32> {
+    if let Ok(PermissiveType::Typed(date)) = entry.date() {
+        let (DateValue::At(d)
+        | DateValue::After(d)
+        | DateValue::Before(d)
+        | DateValue::Between(d, _)) = date.value;
+        return Some(d.year);
+    }
+    let year = field(entry, &["year"])?;
+    year.split(|c: char| !c.is_ascii_digit())
+        .find(|w| w.len() == 4)
+        .and_then(|w| w.parse().ok())
 }

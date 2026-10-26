@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
-use papers_core::{BibWatch, Cite, Found, Item, Library, Matching, Papers};
+use papers_core::{BibWatch, Cite, Found, Item, Library, Matching};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use settings::Settings;
@@ -17,6 +17,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_clipboard_manager::ClipboardExt;
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
@@ -48,24 +49,23 @@ enum Format {
 
 struct AppState {
     settings_path: PathBuf,
-    papers: RwLock<Papers>,
     matching: RwLock<Matching>,
     citation_style: RwLock<String>,
     library: RwLock<Library>,
     status: RwLock<Status>,
-    /// the bibtex file of the library, replaced if the library changes
-    watch: Mutex<Option<BibWatch>>,
+    /// the .bib files of the library, replaced when the files change
+    watches: Mutex<Vec<BibWatch>>,
     /// counts the reloads: one that ends after a newer one started is dropped
     reloads: AtomicU64,
 }
 
 impl AppState {
-    fn item(&self, key: &str) -> Result<Item, String> {
+    fn item(&self, id: &str) -> Result<Item, String> {
         let library = self.library.read().unwrap();
         library
-            .get(key)
+            .get(id)
             .cloned()
-            .ok_or_else(|| format!("{key}: not in the library"))
+            .ok_or_else(|| format!("{id}: not in the library"))
     }
 }
 
@@ -91,12 +91,12 @@ fn hide_panel(app: AppHandle) {
 
 /// Open the PDF of an item, else its web page.
 #[tauri::command]
-fn open(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
-    let item = state.item(&key)?;
+fn open(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
+    let item = state.item(&id)?;
     match (item.files.first(), item.link()) {
         (Some(file), _) => app.opener().open_path(file.to_string_lossy(), None::<&str>),
         (None, Some(link)) => app.opener().open_url(link, None::<&str>),
-        (None, None) => return Err(format!("{key}: no file, DOI or URL")),
+        (None, None) => return Err(format!("{id}: no file, DOI or URL")),
     }
     .map_err(|e| e.to_string())?;
     hide_window(&app);
@@ -104,11 +104,11 @@ fn open(app: AppHandle, state: State<AppState>, key: String) -> Result<(), Strin
 }
 
 #[tauri::command]
-fn open_link(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
+fn open_link(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
     let link = state
-        .item(&key)?
+        .item(&id)?
         .link()
-        .ok_or(format!("{key}: no DOI or URL"))?;
+        .ok_or(format!("{id}: no DOI or URL"))?;
     app.opener()
         .open_url(link, None::<&str>)
         .map_err(|e| e.to_string())?;
@@ -117,9 +117,9 @@ fn open_link(app: AppHandle, state: State<AppState>, key: String) -> Result<(), 
 }
 
 #[tauri::command]
-fn reveal(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
-    let item = state.item(&key)?;
-    let file = item.files.first().ok_or(format!("{key}: no file"))?;
+fn reveal(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
+    let item = state.item(&id)?;
+    let file = item.files.first().ok_or(format!("{id}: no file"))?;
     app.opener()
         .reveal_item_in_dir(file)
         .map_err(|e| e.to_string())?;
@@ -129,13 +129,18 @@ fn reveal(app: AppHandle, state: State<AppState>, key: String) -> Result<(), Str
 
 /// Copy a citation or the bibtex of an item; returns the text copied.
 #[tauri::command]
-async fn copy(app: AppHandle, key: String, format: Format) -> Result<String, String> {
-    let item = app.state::<AppState>().item(&key)?;
+fn copy(
+    app: AppHandle,
+    state: State<AppState>,
+    id: String,
+    format: Format,
+) -> Result<String, String> {
+    let item = state.item(&id)?;
     let text = match format {
         Format::Key => item.cite(Cite::Key),
         Format::Pandoc => item.cite(Cite::Pandoc),
         Format::Latex => item.cite(Cite::Latex),
-        Format::Bibtex => bibtex(app.clone(), key).await?,
+        Format::Bibtex => bibtex(state, id, false)?,
     };
     app.clipboard()
         .write_text(text.clone())
@@ -143,24 +148,25 @@ async fn copy(app: AppHandle, key: String, format: Format) -> Result<String, Str
     Ok(text)
 }
 
-/// The bibtex entry of a key, from papers.
+/// The BibTeX of an item: formatted, or `raw` as written in its .bib file.
 #[tauri::command]
-async fn bibtex(app: AppHandle, key: String) -> Result<String, String> {
-    let papers = app.state::<AppState>().papers.read().unwrap().clone();
-    tauri::async_runtime::spawn_blocking(move || papers.bibtex(&key))
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
+fn bibtex(state: State<AppState>, id: String, raw: bool) -> Result<String, String> {
+    let library = state.library.read().unwrap();
+    let bibtex = if raw {
+        library.raw(&id).map(String::from)
+    } else {
+        library.bibtex(&id)
+    };
+    bibtex.ok_or_else(|| format!("{id}: not in the library"))
 }
 
 /// The CSL-JSON of an item, for the citation processor of the panel.
 #[tauri::command]
-fn csl(state: State<AppState>, key: String) -> Result<Value, String> {
+fn csl(state: State<AppState>, id: String) -> Result<Value, String> {
     let library = state.library.read().unwrap();
     library
-        .csl(&key)
-        .cloned()
-        .ok_or_else(|| format!("{key}: not in the library"))
+        .csl(&id)
+        .ok_or_else(|| format!("{id}: not in the library"))
 }
 
 /// The CSL style of the settings.
@@ -171,13 +177,13 @@ fn citation_style(state: State<AppState>) -> Result<Style, String> {
 
 /// The first PDF of an item, for the preview.
 #[tauri::command]
-async fn pdf(app: AppHandle, key: String) -> Result<Response, String> {
-    let item = app.state::<AppState>().item(&key)?;
+async fn pdf(app: AppHandle, id: String) -> Result<Response, String> {
+    let item = app.state::<AppState>().item(&id)?;
     let file = item
         .files
         .into_iter()
         .find(|f| f.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
-        .ok_or(format!("{key}: no PDF"))?;
+        .ok_or(format!("{id}: no PDF"))?;
     let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(file))
         .await
         .map_err(|e| e.to_string())?
@@ -205,7 +211,7 @@ fn set_preview(app: AppHandle, on: bool) -> Result<(), String> {
 }
 
 /// Re-read the settings and the library, in the background.
-/// Then watch the bibtex file, to reload when it changes.
+/// Then watch the .bib files, to reload when one changes.
 fn reload(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
@@ -213,48 +219,87 @@ fn reload(app: &AppHandle) {
         let reload = state.reloads.fetch_add(1, Ordering::SeqCst) + 1;
         set_status(&app, Status::Loading);
         let loaded = Settings::load(&state.settings_path).and_then(|settings| {
-            let papers = settings.papers();
             *state.matching.write().unwrap() = settings.matching;
-            *state.citation_style.write().unwrap() = settings.citation_style;
-            *state.papers.write().unwrap() = papers.clone();
-            let library = papers.load().map_err(|e| e.to_string())?;
-            Ok((papers, library))
+            *state.citation_style.write().unwrap() = settings.citation_style.clone();
+            let bibs = settings.bibs();
+            if bibs.is_empty() {
+                return Err(
+                    "No library: choose its .bib files (menu-bar icon → Library Files…)".into(),
+                );
+            }
+            let library = Library::load(&bibs).map_err(|e| e.to_string())?;
+            Ok((bibs, library))
         });
         if state.reloads.load(Ordering::SeqCst) != reload {
             return;
         }
         let status = match loaded {
-            Ok((papers, library)) => {
+            Ok((bibs, library)) => {
                 let count = library.len();
+                eprintln!(
+                    "papers-desktop: loaded {count} entries from {} .bib files",
+                    bibs.len()
+                );
                 *state.library.write().unwrap() = library;
-                watch(&app, &papers);
+                watch(&app, &bibs);
                 Status::Ready { count }
             }
-            Err(error) => Status::Failed { error },
+            Err(error) => {
+                eprintln!("papers-desktop: {error}");
+                Status::Failed { error }
+            }
         };
         set_status(&app, status);
     });
 }
 
-/// Watch the bibtex file of the library, unless it is watched already.
-fn watch(app: &AppHandle, papers: &Papers) {
-    let path = match papers.bibtex_path() {
-        Ok(path) => path,
-        Err(e) => {
-            eprintln!("papers-desktop: no bibtex file to watch: {e}");
-            return;
-        }
-    };
+/// Watch the .bib files of the library, unless they are watched already.
+fn watch(app: &AppHandle, bibs: &[PathBuf]) {
     let state = app.state::<AppState>();
-    let mut watch = state.watch.lock().unwrap();
-    if watch.as_ref().is_some_and(|w| w.path() == path) {
+    let mut watches = state.watches.lock().unwrap();
+    if watches
+        .iter()
+        .map(BibWatch::path)
+        .eq(bibs.iter().map(PathBuf::as_path))
+    {
         return;
     }
-    let handle = app.clone();
-    match BibWatch::new(path, move || reload(&handle)) {
-        Ok(w) => *watch = Some(w),
-        Err(e) => eprintln!("papers-desktop: cannot watch the bibtex file: {e}"),
+    watches.clear();
+    for bib in bibs {
+        let handle = app.clone();
+        match BibWatch::new(bib.clone(), move || reload(&handle)) {
+            Ok(w) => watches.push(w),
+            Err(e) => eprintln!("papers-desktop: cannot watch {}: {e}", bib.display()),
+        }
     }
+}
+
+/// Ask for the .bib files of the library, and keep them in the settings.
+fn choose_library(app: &AppHandle) {
+    let handle = app.clone();
+    app.dialog()
+        .file()
+        .set_title("The .bib files of the library")
+        .add_filter("BibTeX", &["bib"])
+        .pick_files(move |files| {
+            let Some(files) = files else { return };
+            let bibs: Vec<PathBuf> = files
+                .into_iter()
+                .filter_map(|f| f.into_path().ok())
+                .collect();
+            let path = &handle.state::<AppState>().settings_path;
+            let saved = Settings::load(path).and_then(|settings| {
+                Settings {
+                    bibtex: bibs,
+                    ..settings
+                }
+                .save(path)
+            });
+            match saved {
+                Ok(()) => reload(&handle),
+                Err(error) => set_status(&handle, Status::Failed { error }),
+            }
+        });
 }
 
 fn set_status(app: &AppHandle, status: Status) {
@@ -329,6 +374,7 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         app,
         &[
             &MenuItem::with_id(app, "search", "Search Papers", true, Some(hotkey))?,
+            &MenuItem::with_id(app, "library", "Library Files…", true, None::<&str>)?,
             &MenuItem::with_id(app, "reload", "Reload Library", true, None::<&str>)?,
             &MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?,
             &start_at_login,
@@ -344,6 +390,7 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "search" => show(app),
+            "library" => choose_library(app),
             "reload" => reload(app),
             "settings" => {
                 let path = app.state::<AppState>().settings_path.clone();
@@ -374,6 +421,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _, _| toggle(app)))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,
@@ -395,12 +443,11 @@ pub fn run() {
             let settings = Settings::load(&settings_path).unwrap_or_default();
             app.manage(AppState {
                 settings_path,
-                papers: RwLock::new(settings.papers()),
                 matching: RwLock::new(settings.matching),
                 citation_style: RwLock::new(settings.citation_style.clone()),
                 library: RwLock::new(Library::default()),
                 status: RwLock::new(Status::Loading),
-                watch: Mutex::new(None),
+                watches: Mutex::new(Vec::new()),
                 reloads: AtomicU64::new(0),
             });
             let hotkey = settings.hotkey;

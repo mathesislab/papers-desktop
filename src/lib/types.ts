@@ -1,6 +1,8 @@
 // Mirrors papers_core::Item and the Status of src-tauri/src/lib.rs
 
 export type Item = {
+  /** unique in the library: the key, numbered when several .bib files have it */
+  id: string;
   key: string;
   kind: string;
   title: string;
@@ -11,6 +13,8 @@ export type Item = {
   url: string | null;
   keywords: string[];
   files: string[];
+  /** the .bib file of the entry */
+  bib: string;
   subtitle: string;
 };
 

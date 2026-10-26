@@ -5,14 +5,16 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use papers_core::{Matching, Papers};
+use papers_core::Matching;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
-    /// the papers executable; found on the shell PATH when missing
-    pub papers: Option<PathBuf>,
+    /// the .bib files of the library (~ for the home directory); on first
+    /// run, the default library of papers if there is one
+    pub bibtex: Vec<PathBuf>,
     /// global shortcut that shows the panel (read at startup only);
     /// Alt+Space by default on macOS, Ctrl+Alt+Space elsewhere, where
     /// Alt+Space opens the window menu
@@ -26,7 +28,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            papers: None,
+            bibtex: Vec::new(),
             hotkey: if cfg!(target_os = "macos") {
                 "Alt+Space"
             } else {
@@ -40,25 +42,68 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// The settings of the file, or the defaults; without .bib files, those
+    /// of the default library of papers are taken, and written in the file.
     pub fn load(path: &Path) -> Result<Settings, String> {
-        let error = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
         let mut settings: Settings = match fs::read_to_string(path) {
-            Ok(text) => serde_json::from_str(&text).map_err(|e| error(&e))?,
-            Err(e) if e.kind() == ErrorKind::NotFound => Settings::default(),
-            Err(e) => return Err(error(&e)),
-        };
-        if settings.papers.is_none() {
-            settings.papers = Papers::locate();
-            if !path.exists() {
-                fs::create_dir_all(path.parent().unwrap()).map_err(|e| error(&e))?;
-                let text = serde_json::to_string_pretty(&settings).unwrap();
-                fs::write(path, text + "\n").map_err(|e| error(&e))?;
+            Ok(text) => {
+                serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?
             }
+            Err(e) if e.kind() == ErrorKind::NotFound => Settings::default(),
+            Err(e) => return Err(format!("{}: {e}", path.display())),
+        };
+        if settings.bibtex.is_empty() {
+            settings.bibtex = papers_library().into_iter().collect();
+            settings.save(path)?;
         }
         Ok(settings)
     }
 
-    pub fn papers(&self) -> Papers {
-        Papers::new(self.papers.clone().unwrap_or_else(|| "papers".into()))
+    pub fn save(&self, path: &Path) -> Result<(), String> {
+        let error = |e: std::io::Error| format!("{}: {e}", path.display());
+        fs::create_dir_all(path.parent().unwrap()).map_err(error)?;
+        let text = serde_json::to_string_pretty(self).unwrap();
+        fs::write(path, text + "\n").map_err(error)
+    }
+
+    /// The .bib files, ~ expanded.
+    pub fn bibs(&self) -> Vec<PathBuf> {
+        self.bibtex
+            .iter()
+            .map(|p| expand(&p.to_string_lossy()))
+            .collect()
+    }
+}
+
+/// A path, with ~ for the home directory.
+pub fn expand(path: &str) -> PathBuf {
+    match (path.strip_prefix("~/"), std::env::home_dir()) {
+        (Some(rest), Some(home)) => home.join(rest),
+        _ => PathBuf::from(path),
+    }
+}
+
+/// The .bib file of the default library of papers, from its configuration:
+/// the global one names the library, whose own one names the .bib file.
+fn papers_library() -> Option<PathBuf> {
+    let read = |path: PathBuf| -> Option<Value> {
+        serde_json::from_str(&fs::read_to_string(path).ok()?).ok()
+    };
+    let global = read(config_dir()?.join("papers/config.json"))?;
+    let library = expand(global["default"].as_str()?);
+    let config = read(library.join(".papers/config.json"))?;
+    let bib = library.join(config["bibtex"].as_str()?);
+    bib.exists().then_some(bib)
+}
+
+/// Where papers keeps its global configuration (platformdirs' user_config_dir).
+fn config_dir() -> Option<PathBuf> {
+    let home = std::env::home_dir()?;
+    if cfg!(target_os = "macos") {
+        Some(home.join("Library/Application Support"))
+    } else {
+        Some(
+            std::env::var_os("XDG_CONFIG_HOME").map_or_else(|| home.join(".config"), PathBuf::from),
+        )
     }
 }
