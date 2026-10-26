@@ -2740,7 +2740,7 @@ dependencies = [
 
 [[package]]
 name = "papers-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "biblatex",
  "deunicode",
@@ -2752,7 +2752,7 @@ dependencies = [
 
 [[package]]
 name = "papers-desktop"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "papers-core",
  "serde",
