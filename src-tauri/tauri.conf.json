@@ -12,14 +12,24 @@
   "app": {
     "windows": [
       {
+        "label": "panel",
         "title": "Papers",
-        "width": 800,
-        "height": 600
+        "width": 720,
+        "height": 460,
+        "decorations": false,
+        "transparent": true,
+        "shadow": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visibleOnAllWorkspaces": true,
+        "visible": false
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
