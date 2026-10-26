@@ -13,7 +13,9 @@ use serde::{Deserialize, Serialize};
 pub struct Settings {
     /// the papers executable; found on the shell PATH when missing
     pub papers: Option<PathBuf>,
-    /// global shortcut that shows the panel (read at startup only)
+    /// global shortcut that shows the panel (read at startup only);
+    /// Alt+Space by default on macOS, Ctrl+Alt+Space elsewhere, where
+    /// Alt+Space opens the window menu
     pub hotkey: String,
     /// "word-start" (default), or "inside-words" to match inside words too
     pub matching: Matching,
@@ -25,7 +27,12 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             papers: None,
-            hotkey: "Alt+Space".into(),
+            hotkey: if cfg!(target_os = "macos") {
+                "Alt+Space"
+            } else {
+                "Ctrl+Alt+Space"
+            }
+            .into(),
             matching: Matching::default(),
             citation_style: crate::styles::DEFAULT.into(),
         }

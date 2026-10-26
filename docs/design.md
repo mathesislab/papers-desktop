@@ -89,9 +89,21 @@ so that papers show in the Spotlight of macOS.
 
 ## Other platforms
 
-The app builds for Linux and Windows (Tauri), untested. Under Wayland an app
-cannot grab a global hotkey: bind a desktop shortcut to launch the app,
-which shows the panel of the running app.
+Linux (Ubuntu, GNOME; Wayland by default, X11 available):
+
+- The default hotkey is `Ctrl+Alt+Space`: `Alt+Space` opens the window menu
+  of GNOME, KDE and Windows.
+- Under Wayland an app cannot grab a global hotkey. A second launch of the
+  app toggles the panel of the running app (single instance), so a custom
+  desktop shortcut running `papers-desktop` stands in for the hotkey.
+- The tray icon is white (`tray-light.png`) and needs AppIndicator support:
+  Ubuntu has it, other GNOME desktops need an extension. The app works
+  without the icon.
+- Bundles: `.deb` and AppImage.
+
+Not tested yet: on Wayland, whether the panel takes the focus when shown and
+hides when it loses it. Windows is neither built nor tested (it would take
+the same hotkey and the white tray icon).
 
 ## Known gaps
 

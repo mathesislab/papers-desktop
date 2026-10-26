@@ -308,6 +308,13 @@ fn hide_window(app: &AppHandle) {
     }
 }
 
+/// A black template image in the menu bar of macOS, a white icon on the dark
+/// panels of the other desktops.
+#[cfg(target_os = "macos")]
+const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
+#[cfg(not(target_os = "macos"))]
+const TRAY_ICON: &[u8] = include_bytes!("../icons/tray-light.png");
+
 fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
     let start_at_login = CheckMenuItem::with_id(
@@ -330,8 +337,8 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         ],
     )?;
     TrayIconBuilder::with_id("tray")
-        .icon(Image::from_bytes(include_bytes!("../icons/tray.png"))?)
-        .icon_as_template(true)
+        .icon(Image::from_bytes(TRAY_ICON)?)
+        .icon_as_template(cfg!(target_os = "macos"))
         .tooltip("Papers")
         .menu(&menu)
         .show_menu_on_left_click(true)
@@ -362,8 +369,9 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        // a second launch shows the panel of the running app
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| show(app)))
+        // a second launch toggles the panel of the running app: under Wayland
+        // a desktop shortcut that launches the app stands in for the hotkey
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| toggle(app)))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_autostart::init(

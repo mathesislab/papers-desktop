@@ -13,9 +13,9 @@ The design and the plans (main window, editing, adding papers) are in
 
 ## Use
 
-The app lives in the menu bar (no Dock icon). `⌥Space` shows the search
-panel; `↑`/`↓` move, `Esc` hides it. The menu-bar icon has Reload Library,
-Settings… and Start at Login.
+The app lives in the menu bar (no Dock icon). `⌥Space` (`Ctrl+Alt+Space`
+elsewhere) shows the search panel; `↑`/`↓` move, `Esc` hides it. The
+menu-bar icon has Reload Library, Settings… and Start at Login.
 
 | Key | Action |
 |---|---|
@@ -65,9 +65,9 @@ filters.
 
 ## Settings
 
-`settings.json` in the app config directory
+`settings.json` in the app config directory, written on first run
 (`~/Library/Application Support/io.github.alex-robinson.papers-desktop/` on
-macOS), written on first run:
+macOS, [the Linux path is below](#linux)):
 
 ```json
 {
@@ -82,6 +82,7 @@ macOS), written on first run:
   do not see the shell `PATH`, so the app looks it up once in your login
   shell; set it here if that fails.
 - `hotkey`: read at startup only (quit and restart after a change).
+  `Alt+Space` on macOS, `Ctrl+Alt+Space` elsewhere.
 - `matching`: `"word-start"` (default), or `"inside-words"` to also match
   inside words from three letters ("stab" finds Multistability).
 - `citation_style`: the style of the citation in the preview, one of the
@@ -114,6 +115,34 @@ npm run tauri build -- --bundles app
 The app is then `target/release/bundle/macos/Papers Desktop.app`: copy it to
 `/Applications` before turning on Start at Login, which points at the app
 where it is.
+
+## Linux
+
+On Ubuntu, from the [GitHub release](https://github.com/mathesislab/papers-desktop/releases):
+
+- the `.deb`: `sudo apt install ./papers-desktop_*.deb` (installs the
+  `papers-desktop` command), or
+- the AppImage: `chmod +x` it, then run it.
+
+The default hotkey is `Ctrl+Alt+Space`. Under Wayland (the default of Ubuntu)
+an app cannot grab a global hotkey: add a shortcut in Settings → Keyboard →
+View and Customize Shortcuts → Custom Shortcuts, with the command
+`papers-desktop` (or the path of the AppImage). It toggles the panel of the
+running app.
+
+The menu-bar (tray) icon needs AppIndicator support. Ubuntu ships it; on other
+GNOME desktops install the "AppIndicator and KStatusNotifierItem Support"
+extension. Without the icon the hotkey and the settings file still work.
+
+The settings file is
+`~/.config/io.github.alex-robinson.papers-desktop/settings.json`.
+
+To build from source:
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+```
 
 ## License
 
