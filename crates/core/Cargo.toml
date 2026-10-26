@@ -1,6 +1,6 @@
 [package]
 name = "papers-core"
-version = "0.3.0"
+version = "0.3.1"
 description = "Library loading and search for papers-desktop"
 authors = ["Alexander Robinson"]
 edition = "2024"
