@@ -3,7 +3,16 @@
   import { cached, thumbnail } from "$lib/pdf";
   import type { Item } from "$lib/types";
 
-  let { item, onopen }: { item: Item; onopen: () => void } = $props();
+  let {
+    item,
+    marked,
+    onopen,
+  }: {
+    item: Item;
+    /** for each author, whether the search matched it */
+    marked: boolean[];
+    onopen: () => void;
+  } = $props();
 
   const PAGE_WIDTH = 170;
   // wait for the selection to settle before reading a PDF or calling papers
@@ -56,7 +65,11 @@
     </button>
     <div class="meta">
       <h2>{item.title}</h2>
-      {#if item.authors.length}<p class="authors">{item.authors.join(", ")}</p>{/if}
+      {#if item.authors.length}
+        <p class="authors">
+          {#each item.authors as author, i}{#if i}, {/if}{#if marked[i]}<b>{author}</b>{:else}{author}{/if}{/each}
+        </p>
+      {/if}
       {#if source}<p>{source}</p>{/if}
       {#if item.doi}<p class="doi">{item.doi}</p>{/if}
       {#if item.keywords.length}

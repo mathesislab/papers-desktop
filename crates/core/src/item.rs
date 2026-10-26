@@ -1,10 +1,13 @@
 //! A library entry as the panel shows and searches it.
 
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
 use crate::csl;
+use crate::search::Marks;
+use crate::text::{Span, Text};
 
 /// How a citation of an item is written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -82,8 +85,7 @@ impl Item {
             .filter(|w| !w.is_empty())
             .map(String::from)
             .collect();
-        let subtitle = subtitle(&families, year, container.as_deref());
-        Item {
+        let mut item = Item {
             title: if title.is_empty() { key.clone() } else { title },
             key,
             kind: e.kind,
@@ -94,9 +96,50 @@ impl Item {
             url: e.url.filter(|s| !s.is_empty()),
             keywords,
             files: e.custom.file.into_iter().map(PathBuf::from).collect(),
-            subtitle,
+            subtitle: String::new(),
             families,
-        }
+        };
+        let spans = item.subtitle_spans(&Marks::default());
+        item.subtitle = spans.into_iter().map(|s| s.text).collect();
+        item
+    }
+
+    /// The subtitle in spans, the matched words marked; "et al." is marked
+    /// when one of the co-authors it stands for matched.
+    pub(crate) fn subtitle_spans(&self, marks: &Marks) -> Vec<Span> {
+        let author = |a: usize| {
+            let words: BTreeSet<usize> = marks
+                .authors
+                .iter()
+                .filter(|(x, _)| *x == a)
+                .map(|(_, w)| *w)
+                .collect();
+            Text::new(&self.families[a]).spans(&words)
+        };
+        let names = match self.families.len() {
+            0 => None,
+            1 => Some(author(0)),
+            2 => Some([author(0), vec![Span::plain(" & ")], author(1)].concat()),
+            _ => {
+                let others = marks.authors.iter().any(|&(a, _)| a > 0);
+                Some(
+                    [
+                        author(0),
+                        vec![Span::plain(" "), Span::new("et al.", others)],
+                    ]
+                    .concat(),
+                )
+            }
+        };
+        let year = self
+            .year
+            .map(|y| vec![Span::new(y.to_string(), marks.year)]);
+        let container = self
+            .container
+            .as_deref()
+            .map(|c| Text::new(c).spans(&marks.container));
+        let parts: Vec<Vec<Span>> = [names, year, container].into_iter().flatten().collect();
+        parts.join(&Span::plain(" · "))
     }
 }
 
@@ -116,24 +159,6 @@ fn display_name(n: &csl::Name) -> Option<String> {
         Some(given) if !given.is_empty() => format!("{given} {family}"),
         _ => family,
     })
-}
-
-fn subtitle(families: &[String], year: Option<i32>, container: Option<&str>) -> String {
-    let names = match families {
-        [] => None,
-        [a] => Some(a.clone()),
-        [a, b] => Some(format!("{a} & {b}")),
-        [a, ..] => Some(format!("{a} et al.")),
-    };
-    [
-        names,
-        year.map(|y| y.to_string()),
-        container.map(String::from),
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join(" · ")
 }
 
 /// Strip the bibtex braces left in a field and collapse whitespace.

@@ -6,12 +6,15 @@
 mod cli;
 mod csl;
 mod item;
+mod query;
 mod search;
+mod text;
 mod watch;
 
 pub use cli::Papers;
 pub use item::{Cite, Item};
-pub use search::Library;
+pub use search::{Found, Hit, Library};
+pub use text::{Matching, Span};
 pub use watch::BibWatch;
 
 #[derive(Debug, thiserror::Error)]

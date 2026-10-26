@@ -31,9 +31,24 @@ Settings… and Start at Login.
 The library reloads by itself when the bibtex file changes (a `papers`
 command, an editor, a sync client).
 
-Every word must match the author, year, key, title, keyword, journal or DOI;
-first authors, keys and exact words rank first. A DOI or a doi.org link
-finds its entry.
+Every word must match an author, the year, key, title, a keyword, the
+journal or the DOI, from the start of a word ("rob" finds Robinson). The
+matches are listed newest first, with the matched words in bold. A DOI or a
+doi.org link finds its entry.
+
+Filters limit a word to one field, and quotes match a phrase:
+
+| Filter | Short | Matches |
+|---|---|---|
+| `author:robinson` | `a:` | any author |
+| `first:robinson` | `f:` | the first author |
+| `title:hysteresis` | `t:` | the title |
+| `year:2012` | `y:` | the year: `2010-2015`, `2020-`, `-1990`, or its first digits (`201`) |
+| `journal:cryosphere` | `j:` | the journal or book |
+| `key:robinson2012` | `k:` | the citation key |
+| `doi:10.5194` | | the DOI |
+| `tag:greenland` | | the keywords |
+| `"ice sheet"`, `t:"ice sheet"` | | consecutive words |
 
 ## Settings
 
@@ -44,7 +59,8 @@ macOS), written on first run:
 ```json
 {
   "papers": "/path/to/bin/papers",
-  "hotkey": "Alt+Space"
+  "hotkey": "Alt+Space",
+  "matching": "word-start"
 }
 ```
 
@@ -52,6 +68,8 @@ macOS), written on first run:
   do not see the shell `PATH`, so the app looks it up once in your login
   shell; set it here if that fails.
 - `hotkey`: read at startup only (quit and restart after a change).
+- `matching`: `"word-start"` (default), or `"inside-words"` to also match
+  inside words from three letters ("stab" finds Multistability).
 
 Reload Library re-reads the settings and the library.
 

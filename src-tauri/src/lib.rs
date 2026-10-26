@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
-use papers_core::{BibWatch, Cite, Item, Library, Papers};
+use papers_core::{BibWatch, Cite, Found, Item, Library, Matching, Papers};
 use serde::{Deserialize, Serialize};
 use settings::Settings;
 use tauri::image::Image;
@@ -18,7 +18,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
 const PANEL: &str = "panel";
-const MAX_RESULTS: usize = 50;
+const MAX_RESULTS: usize = 200;
 /// panel size in logical pixels, as in tauri.conf.json; the preview widens it
 const PANEL_WIDTH: f64 = 720.0;
 const PANEL_HEIGHT: f64 = 460.0;
@@ -46,6 +46,7 @@ enum Format {
 struct AppState {
     settings_path: PathBuf,
     papers: RwLock<Papers>,
+    matching: RwLock<Matching>,
     library: RwLock<Library>,
     status: RwLock<Status>,
     /// the bibtex file of the library, replaced if the library changes
@@ -65,13 +66,13 @@ impl AppState {
 }
 
 #[tauri::command]
-fn search(state: State<AppState>, query: String) -> Vec<Item> {
-    let library = state.library.read().unwrap();
-    library
-        .search(&query, MAX_RESULTS)
-        .into_iter()
-        .cloned()
-        .collect()
+fn search(state: State<AppState>, query: String) -> Found {
+    let matching = *state.matching.read().unwrap();
+    state
+        .library
+        .read()
+        .unwrap()
+        .search(&query, matching, MAX_RESULTS)
 }
 
 #[tauri::command]
@@ -193,6 +194,7 @@ fn reload(app: &AppHandle) {
         set_status(&app, Status::Loading);
         let loaded = Settings::load(&state.settings_path).and_then(|settings| {
             let papers = settings.papers();
+            *state.matching.write().unwrap() = settings.matching;
             *state.papers.write().unwrap() = papers.clone();
             let library = papers.load().map_err(|e| e.to_string())?;
             Ok((papers, library))
@@ -365,6 +367,7 @@ pub fn run() {
             app.manage(AppState {
                 settings_path,
                 papers: RwLock::new(settings.papers()),
+                matching: RwLock::new(settings.matching),
                 library: RwLock::new(Library::new(Vec::new())),
                 status: RwLock::new(Status::Loading),
                 watch: Mutex::new(None),

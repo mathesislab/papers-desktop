@@ -4,7 +4,8 @@
   import { onMount, tick } from "svelte";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import Preview from "$lib/Preview.svelte";
-  import type { Item, Status } from "$lib/types";
+  import Marked from "$lib/Marked.svelte";
+  import type { Found, Hit, Item, Status } from "$lib/types";
 
   type Action = {
     /** in the list of shortcuts, and the label unless `label` is given */
@@ -17,7 +18,8 @@
   };
 
   let query = $state("");
-  let items = $state<Item[]>([]);
+  let hits = $state<Hit[]>([]);
+  let total = $state(0);
   let selected = $state(0);
   let status = $state<Status>({ state: "loading" });
   let notice = $state<{ text: string; error: boolean } | null>(null);
@@ -71,6 +73,19 @@
     ["Close", "Esc"],
   ];
 
+  /** the field filters of the query, also in the empty panel */
+  const filters = [
+    ["a:", "author"],
+    ["f:", "first author"],
+    ["t:", "title"],
+    ["y:", "year, 2010-2015"],
+    ["j:", "journal"],
+    ["k:", "key"],
+    ["doi:", ""],
+    ["tag:", ""],
+    ['"…"', "phrase"],
+  ];
+
   const actionLabel = (a: Action, it: Item) => a.label?.(it) ?? a.name;
 
   // the preview stays on or off between sessions
@@ -90,7 +105,7 @@
     } catch {}
   }
 
-  let current = $derived(items[selected]);
+  let current = $derived(hits[selected]?.item);
   let available = $derived(current ? actions.filter((a) => !a.when || a.when(current)) : []);
 
   async function run(action: Action) {
@@ -106,9 +121,10 @@
 
   async function search() {
     const q = query;
-    const found = await invoke<Item[]>("search", { query: q });
+    const found = await invoke<Found>("search", { query: q });
     if (q !== query) return; // a newer search is on its way
-    items = found;
+    hits = found.hits;
+    total = found.total;
     selected = 0;
     menu = false;
     notice = null;
@@ -116,7 +132,7 @@
   }
 
   async function select(i: number) {
-    selected = Math.max(0, Math.min(items.length - 1, i));
+    selected = Math.max(0, Math.min(hits.length - 1, i));
     await tick();
     list?.children[selected]?.scrollIntoView({ block: "nearest" });
   }
@@ -190,9 +206,9 @@
 
   <div class="body">
     <div class="results">
-      {#if items.length}
+      {#if hits.length}
         <ul bind:this={list} role="listbox">
-          {#each items as item, i (item.key)}
+          {#each hits as hit, i (hit.item.key)}
             <!-- the keys are handled on the window -->
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <li
@@ -204,12 +220,12 @@
               ondblclick={() => run(actions[0])}
             >
               <div class="text">
-                <div class="title">{item.title}</div>
-                <div class="subtitle">{item.subtitle}</div>
+                <div class="title"><Marked spans={hit.title} /></div>
+                <div class="subtitle"><Marked spans={hit.subtitle} /></div>
               </div>
-              {#if item.files.length}
+              {#if hit.item.files.length}
                 <span class="badge">PDF</span>
-              {:else if item.doi}
+              {:else if hit.item.doi}
                 <span class="badge">DOI</span>
               {/if}
             </li>
@@ -224,6 +240,9 @@
                 <dd><kbd>{keys}</kbd></dd>
               {/each}
             </dl>
+            <p class="filters">
+              {#each filters as [prefix, field], i}{#if i} · {/if}<kbd>{prefix}</kbd>&nbsp;{field}{/each}
+            </p>
           {:else if status.state === "ready"}
             No match
           {/if}
@@ -254,6 +273,9 @@
             {notice.text}
           {:else if status.state === "loading"}
             Loading library…
+          {:else if status.state === "ready" && query.trim()}
+            {total === hits.length ? total : `Newest ${hits.length} of ${total}`}
+            {total === 1 ? "match" : "matches"}
           {:else if status.state === "ready"}
             {status.count} papers
           {:else}
@@ -270,7 +292,7 @@
       </footer>
     </div>
     {#if preview && current}
-      <Preview item={current} onopen={() => run(actions[0])} />
+      <Preview item={current} marked={hits[selected].authors} onopen={() => run(actions[0])} />
     {/if}
   </div>
 </main>
@@ -390,10 +412,13 @@
     margin-top: 2px;
     font-size: 12px;
     color: var(--muted);
+    /* matched words stand out of the muted line */
+    --mark: var(--fg);
   }
   li.selected .subtitle {
     color: inherit;
     opacity: 0.85;
+    --mark: inherit;
   }
   .badge {
     flex: none;
@@ -408,6 +433,7 @@
   .empty {
     flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     color: var(--muted);
@@ -429,6 +455,18 @@
   }
   .shortcuts kbd {
     font-size: 13px;
+  }
+  .filters {
+    max-width: 520px;
+    margin: 18px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: center;
+  }
+  .filters kbd {
+    font-size: 12px;
+    opacity: 1;
+    color: var(--fg);
   }
 
   .menu {

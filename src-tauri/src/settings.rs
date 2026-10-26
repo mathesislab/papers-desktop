@@ -5,7 +5,7 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use papers_core::Papers;
+use papers_core::{Matching, Papers};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,6 +15,8 @@ pub struct Settings {
     pub papers: Option<PathBuf>,
     /// global shortcut that shows the panel (read at startup only)
     pub hotkey: String,
+    /// "word-start" (default), or "inside-words" to match inside words too
+    pub matching: Matching,
 }
 
 impl Default for Settings {
@@ -22,6 +24,7 @@ impl Default for Settings {
         Settings {
             papers: None,
             hotkey: "Alt+Space".into(),
+            matching: Matching::default(),
         }
     }
 }

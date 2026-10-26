@@ -1,22 +1,58 @@
-//! In-memory search over the library. Every query word must match a field
-//! (author, year, key, title, keyword, journal or DOI); the fields that
-//! identify a paper best score highest, and the first author above the others.
+//! Search the library: every term of the query must match, and the matches
+//! come newest first. Each hit marks the words that matched, to show them.
 
-use std::collections::HashMap;
+use std::cmp::Reverse;
+use std::collections::{BTreeSet, HashMap};
 
-use deunicode::deunicode;
+use serde::Serialize;
 
+use crate::query::{self, Field, Pattern, Term};
+use crate::text::{Matching, Span, Text, fold};
 use crate::{Item, Result, csl};
 
 pub struct Library {
     items: Vec<Item>,
     fields: Vec<Fields>,
+    /// the items newest first, then by first author and title
+    order: Vec<usize>,
     by_key: HashMap<String, usize>,
+}
+
+/// The matches of a search, the first `limit` of them with their marks.
+#[derive(Debug, Clone, Serialize)]
+pub struct Found {
+    pub hits: Vec<Hit>,
+    pub total: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Hit {
+    pub item: Item,
+    pub title: Vec<Span>,
+    pub subtitle: Vec<Span>,
+    /// for each author, whether it matched
+    pub authors: Vec<bool>,
+}
+
+/// The words of an item that matched, as indices of the words of its texts.
+#[derive(Debug, Default)]
+pub(crate) struct Marks {
+    pub title: BTreeSet<usize>,
+    /// (author, word)
+    pub authors: BTreeSet<(usize, usize)>,
+    pub year: bool,
+    pub container: BTreeSet<usize>,
 }
 
 impl Library {
     pub fn new(items: Vec<Item>) -> Library {
         let fields = items.iter().map(Fields::new).collect();
+        let mut order: Vec<usize> = (0..items.len()).collect();
+        order.sort_by_cached_key(|&i| {
+            let it = &items[i];
+            let first = it.families.first().map(|f| fold(f)).unwrap_or_default();
+            (Reverse(it.year), first, fold(&it.title))
+        });
         let by_key = items
             .iter()
             .enumerate()
@@ -25,6 +61,7 @@ impl Library {
         Library {
             items,
             fields,
+            order,
             by_key,
         }
     }
@@ -48,140 +85,147 @@ impl Library {
         self.by_key.get(key).map(|&i| &self.items[i])
     }
 
-    /// The best `limit` matches, best first; newer papers first among equals.
-    pub fn search(&self, query: &str, limit: usize) -> Vec<&Item> {
-        let words = query_words(query);
-        if words.is_empty() {
-            return Vec::new();
+    pub fn search(&self, query: &str, matching: Matching, limit: usize) -> Found {
+        let terms = query::parse(query);
+        if terms.is_empty() {
+            return Found {
+                hits: Vec::new(),
+                total: 0,
+            };
         }
-        let mut hits: Vec<(u32, usize)> = self
-            .fields
+        let found: Vec<(usize, Marks)> = self
+            .order
             .iter()
-            .enumerate()
-            .filter_map(|(i, f)| {
-                words
+            .filter_map(|&i| {
+                let mut marks = Marks::default();
+                let all = terms
                     .iter()
-                    .try_fold(0, |sum, w| match f.score(w) {
-                        0 => None,
-                        s => Some(sum + s),
-                    })
-                    .map(|score| (score, i))
+                    .all(|t| self.fields[i].matches(t, matching, &mut marks));
+                all.then_some((i, marks))
             })
             .collect();
-        hits.sort_by(|a, b| {
-            b.0.cmp(&a.0)
-                .then_with(|| self.items[b.1].year.cmp(&self.items[a.1].year))
-        });
-        hits.into_iter()
+        let total = found.len();
+        let hits = found
+            .into_iter()
             .take(limit)
-            .map(|(_, i)| &self.items[i])
-            .collect()
+            .map(|(i, marks)| self.hit(i, &marks))
+            .collect();
+        Found { hits, total }
+    }
+
+    fn hit(&self, i: usize, marks: &Marks) -> Hit {
+        let (item, fields) = (&self.items[i], &self.fields[i]);
+        let authors = (0..item.authors.len()).map(|a| marks.authors.iter().any(|&(x, _)| x == a));
+        Hit {
+            title: fields.title.spans(&marks.title),
+            subtitle: item.subtitle_spans(marks),
+            authors: authors.collect(),
+            item: item.clone(),
+        }
     }
 }
 
-/// The searchable text of an item, folded to lowercase ASCII.
+/// The searchable texts of an item.
 struct Fields {
+    title: Text,
+    /// the family name of each author
+    authors: Vec<Text>,
+    year: Option<i32>,
+    container: Text,
+    keywords: Vec<Text>,
     key: String,
-    /// the words of each family name, in author order
-    authors: Vec<Vec<String>>,
-    year: Option<String>,
-    title: String,
-    title_words: Vec<String>,
-    keyword_words: Vec<String>,
-    container_words: Vec<String>,
+    key_words: Text,
     doi: String,
 }
 
 impl Fields {
     fn new(item: &Item) -> Fields {
-        let title = fold(&item.title);
         Fields {
+            title: Text::new(&item.title),
+            authors: item.families.iter().map(|f| Text::new(f)).collect(),
+            year: item.year,
+            container: Text::new(item.container.as_deref().unwrap_or_default()),
+            keywords: item.keywords.iter().map(|k| Text::new(k)).collect(),
             key: fold(&item.key),
-            authors: item.families.iter().map(|f| words(&fold(f))).collect(),
-            year: item.year.map(|y| y.to_string()),
-            title_words: words(&title),
-            title,
-            keyword_words: item.keywords.iter().flat_map(|k| words(&fold(k))).collect(),
-            container_words: words(&fold(item.container.as_deref().unwrap_or_default())),
+            key_words: Text::new(&item.key),
             doi: fold(item.doi.as_deref().unwrap_or_default()),
         }
     }
 
-    /// How well one query word matches the item, 0 for not at all.
-    fn score(&self, w: &str) -> u32 {
-        if w.contains('/') || w.starts_with("10.") {
-            // a DOI, or a key made of a DOI
-            return if self.doi.contains(w) || self.key.contains(w) {
-                50
-            } else {
-                0
-            };
-        }
-        let mut best = 0;
-        let mut take = |s: u32| best = best.max(s);
-        if self.key == w {
-            take(50);
-        } else if self.key.starts_with(w) {
-            take(35);
-        } else if self.key.contains(w) {
-            take(15);
-        }
-        for (i, family) in self.authors.iter().enumerate() {
-            let first = if i == 0 { 15 } else { 0 };
-            if family.iter().any(|f| f == w) {
-                take(40 + first);
-            } else if family.iter().any(|f| f.starts_with(w)) {
-                take(30 + first);
+    /// Whether a term matches, marking the words it matched.
+    fn matches(&self, term: &Term, matching: Matching, marks: &mut Marks) -> bool {
+        let find = |text: &Text| match &term.pattern {
+            Pattern::Word(w) => text.find(w, matching),
+            Pattern::Phrase(ws) => text.find_phrase(ws, matching),
+            _ => Vec::new(),
+        };
+        match (&term.pattern, term.field) {
+            (Pattern::Doi(doi), _) => {
+                self.doi.contains(doi.as_str()) || self.key.contains(doi.as_str())
             }
+            (Pattern::Years(from, to), _) => {
+                let within = |y: i32| from.is_none_or(|f| y >= f) && to.is_none_or(|t| y <= t);
+                self.mark_year(marks, self.year.is_some_and(within))
+            }
+            (Pattern::YearStart(start), _) => {
+                let starts = self
+                    .year
+                    .is_some_and(|y| y.to_string().starts_with(start.as_str()));
+                self.mark_year(marks, starts)
+            }
+            (Pattern::Word(w), Field::Key) => {
+                self.key.starts_with(w.as_str()) || !self.key_words.find(w, matching).is_empty()
+            }
+            (_, Field::Title) => mark(&mut marks.title, find(&self.title)),
+            (_, Field::Journal) => mark(&mut marks.container, find(&self.container)),
+            (_, Field::Tag) => self.keywords.iter().any(|k| !find(k).is_empty()),
+            (_, Field::Author) => self.mark_authors(marks, self.authors.len(), find),
+            (_, Field::First) => self.mark_authors(marks, 1, find),
+            (pattern, Field::Any) => {
+                // every field, to mark every match
+                let mut found = mark(&mut marks.title, find(&self.title));
+                found |= mark(&mut marks.container, find(&self.container));
+                found |= self.mark_authors(marks, self.authors.len(), find);
+                found |= self.keywords.iter().any(|k| !find(k).is_empty());
+                if let Pattern::Word(w) = pattern {
+                    found |= self.key.starts_with(w.as_str());
+                    found |= !self.key_words.find(w, matching).is_empty();
+                    found |= self.mark_year(marks, self.year.is_some_and(|y| y.to_string() == *w));
+                    // a DOI fragment like "nclimate1449", not a word like "climate"
+                    found |= w.len() >= 5
+                        && w.bytes().any(|b| b.is_ascii_digit())
+                        && self.doi.contains(w.as_str());
+                }
+                found
+            }
+            _ => false,
         }
-        if self.year.as_deref() == Some(w) {
-            take(35);
+    }
+
+    fn mark_year(&self, marks: &mut Marks, matched: bool) -> bool {
+        marks.year |= matched;
+        matched
+    }
+
+    /// Match the first `n` authors.
+    fn mark_authors(
+        &self,
+        marks: &mut Marks,
+        n: usize,
+        find: impl Fn(&Text) -> Vec<usize>,
+    ) -> bool {
+        let mut found = false;
+        for (a, author) in self.authors.iter().take(n).enumerate() {
+            let words = find(author);
+            found |= !words.is_empty();
+            marks.authors.extend(words.into_iter().map(|w| (a, w)));
         }
-        if self.title_words.iter().any(|t| t == w) {
-            take(25);
-        } else if self.title_words.iter().any(|t| t.starts_with(w)) {
-            take(18);
-        } else if w.len() >= 3 && self.title.contains(w) {
-            take(8);
-        }
-        if self.keyword_words.iter().any(|k| k == w) {
-            take(25);
-        } else if self.keyword_words.iter().any(|k| k.starts_with(w)) {
-            take(15);
-        }
-        if self.container_words.iter().any(|c| c == w) {
-            take(12);
-        } else if self.container_words.iter().any(|c| c.starts_with(w)) {
-            take(9);
-        }
-        // a DOI fragment, e.g. "nclimate1449": not a plain word like "climate"
-        if w.len() >= 5 && w.bytes().any(|b| b.is_ascii_digit()) && self.doi.contains(w) {
-            take(20);
-        }
-        best
+        found
     }
 }
 
-/// The words of a query; a DOI (with a slash, or starting with "10.") is kept
-/// whole, and a pasted https://doi.org/ link is reduced to its DOI.
-fn query_words(query: &str) -> Vec<String> {
-    fold(query)
-        .split_whitespace()
-        .flat_map(|t| match t.rsplit_once("doi.org/") {
-            Some((_, doi)) => vec![doi.to_string()],
-            None if t.contains('/') || t.starts_with("10.") => vec![t.to_string()],
-            None => words(t),
-        })
-        .collect()
-}
-
-fn fold(s: &str) -> String {
-    deunicode(s).to_lowercase()
-}
-
-fn words(s: &str) -> Vec<String> {
-    s.split(|c: char| !c.is_ascii_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .map(String::from)
-        .collect()
+fn mark(marked: &mut BTreeSet<usize>, words: Vec<usize>) -> bool {
+    let found = !words.is_empty();
+    marked.extend(words);
+    found
 }
