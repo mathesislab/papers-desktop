@@ -1,6 +1,6 @@
 [package]
 name = "papers-desktop"
-version = "0.4.1"
+version = "0.4.2"
 description = "Desktop companion for the papers CLI"
 authors = ["Alexander Robinson"]
 edition = "2024"
@@ -23,7 +23,7 @@ tauri = { version = "2", features = ["image-png", "macos-private-api", "tray-ico
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-papers-core = { version = "0.4.1", path = "../crates/core" }
+papers-core = { version = "0.4.2", path = "../crates/core" }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"

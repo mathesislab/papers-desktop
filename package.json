@@ -1,6 +1,6 @@
 {
   "name": "papers-desktop",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Desktop companion for the papers CLI",
   "type": "module",
   "scripts": {
