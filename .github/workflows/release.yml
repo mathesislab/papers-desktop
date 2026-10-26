@@ -72,12 +72,17 @@ jobs:
 
       - run: npm ci
 
-      # not code-signed or notarized; a person reviews the draft before publishing
+      # not code-signed or notarized; a person reviews the draft before publishing.
+      # The updates are signed with the key of the updater (its public key is in
+      # tauri.conf.json); latest.json tells the apps about them.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           releaseId: ${{ needs.draft.outputs.id }}
+          includeUpdaterJson: true
           assetNamePattern: ${{ matrix.assets }}
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
