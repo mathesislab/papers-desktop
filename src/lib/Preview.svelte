@@ -99,6 +99,15 @@
   });
 
   const fileName = (path: string) => path.split(/[\\/]/).pop();
+
+  /** Drag the citation out, formatted for the apps that take it so. */
+  function dragCitation(e: DragEvent) {
+    if (!citation || !e.dataTransfer) return;
+    const { text, html } = cite.toCopy(citation);
+    e.dataTransfer.setData("text/plain", text);
+    e.dataTransfer.setData("text/html", html);
+    e.dataTransfer.effectAllowed = "copy";
+  }
 </script>
 
 <aside class="preview">
@@ -136,7 +145,8 @@
     {#if citationError}
       <div class="citation error">{citationError}</div>
     {:else}
-      <div class="citation">{@html citation ?? ""}</div>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="citation" draggable={!!citation} ondragstart={dragCitation}>{@html citation ?? ""}</div>
     {/if}
   </section>
   <section>

@@ -35,6 +35,10 @@ menu-bar icon has Settings… (also `⌘,` in the panel) and Reload Library.
 
 `Ctrl` instead of `⌘` on Linux and Windows.
 
+Drag a paper out of the list to drop its PDF in the Finder, a mail or a
+chat, and the citation out of the preview to drop it, formatted, in a
+document.
+
 The empty panel lists the papers opened or copied last (Settings clears
 them), above a reminder of the keys and filters.
 

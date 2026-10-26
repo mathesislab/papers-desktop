@@ -1,11 +1,13 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
+  import { startDrag } from "@crabnebula/tauri-plugin-drag";
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { citation, resetStyle, toCopy } from "$lib/cite";
   import { copy as copyRich } from "$lib/clipboard";
+  import { dragIcon } from "$lib/pdf";
   import Preview from "$lib/Preview.svelte";
   import Marked from "$lib/Marked.svelte";
   import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
@@ -153,6 +155,14 @@
     list?.scrollTo(0, 0);
   }
 
+  /** Drag the file of an item out, to the Finder, a mail or a chat. */
+  function drag(e: DragEvent, it: Item) {
+    e.preventDefault();
+    startDrag({ item: [it.files[0]], icon: dragIcon(it.id) }).catch(
+      (err) => (notice = { text: String(err), error: true }),
+    );
+  }
+
   /** A query edited by a click: search it, and give the field back its focus. */
   function edit(edited: string) {
     query = edited;
@@ -270,6 +280,8 @@
               aria-selected={i === selected}
               tabindex="-1"
               class:selected={i === selected}
+              draggable={hit.item.files.length > 0}
+              ondragstart={(e) => drag(e, hit.item)}
               onclick={() => select(i)}
               ondblclick={() => run(actions[0])}
             >
