@@ -39,7 +39,9 @@
       <h2>Search the way you remember</h2>
       <p>Every word must match, from the start of a word: <code>rob</code> finds Robinson. Filters narrow it down:
         <code>f:</code> for the first author, <code>y:2010-2015</code> for years, <code>j:</code> for the journal,
-        quotes for a phrase, <code>-</code> to leave something out.</p>
+        <code>has:pdf</code> for the papers with a PDF, quotes for a phrase, <code>-</code> to leave something out.</p>
+      <p>Paste a reference from a paper or a web page to find the entries closest to it: the entry of its DOI, else
+        those with most of its authors, title and year.</p>
       <p>Results come newest first, with the matched words in bold. A strip shows the matches of each year: drag
         across it to keep a range of years.</p>
     </div>
@@ -50,7 +52,7 @@
     <div>
       <h2>Cite in one key</h2>
       <p>Open the PDF with <kbd>↵</kbd>, copy <code>[@key]</code> for Markdown, <code>\cite{key}</code> for LaTeX,
-        or the BibTeX entry. <kbd>⌘K</kbd> lists every action.</p>
+        the BibTeX entry, or the citation, formatted, with <kbd>⌘⌥C</kbd>. <kbd>⌘K</kbd> lists every action.</p>
       <p>The preview shows the first page, the citation in your style (Copernicus by default) and the entry, as
         formatted or as written in the file.</p>
     </div>
@@ -82,7 +84,22 @@
     </article>
     <article class="feature">
       <h3>Share</h3>
-      <p>Copy a snippet with the title and its link, the link, the DOI or the citation.</p>
+      <p>Copy a snippet with the title as a link, the link, the DOI, or the citation as text or HTML. They paste
+        formatted in documents and mails, as plain text elsewhere.</p>
+    </article>
+    <article class="feature">
+      <h3>Drag out</h3>
+      <p>Drag a paper from the list to drop its PDF in a mail, a chat or a folder, and the citation from the
+        preview to drop it in a document.</p>
+    </article>
+    <article class="feature">
+      <h3>From any app</h3>
+      <p>Select a reference anywhere and choose Services → Search Papers to find it in your library. On Linux, a
+        shortcut runs <code>papers-desktop --selection</code>.</p>
+    </article>
+    <article class="feature">
+      <h3>Recent papers</h3>
+      <p>The empty panel lists the papers you opened or copied last, with a reminder of the keys and filters.</p>
     </article>
     <article class="feature">
       <h3>Out of the way</h3>
@@ -134,8 +151,8 @@
   <p class="more">The Linux version is new: it is built and tested automatically, but has not yet been tried much
     on real machines. Problems and feedback are welcome as
     <a href="https://github.com/mathesislab/papers-desktop/issues">issues</a>.</p>
-  <p class="more">All versions are on the <a href="https://github.com/mathesislab/papers-desktop/releases">releases
-    page</a>. To build it yourself, see the <a href="https://github.com/mathesislab/papers-desktop#readme">README</a>.</p>
+  <p class="more">Once installed, the app updates itself (Settings → Updates). All versions are on the
+    <a href="https://github.com/mathesislab/papers-desktop/releases">releases page</a>. To build it yourself, see the <a href="https://github.com/mathesislab/papers-desktop#readme">README</a>.</p>
 </section>
 </main>
 
