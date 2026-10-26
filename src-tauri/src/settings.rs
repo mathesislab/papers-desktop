@@ -23,6 +23,8 @@ pub struct Settings {
     pub matching: Matching,
     /// a bundled CSL style, or the path of a .csl file
     pub citation_style: String,
+    /// look for updates at start and twice a day
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -37,6 +39,7 @@ impl Default for Settings {
             .into(),
             matching: Matching::default(),
             citation_style: crate::styles::DEFAULT.into(),
+            check_updates: true,
         }
     }
 }

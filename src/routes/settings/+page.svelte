@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { getVersion } from "@tauri-apps/api/app";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { open } from "@tauri-apps/plugin-dialog";
   import { onMount } from "svelte";
@@ -12,7 +14,10 @@
     hotkey: string;
     matching: "word-start" | "inside-words";
     citation_style: string;
+    check_updates: boolean;
   };
+  /** mirrors update::Available */
+  type Update = { version: string; notes: string | null };
   type View = { settings: Settings; styles: string[]; start_at_login: boolean; home: string | null };
 
   /** the option of the style menu that asks for a .csl file */
@@ -31,7 +36,64 @@
     settings && !styles.includes(settings.citation_style) ? settings.citation_style : null,
   );
 
-  onMount(refresh);
+  // updates: the version found, and where its install is
+  let version = $state("");
+  let update = $state<Update | null>(null);
+  let updating = $state<"idle" | "checking" | "current" | "installing" | "failed">("idle");
+  let updateError = $state("");
+  let progress = $state<{ done: number; total: number | null }>({ done: 0, total: null });
+
+  let updateStatus = $derived.by(() => {
+    switch (updating) {
+      case "checking":
+        return "Looking for updates…";
+      case "current":
+        return "Papers Desktop is up to date.";
+      case "failed":
+        return updateError;
+      case "installing":
+        return progress.total
+          ? `Downloading… ${Math.round((100 * progress.done) / progress.total)}%`
+          : "Downloading…";
+      default:
+        return update ? `Version ${update.version} is available.` : "";
+    }
+  });
+
+  onMount(() => {
+    refresh();
+    getVersion().then((v) => (version = v));
+    invoke<Update | null>("found_update").then((found) => (update = found));
+    const unlisten = [
+      listen<Update | null>("update", (e) => (update = e.payload)),
+      listen<[number, number | null]>("update-progress", (e) => {
+        progress = { done: e.payload[0], total: e.payload[1] };
+      }),
+    ];
+    return () => unlisten.forEach((u) => u.then((f) => f()));
+  });
+
+  async function checkUpdate() {
+    updating = "checking";
+    try {
+      update = await invoke<Update | null>("check_update");
+      updating = update ? "idle" : "current";
+    } catch (err) {
+      updateError = `Cannot look for updates: ${err}`;
+      updating = "failed";
+    }
+  }
+
+  /** Download and install the update; the app then restarts. */
+  async function installUpdate() {
+    updating = "installing";
+    try {
+      await invoke("install_update");
+    } catch (err) {
+      updateError = `Cannot install the update: ${err}`;
+      updating = "failed";
+    }
+  }
 
   async function refresh() {
     const view = await invoke<View>("get_settings");
@@ -215,6 +277,44 @@
       </label>
     </section>
 
+    <section>
+      <h2>Updates</h2>
+      <div class="row">
+        <span>
+          <span class="label">Version {version}</span>
+          <span class="hint" class:error={updating === "failed"}>{updateStatus}</span>
+        </span>
+        {#if update}
+          <button class="primary" disabled={updating === "installing"} onclick={installUpdate}>
+            Install {update.version} and Restart
+          </button>
+        {:else}
+          <button disabled={updating === "checking"} onclick={checkUpdate}>Check for Updates</button>
+        {/if}
+      </div>
+      {#if updating === "installing"}
+        <progress value={progress.done} max={progress.total ?? undefined}></progress>
+      {/if}
+      {#if update?.notes}
+        <details>
+          <summary>What's new in {update.version}</summary>
+          <p class="notes">{update.notes}</p>
+        </details>
+      {/if}
+      <label class="row">
+        <span>
+          <span class="label">Check for updates automatically</span>
+          <span class="hint">At start and twice a day; installed only when you ask</span>
+        </span>
+        <input
+          type="checkbox"
+          class="switch"
+          checked={settings.check_updates}
+          onchange={(e) => save({ check_updates: e.currentTarget.checked })}
+        />
+      </label>
+    </section>
+
     <footer class:error={notice?.error}>{notice?.text ?? "Changes apply at once."}</footer>
   </main>
 {/if}
@@ -326,6 +426,37 @@
     color: var(--muted);
   }
   .remove:hover {
+    color: var(--error);
+  }
+  button.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  progress {
+    width: 100%;
+    margin: 2px 0 8px;
+    accent-color: var(--accent);
+  }
+  details {
+    margin: 0 0 6px;
+    font-size: 12px;
+  }
+  summary {
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .notes {
+    margin: 6px 0 0;
+    white-space: pre-wrap;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .hint.error {
     color: var(--error);
   }
   .hotkey {

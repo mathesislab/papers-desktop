@@ -1,5 +1,6 @@
 mod settings;
 mod styles;
+mod update;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -22,6 +23,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
+use update::{Available, Updates};
 
 const PANEL: &str = "panel";
 const SETTINGS: &str = "settings";
@@ -62,6 +64,8 @@ struct AppState {
     reloads: AtomicU64,
     /// the menu item that shows the hotkey
     search_item: Mutex<Option<MenuItem<Wry>>>,
+    /// the menu item that tells about an update
+    update_item: Mutex<Option<MenuItem<Wry>>>,
 }
 
 impl AppState {
@@ -197,6 +201,24 @@ fn set_start_at_login(app: AppHandle, on: bool) -> Result<bool, String> {
     }
     .map_err(|e| e.to_string())?;
     launch.is_enabled().map_err(|e| e.to_string())
+}
+
+/// Look for an update now.
+#[tauri::command]
+async fn check_update(app: AppHandle) -> Result<Option<Available>, String> {
+    update::check(&app).await
+}
+
+/// The update found by the last look, if any.
+#[tauri::command]
+fn found_update(updates: State<Updates>) -> Option<Available> {
+    updates.available()
+}
+
+/// Install the update found, and restart.
+#[tauri::command]
+async fn install_update(app: AppHandle) -> Result<(), String> {
+    update::install(&app).await
 }
 
 /// The settings window, from the panel (⌘,).
@@ -352,6 +374,17 @@ fn set_hotkey(app: &AppHandle, old: &str, new: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The menu item of updates: "Check for Updates…", or the version found.
+pub(crate) fn show_update(app: &AppHandle, available: Option<&Available>) {
+    let text = match available {
+        Some(update) => format!("Update to {}…", update.version),
+        None => "Check for Updates…".to_string(),
+    };
+    if let Some(item) = app.state::<AppState>().update_item.lock().unwrap().as_ref() {
+        let _ = item.set_text(text);
+    }
+}
+
 /// Show the settings window, made the first time.
 fn settings_window(app: &AppHandle) {
     hide_window(app);
@@ -362,7 +395,7 @@ fn settings_window(app: &AppHandle) {
     }
     let window = WebviewWindowBuilder::new(app, SETTINGS, WebviewUrl::App("settings".into()))
         .title("Papers Desktop Settings")
-        .inner_size(560.0, 600.0)
+        .inner_size(560.0, 760.0)
         .resizable(false)
         .minimizable(false)
         .center()
@@ -435,17 +468,20 @@ const TRAY_ICON: &[u8] = include_bytes!("../icons/tray-light.png");
 
 fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
     let search = MenuItem::with_id(app, "search", "Search Papers", true, Some(hotkey))?;
+    let updates = MenuItem::with_id(app, "updates", "Check for Updates…", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
             &search,
             &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
             &MenuItem::with_id(app, "reload", "Reload Library", true, None::<&str>)?,
+            &updates,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, "quit", "Quit Papers", true, None::<&str>)?,
         ],
     )?;
     *app.state::<AppState>().search_item.lock().unwrap() = Some(search);
+    *app.state::<AppState>().update_item.lock().unwrap() = Some(updates);
     TrayIconBuilder::with_id("tray")
         .icon(Image::from_bytes(TRAY_ICON)?)
         .icon_as_template(cfg!(target_os = "macos"))
@@ -454,7 +490,7 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "search" => show(app),
-            "settings" => settings_window(app),
+            "settings" | "updates" => settings_window(app),
             "reload" => reload(app),
             "quit" => app.exit(0),
             _ => {}
@@ -472,6 +508,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,
@@ -500,13 +537,16 @@ pub fn run() {
                 watches: Mutex::new(Vec::new()),
                 reloads: AtomicU64::new(0),
                 search_item: Mutex::new(None),
+                update_item: Mutex::new(None),
             });
+            app.manage(Updates::default());
             let hotkey = settings.hotkey;
             if let Err(e) = app.global_shortcut().register(hotkey.as_str()) {
                 eprintln!("papers-desktop: cannot register the hotkey {hotkey}: {e}");
             }
             tray(app.handle(), &hotkey)?;
             reload(app.handle());
+            update::watch(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -531,7 +571,10 @@ pub fn run() {
             get_settings,
             save_settings,
             set_start_at_login,
-            open_settings
+            open_settings,
+            check_update,
+            found_update,
+            install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

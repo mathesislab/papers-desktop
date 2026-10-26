@@ -74,7 +74,8 @@ filters.
 
 The settings window (menu-bar icon → Settings…, or `⌘,` in the panel) sets
 the `.bib` files of the library, the hotkey (click it and press the new
-keys), matching inside words, the citation style and Start at Login.
+keys), matching inside words, the citation style, Start at Login and
+updates.
 Changes apply at once.
 
 They are kept in `settings.json` in the app config directory
@@ -128,11 +129,29 @@ npm install
 npm run tauri dev
 ```
 
+## Updates
+
+The app looks for a new release at start and twice a day (a switch in the
+settings turns this off), and the menu-bar icon then shows *Update to …*. It
+installs only when asked: Settings → Install and Restart. On Linux the
+`.deb` installs with the system's password prompt; the AppImage replaces
+itself.
+
+The updates are signed with the updater key (`~/.tauri/papers-desktop.key`,
+its public key in `src-tauri/tauri.conf.json`). The release workflow signs
+with the `TAURI_SIGNING_PRIVATE_KEY` secret of the repository and uploads
+`latest.json`, which the apps read from the latest release. Keep a copy of
+the key: without it, the apps installed cannot take a new version.
+
 ## Build
 
 ```bash
-npm run tauri build -- --bundles app
+TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/papers-desktop.key)" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" \
+  npm run tauri build -- --bundles app
 ```
+
+Without the key, build without the signed update archive:
+`npm run tauri build -- --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'`.
 
 The app is then `target/release/bundle/macos/Papers Desktop.app`: copy it to
 `/Applications` before turning on Start at Login, which points at the app
