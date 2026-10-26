@@ -28,10 +28,12 @@ jobs:
           }
           id=$(find_draft)
           if [ -z "$id" ]; then
-            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-              --draft --verify-tag --title "$GITHUB_REF_NAME" --notes ""
-            id=$(find_draft)
+            # the id from the answer: a new draft is not listed at once
+            id=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$GITHUB_REF_NAME" -f name="$GITHUB_REF_NAME" -F draft=true --jq .id)
           fi
+          # without an id, the builds would skip their uploads
+          test -n "$id"
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
   build:
