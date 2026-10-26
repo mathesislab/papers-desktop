@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Desktop companion for the papers CLI"
 authors = ["Alexander Robinson"]
 edition = "2024"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

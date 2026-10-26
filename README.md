@@ -114,3 +114,8 @@ npm run tauri build -- --bundles app
 The app is then `target/release/bundle/macos/Papers Desktop.app`: copy it to
 `/Applications` before turning on Start at Login, which points at the app
 where it is.
+
+## License
+
+MIT. The bundled citation styles are CC BY-SA 3.0 (see
+[src-tauri/styles](src-tauri/styles/README.md)).
