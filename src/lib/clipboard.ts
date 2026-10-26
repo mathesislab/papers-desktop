@@ -5,8 +5,9 @@ import { invoke } from "@tauri-apps/api/core";
 /** What to copy: the text, and the HTML of a formatted paste. */
 export type Copy = { text: string; html?: string };
 
-export function copy({ text, html }: Copy): Promise<void> {
-  return invoke("copy_text", { text, html: html ?? null });
+/** Copy a text of item `id`, which becomes a recent paper. */
+export function copy(id: string, { text, html }: Copy): Promise<void> {
+  return invoke("copy_text", { id, text, html: html ?? null });
 }
 
 export function escape(text: string): string {

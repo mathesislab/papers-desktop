@@ -1,3 +1,4 @@
+mod recent;
 mod settings;
 mod styles;
 mod update;
@@ -9,6 +10,7 @@ use std::sync::{Mutex, RwLock};
 use papers_core::{BibWatch, Cite, Found, Item, Library, Matching};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use recent::Recent;
 use settings::Settings;
 use styles::Style;
 use tauri::image::Image;
@@ -66,6 +68,7 @@ struct AppState {
     search_item: Mutex<Option<MenuItem<Wry>>>,
     /// the menu item that tells about an update
     update_item: Mutex<Option<MenuItem<Wry>>>,
+    recent: Recent,
 }
 
 impl AppState {
@@ -78,14 +81,20 @@ impl AppState {
     }
 }
 
+/// The matches of a query; without one, the recent papers.
 #[tauri::command]
 fn search(state: State<AppState>, query: String) -> Found {
+    let library = state.library.read().unwrap();
+    if query.trim().is_empty() {
+        let hits = state.recent.hits(&library);
+        return Found {
+            total: hits.len(),
+            hits,
+            years: Vec::new(),
+        };
+    }
     let matching = *state.matching.read().unwrap();
-    state
-        .library
-        .read()
-        .unwrap()
-        .search(&query, matching, MAX_RESULTS)
+    library.search(&query, matching, MAX_RESULTS)
 }
 
 #[tauri::command]
@@ -108,19 +117,19 @@ fn open(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String
         (None, None) => return Err(format!("{id}: no file, DOI or URL")),
     }
     .map_err(|e| e.to_string())?;
+    state.recent.add(&item);
     hide_window(&app);
     Ok(())
 }
 
 #[tauri::command]
 fn open_link(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
-    let link = state
-        .item(&id)?
-        .link()
-        .ok_or(format!("{id}: no DOI or URL"))?;
+    let item = state.item(&id)?;
+    let link = item.link().ok_or(format!("{id}: no DOI or URL"))?;
     app.opener()
         .open_url(link, None::<&str>)
         .map_err(|e| e.to_string())?;
+    state.recent.add(&item);
     hide_window(&app);
     Ok(())
 }
@@ -132,6 +141,7 @@ fn reveal(app: AppHandle, state: State<AppState>, id: String) -> Result<(), Stri
     app.opener()
         .reveal_item_in_dir(file)
         .map_err(|e| e.to_string())?;
+    state.recent.add(&item);
     hide_window(&app);
     Ok(())
 }
@@ -149,11 +159,17 @@ fn copy(
         Format::Key => item.cite(Cite::Key),
         Format::Pandoc => item.cite(Cite::Pandoc),
         Format::Latex => item.cite(Cite::Latex),
-        Format::Bibtex => bibtex(state, id, false)?,
+        Format::Bibtex => state
+            .library
+            .read()
+            .unwrap()
+            .bibtex(&id)
+            .ok_or_else(|| format!("{id}: not in the library"))?,
     };
     app.clipboard()
         .write_text(text.clone())
         .map_err(|e| e.to_string())?;
+    state.recent.add(&item);
     Ok(text)
 }
 
@@ -227,16 +243,31 @@ async fn open_settings(app: AppHandle) {
     settings_window(&app);
 }
 
-/// Put a text on the clipboard, with its HTML for a formatted paste: what the
-/// share menu of the preview copies, and the citations.
+/// Put a text of item `id` on the clipboard, with its HTML for a formatted
+/// paste: what the share menu of the preview copies, and the citations.
 #[tauri::command]
-fn copy_text(app: AppHandle, text: String, html: Option<String>) -> Result<(), String> {
+fn copy_text(
+    app: AppHandle,
+    state: State<AppState>,
+    id: String,
+    text: String,
+    html: Option<String>,
+) -> Result<(), String> {
+    let item = state.item(&id)?;
     let clipboard = app.clipboard();
     match html {
         Some(html) => clipboard.write_html(html, Some(text)),
         None => clipboard.write_text(text),
     }
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    state.recent.add(&item);
+    Ok(())
+}
+
+/// Forget the recent papers (from the settings).
+#[tauri::command]
+fn clear_recent(state: State<AppState>) {
+    state.recent.clear();
 }
 
 /// The BibTeX of an item: formatted, or `raw` as written in its .bib file.
@@ -544,6 +575,7 @@ pub fn run() {
                 reloads: AtomicU64::new(0),
                 search_item: Mutex::new(None),
                 update_item: Mutex::new(None),
+                recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
             });
             app.manage(Updates::default());
             let hotkey = settings.hotkey;
@@ -569,6 +601,7 @@ pub fn run() {
             reveal,
             copy,
             copy_text,
+            clear_recent,
             bibtex,
             pdf,
             set_preview,

@@ -40,7 +40,7 @@
 
   async function share(choice: Copy) {
     open = false;
-    await copy(choice);
+    await copy(item.id, choice);
     copied = true;
     setTimeout(() => (copied = false), 1200);
   }

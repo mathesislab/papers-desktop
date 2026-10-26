@@ -4,7 +4,7 @@
 
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use serde_json::Value;
@@ -133,6 +133,19 @@ impl Library {
         self.by_id.get(id).map(|&i| &self.items[i])
     }
 
+    /// The item of key `key` in .bib file `bib`, which stays the same when
+    /// the ids change with the files of the library.
+    pub fn find(&self, bib: &Path, key: &str) -> Option<&Item> {
+        self.items.iter().find(|it| it.bib == bib && it.key == key)
+    }
+
+    /// An item as a hit without marks: one not found by a search.
+    pub fn hit(&self, id: &str) -> Option<Hit> {
+        self.by_id
+            .get(id)
+            .map(|&i| self.marked_hit(i, &Marks::default()))
+    }
+
     /// The CSL-JSON of an item, for a citation processor.
     pub fn csl(&self, id: &str) -> Option<Value> {
         self.entry(id).map(|e| to_csl::entry_to_csl(&e.entry))
@@ -199,13 +212,13 @@ impl Library {
             hits: found
                 .into_iter()
                 .take(limit)
-                .map(|(i, marks)| self.hit(i, &marks))
+                .map(|(i, marks)| self.marked_hit(i, &marks))
                 .collect(),
             years,
         }
     }
 
-    fn hit(&self, i: usize, marks: &Marks) -> Hit {
+    fn marked_hit(&self, i: usize, marks: &Marks) -> Hit {
         let (item, fields) = (&self.items[i], &self.fields[i]);
         let authors = (0..item.authors.len()).map(|a| marks.authors.iter().any(|&(x, _)| x == a));
         Hit {

@@ -35,6 +35,9 @@ menu-bar icon has Settings… (also `⌘,` in the panel) and Reload Library.
 
 `Ctrl` instead of `⌘` on Linux and Windows.
 
+The empty panel lists the papers opened or copied last (Settings clears
+them), above a reminder of the keys and filters.
+
 In the preview, *Share* copies a snippet (the title and its link), the
 link, the DOI, the citation or its HTML; the BibTeX shows formatted, or raw
 as written in its `.bib` file. The citation and the snippet paste formatted

@@ -45,7 +45,7 @@
 
   async function copyCitation(it: Item) {
     const cited = toCopy(await citation(it.id));
-    await copyRich(cited);
+    await copyRich(it.id, cited);
     copied(cited.text);
   }
 
@@ -227,6 +227,8 @@
       listen("shown", () => {
         menu = false;
         notice = null;
+        // the recent papers may have changed
+        if (!query.trim()) search();
         input.focus();
         input.select();
       }),
@@ -258,6 +260,7 @@
         />
       {/if}
       {#if hits.length}
+        {#if !query.trim()}<h3 class="recent">Recent</h3>{/if}
         <ul bind:this={list} role="listbox">
           {#each hits as hit, i (hit.item.id)}
             <!-- the keys are handled on the window -->
@@ -294,21 +297,22 @@
             </li>
           {/each}
         </ul>
-      {:else}
+      {/if}
+      {#if !query.trim()}
+        <div class="help" class:alone={!hits.length}>
+          <dl class="shortcuts">
+            {#each shortcuts as [name, keys]}
+              <dt>{name}</dt>
+              <dd><kbd>{keys}</kbd></dd>
+            {/each}
+          </dl>
+          <p class="filters">
+            {#each filters as [prefix, field], i}{#if i} · {/if}<kbd>{prefix}</kbd>&nbsp;{field}{/each}
+          </p>
+        </div>
+      {:else if !hits.length}
         <div class="empty">
-          {#if !query.trim()}
-            <dl class="shortcuts">
-              {#each shortcuts as [name, keys]}
-                <dt>{name}</dt>
-                <dd><kbd>{keys}</kbd></dd>
-              {/each}
-            </dl>
-            <p class="filters">
-              {#each filters as [prefix, field], i}{#if i} · {/if}<kbd>{prefix}</kbd>&nbsp;{field}{/each}
-            </p>
-          {:else if status.state === "ready"}
-            No match
-          {/if}
+          {#if status.state === "ready"}No match{/if}
         </div>
       {/if}
 
@@ -486,38 +490,60 @@
   .empty {
     flex: 1;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     color: var(--muted);
     font-size: 14px;
   }
 
+  .recent {
+    flex: none;
+    margin: 10px 18px 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* the shortcuts and filters, under the recent papers or alone */
+  .help {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 18px 12px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .help.alone {
+    flex: 1;
+    justify-content: center;
+    border-top: none;
+  }
   .shortcuts {
     display: grid;
-    grid-template-columns: auto auto;
-    gap: 5px 28px;
+    grid-template-columns: repeat(3, auto auto);
+    gap: 4px 10px;
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
   }
   .shortcuts dt {
     text-align: right;
   }
   .shortcuts dd {
-    margin: 0;
+    margin: 0 14px 0 0;
   }
   .shortcuts kbd {
-    font-size: 13px;
+    font-size: 12px;
   }
   .filters {
-    max-width: 520px;
-    margin: 18px 0 0;
-    font-size: 12px;
+    max-width: 640px;
+    margin: 10px 0 0;
+    font-size: 11.5px;
     line-height: 1.6;
     text-align: center;
   }
   .filters kbd {
-    font-size: 12px;
+    font-size: 11.5px;
     opacity: 1;
     color: var(--fg);
   }

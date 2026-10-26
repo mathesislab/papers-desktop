@@ -336,6 +336,18 @@ fn several_files() {
 }
 
 #[test]
+fn find_and_hit() {
+    let lib = library();
+    let item = lib.find(&fixture("library.bib"), "robinson2012").unwrap();
+    assert_eq!(item.id, "robinson2012");
+    assert!(lib.find(&fixture("other.bib"), "robinson2012").is_none());
+    let hit = lib.hit("robinson2012").unwrap();
+    assert_eq!(marked(&hit.title), item.title);
+    assert!(hit.subtitle.iter().all(|s| !s.mark));
+    assert!(lib.hit("nothing").is_none());
+}
+
+#[test]
 fn bibtex() {
     let lib = library();
     // as written in the file

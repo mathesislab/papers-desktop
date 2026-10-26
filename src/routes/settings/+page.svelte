@@ -145,6 +145,13 @@
     if (typeof file === "string") await save({ citation_style: file });
   }
 
+  let recentCleared = $state(false);
+
+  async function clearRecent() {
+    await invoke("clear_recent");
+    recentCleared = true;
+  }
+
   async function toggleStartAtLogin() {
     try {
       startAtLogin = await invoke<boolean>("set_start_at_login", { on: !startAtLogin });
@@ -275,6 +282,13 @@
         <span class="label">Start at login</span>
         <input type="checkbox" class="switch" checked={startAtLogin} onchange={toggleStartAtLogin} />
       </label>
+      <div class="row">
+        <span>
+          <span class="label">Recent papers</span>
+          <span class="hint">The papers opened or copied last, listed in the empty panel</span>
+        </span>
+        <button disabled={recentCleared} onclick={clearRecent}>{recentCleared ? "Cleared" : "Clear"}</button>
+      </div>
     </section>
 
     <section>
