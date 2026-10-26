@@ -8,6 +8,9 @@ of truth; the app reads them through `papers list --format csl-json`.
 
 Built with [Tauri 2](https://tauri.app) (Rust) and SvelteKit (TypeScript).
 
+The design and the plans (main window, editing, adding papers) are in
+[docs/design.md](docs/design.md).
+
 ## Use
 
 The app lives in the menu bar (no Dock icon). `⌥Space` shows the search
@@ -105,5 +108,9 @@ npm run tauri dev
 ## Build
 
 ```bash
-npm run tauri build
+npm run tauri build -- --bundles app
 ```
+
+The app is then `target/release/bundle/macos/Papers Desktop.app`: copy it to
+`/Applications` before turning on Start at Login, which points at the app
+where it is.
