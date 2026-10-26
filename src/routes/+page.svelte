@@ -189,88 +189,90 @@
   />
 
   <div class="body">
-    {#if items.length}
-      <ul bind:this={list} role="listbox">
-        {#each items as item, i (item.key)}
-          <!-- the keys are handled on the window -->
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <li
-            role="option"
-            aria-selected={i === selected}
-            tabindex="-1"
-            class:selected={i === selected}
-            onclick={() => select(i)}
-            ondblclick={() => run(actions[0])}
-          >
-            <div class="text">
-              <div class="title">{item.title}</div>
-              <div class="subtitle">{item.subtitle}</div>
+    <div class="results">
+      {#if items.length}
+        <ul bind:this={list} role="listbox">
+          {#each items as item, i (item.key)}
+            <!-- the keys are handled on the window -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <li
+              role="option"
+              aria-selected={i === selected}
+              tabindex="-1"
+              class:selected={i === selected}
+              onclick={() => select(i)}
+              ondblclick={() => run(actions[0])}
+            >
+              <div class="text">
+                <div class="title">{item.title}</div>
+                <div class="subtitle">{item.subtitle}</div>
+              </div>
+              {#if item.files.length}
+                <span class="badge">PDF</span>
+              {:else if item.doi}
+                <span class="badge">DOI</span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <div class="empty">
+          {#if !query.trim()}
+            <dl class="shortcuts">
+              {#each shortcuts as [name, keys]}
+                <dt>{name}</dt>
+                <dd><kbd>{keys}</kbd></dd>
+              {/each}
+            </dl>
+          {:else if status.state === "ready"}
+            No match
+          {/if}
+        </div>
+      {/if}
+
+      {#if menu && current}
+        <div class="menu" role="menu">
+          {#each available as action, i}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <div
+              role="menuitem"
+              tabindex="-1"
+              class:selected={i === menuSelected}
+              onclick={() => run(action)}
+              onmouseenter={() => (menuSelected = i)}
+            >
+              <span>{actionLabel(action, current)}</span>
+              <kbd>{label(action.shortcut)}</kbd>
             </div>
-            {#if item.files.length}
-              <span class="badge">PDF</span>
-            {:else if item.doi}
-              <span class="badge">DOI</span>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <div class="empty">
-        {#if !query.trim()}
-          <dl class="shortcuts">
-            {#each shortcuts as [name, keys]}
-              <dt>{name}</dt>
-              <dd><kbd>{keys}</kbd></dd>
-            {/each}
-          </dl>
-        {:else if status.state === "ready"}
-          No match
+          {/each}
+        </div>
+      {/if}
+
+      <footer class:error={notice?.error || (!notice && status.state === "failed")}>
+        <span class="status">
+          {#if notice}
+            {notice.text}
+          {:else if status.state === "loading"}
+            Loading library…
+          {:else if status.state === "ready"}
+            {status.count} papers
+          {:else}
+            {status.error}
+          {/if}
+        </span>
+        {#if current && !notice}
+          <span class="hints">
+            {actionLabel(actions[0], current)} <kbd>{label(actions[0].shortcut)}</kbd>
+            Preview <kbd>{label(previewShortcut)}</kbd>
+            Actions <kbd>{label(menuShortcut)}</kbd>
+          </span>
         {/if}
-      </div>
-    {/if}
+      </footer>
+    </div>
     {#if preview && current}
       <Preview item={current} onopen={() => run(actions[0])} />
     {/if}
   </div>
-
-  {#if menu && current}
-    <div class="menu" role="menu">
-      {#each available as action, i}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <div
-          role="menuitem"
-          tabindex="-1"
-          class:selected={i === menuSelected}
-          onclick={() => run(action)}
-          onmouseenter={() => (menuSelected = i)}
-        >
-          <span>{actionLabel(action, current)}</span>
-          <kbd>{label(action.shortcut)}</kbd>
-        </div>
-      {/each}
-    </div>
-  {/if}
-
-  <footer class:error={notice?.error || (!notice && status.state === "failed")}>
-    <span class="status">
-      {#if notice}
-        {notice.text}
-      {:else if status.state === "loading"}
-        Loading library…
-      {:else if status.state === "ready"}
-        {status.count} papers
-      {:else}
-        {status.error}
-      {/if}
-    </span>
-    {#if current && !notice}
-      <span class="hints">
-        {actionLabel(actions[0], current)} <kbd>{label(actions[0].shortcut)}</kbd>
-        Preview <kbd>{label(previewShortcut)}</kbd>
-        Actions <kbd>{label(menuShortcut)}</kbd>
-      </span>
-    {/if}
-  </footer>
 </main>
 
 <style>
@@ -310,7 +312,6 @@
   }
 
   .panel {
-    position: relative;
     box-sizing: border-box;
     height: 100vh;
     display: flex;
@@ -340,6 +341,15 @@
     flex: 1;
     min-height: 0;
     display: flex;
+  }
+
+  /* the list, its action menu and footer keep their place when the preview opens */
+  .results {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   ul {
