@@ -363,7 +363,7 @@
             {/each}
           </dl>
           <p class="filters">
-            {#each filters as [prefix, field], i}{#if i} · {/if}<kbd>{prefix}</kbd>&nbsp;{field}{/each}
+            {#each filters as [prefix, field], i}{#if i}{" · "}{/if}<kbd>{prefix}</kbd>&nbsp;{field}{/each}
           </p>
         </div>
       {:else if !hits.length}
