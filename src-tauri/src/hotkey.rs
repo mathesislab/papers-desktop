@@ -9,21 +9,32 @@ use crate::settings::Settings;
 enum Hotkey {
     /// show or hide the panel
     Panel,
+    /// find the selected text (the primary selection)
+    #[cfg(target_os = "linux")]
+    Selection,
 }
 
 impl Hotkey {
-    const ALL: &[Hotkey] = &[Hotkey::Panel];
+    const ALL: &[Hotkey] = &[
+        Hotkey::Panel,
+        #[cfg(target_os = "linux")]
+        Hotkey::Selection,
+    ];
 
     /// Its keys in the settings.
     fn keys(self, settings: &Settings) -> &str {
         match self {
             Hotkey::Panel => &settings.hotkey,
+            #[cfg(target_os = "linux")]
+            Hotkey::Selection => &settings.selection_hotkey,
         }
     }
 
     fn run(self, app: &AppHandle) {
         match self {
             Hotkey::Panel => crate::toggle(app),
+            #[cfg(target_os = "linux")]
+            Hotkey::Selection => crate::selection::find_selected(app),
         }
     }
 
@@ -48,6 +59,8 @@ impl Hotkey {
         // the menu shows the hotkey of the panel
         match self {
             Hotkey::Panel => crate::show_hotkey(app, new),
+            #[cfg(target_os = "linux")]
+            Hotkey::Selection => {}
         }
         Ok(())
     }

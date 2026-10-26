@@ -12,6 +12,8 @@
   type Settings = {
     bibtex: string[];
     hotkey: string;
+    /** on Linux only */
+    selection_hotkey?: string;
     matching: "word-start" | "inside-words";
     citation_style: string;
     check_updates: boolean;
@@ -28,7 +30,9 @@
   let startAtLogin = $state(false);
   let home = $state<string | null>(null);
   let notice = $state<{ text: string; error: boolean } | null>(null);
-  let recording = $state(false);
+  /** the hotkey whose keys are being recorded */
+  type HotkeyField = "hotkey" | "selection_hotkey";
+  let recording = $state<HotkeyField | null>(null);
   let timer: ReturnType<typeof setTimeout>;
 
   // a style that is not bundled: a .csl file
@@ -188,7 +192,7 @@
     }
     e.preventDefault();
     if (e.key === "Escape") {
-      recording = false;
+      recording = null;
       return;
     }
     const key = keyName(e.code);
@@ -199,8 +203,9 @@
       show(`A hotkey needs a modifier: ${mac ? "⌘, ⌥, ⌃ or ⇧" : "Ctrl, Alt or Shift"}`, true);
       return;
     }
-    recording = false;
-    save({ hotkey: [...held, key].join("+") });
+    const field = recording;
+    recording = null;
+    save({ [field]: [...held, key].join("+") });
   }
 
   /** The name of a key for the hotkey ("KeyP" is P), or none for a modifier. */
@@ -230,6 +235,16 @@
 </script>
 
 <svelte:window {onkeydown} />
+
+{#snippet recorder(field: HotkeyField, keys: string)}
+  <button
+    class="hotkey"
+    class:recording={recording === field}
+    onclick={() => (recording = recording === field ? null : field)}
+  >
+    {recording === field ? "Press the keys…" : pretty(keys)}
+  </button>
+{/snippet}
 
 {#if settings}
   <main>
@@ -263,10 +278,27 @@
           <span class="label">Hotkey</span>
           <span class="hint">Shows the panel, from any app</span>
         </span>
-        <button class="hotkey" class:recording onclick={() => (recording = !recording)}>
-          {recording ? "Press the keys…" : pretty(settings.hotkey)}
-        </button>
+        {@render recorder("hotkey", settings.hotkey)}
       </div>
+      {#if settings.selection_hotkey !== undefined}
+        <div class="row">
+          <span>
+            <span class="label">Search the selection</span>
+            <span class="hint">Finds the text selected in any app</span>
+          </span>
+          {@render recorder("selection_hotkey", settings.selection_hotkey)}
+        </div>
+      {:else if mac}
+        <div class="row">
+          <span>
+            <span class="label">Search the selection</span>
+            <span class="hint"
+              >In any app: Services → Search Papers. System Settings → Keyboard → Keyboard Shortcuts → Services
+              gives it a shortcut.</span
+            >
+          </span>
+        </div>
+      {/if}
       <label class="row">
         <span>
           <span class="label">Match inside words</span>

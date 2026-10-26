@@ -1,7 +1,7 @@
 //! A text selected in another app, found in the library: the Services menu
-//! sends it on macOS ("Search Papers", in Info.plist); on Linux,
-//! `papers-desktop --selection` (for a desktop shortcut) reads the primary
-//! selection.
+//! sends it on macOS ("Search Papers", in Info.plist); on Linux, a hotkey
+//! (Ctrl+Alt+Shift+Space) or `papers-desktop --selection` (for a desktop
+//! shortcut, under Wayland) reads the primary selection.
 
 use tauri::AppHandle;
 
@@ -24,12 +24,18 @@ pub fn from_args(app: &AppHandle, args: &[String]) -> bool {
     if !args.iter().any(|a| a == FLAG) {
         return false;
     }
+    find_selected(app);
+    true
+}
+
+/// Find the primary selection, read on the main thread (GTK's).
+#[cfg(target_os = "linux")]
+pub fn find_selected(app: &AppHandle) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
         let primary = gtk::Clipboard::get(&gtk::gdk::SELECTION_PRIMARY);
         primary.request_text(move |_, text| crate::find(&handle, text.unwrap_or_default().into()));
     });
-    true
 }
 
 #[cfg(not(target_os = "linux"))]

@@ -61,8 +61,8 @@ closest to it: the entry of its DOI, else those with most of its words,
 the names counting most. Text selected in another app is found the same
 way: on macOS, right-click it → Services → Search Papers (System Settings →
 Keyboard → Keyboard Shortcuts → Services → Text gives it a shortcut); on
-Linux, run `papers-desktop --selection` from a desktop shortcut
-([below](#linux)).
+Linux, press `Ctrl+Alt+Shift+Space`, or run `papers-desktop --selection`
+from a desktop shortcut under Wayland ([below](#linux)).
 
 Filters limit a word to one field, and quotes match a phrase:
 
@@ -93,8 +93,8 @@ filters.
 
 The settings window (menu-bar icon → Settings…, or `⌘,` in the panel) sets
 the `.bib` files of the library, the hotkey (click it and press the new
-keys), matching inside words, the citation style, Start at Login and
-updates.
+keys) and, on Linux, the hotkey that searches the selection, matching
+inside words, the citation style, Start at Login and updates.
 Changes apply at once.
 
 They are kept in `settings.json` in the app config directory
@@ -116,6 +116,8 @@ macOS, [the Linux path is below](#linux)), which can also be edited:
   (`smith2010#2`).
 - `hotkey`: `Alt+Space` on macOS, `Ctrl+Alt+Space` elsewhere. Edited in the
   file, it applies at the next start.
+- `selection_hotkey` (Linux): `Ctrl+Alt+Shift+Space`, searches the selected
+  text.
 - `matching`: `"word-start"` (default), or `"inside-words"` to also match
   inside words from three letters ("stab" finds Multistability).
 - `citation_style`: the style of the citation in the preview, one of the
@@ -184,12 +186,13 @@ On Ubuntu, from the [GitHub release](https://github.com/mathesislab/papers-deskt
   `papers-desktop` command), or
 - the AppImage: `chmod +x` it, then run it.
 
-The default hotkey is `Ctrl+Alt+Space`. Under Wayland (the default of Ubuntu)
-an app cannot grab a global hotkey: add a shortcut in Settings → Keyboard →
-View and Customize Shortcuts → Custom Shortcuts, with the command
+The default hotkey is `Ctrl+Alt+Space`, and `Ctrl+Alt+Shift+Space` searches
+the selected text (the primary selection). Under Wayland (the default of
+Ubuntu) an app cannot grab a global hotkey: add a shortcut in Settings →
+Keyboard → View and Customize Shortcuts → Custom Shortcuts, with the command
 `papers-desktop` (or the path of the AppImage). It toggles the panel of the
 running app. Another shortcut with `papers-desktop --selection` searches
-the selected text (the primary selection).
+the selected text.
 
 The menu-bar (tray) icon needs AppIndicator support. Ubuntu ships it; on other
 GNOME desktops install the "AppIndicator and KStatusNotifierItem Support"

@@ -19,6 +19,10 @@ pub struct Settings {
     /// Ctrl+Alt+Space elsewhere, where Alt+Space opens the window menu (set
     /// in the settings window, it applies at once; in the file, at the next start)
     pub hotkey: String,
+    /// global shortcut that finds the selected text (the primary selection)
+    /// in the panel; on macOS, the Services menu does it
+    #[cfg(target_os = "linux")]
+    pub selection_hotkey: String,
     /// "word-start" (default), or "inside-words" to match inside words too
     pub matching: Matching,
     /// a bundled CSL style, or the path of a .csl file
@@ -37,6 +41,8 @@ impl Default for Settings {
                 "Ctrl+Alt+Space"
             }
             .into(),
+            #[cfg(target_os = "linux")]
+            selection_hotkey: "Ctrl+Alt+Shift+Space".into(),
             matching: Matching::default(),
             citation_style: crate::styles::DEFAULT.into(),
             check_updates: true,
