@@ -215,6 +215,60 @@ fn marks() {
 }
 
 #[test]
+fn excluded() {
+    let lib = library();
+    assert_eq!(keys(&lib, "greenland -robinson"), ["vandenbroeke2009"]);
+    assert_eq!(
+        keys(&lib, "greenland -y:2012"),
+        ["calov2015", "vandenbroeke2009"]
+    );
+    assert_eq!(keys(&lib, "a:robinson -f:robinson"), ["calov2015"]);
+    assert_eq!(
+        keys(&lib, r#"greenland -"ice sheet""#),
+        ["vandenbroeke2009"]
+    );
+    // only exclusions: everything else
+    assert_eq!(lib.search("-greenland", Matching::WordStart, 50).total, 5);
+    // an excluded word is not marked
+    let found = lib.search("calov -multistability", Matching::WordStart, 1);
+    assert_eq!(
+        marked(&found.hits[0].title),
+        "Greenland ice sheet simulations"
+    );
+}
+
+#[test]
+fn year_counts() {
+    let lib = library();
+    let years = |query: &str| -> Vec<(i32, usize, bool)> {
+        let found = lib.search(query, Matching::WordStart, 50);
+        found
+            .years
+            .into_iter()
+            .map(|y| (y.year, y.count, y.selected))
+            .collect()
+    };
+    let span = |selected: &dyn Fn(i32) -> bool| -> Vec<(i32, usize, bool)> {
+        (2009..=2015)
+            .map(|y| (y, usize::from([2009, 2012, 2015].contains(&y)), selected(y)))
+            .collect()
+    };
+    // from the first year to the last, the years without a match included
+    assert_eq!(years("greenland"), span(&|_| true));
+    // counted before the year filters, which select the years
+    assert_eq!(years("greenland y:2015"), span(&|y| y == 2015));
+    assert_eq!(years("greenland y:2010-"), span(&|y| y >= 2010));
+    assert_eq!(years("greenland -y:2012"), span(&|y| y != 2012));
+    assert_eq!(
+        lib.search("greenland y:2015", Matching::WordStart, 50)
+            .total,
+        1
+    );
+    // no year, no count
+    assert!(years("k:smith").is_empty());
+}
+
+#[test]
 fn total_and_limit() {
     let lib = library();
     let found = lib.search("greenland", Matching::WordStart, 1);

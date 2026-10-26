@@ -26,8 +26,12 @@ export type Hit = {
   authors: boolean[];
 };
 
-/** mirrors papers_core::Found: the first hits, newest first, of `total` */
-export type Found = { hits: Hit[]; total: number };
+/** mirrors papers_core::YearCount */
+export type YearCount = { year: number; count: number; selected: boolean };
+
+/** mirrors papers_core::Found: the first hits, newest first, of `total`, and
+ *  the matches of each year before the year filters */
+export type Found = { hits: Hit[]; total: number; years: YearCount[] };
 
 export type Status =
   | { state: "loading" }

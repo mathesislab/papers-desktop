@@ -1,7 +1,8 @@
 //! The query: words, "phrases" and field filters, every term to match.
 //!
-//! `robinson "ice sheet" j:cryosphere year:2010-2015`. A filter is a field
-//! name and a colon before a word or a phrase; an unknown name is no filter.
+//! `robinson "ice sheet" j:cryosphere year:2010-2015 -review`. A filter is a
+//! field name and a colon before a word or a phrase; an unknown name is no
+//! filter. A leading `-` excludes the papers that match the term.
 
 use crate::text::{fold, words};
 
@@ -50,21 +51,39 @@ pub(crate) enum Pattern {
     YearStart(String),
 }
 
+impl Pattern {
+    /// Whether a year pattern takes `year`; the other patterns take none.
+    pub fn matches_year(&self, year: i32) -> bool {
+        match self {
+            Pattern::Years(from, to) => {
+                from.is_none_or(|f| year >= f) && to.is_none_or(|t| year <= t)
+            }
+            Pattern::YearStart(start) => year.to_string().starts_with(start.as_str()),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Term {
     pub field: Field,
     pub pattern: Pattern,
+    /// the papers that match are excluded
+    pub negated: bool,
+}
+
+struct Token {
+    negated: bool,
+    field: Field,
+    value: String,
+    quoted: bool,
 }
 
 pub(crate) fn parse(query: &str) -> Vec<Term> {
-    tokens(query)
-        .into_iter()
-        .flat_map(|(field, value, quoted)| terms(field, &fold(&value), quoted))
-        .collect()
+    tokens(query).iter().flat_map(terms).collect()
 }
 
-/// The (field, value, quoted) tokens of a query.
-fn tokens(query: &str) -> Vec<(Field, String, bool)> {
+fn tokens(query: &str) -> Vec<Token> {
     let chars: Vec<char> = query.chars().collect();
     let mut tokens = Vec::new();
     let mut i = 0;
@@ -72,6 +91,10 @@ fn tokens(query: &str) -> Vec<(Field, String, bool)> {
         if chars[i].is_whitespace() {
             i += 1;
             continue;
+        }
+        let negated = chars[i] == '-';
+        if negated {
+            i += 1;
         }
         let mut field = Field::Any;
         let name_end = i + chars[i..]
@@ -93,15 +116,32 @@ fn tokens(query: &str) -> Vec<(Field, String, bool)> {
             let space = chars[i..].iter().position(|c| c.is_whitespace());
             (i, space.map_or(chars.len(), |p| i + p))
         };
-        tokens.push((field, chars[start..end].iter().collect(), quoted));
+        let value = chars[start..end].iter().collect();
+        tokens.push(Token {
+            negated,
+            field,
+            value,
+            quoted,
+        });
         i = if quoted { end + 1 } else { end };
     }
     tokens
 }
 
-fn terms(field: Field, value: &str, quoted: bool) -> Vec<Term> {
-    let value = value.trim();
-    let term = |pattern| Term { field, pattern };
+fn terms(token: &Token) -> Vec<Term> {
+    let Token {
+        negated,
+        field,
+        quoted,
+        ..
+    } = *token;
+    let folded = fold(&token.value);
+    let value = folded.trim();
+    let term = |pattern| Term {
+        field,
+        pattern,
+        negated,
+    };
     if value.is_empty() {
         return Vec::new(); // a filter still being typed
     }
@@ -160,6 +200,7 @@ mod tests {
         Term {
             field,
             pattern: Pattern::Word(w.into()),
+            negated: false,
         }
     }
 
@@ -186,6 +227,7 @@ mod tests {
         let phrase = |field| Term {
             field,
             pattern: Pattern::Phrase(vec!["ice".into(), "sheet".into()]),
+            negated: false,
         };
         assert_eq!(
             parse(r#"t:"Ice sheet" "ice sheet""#),
@@ -201,6 +243,7 @@ mod tests {
         let y = |pattern| Term {
             field: Field::Year,
             pattern,
+            negated: false,
         };
         assert_eq!(parse("y:2012"), [y(Pattern::Years(Some(2012), Some(2012)))]);
         assert_eq!(
@@ -213,6 +256,7 @@ mod tests {
         let doi = |field, d: &str| Term {
             field,
             pattern: Pattern::Doi(d.into()),
+            negated: false,
         };
         assert_eq!(
             parse("https://doi.org/10.1038/X"),
@@ -222,5 +266,39 @@ mod tests {
             parse("10.5194 doi:nclimate"),
             [doi(Field::Any, "10.5194"), doi(Field::Doi, "nclimate")]
         );
+    }
+
+    #[test]
+    fn negation() {
+        let not = |field, pattern| Term {
+            field,
+            pattern,
+            negated: true,
+        };
+        assert_eq!(
+            parse(r#"-review -a:smith -"ice sheet" -y:2012 y:-1990 -"#),
+            [
+                not(Field::Any, Pattern::Word("review".into())),
+                not(Field::Author, Pattern::Word("smith".into())),
+                not(
+                    Field::Any,
+                    Pattern::Phrase(vec!["ice".into(), "sheet".into()])
+                ),
+                not(Field::Year, Pattern::Years(Some(2012), Some(2012))),
+                Term {
+                    field: Field::Year,
+                    pattern: Pattern::Years(None, Some(1990)),
+                    negated: false,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn years_match() {
+        assert!(Pattern::Years(Some(2010), None).matches_year(2026));
+        assert!(!Pattern::Years(None, Some(2010)).matches_year(2011));
+        assert!(Pattern::YearStart("19".into()).matches_year(1990));
+        assert!(!Pattern::Word("2012".into()).matches_year(2012));
     }
 }

@@ -50,6 +50,15 @@ Filters limit a word to one field, and quotes match a phrase:
 | `tag:greenland` | | the keywords |
 | `"ice sheet"`, `t:"ice sheet"` | | consecutive words |
 
+A leading `-` excludes the papers that match a term: `-review`,
+`-a:smith`, `-y:2012`.
+
+The year of each paper stands in a column on the left. Clicking a year
+keeps that year only (click again to undo), `⇧`-click stretches the year
+range to it, and `⌥`-click excludes it. Above the list, a strip shows the
+matches of each year (before the year filters): drag across it to keep a
+range of years, or click it like a year.
+
 ## Settings
 
 `settings.json` in the app config directory

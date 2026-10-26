@@ -13,7 +13,7 @@ mod watch;
 
 pub use cli::Papers;
 pub use item::{Cite, Item};
-pub use search::{Found, Hit, Library};
+pub use search::{Found, Hit, Library, YearCount};
 pub use text::{Matching, Span};
 pub use watch::BibWatch;
 

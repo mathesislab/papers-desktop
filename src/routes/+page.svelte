@@ -5,7 +5,9 @@
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import Preview from "$lib/Preview.svelte";
   import Marked from "$lib/Marked.svelte";
-  import type { Found, Hit, Item, Status } from "$lib/types";
+  import { extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
+  import YearStrip from "$lib/YearStrip.svelte";
+  import type { Found, Hit, Item, Status, YearCount } from "$lib/types";
 
   type Action = {
     /** in the list of shortcuts, and the label unless `label` is given */
@@ -20,6 +22,7 @@
   let query = $state("");
   let hits = $state<Hit[]>([]);
   let total = $state(0);
+  let years = $state<YearCount[]>([]);
   let selected = $state(0);
   let status = $state<Status>({ state: "loading" });
   let notice = $state<{ text: string; error: boolean } | null>(null);
@@ -84,6 +87,7 @@
     ["doi:", ""],
     ["tag:", ""],
     ['"…"', "phrase"],
+    ["-", "exclude"],
   ];
 
   const actionLabel = (a: Action, it: Item) => a.label?.(it) ?? a.name;
@@ -125,10 +129,26 @@
     if (q !== query) return; // a newer search is on its way
     hits = found.hits;
     total = found.total;
+    years = found.years;
     selected = 0;
     menu = false;
     notice = null;
     list?.scrollTo(0, 0);
+  }
+
+  /** A click on a year: only it; with ⇧, extend the range to it; with ⌥, exclude it. */
+  function pickYear(year: number, e: MouseEvent) {
+    if (e.altKey) query = toggleExcluded(query, year);
+    else if (e.shiftKey) query = extendYears(query, year);
+    else query = toggleYear(query, year);
+    search();
+    input.focus();
+  }
+
+  function pickYears(from: number, to: number) {
+    query = onlyYears(query, from, to);
+    search();
+    input.focus();
   }
 
   async function select(i: number) {
@@ -206,6 +226,9 @@
 
   <div class="body">
     <div class="results">
+      {#if years.length > 1}
+        <YearStrip {years} onyear={pickYear} onrange={pickYears} />
+      {/if}
       {#if hits.length}
         <ul bind:this={list} role="listbox">
           {#each hits as hit, i (hit.item.key)}
@@ -219,6 +242,18 @@
               onclick={() => select(i)}
               ondblclick={() => run(actions[0])}
             >
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span
+                class="year"
+                class:repeat={i > 0 && hits[i - 1].item.year === hit.item.year}
+                title="Only this year · ⇧ extend the range · ⌥ exclude it"
+                onmousedown={(e) => e.preventDefault()}
+                onclick={(e) => {
+                  if (hit.item.year === null) return;
+                  e.stopPropagation();
+                  pickYear(hit.item.year, e);
+                }}>{hit.item.year ?? ""}</span
+              >
               <div class="text">
                 <div class="title"><Marked spans={hit.title} /></div>
                 <div class="subtitle"><Marked spans={hit.subtitle} /></div>
@@ -393,6 +428,20 @@
   .menu .selected {
     background: var(--accent);
     color: var(--on-accent);
+  }
+  .year {
+    flex: none;
+    width: 38px;
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .year.repeat {
+    opacity: 0.3;
+  }
+  .year:hover {
+    text-decoration: underline;
   }
   .text {
     flex: 1;

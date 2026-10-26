@@ -1,8 +1,9 @@
-//! Search the library: every term of the query must match, and the matches
-//! come newest first. Each hit marks the words that matched, to show them.
+//! Search the library: every term of the query must match (or must not, for
+//! an excluded term), and the matches come newest first. Each hit marks the
+//! words that matched, to show them.
 
 use std::cmp::Reverse;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::Serialize;
 
@@ -19,10 +20,21 @@ pub struct Library {
 }
 
 /// The matches of a search, the first `limit` of them with their marks.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct Found {
     pub hits: Vec<Hit>,
     pub total: usize,
+    /// the matches of each year, but for the year filters of the query:
+    /// from the first year to the last, the years without a match included
+    pub years: Vec<YearCount>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct YearCount {
+    pub year: i32,
+    pub count: usize,
+    /// whether the year filters of the query take this year
+    pub selected: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -88,29 +100,53 @@ impl Library {
     pub fn search(&self, query: &str, matching: Matching, limit: usize) -> Found {
         let terms = query::parse(query);
         if terms.is_empty() {
-            return Found {
-                hits: Vec::new(),
-                total: 0,
-            };
+            return Found::default();
         }
-        let found: Vec<(usize, Marks)> = self
-            .order
-            .iter()
-            .filter_map(|&i| {
-                let mut marks = Marks::default();
-                let all = terms
-                    .iter()
-                    .all(|t| self.fields[i].matches(t, matching, &mut marks));
-                all.then_some((i, marks))
-            })
-            .collect();
-        let total = found.len();
-        let hits = found
-            .into_iter()
-            .take(limit)
-            .map(|(i, marks)| self.hit(i, &marks))
-            .collect();
-        Found { hits, total }
+        // the years are counted before the year filters apply
+        let (year_terms, terms): (Vec<&Term>, Vec<&Term>) =
+            terms.iter().partition(|t| t.field == Field::Year);
+        let mut counts = BTreeMap::new();
+        let mut found = Vec::new();
+        for &i in &self.order {
+            let fields = &self.fields[i];
+            let mut marks = Marks::default();
+            if !terms.iter().all(|t| fields.check(t, matching, &mut marks)) {
+                continue;
+            }
+            if let Some(year) = self.items[i].year {
+                *counts.entry(year).or_insert(0) += 1;
+            }
+            if year_terms
+                .iter()
+                .all(|t| fields.check(t, matching, &mut marks))
+            {
+                found.push((i, marks));
+            }
+        }
+        let selected = |year| {
+            year_terms
+                .iter()
+                .all(|t| t.pattern.matches_year(year) != t.negated)
+        };
+        let years = match (counts.keys().next(), counts.keys().next_back()) {
+            (Some(&first), Some(&last)) => (first..=last)
+                .map(|year| YearCount {
+                    year,
+                    count: counts.get(&year).copied().unwrap_or(0),
+                    selected: selected(year),
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        Found {
+            total: found.len(),
+            hits: found
+                .into_iter()
+                .take(limit)
+                .map(|(i, marks)| self.hit(i, &marks))
+                .collect(),
+            years,
+        }
     }
 
     fn hit(&self, i: usize, marks: &Marks) -> Hit {
@@ -152,6 +188,16 @@ impl Fields {
         }
     }
 
+    /// Whether an item passes a term: matches it, or does not match an
+    /// excluded term (whose words are not marked).
+    fn check(&self, term: &Term, matching: Matching, marks: &mut Marks) -> bool {
+        if term.negated {
+            !self.matches(term, matching, &mut Marks::default())
+        } else {
+            self.matches(term, matching, marks)
+        }
+    }
+
     /// Whether a term matches, marking the words it matched.
     fn matches(&self, term: &Term, matching: Matching, marks: &mut Marks) -> bool {
         let find = |text: &Text| match &term.pattern {
@@ -163,15 +209,9 @@ impl Fields {
             (Pattern::Doi(doi), _) => {
                 self.doi.contains(doi.as_str()) || self.key.contains(doi.as_str())
             }
-            (Pattern::Years(from, to), _) => {
-                let within = |y: i32| from.is_none_or(|f| y >= f) && to.is_none_or(|t| y <= t);
-                self.mark_year(marks, self.year.is_some_and(within))
-            }
-            (Pattern::YearStart(start), _) => {
-                let starts = self
-                    .year
-                    .is_some_and(|y| y.to_string().starts_with(start.as_str()));
-                self.mark_year(marks, starts)
+            (Pattern::Years(..) | Pattern::YearStart(_), _) => {
+                let matched = self.year.is_some_and(|y| term.pattern.matches_year(y));
+                self.mark_year(marks, matched)
             }
             (Pattern::Word(w), Field::Key) => {
                 self.key.starts_with(w.as_str()) || !self.key_words.find(w, matching).is_empty()
