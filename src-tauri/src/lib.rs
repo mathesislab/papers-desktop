@@ -148,6 +148,12 @@ fn copy(
     Ok(text)
 }
 
+/// Put a text on the clipboard: what the share menu of the preview copies.
+#[tauri::command]
+fn copy_text(app: AppHandle, text: String) -> Result<(), String> {
+    app.clipboard().write_text(text).map_err(|e| e.to_string())
+}
+
 /// The BibTeX of an item: formatted, or `raw` as written in its .bib file.
 #[tauri::command]
 fn bibtex(state: State<AppState>, id: String, raw: bool) -> Result<String, String> {
@@ -471,6 +477,7 @@ pub fn run() {
             open_link,
             reveal,
             copy,
+            copy_text,
             bibtex,
             pdf,
             set_preview,

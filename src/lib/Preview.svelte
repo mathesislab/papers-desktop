@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import * as cite from "$lib/cite";
   import { cached, thumbnail } from "$lib/pdf";
+  import Share from "$lib/Share.svelte";
   import type { Item } from "$lib/types";
 
   let {
@@ -129,7 +130,10 @@
     </div>
   </div>
   <section>
-    <h3>Citation{#if style}<span class="muted"> · {style}</span>{/if}</h3>
+    <div class="section-head">
+      <h3>Citation{#if style}<span class="muted"> · {style}</span>{/if}</h3>
+      <Share {item} {citation} />
+    </div>
     <!-- citeproc-js escapes the fields of the entry -->
     <div class="citation">{@html citation ?? ""}</div>
   </section>
@@ -248,6 +252,16 @@
   }
   .disclosure {
     cursor: pointer;
+  }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 5px;
+  }
+  .section-head h3 {
+    margin: 0;
   }
   .bibtex-head {
     display: flex;

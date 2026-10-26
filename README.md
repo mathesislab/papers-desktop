@@ -33,6 +33,10 @@ menu-bar icon has Reload Library, Settings… and Start at Login.
 
 `Ctrl` instead of `⌘` on Linux and Windows.
 
+In the preview, *Share* copies a snippet (the title and its link), the
+link, the DOI or the citation; the BibTeX shows formatted, or raw as written
+in its `.bib` file.
+
 The library reloads by itself when a `.bib` file changes (papers, JabRef,
 an editor, a sync client).
 
