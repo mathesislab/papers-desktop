@@ -180,7 +180,7 @@ where it is.
 
 On Ubuntu, from the [GitHub release](https://github.com/mathesislab/papers-desktop/releases):
 
-- the `.deb`: `sudo apt install ./Papers.Desktop_*_amd64.deb` (installs the
+- the `.deb`: `sudo apt install ./Papers-Desktop-linux-amd64.deb` (installs the
   `papers-desktop` command), or
 - the AppImage: `chmod +x` it, then run it.
 

@@ -353,9 +353,7 @@ fn reload(app: &AppHandle) {
             *state.citation_style.write().unwrap() = settings.citation_style.clone();
             let bibs = settings.bibs();
             if bibs.is_empty() {
-                return Err(
-                    "No library: choose its .bib files (menu-bar icon → Library Files…)".into(),
-                );
+                return Err("No library: choose its .bib files (menu-bar icon → Settings…)".into());
             }
             let library = Library::load(&bibs).map_err(|e| e.to_string())?;
             Ok((bibs, library))
