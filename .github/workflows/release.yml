@@ -44,10 +44,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # file names without the version: the website links to the latest release
           - os: ubuntu-22.04
             args: --bundles deb,appimage
+            assets: Papers-Desktop-linux-[arch][ext]
           - os: macos-14
             args: --bundles app,dmg
+            assets: Papers-Desktop-macos-[arch][ext]
     steps:
       - uses: actions/checkout@v4
 
@@ -75,5 +78,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           releaseId: ${{ needs.draft.outputs.id }}
+          assetNamePattern: ${{ matrix.assets }}
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
