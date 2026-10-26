@@ -148,6 +148,10 @@ fn fields() {
     assert!(keys(&lib, "tag:greenland a:robinson").is_empty());
     assert_eq!(keys(&lib, "key:robinson"), ["robinson2012"]);
     assert_eq!(keys(&lib, "k:smith"), ["smith_handbook"]);
+    assert_eq!(keys(&lib, "has:pdf"), ["feldmann2017", "robinson2012"]);
+    assert_eq!(keys(&lib, "has:pages"), ["robinson2012"]);
+    assert_eq!(keys(&lib, "greenland -has:pdf"), ["calov2015", "vandenbroeke2009"]);
+    assert!(keys(&lib, "has:abstract").is_empty());
     // the field of a filter only
     assert!(keys(&lib, "author:greenland").is_empty());
     assert!(keys(&lib, "title:robinson").is_empty());

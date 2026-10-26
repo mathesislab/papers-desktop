@@ -94,7 +94,7 @@ impl Library {
     }
 
     fn new(items: Vec<Item>, entries: Vec<BibEntry>, bibs: Vec<PathBuf>) -> Library {
-        let fields = items.iter().map(Fields::new).collect();
+        let fields = items.iter().zip(&entries).map(Fields::new).collect();
         let mut order: Vec<usize> = (0..items.len()).collect();
         order.sort_by_cached_key(|&i| {
             let it = &items[i];
@@ -228,10 +228,16 @@ struct Fields {
     key: String,
     key_words: Text,
     doi: String,
+    /// the names of the fields of the entry, and "pdf" with a linked file
+    has: BTreeSet<String>,
 }
 
 impl Fields {
-    fn new(item: &Item) -> Fields {
+    fn new((item, entry): (&Item, &BibEntry)) -> Fields {
+        let mut has: BTreeSet<String> = entry.entry.fields.keys().map(|f| fold(f)).collect();
+        if !item.files.is_empty() {
+            has.insert("pdf".into());
+        }
         Fields {
             title: Text::new(&item.title),
             authors: item.families.iter().map(|f| Text::new(f)).collect(),
@@ -241,6 +247,7 @@ impl Fields {
             key: fold(&item.key),
             key_words: Text::new(&item.key),
             doi: fold(item.doi.as_deref().unwrap_or_default()),
+            has,
         }
     }
 
@@ -275,6 +282,7 @@ impl Fields {
             (_, Field::Title) => mark(&mut marks.title, find(&self.title)),
             (_, Field::Journal) => mark(&mut marks.container, find(&self.container)),
             (_, Field::Tag) => self.keywords.iter().any(|k| !find(k).is_empty()),
+            (Pattern::Word(w), Field::Has) => self.has.contains(w),
             (_, Field::Author) => self.mark_authors(marks, self.authors.len(), find),
             (_, Field::First) => self.mark_authors(marks, 1, find),
             (pattern, Field::Any) => {

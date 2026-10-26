@@ -58,10 +58,11 @@ Filters limit a word to one field, and quotes match a phrase:
 | `key:robinson2012` | `k:` | the citation key |
 | `doi:10.5194` | | the DOI |
 | `tag:greenland` | | the keywords |
+| `has:pdf`, `has:abstract` | | a linked file, or any field of the entry |
 | `"ice sheet"`, `t:"ice sheet"` | | consecutive words |
 
 A leading `-` excludes the papers that match a term: `-review`,
-`-a:smith`, `-y:2012`.
+`-a:smith`, `-y:2012`, `-has:pdf`.
 
 The year of each paper stands in a column on the left. Clicking a year
 keeps that year only (click again to undo), `⇧`-click stretches the year

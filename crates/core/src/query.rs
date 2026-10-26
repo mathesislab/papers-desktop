@@ -20,6 +20,8 @@ pub(crate) enum Field {
     Doi,
     /// keywords
     Tag,
+    /// a field the entry has: `has:abstract`, or `has:pdf` for a linked file
+    Has,
 }
 
 impl Field {
@@ -33,6 +35,7 @@ impl Field {
             "key" | "k" => Field::Key,
             "doi" => Field::Doi,
             "tag" => Field::Tag,
+            "has" => Field::Has,
             _ => return None,
         })
     }
@@ -147,7 +150,7 @@ fn terms(token: &Token) -> Vec<Term> {
     }
     match field {
         Field::Year => vec![term(years(value))],
-        Field::Key => vec![term(Pattern::Word(value.to_string()))],
+        Field::Key | Field::Has => vec![term(Pattern::Word(value.to_string()))],
         Field::Doi => vec![term(Pattern::Doi(doi(value).to_string()))],
         Field::Any if !quoted && is_doi(value) => vec![term(Pattern::Doi(doi(value).to_string()))],
         _ => {
@@ -216,6 +219,7 @@ mod tests {
             ]
         );
         // an unknown field is a plain word; an empty filter is nothing yet
+        assert_eq!(parse("has:PDF"), [word(Field::Has, "pdf")]);
         assert_eq!(
             parse("foo:bar author:"),
             [word(Field::Any, "foo"), word(Field::Any, "bar")]

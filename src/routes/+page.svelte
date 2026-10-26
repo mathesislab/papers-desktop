@@ -90,6 +90,7 @@
     ["k:", "key"],
     ["doi:", ""],
     ["tag:", ""],
+    ["has:", "pdf, a field"],
     ['"…"', "phrase"],
     ["-", "exclude"],
   ];
