@@ -1,3 +1,4 @@
+mod hotkey;
 mod recent;
 mod selection;
 mod settings;
@@ -24,7 +25,6 @@ use tauri::{
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_clipboard_manager::ClipboardExt;
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 use update::{Available, Updates};
 
@@ -206,9 +206,7 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
 #[tauri::command]
 fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
     let old = Settings::load(&state.settings_path)?;
-    if settings.hotkey != old.hotkey {
-        set_hotkey(&app, &old.hotkey, &settings.hotkey)?;
-    }
+    hotkey::apply(&app, &old, &settings)?;
     settings.save(&state.settings_path)?;
     reload(&app);
     Ok(())
@@ -402,19 +400,11 @@ fn watch(app: &AppHandle, bibs: &[PathBuf]) {
     }
 }
 
-/// Take a new global shortcut in place of the old one, which stays if the new
-/// one cannot be had (another app has it, or it is not a valid shortcut).
-fn set_hotkey(app: &AppHandle, old: &str, new: &str) -> Result<(), String> {
-    let shortcuts = app.global_shortcut();
-    let _ = shortcuts.unregister(old);
-    if let Err(e) = shortcuts.register(new) {
-        let _ = shortcuts.register(old);
-        return Err(format!("{new} cannot be the hotkey: {e}"));
-    }
+/// The menu item of the panel, with its hotkey.
+pub(crate) fn show_hotkey(app: &AppHandle, hotkey: &str) {
     if let Some(item) = app.state::<AppState>().search_item.lock().unwrap().as_ref() {
-        let _ = item.set_accelerator(Some(new));
+        let _ = item.set_accelerator(Some(hotkey));
     }
-    Ok(())
 }
 
 /// The menu item of updates: "Check for Updates…", or the version found.
@@ -575,15 +565,7 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             None,
         ))
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _, event| {
-                    if event.state == ShortcutState::Pressed {
-                        toggle(app);
-                    }
-                })
-                .build(),
-        )
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -603,11 +585,8 @@ pub fn run() {
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
             });
             app.manage(Updates::default());
-            let hotkey = settings.hotkey;
-            if let Err(e) = app.global_shortcut().register(hotkey.as_str()) {
-                eprintln!("papers-desktop: cannot register the hotkey {hotkey}: {e}");
-            }
-            tray(app.handle(), &hotkey)?;
+            hotkey::setup(app.handle(), &settings);
+            tray(app.handle(), &settings.hotkey)?;
             selection::setup(app.handle());
             reload(app.handle());
             update::watch(app.handle());
