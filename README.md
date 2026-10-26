@@ -14,6 +14,19 @@ The app lives in the menu bar (no Dock icon). `⌥Space` shows the search
 panel; `↑`/`↓` move, `Esc` hides it. The menu-bar icon has Reload Library,
 Settings… and Start at Login.
 
+| Key | Action |
+|---|---|
+| `↵` | open the PDF (the DOI page when there is none) |
+| `⌘↵` | reveal the PDF in the Finder |
+| `⌘D` | open the DOI page |
+| `⌘⇧C` | copy the key |
+| `⌘.` | copy `[@key]` |
+| `⌘L` | copy `\cite{key}` |
+| `⌘B` | copy the BibTeX entry |
+| `⌘K` | list the actions |
+
+`Ctrl` instead of `⌘` on Linux and Windows.
+
 Every word must match the author, year, key, title, keyword, journal or DOI;
 first authors, keys and exact words rank first. A DOI or a doi.org link
 finds its entry.

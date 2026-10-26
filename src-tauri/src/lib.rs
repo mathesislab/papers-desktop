@@ -3,14 +3,15 @@ mod settings;
 use std::path::PathBuf;
 use std::sync::RwLock;
 
-use papers_core::{Item, Library};
-use serde::Serialize;
+use papers_core::{Cite, Item, Library, Papers};
+use serde::{Deserialize, Serialize};
 use settings::Settings;
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
@@ -26,10 +27,28 @@ enum Status {
     Failed { error: String },
 }
 
+/// What the copy action puts on the clipboard.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Format {
+    Key,
+    Pandoc,
+    Latex,
+    Bibtex,
+}
+
 struct AppState {
     settings_path: PathBuf,
+    papers: RwLock<Papers>,
     library: RwLock<Library>,
     status: RwLock<Status>,
+}
+
+impl AppState {
+    fn item(&self, key: &str) -> Result<Item, String> {
+        let library = self.library.read().unwrap();
+        library.get(key).cloned().ok_or_else(|| format!("{key}: not in the library"))
+    }
 }
 
 #[tauri::command]
@@ -48,14 +67,72 @@ fn hide_panel(app: AppHandle) {
     hide(&app);
 }
 
+/// Open the PDF of an item, else its web page.
+#[tauri::command]
+fn open(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
+    let item = state.item(&key)?;
+    match (item.files.first(), item.link()) {
+        (Some(file), _) => app.opener().open_path(file.to_string_lossy(), None::<&str>),
+        (None, Some(link)) => app.opener().open_url(link, None::<&str>),
+        (None, None) => return Err(format!("{key}: no file, DOI or URL")),
+    }
+    .map_err(|e| e.to_string())?;
+    hide_window(&app);
+    Ok(())
+}
+
+#[tauri::command]
+fn open_link(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
+    let link = state.item(&key)?.link().ok_or(format!("{key}: no DOI or URL"))?;
+    app.opener().open_url(link, None::<&str>).map_err(|e| e.to_string())?;
+    hide_window(&app);
+    Ok(())
+}
+
+#[tauri::command]
+fn reveal(app: AppHandle, state: State<AppState>, key: String) -> Result<(), String> {
+    let item = state.item(&key)?;
+    let file = item.files.first().ok_or(format!("{key}: no file"))?;
+    app.opener().reveal_item_in_dir(file).map_err(|e| e.to_string())?;
+    hide_window(&app);
+    Ok(())
+}
+
+/// Copy a citation or the bibtex of an item; returns the text copied.
+#[tauri::command]
+async fn copy(app: AppHandle, key: String, format: Format) -> Result<String, String> {
+    let item = app.state::<AppState>().item(&key)?;
+    let text = match format {
+        Format::Key => item.cite(Cite::Key),
+        Format::Pandoc => item.cite(Cite::Pandoc),
+        Format::Latex => item.cite(Cite::Latex),
+        Format::Bibtex => bibtex(app.clone(), key).await?,
+    };
+    app.clipboard().write_text(text.clone()).map_err(|e| e.to_string())?;
+    Ok(text)
+}
+
+/// The bibtex entry of a key, from papers.
+#[tauri::command]
+async fn bibtex(app: AppHandle, key: String) -> Result<String, String> {
+    let papers = app.state::<AppState>().papers.read().unwrap().clone();
+    tauri::async_runtime::spawn_blocking(move || papers.bibtex(&key))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
 /// Re-read the settings and the library, in the background.
 fn reload(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         set_status(&app, Status::Loading);
         let state = app.state::<AppState>();
-        let loaded = Settings::load(&state.settings_path)
-            .and_then(|settings| settings.papers().load().map_err(|e| e.to_string()));
+        let loaded = Settings::load(&state.settings_path).and_then(|settings| {
+            let papers = settings.papers();
+            *state.papers.write().unwrap() = papers.clone();
+            papers.load().map_err(|e| e.to_string())
+        });
         let status = match loaded {
             Ok(library) => {
                 let count = library.len();
@@ -107,11 +184,16 @@ fn show(app: &AppHandle) {
 
 /// Hide the panel and hand the focus back to the previous app.
 fn hide(app: &AppHandle) {
+    hide_window(app);
+    #[cfg(target_os = "macos")]
+    let _ = app.hide();
+}
+
+/// Hide the panel only: the app just opened takes the focus.
+fn hide_window(app: &AppHandle) {
     if let Some(panel) = app.get_webview_window(PANEL) {
         let _ = panel.hide();
     }
-    #[cfg(target_os = "macos")]
-    let _ = app.hide();
 }
 
 fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
@@ -160,6 +242,7 @@ pub fn run() {
         // a second launch shows the panel of the running app
         .plugin(tauri_plugin_single_instance::init(|app, _, _| show(app)))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -175,12 +258,14 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let settings_path = app.path().app_config_dir()?.join("settings.json");
-            let hotkey = Settings::load(&settings_path).unwrap_or_default().hotkey;
+            let settings = Settings::load(&settings_path).unwrap_or_default();
             app.manage(AppState {
                 settings_path,
+                papers: RwLock::new(settings.papers()),
                 library: RwLock::new(Library::new(Vec::new())),
                 status: RwLock::new(Status::Loading),
             });
+            let hotkey = settings.hotkey;
             if let Err(e) = app.global_shortcut().register(hotkey.as_str()) {
                 eprintln!("papers-desktop: cannot register the hotkey {hotkey}: {e}");
             }
@@ -193,7 +278,9 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![search, status, hide_panel])
+        .invoke_handler(tauri::generate_handler![
+            search, status, hide_panel, open, open_link, reveal, copy, bibtex
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

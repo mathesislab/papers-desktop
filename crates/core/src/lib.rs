@@ -9,7 +9,7 @@ mod item;
 mod search;
 
 pub use cli::Papers;
-pub use item::Item;
+pub use item::{Cite, Item};
 pub use search::Library;
 
 #[derive(Debug, thiserror::Error)]

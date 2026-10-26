@@ -49,6 +49,12 @@ impl Papers {
         Ok(PathBuf::from(self.run(&["config", "bibtex"])?.trim()))
     }
 
+    /// The bibtex entry of one key, as papers writes it.
+    pub fn bibtex(&self, key: &str) -> Result<String> {
+        let bibtex = self.run(&["list", "--strict", "--format", "bibtex", "--key", key])?;
+        Ok(bibtex.trim().to_string())
+    }
+
     fn run(&self, args: &[&str]) -> Result<String> {
         let cmd = format!("papers {}", args.join(" "));
         let mut command = Command::new(&self.exe);

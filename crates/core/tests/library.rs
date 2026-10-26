@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use papers_core::{Library, Papers};
+use papers_core::{Cite, Library, Papers};
 
 fn library() -> Library {
     Library::from_csl_json(include_str!("fixtures/library.json")).unwrap()
@@ -104,6 +104,17 @@ fn doi() {
 }
 
 #[test]
+fn cite_and_link() {
+    let lib = library();
+    let it = lib.get("robinson2012").unwrap();
+    assert_eq!(it.cite(Cite::Key), "robinson2012");
+    assert_eq!(it.cite(Cite::Pandoc), "[@robinson2012]");
+    assert_eq!(it.cite(Cite::Latex), "\\cite{robinson2012}");
+    assert_eq!(it.link().unwrap(), "https://doi.org/10.1038/nclimate1449");
+    assert_eq!(lib.get("smith_handbook").unwrap().link(), None);
+}
+
+#[test]
 fn limit() {
     let lib = library();
     assert_eq!(lib.search("greenland", 50).len(), 3);
@@ -119,6 +130,12 @@ fn user_library() {
     let lib = papers.load().unwrap();
     assert!(!lib.is_empty());
     println!("{} entries", lib.len());
+    // exact key: robinson2012 only, not robinson2012a or robinson2012-supp
+    let key = &lib.search("robinson", 1)[0].key;
+    let bibtex = papers.bibtex(key).unwrap();
+    assert!(bibtex.starts_with('@'));
+    assert_eq!(bibtex.matches("\n@").count(), 0);
+    assert!(bibtex.contains(&format!("{{{key},")));
     for query in ["greenland ice sheet", "robinson", "10.5194"] {
         let hits = lib.search(query, 5);
         println!("{query}:");

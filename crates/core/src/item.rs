@@ -2,9 +2,21 @@
 
 use std::path::PathBuf;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::csl;
+
+/// How a citation of an item is written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Cite {
+    /// `robinson2012`
+    Key,
+    /// `[@robinson2012]` (pandoc, texmark)
+    Pandoc,
+    /// `\cite{robinson2012}`
+    Latex,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Item {
@@ -29,6 +41,22 @@ pub struct Item {
 }
 
 impl Item {
+    pub fn cite(&self, style: Cite) -> String {
+        match style {
+            Cite::Key => self.key.clone(),
+            Cite::Pandoc => format!("[@{}]", self.key),
+            Cite::Latex => format!("\\cite{{{}}}", self.key),
+        }
+    }
+
+    /// The web page of the item: its DOI link, else its URL.
+    pub fn link(&self) -> Option<String> {
+        match (&self.doi, &self.url) {
+            (Some(doi), _) => Some(format!("https://doi.org/{doi}")),
+            (None, url) => url.clone(),
+        }
+    }
+
     pub(crate) fn from_csl(e: csl::Entry) -> Item {
         let names = if e.author.is_empty() {
             &e.editor
