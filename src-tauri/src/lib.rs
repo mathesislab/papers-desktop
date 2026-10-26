@@ -1,4 +1,5 @@
 mod settings;
+mod styles;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -6,7 +7,9 @@ use std::sync::{Mutex, RwLock};
 
 use papers_core::{BibWatch, Cite, Found, Item, Library, Matching, Papers};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use settings::Settings;
+use styles::Style;
 use tauri::image::Image;
 use tauri::ipc::Response;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
@@ -47,6 +50,7 @@ struct AppState {
     settings_path: PathBuf,
     papers: RwLock<Papers>,
     matching: RwLock<Matching>,
+    citation_style: RwLock<String>,
     library: RwLock<Library>,
     status: RwLock<Status>,
     /// the bibtex file of the library, replaced if the library changes
@@ -149,6 +153,22 @@ async fn bibtex(app: AppHandle, key: String) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
+/// The CSL-JSON of an item, for the citation processor of the panel.
+#[tauri::command]
+fn csl(state: State<AppState>, key: String) -> Result<Value, String> {
+    let library = state.library.read().unwrap();
+    library
+        .csl(&key)
+        .cloned()
+        .ok_or_else(|| format!("{key}: not in the library"))
+}
+
+/// The CSL style of the settings.
+#[tauri::command]
+fn citation_style(state: State<AppState>) -> Result<Style, String> {
+    Style::load(&state.citation_style.read().unwrap())
+}
+
 /// The first PDF of an item, for the preview.
 #[tauri::command]
 async fn pdf(app: AppHandle, key: String) -> Result<Response, String> {
@@ -195,6 +215,7 @@ fn reload(app: &AppHandle) {
         let loaded = Settings::load(&state.settings_path).and_then(|settings| {
             let papers = settings.papers();
             *state.matching.write().unwrap() = settings.matching;
+            *state.citation_style.write().unwrap() = settings.citation_style;
             *state.papers.write().unwrap() = papers.clone();
             let library = papers.load().map_err(|e| e.to_string())?;
             Ok((papers, library))
@@ -368,7 +389,8 @@ pub fn run() {
                 settings_path,
                 papers: RwLock::new(settings.papers()),
                 matching: RwLock::new(settings.matching),
-                library: RwLock::new(Library::new(Vec::new())),
+                citation_style: RwLock::new(settings.citation_style.clone()),
+                library: RwLock::new(Library::default()),
                 status: RwLock::new(Status::Loading),
                 watch: Mutex::new(None),
                 reloads: AtomicU64::new(0),
@@ -396,7 +418,9 @@ pub fn run() {
             copy,
             bibtex,
             pdf,
-            set_preview
+            set_preview,
+            csl,
+            citation_style
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

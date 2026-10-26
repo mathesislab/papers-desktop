@@ -284,6 +284,10 @@ fn cite_and_link() {
     assert_eq!(it.cite(Cite::Latex), "\\cite{robinson2012}");
     assert_eq!(it.link().unwrap(), "https://doi.org/10.1038/nclimate1449");
     assert_eq!(lib.get("smith_handbook").unwrap().link(), None);
+    // the CSL-JSON as papers wrote it, for a citation processor
+    let csl = lib.csl("robinson2012").unwrap();
+    assert_eq!(csl["DOI"], "10.1038/nclimate1449");
+    assert_eq!(csl["author"][1]["family"], "Calov");
 }
 
 /// Loads the real library through the papers CLI: `cargo test -- --ignored`

@@ -17,6 +17,8 @@ pub struct Settings {
     pub hotkey: String,
     /// "word-start" (default), or "inside-words" to match inside words too
     pub matching: Matching,
+    /// a bundled CSL style, or the path of a .csl file
+    pub citation_style: String,
 }
 
 impl Default for Settings {
@@ -25,6 +27,7 @@ impl Default for Settings {
             papers: None,
             hotkey: "Alt+Space".into(),
             matching: Matching::default(),
+            citation_style: crate::styles::DEFAULT.into(),
         }
     }
 }

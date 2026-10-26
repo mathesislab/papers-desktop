@@ -1,5 +1,15 @@
+<script lang="ts" module>
+  const bibtexCache = new Map<string, string>();
+
+  /** Forget the BibTeX entries: the library changed. */
+  export function forgetBibtex() {
+    bibtexCache.clear();
+  }
+</script>
+
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import * as cite from "$lib/cite";
   import { cached, thumbnail } from "$lib/pdf";
   import type { Item } from "$lib/types";
 
@@ -17,18 +27,38 @@
   const PAGE_WIDTH = 170;
   // wait for the selection to settle before reading a PDF or calling papers
   const DELAY = 150;
-  const bibtexCache = new Map<string, string>();
 
   let image = $state<string | null>(null);
+  let citation = $state<string | null>(null);
+  let style = $state("");
   let bibtex = $state<string | null>(null);
   let failed = $state(false);
+  let showBibtex = $state(storedBibtex());
+
+  // the BibTeX stays open or closed between sessions
+  function storedBibtex(): boolean {
+    try {
+      return localStorage.getItem("bibtex") === "open";
+    } catch {
+      return false;
+    }
+  }
+
+  function toggleBibtex() {
+    showBibtex = !showBibtex;
+    try {
+      localStorage.setItem("bibtex", showBibtex ? "open" : "closed");
+    } catch {}
+  }
 
   let hasPdf = $derived(item.files.some((f) => f.toLowerCase().endsWith(".pdf")));
   let source = $derived([item.container, item.year].filter(Boolean).join(" · "));
 
   $effect(() => {
     const key = item.key;
+    const withBibtex = showBibtex;
     image = cached(key) ?? null;
+    citation = cite.cached(key) ?? null;
     bibtex = bibtexCache.get(key) ?? null;
     failed = false;
     let live = true;
@@ -38,7 +68,17 @@
           .then((url) => live && (image = url))
           .catch(() => live && (failed = true));
       }
-      if (bibtex === null) {
+      if (citation === null) {
+        cite
+          .citation(key)
+          .then(async (html) => {
+            style = await cite.styleName();
+            if (live) citation = html;
+          })
+          .catch((err) => live && (citation = `<span class="error">${escape(String(err))}</span>`));
+      }
+      // from papers, only when shown
+      if (withBibtex && bibtex === null) {
         invoke<string>("bibtex", { key })
           .then((text) => {
             bibtexCache.set(key, text);
@@ -52,6 +92,10 @@
       clearTimeout(timer);
     };
   });
+
+  function escape(text: string): string {
+    return text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
+  }
 </script>
 
 <aside class="preview">
@@ -80,7 +124,17 @@
       {#if item.files.length > 1}<p class="muted">{item.files.length} files</p>{/if}
     </div>
   </div>
-  <pre class="bibtex">{bibtex ?? ""}</pre>
+  <section>
+    <h3>Citation{#if style}<span class="muted"> · {style}</span>{/if}</h3>
+    <!-- citeproc-js escapes the fields of the entry -->
+    <div class="citation">{@html citation ?? ""}</div>
+  </section>
+  <section>
+    <button class="disclosure" onclick={toggleBibtex} aria-expanded={showBibtex}>
+      <span class="caret" class:open={showBibtex}>▸</span> BibTeX
+    </button>
+    {#if showBibtex}<pre class="bibtex">{bibtex ?? ""}</pre>{/if}
+  </section>
 </aside>
 
 <style>
@@ -158,6 +212,48 @@
     border: 1px solid var(--line);
     border-radius: 4px;
     font-size: 11px;
+  }
+  h3,
+  .disclosure {
+    margin: 0 0 5px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  h3 .muted {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .disclosure {
+    cursor: pointer;
+  }
+  .caret {
+    display: inline-block;
+    transition: transform 0.1s;
+  }
+  .caret.open {
+    transform: rotate(90deg);
+  }
+  .citation {
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  /* the numbers of numbered styles */
+  .citation :global(.csl-left-margin) {
+    display: none;
+  }
+  .citation :global(.csl-right-inline) {
+    display: inline;
+  }
+  .citation :global(.error) {
+    color: var(--error);
   }
   .bibtex {
     margin: 0;

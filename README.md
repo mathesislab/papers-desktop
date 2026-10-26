@@ -23,7 +23,7 @@ Settings… and Start at Login.
 | `⌘.` | copy `[@key]` |
 | `⌘L` | copy `\cite{key}` |
 | `⌘B` | copy the BibTeX entry |
-| `⌘P` | show or hide the preview (first page, details, BibTeX) |
+| `⌘P` | show or hide the preview (first page, details, citation, BibTeX) |
 | `⌘K` | list the actions |
 
 `Ctrl` instead of `⌘` on Linux and Windows.
@@ -70,7 +70,8 @@ macOS), written on first run:
 {
   "papers": "/path/to/bin/papers",
   "hotkey": "Alt+Space",
-  "matching": "word-start"
+  "matching": "word-start",
+  "citation_style": "copernicus-publications"
 }
 ```
 
@@ -80,6 +81,12 @@ macOS), written on first run:
 - `hotkey`: read at startup only (quit and restart after a change).
 - `matching`: `"word-start"` (default), or `"inside-words"` to also match
   inside words from three letters ("stab" finds Multistability).
+- `citation_style`: the style of the citation in the preview, one of the
+  bundled [CSL](https://citationstyles.org) styles —
+  `copernicus-publications` (default), `american-geophysical-union`,
+  `american-meteorological-society`, `nature`, `science`, `apa`,
+  `elsevier-harvard`, `chicago-author-date` — or the path of any `.csl` file
+  (e.g. from the [Zotero style repository](https://www.zotero.org/styles)).
 
 Reload Library re-reads the settings and the library.
 

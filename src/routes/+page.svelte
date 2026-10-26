@@ -3,7 +3,8 @@
   import { listen } from "@tauri-apps/api/event";
   import { onMount, tick } from "svelte";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
-  import Preview from "$lib/Preview.svelte";
+  import { resetStyle } from "$lib/cite";
+  import Preview, { forgetBibtex } from "$lib/Preview.svelte";
   import Marked from "$lib/Marked.svelte";
   import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
   import YearStrip from "$lib/YearStrip.svelte";
@@ -198,7 +199,12 @@
     const unlisten = [
       listen<Status>("status", (e) => {
         status = e.payload;
-        if (status.state === "ready") search();
+        if (status.state === "ready") {
+          // the settings or the entries may have changed
+          resetStyle();
+          forgetBibtex();
+          search();
+        }
       }),
       listen("shown", () => {
         menu = false;

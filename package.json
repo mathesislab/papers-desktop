@@ -16,6 +16,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
+    "citeproc": "^2.4.63",
     "pdfjs-dist": "^6.4.299"
   },
   "devDependencies": {

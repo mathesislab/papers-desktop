@@ -5,18 +5,22 @@
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::query::{self, Field, Pattern, Term};
 use crate::text::{Matching, Span, Text, fold};
 use crate::{Item, Result, csl};
 
+#[derive(Default)]
 pub struct Library {
     items: Vec<Item>,
     fields: Vec<Fields>,
     /// the items newest first, then by first author and title
     order: Vec<usize>,
     by_key: HashMap<String, usize>,
+    /// the CSL-JSON of each item, as papers wrote it
+    csl: Vec<Value>,
 }
 
 /// The matches of a search, the first `limit` of them with their marks.
@@ -57,7 +61,17 @@ pub(crate) struct Marks {
 }
 
 impl Library {
-    pub fn new(items: Vec<Item>) -> Library {
+    /// The library of the CSL-JSON that `papers list --format csl-json` writes.
+    pub fn from_csl_json(json: &str) -> Result<Library> {
+        let csl: Vec<Value> = serde_json::from_str(json)?;
+        let entries = csl.iter().map(csl::Entry::deserialize);
+        let items = entries
+            .map(|e| Ok(Item::from_csl(e?)))
+            .collect::<Result<_>>()?;
+        Ok(Library::new(items, csl))
+    }
+
+    fn new(items: Vec<Item>, csl: Vec<Value>) -> Library {
         let fields = items.iter().map(Fields::new).collect();
         let mut order: Vec<usize> = (0..items.len()).collect();
         order.sort_by_cached_key(|&i| {
@@ -75,14 +89,8 @@ impl Library {
             fields,
             order,
             by_key,
+            csl,
         }
-    }
-
-    pub fn from_csl_json(json: &str) -> Result<Library> {
-        let entries = csl::parse(json)?;
-        Ok(Library::new(
-            entries.into_iter().map(Item::from_csl).collect(),
-        ))
     }
 
     pub fn len(&self) -> usize {
@@ -95,6 +103,11 @@ impl Library {
 
     pub fn get(&self, key: &str) -> Option<&Item> {
         self.by_key.get(key).map(|&i| &self.items[i])
+    }
+
+    /// The CSL-JSON of an item, as papers wrote it: for a citation processor.
+    pub fn csl(&self, key: &str) -> Option<&Value> {
+        self.by_key.get(key).map(|&i| &self.csl[i])
     }
 
     pub fn search(&self, query: &str, matching: Matching, limit: usize) -> Found {

@@ -72,7 +72,3 @@ fn first_year(text: &str) -> Option<i32> {
         .find(|w| w.len() == 4)
         .and_then(|w| w.parse().ok())
 }
-
-pub(crate) fn parse(json: &str) -> serde_json::Result<Vec<Entry>> {
-    serde_json::from_str(json)
-}
