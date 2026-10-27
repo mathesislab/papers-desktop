@@ -8,7 +8,7 @@
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { hasTag, toggleTag } from "$lib/query";
   import Details from "$lib/library/Details.svelte";
-  import { PdfReader } from "$lib/library/reader.svelte";
+  import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
   import ReaderView from "$lib/library/ReaderView.svelte";
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
@@ -109,7 +109,7 @@
   let reader = $derived.by(() => {
     const id = layout.active;
     if (!id) return null;
-    return untrack(() => new PdfReader(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
+    return untrack(() => new PdfjsReader(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
   });
 
   /** what the search found, next to it */

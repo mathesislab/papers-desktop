@@ -1,9 +1,9 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import type { PdfReader } from "./reader.svelte";
+  import type { Reader } from "./reader.svelte";
 
   /** The controls of a PDF, in the toolbar of the window. */
-  let { reader }: { reader: PdfReader } = $props();
+  let { reader }: { reader: Reader } = $props();
 
   function onkeydown(e: KeyboardEvent) {
     if (e.key === "Enter") {

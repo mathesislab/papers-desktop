@@ -1,16 +1,14 @@
 <script lang="ts">
   import { openUrl } from "@tauri-apps/plugin-opener";
-  import "pdfjs-dist/web/pdf_viewer.css";
   import { onMount } from "svelte";
-  import type { Entry, PdfReader } from "./reader.svelte";
+  import type { Entry, Reader } from "./reader.svelte";
 
-  /** The pages of a PDF, and its outline over them when asked. */
-  let { reader }: { reader: PdfReader } = $props();
+  /** The pages of a PDF, its outline in a strip at their left when asked. */
+  let { reader }: { reader: Reader } = $props();
 
-  let container = $state<HTMLDivElement>();
-  let pages = $state<HTMLDivElement>();
+  let area = $state<HTMLDivElement>();
 
-  onMount(() => reader.mount(container!, pages!));
+  onMount(() => reader.mount(area!));
 
   /** The links of a PDF to the web open in the browser, not in the window. */
   function onclick(e: MouseEvent) {
@@ -34,26 +32,30 @@
   </ul>
 {/snippet}
 
-<div class="area">
+<div class="reader">
   {#if reader.showOutline}
     <nav class="outline">{@render entries(reader.outline)}</nav>
   {/if}
-  {#if reader.error}
-    <p class="error">{reader.error}</p>
-  {/if}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div class="container" bind:this={container} onclickcapture={onclick}>
-    <div class="pdfViewer" bind:this={pages}></div>
+  <div class="area" bind:this={area} onclickcapture={onclick}>
+    {#if reader.error}<p class="error">{reader.error}</p>{/if}
   </div>
 </div>
 
 <style>
+  .reader {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
   .area {
     flex: 1;
+    min-width: 0;
     position: relative;
     background: var(--line);
   }
-  .container {
+  /* made by the pdf.js reader */
+  .area :global(.pdfjs-container) {
     position: absolute;
     inset: 0;
     overflow: auto;
@@ -61,17 +63,11 @@
     user-select: text;
   }
   .outline {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    bottom: 8px;
-    z-index: 2;
-    width: 280px;
+    flex: none;
+    width: 240px;
     overflow-y: auto;
-    padding: 6px 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--menu-bg);
+    padding: 8px 0;
+    border-right: 1px solid var(--line);
   }
   .outline ul {
     margin: 0;
@@ -83,6 +79,7 @@
     width: 100%;
     padding: 3px 8px;
     border: none;
+    border-radius: 4px;
     background: none;
     color: var(--fg);
     font: inherit;
