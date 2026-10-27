@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
 use main_window::{Layout, MAIN};
-use papers_core::{BibWatch, Cite, Found, Item, Library, Matching};
+use papers_core::{BibWatch, Cite, Found, Item, Library, Matching, Row, TagCount};
 use recent::Recent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -103,6 +103,46 @@ fn search(state: State<AppState>, query: String) -> Found {
     }
     let matching = *state.matching.read().unwrap();
     library.search(&query, matching, MAX_RESULTS)
+}
+
+/// The rows of the table of the main window: all the items. Async: the
+/// linked files are looked for.
+#[tauri::command]
+async fn rows(app: AppHandle) -> Vec<Row> {
+    app.state::<AppState>().library.read().unwrap().rows()
+}
+
+/// The ids of the items that match a query, newest first: all the items
+/// without one.
+#[tauri::command]
+fn matching(state: State<AppState>, query: String) -> Vec<String> {
+    let matching = *state.matching.read().unwrap();
+    state.library.read().unwrap().matching(&query, matching)
+}
+
+#[tauri::command]
+fn tags(state: State<AppState>) -> Vec<TagCount> {
+    state.library.read().unwrap().tags()
+}
+
+/// The groups of items that may be the same paper.
+#[tauri::command]
+fn duplicates(state: State<AppState>) -> Vec<Vec<String>> {
+    state.library.read().unwrap().duplicates()
+}
+
+/// The ids of the recent papers, the last first.
+#[tauri::command]
+fn recent(state: State<AppState>) -> Vec<String> {
+    let library = state.library.read().unwrap();
+    let hits = state.recent.hits(&library);
+    hits.into_iter().map(|h| h.item.id).collect()
+}
+
+/// An item, for the details of the main window.
+#[tauri::command]
+fn item(state: State<AppState>, id: String) -> Result<Item, String> {
+    state.item(&id)
 }
 
 /// The entries closest to a reference, pasted.
@@ -509,7 +549,7 @@ fn feedback(app: &AppHandle) -> Result<(), String> {
 
 fn set_status(app: &AppHandle, status: Status) {
     *app.state::<AppState>().status.write().unwrap() = status.clone();
-    let _ = app.emit_to(PANEL, "status", status);
+    let _ = app.emit("status", status);
 }
 
 fn toggle(app: &AppHandle) {
@@ -692,6 +732,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             search,
             closest,
+            rows,
+            matching,
+            tags,
+            duplicates,
+            recent,
+            item,
             status,
             hide_panel,
             open,

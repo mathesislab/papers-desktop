@@ -176,6 +176,27 @@ impl Library {
         self.by_id.get(id).map(|&i| &self.entries[i])
     }
 
+    /// The items, newest first.
+    pub(crate) fn ordered(&self) -> impl Iterator<Item = &Item> {
+        self.order.iter().map(|&i| &self.items[i])
+    }
+
+    /// The ids of the items that match a query, newest first: all the items
+    /// for an empty query.
+    pub fn matching(&self, query: &str, matching: Matching) -> Vec<String> {
+        let terms = query::parse(query);
+        self.order
+            .iter()
+            .filter(|&&i| {
+                let mut marks = Marks::default();
+                terms
+                    .iter()
+                    .all(|t| self.fields[i].check(t, matching, &mut marks))
+            })
+            .map(|&i| self.items[i].id.clone())
+            .collect()
+    }
+
     pub fn search(&self, query: &str, matching: Matching, limit: usize) -> Found {
         let terms = query::parse(query);
         if terms.is_empty() {

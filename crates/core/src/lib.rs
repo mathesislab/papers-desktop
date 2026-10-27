@@ -10,6 +10,7 @@ mod item;
 mod query;
 mod reference;
 mod search;
+mod table;
 mod text;
 mod to_csl;
 mod watch;
@@ -18,6 +19,7 @@ use std::path::PathBuf;
 
 pub use item::{Cite, Item};
 pub use search::{Found, Hit, Library, YearCount};
+pub use table::{FileState, Row, TagCount};
 pub use text::{Matching, Span};
 pub use watch::BibWatch;
 
