@@ -35,6 +35,7 @@ const MAX_RESULTS: usize = 200;
 const PANEL_WIDTH: f64 = 720.0;
 const PANEL_HEIGHT: f64 = 460.0;
 const PREVIEW_WIDTH: f64 = 500.0;
+const NEW_ISSUE: &str = "https://github.com/mathesislab/papers-desktop/issues/new";
 
 /// The library as the panel sees it, sent with the "status" event.
 #[derive(Debug, Clone, Serialize)]
@@ -249,6 +250,12 @@ async fn open_settings(app: AppHandle) {
     settings_window(&app, None);
 }
 
+/// The feedback form, from the settings.
+#[tauri::command]
+fn send_feedback(app: AppHandle) -> Result<(), String> {
+    feedback(&app)
+}
+
 /// Put a text of item `id` on the clipboard, with its HTML for a formatted
 /// paste: what the share menu of the preview copies, and the citations.
 #[tauri::command]
@@ -447,6 +454,22 @@ fn settings_window(app: &AppHandle, section: Option<&str>) {
     }
 }
 
+/// Open GitHub's form for a new issue, with the version and the system
+/// below the text to write.
+fn feedback(app: &AppHandle) -> Result<(), String> {
+    let body = format!(
+        "\n\n\nPapers Desktop {}, {} {}",
+        app.package_info().version,
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    let form =
+        tauri::Url::parse_with_params(NEW_ISSUE, [("body", body)]).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_url(form.as_str(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 fn set_status(app: &AppHandle, status: Status) {
     *app.state::<AppState>().status.write().unwrap() = status.clone();
     let _ = app.emit_to(PANEL, "status", status);
@@ -522,6 +545,7 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
             &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
             &MenuItem::with_id(app, "reload", "Reload Library", true, None::<&str>)?,
             &updates,
+            &MenuItem::with_id(app, "feedback", "Send Feedback…", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, "quit", "Quit Papers", true, None::<&str>)?,
         ],
@@ -538,6 +562,11 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
             "search" => show(app),
             "settings" => settings_window(app, None),
             "updates" => settings_window(app, Some("updates")),
+            "feedback" => {
+                if let Err(e) = feedback(app) {
+                    eprintln!("papers-desktop: cannot open the feedback form: {e}");
+                }
+            }
             "reload" => reload(app),
             "quit" => app.exit(0),
             _ => {}
@@ -617,6 +646,7 @@ pub fn run() {
             save_settings,
             set_start_at_login,
             open_settings,
+            send_feedback,
             check_update,
             found_update,
             install_update

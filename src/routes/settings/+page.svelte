@@ -176,6 +176,14 @@
     recentCleared = true;
   }
 
+  async function sendFeedback() {
+    try {
+      await invoke("send_feedback");
+    } catch (err) {
+      show(String(err), true);
+    }
+  }
+
   async function toggleStartAtLogin() {
     try {
       startAtLogin = await invoke<boolean>("set_start_at_login", { on: !startAtLogin });
@@ -379,6 +387,13 @@
           onchange={(e) => save({ check_updates: e.currentTarget.checked })}
         />
       </label>
+      <div class="row">
+        <span>
+          <span class="label">Feedback</span>
+          <span class="hint">Report a problem or suggest an idea, on GitHub</span>
+        </span>
+        <button onclick={sendFeedback}>Send Feedback…</button>
+      </div>
     </section>
 
     <footer class:error={notice?.error}>{notice?.text ?? "Changes apply at once."}</footer>

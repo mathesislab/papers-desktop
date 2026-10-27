@@ -18,7 +18,8 @@ design and the plans (main window, editing, adding papers) are in
 
 The app lives in the menu bar (no Dock icon). `⌥Space` (`Ctrl+Alt+Space`
 elsewhere) shows the search panel; `↑`/`↓` move, `Esc` hides it. The
-menu-bar icon has Settings… (also `⌘,` in the panel) and Reload Library.
+menu-bar icon has Settings… (also `⌘,` in the panel), Reload Library, and
+Send Feedback…, which opens a new GitHub issue.
 
 | Key | Action |
 |---|---|
