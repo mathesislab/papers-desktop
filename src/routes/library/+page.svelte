@@ -24,6 +24,7 @@
   type Layout = {
     sidebar: number;
     details: number;
+    showSidebar: boolean;
     showDetails: boolean;
     columns: Shown[];
     sort: Sort;
@@ -35,6 +36,7 @@
   const DEFAULTS: Layout = {
     sidebar: 230,
     details: 340,
+    showSidebar: true,
     showDetails: true,
     columns: DEFAULT_COLUMNS,
     sort: null,
@@ -74,11 +76,21 @@
   /** after a paper is closed: the library, or the next paper open (a setting) */
   let afterClose: "library" | "next" = "library";
 
-  const detailsShortcut: Shortcut = { key: "i", mod: true, alt: true };
-  const settingsShortcut: Shortcut = { key: ",", mod: true };
-  const findShortcut: Shortcut = { key: "f", mod: true };
+  /** The commands of the window, and their keys: in the menu of the app on
+   *  macOS, where they also work while the PDF view has the keys; caught by
+   *  the page elsewhere. */
+  const commands: Record<string, Shortcut> = {
+    close: { key: "w", mod: true },
+    find: { key: "f", mod: true },
+    "zoom-in": { key: "=", mod: true },
+    "zoom-out": { key: "-", mod: true },
+    "zoom-fit": { key: "0", mod: true },
+    sidebar: { key: "s", mod: true, alt: true },
+    details: { key: "i", mod: true, alt: true },
+    library: { key: "1", mod: true },
+    settings: { key: ",", mod: true },
+  };
   const allShortcut: Shortcut = { key: "a", mod: true };
-  const closeShortcut: Shortcut = { key: "w", mod: true };
 
   const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 
@@ -118,7 +130,7 @@
   /** what the search found, next to it */
   let summary = $derived(
     `${shown.length} ${shown.length === 1 ? "paper" : "papers"}` +
-      (selected.size > 1 ? ` · ${selected.size} selected` : ""),
+      (selected.size ? ` · ${selected.size} selected` : ""),
   );
 
   let libraries = $derived.by(() => {
@@ -159,10 +171,8 @@
       }),
       // ⌘I in the panel
       listen<string>("open", (e) => openPaper(e.payload)),
-      // ⌘W, ⌘F and the zoom, from the menu of the app
-      listen("close", closeActive),
-      listen("find", () => (reader ? reader.focusFind() : input?.select())),
-      listen<number>("zoom", (e) => reader?.zoom(e.payload)),
+      // from the menu of the app
+      listen<string>("command", (e) => command(e.payload)),
     ];
     load();
     return () => unlisten.forEach((u) => u.then((f) => f()));
@@ -266,12 +276,15 @@
     selected = new Set(a < 0 ? [to] : ids.slice(a, b + 1));
   }
 
-  /** ↑ ↓ move the focus; with shift they extend the selection. */
-  function move(step: number, extend: boolean) {
+  /** Move the focus by some rows, or to the first or last; extending the
+   *  selection, or not. */
+  function move(to: number | "first" | "last", extend: boolean) {
     const ids = shown.map((r) => r.id);
     if (!ids.length) return;
     const at = focus ? ids.indexOf(focus) : -1;
-    const next = ids[at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + step))];
+    const index =
+      to === "first" ? 0 : to === "last" ? ids.length - 1 : at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + to));
+    const next = ids[index];
     if (extend && anchor) {
       selectRange(anchor, next);
     } else {
@@ -341,61 +354,94 @@
     tick().then(() => input?.focus());
   }
 
+  /** A command of the window, from the menu of the app or its keys. */
+  function command(name: string) {
+    switch (name) {
+      case "close":
+        return closeActive();
+      case "find":
+        return reader ? reader.focusFind() : input?.select();
+      case "zoom-in":
+        return reader?.zoom(1);
+      case "zoom-out":
+        return reader?.zoom(-1);
+      case "zoom-fit":
+        return reader?.zoom(0);
+      case "sidebar":
+        layout.showSidebar = !layout.showSidebar;
+        return;
+      case "details":
+        layout.showDetails = !layout.showDetails;
+        return;
+      case "library":
+        return showLibrary();
+      case "next-tab":
+        return cycle(1);
+      case "previous-tab":
+        return cycle(-1);
+      case "settings":
+        invoke("open_settings");
+    }
+  }
+
+  /** the rows a page key moves: about those in view */
+  const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 120) / 26));
+
   function onkeydown(e: KeyboardEvent) {
+    // ⌃Tab: the menu of macOS does not get it from a field of the page
+    if (e.ctrlKey && e.key === "Tab") {
+      e.preventDefault();
+      command(e.shiftKey ? "previous-tab" : "next-tab");
+      return;
+    }
+    // the commands: from the menu on macOS
+    if (!mac) {
+      const name = Object.keys(commands).find((c) => matches(e, commands[c]));
+      if (name) {
+        e.preventDefault();
+        command(name);
+        return;
+      }
+    }
+    // a paper in front has the keys of its reader
+    if (!layout.active) libraryKey(e);
+  }
+
+  /** The keys of the library: / to search, the arrows, the page keys, Home
+   *  and End move (shift extends the selection), Enter opens, Esc clears the
+   *  search then leaves it. */
+  function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
-    // on macOS, the menu of the app takes ⌘W, ⌘F and the zoom (also from
-    // the PDF view, which has the keys while read)
-    if (!mac && matches(e, closeShortcut)) {
+    const mod = mac ? e.metaKey : e.ctrlKey;
+    const go = (to: number | "first" | "last") => {
       e.preventDefault();
-      closeActive();
-    } else if (e.ctrlKey && e.key === "Tab") {
+      move(to, e.shiftKey);
+    };
+    if (e.key === "/" && !typing) {
       e.preventDefault();
-      cycle(e.shiftKey ? -1 : 1);
-    } else if (layout.active) {
-      readerKey(e);
-    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      move(e.key === "ArrowDown" ? 1 : -1, e.shiftKey);
+      input?.select();
+    } else if (e.key === "ArrowDown") {
+      go(mod ? "last" : 1);
+    } else if (e.key === "ArrowUp") {
+      go(mod ? "first" : -1);
+    } else if (e.key === "PageDown") {
+      go(pageRows());
+    } else if (e.key === "PageUp") {
+      go(-pageRows());
+    } else if (e.key === "Home" && !typing) {
+      go("first");
+    } else if (e.key === "End" && !typing) {
+      go("last");
     } else if (e.key === "Enter" && focus) {
       e.preventDefault();
       open(focus);
-    } else if (e.key === "Escape" && typing && query) {
+    } else if (e.key === "Escape" && typing) {
       e.preventDefault();
-      query = "";
-    } else if (!mac && matches(e, findShortcut)) {
-      e.preventDefault();
-      input?.select();
+      if (query) query = "";
+      else input?.blur();
     } else if (matches(e, allShortcut) && !typing) {
       e.preventDefault();
       selected = new Set(shown.map((r) => r.id));
-    } else {
-      windowKey(e);
-    }
-  }
-
-  /** The keys of a paper in front: find, zoom (from the menu on macOS); the
-   *  arrows scroll it. */
-  function readerKey(e: KeyboardEvent) {
-    if (mac) {
-      windowKey(e);
-    } else if (matches(e, findShortcut)) {
-      e.preventDefault();
-      reader?.focusFind();
-    } else if (e.ctrlKey && (e.key === "=" || e.key === "+" || e.key === "-" || e.key === "0")) {
-      e.preventDefault();
-      reader?.zoom(e.key === "0" ? 0 : e.key === "-" ? -1 : 1);
-    } else {
-      windowKey(e);
-    }
-  }
-
-  function windowKey(e: KeyboardEvent) {
-    if (matches(e, detailsShortcut)) {
-      e.preventDefault();
-      layout.showDetails = !layout.showDetails;
-    } else if (matches(e, settingsShortcut)) {
-      e.preventDefault();
-      invoke("open_settings");
     }
   }
 
@@ -412,32 +458,34 @@
 <svelte:window {onkeydown} />
 
 <main>
-  <aside class="sidebar" style:width="{layout.sidebar}px">
-    <Sidebar
-      {libraries}
-      {views}
-      {tags}
-      view={layout.active ? null : view}
-      filtered={(tag) => !layout.active && hasTag(query, tag)}
-      {papers}
-      active={layout.active}
-      onview={(v) => {
-        view = v;
-        showLibrary();
-      }}
-      ontag={(tag) => {
-        query = toggleTag(query, tag);
-        showLibrary();
-      }}
-      onpaper={(id) => (layout.active = id)}
-      onclose={closePaper}
-    />
-  </aside>
-  <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
+  {#if layout.showSidebar}
+    <aside class="sidebar" style:width="{layout.sidebar}px">
+      <Sidebar
+        {libraries}
+        {views}
+        {tags}
+        view={layout.active ? null : view}
+        filtered={(tag) => !layout.active && hasTag(query, tag)}
+        {papers}
+        active={layout.active}
+        onview={(v) => {
+          view = v;
+          showLibrary();
+        }}
+        ontag={(tag) => {
+          query = toggleTag(query, tag);
+          showLibrary();
+        }}
+        onpaper={(id) => (layout.active = id)}
+        onclose={closePaper}
+      />
+    </aside>
+    <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
+  {/if}
   <div class="right">
     <header>
       {#if reader}
-        <ReaderBar {reader} />
+        <ReaderBar {reader} onclose={closeActive} />
       {:else}
         <input
           bind:this={input}
@@ -465,7 +513,7 @@
       <button
         class="tool"
         class:on={layout.showDetails}
-        title="Details ({label(detailsShortcut)})"
+        title="Details ({label(commands.details)})"
         onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
       >
     </header>
@@ -581,7 +629,7 @@
   }
   /* room for "99999 papers · 999 selected": the export stays in place */
   .count {
-    min-width: 26ch;
+    min-width: 23ch;
     color: var(--muted);
     font-size: 12px;
     font-variant-numeric: tabular-nums;

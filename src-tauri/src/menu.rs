@@ -1,16 +1,24 @@
 //! The menu bar of the app (macOS), shown while the main window is open. Its
-//! ⌘W closes the paper in front of the main window, as the page of the
-//! window decides, not the window; find and zoom reach the page also while
-//! the PDF view has the keys.
+//! items are the commands of the main window, which reach its page also
+//! while the PDF view has the keys; ⌘W closes the paper in front, as the page
+//! decides, not the window.
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::{AppHandle, Emitter, Manager, Webview};
+use tauri::{AppHandle, Emitter, Manager, Webview, Wry};
 
 use crate::PANEL;
 use crate::main_window::MAIN;
 
+/// the commands that lead to the fields and lists of the page, which take
+/// the keys back from the PDF view
+const TO_PAGE: &[&str] = &["find", "library", "next-tab", "previous-tab"];
+
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let separator = || PredefinedMenuItem::separator(app);
+    // a command of the main window: its id is the name the page knows
+    let item = |id: &str, text: &str, keys: &str| -> tauri::Result<MenuItem<Wry>> {
+        MenuItem::with_id(app, id, text, true, Some(keys))
+    };
     let menu = Menu::with_items(
         app,
         &[
@@ -20,6 +28,8 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 true,
                 &[
                     &PredefinedMenuItem::about(app, None, None)?,
+                    &separator()?,
+                    &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
                     &separator()?,
                     &PredefinedMenuItem::services(app, None)?,
                     &separator()?,
@@ -55,7 +65,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                     &PredefinedMenuItem::paste(app, None)?,
                     &PredefinedMenuItem::select_all(app, None)?,
                     &separator()?,
-                    &MenuItem::with_id(app, "find", "Find", true, Some("CmdOrCtrl+F"))?,
+                    &item("find", "Find", "CmdOrCtrl+F")?,
                 ],
             )?,
             &Submenu::with_items(
@@ -63,9 +73,12 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 "View",
                 true,
                 &[
-                    &MenuItem::with_id(app, "zoom-in", "Zoom In", true, Some("CmdOrCtrl+="))?,
-                    &MenuItem::with_id(app, "zoom-out", "Zoom Out", true, Some("CmdOrCtrl+-"))?,
-                    &MenuItem::with_id(app, "zoom-fit", "Fit Width", true, Some("CmdOrCtrl+0"))?,
+                    &item("sidebar", "Show or Hide the Sidebar", "CmdOrCtrl+Alt+S")?,
+                    &item("details", "Show or Hide the Details", "CmdOrCtrl+Alt+I")?,
+                    &separator()?,
+                    &item("zoom-in", "Zoom In", "CmdOrCtrl+=")?,
+                    &item("zoom-out", "Zoom Out", "CmdOrCtrl+-")?,
+                    &item("zoom-fit", "Fit Width", "CmdOrCtrl+0")?,
                 ],
             )?,
             &Submenu::with_items(
@@ -75,6 +88,10 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 &[
                     &PredefinedMenuItem::minimize(app, None)?,
                     &PredefinedMenuItem::maximize(app, None)?,
+                    &separator()?,
+                    &item("library", "Library", "CmdOrCtrl+1")?,
+                    &item("next-tab", "Next Tab", "Ctrl+Tab")?,
+                    &item("previous-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
                 ],
             )?,
         ],
@@ -82,11 +99,8 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     app.set_menu(menu)?;
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
-        "find" => find(app),
-        "zoom-in" => zoom(app, 1),
-        "zoom-out" => zoom(app, -1),
-        "zoom-fit" => zoom(app, 0),
-        _ => {}
+        "settings" => crate::settings_window(app, None),
+        id => command(app, id),
     });
     Ok(())
 }
@@ -100,7 +114,7 @@ fn close(app: &AppHandle) {
     };
     match window.label() {
         MAIN => {
-            let _ = window.emit("close", ());
+            let _ = window.emit("command", "close");
         }
         PANEL => crate::hide(app),
         _ => {
@@ -109,21 +123,15 @@ fn close(app: &AppHandle) {
     }
 }
 
-/// ⌘F in the main window: its find field takes the keys, from the PDF view too.
-fn find(app: &AppHandle) {
+/// A command for the main window, when it is in front.
+fn command(app: &AppHandle, name: &str) {
     if let Some(window) = app.get_webview_window(MAIN)
         && window.is_focused().unwrap_or(false)
     {
-        let webview: &Webview = window.as_ref();
-        let _ = webview.set_focus();
-        let _ = window.emit("find", ());
-    }
-}
-
-fn zoom(app: &AppHandle, step: i32) {
-    if let Some(window) = app.get_webview_window(MAIN)
-        && window.is_focused().unwrap_or(false)
-    {
-        let _ = window.emit("zoom", step);
+        if TO_PAGE.contains(&name) {
+            let webview: &Webview = window.as_ref();
+            let _ = webview.set_focus();
+        }
+        let _ = window.emit("command", name);
     }
 }

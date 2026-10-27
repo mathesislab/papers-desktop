@@ -42,9 +42,19 @@ that the same search filters, with the `.bib` files, views (recently opened,
 no PDF, broken file links, possible duplicates) and tags in the sidebar.
 Its columns sort, move, resize, and show or hide (right-click the headers).
 Enter or a double-click opens a paper in a tab of the sidebar: on macOS the
-PDF shows as in Preview (PDFKit), elsewhere with pdf.js. `⌘W` closes it,
-`⌃Tab` goes from one tab to the next, `⌘⌥I` shows or hides the details.
-Export… writes the selection, or the papers shown, to a `.bib` file.
+PDF shows as in Preview (PDFKit), elsewhere with pdf.js. Export… writes the
+selection, or the papers shown, to a `.bib` file.
+
+| Key (library window) | Action |
+|---|---|
+| `/`, `⌘F` | search the library, or find in the PDF |
+| `↑` `↓`, `⇟` `⇞`, `↖` `↘` (`⌘↑` `⌘↓`) | move; with `⇧`, extend the selection |
+| `↵` | open the paper |
+| `Esc` | clear the search, then leave it |
+| `⌘W` | close the paper (the window, from the library) |
+| `⌘1`, `⌃Tab`, `⌃⇧Tab` | the library, the next tab, the one before |
+| `⌘⌥S`, `⌘⌥I` | show or hide the sidebar, the details |
+| `⌘=` `⌘-` `⌘0` | zoom in, out, fit the width |
 
 Drag a paper out of the list to drop its PDF in the Finder, a mail or a
 chat, and the citation out of the preview to drop it, formatted, in a

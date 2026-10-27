@@ -1,9 +1,10 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import { label } from "$lib/keys";
   import type { Reader } from "./reader.svelte";
 
   /** The controls of a PDF, in the toolbar of the window. */
-  let { reader }: { reader: Reader } = $props();
+  let { reader, onclose }: { reader: Reader; onclose: () => void } = $props();
 
   function onkeydown(e: KeyboardEvent) {
     if (e.key === "Enter") {
@@ -33,6 +34,7 @@
 <button title="Fit the width" onclick={() => reader.zoom(0)}>Fit</button>
 <button title="Zoom in" onclick={() => reader.zoom(1)}>+</button>
 <button title="Open in the default PDF app" onclick={() => invoke("open", { id: reader.id })}>Open ↗</button>
+<button title="Close ({label({ key: 'w', mod: true })})" onclick={onclose}>Close</button>
 
 <style>
   button {
