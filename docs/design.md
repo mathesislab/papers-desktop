@@ -95,6 +95,14 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 - **Tags** are matched whole in the search: `tag:amoc` is that tag, `*` a
   wildcard (`tag:amoc*`, `tag:*amoc`); a plain word still finds tags
   loosely. A click on a tag in the sidebar writes `tag:x`.
+- **Nested tags**: a tag with `/` is under the tags before it:
+  `climate/amoc` is under `climate`. Still one string in `keywords`, which
+  papers writes as any other. `tag:climate` finds `climate` and the tags
+  under it, not `climate-review`; `tag:climate/amoc` that tag and the ones
+  under it. The sidebar shows the tags as a tree that folds, a parent
+  counting the papers under it (a parent no paper has itself shows too);
+  renaming a parent renames the tags under it, and the pinned tags and the
+  search follow; a chip shows the whole tag, its parents dimmed.
 
 **Done** (after 0.5.1, not released): exact tags; the writer
 (`src-tauri/src/writer.rs`: the commands `writers`, `set_tags`,
@@ -113,24 +121,27 @@ worktree, merged one by one):
    all the papers selected; right-click a tag in the sidebar: *Rename…*,
    *Pin to a key*; the pinned tags kept in the settings; `1`–`9` toggle a
    pinned tag on the selection, when not typing.
-2. **Edit and add**: *Edit* in the details turns the BibTeX of the entry into
+2. **Nested tags**, as above: the search, the tree in the sidebar, the
+   rename of a parent, the chips.
+3. **Edit and add**: *Edit* in the details turns the BibTeX of the entry into
    an editor, `⌘S` saves, `Esc` cancels. *Add…* in the toolbar: a DOI
    (its BibTeX from doi.org, the first use of the network) or BibTeX pasted;
    a duplicate check first (the same DOI, or the same title and year); the
    `.bib` to add to, when there are several.
-3. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
+4. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
    selection, after asking (the PDFs stay); attach a PDF, detach it, rename
    it by the names of papers (`papers file rename`, papers libraries only);
    `⌘Z` / `⌘⇧Z` undo and redo the last change of the library, but undo the
    typing in a field.
-4. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
+5. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
    `.tex` or `.aux` tag their papers, and the keys not in the library are
    listed.
 
 **Upstream** (perrette/papers, branch `v3`, not in a release yet): `edit
 --from` (#117), safe writes (#119) and the smaller points (#121) are in
 (pull request #123), with `--porcelain` and BibJSON (#118, pull requests
-#125, #126). Open: #120 (changes made outside papers, in the history).
+#125, #126). Open: #120 (changes made outside papers, in the history),
+#128 (nested tags, as the app has them).
 
 Towards the app's own writer for everything: it follows the conventions of
 papers (`.papers/config.json` for the key and file names, tags in
