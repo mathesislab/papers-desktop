@@ -88,12 +88,14 @@
   const menuShortcut: Shortcut = { key: "k", mod: true };
   const previewShortcut: Shortcut = { key: "p", mod: true };
   const settingsShortcut: Shortcut = { key: ",", mod: true };
+  const libraryShortcut: Shortcut = { key: "o", mod: true };
 
   /** the list shown in the empty panel */
   const shortcuts: [string, string][] = [
     ...actions.map((a): [string, string] => [a.name, label(a.shortcut)]),
     ["Preview", label(previewShortcut)],
     ["Settings", label(settingsShortcut)],
+    ["Library", label(libraryShortcut)],
     ["All actions", label(menuShortcut)],
     ["Move", "↑ ↓"],
     ["Close", "Esc"],
@@ -251,6 +253,9 @@
     } else if (matches(e, settingsShortcut)) {
       e.preventDefault();
       invoke("open_settings");
+    } else if (matches(e, libraryShortcut)) {
+      e.preventDefault();
+      invoke("open_library");
     } else if (menu && e.key === "Enter") {
       e.preventDefault();
       run(available[menuSelected]);

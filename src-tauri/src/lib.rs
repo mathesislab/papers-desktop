@@ -1,4 +1,7 @@
+#[cfg(target_os = "macos")]
+mod focus;
 mod hotkey;
+mod main_window;
 mod recent;
 mod selection;
 mod settings;
@@ -9,6 +12,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
+use main_window::{Layout, MAIN};
 use papers_core::{BibWatch, Cite, Found, Item, Library, Matching};
 use recent::Recent;
 use serde::{Deserialize, Serialize};
@@ -26,6 +30,7 @@ use tauri::{
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_window_state::StateFlags;
 use update::{Available, Installed, Updates};
 
 const PANEL: &str = "panel";
@@ -71,6 +76,7 @@ struct AppState {
     /// the menu item that tells about an update
     update_item: Mutex<Option<MenuItem<Wry>>>,
     recent: Recent,
+    layout: Layout,
 }
 
 impl AppState {
@@ -262,6 +268,23 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn open_settings(app: AppHandle) {
     settings_window(&app, None);
+}
+
+/// The main window, from the panel (⌘O).
+#[tauri::command]
+async fn open_library(app: AppHandle) {
+    main_window::show(&app);
+}
+
+/// The layout of the main window saved last.
+#[tauri::command]
+fn layout(state: State<AppState>) -> Option<Value> {
+    state.layout.load()
+}
+
+#[tauri::command]
+fn save_layout(state: State<AppState>, layout: Value) {
+    state.layout.save(&layout);
 }
 
 /// The feedback form, from the settings.
@@ -523,16 +546,26 @@ fn show(app: &AppHandle) {
         let y = origin.y + screen.height as i32 / 5;
         let _ = panel.set_position(PhysicalPosition::new(x, y));
     }
+    #[cfg(target_os = "macos")]
+    focus::remember();
     let _ = panel.show();
     let _ = panel.set_focus();
     let _ = panel.emit("shown", ());
 }
 
-/// Hide the panel and hand the focus back to the previous app.
+/// Hide the panel and hand the focus back to the app that had it; when
+/// Papers had it, its other window takes it.
 fn hide(app: &AppHandle) {
     hide_window(app);
     #[cfg(target_os = "macos")]
-    let _ = app.hide();
+    if !focus::give_back()
+        && !app
+            .webview_windows()
+            .values()
+            .any(|w| w.is_visible().unwrap_or(false))
+    {
+        let _ = app.hide();
+    }
 }
 
 /// Hide the panel only: the app just opened takes the focus.
@@ -556,6 +589,7 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         app,
         &[
             &search,
+            &MenuItem::with_id(app, "library", "Open Library", true, None::<&str>)?,
             &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
             &MenuItem::with_id(app, "reload", "Reload Library", true, None::<&str>)?,
             &updates,
@@ -574,6 +608,7 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "search" => show(app),
+            "library" => main_window::show(app),
             "settings" => settings_window(app, None),
             "updates" => settings_window(app, Some("updates")),
             "feedback" => {
@@ -600,6 +635,12 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_denylist(&[PANEL, SETTINGS])
+                .with_state_flags(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED)
+                .build(),
+        )
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_drag::init())
@@ -626,6 +667,7 @@ pub fn run() {
                 search_item: Mutex::new(None),
                 update_item: Mutex::new(None),
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
+                layout: Layout::new(app.path().app_data_dir()?.join("window.json")),
             });
             app.manage(Updates::new(app.handle()));
             hotkey::setup(app.handle(), &settings);
@@ -642,6 +684,9 @@ pub fn run() {
         .on_window_event(|window, event| {
             if window.label() == PANEL && matches!(event, WindowEvent::Focused(false)) {
                 let _ = window.hide();
+            }
+            if window.label() == MAIN && matches!(event, WindowEvent::Destroyed) {
+                main_window::closed(window.app_handle());
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -664,6 +709,9 @@ pub fn run() {
             save_settings,
             set_start_at_login,
             open_settings,
+            open_library,
+            layout,
+            save_layout,
             send_feedback,
             check_update,
             found_update,
