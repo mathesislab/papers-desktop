@@ -741,6 +741,7 @@ pub fn run() {
             selection::setup(app.handle());
             reload(app.handle());
             update::watch(app.handle());
+            main_window::reopen(app.handle());
             // after an update, the settings tell of it
             if app.state::<Updates>().installed().is_some() {
                 settings_window(app.handle(), Some("updates"));
@@ -751,8 +752,12 @@ pub fn run() {
             if window.label() == PANEL && matches!(event, WindowEvent::Focused(false)) {
                 let _ = window.hide();
             }
-            if window.label() == MAIN && matches!(event, WindowEvent::Destroyed) {
-                main_window::closed(window.app_handle());
+            if window.label() == MAIN {
+                match event {
+                    WindowEvent::CloseRequested { .. } => main_window::closing(window.app_handle()),
+                    WindowEvent::Destroyed => main_window::closed(window.app_handle()),
+                    _ => {}
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![

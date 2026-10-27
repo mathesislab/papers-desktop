@@ -9,6 +9,26 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 pub const MAIN: &str = "main";
 
+/// Show the main window at start when it was open as the app last quit, or
+/// crashed: a note in the data folder says so while it is open.
+pub fn reopen(app: &AppHandle) {
+    if note(app).is_some_and(|note| note.exists()) {
+        show(app);
+    }
+}
+
+/// The main window closed: it does not open at the next start. Quitting the
+/// app does not close it.
+pub fn closing(app: &AppHandle) {
+    if let Some(note) = note(app) {
+        let _ = fs::remove_file(note);
+    }
+}
+
+fn note(app: &AppHandle) -> Option<PathBuf> {
+    Some(app.path().app_data_dir().ok()?.join("main-window-open"))
+}
+
 /// Show the main window. It is made hidden the first time: its page shows
 /// it once drawn.
 pub fn show(app: &AppHandle) {
@@ -59,6 +79,14 @@ fn make(app: &AppHandle, url: &str) {
         .build();
     if let Err(e) = window {
         eprintln!("papers-desktop: cannot open the main window: {e}");
+        return;
+    }
+    if let Some(note) = note(app) {
+        let written =
+            fs::create_dir_all(note.parent().unwrap()).and_then(|()| fs::write(&note, ""));
+        if let Err(e) = written {
+            eprintln!("papers-desktop: cannot save {}: {e}", note.display());
+        }
     }
 }
 
