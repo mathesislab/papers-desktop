@@ -122,11 +122,8 @@ worktree, merged one by one):
 
 **Upstream** (perrette/papers): issues #117 (`edit --from`), #118
 (`--json`), #119 (safe writes), #120 (changes made outside papers, in the
-history), #121 (smaller points). `papers edit --from` is done on the branch
-`edit-from` of the papers checkout (`~/models/papers`, tests pass): its pull
-request opens with `sh docs/drafts/open-pr.sh` (a fork of alex-robinson,
-then the pull request against `v3`, text in `docs/drafts/pr-edit-from.md`).
-Field edits of a papers library wait for it.
+history), #121 (smaller points). `papers edit --from` is pull request #122 (from the fork
+alex-robinson/papers, branch `edit-from`, against `v3`). Field edits of a papers library wait for it.
 
 Towards the app's own writer for everything: it follows the conventions of
 papers (`.papers/config.json` for the key and file names, tags in
