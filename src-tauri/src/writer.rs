@@ -12,7 +12,7 @@ use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use papers_core::{Added, Change, Item, same_tag};
+use papers_core::{Added, Change, Item, same_tag, under};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
@@ -621,6 +621,17 @@ fn tag(
     Ok(())
 }
 
+/// The tag that renaming `old` to `new` leaves of `tag`: `new` for `old`,
+/// `new/rest` for `old/rest`, and nothing for any other tag.
+fn renamed(tag: &str, old: &str, new: &str) -> Option<String> {
+    if same_tag(tag, old) {
+        Some(new.to_string())
+    } else {
+        under(tag, old).map(|rest| format!("{new}/{rest}"))
+    }
+}
+
+/// Renames a tag, and the tags under it.
 fn rename(state: &AppState, old: &str, new: &str) -> Result<(), WriteError> {
     let new = new.trim();
     if new.is_empty() {
@@ -628,42 +639,49 @@ fn rename(state: &AppState, old: &str, new: &str) -> Result<(), WriteError> {
     }
     let tagged: Vec<Item> = {
         let library = state.library.read().unwrap();
-        let has = |it: &&Item| it.keywords.iter().any(|t| same_tag(t, old));
+        let has = |it: &&Item| it.keywords.iter().any(|t| renamed(t, old, new).is_some());
         library.items().iter().filter(has).cloned().collect()
     };
     let targets = state
         .writers
         .targets(tagged.iter().map(|it| it.bib.as_path()))?;
     let mut native = Vec::new();
-    // papers renames a tag as written: each spelling of it
-    let mut spellings: BTreeMap<&Path, (&PapersLibrary, BTreeSet<&str>)> = BTreeMap::new();
+    // papers renames a tag as written: each spelling of it, and of the tags
+    // under it, to what it becomes
+    type Renames<'a> = BTreeSet<(&'a str, String)>;
+    let mut spellings: BTreeMap<&Path, (&PapersLibrary, Renames)> = BTreeMap::new();
     for item in &tagged {
         match targets.papers(&item.bib) {
             None => {
                 let mut tags: Vec<String> = Vec::new();
                 for tag in &item.keywords {
-                    let tag = if same_tag(tag, old) { new } else { tag };
-                    if !tags.iter().any(|t| same_tag(t, tag)) {
-                        tags.push(tag.to_string());
+                    let tag = renamed(tag, old, new).unwrap_or_else(|| tag.clone());
+                    if !tags.iter().any(|t| same_tag(t, &tag)) {
+                        tags.push(tag);
                     }
                 }
                 native.push((item.id.clone(), tags));
             }
             Some(library) => {
-                let written = item.keywords.iter().filter(|t| same_tag(t, old));
+                let written = item
+                    .keywords
+                    .iter()
+                    .filter_map(|t| Some((t.as_str(), renamed(t, old, new)?)));
                 spellings
                     .entry(item.bib.as_path())
                     .or_insert((library, BTreeSet::new()))
                     .1
-                    .extend(written.map(String::as_str));
+                    .extend(written);
             }
         }
     }
     let changes = state.library.read().unwrap().set_tags(&native)?;
     state.writers.done(changes);
     for (library, spellings) in spellings.into_values() {
-        for spelling in spellings {
-            let args = ["--rename", spelling, new].map(String::from);
+        // the tags under a tag first, so that a name made by one rename is not
+        // renamed again by the next (`a` to `a/b` makes the `a/b` of before)
+        for (spelling, to) in spellings.into_iter().rev() {
+            let args = ["--rename", spelling, &to].map(String::from);
             state.writers.run(library, "tag", &args, None)?;
         }
     }
@@ -920,6 +938,41 @@ mod tests {
     }
 
     #[test]
+    fn native_renames_a_subtree() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = dir.path().join("refs.bib");
+        let entry = |key: &str, tags: &str| format!("@article{{{key},\n keywords = {{{tags}}}\n}}");
+        let entries = [
+            entry("a", "Climate/AMOC, climate, ice"),
+            entry("b", "climate/amoc/tipping, ocean"),
+            entry("c", "climate-review"),
+        ];
+        fs::write(&bib, entries.join("\n\n") + "\n").unwrap();
+        let state = state(dir.path(), std::slice::from_ref(&bib), "");
+        let keywords = |key: &str| {
+            let text = fs::read_to_string(&bib).unwrap();
+            let start = text.find(&format!("@article{{{key},")).unwrap();
+            let line = text[start..].lines().nth(1).unwrap().to_string();
+            line.trim().to_string()
+        };
+
+        // the tag, and the tags under it, the rest as written; not "climate-review"
+        rename(&state, "CLIMATE", "earth").unwrap();
+        assert_eq!(keywords("a"), "keywords = {earth/AMOC, earth, ice}");
+        assert_eq!(keywords("b"), "keywords = {earth/amoc/tipping, ocean}");
+        assert_eq!(keywords("c"), "keywords = {climate-review}");
+        reload(&state);
+        // a rename that makes a tag the item has already
+        rename(&state, "earth/amoc", "earth").unwrap();
+        assert_eq!(keywords("a"), "keywords = {earth, ice}");
+        assert_eq!(keywords("b"), "keywords = {earth/tipping, ocean}");
+        // not a tag that only starts like the one renamed
+        reload(&state);
+        rename(&state, "earth/tip", "sea").unwrap();
+        assert_eq!(keywords("b"), "keywords = {earth/tipping, ocean}");
+    }
+
+    #[test]
     fn papers_library_without_papers_is_read_only() {
         let dir = tempfile::tempdir().unwrap();
         let bib = papers_library(dir.path());
@@ -988,6 +1041,18 @@ mod tests {
         tag(&state, &strings(&["a", "b"]), &strings(&["new"]), &[]).unwrap();
         reload(&state);
         assert!(text(&bib).contains("keywords = {new}"), "{}", text(&bib));
+        // a tag renamed with the tags under it, one papers rename of each
+        tag(&state, &strings(&["a"]), &strings(&["climate/amoc"]), &[]).unwrap();
+        reload(&state);
+        let deep = strings(&["climate/amoc/tipping"]);
+        tag(&state, &strings(&["b"]), &deep, &[]).unwrap();
+        reload(&state);
+        rename(&state, "Climate", "ocean").unwrap();
+        reload(&state);
+        let renamed = text(&bib);
+        assert!(renamed.contains("ocean/amoc"), "{renamed}");
+        assert!(renamed.contains("ocean/amoc/tipping"), "{renamed}");
+        assert!(!renamed.contains("climate"), "{renamed}");
         let a = state.library.read().unwrap().raw("a").unwrap().to_string();
         replace(&state, "a", &a.replace("{A}", "{A2}")).unwrap();
         reload(&state);

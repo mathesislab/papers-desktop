@@ -12,6 +12,7 @@ mod query;
 mod reference;
 mod search;
 mod table;
+mod tag;
 mod text;
 mod to_csl;
 mod watch;
@@ -21,7 +22,8 @@ use std::path::PathBuf;
 
 pub use item::{Cite, Item};
 pub use search::{Found, Hit, Library, YearCount};
-pub use table::{FileState, Row, TagCount, same_tag};
+pub use table::{FileState, Row, TagCount};
+pub use tag::{same_tag, under};
 pub use text::{Matching, Span};
 pub use watch::BibWatch;
 pub use write::{Added, Change, entry_keys};

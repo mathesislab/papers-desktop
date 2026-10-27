@@ -59,12 +59,40 @@ fn matching() {
 #[test]
 fn tags() {
     let lib = library();
-    let tag = |tag: &str, count| TagCount {
+    let tag = |tag: &str, count, under| TagCount {
         tag: tag.to_string(),
         count,
+        under,
     };
     // "AMOC" and "amoc" are one tag, named as the newest paper writes it
-    assert_eq!(lib.tags(), [tag("AMOC", 2), tag("tipping", 1)]);
+    assert_eq!(lib.tags(), [tag("AMOC", 2, 2), tag("tipping", 1, 1)]);
+}
+
+#[test]
+fn nested_tags() {
+    let lib = Library::load(&[fixture("nested.bib")]).unwrap();
+    let tag = |tag: &str, count, under| TagCount {
+        tag: tag.to_string(),
+        count,
+        under,
+    };
+    // A tag counts the papers that have it, and `under` those under it too,
+    // each once ("climate/amoc" twice in one paper is one). "climate" is
+    // named as its paper writes it, not as the tags under it do; "ocean" no
+    // paper has, and comes as written in a tag under it. The tags under
+    // "climate" follow it, before "climate-review".
+    assert_eq!(
+        lib.tags(),
+        [
+            tag("Climate", 1, 3),
+            tag("CLIMATE/amoc", 2, 3),
+            tag("climate/amoc/tipping", 1, 1),
+            tag("climate-review", 2, 2),
+            tag("ice", 1, 1),
+            tag("ocean", 0, 1),
+            tag("ocean/amoc", 1, 1),
+        ]
+    );
 }
 
 #[test]

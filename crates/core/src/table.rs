@@ -1,13 +1,14 @@
 //! The library as the main window shows it: a row per item, the tags, and
 //! the items that may be the same paper.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 
 use serde::Serialize;
 
 use crate::item::Item;
 use crate::search::Library;
+use crate::tag::branch;
 use crate::text::fold;
 
 /// Whether an item links a file, and whether the files are there.
@@ -44,7 +45,20 @@ pub struct Row {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TagCount {
     pub tag: String,
+    /// the items that have the tag itself
     pub count: usize,
+    /// the items that have the tag or a tag under it, each once
+    pub under: usize,
+}
+
+impl TagCount {
+    fn new(tag: &str) -> TagCount {
+        TagCount {
+            tag: tag.to_string(),
+            count: 0,
+            under: 0,
+        }
+    }
 }
 
 impl Library {
@@ -54,22 +68,46 @@ impl Library {
         self.ordered().map(row).collect()
     }
 
-    /// The tags in alphabetical order, with the number of items of each.
+    /// The tags in alphabetical order, a tag before the tags under it, with
+    /// the number of items of each. A parent that no item has itself comes
+    /// too, with a count of 0.
     pub fn tags(&self) -> Vec<TagCount> {
         // a tag written differently ("AMOC", "amoc") is one tag, named as
         // written first
         let mut tags: BTreeMap<String, TagCount> = BTreeMap::new();
         for item in self.ordered() {
+            let mut seen = BTreeSet::new();
             for tag in &item.keywords {
-                tags.entry(fold(tag))
-                    .or_insert_with(|| TagCount {
-                        tag: tag.clone(),
-                        count: 0,
-                    })
-                    .count += 1;
+                if seen.insert(fold(tag)) {
+                    tags.entry(fold(tag))
+                        .or_insert_with(|| TagCount::new(tag))
+                        .count += 1;
+                }
             }
         }
-        tags.into_values().collect()
+        // after the tags written, whose spelling a parent must not take
+        for item in self.ordered() {
+            let mut seen = BTreeSet::new();
+            for tag in &item.keywords {
+                for name in branch(tag) {
+                    if seen.insert(fold(name)) {
+                        tags.entry(fold(name))
+                            .or_insert_with(|| TagCount::new(name))
+                            .under += 1;
+                    }
+                }
+            }
+        }
+        let mut tags: Vec<TagCount> = tags.into_values().collect();
+        // by the parts between the `/`: "climate-review" sorts before
+        // "climate/amoc" as a string, but the tags under "climate" come together
+        tags.sort_by_cached_key(|t| {
+            fold(&t.tag)
+                .split('/')
+                .map(String::from)
+                .collect::<Vec<_>>()
+        });
+        tags
     }
 
     /// The items that may be the same paper, in groups: those with the same
@@ -106,11 +144,6 @@ impl Library {
         found.sort_by_key(|(root, _)| groups.first[*root]);
         found.into_iter().map(|(_, ids)| ids).collect()
     }
-}
-
-/// Whether two tags are the same, as the tags are counted: "AMOC" and "amoc".
-pub fn same_tag(a: &str, b: &str) -> bool {
-    fold(a) == fold(b)
 }
 
 fn row(item: &Item) -> Row {

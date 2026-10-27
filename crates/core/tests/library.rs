@@ -223,6 +223,30 @@ fn tags() {
 }
 
 #[test]
+fn nested_tags() {
+    let lib = Library::load(&[fixture("nested.bib")]).unwrap();
+    // a tag finds the tags under it, but not "climate-review"
+    assert_eq!(keys(&lib, "tag:climate"), ["a2020", "b2019", "c2018"]);
+    assert_eq!(keys(&lib, "tag:climate/amoc"), ["a2020", "b2019", "c2018"]);
+    assert_eq!(keys(&lib, "tag:Climate/AMOC/tipping"), ["a2020"]);
+    assert_eq!(keys(&lib, "tag:climate-review"), ["c2018", "d2017"]);
+    // a tag under a tag is not that tag, and a part of a tag is not a tag
+    assert!(keys(&lib, "tag:tipping").is_empty());
+    assert!(keys(&lib, "tag:amoc").is_empty());
+    assert_eq!(keys(&lib, "tag:ocean"), ["c2018"]);
+    // wildcards take a parent as well
+    assert_eq!(
+        keys(&lib, "tag:clim*"),
+        ["a2020", "b2019", "c2018", "d2017"]
+    );
+    assert_eq!(keys(&lib, "tag:*amoc"), ["a2020", "b2019", "c2018"]);
+    assert_eq!(keys(&lib, "tag:climate/*"), ["a2020", "b2019", "c2018"]);
+    // excluding a tag excludes its subtree
+    assert_eq!(keys(&lib, "-tag:climate"), ["d2017"]);
+    assert_eq!(keys(&lib, "tag:clim* -tag:climate/amoc"), ["d2017"]);
+}
+
+#[test]
 fn years() {
     let lib = library();
     assert_eq!(keys(&lib, "year:2012"), ["robinson2012"]);

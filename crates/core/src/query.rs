@@ -3,8 +3,10 @@
 //! `robinson "ice sheet" j:cryosphere year:2010-2015 -review`. A filter is a
 //! field name and a colon before a word or a phrase; an unknown name is no
 //! filter. A leading `-` excludes the papers that match the term. `tag:` takes
-//! a whole tag, in which `*` stands for any run of characters.
+//! a whole tag, in which `*` stands for any run of characters; it finds the
+//! tags under it too (`tag:climate` finds `climate/amoc`).
 
+use crate::tag::branch;
 use crate::text::{fold, words};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,9 +71,15 @@ impl Pattern {
         }
     }
 
-    /// Whether a tag pattern takes a folded `tag`, as a whole; the other
-    /// patterns take none.
+    /// Whether a tag pattern takes a folded `tag`: the tag as a whole, or one
+    /// of its parents (`climate` takes `climate/amoc`); the other patterns
+    /// take none.
     pub fn matches_tag(&self, tag: &str) -> bool {
+        branch(tag).any(|name| self.matches_whole(name))
+    }
+
+    /// Whether a tag pattern takes a folded tag name, as a whole.
+    fn matches_whole(&self, tag: &str) -> bool {
         let Pattern::Tag(pieces) = self else {
             return false;
         };
@@ -377,5 +385,17 @@ mod tests {
         assert!(!tag("ab*ba", "aba"));
         assert!(tag("*", "anything"));
         assert!(!Pattern::Word("amoc".into()).matches_tag("amoc"));
+        // the tags under it, but not a tag that only starts like it
+        assert!(tag("climate", "climate/amoc"));
+        assert!(tag("climate", "climate/amoc/tipping"));
+        assert!(!tag("climate", "climate-review"));
+        assert!(!tag("climate", "climate-review/amoc"));
+        assert!(!tag("climate", "ocean/climate"));
+        assert!(tag("climate/amoc", "climate/amoc/tipping"));
+        assert!(!tag("climate/amoc", "climate"));
+        assert!(!tag("climate/amoc", "climate/amoc-paper"));
+        assert!(tag("clim*", "climate/amoc") && tag("*amoc", "ocean/amoc/tipping"));
+        assert!(tag("climate/*", "climate/amoc"));
+        assert!(!tag("climate/*", "climate"));
     }
 }
