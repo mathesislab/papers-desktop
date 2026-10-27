@@ -180,8 +180,10 @@
     -webkit-user-select: text;
     user-select: text;
   }
+  /* the page above the meta when the pane is narrow */
   .head {
     display: flex;
+    flex-wrap: wrap;
     gap: 14px;
     align-items: flex-start;
   }
@@ -204,6 +206,7 @@
     font-size: 12px;
   }
   .meta {
+    flex: 1 1 160px;
     min-width: 0;
     font-size: 12px;
   }

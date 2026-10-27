@@ -41,3 +41,20 @@ export type Status =
   | { state: "loading" }
   | { state: "ready"; count: number }
   | { state: "failed"; error: string };
+
+/** mirrors papers_core::Row: an item as a row of the table of the main window */
+export type Row = {
+  id: string;
+  /** family names: "Robinson", "Robinson & Calov", "Robinson et al." */
+  authors: string;
+  year: number | null;
+  title: string;
+  container: string | null;
+  tags: string[];
+  /** whether the item links a file, and whether the files are there */
+  file: "none" | "found" | "missing";
+  bib: string;
+};
+
+/** mirrors papers_core::TagCount */
+export type TagCount = { tag: string; count: number };

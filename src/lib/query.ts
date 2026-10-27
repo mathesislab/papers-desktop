@@ -1,4 +1,5 @@
-// Edit the year filters of a query, for the year clicks of the panel.
+// Edit the filters of a query: the years clicked in the panel, the tags
+// clicked in the main window.
 
 /** a year filter that keeps years (y:2012, year:2010-2015), not one that excludes them */
 const KEPT = /(^|\s)(?:y|year):(\S*)/gi;
@@ -42,4 +43,21 @@ export function clearYears(query: string): string {
 export function toggleExcluded(query: string, year: number): string {
   if (excluded(year).test(query)) return tidy(query.replace(excluded(year), " "));
   return tidy(`${query} -y:${year}`);
+}
+
+/** The filter of a tag: tag:amoc, or tag:"mass balance". */
+const tagTerm = (tag: string) => (/\s/.test(tag) ? `tag:"${tag}"` : `tag:${tag}`);
+
+const tagFilter = (tag: string) =>
+  new RegExp(`(^|\\s)${tagTerm(tag).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`, "gi");
+
+/** Whether the query filters the tag. */
+export function hasTag(query: string, tag: string): boolean {
+  return tagFilter(tag).test(query);
+}
+
+/** Click on a tag: filter it, or not any more. */
+export function toggleTag(query: string, tag: string): string {
+  if (hasTag(query, tag)) return tidy(query.replace(tagFilter(tag), " "));
+  return tidy(`${query} ${tagTerm(tag)}`);
 }
