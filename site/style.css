@@ -178,6 +178,11 @@ img {
   margin-bottom: 72px;
 }
 
+/* the image first, as wide as in the others */
+.feature.wide.reverse {
+  grid-template-columns: 1.6fr 1fr;
+}
+
 .feature.wide.reverse > div {
   order: 2;
 }
@@ -274,6 +279,7 @@ footer {
 
 @media (max-width: 760px) {
   .feature.wide,
+  .feature.wide.reverse,
   .platforms {
     grid-template-columns: 1fr;
   }

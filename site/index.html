@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Papers Desktop</title>
-<meta name="description" content="A search panel for your BibTeX library: find a paper in a keystroke, open its PDF, copy its citation or BibTeX. Plain .bib files, no database.">
+<meta name="description" content="A search panel and a library window for your BibTeX files: find a paper in a keystroke, read its PDF, copy its citation or BibTeX. Plain .bib files, no database.">
 <link rel="icon" href="images/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -23,7 +23,8 @@
   <h1>Your BibTeX library, a keystroke away</h1>
   <p class="lead">Papers Desktop is a search panel for your <code>.bib</code> files and the PDFs they link to. Press
     <kbd>⌥Space</kbd>, type a few letters of an author, a title or a year, and open the paper, or copy its
-    citation or its BibTeX. Your library stays plain files: no database, nothing to import.</p>
+    citation or its BibTeX. The library window shows it all, and opens the papers to read in tabs. Your library
+    stays plain files: no database, nothing to import.</p>
   <p class="actions">
     <a class="button primary" href="#download">Download</a>
     <a class="button" href="https://github.com/mathesislab/papers-desktop">View source</a>
@@ -57,6 +58,30 @@
         formatted or as written in the file.</p>
     </div>
     <img src="images/actions.png" alt="The list of actions over the results: open the PDF, reveal it, open the DOI page, copy the key, [@key], \cite{key} or the BibTeX" loading="lazy" width="2532" height="1012">
+  </article>
+
+  <article class="feature wide">
+    <div>
+      <h2>Your library in a window</h2>
+      <p>Open Library from the menu-bar icon, or <kbd>⌘O</kbd> in the panel: a table of your papers that the same
+        search filters, with views in the sidebar (recently opened, no PDF, broken file links, possible duplicates)
+        and your tags. Sort, move, resize and choose the columns.</p>
+      <p>Export the selection, or the papers of a tag, to a <code>.bib</code> file: the references of a
+        manuscript.</p>
+    </div>
+    <img src="images/library.png" alt="The library window: the papers on the Greenland ice sheet in a table, the views of the library in the sidebar, and the details of the paper selected" loading="lazy" width="2400" height="1440">
+  </article>
+
+  <article class="feature wide reverse">
+    <div>
+      <h2>Read in tabs</h2>
+      <p><kbd>↵</kbd> opens a paper in a tab of the sidebar, its details beside it. On macOS the PDF shows as in
+        Preview, smooth to scroll and zoom, with find and the outline. The papers you had open come back the next
+        time.</p>
+      <p>Everything has a key: <kbd>/</kbd> to search, <kbd>⌘1</kbd> for the library, <kbd>⌃Tab</kbd> from tab to
+        tab, <kbd>⌘W</kbd> to close.</p>
+    </div>
+    <img src="images/reader.png" alt="A paper open in the library window: its outline at the left, the PDF, and its details and citation at the right" loading="lazy" width="2400" height="1440">
   </article>
 
   <div class="grid">
@@ -103,7 +128,8 @@
     </article>
     <article class="feature">
       <h3>Out of the way</h3>
-      <p>It lives in the menu bar, opens with its hotkey and hides when you go back to work.</p>
+      <p>It lives in the menu bar, opens with its hotkey and hides when you go back to work. The library window
+        is in the Dock only while it is open.</p>
     </article>
     <article class="feature">
       <h3>Made with papers</h3>
