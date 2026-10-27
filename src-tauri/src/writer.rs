@@ -2,17 +2,17 @@
 //! by the papers command, so that a change from the app or a terminal has
 //! the same format, naming and history; any other .bib by the app's own
 //! writer, which rewrites only the entries changed. A papers library without
-//! papers (3.0 or later) is read-only.
+//! papers (3.0.0b4 or later) is read-only.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
-use std::io::ErrorKind as IoErrorKind;
+use std::io::{ErrorKind as IoErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use papers_core::{Change, Item, same_tag};
+use papers_core::{Added, Change, Item, same_tag};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
@@ -20,8 +20,10 @@ use tauri::{AppHandle, Manager};
 use crate::AppState;
 use crate::settings::expand;
 
-/// The first version of papers with the commands used here.
-const PAPERS_MAJOR: u32 = 3;
+/// The first version of papers with the options used here (`edit --from`,
+/// `--porcelain`), as `release` orders it.
+const PAPERS_MIN: [u32; 5] = [3, 0, 0, BETA, 4];
+const PAPERS_MIN_NAME: &str = "3.0.0b4";
 
 /// How a .bib file is written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -73,7 +75,8 @@ impl WriteError {
     fn missing(version: Option<&str>) -> WriteError {
         let message = match version {
             Some(v) => format!(
-                "This library is written by papers 3.0 or later, and papers {v} is installed"
+                "This library is written by papers {PAPERS_MIN_NAME} or later, \
+                 and papers {v} is installed"
             ),
             None => "This library is written by papers, which is not found".to_string(),
         };
@@ -178,7 +181,7 @@ impl Writers {
         let Some(version) = version(&path) else {
             return Found::Missing(None);
         };
-        if major(&version).is_none_or(|major| major < PAPERS_MAJOR) {
+        if release(&version).is_none_or(|release| release < PAPERS_MIN) {
             return Found::Missing(Some(version));
         }
         let papers = Papers {
@@ -232,20 +235,39 @@ impl Writers {
         Ok(Targets { libraries })
     }
 
-    /// Run papers in the folder of its library. A failure tells what papers
-    /// wrote to stderr, without the prefix of its log.
-    fn run(&self, library: &PapersLibrary, args: &[String]) -> Result<(), WriteError> {
-        let mut command = Command::new(&library.papers.path);
-        command
+    /// Run a papers command in the folder of its library, with `input` on
+    /// its stdin; its report of the entries changed. A failure tells what
+    /// papers wrote to stderr, without the prefix of its log.
+    fn run(
+        &self,
+        library: &PapersLibrary,
+        command: &str,
+        args: &[String],
+        input: Option<&str>,
+    ) -> Result<Report, WriteError> {
+        let mut papers = Command::new(&library.papers.path);
+        papers
             .arg("-C")
             .arg(&library.folder)
+            .args([command, "--porcelain"])
             .args(args)
             .env("NO_COLOR", "1")
-            .stdin(Stdio::null());
+            .stdin(if input.is_some() {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            })
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
         if let Some(path) = &library.papers.shell_path {
-            command.env("PATH", path);
+            papers.env("PATH", path);
         }
-        let output = command.output();
+        let output = papers.spawn().and_then(|mut child| {
+            if let (Some(input), Some(mut stdin)) = (input, child.stdin.take()) {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        });
         let output = match output {
             Ok(output) => output,
             Err(e) if e.kind() == IoErrorKind::NotFound => {
@@ -255,7 +277,7 @@ impl Writers {
             Err(e) => return Err(WriteError::failed(format!("papers: {e}"))),
         };
         if output.status.success() {
-            return Ok(());
+            return Ok(Report::of(&String::from_utf8_lossy(&output.stdout)));
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
         let lines: Vec<&str> = stderr
@@ -264,7 +286,7 @@ impl Writers {
             .collect();
         let message = lines.join("\n").trim().to_string();
         Err(WriteError::failed(if message.is_empty() {
-            format!("papers {}: {}", args.join(" "), output.status)
+            format!("papers {command} {}: {}", args.join(" "), output.status)
         } else {
             message
         }))
@@ -371,8 +393,52 @@ fn version(papers: &Path) -> Option<String> {
     Some(version.to_string())
 }
 
-fn major(version: &str) -> Option<u32> {
-    version.split('.').next()?.parse().ok()
+const BETA: u32 = 1;
+
+/// A version of papers as ordered: its three release numbers, its stage
+/// (alpha 0, beta 1, release candidate 2, final 3) and the number of the
+/// stage. A development build is the version it leads to: 3.0.0b4.dev18 is
+/// 3.0.0b4.
+fn release(version: &str) -> Option<[u32; 5]> {
+    let end = version
+        .find(|c: char| !c.is_ascii_digit() && c != '.')
+        .unwrap_or(version.len());
+    let (numbers, rest) = version.split_at(end);
+    let mut numbers = numbers.trim_end_matches('.').split('.');
+    let mut number = || numbers.next().map_or(Some(0), |n| n.parse().ok());
+    let (major, minor, patch) = (number()?, number()?, number()?);
+    let (stage, rest) = [("rc", 2), ("a", 0), ("b", BETA)]
+        .into_iter()
+        .find_map(|(name, stage)| Some((stage, rest.strip_prefix(name)?)))
+        .unwrap_or((3, ""));
+    let digits = rest
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(rest.len());
+    let n = rest[..digits].parse().unwrap_or(0);
+    Some([major, minor, patch, stage, n])
+}
+
+/// What a papers command reports with `--porcelain`: a line per entry,
+/// `added KEY`, `modified KEY`, `removed KEY` or `existing KEY`.
+struct Report {
+    lines: Vec<(String, String)>,
+}
+
+impl Report {
+    fn of(stdout: &str) -> Report {
+        let lines = stdout
+            .lines()
+            .filter_map(|line| line.split_once(' '))
+            .map(|(what, key)| (what.to_string(), key.trim().to_string()))
+            .collect();
+        Report { lines }
+    }
+
+    /// The keys reported as `what`.
+    fn keys(&self, what: &str) -> Vec<String> {
+        let keys = self.lines.iter().filter(|(w, _)| w == what);
+        keys.map(|(_, key)| key.clone()).collect()
+    }
 }
 
 /// The tags of an item, `add` added and `remove` removed, as tags are
@@ -481,20 +547,16 @@ pub async fn rename_tag(app: AppHandle, old: String, new: String) -> Result<(), 
     write(app, move |state| rename(state, &old, &new)).await
 }
 
-/// Replace the BibTeX of an entry. Not yet in a papers library: that waits
-/// for `papers edit KEY --from FILE`.
+/// Replace the BibTeX of an entry; its key, tags and files stay.
 #[tauri::command]
 pub async fn replace_entry(app: AppHandle, id: String, text: String) -> Result<(), WriteError> {
     write(app, move |state| replace(state, &id, &text)).await
 }
 
-/// Add the entries of pasted BibTeX to a .bib file; returns their keys.
+/// Add the entries of pasted BibTeX to a .bib file; returns their keys,
+/// added and existing.
 #[tauri::command]
-pub async fn add_bibtex(
-    app: AppHandle,
-    bib: PathBuf,
-    text: String,
-) -> Result<Vec<String>, WriteError> {
+pub async fn add_bibtex(app: AppHandle, bib: PathBuf, text: String) -> Result<Added, WriteError> {
     write(app, move |state| add(state, &bib, &text)).await
 }
 
@@ -547,15 +609,14 @@ fn tag(
     let changes = state.library.read().unwrap().set_tags(&native)?;
     state.writers.done(changes);
     for ((_, added, removed), (library, keys)) in commands {
-        let mut args = vec!["tag".to_string()];
-        args.extend(keys);
+        let mut args = keys;
         for (option, tags) in [("--add", added), ("--rm", removed)] {
             if !tags.is_empty() {
                 args.push(option.to_string());
                 args.extend(tags);
             }
         }
-        state.writers.run(library, &args)?;
+        state.writers.run(library, "tag", &args, None)?;
     }
     Ok(())
 }
@@ -602,8 +663,8 @@ fn rename(state: &AppState, old: &str, new: &str) -> Result<(), WriteError> {
     state.writers.done(changes);
     for (library, spellings) in spellings.into_values() {
         for spelling in spellings {
-            let args = ["tag", "--rename", spelling, new].map(String::from);
-            state.writers.run(library, &args)?;
+            let args = ["--rename", spelling, new].map(String::from);
+            state.writers.run(library, "tag", &args, None)?;
         }
     }
     Ok(())
@@ -611,20 +672,24 @@ fn rename(state: &AppState, old: &str, new: &str) -> Result<(), WriteError> {
 
 fn replace(state: &AppState, id: &str, text: &str) -> Result<(), WriteError> {
     let item = state.item(id).map_err(WriteError::failed)?;
-    if papers_folder(&item.bib).is_some() {
-        return Err(WriteError::failed(
-            "Editing the fields of a papers library needs `papers edit KEY --from FILE`, \
-             which is coming to papers",
-        ));
+    let targets = state.writers.targets([item.bib.as_path()])?;
+    match targets.papers(&item.bib) {
+        Some(library) => {
+            state.library.read().unwrap().check_edit(id, text)?;
+            let args = [item.key, "--from".to_string(), "-".to_string()];
+            state.writers.run(library, "edit", &args, Some(text))?;
+        }
+        None => {
+            let changes = state.library.read().unwrap().replace_entry(id, text)?;
+            state.writers.done(changes);
+        }
     }
-    let changes = state.library.read().unwrap().replace_entry(id, text)?;
-    state.writers.done(changes);
     Ok(())
 }
 
-fn add(state: &AppState, bib: &Path, text: &str) -> Result<Vec<String>, WriteError> {
+fn add(state: &AppState, bib: &Path, text: &str) -> Result<Added, WriteError> {
     in_library(state, bib)?;
-    let keys = papers_core::entry_keys(text)?;
+    papers_core::entry_keys(text)?;
     let targets = state.writers.targets([bib])?;
     match targets.papers(bib) {
         // papers adds a .bib file: the text in a temporary one
@@ -636,17 +701,21 @@ fn add(state: &AppState, bib: &Path, text: &str) -> Result<Vec<String>, WriteErr
             let pasted = std::env::temp_dir().join(name);
             fs::write(&pasted, text)
                 .map_err(|e| WriteError::failed(format!("{}: {e}", pasted.display())))?;
-            let args = ["add".to_string(), pasted.to_string_lossy().into()];
-            let added = state.writers.run(library, &args);
+            let args = [pasted.to_string_lossy().into()];
+            let report = state.writers.run(library, "add", &args, None);
             let _ = fs::remove_file(&pasted);
-            added?;
+            let report = report?;
+            Ok(Added {
+                added: report.keys("added"),
+                existing: report.keys("existing"),
+            })
         }
         None => {
-            let changes = state.library.read().unwrap().add_entries(bib, text)?;
+            let (changes, added) = state.library.read().unwrap().add_entries(bib, text)?;
             state.writers.done(changes);
+            Ok(added)
         }
     }
-    Ok(keys)
 }
 
 fn remove(state: &AppState, ids: &[String]) -> Result<(), WriteError> {
@@ -669,10 +738,9 @@ fn remove(state: &AppState, ids: &[String]) -> Result<(), WriteError> {
     let changes = state.library.read().unwrap().remove_entries(&native)?;
     state.writers.done(changes);
     for (library, keys) in keys.into_values() {
-        let mut args = vec!["rm".to_string()];
-        args.extend(keys);
+        let mut args = keys;
         args.push("--keep-files".to_string());
-        state.writers.run(library, &args)?;
+        state.writers.run(library, "rm", &args, None)?;
     }
     Ok(())
 }
@@ -683,7 +751,7 @@ fn step(state: &AppState, bib: &Path, back: bool) -> Result<(), WriteError> {
     match targets.papers(bib) {
         Some(library) => {
             let command = if back { "undo" } else { "redo" };
-            state.writers.run(library, &[command.to_string()])
+            state.writers.run(library, command, &[], None).map(|_| ())
         }
         None => state.writers.step(bib, back),
     }
@@ -761,9 +829,34 @@ mod tests {
 
     #[test]
     fn versions() {
-        assert_eq!(major("3.0.0b1"), Some(3));
-        assert_eq!(major("2.5"), Some(2));
-        assert_eq!(major("dev"), None);
+        let new_enough = |v| release(v).is_some_and(|r| r >= PAPERS_MIN);
+        assert_eq!(
+            release("3.0.0b4.dev18+g6d8b3f390"),
+            Some([3, 0, 0, BETA, 4])
+        );
+        assert_eq!(release(PAPERS_MIN_NAME), Some(PAPERS_MIN));
+        assert_eq!(release("2.5"), Some([2, 5, 0, 3, 0]));
+        assert_eq!(release("dev"), None);
+        for v in [
+            "3.0.0b4.dev18+g6d8b3f390",
+            "3.0.0b10",
+            "3.0.0rc1",
+            "3.0.0",
+            "3.1",
+        ] {
+            assert!(new_enough(v), "{v}");
+        }
+        for v in ["3.0.0b3", "3.0.0a5", "2.19.6", "dev"] {
+            assert!(!new_enough(v), "{v}");
+        }
+    }
+
+    #[test]
+    fn porcelain_reports() {
+        let report = Report::of("added c\nexisting a\nmodified b\n\n");
+        assert_eq!(report.keys("added"), ["c"]);
+        assert_eq!(report.keys("existing"), ["a"]);
+        assert!(report.keys("removed").is_empty());
     }
 
     #[test]
@@ -844,15 +937,69 @@ mod tests {
         assert_eq!(error.kind, ErrorKind::PapersMissing);
         let error = step(&state, &bib, true).unwrap_err();
         assert_eq!(error.kind, ErrorKind::PapersMissing);
-        // fields wait for papers edit --from
         let error = replace(&state, "a", "@article{a, title = {A2}}").unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Failed);
-        assert!(error.message.contains("papers edit"), "{}", error.message);
+        assert_eq!(error.kind, ErrorKind::PapersMissing);
         assert_eq!(fs::read_to_string(&bib).unwrap(), ENTRIES);
 
         let json = serde_json::to_value(&error).unwrap();
-        assert_eq!(json["kind"], "failed");
+        assert_eq!(json["kind"], "papers-missing");
         let missing = serde_json::to_value(WriteError::missing(Some("2.5"))).unwrap();
         assert_eq!(missing["kind"], "papers-missing");
+    }
+
+    /// With the papers of the setting `PAPERS`, else the login shell's:
+    /// `cargo test -- --ignored`.
+    #[test]
+    #[ignore = "runs papers 3.0.0b4 or later"]
+    fn papers_library_written_by_papers() {
+        let dir = tempfile::tempdir().unwrap();
+        let papers = std::env::var("PAPERS").unwrap_or_default();
+        let state = state(dir.path(), &[], &papers);
+        let Found::Usable(found) = state.writers.papers() else {
+            panic!("papers {PAPERS_MIN_NAME} or later not found");
+        };
+        let installed = Command::new(&found.path)
+            .current_dir(dir.path())
+            .args(["install", "--bibtex", "papers.bib", "--files", "files"])
+            .args(["--no-prompt", "--no-git"])
+            .status()
+            .unwrap();
+        assert!(installed.success());
+        let bib = dir.path().join("papers.bib");
+        *state.library.write().unwrap() = Library::load(std::slice::from_ref(&bib)).unwrap();
+        let text = |bib: &Path| fs::read_to_string(bib).unwrap();
+
+        let added = add(&state, &bib, ENTRIES).unwrap();
+        assert_eq!(added.added, ["a", "b"]);
+        reload(&state);
+        // the same paper (by papers' rule: its DOI), or another with a key taken
+        let c = "@article{c,\n doi = {10.1/c},\n title = {C}\n}";
+        assert_eq!(add(&state, &bib, c).unwrap().added, ["c"]);
+        reload(&state);
+        assert_eq!(add(&state, &bib, c).unwrap().existing, ["c"]);
+        reload(&state);
+        let error = add(&state, &bib, "@article{b,\n title = {Other}\n}").unwrap_err();
+        assert!(
+            error.message.contains("already in the library"),
+            "{}",
+            error.message
+        );
+
+        tag(&state, &strings(&["a", "b"]), &strings(&["new"]), &[]).unwrap();
+        reload(&state);
+        assert!(text(&bib).contains("keywords = {new}"), "{}", text(&bib));
+        let a = state.library.read().unwrap().raw("a").unwrap().to_string();
+        replace(&state, "a", &a.replace("{A}", "{A2}")).unwrap();
+        reload(&state);
+        assert!(text(&bib).contains("title = {A2}"), "{}", text(&bib));
+        let error = replace(&state, "a", &a.replace("{a,", "{a2,")).unwrap_err();
+        assert!(error.message.contains("key"), "{}", error.message);
+        // a text that does not parse
+        let error = replace(&state, "a", "@article{a, title = {A3}").unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Failed);
+
+        remove(&state, &strings(&["b"])).unwrap();
+        reload(&state);
+        assert!(!text(&bib).contains("@article{b"), "{}", text(&bib));
     }
 }

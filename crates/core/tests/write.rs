@@ -158,11 +158,29 @@ fn replace_entry_keeps_the_rest() {
     let lib = Library::load(&bibs).unwrap();
     let it = lib.get("robinson2012").unwrap();
     assert_eq!(it.container.as_deref(), Some("Nat. Clim. Change"));
-    // the key can change
-    let renamed = new.replace("{robinson2012,", "{robinson2012a,");
-    lib.replace_entry("robinson2012", &renamed).unwrap();
-    let lib = Library::load(&bibs).unwrap();
-    assert!(lib.get("robinson2012a").is_some());
+    // the key, the tags and the files stay
+    let after = read(&bibs[0]);
+    let kept = |text: String| match lib.replace_entry("robinson2012", &text) {
+        Err(Error::Kept { what }) => what,
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(
+        kept(new.replace("{robinson2012,", "{robinson2012a,")),
+        "key"
+    );
+    assert_eq!(
+        kept(new.replace(" doi =", " keywords = {ice},\n doi =")),
+        "tags"
+    );
+    assert_eq!(
+        kept(new.replace(";Supplement:papers/robinson_et_al_2012--supp.pdf:pdf", "")),
+        "file"
+    );
+    assert!(
+        lib.check_edit("robinson2012", &new.replace("{2012}", "{2013}"))
+            .is_ok()
+    );
+    assert_eq!(read(&bibs[0]), after);
 }
 
 #[test]
@@ -182,7 +200,7 @@ fn invalid_replacement_is_refused() {
     assert!(matches!(error, Error::Bibtex { line: 1, .. }), "{error}");
     // the key of another entry
     let error = replace("@article{Robinson2012, title = {A}}");
-    assert!(matches!(error, Error::DuplicateKey { .. }), "{error}");
+    assert!(matches!(error, Error::Kept { what: "key" }), "{error}");
     // what the library would not load, at a line of the text given
     let error = replace("@article{calov2015,\n title = {A},\n journal = jgr\n}");
     assert!(matches!(error, Error::Bibtex { line: 3, .. }), "{error}");
@@ -227,9 +245,12 @@ fn add_entries_at_the_end() {
     // a key of another file of the library is no duplicate
     let text = "@article{feldmann2017,\n  title = {Again}\n}\n\n% pasted\n@misc{new2024,\n  title = {New}\n}";
     assert_eq!(entry_keys(text).unwrap(), ["feldmann2017", "new2024"]);
-    let changes = lib.add_entries(other, &format!("{text}\n\n")).unwrap();
+    let (changes, added) = lib.add_entries(other, &format!("{text}\n\n")).unwrap();
     assert_eq!(changes.len(), 1);
-    assert_eq!(read(other), format!("{before}\n{text}\n"));
+    assert_eq!(added.added, ["feldmann2017", "new2024"]);
+    // the entries only, a blank line between
+    let entries = text.replace("% pasted\n", "");
+    assert_eq!(read(other), format!("{before}\n{entries}\n"));
     let lib = Library::load(&bibs).unwrap();
     assert_eq!(lib.find(other, "new2024").unwrap().title, "New");
 
@@ -244,6 +265,31 @@ fn add_entries_at_the_end() {
 }
 
 #[test]
+fn add_entries_existing() {
+    let (_dir, bibs) = copies(&["library.bib", "other.bib"]);
+    let other = &bibs[1];
+    let before = read(other);
+    let lib = Library::load(&bibs).unwrap();
+    // the keys of the file, in any case, are existing; the others are added
+    let (changes, added) = lib
+        .add_entries(other, "@misc{Beckmann2019, title = {Again}}")
+        .unwrap();
+    assert!(changes.is_empty());
+    assert_eq!(added.existing, ["Beckmann2019"]);
+    assert_eq!(read(other), before);
+    let text = "@misc{Beckmann2019, title = {Again}}\n@misc{new, title = {New}}";
+    let (_, added) = lib.add_entries(other, text).unwrap();
+    assert_eq!(
+        (added.added, added.existing),
+        (vec!["new".to_string()], vec!["Beckmann2019".to_string()])
+    );
+    assert_eq!(
+        read(other),
+        format!("{before}\n@misc{{new, title = {{New}}}}\n")
+    );
+}
+
+#[test]
 fn add_entries_refused() {
     let (_dir, bibs) = copies(&["library.bib", "other.bib"]);
     let other = &bibs[1];
@@ -251,13 +297,6 @@ fn add_entries_refused() {
     let lib = Library::load(&bibs).unwrap();
     let add = |text: &str| lib.add_entries(other, text).unwrap_err();
 
-    let error = add("@misc{Beckmann2019, title = {Again}}");
-    assert!(matches!(error, Error::DuplicateKey { .. }), "{error}");
-    assert!(
-        error
-            .to_string()
-            .ends_with("already has an entry Beckmann2019")
-    );
     let error = add("@misc{a, title = {A}}\n@misc{a, title = {B}}");
     assert!(matches!(error, Error::DuplicateKey { .. }), "{error}");
     assert!(matches!(add("% nothing\n"), Error::NoEntry));

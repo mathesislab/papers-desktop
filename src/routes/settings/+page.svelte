@@ -298,7 +298,7 @@
                     ? `A papers library, written by papers ${writer.version}`
                     : writer.kind === "native"
                       ? "Written by the app"
-                      : "A papers library: read-only until papers 3 is installed"}
+                      : "A papers library: read-only until papers 3.0.0b4 or later is installed"}
                 </span>
               {/if}
             </span>

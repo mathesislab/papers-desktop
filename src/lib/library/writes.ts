@@ -4,7 +4,7 @@
 // WriteError.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { WriteError, Writer } from "$lib/types";
+import type { Added, WriteError, Writer } from "$lib/types";
 
 export function isWriteError(e: unknown): e is WriteError {
   return typeof e === "object" && e !== null && "kind" in e && "message" in e;
@@ -38,13 +38,14 @@ export function renameTag(old: string, name: string): Promise<void> {
   return write("rename_tag", { old, new: name });
 }
 
-/** Replace the BibTeX of an entry (not yet in a papers library). */
+/** Replace the BibTeX of an entry; its key, tags and files stay. */
 export function replaceEntry(id: string, text: string): Promise<void> {
   return write("replace_entry", { id, text });
 }
 
-/** Add the entries of pasted BibTeX to a .bib file; resolves to their keys. */
-export function addBibtex(bib: string, text: string): Promise<string[]> {
+/** Add the entries of pasted BibTeX to a .bib file; resolves to their keys,
+ *  added and existing. */
+export function addBibtex(bib: string, text: string): Promise<Added> {
   return write("add_bibtex", { bib, text });
 }
 

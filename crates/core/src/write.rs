@@ -12,8 +12,10 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use biblatex::{Pair, RawBibliography, RawEntry};
+use serde::Serialize;
 
-use crate::bib::{self, Snapshot};
+use crate::bib::{self, BibEntry, Snapshot};
+use crate::item::Item;
 use crate::search::Library;
 use crate::{Error, Result};
 
@@ -81,6 +83,14 @@ impl Change {
     }
 }
 
+/// The keys of the entries given to add: added, and existing (already in
+/// the library).
+#[derive(Debug, Default, Serialize)]
+pub struct Added {
+    pub added: Vec<String>,
+    pub existing: Vec<String>,
+}
+
 /// The new text of a .bib file, to write.
 struct Rewrite {
     bib: PathBuf,
@@ -89,31 +99,48 @@ struct Rewrite {
 }
 
 impl Library {
-    /// Replace the text of an entry by `text`, which must be one entry.
+    /// Replace the text of an entry by `text`, which must be one entry with
+    /// the same key, tags and files (see `check_edit`).
     pub fn replace_entry(&self, id: &str, text: &str) -> Result<Vec<Change>> {
+        write(vec![self.edited(id, text)?])
+    }
+
+    /// Check an edit of the text of an entry, as `replace_entry` does,
+    /// without writing it. An edit keeps the key, the tags and the files, as
+    /// `papers edit --from` does: tags and files have their own commands.
+    pub fn check_edit(&self, id: &str, text: &str) -> Result<()> {
+        self.edited(id, text).map(|_| ())
+    }
+
+    /// The .bib file of an entry with its text replaced by `text`.
+    fn edited(&self, id: &str, text: &str) -> Result<Rewrite> {
         let e = self.entry(id).ok_or_else(|| not_found(id))?;
         let text = text.trim();
         let given = given_entries(text)?;
-        let [(key, _)] = given.as_slice() else {
+        if given.len() != 1 {
             return Err(Error::NotOneEntry { found: given.len() });
-        };
-        let taken = self
-            .entries_in(&e.bib)
-            .any(|other| other.span != e.span && other.entry.key.eq_ignore_ascii_case(key));
-        if taken {
-            return Err(Error::DuplicateKey {
-                path: e.bib.clone(),
-                key: key.clone(),
-            });
         }
         let before = self.text(&e.bib)?;
         let after = splice(&before, vec![(e.span.clone(), text.to_string())]);
-        check(&e.bib, &after, Some((e.span.start, text)))?;
-        write(vec![Rewrite {
+        let entries = check(&e.bib, &after, Some((e.span.start, text)))?;
+        let new = entries
+            .iter()
+            .find(|n| n.span.start == e.span.start)
+            .ok_or_else(|| not_found(id))?;
+        let tags = |e: &BibEntry| Item::from_entry(e, String::new()).keywords;
+        let kept = [
+            ("key", new.entry.key == e.entry.key),
+            ("tags", tags(new) == tags(e)),
+            ("file", new.files == e.files),
+        ];
+        if let Some((what, _)) = kept.into_iter().find(|(_, same)| !same) {
+            return Err(Error::Kept { what });
+        }
+        Ok(Rewrite {
             bib: e.bib.clone(),
             before,
             after,
-        }])
+        })
     }
 
     /// Set the tags of items: for each (id, tags), the `keywords` field
@@ -163,18 +190,19 @@ impl Library {
     }
 
     /// Add the entries of `text` at the end of .bib file `bib`, after a blank
-    /// line; none of their keys may be in the file already.
-    pub fn add_entries(&self, bib: &Path, text: &str) -> Result<Vec<Change>> {
+    /// line, but those whose key is in the file already: these are existing.
+    pub fn add_entries(&self, bib: &Path, text: &str) -> Result<(Vec<Change>, Added)> {
         let before = self.text(bib)?;
         let text = text.trim();
         let given = given_entries(text)?;
         if given.is_empty() {
             return Err(Error::NoEntry);
         }
-        let mut keys: HashSet<String> = self
+        let in_file: HashSet<String> = self
             .entries_in(bib)
             .map(|e| e.entry.key.to_ascii_lowercase())
             .collect();
+        let mut keys = HashSet::new();
         if let Some((key, _)) = given
             .iter()
             .find(|(key, _)| !keys.insert(key.to_ascii_lowercase()))
@@ -183,6 +211,16 @@ impl Library {
                 path: bib.to_path_buf(),
                 key: key.clone(),
             });
+        }
+        let (existing, new): (Vec<_>, Vec<_>) = given
+            .into_iter()
+            .partition(|(key, _)| in_file.contains(&key.to_ascii_lowercase()));
+        let added = Added {
+            added: new.iter().map(|(key, _)| key.clone()).collect(),
+            existing: existing.into_iter().map(|(key, _)| key).collect(),
+        };
+        if new.is_empty() {
+            return Ok((Vec::new(), added));
         }
         let nl = newline(&before);
         let blank = format!("{nl}{nl}");
@@ -193,14 +231,20 @@ impl Library {
         } else {
             &blank
         };
+        let text = new
+            .into_iter()
+            .map(|(_, span)| &text[span])
+            .collect::<Vec<_>>()
+            .join(&blank);
         let at = before.len() + gap.len();
         let after = format!("{before}{gap}{text}{nl}");
-        check(bib, &after, Some((at, text)))?;
-        write(vec![Rewrite {
+        check(bib, &after, Some((at, &text)))?;
+        let changes = write(vec![Rewrite {
             bib: bib.to_path_buf(),
             before,
             after,
-        }])
+        }])?;
+        Ok((changes, added))
     }
 
     /// Remove entries, and the blank line after each.
@@ -303,12 +347,13 @@ fn given_entries(text: &str) -> Result<Vec<(String, Range<usize>)>> {
     Ok(found)
 }
 
-/// The new text of a .bib file must load, as the library reads it. An error
-/// in the text given to write, at `given.0` in the new text, tells its line
-/// in that text.
-fn check(bib: &Path, text: &str, given: Option<(usize, &str)>) -> Result<()> {
-    let Err((at, message)) = bib::parse(bib, text) else {
-        return Ok(());
+/// The new text of a .bib file must load, as the library reads it: its
+/// entries. An error in the text given to write, at `given.0` in the new
+/// text, tells its line in that text.
+fn check(bib: &Path, text: &str, given: Option<(usize, &str)>) -> Result<Vec<BibEntry>> {
+    let (at, message) = match bib::parse(bib, text) {
+        Ok(entries) => return Ok(entries),
+        Err(e) => e,
     };
     match given {
         Some((start, given)) if (start..start + given.len()).contains(&at) => Err(Error::Bibtex {

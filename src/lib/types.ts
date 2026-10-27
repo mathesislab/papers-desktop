@@ -67,15 +67,22 @@ export type TagCount = { tag: string; count: number };
 export type Writer = {
   bib: string;
   /** "papers": by the papers command; "native": by the app; "papers-missing":
-   *  a papers library, read-only while papers 3 is not found */
+   *  a papers library, read-only while papers 3.0.0b4 or later is not found */
   kind: "papers" | "native" | "papers-missing";
   /** of the papers command found, for a papers library: too old when missing */
   version: string | null;
 };
 
+/** mirrors papers_core::Added: the keys of the entries given to add */
+export type Added = {
+  added: string[];
+  /** already in the library: the same key, or for papers the same paper */
+  existing: string[];
+};
+
 /** mirrors writer::WriteError: what a write is rejected with */
 export type WriteError = {
-  /** "papers-missing": a papers library without papers 3; "changed": the .bib
+  /** "papers-missing": a papers library without papers 3.0.0b4 or later; "changed": the .bib
    *  changed since it was read, and is read again: try again */
   kind: "papers-missing" | "changed" | "failed";
   message: string;

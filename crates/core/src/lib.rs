@@ -24,7 +24,7 @@ pub use search::{Found, Hit, Library, YearCount};
 pub use table::{FileState, Row, TagCount, same_tag};
 pub use text::{Matching, Span};
 pub use watch::BibWatch;
-pub use write::{Change, entry_keys};
+pub use write::{Added, Change, entry_keys};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -60,6 +60,9 @@ pub enum Error {
     NoEntry,
     #[error("{}: already has an entry {key}", path.display())]
     DuplicateKey { path: PathBuf, key: String },
+    /// an edit of the text of an entry that changes what it keeps
+    #[error("the {what} of an entry cannot be changed by editing its BibTeX")]
+    Kept { what: &'static str },
     #[error("tag {tag:?}: its braces do not match")]
     Tag { tag: String },
 }

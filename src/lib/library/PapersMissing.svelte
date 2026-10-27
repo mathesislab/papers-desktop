@@ -1,6 +1,6 @@
 <script lang="ts">
   // A papers library is written by papers: without it (or with papers older
-  // than 3.0), how to install it.
+  // than 3.0.0b4), how to install it. No release has 3.0.0b4 yet: from git.
 
   let {
     version = null,
@@ -11,10 +11,11 @@
     onclose: () => void;
   } = $props();
 
+  const source = "papers-cli @ git+https://github.com/perrette/papers@v3";
   let commands = $derived(
     version
-      ? ["pip install --pre --upgrade papers-cli", "uv tool install --prerelease allow --upgrade papers-cli"]
-      : ["pip install --pre papers-cli", "uv tool install --prerelease allow papers-cli"],
+      ? [`pip install --upgrade "${source}"`, `uv tool install --reinstall "${source}"`]
+      : [`pip install "${source}"`, `uv tool install "${source}"`],
   );
   let copied = $state<string | null>(null);
   let close: HTMLButtonElement;
@@ -35,7 +36,7 @@
     <h2 id="papers-missing-title">This library is written by papers</h2>
     <p>
       The app writes a papers library with the papers command, so that a change made here or in a terminal has
-      the same format and history. {#if version}papers {version} is installed: 3.0 or later is needed.{:else}papers is not found.{/if}
+      the same format and history. {#if version}papers {version} is installed: 3.0.0b4 or later is needed.{:else}papers is not found.{/if}
     </p>
     <p>{version ? "Upgrade it" : "Install it"} with one of:</p>
     <ul>

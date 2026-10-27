@@ -70,18 +70,25 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 ## Writing (P1)
 
 - **A papers library** (a `.papers/config.json` next to its `.bib`, naming
-  it) is written by papers (3.0 or later), as a command, so that a change
-  from the app or from a terminal has the same format, naming and history.
-  The command: the `papers` setting, else the one the login shell finds; it
-  runs with the PATH of the login shell (its git). Without it, a papers
-  library is read-only, and a dialog tells how to install it, with copyable
-  commands (`pip install --pre papers-cli`, `uv tool install --prerelease
-  allow papers-cli`, while papers 3 is a beta).
+  it) is written by papers (3.0.0b4 or later, with `edit --from` and
+  `--porcelain`), as a command, so that a change from the app or from a
+  terminal has the same format, naming and history. The command: the
+  `papers` setting, else the one the login shell finds; it runs with the
+  PATH of the login shell (its git), with `--porcelain`: its output tells
+  the keys added and the papers already in the library. Without it, a
+  papers library is read-only, and a dialog tells how to install it, with
+  copyable commands (from git, `papers-cli @
+  git+https://github.com/perrette/papers@v3`, until a release has
+  3.0.0b4).
 - **Any other `.bib`** is written by the app (`crates/core/src/write.rs`):
   only the edited entries are rewritten, the rest of the file stays byte for
   byte; the file is written to a temporary file then renamed, and not at all
   if it changed since it was read; the new text must load as the library
-  reads it. Undo and redo: a stack of the changes of the session.
+  reads it. Undo and redo: a stack of the changes of the session. Pasted
+  entries whose key is in the file already are not added, but reported.
+- **An edit of the BibTeX** of an entry keeps its key, tags and files, in
+  either library, as `papers edit --from` does: an edit that changes them is
+  refused. Tags have their own commands, files will too.
 - Fields are saved with `⌘S`, not on every change: each papers write is one
   undo step and one git commit, and autosaving would write half-typed
   values. A tab with unsaved edits shows a dot, and closing it asks first.
@@ -95,7 +102,8 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 `redo`; errors `{ kind: "papers-missing" | "changed" | "failed", message }`;
 `src/lib/library/writes.ts`); in the window, `write()` runs a write, says
 its error or shows `PapersMissing.svelte`; Settings has the papers command
-and tells how each `.bib` is written. Nothing in the window writes yet.
+and tells how each `.bib` is written. A papers library is edited with
+`papers edit KEY --from -`. Nothing in the window writes yet.
 
 **Next** (proposed, to confirm before starting; one agent each, in a git
 worktree, merged one by one):
@@ -106,8 +114,7 @@ worktree, merged one by one):
    *Pin to a key*; the pinned tags kept in the settings; `1`–`9` toggle a
    pinned tag on the selection, when not typing.
 2. **Edit and add**: *Edit* in the details turns the BibTeX of the entry into
-   an editor, `⌘S` saves, `Esc` cancels; a papers library says it needs
-   `papers edit --from` until papers has it. *Add…* in the toolbar: a DOI
+   an editor, `⌘S` saves, `Esc` cancels. *Add…* in the toolbar: a DOI
    (its BibTeX from doi.org, the first use of the network) or BibTeX pasted;
    a duplicate check first (the same DOI, or the same title and year); the
    `.bib` to add to, when there are several.
@@ -120,11 +127,10 @@ worktree, merged one by one):
    `.tex` or `.aux` tag their papers, and the keys not in the library are
    listed.
 
-**Upstream** (perrette/papers): issues #117 (`edit --from`), #118
-(`--json`), #119 (safe writes), #120 (changes made outside papers, in the
-history), #121 (smaller points). `papers edit --from` is pull request #122
-(from the fork alex-robinson/papers, branch `edit-from`, against `v3`).
-Field edits of a papers library wait for it.
+**Upstream** (perrette/papers, branch `v3`, not in a release yet): `edit
+--from` (#117), safe writes (#119) and the smaller points (#121) are in
+(pull request #123), with `--porcelain` and BibJSON (#118, pull requests
+#125, #126). Open: #120 (changes made outside papers, in the history).
 
 Towards the app's own writer for everything: it follows the conventions of
 papers (`.papers/config.json` for the key and file names, tags in
