@@ -571,9 +571,12 @@
   input:focus {
     border-color: var(--accent);
   }
+  /* room for "99999 papers · 999 selected": the export stays in place */
   .count {
+    min-width: 26ch;
     color: var(--muted);
     font-size: 12px;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
   .export {
