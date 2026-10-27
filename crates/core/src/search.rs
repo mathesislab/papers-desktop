@@ -167,6 +167,13 @@ impl Library {
         Some(e.entry.to_bibtex_string().unwrap_or_else(|_| e.raw.clone()))
     }
 
+    /// The BibTeX of items, formatted, one after another: a .bib file of
+    /// their own (the strings expanded).
+    pub fn export(&self, ids: &[String]) -> String {
+        let entries: Vec<String> = ids.iter().filter_map(|id| self.bibtex(id)).collect();
+        entries.join("\n\n") + "\n"
+    }
+
     /// The BibTeX of an item as written in its .bib file.
     pub fn raw(&self, id: &str) -> Option<&str> {
         self.entry(id).map(|e| e.raw.as_str())

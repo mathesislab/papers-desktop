@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { save } from "@tauri-apps/plugin-dialog";
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
@@ -60,6 +61,11 @@
   let item = $state<Item | null>(null);
   let input = $state<HTMLInputElement>();
   let reader = $state<Reader>();
+  /** the menu of the export, open */
+  let exporting = $state(false);
+  /** what was just done, said for a moment */
+  let notice = $state<string | null>(null);
+  let noticeTimer: ReturnType<typeof setTimeout>;
   /** after a paper is closed: the library, or the next paper open (a setting) */
   let afterClose: "library" | "next" = "library";
 
@@ -272,6 +278,29 @@
     invoke("opened", { id }).then(refresh);
   }
 
+  /** The papers in a .bib file of their own, e.g. a manuscript's references. */
+  async function exportBib(ids: string[]) {
+    exporting = false;
+    const path = await save({
+      title: "Export as a .bib file",
+      defaultPath: "references.bib",
+      filters: [{ name: "BibTeX", extensions: ["bib"] }],
+    });
+    if (!path) return;
+    try {
+      const count = await invoke<number>("export_bib", { ids, path });
+      say(`Exported ${count} ${count === 1 ? "paper" : "papers"} to ${path.split(/[\\/]/).pop()}`);
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  function say(text: string) {
+    notice = text;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => (notice = null), 4000);
+  }
+
   /** A paper closed: the library comes to the front, or the next paper open. */
   function closePaper(id: string) {
     const at = layout.open.indexOf(id);
@@ -409,7 +438,19 @@
           spellcheck="false"
           autocomplete="off"
         />
-        <span class="count">{shown.length} {shown.length === 1 ? "paper" : "papers"}</span>
+        <span class="count">{notice ?? `${shown.length} ${shown.length === 1 ? "paper" : "papers"}`}</span>
+        <div class="export">
+          <button class="details-button" class:on={exporting} onclick={() => (exporting = !exporting)}>Export…</button>
+          {#if exporting}
+            <button class="backdrop" aria-label="Close" onclick={() => (exporting = false)}></button>
+            <div class="menu" role="menu">
+              <button role="menuitem" disabled={!selected.size} onclick={() => exportBib([...selected])}>
+                The {selected.size} selected
+              </button>
+              <button role="menuitem" onclick={() => exportBib(shown.map((r) => r.id))}>The {shown.length} shown</button>
+            </div>
+          {/if}
+        </div>
         {@render detailsButton()}
       </header>
       {#if status.state === "loading" && !rows.length}
@@ -506,6 +547,46 @@
     color: var(--muted);
     font-size: 12px;
     white-space: nowrap;
+  }
+  .export {
+    position: relative;
+  }
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    border: none;
+    background: none;
+  }
+  .menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--menu-bg);
+  }
+  .menu button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .menu button:hover:not(:disabled) {
+    background: var(--selection);
+    color: var(--on-selection);
+  }
+  .menu button:disabled {
+    color: var(--muted);
   }
   .details-button {
     padding: 3px 10px;

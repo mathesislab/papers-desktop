@@ -148,6 +148,15 @@ fn opened(state: State<AppState>, id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Write the BibTeX of papers to a .bib file of their own, e.g. the
+/// references of a manuscript; returns how many.
+#[tauri::command]
+fn export_bib(state: State<AppState>, ids: Vec<String>, path: PathBuf) -> Result<usize, String> {
+    let text = state.library.read().unwrap().export(&ids);
+    std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(ids.len())
+}
+
 /// An item, for the details of the main window.
 #[tauri::command]
 fn item(state: State<AppState>, id: String) -> Result<Item, String> {
@@ -755,6 +764,7 @@ pub fn run() {
             duplicates,
             recent,
             opened,
+            export_bib,
             item,
             status,
             hide_panel,

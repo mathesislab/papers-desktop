@@ -76,3 +76,18 @@ fn duplicates() {
         ]
     );
 }
+
+#[test]
+fn export() {
+    let lib = library();
+    let bib = lib.export(&["twin2019".to_string(), "same2020".to_string()]);
+    // in the order asked, a .bib file of their own
+    let twin = bib.find("{twin2019,").unwrap();
+    let same = bib.find("{same2020,").unwrap();
+    assert!(twin < same);
+    let path = std::env::temp_dir().join(format!("papers-core-export-{}.bib", std::process::id()));
+    std::fs::write(&path, &bib).unwrap();
+    let again = Library::load(std::slice::from_ref(&path));
+    std::fs::remove_file(&path).unwrap();
+    assert_eq!(again.unwrap().len(), 2);
+}
