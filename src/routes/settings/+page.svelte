@@ -7,6 +7,8 @@
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { mac, matches } from "$lib/keys";
+  import { writers as listWriters } from "$lib/library/writes";
+  import type { Writer } from "$lib/types";
 
   // Mirrors src-tauri/src/settings.rs and the SettingsView of lib.rs
   type Settings = {
@@ -18,6 +20,8 @@
     citation_style: string;
     check_updates: boolean;
     after_close: "library" | "next";
+    /** the papers command; empty: the one the login shell finds */
+    papers: string;
   };
   /** mirrors update::Available */
   type Update = { version: string };
@@ -131,6 +135,15 @@
     styles = view.styles;
     startAtLogin = view.start_at_login;
     home = view.home;
+    writers = await listWriters();
+  }
+
+  /** how each .bib file is written: by papers, or by the app */
+  let writers = $state<Writer[]>([]);
+
+  function writtenBy(file: string): Writer | undefined {
+    const path = home && file.startsWith("~/") ? home + file.slice(1) : file;
+    return writers.find((w) => w.bib === path);
   }
 
   /** Save a change, which applies at once; on failure, show the settings as they are. */
@@ -278,6 +291,16 @@
             <span class="file" title={file}>
               <span>{fileName(file)}</span>
               <span class="path">{folder(file)}</span>
+              {#if writtenBy(file)}
+                {@const writer = writtenBy(file)!}
+                <span class="path" class:error={writer.kind === "papers-missing"}>
+                  {writer.kind === "papers"
+                    ? `A papers library, written by papers ${writer.version}`
+                    : writer.kind === "native"
+                      ? "Written by the app"
+                      : "A papers library: read-only until papers 3 is installed"}
+                </span>
+              {/if}
             </span>
             <button
               class="remove"
@@ -291,6 +314,20 @@
       </ul>
       <button onclick={addBibs}>Add .bib Files…</button>
       <p class="hint">The panel searches them all, and reloads one when it changes.</p>
+      <label class="row">
+        <span>
+          <span class="label">papers command</span>
+          <span class="hint">Writes the papers libraries; empty: the one your shell finds</span>
+        </span>
+        <input
+          class="command"
+          type="text"
+          placeholder="papers"
+          spellcheck="false"
+          value={settings.papers}
+          onchange={(e) => save({ papers: e.currentTarget.value.trim() })}
+        />
+      </label>
     </section>
 
     <section>
@@ -516,6 +553,20 @@
   .files .path {
     color: var(--muted);
     font-size: 11px;
+  }
+  .files .path.error {
+    color: var(--error);
+  }
+  input.command {
+    width: 220px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
   }
   .files .none {
     color: var(--muted);

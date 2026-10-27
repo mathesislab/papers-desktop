@@ -8,6 +8,8 @@
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { hasTag, toggleTag } from "$lib/query";
   import Details from "$lib/library/Details.svelte";
+  import PapersMissing from "$lib/library/PapersMissing.svelte";
+  import { writeError, writers } from "$lib/library/writes";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -70,6 +72,8 @@
   let input = $state<HTMLInputElement>();
   /** the menu of the export, open */
   let exporting = $state(false);
+  /** papers to install, to write a papers library: the version found, too old */
+  let missing = $state<{ version: string | null } | null>(null);
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
@@ -328,6 +332,25 @@
     }
   }
 
+  /** Run a write: its error said, or how to install papers when a papers
+   *  library cannot be written without it. The library is read again after
+   *  a write (a "status" event). Whether it was written. */
+  async function write(action: () => Promise<unknown>): Promise<boolean> {
+    try {
+      await action();
+      return true;
+    } catch (e) {
+      const error = writeError(e);
+      if (error.kind === "papers-missing") {
+        const found = (await writers()).find((w) => w.kind === "papers-missing");
+        missing = { version: found?.version ?? null };
+      } else {
+        say(error.message);
+      }
+      return false;
+    }
+  }
+
   function say(text: string) {
     notice = text;
     clearTimeout(noticeTimer);
@@ -456,6 +479,10 @@
 </script>
 
 <svelte:window {onkeydown} />
+
+{#if missing}
+  <PapersMissing version={missing.version} onclose={() => (missing = null)} />
+{/if}
 
 <main>
   {#if layout.showSidebar}
