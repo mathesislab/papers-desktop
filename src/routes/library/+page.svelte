@@ -103,6 +103,13 @@
 
   let byId = $derived(new Map(rows.map((r) => [r.id, r])));
 
+  /** The papers the tags in the details change: the one in front, else the
+   *  selection when the focus is in it, else the paper shown. */
+  let targets = $derived.by(() => {
+    const ids = layout.active ? [layout.active] : focus && selected.has(focus) ? [...selected] : item ? [item.id] : [];
+    return ids.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined);
+  });
+
   let shown = $derived.by(() => {
     const m = matched;
     if (!m) return [];
@@ -632,7 +639,18 @@
         <Splitter bind:width={layout.details} side="right" min={260} max={600} />
         <aside class="details" style:width="{layout.details}px">
           {#if item}
-            <Details {item} onopen={() => open(item!.id)} />
+            <Details
+              {item}
+              rows={targets}
+              {tags}
+              filtered={(tag) => !layout.active && hasTag(query, tag)}
+              ontag={(tag) => {
+                query = toggleTag(query, tag);
+                showLibrary();
+              }}
+              onset={(add, remove) => write(() => setTags(targets.map((r) => r.id), add, remove))}
+              onopen={() => open(item!.id)}
+            />
           {:else}
             <p class="empty">No paper selected</p>
           {/if}

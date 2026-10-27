@@ -2,9 +2,28 @@
   import { invoke } from "@tauri-apps/api/core";
   import { mac } from "$lib/keys";
   import Preview from "$lib/Preview.svelte";
-  import type { Item } from "$lib/types";
+  import Tags from "$lib/library/Tags.svelte";
+  import type { Item, Row, TagCount } from "$lib/types";
 
-  let { item, onopen }: { item: Item; onopen: () => void } = $props();
+  let {
+    item,
+    rows,
+    tags,
+    filtered,
+    ontag,
+    onset,
+    onopen,
+  }: {
+    item: Item;
+    /** the papers the tags change: the selection when it has several, else the paper */
+    rows: Row[];
+    tags: TagCount[];
+    /** whether the search filters a tag */
+    filtered: (tag: string) => boolean;
+    ontag: (tag: string) => void;
+    onset: (add: string[], remove: string[]) => Promise<boolean>;
+    onopen: () => void;
+  } = $props();
 
   let copied = $state(false);
 
@@ -20,16 +39,27 @@
 </script>
 
 <div class="details">
-  <div class="actions">
-    {#if item.files.length || item.doi || item.url}
-      <button class="primary" onclick={onopen}>{item.files.length ? "Open PDF" : "Open DOI page"}</button>
-    {/if}
-    {#if item.files.length}
-      <button onclick={() => invoke("reveal", { id: item.id })}>{mac ? "Reveal in Finder" : "Show in folder"}</button>
-    {/if}
-    <button onclick={copyKey}>{copied ? "Copied" : "Copy [@key]"}</button>
-  </div>
-  <Preview {item} marked={item.authors.map(() => false)} {onopen} />
+  <!-- the actions of one paper -->
+  {#if rows.length <= 1}
+    <div class="actions">
+      {#if item.files.length || item.doi || item.url}
+        <button class="primary" onclick={onopen}>{item.files.length ? "Open PDF" : "Open DOI page"}</button>
+      {/if}
+      {#if item.files.length}
+        <button onclick={() => invoke("reveal", { id: item.id })}>{mac ? "Reveal in Finder" : "Show in folder"}</button>
+      {/if}
+      <button onclick={copyKey}>{copied ? "Copied" : "Copy [@key]"}</button>
+    </div>
+  {/if}
+  {#if rows.length > 1}
+    <h4>{rows.length} papers selected</h4>
+  {/if}
+  {#if rows.length}
+    <Tags {rows} {tags} {filtered} ontoggle={ontag} {onset} />
+  {/if}
+  {#if rows.length <= 1}
+    <Preview {item} marked={item.authors.map(() => false)} {onopen} />
+  {/if}
 </div>
 
 <style>
@@ -44,6 +74,11 @@
     flex-wrap: wrap;
     gap: 6px;
     padding: 12px 16px 0;
+  }
+  h4 {
+    margin: 14px 16px 0;
+    font-size: 12px;
+    font-weight: 600;
   }
   button {
     padding: 3px 10px;
