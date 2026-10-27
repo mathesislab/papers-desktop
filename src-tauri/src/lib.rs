@@ -11,6 +11,7 @@ mod selection;
 mod settings;
 mod styles;
 mod update;
+mod writer;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -36,6 +37,7 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_window_state::StateFlags;
 use update::{Available, Installed, Updates};
+use writer::Writers;
 
 pub(crate) const PANEL: &str = "panel";
 const SETTINGS: &str = "settings";
@@ -81,6 +83,7 @@ struct AppState {
     update_item: Mutex<Option<MenuItem<Wry>>>,
     recent: Recent,
     layout: Layout,
+    writers: Writers,
 }
 
 impl AppState {
@@ -449,44 +452,49 @@ fn set_preview(app: AppHandle, on: bool) -> Result<(), String> {
 }
 
 /// Re-read the settings and the library, in the background.
-/// Then watch the .bib files, to reload when one changes.
 fn reload(app: &AppHandle) {
     let app = app.clone();
-    std::thread::spawn(move || {
-        let state = app.state::<AppState>();
-        let reload = state.reloads.fetch_add(1, Ordering::SeqCst) + 1;
-        set_status(&app, Status::Loading);
-        let loaded = Settings::load(&state.settings_path).and_then(|settings| {
-            *state.matching.write().unwrap() = settings.matching;
-            *state.citation_style.write().unwrap() = settings.citation_style.clone();
-            let bibs = settings.bibs();
-            if bibs.is_empty() {
-                return Err("No library: choose its .bib files (menu-bar icon → Settings…)".into());
-            }
-            let library = Library::load(&bibs).map_err(|e| e.to_string())?;
-            Ok((bibs, library))
-        });
-        if state.reloads.load(Ordering::SeqCst) != reload {
-            return;
+    std::thread::spawn(move || load(&app));
+}
+
+/// Re-read the settings and the library now: after a write, the next one
+/// starts from the files as written. Then watch the .bib files, to reload
+/// when one changes.
+fn load(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let reload = state.reloads.fetch_add(1, Ordering::SeqCst) + 1;
+    set_status(app, Status::Loading);
+    let loaded = Settings::load(&state.settings_path).and_then(|settings| {
+        *state.matching.write().unwrap() = settings.matching;
+        *state.citation_style.write().unwrap() = settings.citation_style.clone();
+        state.writers.set_papers(settings.papers_command());
+        let bibs = settings.bibs();
+        if bibs.is_empty() {
+            return Err("No library: choose its .bib files (menu-bar icon → Settings…)".into());
         }
-        let status = match loaded {
-            Ok((bibs, library)) => {
-                let count = library.len();
-                eprintln!(
-                    "papers-desktop: loaded {count} entries from {} .bib files",
-                    bibs.len()
-                );
-                *state.library.write().unwrap() = library;
-                watch(&app, &bibs);
-                Status::Ready { count }
-            }
-            Err(error) => {
-                eprintln!("papers-desktop: {error}");
-                Status::Failed { error }
-            }
-        };
-        set_status(&app, status);
+        let library = Library::load(&bibs).map_err(|e| e.to_string())?;
+        Ok((bibs, library))
     });
+    if state.reloads.load(Ordering::SeqCst) != reload {
+        return;
+    }
+    let status = match loaded {
+        Ok((bibs, library)) => {
+            let count = library.len();
+            eprintln!(
+                "papers-desktop: loaded {count} entries from {} .bib files",
+                bibs.len()
+            );
+            *state.library.write().unwrap() = library;
+            watch(app, &bibs);
+            Status::Ready { count }
+        }
+        Err(error) => {
+            eprintln!("papers-desktop: {error}");
+            Status::Failed { error }
+        }
+    };
+    set_status(app, status);
 }
 
 /// Watch the .bib files of the library, unless they are watched already.
@@ -734,6 +742,7 @@ pub fn run() {
                 update_item: Mutex::new(None),
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
                 layout: Layout::new(app.path().app_data_dir()?.join("window.json")),
+                writers: Writers::default(),
             });
             app.manage(Updates::new(app.handle()));
             hotkey::setup(app.handle(), &settings);
@@ -817,7 +826,15 @@ pub fn run() {
             found_update,
             installed_update,
             release_notes,
-            install_update
+            install_update,
+            writer::writers,
+            writer::set_tags,
+            writer::rename_tag,
+            writer::replace_entry,
+            writer::add_bibtex,
+            writer::remove_entries,
+            writer::undo,
+            writer::redo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

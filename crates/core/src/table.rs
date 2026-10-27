@@ -108,6 +108,11 @@ impl Library {
     }
 }
 
+/// Whether two tags are the same, as the tags are counted: "AMOC" and "amoc".
+pub fn same_tag(a: &str, b: &str) -> bool {
+    fold(a) == fold(b)
+}
+
 fn row(item: &Item) -> Row {
     let file = if item.files.is_empty() {
         FileState::None

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::bib::{self, BibEntry};
+use crate::bib::{self, BibEntry, Snapshot};
 use crate::query::{self, Field, Pattern, Term};
 use crate::reference::Reference;
 use crate::text::{Matching, Span, Text, fold};
@@ -34,6 +34,8 @@ pub struct Library {
     /// the entry of each item, as parsed and as written
     entries: Vec<BibEntry>,
     bibs: Vec<PathBuf>,
+    /// each .bib file as read, for a write to check it is still the same
+    snapshots: HashMap<PathBuf, Snapshot>,
 }
 
 /// The matches of a search, the first `limit` of them with their marks.
@@ -77,8 +79,11 @@ impl Library {
     /// The entries of these .bib files, in order.
     pub fn load(bibs: &[PathBuf]) -> Result<Library> {
         let mut entries = Vec::new();
+        let mut snapshots = HashMap::new();
         for bib in bibs {
-            entries.extend(bib::read(bib)?);
+            let file = bib::read(bib)?;
+            entries.extend(file.entries);
+            snapshots.insert(bib.clone(), file.snapshot);
         }
         // the key is the id, numbered when several entries have it
         let mut count: HashMap<String, usize> = HashMap::new();
@@ -100,10 +105,15 @@ impl Library {
                 Item::from_entry(e, id)
             })
             .collect();
-        Ok(Library::new(items, entries, bibs.to_vec()))
+        Ok(Library::new(items, entries, bibs.to_vec(), snapshots))
     }
 
-    fn new(items: Vec<Item>, entries: Vec<BibEntry>, bibs: Vec<PathBuf>) -> Library {
+    fn new(
+        items: Vec<Item>,
+        entries: Vec<BibEntry>,
+        bibs: Vec<PathBuf>,
+        snapshots: HashMap<PathBuf, Snapshot>,
+    ) -> Library {
         let fields = items.iter().zip(&entries).map(Fields::new).collect();
         let mut order: Vec<usize> = (0..items.len()).collect();
         order.sort_by_cached_key(|&i| {
@@ -123,6 +133,7 @@ impl Library {
             by_id,
             entries,
             bibs,
+            snapshots,
         }
     }
 
@@ -137,6 +148,11 @@ impl Library {
 
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
+    }
+
+    /// The items, in the order of the files.
+    pub fn items(&self) -> &[Item] {
+        &self.items
     }
 
     pub fn get(&self, id: &str) -> Option<&Item> {
@@ -179,8 +195,19 @@ impl Library {
         self.entry(id).map(|e| e.raw.as_str())
     }
 
-    fn entry(&self, id: &str) -> Option<&BibEntry> {
+    /// The entry of an item, as parsed and as written.
+    pub(crate) fn entry(&self, id: &str) -> Option<&BibEntry> {
         self.by_id.get(id).map(|&i| &self.entries[i])
+    }
+
+    /// The entries of a .bib file of the library.
+    pub(crate) fn entries_in(&self, bib: &Path) -> impl Iterator<Item = &BibEntry> {
+        self.entries.iter().filter(move |e| e.bib == bib)
+    }
+
+    /// A .bib file of the library as it was read.
+    pub(crate) fn snapshot(&self, bib: &Path) -> Option<Snapshot> {
+        self.snapshots.get(bib).copied()
     }
 
     /// The items, newest first.

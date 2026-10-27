@@ -62,3 +62,21 @@ export type Row = {
 
 /** mirrors papers_core::TagCount */
 export type TagCount = { tag: string; count: number };
+
+/** mirrors writer::Writer of src-tauri: how a .bib file is written */
+export type Writer = {
+  bib: string;
+  /** "papers": by the papers command; "native": by the app; "papers-missing":
+   *  a papers library, read-only while papers 3 is not found */
+  kind: "papers" | "native" | "papers-missing";
+  /** of the papers command found, for a papers library: too old when missing */
+  version: string | null;
+};
+
+/** mirrors writer::WriteError: what a write is rejected with */
+export type WriteError = {
+  /** "papers-missing": a papers library without papers 3; "changed": the .bib
+   *  changed since it was read, and is read again: try again */
+  kind: "papers-missing" | "changed" | "failed";
+  message: string;
+};

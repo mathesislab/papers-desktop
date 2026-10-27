@@ -31,6 +31,9 @@ pub struct Settings {
     pub check_updates: bool,
     /// what the main window shows after a paper is closed
     pub after_close: AfterClose,
+    /// the papers command, which writes a papers library (~ for the home
+    /// directory); empty: the one the login shell finds
+    pub papers: PathBuf,
 }
 
 /// After a paper is closed in the main window: the library, or the next
@@ -59,6 +62,7 @@ impl Default for Settings {
             citation_style: crate::styles::DEFAULT.into(),
             check_updates: true,
             after_close: AfterClose::default(),
+            papers: PathBuf::new(),
         }
     }
 }
@@ -94,6 +98,11 @@ impl Settings {
             .iter()
             .map(|p| expand(&p.to_string_lossy()))
             .collect()
+    }
+
+    /// The papers command, ~ expanded; empty: to look for.
+    pub fn papers_command(&self) -> PathBuf {
+        expand(&self.papers.to_string_lossy())
     }
 }
 

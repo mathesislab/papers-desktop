@@ -5,7 +5,8 @@
 - The library is one or more `.bib` files, read as they are (with the
   `biblatex` crate), and the files their entries link to. The app works out
   of the box, with no other tool: papers, JabRef or any editor keeps the
-  `.bib` files. It writes nothing yet (see *Writing*).
+  `.bib` files. It writes a papers library through papers, any other `.bib`
+  with its own writer (see *Writing*).
 - Everything is in the `.bib` and the PDFs: no account, no database of the
   app as the truth, no settings of the app written in the `.bib`. Tags are
   the `keywords` field, the one grouping there is.
