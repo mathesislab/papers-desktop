@@ -3,12 +3,14 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { save } from "@tauri-apps/plugin-dialog";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { hasTag, toggleTag } from "$lib/query";
   import Details from "$lib/library/Details.svelte";
-  import Reader from "$lib/library/Reader.svelte";
+  import { PdfReader } from "$lib/library/reader.svelte";
+  import ReaderBar from "$lib/library/ReaderBar.svelte";
+  import ReaderView from "$lib/library/ReaderView.svelte";
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { type Sort } from "$lib/library/Table.svelte";
@@ -60,7 +62,6 @@
   let anchor: string | null = null;
   let item = $state<Item | null>(null);
   let input = $state<HTMLInputElement>();
-  let reader = $state<Reader>();
   /** the menu of the export, open */
   let exporting = $state(false);
   /** what was just done, said for a moment */
@@ -100,6 +101,19 @@
   ]);
 
   let papers = $derived(layout.open.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined));
+
+  /** the PDF of the paper in front */
+  let reader = $derived.by(() => {
+    const id = layout.active;
+    if (!id) return null;
+    return untrack(() => new PdfReader(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
+  });
+
+  /** what the search found, next to it */
+  let summary = $derived(
+    `${shown.length} ${shown.length === 1 ? "paper" : "papers"}` +
+      (selected.size > 1 ? ` · ${selected.size} selected` : ""),
+  );
 
   let libraries = $derived.by(() => {
     const counts = new Map<string, number>();
@@ -388,15 +402,6 @@
 
 <svelte:window {onkeydown} />
 
-{#snippet detailsButton()}
-  <button
-    class="details-button"
-    class:on={layout.showDetails}
-    title="Details ({label(detailsShortcut)})"
-    onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
-  >
-{/snippet}
-
 <main>
   <aside class="sidebar" style:width="{layout.sidebar}px">
     <Sidebar
@@ -420,16 +425,11 @@
     />
   </aside>
   <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
-  <section class="library">
-    {#if layout.active}
-      {#key layout.active}
-        {@const id = layout.active}
-        <Reader bind:this={reader} {id} page={layout.pages[id] ?? 1} onpage={(page) => (layout.pages[id] = page)}>
-          {@render detailsButton()}
-        </Reader>
-      {/key}
-    {:else}
-      <header>
+  <div class="right">
+    <header>
+      {#if reader}
+        <ReaderBar {reader} />
+      {:else}
         <input
           bind:this={input}
           bind:value={query}
@@ -438,9 +438,9 @@
           spellcheck="false"
           autocomplete="off"
         />
-        <span class="count">{notice ?? `${shown.length} ${shown.length === 1 ? "paper" : "papers"}`}</span>
+        <span class="count">{notice ?? summary}</span>
         <div class="export">
-          <button class="details-button" class:on={exporting} onclick={() => (exporting = !exporting)}>Export…</button>
+          <button class="tool" class:on={exporting} onclick={() => (exporting = !exporting)}>Export…</button>
           {#if exporting}
             <button class="backdrop" aria-label="Close" onclick={() => (exporting = false)}></button>
             <div class="menu" role="menu">
@@ -451,41 +451,53 @@
             </div>
           {/if}
         </div>
-        {@render detailsButton()}
-      </header>
-      {#if status.state === "loading" && !rows.length}
-        <p class="empty">Loading the library…</p>
-      {:else if status.state === "failed"}
-        <p class="empty error">{status.error}</p>
-      {:else if !rows.length}
-        <p class="empty">
-          No .bib file yet. <button class="link" onclick={() => invoke("open_settings")}>Choose them in Settings</button>
-        </p>
-      {:else if matched && !shown.length}
-        <p class="empty">No paper matches.</p>
-      {:else}
-        <Table
-          rows={shown}
-          {selected}
-          {focus}
-          sort={layout.sort}
-          onsort={(sort) => (layout.sort = sort)}
-          onselect={select}
-          onopen={open}
-        />
       {/if}
-    {/if}
-  </section>
-  {#if layout.showDetails}
-    <Splitter bind:width={layout.details} side="right" min={260} max={600} />
-    <aside class="details" style:width="{layout.details}px">
-      {#if item}
-        <Details {item} onopen={() => open(item!.id)} />
-      {:else}
-        <p class="empty">No paper selected</p>
+      <span class="spacer"></span>
+      <button
+        class="tool"
+        class:on={layout.showDetails}
+        title="Details ({label(detailsShortcut)})"
+        onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
+      >
+    </header>
+    <div class="content">
+      <section class="library">
+        {#if reader}
+          {#key reader}<ReaderView {reader} />{/key}
+        {:else if status.state === "loading" && !rows.length}
+          <p class="empty">Loading the library…</p>
+        {:else if status.state === "failed"}
+          <p class="empty error">{status.error}</p>
+        {:else if !rows.length}
+          <p class="empty">
+            No .bib file yet. <button class="link" onclick={() => invoke("open_settings")}>Choose them in Settings</button>
+          </p>
+        {:else if matched && !shown.length}
+          <p class="empty">No paper matches.</p>
+        {:else}
+          <Table
+            rows={shown}
+            {selected}
+            {focus}
+            sort={layout.sort}
+            onsort={(sort) => (layout.sort = sort)}
+            onselect={select}
+            onopen={open}
+          />
+        {/if}
+      </section>
+      {#if layout.showDetails}
+        <Splitter bind:width={layout.details} side="right" min={260} max={600} />
+        <aside class="details" style:width="{layout.details}px">
+          {#if item}
+            <Details {item} onopen={() => open(item!.id)} />
+          {:else}
+            <p class="empty">No paper selected</p>
+          {/if}
+        </aside>
       {/if}
-    </aside>
-  {/if}
+    </div>
+  </div>
 </main>
 
 <style>
@@ -512,6 +524,17 @@
     border-right: 1px solid var(--line);
   }
 
+  .right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
   .library {
     flex: 1;
     min-width: 320px;
@@ -528,9 +551,11 @@
     padding: 0 12px;
     border-bottom: 1px solid var(--line);
   }
+  /* the search keeps its width: what is next to it stays in place */
   input {
-    flex: 1;
-    min-width: 0;
+    flex: 0 1 50%;
+    min-width: 200px;
+    max-width: 560px;
     height: 28px;
     padding: 0 10px;
     border: 1px solid var(--border);
@@ -588,7 +613,10 @@
   .menu button:disabled {
     color: var(--muted);
   }
-  .details-button {
+  .spacer {
+    flex: 1;
+  }
+  .tool {
     padding: 3px 10px;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -597,7 +625,7 @@
     font: inherit;
     font-size: 12px;
   }
-  .details-button.on {
+  .tool.on {
     background: var(--line);
   }
 
