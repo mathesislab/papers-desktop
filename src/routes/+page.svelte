@@ -79,6 +79,7 @@
       run: call("reveal"),
     },
     { name: "Open DOI page", shortcut: { key: "d", mod: true }, when: hasLink, run: call("open_link") },
+    { name: "Open in the library", shortcut: { key: "i", mod: true }, run: call("open_paper") },
     { name: "Copy key", shortcut: { key: "c", mod: true, shift: true }, run: copy("key") },
     { name: "Copy [@key]", shortcut: { key: ".", mod: true }, run: copy("pandoc") },
     { name: "Copy \\cite{key}", shortcut: { key: "l", mod: true }, run: copy("latex") },

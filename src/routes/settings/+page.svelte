@@ -17,6 +17,7 @@
     matching: "word-start" | "inside-words";
     citation_style: string;
     check_updates: boolean;
+    after_close: "library" | "next";
   };
   /** mirrors update::Available */
   type Update = { version: string };
@@ -362,6 +363,19 @@
         </span>
         <button disabled={recentCleared} onclick={clearRecent}>{recentCleared ? "Cleared" : "Clear"}</button>
       </div>
+      <label class="row">
+        <span>
+          <span class="label">After closing a paper</span>
+          <span class="hint">In the main window ({mac ? "⌘W" : "Ctrl+W"})</span>
+        </span>
+        <select
+          value={settings.after_close}
+          onchange={(e) => save({ after_close: e.currentTarget.value as Settings["after_close"] })}
+        >
+          <option value="library">Show the library</option>
+          <option value="next">Show the next paper open</option>
+        </select>
+      </label>
     </section>
 
     <section id="updates">

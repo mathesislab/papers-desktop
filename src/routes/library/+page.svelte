@@ -7,6 +7,7 @@
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { hasTag, toggleTag } from "$lib/query";
   import Details from "$lib/library/Details.svelte";
+  import Reader from "$lib/library/Reader.svelte";
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { type Sort } from "$lib/library/Table.svelte";
@@ -14,9 +15,26 @@
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
-   *  the order of the table. */
-  type Layout = { sidebar: number; details: number; showDetails: boolean; sort: Sort };
-  const DEFAULTS: Layout = { sidebar: 230, details: 340, showDetails: true, sort: null };
+   *  the order of the table, the papers open and the page of each. */
+  type Layout = {
+    sidebar: number;
+    details: number;
+    showDetails: boolean;
+    sort: Sort;
+    open: string[];
+    /** the paper in front; none: the library */
+    active: string | null;
+    pages: Record<string, number>;
+  };
+  const DEFAULTS: Layout = {
+    sidebar: 230,
+    details: 340,
+    showDetails: true,
+    sort: null,
+    open: [],
+    active: null,
+    pages: {},
+  };
 
   let layout = $state<Layout>({ ...DEFAULTS });
   let loaded = false;
@@ -41,11 +59,15 @@
   let anchor: string | null = null;
   let item = $state<Item | null>(null);
   let input = $state<HTMLInputElement>();
+  let reader = $state<Reader>();
+  /** after a paper is closed: the library, or the next paper open (a setting) */
+  let afterClose: "library" | "next" = "library";
 
   const detailsShortcut: Shortcut = { key: "i", mod: true, alt: true };
   const settingsShortcut: Shortcut = { key: ",", mod: true };
   const findShortcut: Shortcut = { key: "f", mod: true };
   const allShortcut: Shortcut = { key: "a", mod: true };
+  const closeShortcut: Shortcut = { key: "w", mod: true };
 
   const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 
@@ -70,6 +92,8 @@
     { view: "broken", name: "Broken file links", count: rows.filter((r) => r.file === "missing").length },
     { view: "duplicates", name: "Possible duplicates", count: duplicates.flat().length },
   ]);
+
+  let papers = $derived(layout.open.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined));
 
   let libraries = $derived.by(() => {
     const counts = new Map<string, number>();
@@ -105,10 +129,14 @@
         status = e.payload;
         if (status.state === "ready") loadLibrary();
       }),
-      // papers opened from the panel meanwhile
+      // papers opened from the panel meanwhile, settings changed
       window.onFocusChanged(({ payload: focused }) => {
-        if (focused) invoke<string[]>("recent").then((ids) => (recent = ids));
+        if (focused) refresh();
       }),
+      // ⌘I in the panel
+      listen<string>("open", (e) => openPaper(e.payload)),
+      // ⌘W, from the menu of the app
+      listen("close", closeActive),
     ];
     load();
     return () => unlisten.forEach((u) => u.then((f) => f()));
@@ -120,11 +148,19 @@
     loaded = true;
     status = await invoke<Status>("status");
     if (status.state === "ready") await loadLibrary();
+    await refresh();
+    // a paper to open with the window ("library#ID")
+    if (location.hash) openPaper(decodeURIComponent(location.hash.slice(1)));
     await tick();
     const window = getCurrentWindow();
     await window.show();
     await window.setFocus();
-    input?.focus();
+    if (!layout.active) input?.focus();
+  }
+
+  async function refresh() {
+    recent = await invoke<string[]>("recent");
+    afterClose = (await invoke<{ settings: { after_close: "library" | "next" } }>("get_settings")).settings.after_close;
   }
 
   /** The library, at start and when its files change. */
@@ -135,9 +171,11 @@
       invoke<string[]>("recent"),
       invoke<string[][]>("duplicates"),
     ]);
-    // the selection keeps the papers still there
+    // the selection and the tabs keep the papers still there
     selected = new Set([...selected].filter((id) => byId.has(id)));
     if (focus && !byId.has(focus)) focus = null;
+    layout.open = layout.open.filter((id) => byId.has(id));
+    if (layout.active && !byId.has(layout.active)) layout.active = null;
     await search(query);
   }
 
@@ -161,9 +199,10 @@
     timer = setTimeout(() => invoke("save_layout", { layout: snapshot }), 300);
   });
 
-  // the details of the paper in focus, again when the library reloads
+  // the details of the paper in front, else of the one in focus; again
+  // when the library reloads
   $effect(() => {
-    const id = focus;
+    const id = layout.active ?? focus;
     rows;
     if (!id) {
       item = null;
@@ -216,14 +255,55 @@
     focus = next;
   }
 
+  /** Enter, a double-click: the paper in a tab, unless it has no file (its
+   *  web page then opens in the browser). */
   async function open(id: string) {
-    await invoke("open", { id });
-    recent = await invoke<string[]>("recent");
+    if (byId.get(id)?.file === "none") {
+      await invoke("open", { id });
+      recent = await invoke<string[]>("recent");
+    } else {
+      openPaper(id);
+    }
+  }
+
+  function openPaper(id: string) {
+    if (!layout.open.includes(id)) layout.open = [...layout.open, id];
+    layout.active = id;
+    invoke("opened", { id }).then(refresh);
+  }
+
+  /** A paper closed: the library comes to the front, or the next paper open. */
+  function closePaper(id: string) {
+    const at = layout.open.indexOf(id);
+    layout.open = layout.open.filter((x) => x !== id);
+    delete layout.pages[id];
+    if (layout.active !== id) return;
+    layout.active = afterClose === "next" ? (layout.open[at] ?? layout.open[at - 1] ?? null) : null;
+  }
+
+  /** ⌘W: the paper in front, else the window. */
+  function closeActive() {
+    if (layout.active) closePaper(layout.active);
+    else getCurrentWindow().close();
+  }
+
+  function showLibrary() {
+    layout.active = null;
+    tick().then(() => input?.focus());
   }
 
   function onkeydown(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (matches(e, closeShortcut)) {
+      // on macOS, the menu of the app takes ⌘W
+      e.preventDefault();
+      closeActive();
+    } else if (e.ctrlKey && e.key === "Tab") {
+      e.preventDefault();
+      cycle(e.shiftKey ? -1 : 1);
+    } else if (layout.active) {
+      readerKey(e);
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       move(e.key === "ArrowDown" ? 1 : -1, e.shiftKey);
     } else if (e.key === "Enter" && focus) {
@@ -238,7 +318,27 @@
     } else if (matches(e, allShortcut) && !typing) {
       e.preventDefault();
       selected = new Set(shown.map((r) => r.id));
-    } else if (matches(e, detailsShortcut)) {
+    } else {
+      windowKey(e);
+    }
+  }
+
+  /** The keys of a paper in front: find, zoom; the arrows scroll it. */
+  function readerKey(e: KeyboardEvent) {
+    const mod = mac ? e.metaKey : e.ctrlKey;
+    if (matches(e, findShortcut)) {
+      e.preventDefault();
+      reader?.focusFind();
+    } else if (mod && (e.key === "=" || e.key === "+" || e.key === "-" || e.key === "0")) {
+      e.preventDefault();
+      reader?.zoom(e.key === "0" ? 0 : e.key === "-" ? -1 : 1);
+    } else {
+      windowKey(e);
+    }
+  }
+
+  function windowKey(e: KeyboardEvent) {
+    if (matches(e, detailsShortcut)) {
       e.preventDefault();
       layout.showDetails = !layout.showDetails;
     } else if (matches(e, settingsShortcut)) {
@@ -246,9 +346,27 @@
       invoke("open_settings");
     }
   }
+
+  /** ⌃Tab: the next tab, the library first; ⌃⇧Tab: the one before. */
+  function cycle(step: number) {
+    const tabs = [null, ...layout.open];
+    const at = tabs.indexOf(layout.active);
+    const next = tabs[(at + step + tabs.length) % tabs.length];
+    if (next) layout.active = next;
+    else showLibrary();
+  }
 </script>
 
 <svelte:window {onkeydown} />
+
+{#snippet detailsButton()}
+  <button
+    class="details-button"
+    class:on={layout.showDetails}
+    title="Details ({label(detailsShortcut)})"
+    onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
+  >
+{/snippet}
 
 <main>
   <aside class="sidebar" style:width="{layout.sidebar}px">
@@ -256,50 +374,65 @@
       {libraries}
       {views}
       {tags}
-      {view}
-      filtered={(tag) => hasTag(query, tag)}
-      onview={(v) => (view = v)}
-      ontag={(tag) => (query = toggleTag(query, tag))}
+      view={layout.active ? null : view}
+      filtered={(tag) => !layout.active && hasTag(query, tag)}
+      {papers}
+      active={layout.active}
+      onview={(v) => {
+        view = v;
+        showLibrary();
+      }}
+      ontag={(tag) => {
+        query = toggleTag(query, tag);
+        showLibrary();
+      }}
+      onpaper={(id) => (layout.active = id)}
+      onclose={closePaper}
     />
   </aside>
   <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
   <section class="library">
-    <header>
-      <input
-        bind:this={input}
-        bind:value={query}
-        type="search"
-        placeholder="Search: words, author:, year:2010-2015, tag:, has:pdf, -exclude"
-        spellcheck="false"
-        autocomplete="off"
-      />
-      <span class="count">{shown.length} {shown.length === 1 ? "paper" : "papers"}</span>
-      <button
-        class:on={layout.showDetails}
-        title="Details ({label(detailsShortcut)})"
-        onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
-      >
-    </header>
-    {#if status.state === "loading" && !rows.length}
-      <p class="empty">Loading the library…</p>
-    {:else if status.state === "failed"}
-      <p class="empty error">{status.error}</p>
-    {:else if !rows.length}
-      <p class="empty">
-        No .bib file yet. <button class="link" onclick={() => invoke("open_settings")}>Choose them in Settings</button>
-      </p>
-    {:else if matched && !shown.length}
-      <p class="empty">No paper matches.</p>
+    {#if layout.active}
+      {#key layout.active}
+        {@const id = layout.active}
+        <Reader bind:this={reader} {id} page={layout.pages[id] ?? 1} onpage={(page) => (layout.pages[id] = page)}>
+          {@render detailsButton()}
+        </Reader>
+      {/key}
     {:else}
-      <Table
-        rows={shown}
-        {selected}
-        {focus}
-        sort={layout.sort}
-        onsort={(sort) => (layout.sort = sort)}
-        onselect={select}
-        onopen={open}
-      />
+      <header>
+        <input
+          bind:this={input}
+          bind:value={query}
+          type="search"
+          placeholder="Search: words, author:, year:2010-2015, tag:, has:pdf, -exclude"
+          spellcheck="false"
+          autocomplete="off"
+        />
+        <span class="count">{shown.length} {shown.length === 1 ? "paper" : "papers"}</span>
+        {@render detailsButton()}
+      </header>
+      {#if status.state === "loading" && !rows.length}
+        <p class="empty">Loading the library…</p>
+      {:else if status.state === "failed"}
+        <p class="empty error">{status.error}</p>
+      {:else if !rows.length}
+        <p class="empty">
+          No .bib file yet. <button class="link" onclick={() => invoke("open_settings")}>Choose them in Settings</button>
+        </p>
+      {:else if matched && !shown.length}
+        <p class="empty">No paper matches.</p>
+      {:else}
+        <Table
+          rows={shown}
+          {selected}
+          {focus}
+          sort={layout.sort}
+          onsort={(sort) => (layout.sort = sort)}
+          onselect={select}
+          onopen={open}
+        />
+      {/if}
     {/if}
   </section>
   {#if layout.showDetails}
@@ -374,15 +507,16 @@
     font-size: 12px;
     white-space: nowrap;
   }
-  header button {
-    padding: 4px 10px;
+  .details-button {
+    padding: 3px 10px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: none;
     color: var(--fg);
     font: inherit;
+    font-size: 12px;
   }
-  header button.on {
+  .details-button.on {
     background: var(--line);
   }
 

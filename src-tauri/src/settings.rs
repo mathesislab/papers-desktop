@@ -29,6 +29,18 @@ pub struct Settings {
     pub citation_style: String,
     /// look for updates at start and twice a day
     pub check_updates: bool,
+    /// what the main window shows after a paper is closed
+    pub after_close: AfterClose,
+}
+
+/// After a paper is closed in the main window: the library, or the next
+/// paper open.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AfterClose {
+    #[default]
+    Library,
+    Next,
 }
 
 impl Default for Settings {
@@ -46,6 +58,7 @@ impl Default for Settings {
             matching: Matching::default(),
             citation_style: crate::styles::DEFAULT.into(),
             check_updates: true,
+            after_close: AfterClose::default(),
         }
     }
 }

@@ -2,6 +2,8 @@
 mod focus;
 mod hotkey;
 mod main_window;
+#[cfg(target_os = "macos")]
+mod menu;
 mod recent;
 mod selection;
 mod settings;
@@ -33,7 +35,7 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_window_state::StateFlags;
 use update::{Available, Installed, Updates};
 
-const PANEL: &str = "panel";
+pub(crate) const PANEL: &str = "panel";
 const SETTINGS: &str = "settings";
 const MAX_RESULTS: usize = 200;
 /// panel size in logical pixels, as in tauri.conf.json; the preview widens it
@@ -137,6 +139,13 @@ fn recent(state: State<AppState>) -> Vec<String> {
     let library = state.library.read().unwrap();
     let hits = state.recent.hits(&library);
     hits.into_iter().map(|h| h.item.id).collect()
+}
+
+/// A paper opened in the main window: one of the recent papers.
+#[tauri::command]
+fn opened(state: State<AppState>, id: String) -> Result<(), String> {
+    state.recent.add(&state.item(&id)?);
+    Ok(())
 }
 
 /// An item, for the details of the main window.
@@ -314,6 +323,12 @@ async fn open_settings(app: AppHandle) {
 #[tauri::command]
 async fn open_library(app: AppHandle) {
     main_window::show(&app);
+}
+
+/// The main window with a paper open in it, from the panel (⌘I).
+#[tauri::command]
+async fn open_paper(app: AppHandle, id: String) {
+    main_window::open_paper(&app, &id);
 }
 
 /// The layout of the main window saved last.
@@ -712,6 +727,8 @@ pub fn run() {
             app.manage(Updates::new(app.handle()));
             hotkey::setup(app.handle(), &settings);
             tray(app.handle(), &settings.hotkey)?;
+            #[cfg(target_os = "macos")]
+            menu::setup(app.handle())?;
             selection::setup(app.handle());
             reload(app.handle());
             update::watch(app.handle());
@@ -737,6 +754,7 @@ pub fn run() {
             tags,
             duplicates,
             recent,
+            opened,
             item,
             status,
             hide_panel,
@@ -756,6 +774,7 @@ pub fn run() {
             set_start_at_login,
             open_settings,
             open_library,
+            open_paper,
             layout,
             save_layout,
             send_feedback,

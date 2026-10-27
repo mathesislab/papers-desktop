@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use serde_json::Value;
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 pub const MAIN: &str = "main";
 
@@ -13,15 +13,44 @@ pub const MAIN: &str = "main";
 /// it once drawn.
 pub fn show(app: &AppHandle) {
     crate::hide_window(app);
-    if let Some(window) = app.get_webview_window(MAIN) {
-        let _ = window.unminimize();
-        let _ = window.show();
-        let _ = window.set_focus();
-        return;
+    match app.get_webview_window(MAIN) {
+        Some(window) => {
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+        None => make(app, "library"),
     }
+}
+
+/// Show the main window with a paper open in it: told to its page, or in
+/// the URL of a window made for it ("library#ID").
+pub fn open_paper(app: &AppHandle, id: &str) {
+    if app.get_webview_window(MAIN).is_some() {
+        show(app);
+        let _ = app.emit_to(MAIN, "open", id);
+    } else {
+        crate::hide_window(app);
+        make(app, &format!("library#{}", encode(id)));
+    }
+}
+
+/// An id in a URL: a key can have a slash ("10.1002/xyz") or a hash ("key#2").
+fn encode(id: &str) -> String {
+    id.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (b as char).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
+fn make(app: &AppHandle, url: &str) {
     #[cfg(target_os = "macos")]
     let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-    let window = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("library".into()))
+    let window = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App(url.into()))
         .title("Papers")
         .inner_size(1200.0, 780.0)
         .min_inner_size(760.0, 420.0)
