@@ -18,8 +18,8 @@ design and the plans (main window, editing, adding papers) are in
 
 The app lives in the menu bar (no Dock icon). `⌥Space` (`Ctrl+Alt+Space`
 elsewhere) shows the search panel; `↑`/`↓` move, `Esc` hides it. The
-menu-bar icon has Settings… (also `⌘,` in the panel), Reload Library, and
-Send Feedback…, which opens a new GitHub issue.
+menu-bar icon has Open Library (also `⌘O` in the panel), Settings… (also
+`⌘,`), Reload Library, and Send Feedback…, which opens a new GitHub issue.
 
 | Key | Action |
 |---|---|
@@ -32,9 +32,19 @@ Send Feedback…, which opens a new GitHub issue.
 | `⌘B` | copy the BibTeX entry |
 | `⌘⌥C` | copy the citation, formatted |
 | `⌘P` | show or hide the preview (first page, details, citation, BibTeX) |
+| `⌘I` | open the paper in the library window |
 | `⌘K` | list the actions |
 
 `Ctrl` instead of `⌘` on Linux and Windows.
+
+The library window (in the Dock while open) lists the papers in a table
+that the same search filters, with the `.bib` files, views (recently opened,
+no PDF, broken file links, possible duplicates) and tags in the sidebar.
+Its columns sort, move, resize, and show or hide (right-click the headers).
+Enter or a double-click opens a paper in a tab of the sidebar: on macOS the
+PDF shows as in Preview (PDFKit), elsewhere with pdf.js. `⌘W` closes it,
+`⌃Tab` goes from one tab to the next, `⌘⌥I` shows or hides the details.
+Export… writes the selection, or the papers shown, to a `.bib` file.
 
 Drag a paper out of the list to drop its PDF in the Finder, a mail or a
 chat, and the citation out of the preview to drop it, formatted, in a
