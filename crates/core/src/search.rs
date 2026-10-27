@@ -312,6 +312,8 @@ struct Fields {
     year: Option<i32>,
     container: Text,
     keywords: Vec<Text>,
+    /// the keywords, folded, to match as whole tags
+    tags: Vec<String>,
     key: String,
     key_words: Text,
     doi: String,
@@ -331,6 +333,7 @@ impl Fields {
             year: item.year,
             container: Text::new(item.container.as_deref().unwrap_or_default()),
             keywords: item.keywords.iter().map(|k| Text::new(k)).collect(),
+            tags: item.keywords.iter().map(|k| fold(k)).collect(),
             key: fold(&item.key),
             key_words: Text::new(&item.key),
             doi: fold(item.doi.as_deref().unwrap_or_default()),
@@ -363,12 +366,12 @@ impl Fields {
                 let matched = self.year.is_some_and(|y| term.pattern.matches_year(y));
                 self.mark_year(marks, matched)
             }
+            (Pattern::Tag(_), _) => self.tags.iter().any(|t| term.pattern.matches_tag(t)),
             (Pattern::Word(w), Field::Key) => {
                 self.key.starts_with(w.as_str()) || !self.key_words.find(w, matching).is_empty()
             }
             (_, Field::Title) => mark(&mut marks.title, find(&self.title)),
             (_, Field::Journal) => mark(&mut marks.container, find(&self.container)),
-            (_, Field::Tag) => self.keywords.iter().any(|k| !find(k).is_empty()),
             (Pattern::Word(w), Field::Has) => self.has.contains(w),
             (_, Field::Author) => self.mark_authors(marks, self.authors.len(), find),
             (_, Field::First) => self.mark_authors(marks, 1, find),

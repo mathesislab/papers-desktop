@@ -96,7 +96,7 @@ Filters limit a word to one field, and quotes match a phrase:
 | `journal:cryosphere` | `j:` | the journal or book |
 | `key:robinson2012` | `k:` | the citation key |
 | `doi:10.5194` | | the DOI |
-| `tag:greenland` | | the keywords |
+| `tag:greenland` | | a whole keyword; `*` is a wildcard: `tag:amoc*`, `tag:*amoc`, `tag:*amoc*`; `tag:"mass balance"` |
 | `has:pdf`, `has:abstract` | | a linked file, or any field of the entry |
 | `"ice sheet"`, `t:"ice sheet"` | | consecutive words |
 

@@ -2,7 +2,8 @@
 //!
 //! `robinson "ice sheet" j:cryosphere year:2010-2015 -review`. A filter is a
 //! field name and a colon before a word or a phrase; an unknown name is no
-//! filter. A leading `-` excludes the papers that match the term.
+//! filter. A leading `-` excludes the papers that match the term. `tag:` takes
+//! a whole tag, in which `*` stands for any run of characters.
 
 use crate::text::{fold, words};
 
@@ -52,6 +53,8 @@ pub(crate) enum Pattern {
     Years(Option<i32>, Option<i32>),
     /// the first digits of a year: "201" for the 2010s
     YearStart(String),
+    /// a whole tag, as the pieces between its `*` wildcards: one piece, no wildcard
+    Tag(Vec<String>),
 }
 
 impl Pattern {
@@ -64,6 +67,27 @@ impl Pattern {
             Pattern::YearStart(start) => year.to_string().starts_with(start.as_str()),
             _ => false,
         }
+    }
+
+    /// Whether a tag pattern takes a folded `tag`, as a whole; the other
+    /// patterns take none.
+    pub fn matches_tag(&self, tag: &str) -> bool {
+        let Pattern::Tag(pieces) = self else {
+            return false;
+        };
+        let [first, middle @ .., last] = pieces.as_slice() else {
+            return pieces.first().is_some_and(|p| p == tag); // no wildcard
+        };
+        let Some(mut rest) = tag.strip_prefix(first.as_str()) else {
+            return false;
+        };
+        for piece in middle {
+            match rest.find(piece.as_str()) {
+                Some(at) => rest = &rest[at + piece.len()..],
+                None => return false,
+            }
+        }
+        rest.ends_with(last.as_str())
     }
 }
 
@@ -152,6 +176,9 @@ fn terms(token: &Token) -> Vec<Term> {
         Field::Year => vec![term(years(value))],
         Field::Key | Field::Has => vec![term(Pattern::Word(value.to_string()))],
         Field::Doi => vec![term(Pattern::Doi(doi(value).to_string()))],
+        Field::Tag => vec![term(Pattern::Tag(
+            value.split('*').map(String::from).collect(),
+        ))],
         Field::Any if !quoted && is_doi(value) => vec![term(Pattern::Doi(doi(value).to_string()))],
         _ => {
             let words = words(value);
@@ -273,6 +300,25 @@ mod tests {
     }
 
     #[test]
+    fn tags() {
+        let tag = |pieces: &[&str], negated| Term {
+            field: Field::Tag,
+            pattern: Pattern::Tag(pieces.iter().map(|p| p.to_string()).collect()),
+            negated,
+        };
+        assert_eq!(
+            parse(r#"tag:AMOC tag:amoc* tag:*Amoc tag:a*c -tag:"Mass Balance" tag:"#),
+            [
+                tag(&["amoc"], false),
+                tag(&["amoc", ""], false),
+                tag(&["", "amoc"], false),
+                tag(&["a", "c"], false),
+                tag(&["mass balance"], true),
+            ]
+        );
+    }
+
+    #[test]
     fn negation() {
         let not = |field, pattern| Term {
             field,
@@ -304,5 +350,32 @@ mod tests {
         assert!(!Pattern::Years(None, Some(2010)).matches_year(2011));
         assert!(Pattern::YearStart("19".into()).matches_year(1990));
         assert!(!Pattern::Word("2012".into()).matches_year(2012));
+    }
+
+    #[test]
+    fn tags_match() {
+        let tag = |pattern: &str, tag: &str| {
+            let terms = parse(&format!("tag:{pattern}"));
+            terms[0].pattern.matches_tag(tag)
+        };
+        // the whole tag, not the start of a word
+        assert!(tag("amoc", "amoc"));
+        assert!(!tag("ice", "ice-review"));
+        assert!(!tag("amoc", "amoc-paper"));
+        assert!(!tag("amoc", "paper-amoc"));
+        // wildcards: prefix, suffix, contains, inside
+        assert!(tag("amoc*", "amoc") && tag("amoc*", "amoc-paper"));
+        assert!(!tag("amoc*", "paper-amoc"));
+        assert!(tag("*amoc", "amoc") && tag("*amoc", "paper-amoc"));
+        assert!(!tag("*amoc", "amoc-paper"));
+        assert!(tag("*amoc*", "my-amoc-paper"));
+        assert!(!tag("*amoc*", "amo"));
+        assert!(tag("a*c", "ac") && tag("a*c", "amoc"));
+        assert!(!tag("a*c", "amoc2"));
+        assert!(tag("a*b*c", "a-b-c") && !tag("a*b*c", "a-c-b"));
+        // the ends of a wildcard do not overlap
+        assert!(!tag("ab*ba", "aba"));
+        assert!(tag("*", "anything"));
+        assert!(!Pattern::Word("amoc".into()).matches_tag("amoc"));
     }
 }

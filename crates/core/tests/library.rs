@@ -144,7 +144,9 @@ fn fields() {
     assert_eq!(keys(&lib, "t:climate"), ["ipcc2021"]);
     assert_eq!(keys(&lib, "journal:nature"), ["muller2020", "robinson2012"]);
     assert_eq!(keys(&lib, "j:nature y:2012"), ["robinson2012"]);
-    assert_eq!(keys(&lib, "tag:mass"), ["vandenbroeke2009"]);
+    assert_eq!(keys(&lib, "tag:greenland"), ["vandenbroeke2009"]);
+    // a whole tag, not its first word
+    assert!(keys(&lib, "tag:mass").is_empty());
     assert!(keys(&lib, "tag:greenland a:robinson").is_empty());
     assert_eq!(keys(&lib, "key:robinson"), ["robinson2012"]);
     assert_eq!(keys(&lib, "k:smith"), ["smith_handbook"]);
@@ -158,6 +160,66 @@ fn fields() {
     // the field of a filter only
     assert!(keys(&lib, "author:greenland").is_empty());
     assert!(keys(&lib, "title:robinson").is_empty());
+}
+
+#[test]
+fn tags() {
+    let lib = library();
+    // the whole tag, not the start of a word or of a tag
+    assert_eq!(keys(&lib, "tag:ice"), ["feldmann2017"]);
+    assert_eq!(keys(&lib, "tag:ice-review"), ["feldmann2017"]);
+    assert!(keys(&lib, "tag:review").is_empty());
+    assert!(keys(&lib, "tag:gree").is_empty());
+    assert!(keys(&lib, "tag:balance").is_empty());
+    // a quoted tag has its spaces
+    assert_eq!(keys(&lib, r#"tag:"mass balance""#), ["vandenbroeke2009"]);
+    assert!(keys(&lib, r#"tag:"mass""#).is_empty());
+    // * is any run of characters: prefix, suffix, contains, inside
+    assert_eq!(keys(&lib, "tag:mass*"), ["vandenbroeke2009"]);
+    assert_eq!(keys(&lib, "tag:ice*"), ["feldmann2017"]);
+    assert_eq!(keys(&lib, "tag:*review"), ["feldmann2017"]);
+    assert_eq!(keys(&lib, "tag:*balance"), ["vandenbroeke2009"]);
+    assert_eq!(keys(&lib, r#"tag:"*ss ba*""#), ["vandenbroeke2009"]);
+    assert_eq!(keys(&lib, "tag:*een*"), ["vandenbroeke2009"]);
+    assert_eq!(keys(&lib, "tag:g*d"), ["vandenbroeke2009"]);
+    assert!(keys(&lib, "tag:*xyz*").is_empty());
+    assert!(keys(&lib, "tag:g*g").is_empty());
+    // any tag
+    assert_eq!(
+        keys(&lib, "tag:*"),
+        ["muller2020", "feldmann2017", "vandenbroeke2009"]
+    );
+    // case and diacritics do not count
+    assert_eq!(keys(&lib, "tag:GREENLAND"), ["vandenbroeke2009"]);
+    assert_eq!(keys(&lib, r#"tag:"Mass Balance""#), ["vandenbroeke2009"]);
+    assert_eq!(keys(&lib, "tag:hysterese"), ["muller2020"]);
+    assert_eq!(keys(&lib, "tag:HYSTÉRÈSE"), ["muller2020"]);
+    // excluded
+    assert!(keys(&lib, "tag:ice* -tag:ice-review").is_empty());
+    assert_eq!(
+        keys(&lib, "greenland -tag:greenland"),
+        ["calov2015", "robinson2012"]
+    );
+    assert_eq!(
+        keys(&lib, "tag:* -tag:*review"),
+        ["muller2020", "vandenbroeke2009"]
+    );
+    // an excluded tag is the whole tag too
+    assert_eq!(lib.search("-tag:ice", Matching::WordStart, 50).total, 7);
+    assert_eq!(
+        keys(&lib, "tag:* -tag:ice-rev -tag:mass"),
+        ["muller2020", "feldmann2017", "vandenbroeke2009"]
+    );
+    // the matching setting is not for tags
+    assert!(keys_with(&lib, "tag:ice-rev", Matching::InsideWords).is_empty());
+    assert!(keys_with(&lib, "tag:mass", Matching::InsideWords).is_empty());
+    assert_eq!(
+        keys_with(&lib, "tag:ice", Matching::InsideWords),
+        ["feldmann2017"]
+    );
+    // a word without tag: still finds a tag loosely
+    assert_eq!(keys(&lib, "review"), ["feldmann2017"]);
+    assert_eq!(keys(&lib, "mass"), ["vandenbroeke2009"]);
 }
 
 #[test]
