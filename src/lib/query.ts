@@ -61,3 +61,8 @@ export function toggleTag(query: string, tag: string): string {
   if (hasTag(query, tag)) return tidy(query.replace(tagFilter(tag), " "));
   return tidy(`${query} ${tagTerm(tag)}`);
 }
+
+/** A tag renamed: its filter in the query follows. */
+export function renameTagFilter(query: string, old: string, name: string): string {
+  return tidy(query.replace(tagFilter(old), (_, space) => `${space}${tagTerm(name)}`));
+}

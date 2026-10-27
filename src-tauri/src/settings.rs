@@ -34,6 +34,9 @@ pub struct Settings {
     /// the papers command, which writes a papers library (~ for the home
     /// directory); empty: the one the login shell finds
     pub papers: PathBuf,
+    /// the tags pinned to the keys 1–9 of the main window (index = key − 1);
+    /// set from the sidebar, not in the settings window
+    pub pinned_tags: Vec<Option<String>>,
 }
 
 /// After a paper is closed in the main window: the library, or the next
@@ -63,6 +66,7 @@ impl Default for Settings {
             check_updates: true,
             after_close: AfterClose::default(),
             papers: PathBuf::new(),
+            pinned_tags: Vec::new(),
         }
     }
 }

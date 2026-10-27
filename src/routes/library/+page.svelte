@@ -6,10 +6,11 @@
   import { onMount, tick, untrack } from "svelte";
   import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
-  import { hasTag, toggleTag } from "$lib/query";
+  import { hasTag, renameTagFilter, toggleTag } from "$lib/query";
+  import { sameTag } from "$lib/tags";
   import Details from "$lib/library/Details.svelte";
   import PapersMissing from "$lib/library/PapersMissing.svelte";
-  import { writeError, writers } from "$lib/library/writes";
+  import { renameTag, setTags, writeError, writers } from "$lib/library/writes";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -54,6 +55,8 @@
   let status = $state<Status>({ state: "loading" });
   let rows = $state<Row[]>([]);
   let tags = $state<TagCount[]>([]);
+  /** the tags pinned to the keys 1–9 (index = key − 1); a setting */
+  let pinned = $state<(string | null)[]>([]);
   /** the recent papers, the last first */
   let recent = $state<string[]>([]);
   /** the groups of papers that may be the same */
@@ -200,7 +203,54 @@
 
   async function refresh() {
     recent = await invoke<string[]>("recent");
-    afterClose = (await invoke<{ settings: { after_close: "library" | "next" } }>("get_settings")).settings.after_close;
+    const { settings } = await invoke<{
+      settings: { after_close: "library" | "next"; pinned_tags: (string | null)[] };
+    }>("get_settings");
+    afterClose = settings.after_close;
+    pinned = settings.pinned_tags;
+  }
+
+  /** Pin tags to the keys, kept in the settings. */
+  async function savePinned(tags: (string | null)[]) {
+    while (tags.length && tags[tags.length - 1] === null) tags = tags.slice(0, -1);
+    try {
+      await invoke("set_pinned_tags", { tags });
+      pinned = tags;
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** Pin a tag to the key of a slot, in place of the one there; or unpin it. */
+  function pin(tag: string, slot: number | null) {
+    const next = Array.from({ length: 9 }, (_, i) => pinned[i] ?? null).map((t) => (t && sameTag(t, tag) ? null : t));
+    if (slot !== null) next[slot] = tag;
+    savePinned(next);
+  }
+
+  /** Rename a tag in the library; the filter of the search and the key it is pinned to follow. */
+  async function rename(tag: string, name: string) {
+    if (!(await write(() => renameTag(tag, name)))) return;
+    query = renameTagFilter(query, tag, name);
+    const next = pinned.map((t) => (t && sameTag(t, tag) ? name : t));
+    // renamed to a tag pinned already: it keeps the first key
+    const kept = next.map((t, i) => (t && next.findIndex((u) => u && sameTag(u, t)) < i ? null : t));
+    if (kept.some((t, i) => t !== (pinned[i] ?? null))) await savePinned(kept);
+  }
+
+  /** The key of a pinned tag: the tag on the selected papers, else the one in focus; off
+   *  when they all have it. */
+  async function togglePinned(slot: number) {
+    const tag = pinned[slot];
+    const ids = selected.size ? [...selected] : focus ? [focus] : [];
+    if (!tag || !ids.length) return;
+    const count = (n: number) => `${n} ${n === 1 ? "paper" : "papers"}`;
+    const lacking = ids.filter((id) => !byId.get(id)?.tags.some((t) => sameTag(t, tag)));
+    if (lacking.length) {
+      if (await write(() => setTags(lacking, [tag]))) say(`Tagged ${count(lacking.length)} ${tag}`);
+    } else if (await write(() => setTags(ids, [], [tag]))) {
+      say(`Removed ${tag} from ${count(ids.length)}`);
+    }
   }
 
   /** The library, at start and when its files change. */
@@ -432,7 +482,7 @@
 
   /** The keys of the library: / to search, the arrows, the page keys, Home
    *  and End move (shift extends the selection), Enter opens, Esc clears the
-   *  search then leaves it. */
+   *  search then leaves it, 1–9 toggle the tag pinned to the key. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -462,6 +512,9 @@
       e.preventDefault();
       if (query) query = "";
       else input?.blur();
+    } else if (/^[1-9]$/.test(e.key) && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      togglePinned(Number(e.key) - 1);
     } else if (matches(e, allShortcut) && !typing) {
       e.preventDefault();
       selected = new Set(shown.map((r) => r.id));
@@ -493,6 +546,7 @@
         {tags}
         view={layout.active ? null : view}
         filtered={(tag) => !layout.active && hasTag(query, tag)}
+        {pinned}
         {papers}
         active={layout.active}
         onview={(v) => {
@@ -503,6 +557,8 @@
           query = toggleTag(query, tag);
           showLibrary();
         }}
+        onrename={rename}
+        onpin={pin}
         onpaper={(id) => (layout.active = id)}
         onclose={closePaper}
       />

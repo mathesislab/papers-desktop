@@ -276,10 +276,23 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
 #[tauri::command]
 fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
     let old = Settings::load(&state.settings_path)?;
+    // pinned in the sidebar, not here: what the window loaded may be stale
+    let settings = Settings {
+        pinned_tags: old.pinned_tags.clone(),
+        ..settings
+    };
     hotkey::apply(&app, &old, &settings)?;
     settings.save(&state.settings_path)?;
     reload(&app);
     Ok(())
+}
+
+/// Pin tags to the keys 1–9 of the main window; the other settings stay.
+#[tauri::command]
+fn set_pinned_tags(state: State<AppState>, tags: Vec<Option<String>>) -> Result<(), String> {
+    let mut settings = Settings::load(&state.settings_path)?;
+    settings.pinned_tags = tags;
+    settings.save(&state.settings_path)
 }
 
 /// Start the app at login, or not; returns whether it does.
@@ -803,6 +816,7 @@ pub fn run() {
             citation_style,
             get_settings,
             save_settings,
+            set_pinned_tags,
             set_start_at_login,
             open_settings,
             open_library,

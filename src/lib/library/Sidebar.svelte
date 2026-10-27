@@ -8,6 +8,8 @@
 </script>
 
 <script lang="ts">
+  import { CheckMenuItem, Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
+  import { sameTag } from "$lib/tags";
   import type { Row, TagCount } from "$lib/types";
 
   let {
@@ -16,10 +18,13 @@
     tags,
     view,
     filtered,
+    pinned,
     papers,
     active,
     onview,
     ontag,
+    onrename,
+    onpin,
     onpaper,
     onclose,
   }: {
@@ -31,17 +36,87 @@
     view: View | null;
     /** whether the search filters a tag */
     filtered: (tag: string) => boolean;
+    /** the tags pinned to the keys 1–9 (index = key − 1) */
+    pinned: (string | null)[];
     /** the papers open, as tabs */
     papers: Row[];
     /** the paper in front */
     active: string | null;
     onview: (view: View) => void;
     ontag: (tag: string) => void;
+    /** a tag renamed in its row */
+    onrename: (tag: string, name: string) => void;
+    /** a tag pinned to the key of a slot (index), or unpinned */
+    onpin: (tag: string, slot: number | null) => void;
     onpaper: (id: string) => void;
     onclose: (id: string) => void;
   } = $props();
 
   const fileName = (path: string) => path.split(/[\\/]/).pop();
+
+  /** the key a tag is pinned to, 1–9 */
+  const keyOf = (tag: string) => {
+    const slot = pinned.findIndex((t) => t !== null && sameTag(t, tag));
+    return slot < 0 ? null : slot + 1;
+  };
+
+  /** the tag in its row being renamed, and the name so far */
+  let editing = $state<string | null>(null);
+  let draft = $state("");
+  let field = $state<HTMLInputElement>();
+
+  // the name is selected when the field comes
+  $effect(() => {
+    field?.focus();
+    field?.select();
+  });
+
+  function edit(tag: string) {
+    draft = tag;
+    editing = tag;
+  }
+
+  /** Enter or leaving the field: an empty or unchanged name writes nothing. */
+  function commit() {
+    if (editing === null) return;
+    const [tag, name] = [editing, draft.trim()];
+    editing = null;
+    if (name && name !== tag) onrename(tag, name);
+  }
+
+  function fieldKey(e: KeyboardEvent) {
+    // the keys of the library (arrows, Enter, Escape) are not for the field
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      editing = null;
+    }
+  }
+
+  /** Right-click on a tag: rename it, pin it to a key. */
+  async function tagMenu(e: MouseEvent, tag: string) {
+    e.preventDefault();
+    const key = keyOf(tag);
+    const slots = await Promise.all(
+      Array.from({ length: 9 }, (_, slot) =>
+        CheckMenuItem.new({
+          text: pinned[slot] ? `${slot + 1}  ${pinned[slot]}` : `${slot + 1}`,
+          checked: key === slot + 1,
+          action: () => onpin(tag, slot),
+        }),
+      ),
+    );
+    const items = [
+      await MenuItem.new({ text: "Rename…", action: () => edit(tag) }),
+      await Submenu.new({ text: "Pin to Key", items: slots }),
+    ];
+    if (key) items.push(await MenuItem.new({ text: "Unpin", action: () => onpin(tag, null) }));
+    const menu = await Menu.new({ items });
+    await menu.popup();
+  }
 </script>
 
 <nav>
@@ -63,10 +138,31 @@
 
   {#if tags.length}
     <h4>Tags</h4>
-    {#each tags as { tag, count }}
-      <button class="item" class:selected={filtered(tag)} onclick={() => ontag(tag)}>
-        <span class="name">{tag}</span><span class="count">{count}</span>
-      </button>
+    {#each tags as { tag, count } (tag)}
+      {#if editing === tag}
+        <div class="item">
+          <input
+            bind:this={field}
+            bind:value={draft}
+            aria-label="Rename the tag"
+            spellcheck="false"
+            autocomplete="off"
+            onkeydown={fieldKey}
+            onblur={commit}
+          />
+        </div>
+      {:else}
+        <button
+          class="item"
+          class:selected={filtered(tag)}
+          onclick={() => ontag(tag)}
+          oncontextmenu={(e) => tagMenu(e, tag)}
+        >
+          <span class="name">{tag}</span>
+          {#if keyOf(tag)}<span class="key">{keyOf(tag)}</span>{/if}
+          <span class="count">{count}</span>
+        </button>
+      {/if}
     {/each}
   {/if}
 
@@ -161,6 +257,30 @@
   .paper:hover .close,
   .paper.selected .close {
     visibility: visible;
+  }
+  .item input {
+    flex: 1;
+    min-width: 0;
+    height: 20px;
+    padding: 0 4px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
+    outline: none;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .key {
+    min-width: 14px;
+    padding: 0 4px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 10.5px;
+    line-height: 14px;
+    text-align: center;
   }
   .count {
     color: var(--muted);

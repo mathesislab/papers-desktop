@@ -22,6 +22,8 @@
     after_close: "library" | "next";
     /** the papers command; empty: the one the login shell finds */
     papers: string;
+    /** the tags pinned to the keys 1–9, set from the sidebar of the main window: kept as they are */
+    pinned_tags: (string | null)[];
   };
   /** mirrors update::Available */
   type Update = { version: string };
