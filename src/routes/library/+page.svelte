@@ -8,6 +8,7 @@
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { hasTag, toggleTag } from "$lib/query";
   import Details from "$lib/library/Details.svelte";
+  import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
   import ReaderView from "$lib/library/ReaderView.svelte";
@@ -109,7 +110,9 @@
   let reader = $derived.by(() => {
     const id = layout.active;
     if (!id) return null;
-    return untrack(() => new PdfjsReader(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
+    // PDFKit on macOS, pdf.js elsewhere
+    const Kind = mac ? NativeReader : PdfjsReader;
+    return untrack(() => new Kind(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
   });
 
   /** what the search found, next to it */
@@ -156,8 +159,10 @@
       }),
       // ⌘I in the panel
       listen<string>("open", (e) => openPaper(e.payload)),
-      // ⌘W, from the menu of the app
+      // ⌘W, ⌘F and the zoom, from the menu of the app
       listen("close", closeActive),
+      listen("find", () => (reader ? reader.focusFind() : input?.select())),
+      listen<number>("zoom", (e) => reader?.zoom(e.payload)),
     ];
     load();
     return () => unlisten.forEach((u) => u.then((f) => f()));
@@ -338,8 +343,9 @@
 
   function onkeydown(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
-    if (matches(e, closeShortcut)) {
-      // on macOS, the menu of the app takes ⌘W
+    // on macOS, the menu of the app takes ⌘W, ⌘F and the zoom (also from
+    // the PDF view, which has the keys while read)
+    if (!mac && matches(e, closeShortcut)) {
       e.preventDefault();
       closeActive();
     } else if (e.ctrlKey && e.key === "Tab") {
@@ -356,7 +362,7 @@
     } else if (e.key === "Escape" && typing && query) {
       e.preventDefault();
       query = "";
-    } else if (matches(e, findShortcut)) {
+    } else if (!mac && matches(e, findShortcut)) {
       e.preventDefault();
       input?.select();
     } else if (matches(e, allShortcut) && !typing) {
@@ -367,13 +373,15 @@
     }
   }
 
-  /** The keys of a paper in front: find, zoom; the arrows scroll it. */
+  /** The keys of a paper in front: find, zoom (from the menu on macOS); the
+   *  arrows scroll it. */
   function readerKey(e: KeyboardEvent) {
-    const mod = mac ? e.metaKey : e.ctrlKey;
-    if (matches(e, findShortcut)) {
+    if (mac) {
+      windowKey(e);
+    } else if (matches(e, findShortcut)) {
       e.preventDefault();
       reader?.focusFind();
-    } else if (mod && (e.key === "=" || e.key === "+" || e.key === "-" || e.key === "0")) {
+    } else if (e.ctrlKey && (e.key === "=" || e.key === "+" || e.key === "-" || e.key === "0")) {
       e.preventDefault();
       reader?.zoom(e.key === "0" ? 0 : e.key === "-" ? -1 : 1);
     } else {

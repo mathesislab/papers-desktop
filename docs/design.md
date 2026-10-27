@@ -52,10 +52,14 @@ Three panes, each resized by dragging, the right one hidden on demand:
 **Open papers are side tabs**, in the sidebar: author, year and title in
 full, as a tab bar cannot. Enter or a double-click opens one; `⌘W` closes
 it, which goes back to the library (a setting: or to the next open paper).
-A paper tab shows its PDF in the app (pdf.js: text selection, find,
-outline), with the details beside it. The open papers, their pages, the
-pane widths and the details shown or not are kept in the data folder of
-the app, as the recent papers are.
+A paper tab shows its PDF in the app, with the details beside it: on macOS
+in a native view of PDFKit, as Preview shows it (smooth scrolling and zoom;
+later, annotations written in the PDF), placed over the reader area of the
+page; elsewhere with pdf.js (to tune when Linux comes: its drawing on the
+GPU, fewer redraws). Find, zoom and the outline (a strip at the left of the
+PDF) drive either. The open papers, their pages, the pane widths and the
+details shown or not are kept in the data folder of the app, as the recent
+papers are; the window opens again at start if it was open at the end.
 
 A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 `references.bib` (for texmark).

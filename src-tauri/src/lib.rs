@@ -4,6 +4,8 @@ mod hotkey;
 mod main_window;
 #[cfg(target_os = "macos")]
 mod menu;
+#[cfg(target_os = "macos")]
+mod pdf_view;
 mod recent;
 mod selection;
 mod settings;
@@ -755,7 +757,13 @@ pub fn run() {
             if window.label() == MAIN {
                 match event {
                     WindowEvent::CloseRequested { .. } => main_window::closing(window.app_handle()),
-                    WindowEvent::Destroyed => main_window::closed(window.app_handle()),
+                    WindowEvent::Destroyed => {
+                        #[cfg(target_os = "macos")]
+                        if let Some(mtm) = objc2::MainThreadMarker::new() {
+                            pdf_view::close(mtm);
+                        }
+                        main_window::closed(window.app_handle());
+                    }
                     _ => {}
                 }
             }
@@ -790,6 +798,18 @@ pub fn run() {
             open_settings,
             open_library,
             open_paper,
+            #[cfg(target_os = "macos")]
+            pdf_view::pdf_open,
+            #[cfg(target_os = "macos")]
+            pdf_view::pdf_frame,
+            #[cfg(target_os = "macos")]
+            pdf_view::pdf_close,
+            #[cfg(target_os = "macos")]
+            pdf_view::pdf_find,
+            #[cfg(target_os = "macos")]
+            pdf_view::pdf_zoom,
+            #[cfg(target_os = "macos")]
+            pdf_view::pdf_go,
             layout,
             save_layout,
             send_feedback,
