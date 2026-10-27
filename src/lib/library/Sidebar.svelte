@@ -9,7 +9,7 @@
 
 <script lang="ts">
   import { CheckMenuItem, Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
-  import { sameTag } from "$lib/tags";
+  import { foldTag, lastSegment, parentsOf, sameTag } from "$lib/tags";
   import type { Row, TagCount } from "$lib/types";
 
   let {
@@ -19,10 +19,12 @@
     view,
     filtered,
     pinned,
+    open,
     papers,
     active,
     onview,
     ontag,
+    onfold,
     onrename,
     onpin,
     onpaper,
@@ -38,12 +40,16 @@
     filtered: (tag: string) => boolean;
     /** the tags pinned to the keys 1–9 (index = key − 1) */
     pinned: (string | null)[];
+    /** the parent tags unfolded, folded as `foldTag` does */
+    open: string[];
     /** the papers open, as tabs */
     papers: Row[];
     /** the paper in front */
     active: string | null;
     onview: (view: View) => void;
     ontag: (tag: string) => void;
+    /** a parent tag unfolded or folded by its triangle */
+    onfold: (tag: string, open: boolean) => void;
     /** a tag renamed in its row */
     onrename: (tag: string, name: string) => void;
     /** a tag pinned to the key of a slot (index), or unpinned */
@@ -52,6 +58,9 @@
     onclose: (id: string) => void;
   } = $props();
 
+  /** the indent of a tag per level of the tree, px */
+  const INDENT = 12;
+
   const fileName = (path: string) => path.split(/[\\/]/).pop();
 
   /** the key a tag is pinned to, 1–9 */
@@ -59,6 +68,47 @@
     const slot = pinned.findIndex((t) => t !== null && sameTag(t, tag));
     return slot < 0 ? null : slot + 1;
   };
+
+  /** a row of the tree: a tag of the library or a parent of one */
+  type Node = TagCount & { depth: number; children: Node[] };
+
+  /** The tags as a tree, once per change of `tags`: each tag under its parent, in the order given. */
+  let roots = $derived.by(() => {
+    const nodes = tags.map((t): Node => ({ ...t, depth: 0, children: [] }));
+    const byName = new Map(nodes.map((n) => [foldTag(n.tag), n]));
+    const top: Node[] = [];
+    for (const node of nodes) {
+      const parent = byName.get(foldTag(parentsOf(node.tag).at(-1) ?? ""));
+      (parent?.children ?? top).push(node);
+    }
+    const level = (list: Node[], depth: number) =>
+      list.forEach((n) => {
+        n.depth = depth;
+        level(n.children, depth + 1);
+      });
+    level(top, 0);
+    return top;
+  });
+
+  /** the parents of the tags the search filters: shown unfolded, so the filter is in view */
+  let revealed = $derived(new Set(tags.filter((t) => filtered(t.tag)).flatMap((t) => parentsOf(t.tag).map(foldTag))));
+
+  /** The rows shown: the tree in order, the tags under a folded parent left out. */
+  let shown = $derived.by(() => {
+    const unfolded = new Set(open);
+    const rows: { node: Node; expanded: boolean; revealed: boolean }[] = [];
+    const walk = (list: Node[]) => {
+      for (const node of list) {
+        const folded = foldTag(node.tag);
+        const forced = revealed.has(folded);
+        const expanded = forced || unfolded.has(folded);
+        rows.push({ node, expanded, revealed: forced });
+        if (expanded) walk(node.children);
+      }
+    };
+    walk(roots);
+    return rows;
+  });
 
   /** the tag in its row being renamed, and the name so far */
   let editing = $state<string | null>(null);
@@ -138,8 +188,9 @@
 
   {#if tags.length}
     <h4>Tags</h4>
-    {#each tags as { tag, count } (tag)}
+    {#each shown as { node: { tag, under, depth, children }, expanded, revealed } (tag)}
       {#if editing === tag}
+        <!-- the full tag, so it can move: the field takes the whole row -->
         <div class="item">
           <input
             bind:this={field}
@@ -152,16 +203,35 @@
           />
         </div>
       {:else}
-        <button
-          class="item"
+        <div
+          class="tag"
           class:selected={filtered(tag)}
-          onclick={() => ontag(tag)}
+          style:padding-left="{4 + depth * INDENT}px"
+          role="presentation"
           oncontextmenu={(e) => tagMenu(e, tag)}
         >
-          <span class="name">{tag}</span>
-          {#if keyOf(tag)}<span class="key">{keyOf(tag)}</span>{/if}
-          <span class="count">{count}</span>
-        </button>
+          {#if children.length}
+            <button
+              class="twisty"
+              class:open={expanded}
+              disabled={revealed}
+              aria-label={expanded ? `Fold ${tag}` : `Unfold ${tag}`}
+              aria-expanded={expanded}
+              onclick={() => onfold(tag, !expanded)}
+            >
+              <svg viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
+                <path d="M2 1l4 3-4 3z" fill="currentColor" />
+              </svg>
+            </button>
+          {:else}
+            <span class="twisty"></span>
+          {/if}
+          <button class="label" title={tag} onclick={() => ontag(tag)}>
+            <span class="name">{lastSegment(tag)}</span>
+            {#if keyOf(tag)}<span class="key">{keyOf(tag)}</span>{/if}
+            <span class="count">{under}</span>
+          </button>
+        </div>
       {/if}
     {/each}
   {/if}
@@ -205,8 +275,52 @@
     text-align: left;
     cursor: default;
   }
-  .item.selected {
+  .item.selected,
+  .tag.selected {
     background: var(--line);
+  }
+  /* a tag of the tree: the triangle column, then the label as an item */
+  .tag {
+    display: flex;
+    align-items: center;
+    margin: 0 6px;
+    border-radius: 6px;
+  }
+  .twisty {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    width: 16px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--muted);
+  }
+  .twisty svg {
+    transition: transform 0.1s;
+  }
+  .twisty.open svg {
+    transform: rotate(90deg);
+  }
+  /* the filter in it keeps it unfolded */
+  .twisty:disabled {
+    opacity: 0.45;
+  }
+  .label {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px 4px 0;
+    border: none;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    text-align: left;
+    cursor: default;
   }
   .name {
     flex: 1;

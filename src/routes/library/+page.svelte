@@ -7,7 +7,7 @@
   import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import { hasTag, renameTagFilter, toggleTag } from "$lib/query";
-  import { sameTag } from "$lib/tags";
+  import { foldTag, movedTag, sameTag } from "$lib/tags";
   import Details from "$lib/library/Details.svelte";
   import PapersMissing from "$lib/library/PapersMissing.svelte";
   import { renameTag, setTags, writeError, writers } from "$lib/library/writes";
@@ -23,7 +23,7 @@
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
    *  the columns and order of the table, the papers open and the page of
-   *  each. */
+   *  each, the parent tags unfolded in the sidebar. */
   type Layout = {
     sidebar: number;
     details: number;
@@ -35,6 +35,8 @@
     /** the paper in front; none: the library */
     active: string | null;
     pages: Record<string, number>;
+    /** the parent tags unfolded in the sidebar, folded as `foldTag` does */
+    openTags: string[];
   };
   const DEFAULTS: Layout = {
     sidebar: 230,
@@ -46,6 +48,7 @@
     open: [],
     active: null,
     pages: {},
+    openTags: [],
   };
 
   let layout = $state<Layout>({ ...DEFAULTS });
@@ -235,11 +238,19 @@
     savePinned(next);
   }
 
-  /** Rename a tag in the library; the filter of the search and the key it is pinned to follow. */
+  /** Unfold a parent tag in the sidebar, or fold it. */
+  function fold(tag: string, open: boolean) {
+    const rest = layout.openTags.filter((t) => t !== foldTag(tag));
+    layout.openTags = open ? [...rest, foldTag(tag)] : rest;
+  }
+
+  /** Rename a tag in the library, and the tags under it; the filters of the search, the keys they are pinned to
+   *  and the parents unfolded follow. */
   async function rename(tag: string, name: string) {
     if (!(await write(() => renameTag(tag, name)))) return;
     query = renameTagFilter(query, tag, name);
-    const next = pinned.map((t) => (t && sameTag(t, tag) ? name : t));
+    layout.openTags = layout.openTags.map((t) => foldTag(movedTag(t, tag, name)));
+    const next = pinned.map((t) => t && movedTag(t, tag, name));
     // renamed to a tag pinned already: it keeps the first key
     const kept = next.map((t, i) => (t && next.findIndex((u) => u && sameTag(u, t)) < i ? null : t));
     if (kept.some((t, i) => t !== (pinned[i] ?? null))) await savePinned(kept);
@@ -554,6 +565,7 @@
         view={layout.active ? null : view}
         filtered={(tag) => !layout.active && hasTag(query, tag)}
         {pinned}
+        open={layout.openTags}
         {papers}
         active={layout.active}
         onview={(v) => {
@@ -564,6 +576,7 @@
           query = toggleTag(query, tag);
           showLibrary();
         }}
+        onfold={fold}
         onrename={rename}
         onpin={pin}
         onpaper={(id) => (layout.active = id)}

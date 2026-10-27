@@ -1,6 +1,8 @@
 // Edit the filters of a query: the years clicked in the panel, the tags
 // clicked in the main window.
 
+import { movedTag } from "$lib/tags";
+
 /** a year filter that keeps years (y:2012, year:2010-2015), not one that excludes them */
 const KEPT = /(^|\s)(?:y|year):(\S*)/gi;
 
@@ -62,7 +64,16 @@ export function toggleTag(query: string, tag: string): string {
   return tidy(`${query} ${tagTerm(tag)}`);
 }
 
-/** A tag renamed: its filter in the query follows. */
+/** A filter on a tag, negated or not: tag:amoc, -tag:amoc, tag:"mass balance". */
+const TAG_TERM = /(^|\s)(-?)tag:(?:"([^"]*)"|(\S+))(?=\s|$)/gi;
+
+/** A tag renamed: the filters in the query on it, and on the tags under it, follow. */
 export function renameTagFilter(query: string, old: string, name: string): string {
-  return tidy(query.replace(tagFilter(old), (_, space) => `${space}${tagTerm(name)}`));
+  return tidy(
+    query.replace(TAG_TERM, (term, space, minus, quoted, bare) => {
+      const tag: string = quoted ?? bare;
+      const moved = movedTag(tag, old, name);
+      return moved === tag ? term : `${space}${minus}${tagTerm(moved)}`;
+    }),
+  );
 }

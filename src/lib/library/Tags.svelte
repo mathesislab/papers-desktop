@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { foldTag, sameTag } from "$lib/tags";
+  import { foldTag, lastSegment, parentPart, sameTag } from "$lib/tags";
   import type { Row, TagCount } from "$lib/types";
 
   let {
@@ -12,7 +12,7 @@
   }: {
     /** the papers the tags change: one, or the several selected */
     rows: Row[];
-    /** the tags of the library, with their counts */
+    /** the tags of the library and their parents, with the papers under each */
     tags: TagCount[];
     /** whether the search filters a tag */
     filtered: (tag: string) => boolean;
@@ -27,7 +27,7 @@
   /** The tags of the papers, each once with the number of papers that have
    *  it: by count for a selection, in the order of the paper for one. */
   let chips = $derived.by(() => {
-    const found = new Map<string, TagCount>();
+    const found = new Map<string, Pick<TagCount, "tag" | "count">>();
     for (const row of rows) {
       const own = new Map(row.tags.map((tag) => [foldTag(tag), tag]));
       for (const [folded, tag] of own) {
@@ -48,20 +48,23 @@
   let plus = $state<HTMLButtonElement>();
   let menu = $state<HTMLDivElement>();
 
-  /** The tags of the library to add: not those every paper has; the ones that
-   *  start with the text first, then the ones that contain it. */
+  /** The tags of the library to add, parents included: not those every paper has; the ones that
+   *  start with the text first, then those whose last segment does ("amoc" finds "climate/amoc"),
+   *  then the ones that contain it. */
   let options = $derived.by(() => {
     const have = new Set(chips.filter((c) => c.count === rows.length).map((c) => foldTag(c.tag)));
     const word = foldTag(text.trim());
     const starts: TagCount[] = [];
+    const segments: TagCount[] = [];
     const contains: TagCount[] = [];
     for (const option of tags) {
       const folded = foldTag(option.tag);
       if (have.has(folded)) continue;
       if (folded.startsWith(word)) starts.push(option);
+      else if (foldTag(lastSegment(option.tag)).startsWith(word)) segments.push(option);
       else if (folded.includes(word)) contains.push(option);
     }
-    return [...starts, ...contains];
+    return [...starts, ...segments, ...contains];
   });
 
   // other papers: the field closes
@@ -133,12 +136,15 @@
   }
 </script>
 
+<!-- a tag with its parents dimmed -->
+{#snippet path(tag: string)}<span class="parent">{parentPart(tag)}</span>{lastSegment(tag)}{/snippet}
+
 <div class="tags">
   <div class="chips">
     {#each chips as { tag, count } (foldTag(tag))}
       <span class="chip" class:some={count < rows.length} class:on={filtered(tag)}>
         <button class="name" title="Filter by {tag}" onclick={() => ontoggle(tag)}>
-          {tag}{#if count < rows.length}<span class="count">{count}/{rows.length}</span>{/if}
+          {@render path(tag)}{#if count < rows.length}<span class="count">{count}/{rows.length}</span>{/if}
         </button>
         <button
           class="remove"
@@ -179,7 +185,7 @@
       tabindex="-1"
       onmousedown={(e) => e.preventDefault()}
     >
-      {#each options as { tag, count }, i (tag)}
+      {#each options as { tag, under }, i (tag)}
         <div
           id="{listbox}-{i}"
           class="option"
@@ -191,7 +197,7 @@
           onclick={() => add(tag)}
           onkeydown={() => {}}
         >
-          <span class="label">{tag}</span><span class="n">{count}</span>
+          <span class="label">{@render path(tag)}</span><span class="n">{under}</span>
         </div>
       {:else}
         <div class="none">New tag: Enter adds “{text.trim()}”</div>
@@ -246,6 +252,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .parent {
+    color: var(--muted);
+  }
+  .chip.on .parent,
+  .option.at .parent {
+    color: inherit;
+    opacity: 0.65;
   }
   .name:hover {
     text-decoration: underline;

@@ -60,8 +60,14 @@ export type Row = {
   bib: string;
 };
 
-/** mirrors papers_core::TagCount */
-export type TagCount = { tag: string; count: number };
+/** mirrors papers_core::TagCount: a tag of the library, or a parent of one ("climate" for "climate/amoc") */
+export type TagCount = {
+  tag: string;
+  /** the papers that have the tag itself; 0 for a parent no paper has */
+  count: number;
+  /** the papers that have the tag or a tag under it, each paper once */
+  under: number;
+};
 
 /** mirrors writer::Writer of src-tauri: how a .bib file is written */
 export type Writer = {
