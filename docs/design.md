@@ -25,7 +25,7 @@ the matches per year, a preview (first page, citation in a CSL style,
 BibTeX), and actions (open, reveal, DOI page, copy key, `[@key]`,
 `\cite{key}`, BibTeX). The library reloads when the bibtex file changes.
 
-## Next: the main window (P0, read-only)
+## The main window (P0, read-only; 0.5)
 
 Two windows with different jobs:
 
@@ -69,35 +69,71 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 
 ## Writing (P1)
 
-- **A papers library** (a `.papers/config.json` next to its `.bib`) is
-  written by papers (3.0 or later), as a command, so that a change from
-  the app or from a terminal has the same format, naming and history:
-  `papers tag KEY --add TAG` / `--rm TAG`, `papers add`, `papers rm`,
-  `papers file attach|detach|rename`, `papers undo|redo`, and `papers edit
-  KEY --from FILE` once papers has it (proposals to papers:
-  `docs/drafts/papers-proposals.md`). Without papers installed, a papers
-  library is read-only, and a window tells how to install it (with copyable
-  commands): `pip install papers-cli` or `uv tool install papers-cli`.
-- **Any other `.bib`** is written by the app: only the edited entry is
-  rewritten, the rest of the file stays byte for byte; the file is written
-  to a temporary file then moved, and not at all if it changed since it
-  was read.
+- **A papers library** (a `.papers/config.json` next to its `.bib`, naming
+  it) is written by papers (3.0 or later), as a command, so that a change
+  from the app or from a terminal has the same format, naming and history.
+  The command: the `papers` setting, else the one the login shell finds; it
+  runs with the PATH of the login shell (its git). Without it, a papers
+  library is read-only, and a dialog tells how to install it, with copyable
+  commands (`pip install --pre papers-cli`, `uv tool install --prerelease
+  allow papers-cli`, while papers 3 is a beta).
+- **Any other `.bib`** is written by the app (`crates/core/src/write.rs`):
+  only the edited entries are rewritten, the rest of the file stays byte for
+  byte; the file is written to a temporary file then renamed, and not at all
+  if it changed since it was read; the new text must load as the library
+  reads it. Undo and redo: a stack of the changes of the session.
 - Fields are saved with `⌘S`, not on every change: each papers write is one
   undo step and one git commit, and autosaving would write half-typed
   values. A tab with unsaved edits shows a dot, and closing it asks first.
-- **Tags**: add, remove, rename; `1`–`9` toggle the pinned tags on the
-  selection. **A manuscript's tag** from the citations of a `.md`
-  (`[@key]`), `.tex` or `.aux`: its cited papers are tagged, and the keys
-  not in the library listed. A tag can keep its project `.bib` up to date.
-- **Add**: a DOI or identifier, a PDF dropped in, BibTeX pasted; a
-  duplicate check first. **Delete**, attach, detach and rename files.
+- **Tags** are matched whole in the search: `tag:amoc` is that tag, `*` a
+  wildcard (`tag:amoc*`, `tag:*amoc`); a plain word still finds tags
+  loosely. A click on a tag in the sidebar writes `tag:x`.
+
+**Done** (after 0.5.1, not released): exact tags; the writer
+(`src-tauri/src/writer.rs`: the commands `writers`, `set_tags`,
+`rename_tag`, `replace_entry`, `add_bibtex`, `remove_entries`, `undo`,
+`redo`; errors `{ kind: "papers-missing" | "changed" | "failed", message }`;
+`src/lib/library/writes.ts`); in the window, `write()` runs a write, says
+its error or shows `PapersMissing.svelte`; Settings has the papers command
+and tells how each `.bib` is written. Nothing in the window writes yet.
+
+**Next** (proposed, to confirm before starting; one agent each, in a git
+worktree, merged one by one):
+
+1. **Tags**: the tags of the selected papers as chips in the details, `×`
+   removes one, `+` adds one (completed from the tags of the library), on
+   all the papers selected; right-click a tag in the sidebar: *Rename…*,
+   *Pin to a key*; the pinned tags kept in the settings; `1`–`9` toggle a
+   pinned tag on the selection, when not typing.
+2. **Edit and add**: *Edit* in the details turns the BibTeX of the entry into
+   an editor, `⌘S` saves, `Esc` cancels; a papers library says it needs
+   `papers edit --from` until papers has it. *Add…* in the toolbar: a DOI
+   (its BibTeX from doi.org, the first use of the network) or BibTeX pasted;
+   a duplicate check first (the same DOI, or the same title and year); the
+   `.bib` to add to, when there are several.
+3. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
+   selection, after asking (the PDFs stay); attach a PDF, detach it, rename
+   it by the names of papers (`papers file rename`, papers libraries only);
+   `⌘Z` / `⌘⇧Z` undo and redo the last change of the library, but undo the
+   typing in a field.
+4. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
+   `.tex` or `.aux` tag their papers, and the keys not in the library are
+   listed.
+
+**Upstream** (perrette/papers): issues #117 (`edit --from`), #118
+(`--json`), #119 (safe writes), #120 (changes made outside papers, in the
+history), #121 (smaller points). `papers edit --from` is done on the branch
+`edit-from` of the papers checkout (`~/models/papers`, tests pass): its pull
+request opens with `sh docs/drafts/open-pr.sh` (a fork of alex-robinson,
+then the pull request against `v3`, text in `docs/drafts/pr-edit-from.md`).
+Field edits of a papers library wait for it.
 
 Towards the app's own writer for everything: it follows the conventions of
 papers (`.papers/config.json` for the key and file names, tags in
 `keywords`, the `file` field, the format of papers for an edited entry) and
-records its changes in the history of papers (`papers backup record`, a
-proposal); then papers is optional, still the command line and the source
-of metadata from a DOI or a PDF until the app has its own.
+records its changes in the history of papers (`papers backup record`, #120);
+then papers is optional, still the command line and the source of metadata
+from a DOI or a PDF until the app has its own.
 
 ## Later (P2)
 

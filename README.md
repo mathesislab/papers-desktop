@@ -171,6 +171,9 @@ npm install
 npm run tauri dev
 ```
 
+The plans and their state are in [docs/design.md](docs/design.md); trying
+the windows of a build on macOS, in [docs/testing.md](docs/testing.md).
+
 ## Updates
 
 The app looks for a new release at start and twice a day (a switch in the
