@@ -5,7 +5,10 @@
 - The library is one or more `.bib` files, read as they are (with the
   `biblatex` crate), and the files their entries link to. The app works out
   of the box, with no other tool: papers, JabRef or any editor keeps the
-  `.bib` files. It writes nothing yet.
+  `.bib` files. It writes nothing yet (see *Writing*).
+- Everything is in the `.bib` and the PDFs: no account, no database of the
+  app as the truth, no settings of the app written in the `.bib`. Tags are
+  the `keywords` field, the one grouping there is.
 - The PDFs stay plain files in the files directory: any viewer opens them.
 - `crates/core` (Rust, no user interface) loads, searches and watches the
   library, and works on any platform: other front ends (a Spotlight add-on,
@@ -21,55 +24,82 @@ the matches per year, a preview (first page, citation in a CSL style,
 BibTeX), and actions (open, reveal, DOI page, copy key, `[@key]`,
 `\cite{key}`, BibTeX). The library reloads when the bibtex file changes.
 
-## Next: the main window
+## Next: the main window (P0, read-only)
 
 Two windows with different jobs:
 
 - **Quick panel**, as now: a transient launcher. It floats and hides when
   it loses the focus, which suits a lookup but not a paper kept open while
   writing.
-- **Main window**: a normal window (in the Dock and `⌘Tab`) that stays
-  open, with a tab bar drawn by the app (the same on every platform):
-  - a fixed **Library** tab first: the search list and preview of the
-    panel for now, a table later (sortable columns, multi-select, batch
-    actions);
-  - one tab per paper. `⌘I` in the panel or in the Library tab opens the
-    paper's tab (or goes to it) and brings the window forward. `⌘W` closes
-    a tab, `⌃Tab` and `⌘1`–`⌘9` switch. The open tabs are remembered
-    between sessions.
-  - It opens from the menu-bar icon, with `⌘O` in the panel, and perhaps a
-    global hotkey of its own.
+- **Main window** (mockup: `docs/mockups/main-window.html`): a normal
+  window, in the Dock and `⌘Tab` while it is open. It opens from the
+  menu-bar icon (Open Library) and with `⌘O` in the panel; `⌘I` in the
+  panel opens the selected paper in it.
 
-A **paper tab** (card):
+Three panes, each resized by dragging, the right one hidden on demand:
 
-- left: all the information of the paper — the BibTeX fields of the entry
-  (parsed in the core), the
-  files (open, reveal) and the tags;
-- right: the preview of the panel as it is (first page, citation, BibTeX
-  folded).
+- **Sidebar**: the libraries (the .bib files); views (all papers, recently
+  opened, no PDF, broken file links, possible duplicates: the same DOI, or
+  the same title and year); the tags with their counts (a click adds
+  `tag:x` to the search); the open papers.
+- **Library**: a table of the papers that match the search (the panel's
+  syntax): sortable columns (authors, year, title, journal, tags, a file
+  marker that tells a missing file), multi-select. Only the rows on screen
+  are drawn.
+- **Details** of the selected paper: title, authors, tags, file (open,
+  reveal), fields, citation, BibTeX (folded).
 
-It is read-only at first.
+**Open papers are side tabs**, in the sidebar: author, year and title in
+full, as a tab bar cannot. Enter or a double-click opens one; `⌘W` closes
+it, which goes back to the library (a setting: or to the next open paper).
+A paper tab shows its PDF in the app (pdf.js: text selection, find,
+outline), with the details beside it. The open papers, their pages, the
+pane widths and the details shown or not are kept in the data folder of
+the app, as the recent papers are.
 
-## Later: editing
+A tag or the selection exports to a `.bib` file, e.g. a manuscript's
+`references.bib` (for texmark).
 
-To decide before anything writes: through papers when it is installed (its
-file naming, undo and git history), and maybe natively for small changes
-(an entry rewritten in place, the rest of the file untouched). Through
-papers:
+"Recently added" needs a date the `.bib` does not have: see issue #1.
 
-- **Tags**: `papers tag KEY --add TAG` / `--rm TAG`, applied at once.
-- **Fields**: `papers edit KEY` takes the edited entry, either through the
-  `editor` setting of papers pointed at a command that writes the edited
-  entry (works today), or through a non-interactive option to add to papers
-  (e.g. `papers edit KEY --from FILE`).
+## Writing (P1)
+
+- **A papers library** (a `.papers/config.json` next to its `.bib`) is
+  written by papers (3.0 or later), as a command, so that a change from
+  the app or from a terminal has the same format, naming and history:
+  `papers tag KEY --add TAG` / `--rm TAG`, `papers add`, `papers rm`,
+  `papers file attach|detach|rename`, `papers undo|redo`, and `papers edit
+  KEY --from FILE` once papers has it (proposals to papers:
+  `docs/drafts/papers-proposals.md`). Without papers installed, a papers
+  library is read-only, and a window tells how to install it (with copyable
+  commands): `pip install papers-cli` or `uv tool install papers-cli`.
+- **Any other `.bib`** is written by the app: only the edited entry is
+  rewritten, the rest of the file stays byte for byte; the file is written
+  to a temporary file then moved, and not at all if it changed since it
+  was read.
 - Fields are saved with `⌘S`, not on every change: each papers write is one
   undo step and one git commit, and autosaving would write half-typed
   values. A tab with unsaved edits shows a dot, and closing it asks first.
+- **Tags**: add, remove, rename; `1`–`9` toggle the pinned tags on the
+  selection. **A manuscript's tag** from the citations of a `.md`
+  (`[@key]`), `.tex` or `.aux`: its cited papers are tagged, and the keys
+  not in the library listed. A tag can keep its project `.bib` up to date.
+- **Add**: a DOI or identifier, a PDF dropped in, BibTeX pasted; a
+  duplicate check first. **Delete**, attach, detach and rename files.
 
-**Groups are tags** (the BibTeX `keywords` field, which JabRef reads too):
-e.g. `amoc-paper` for the references of a manuscript. `⌘T` in the panel
-tags the selected paper; the library view exports the papers of a tag to a
-project's `references.bib` (for texmark).
+Towards the app's own writer for everything: it follows the conventions of
+papers (`.papers/config.json` for the key and file names, tags in
+`keywords`, the `file` field, the format of papers for an edited entry) and
+records its changes in the history of papers (`papers backup record`, a
+proposal); then papers is optional, still the command line and the source
+of metadata from a DOI or a PDF until the app has its own.
+
+## Later (P2)
+
+Merge duplicates; checks (missing DOIs, broken links, keys); saved
+searches; full-text search of the PDFs; git sync of the `.bib` files (not
+the PDFs) with a remote; RIS and CSL-JSON import and export; annotations
+kept in the PDF.
 
 ## Later: adding papers without a browser extension
 
@@ -82,6 +112,28 @@ project's `references.bib` (for texmark).
    institution's network gives access; otherwise *armed*: the app waits for
    the next PDF in `~/Downloads` (downloaded in the browser, with its
    login), checks its DOI, and runs `papers add PDF --doi DOI`.
+
+## Later: feeds
+
+The new papers of the journals followed, as Feedly lists them: most
+journals have an RSS feed of their contents (Copernicus, Nature, Wiley and
+AGU, Science, Elsevier), arXiv too, and for a journal without one Crossref
+lists its new DOIs by ISSN. A Feeds view: title, authors, journal,
+abstract; mark as read; *Add* takes the metadata from the DOI.
+
+The PDF, the simplest way first:
+
+1. Open access: Unpaywall (by DOI, free) gives the link of the PDF.
+2. The article's page: its `citation_pdf_url` meta tag (most publishers
+   have it, for Google Scholar), fetched on the institute's network or VPN,
+   kept if it is a PDF.
+3. Otherwise the article opens in the browser, and the app waits for the
+   next PDF in `~/Downloads` (as above): logins, viewers and checks happen
+   in the browser.
+
+A browser tab in the app (a webview that catches downloads) only if 3 is
+too clumsy. One paper at a time, when asked: no downloads in the
+background, which publishers block.
 
 ## Later, optional: Spotlight add-on
 

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Main window mockup</title>
+<style>
+  :root {
+    --bg: #ffffff; --side: #f4f4f6; --fg: #1d1d1f; --muted: #6e6e73; --line: #e3e3e8;
+    --accent: #2f6fdf; --on-accent: #fff; --sel: #dfe9fb; --chip: #eef1f6; --pdf: #e9e9ee;
+    --t1: #d9822b; --t2: #2f9e6e; --t3: #8a5cd6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e20; --side: #252528; --fg: #ececf0; --muted: #9a9aa2; --line: #38383d;
+      --accent: #5b8ff0; --sel: rgba(58,120,230,.35); --chip: #303036; --pdf: #2a2a2e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+    font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .switch { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; color: var(--muted); }
+  .switch button { font: inherit; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--fg); cursor: pointer; }
+  .switch button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .window { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 1100px;
+    display: grid; grid-template-columns: 230px 1fr 300px; grid-template-rows: 44px 1fr 26px; height: 680px; }
+  .titlebar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px;
+    border-bottom: 1px solid var(--line); background: var(--side); }
+  .lights { display: flex; gap: 7px; width: 206px; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .search { flex: 1; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--muted); }
+  .search b { color: var(--fg); font-weight: 400; }
+  .tool { height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg);
+    color: var(--fg); display: flex; align-items: center; gap: 6px; }
+  .side { background: var(--side); border-right: 1px solid var(--line); overflow: hidden; padding: 8px 0; }
+  .side h4 { margin: 12px 14px 4px; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .side .item { display: flex; align-items: center; gap: 8px; padding: 4px 14px; border-radius: 6px; margin: 0 6px; }
+  .side .item .n { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .side .item.sel { background: var(--sel); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .key { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
+  .tab { display: grid; grid-template-columns: 1fr auto; padding: 5px 14px; margin: 0 6px; border-radius: 6px; }
+  .tab small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tab .x { color: var(--muted); align-self: center; }
+  .tab.sel { background: var(--sel); }
+  .main { overflow: hidden; display: flex; flex-direction: column; }
+  .filters { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .chip { background: var(--chip); border-radius: 10px; padding: 2px 9px; font-size: 12px; white-space: nowrap; }
+  .filters .count { margin-left: auto; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 8px;
+    border-bottom: 1px solid var(--line); }
+  td { padding: 6px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid var(--line); }
+  tr.sel td { background: var(--sel); }
+  tbody tr { cursor: default; }
+  .pdfi { color: var(--accent); }
+  .miss { color: #d04545; }
+  .detail { border-left: 1px solid var(--line); overflow: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .detail h3 { margin: 0; font-size: 15px; line-height: 1.3; }
+  .detail .by { color: var(--muted); }
+  .sec { border-top: 1px solid var(--line); padding-top: 10px; }
+  .sec > b { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .fields { display: grid; grid-template-columns: 70px 1fr; gap: 3px 8px; }
+  .fields span:nth-child(odd) { color: var(--muted); }
+  .file { display: flex; justify-content: space-between; align-items: center; }
+  .btn { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .cite { font-size: 12px; line-height: 1.45; }
+  .reader { flex: 1; background: var(--pdf); display: flex; justify-content: center; padding: 18px; overflow: hidden; }
+  .page { width: 470px; background: #fff; color: #222; padding: 34px 40px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .page h2 { font: 600 17px Georgia, serif; margin: 0 0 8px; }
+  .page .au { font: 12px Georgia, serif; color: #555; margin-bottom: 14px; }
+  .bar { height: 7px; background: #e4e4e8; border-radius: 3px; margin: 7px 0; }
+  .hl { background: #fde68a; }
+  .readbar { display: flex; gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--muted); }
+  .status { grid-column: 1 / -1; display: flex; gap: 16px; align-items: center; padding: 0 12px;
+    border-top: 1px solid var(--line); background: var(--side); color: var(--muted); font-size: 12px; }
+  .status .ok { color: #2f9e6e; }
+  .note { max-width: 1100px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="switch">
+  <span>View:</span>
+  <button id="b-lib" class="on">Library</button>
+  <button id="b-paper">Paper tab</button>
+</div>
+
+<div class="window">
+  <div class="titlebar">
+    <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="search">⌕ <b>tag:amoc-paper</b> has:pdf &nbsp;<span>— words, fields, phrases, -exclude, or paste a reference</span></div>
+    <div class="tool">＋ Add</div>
+    <div class="tool">Import / Export</div>
+  </div>
+
+  <aside class="side">
+    <h4>Libraries</h4>
+    <div class="item sel">papers.bib <span class="n">2342</span></div>
+    <div class="item">amoc-paper/references.bib <span class="n">42</span></div>
+    <h4>Views</h4>
+    <div class="item">All papers <span class="n">2342</span></div>
+    <div class="item">Recently added <span class="n">25</span></div>
+    <div class="item">Recently opened <span class="n">25</span></div>
+    <div class="item">No PDF <span class="n">372</span></div>
+    <div class="item">Broken file links <span class="n">4</span></div>
+    <div class="item">Possible duplicates <span class="n">12</span></div>
+    <h4>Tags</h4>
+    <div class="item sel"><span class="dot" style="background:var(--t1)"></span>amoc-paper <span class="key">1</span><span class="n">42</span></div>
+    <div class="item"><span class="dot" style="background:var(--t2)"></span>ice-review <span class="key">2</span><span class="n">118</span></div>
+    <div class="item"><span class="dot" style="background:var(--t3)"></span>to-read <span class="key">3</span><span class="n">31</span></div>
+    <div class="item"><span class="dot" style="background:var(--line)"></span>hysteresis <span class="n">64</span></div>
+    <div class="item"><span class="dot" style="background:var(--line)"></span>tipping-points <span class="n">57</span></div>
+    <h4>Open papers</h4>
+    <div class="tab" id="tab-1"><span>Rahmstorf 2015<small>Exceptional twentieth-century slowdown…</small></span><span class="x">×</span></div>
+    <div class="tab"><span>Robinson 2012<small>Multistability and critical thresholds…</small></span><span class="x">×</span></div>
+    <div class="tab"><span>Caesar 2018<small>Observed fingerprint of a weakening…</small></span><span class="x">×</span></div>
+  </aside>
+
+  <section class="main" id="v-lib">
+    <div class="filters">
+      <span class="chip">tag: amoc-paper ×</span><span class="chip">has PDF ×</span>
+      <span class="chip">Export as references.bib</span>
+      <span class="count">42 papers</span>
+    </div>
+    <table>
+      <colgroup><col style="width:28px"><col style="width:150px"><col style="width:48px"><col><col style="width:150px"><col style="width:120px"></colgroup>
+      <thead><tr><th></th><th>Authors</th><th>Year</th><th>Title</th><th>Journal</th><th>Tags</th></tr></thead>
+      <tbody>
+        <tr><td class="pdfi">▤</td><td>van Westen, Kliphuis, Dijkstra</td><td>2024</td><td>Physics-based early warning signal shows that AMOC is on tipping course</td><td>Science Advances</td><td>amoc-paper</td></tr>
+        <tr><td class="pdfi">▤</td><td>Ditlevsen, Ditlevsen</td><td>2023</td><td>Warning of a forthcoming collapse of the Atlantic meridional overturning circulation</td><td>Nature Communications</td><td>amoc-paper, tipping-points</td></tr>
+        <tr><td class="pdfi">▤</td><td>Armstrong McKay et al.</td><td>2022</td><td>Exceeding 1.5°C global warming could trigger multiple climate tipping points</td><td>Science</td><td>amoc-paper, tipping-points</td></tr>
+        <tr><td class="pdfi">▤</td><td>Boers</td><td>2021</td><td>Observation-based early-warning signals for a collapse of the AMOC</td><td>Nature Climate Change</td><td>amoc-paper</td></tr>
+        <tr><td class="pdfi">▤</td><td>Caesar, Rahmstorf, Robinson et al.</td><td>2018</td><td>Observed fingerprint of a weakening Atlantic Ocean overturning circulation</td><td>Nature</td><td>amoc-paper</td></tr>
+        <tr class="sel"><td class="pdfi">▤</td><td>Rahmstorf, Box, Feulner et al.</td><td>2015</td><td>Exceptional twentieth-century slowdown in Atlantic Ocean overturning circulation</td><td>Nature Climate Change</td><td>amoc-paper, to-read</td></tr>
+        <tr><td class="miss">▤</td><td>Jackson, Kahana, Graham et al.</td><td>2015</td><td>Global and European climate impacts of a slowdown of the AMOC in a high resolution GCM</td><td>Climate Dynamics</td><td>amoc-paper</td></tr>
+        <tr><td class="pdfi">▤</td><td>Robinson, Calov, Ganopolski</td><td>2012</td><td>Multistability and critical thresholds of the Greenland ice sheet</td><td>Nature Climate Change</td><td>amoc-paper, hysteresis</td></tr>
+        <tr><td class="pdfi">▤</td><td>Lenton, Held, Kriegler et al.</td><td>2008</td><td>Tipping elements in the Earth's climate system</td><td>PNAS</td><td>amoc-paper, tipping-points</td></tr>
+        <tr><td class="pdfi">▤</td><td>Stommel</td><td>1961</td><td>Thermohaline convection with two stable regimes of flow</td><td>Tellus</td><td>amoc-paper, hysteresis</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="main" id="v-paper" hidden>
+    <div class="readbar">
+      <span>Page 1 / 6</span><span>100%</span><span>⌕ Find</span><span>Outline</span>
+      <span style="margin-left:auto">Open in Preview ↗</span>
+    </div>
+    <div class="reader">
+      <div class="page">
+        <h2>Exceptional twentieth-century slowdown in Atlantic Ocean overturning circulation</h2>
+        <div class="au">Stefan Rahmstorf, Jason E. Box, Georg Feulner, Michael E. Mann, Alexander Robinson, Scott Rutherford, Erik J. Schaffernicht</div>
+        <div class="bar" style="width:96%"></div><div class="bar" style="width:92%"></div>
+        <div class="bar hl" style="width:88%"></div><div class="bar hl" style="width:61%"></div>
+        <div class="bar" style="width:94%"></div><div class="bar" style="width:90%"></div><div class="bar" style="width:72%"></div>
+        <div style="height:12px"></div>
+        <div class="bar" style="width:95%"></div><div class="bar" style="width:93%"></div><div class="bar" style="width:97%"></div>
+        <div class="bar" style="width:89%"></div><div class="bar" style="width:91%"></div><div class="bar" style="width:66%"></div>
+        <div style="height:12px"></div>
+        <div class="bar" style="width:94%"></div><div class="bar" style="width:96%"></div><div class="bar" style="width:84%"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="detail">
+    <div>
+      <h3>Exceptional twentieth-century slowdown in Atlantic Ocean overturning circulation</h3>
+      <div class="by">Rahmstorf, Box, Feulner, Mann, Robinson, Rutherford, Schaffernicht · Nature Climate Change · 2015</div>
+    </div>
+    <div style="display:flex; gap:6px"><span class="btn primary">Open PDF</span><span class="btn">Copy [@key]</span><span class="btn">Edit ⌘E</span></div>
+    <div class="sec"><b>Tags</b>
+      <div class="tags"><span class="chip">amoc-paper ×</span><span class="chip">to-read ×</span><span class="chip">＋</span></div>
+    </div>
+    <div class="sec"><b>File</b>
+      <div class="file"><span>rahmstorf_2015_exceptional.pdf</span><span class="btn">Reveal</span></div>
+    </div>
+    <div class="sec"><b>Fields</b>
+      <div class="fields">
+        <span>Key</span><span>rahmstorf2015</span>
+        <span>DOI</span><span style="color:var(--accent)">10.1038/nclimate2554</span>
+        <span>Volume</span><span>5</span>
+        <span>Pages</span><span>475–480</span>
+      </div>
+    </div>
+    <div class="sec"><b>Citation · Copernicus</b>
+      <div class="cite">Rahmstorf, S., Box, J. E., Feulner, G., et al.: Exceptional twentieth-century slowdown in Atlantic Ocean overturning circulation, Nat. Clim. Change, 5, 475–480, 2015.</div>
+    </div>
+    <div class="sec"><b>BibTeX ›</b></div>
+  </aside>
+
+  <div class="status">
+    <span>papers.bib · 2342 entries</span>
+    <span class="ok">● saved through papers 3.0</span>
+    <span>Last change: tag +amoc-paper (rahmstorf2015) · Undo ⌘Z</span>
+    <span style="margin-left:auto">git: 2 commits to push</span>
+  </div>
+</div>
+
+<p class="note">Mockup only. Library view: sidebar of libraries, views, tags (1–9 toggle the pinned tags on the selection) and open papers as side tabs; table; details of the selected paper. Paper tab: the PDF in the app, the same details beside it for tags and fields while reading.</p>
+
+<script>
+  const lib = document.getElementById("v-lib"), paper = document.getElementById("v-paper");
+  const bLib = document.getElementById("b-lib"), bPaper = document.getElementById("b-paper");
+  const tab = document.getElementById("tab-1");
+  function view(p) {
+    lib.hidden = p; paper.hidden = !p;
+    bLib.classList.toggle("on", !p); bPaper.classList.toggle("on", p);
+    tab.classList.toggle("sel", p);
+  }
+  bLib.onclick = () => view(false);
+  bPaper.onclick = () => view(true);
+  tab.onclick = () => view(true);
+  document.querySelectorAll("tbody tr").forEach((r) => (r.onclick = () => {
+    document.querySelectorAll("tbody tr").forEach((x) => x.classList.remove("sel"));
+    r.classList.add("sel");
+  }));
+</script>
+</body>
+</html>
