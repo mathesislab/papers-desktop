@@ -26,7 +26,7 @@ use tauri::{
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
-use update::{Available, Updates};
+use update::{Available, Installed, Updates};
 
 const PANEL: &str = "panel";
 const SETTINGS: &str = "settings";
@@ -35,7 +35,7 @@ const MAX_RESULTS: usize = 200;
 const PANEL_WIDTH: f64 = 720.0;
 const PANEL_HEIGHT: f64 = 460.0;
 const PREVIEW_WIDTH: f64 = 500.0;
-const NEW_ISSUE: &str = "https://github.com/mathesislab/papers-desktop/issues/new";
+const REPO: &str = "https://github.com/mathesislab/papers-desktop";
 
 /// The library as the panel sees it, sent with the "status" event.
 #[derive(Debug, Clone, Serialize)]
@@ -236,6 +236,20 @@ async fn check_update(app: AppHandle) -> Result<Option<Available>, String> {
 #[tauri::command]
 fn found_update(updates: State<Updates>) -> Option<Available> {
     updates.available()
+}
+
+/// The update installed just before this start, if any.
+#[tauri::command]
+fn installed_update(updates: State<Updates>) -> Option<Installed> {
+    updates.installed()
+}
+
+/// The notes of a release, on GitHub.
+#[tauri::command]
+fn release_notes(app: AppHandle, version: String) -> Result<(), String> {
+    app.opener()
+        .open_url(format!("{REPO}/releases/tag/v{version}"), None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 /// Install the update found, and restart.
@@ -463,8 +477,8 @@ fn feedback(app: &AppHandle) -> Result<(), String> {
         std::env::consts::OS,
         std::env::consts::ARCH
     );
-    let form =
-        tauri::Url::parse_with_params(NEW_ISSUE, [("body", body)]).map_err(|e| e.to_string())?;
+    let form = tauri::Url::parse_with_params(&format!("{REPO}/issues/new"), [("body", body)])
+        .map_err(|e| e.to_string())?;
     app.opener()
         .open_url(form.as_str(), None::<&str>)
         .map_err(|e| e.to_string())
@@ -613,12 +627,16 @@ pub fn run() {
                 update_item: Mutex::new(None),
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
             });
-            app.manage(Updates::default());
+            app.manage(Updates::new(app.handle()));
             hotkey::setup(app.handle(), &settings);
             tray(app.handle(), &settings.hotkey)?;
             selection::setup(app.handle());
             reload(app.handle());
             update::watch(app.handle());
+            // after an update, the settings tell of it
+            if app.state::<Updates>().installed().is_some() {
+                settings_window(app.handle(), Some("updates"));
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -649,6 +667,8 @@ pub fn run() {
             send_feedback,
             check_update,
             found_update,
+            installed_update,
+            release_notes,
             install_update
         ])
         .run(tauri::generate_context!())

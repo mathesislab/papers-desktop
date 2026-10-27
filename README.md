@@ -155,7 +155,9 @@ npm run tauri dev
 
 The app looks for a new release at start and twice a day (a switch in the
 settings turns this off), and the menu-bar icon then shows *Update to …*. It
-installs only when asked: Settings → Install and Restart. On Linux the
+installs only when asked: Settings → Install and Restart. The new version
+then opens the settings at Updates, with a link to the release notes
+(What's new). On Linux the
 `.deb` installs with the system's password prompt; the AppImage replaces
 itself.
 

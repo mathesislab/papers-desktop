@@ -19,7 +19,9 @@
     check_updates: boolean;
   };
   /** mirrors update::Available */
-  type Update = { version: string; notes: string | null };
+  type Update = { version: string };
+  /** mirrors update::Installed */
+  type Installed = { version: string; from: string };
   type View = { settings: Settings; styles: string[]; start_at_login: boolean; home: string | null };
 
   /** the option of the style menu that asks for a .csl file */
@@ -40,9 +42,11 @@
     settings && !styles.includes(settings.citation_style) ? settings.citation_style : null,
   );
 
-  // updates: the version found, and where its install is
+  // updates: the version found, and where its install is; the one installed
+  // just before this start
   let version = $state("");
   let update = $state<Update | null>(null);
+  let installed = $state<Installed | null>(null);
   let updating = $state<"idle" | "checking" | "current" | "installing" | "failed">("idle");
   let updateError = $state("");
   let progress = $state<{ done: number; total: number | null }>({ done: 0, total: null });
@@ -83,6 +87,7 @@
       refresh(),
       getVersion().then((v) => (version = v)),
       invoke<Update | null>("found_update").then((found) => (update = found)),
+      invoke<Installed | null>("installed_update").then((done) => (installed = done)),
     ]);
     await tick();
     const window = getCurrentWindow();
@@ -174,6 +179,14 @@
   async function clearRecent() {
     await invoke("clear_recent");
     recentCleared = true;
+  }
+
+  async function releaseNotes(of: string) {
+    try {
+      await invoke("release_notes", { version: of });
+    } catch (err) {
+      show(String(err), true);
+    }
   }
 
   async function sendFeedback() {
@@ -369,11 +382,18 @@
       {#if updating === "installing"}
         <progress value={progress.done} max={progress.total ?? undefined}></progress>
       {/if}
-      {#if update?.notes}
-        <details>
-          <summary>What's new in {update.version}</summary>
-          <p class="notes">{update.notes}</p>
-        </details>
+      {#if installed}
+        {@const done = installed}
+        <p class="news">
+          Updated from {done.from}.
+          <button class="link" onclick={() => releaseNotes(done.version)}>What's new in {done.version}</button>
+        </p>
+      {/if}
+      {#if update}
+        {@const found = update}
+        <p class="news">
+          <button class="link" onclick={() => releaseNotes(found.version)}>What's new in {found.version}</button>
+        </p>
       {/if}
       <label class="row">
         <span>
@@ -523,19 +543,18 @@
     margin: 2px 0 8px;
     accent-color: var(--accent);
   }
-  details {
+  .news {
     margin: 0 0 6px;
     font-size: 12px;
-  }
-  summary {
-    cursor: pointer;
     color: var(--muted);
   }
-  .notes {
-    margin: 6px 0 0;
-    white-space: pre-wrap;
-    -webkit-user-select: text;
-    user-select: text;
+  button.link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-size: inherit;
+    cursor: pointer;
   }
   .hint.error {
     color: var(--error);
