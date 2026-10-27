@@ -264,6 +264,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    box-sizing: border-box;
     width: calc(100% - 12px);
     margin: 0 6px;
     padding: 4px 10px;

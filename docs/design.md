@@ -111,29 +111,26 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 `src/lib/library/writes.ts`); in the window, `write()` runs a write, says
 its error or shows `PapersMissing.svelte`; Settings has the papers command
 and tells how each `.bib` is written. A papers library is edited with
-`papers edit KEY --from -`. Nothing in the window writes yet.
+`papers edit KEY --from -`. Tags in the window: chips in the details (on
+the paper, or the papers selected), the menu of a tag in the sidebar
+(*Rename…* in place, *Pin to Key*), `1`–`9` toggle a pinned tag; nested
+tags (the search, the tree, the rename of a parent, the chips). Tried in
+the built app on a library of papers.
 
 **Next** (proposed, to confirm before starting; one agent each, in a git
 worktree, merged one by one):
 
-1. **Tags**: the tags of the selected papers as chips in the details, `×`
-   removes one, `+` adds one (completed from the tags of the library), on
-   all the papers selected; right-click a tag in the sidebar: *Rename…*,
-   *Pin to a key*; the pinned tags kept in the settings; `1`–`9` toggle a
-   pinned tag on the selection, when not typing.
-2. **Nested tags**, as above: the search, the tree in the sidebar, the
-   rename of a parent, the chips.
-3. **Edit and add**: *Edit* in the details turns the BibTeX of the entry into
+1. **Edit and add**: *Edit* in the details turns the BibTeX of the entry into
    an editor, `⌘S` saves, `Esc` cancels. *Add…* in the toolbar: a DOI
    (its BibTeX from doi.org, the first use of the network) or BibTeX pasted;
    a duplicate check first (the same DOI, or the same title and year); the
    `.bib` to add to, when there are several.
-4. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
+2. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
    selection, after asking (the PDFs stay); attach a PDF, detach it, rename
    it by the names of papers (`papers file rename`, papers libraries only);
    `⌘Z` / `⌘⇧Z` undo and redo the last change of the library, but undo the
    typing in a field.
-5. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
+3. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
    `.tex` or `.aux` tag their papers, and the keys not in the library are
    listed.
 
