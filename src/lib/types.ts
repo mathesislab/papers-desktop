@@ -45,12 +45,16 @@ export type Status =
 /** mirrors papers_core::Row: an item as a row of the table of the main window */
 export type Row = {
   id: string;
+  key: string;
+  /** bibtex entry type, e.g. "article" */
+  kind: string;
   /** family names: "Robinson", "Robinson & Calov", "Robinson et al." */
   authors: string;
   year: number | null;
   title: string;
   container: string | null;
   tags: string[];
+  doi: string | null;
   /** whether the item links a file, and whether the files are there */
   file: "none" | "found" | "missing";
   bib: string;

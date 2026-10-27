@@ -24,6 +24,9 @@ pub enum FileState {
 #[derive(Debug, Clone, Serialize)]
 pub struct Row {
     pub id: String,
+    pub key: String,
+    /// bibtex entry type, e.g. `article`
+    pub kind: String,
     /// family names: "Robinson", "Robinson & Calov", "Robinson et al."
     pub authors: String,
     pub year: Option<i32>,
@@ -31,6 +34,7 @@ pub struct Row {
     /// journal or book title
     pub container: Option<String>,
     pub tags: Vec<String>,
+    pub doi: Option<String>,
     pub file: FileState,
     /// the .bib file of the entry
     pub bib: PathBuf,
@@ -114,11 +118,14 @@ fn row(item: &Item) -> Row {
     };
     Row {
         id: item.id.clone(),
+        key: item.key.clone(),
+        kind: item.kind.clone(),
         authors: short_names(&item.families),
         year: item.year,
         title: item.title.clone(),
         container: item.container.clone(),
         tags: item.keywords.clone(),
+        doi: item.doi.clone(),
         file,
         bib: item.bib.clone(),
     }

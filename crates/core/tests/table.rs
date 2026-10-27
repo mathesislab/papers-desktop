@@ -33,6 +33,9 @@ fn rows() {
     assert_eq!(same.year, Some(2020));
     assert_eq!(same.title, "The same paper");
     assert_eq!(same.tags, ["AMOC", "tipping"]);
+    assert_eq!(same.key, "same2020");
+    assert_eq!(same.kind, "article");
+    assert_eq!(same.doi.as_deref(), Some("10.1000/abc"));
     assert_eq!(same.file, FileState::Found);
     assert_eq!(rows[1].file, FileState::None);
     assert_eq!(rows[2].authors, "Holm et al.");

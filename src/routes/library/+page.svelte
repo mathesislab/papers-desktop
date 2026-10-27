@@ -13,16 +13,18 @@
   import ReaderView from "$lib/library/ReaderView.svelte";
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import Table, { type Sort } from "$lib/library/Table.svelte";
+  import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
   import type { Item, Row, Status, TagCount } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
-   *  the order of the table, the papers open and the page of each. */
+   *  the columns and order of the table, the papers open and the page of
+   *  each. */
   type Layout = {
     sidebar: number;
     details: number;
     showDetails: boolean;
+    columns: Shown[];
     sort: Sort;
     open: string[];
     /** the paper in front; none: the library */
@@ -33,6 +35,7 @@
     sidebar: 230,
     details: 340,
     showDetails: true,
+    columns: DEFAULT_COLUMNS,
     sort: null,
     open: [],
     active: null,
@@ -130,12 +133,10 @@
 
   /** The rows in the order of a column; the empty values last. */
   function sorted(list: Row[], sort: NonNullable<Sort>): Row[] {
-    const value = (r: Row) =>
-      sort.column === "tags" ? r.tags.join(", ") : sort.column === "year" ? r.year : r[sort.column];
     const empty = (v: string | number | null) => v === null || v === "";
     const sign = sort.descending ? -1 : 1;
     return [...list].sort((a, b) => {
-      const [x, y] = [value(a), value(b)];
+      const [x, y] = [value(a, sort.column), value(b, sort.column)];
       if (empty(x) || empty(y)) return Number(empty(x)) - Number(empty(y));
       return sign * (typeof x === "number" ? x - (y as number) : collator.compare(String(x), String(y)));
     });
@@ -477,9 +478,11 @@
         {:else}
           <Table
             rows={shown}
+            columns={layout.columns}
             {selected}
             {focus}
             sort={layout.sort}
+            oncolumns={(columns) => (layout.columns = columns)}
             onsort={(sort) => (layout.sort = sort)}
             onselect={select}
             onopen={open}
