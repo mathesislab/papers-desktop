@@ -387,6 +387,30 @@ fn trim(work: &Value) -> Value {
     Value::Object(out)
 }
 
+/// The fields of a work that the lookup of a free PDF asks for.
+const OPEN_SELECT: &str = "id,doi,open_access,best_oa_location,locations";
+
+/// A link to a free PDF of a work, if OpenAlex lists one: the `pdf_url` of its best open-access
+/// location, else of another open one, else the `oa_url` of its `open_access` (which may be the
+/// page of the article, not the PDF: a download checks).
+pub fn open_pdf_url(work: &Value) -> Option<String> {
+    let pdf = |location: &Value| text(location, "pdf_url").map(str::to_string);
+    work.get("best_oa_location")
+        .and_then(pdf)
+        .or_else(|| {
+            work.get("locations")
+                .and_then(Value::as_array)?
+                .iter()
+                .filter(|l| l.get("is_oa").and_then(Value::as_bool).unwrap_or(false))
+                .find_map(pdf)
+        })
+        .or_else(|| {
+            work.get("open_access")
+                .and_then(|o| text(o, "oa_url"))
+                .map(str::to_string)
+        })
+}
+
 // the queries
 // -----------
 
@@ -478,6 +502,38 @@ impl Fetcher {
         self.cache
             .put_value("openalex", &key, json!({"per-page": rows, "works": works}));
         Ok(works)
+    }
+
+    /// The link to a free PDF of the work with this DOI, if OpenAlex has the work and lists one
+    /// ([`open_pdf_url`]). One request; a DOI that OpenAlex does not know has none.
+    pub fn openalex_free_pdf(&self, doi: &str, access: &OpenAlex) -> Result<Option<String>> {
+        let mut params: Vec<(&str, String)> = vec![("select", OPEN_SELECT.to_string())];
+        if let Some(mailto) = access.mailto.as_deref().filter(|m| !m.is_empty()) {
+            params.push(("mailto", mailto.to_string()));
+        }
+        if let Some(api_key) = access.api_key.as_deref().filter(|k| !k.is_empty()) {
+            params.push(("api_key", api_key.to_string()));
+        }
+        let url = with_params(
+            &format!("{API}/doi:{}", super::http::quote(doi, "/")),
+            &params,
+        );
+        log::debug(&format!("openalex work: {url}"));
+        self.openalex_throttle();
+        let response = self.get(&url, None)?;
+        if response.status == 404 {
+            return Ok(None);
+        }
+        if response.status >= 400 {
+            return Err(other(format!(
+                "OpenAlex: HTTP {} {}",
+                response.status,
+                py_repr_str(&response.reason)
+            )));
+        }
+        let work = loads(&response.text())
+            .map_err(|e| FetchError::new(ErrorKind::Value, format!("OpenAlex: {}", e.message)))?;
+        Ok(open_pdf_url(&work))
     }
 
     /// The BibTeX of a work: that of its DOI, as papers makes it (crossref, doi.org, arXiv), or,
@@ -596,6 +652,26 @@ mod tests {
         assert_eq!(work_abstract(&work).as_deref(), Some("This is it it"));
         assert_eq!(
             work_abstract(&json!({"abstract_inverted_index": null})),
+            None
+        );
+    }
+
+    #[test]
+    fn the_free_pdf_of_a_work() {
+        let url = |w: Value| open_pdf_url(&w);
+        let best = json!({"best_oa_location": {"pdf_url": "https://a.org/best.pdf"},
+            "open_access": {"oa_url": "https://a.org/page"}});
+        assert_eq!(url(best).as_deref(), Some("https://a.org/best.pdf"));
+        // another open location, then the open-access link
+        let other = json!({"best_oa_location": {"pdf_url": null}, "locations": [
+            {"is_oa": false, "pdf_url": "https://a.org/closed.pdf"},
+            {"is_oa": true, "pdf_url": "https://a.org/open.pdf"}]});
+        assert_eq!(url(other).as_deref(), Some("https://a.org/open.pdf"));
+        let landing =
+            json!({"best_oa_location": null, "open_access": {"oa_url": "https://a.org/page"}});
+        assert_eq!(url(landing).as_deref(), Some("https://a.org/page"));
+        assert_eq!(
+            url(json!({"open_access": {"oa_url": null}, "locations": []})),
             None
         );
     }

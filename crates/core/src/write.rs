@@ -143,6 +143,31 @@ impl Library {
         })
     }
 
+    /// Link files to an entry, as they are (not moved or renamed): their links come after those
+    /// the `file` field has. With `text`, the entry is first replaced by it, as `replace_entry`
+    /// does (the key, tags and files stay), in the same write.
+    pub fn attach_files(
+        &self,
+        id: &str,
+        text: Option<&str>,
+        files: &[PathBuf],
+    ) -> Result<Vec<Change>> {
+        let e = self.entry(id).ok_or_else(|| not_found(id))?;
+        if let Some(text) = text {
+            self.check_edit(id, text)?;
+        }
+        let entry = text.map_or(e.raw.as_str(), str::trim);
+        let new = splice(entry, vec![files_edit(&e.bib, entry, files)?]);
+        let before = self.text(&e.bib)?;
+        let after = splice(&before, vec![(e.span.clone(), new.clone())]);
+        check(&e.bib, &after, Some((e.span.start, &new)))?;
+        write(vec![Rewrite {
+            bib: e.bib.clone(),
+            before,
+            after,
+        }])
+    }
+
     /// Set the tags of items: for each (id, tags), the `keywords` field
     /// rewritten, or removed when no tag is left, in the style of the
     /// entry's other fields. One write per file.
@@ -465,18 +490,8 @@ fn removals(text: &str, spans: Vec<Range<usize>>) -> Vec<Range<usize>> {
 /// without tags, in the style of the entry's other fields. `raw` is the
 /// text of the entry; the range is in it.
 fn keywords_edit(bib: &Path, raw: &str, tags: &[&str]) -> Result<Edit> {
-    let parsed = RawBibliography::parse(raw).map_err(|e| Error::Parse {
-        path: bib.to_path_buf(),
-        line: 1,
-        message: e.kind.to_string(),
-    })?;
-    let Some(entry) = parsed.entries.first().map(|e| &e.v) else {
-        return Err(Error::Parse {
-            path: bib.to_path_buf(),
-            line: 1,
-            message: "not an entry".into(),
-        });
-    };
+    let parsed = parse_entry(bib, raw)?;
+    let entry = &parsed.entries[0].v;
     let fields = &entry.fields;
     let value = tags.join(", ");
     // the library reads the last one
@@ -490,8 +505,76 @@ fn keywords_edit(bib: &Path, raw: &str, tags: &[&str]) -> Result<Edit> {
             let quoted = raw[start..].starts_with('"');
             (start..value_end(raw, &fields[i]), delimit(quoted, &value))
         }
-        None => insert_field(raw, entry, &value),
+        None => insert_field(raw, entry, keywords_name(fields), &value),
     })
+}
+
+/// The text of one entry, parsed: it has an entry.
+fn parse_entry<'a>(bib: &Path, raw: &'a str) -> Result<RawBibliography<'a>> {
+    let parsed = RawBibliography::parse(raw).map_err(|e| Error::Parse {
+        path: bib.to_path_buf(),
+        line: 1,
+        message: e.kind.to_string(),
+    })?;
+    if parsed.entries.is_empty() {
+        return Err(Error::Parse {
+            path: bib.to_path_buf(),
+            line: 1,
+            message: "not an entry".into(),
+        });
+    }
+    Ok(parsed)
+}
+
+/// The link of a file in a `file` field, as JabRef writes it: `:path:PDF`, with `\`, `:` and `;`
+/// of the path escaped.
+fn file_link(path: &Path) -> String {
+    let path = path
+        .to_string_lossy()
+        .replace('\\', "\\\\")
+        .replace(':', "\\:")
+        .replace(';', "\\;");
+    format!(":{path}:PDF")
+}
+
+/// The edit of an entry that adds links to files to its `file` field (made if it has none), after
+/// those it has, in the style of the entry's other fields. `raw` is the text of the entry; the
+/// range is in it.
+fn files_edit(bib: &Path, raw: &str, files: &[PathBuf]) -> Result<Edit> {
+    let parsed = parse_entry(bib, raw)?;
+    let entry = &parsed.entries[0].v;
+    let fields = &entry.fields;
+    let links: Vec<String> = files.iter().map(|f| file_link(f)).collect();
+    // the library reads the last one
+    let found = fields
+        .iter()
+        .rposition(|f| f.key.v.eq_ignore_ascii_case("file"));
+    Ok(match found {
+        Some(i) => {
+            let start = fields[i].value.span.start;
+            let end = value_end(raw, &fields[i]);
+            let quoted = raw[start..].starts_with('"');
+            let old = crate::bib::field_text(&raw[start..end]);
+            let value = std::iter::once(old)
+                .filter(|o| !o.trim().is_empty())
+                .chain(links.iter().map(String::as_str))
+                .collect::<Vec<_>>()
+                .join(";");
+            (start..end, delimit(quoted, &value))
+        }
+        None => insert_field(raw, entry, "file", &links.join(";")),
+    })
+}
+
+/// The text of an entry with links to files added to its `file` field. It must be one entry.
+pub fn with_files(text: &str, files: &[PathBuf]) -> Result<String> {
+    let text = text.trim();
+    let given = given_entries(text)?;
+    if given.len() != 1 {
+        return Err(Error::NotOneEntry { found: given.len() });
+    }
+    let edit = files_edit(Path::new(""), text, files)?;
+    Ok(splice(text, vec![edit]))
 }
 
 /// Where a field is removed: with its comma, and with its line when it has
@@ -519,9 +602,8 @@ fn remove_field(raw: &str, fields: &[Pair], i: usize) -> Range<usize> {
 
 /// A new field before the closing brace, indented and spaced as the last
 /// field; a trailing comma stays at the end.
-fn insert_field(raw: &str, entry: &RawEntry, value: &str) -> Edit {
+fn insert_field(raw: &str, entry: &RawEntry, name: &str, value: &str) -> Edit {
     let nl = newline(raw);
-    let name = keywords_name(&entry.fields);
     let Some(last) = entry.fields.last() else {
         let key = entry.key.span.end;
         let at = comma_after(raw, key).map_or(key, |c| c + 1);

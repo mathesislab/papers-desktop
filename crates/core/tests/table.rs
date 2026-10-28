@@ -118,12 +118,21 @@ fn incoming() {
 @article{c,\n title = {A twin {T}itle!},\n year = {2019}\n}
 @article{d,\n title = {A twin title},\n year = {2020}\n}
 @article{e,\n title = {The same paper, as a preprint},\n doi = {10.1000/abc},\n year = {2020}\n}";
-    let incoming = |key: &str, same: &[&str]| Incoming {
-        key: key.to_string(),
-        same: same.iter().map(|s| s.to_string()).collect(),
+    let incoming = |key: &str, same: &[&str]| {
+        (
+            key.to_string(),
+            same.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        )
     };
+    let found = lib.incoming(text).unwrap();
+    // the entry as the library would show it
+    assert_eq!(found[0].item.title, "Brand new");
+    assert_eq!(found[0].item.year, Some(2020));
     assert_eq!(
-        lib.incoming(text).unwrap(),
+        found
+            .into_iter()
+            .map(|Incoming { key, same, .. }| (key, same))
+            .collect::<Vec<_>>(),
         [
             incoming("a", &[]),
             // the same DOI, whatever its form and case

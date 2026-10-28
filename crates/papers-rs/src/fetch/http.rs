@@ -79,13 +79,20 @@ pub struct Network {
 }
 
 impl Network {
+    /// With the user agent of papers.
     pub fn new() -> Result<Network, String> {
+        Network::with_user_agent(&user_agent())
+    }
+
+    /// With another user agent: a program that uses the library says who it is, with the address
+    /// of its user when there is one (crossref's polite pool, OpenAlex).
+    pub fn with_user_agent(user_agent: &str) -> Result<Network, String> {
         // the build that the app uses (rustls with ring) has no provider of its own
         if rustls::crypto::CryptoProvider::get_default().is_none() {
             let _ = rustls::crypto::ring::default_provider().install_default();
         }
         let client = reqwest::blocking::Client::builder()
-            .user_agent(user_agent())
+            .user_agent(user_agent)
             .connect_timeout(TIMEOUT)
             .timeout(TIMEOUT)
             .build()

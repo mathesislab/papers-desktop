@@ -114,7 +114,7 @@ pub(crate) fn entry_span(src: &str, span: Range<usize>) -> Range<usize> {
 }
 
 /// The value of a raw field, without its outer braces or quotes.
-fn field_text(value: &str) -> &str {
+pub(crate) fn field_text(value: &str) -> &str {
     let value = value.trim();
     let inner = value
         .strip_prefix('{')

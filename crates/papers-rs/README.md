@@ -184,9 +184,14 @@ modules:
   as papers chooses them, written as a library is), the cache (`cache`: the files of papers'
   `~/.cache/papers`, which both read; the old single-file caches are not migrated) and the
   transport (`http`: reqwest with rustls and ring, as the app does; a `Transport` trait, so
-  that the tests replay recorded answers). The requests and their user agent are papers'.
-  Not ported: Google Scholar (`--scholar` says so).
+  that the tests replay recorded answers). The requests and their user agent are papers'
+  (`Network::with_user_agent` says another one: a program that uses the library gives its own, with
+  the address of its user). Not ported: Google Scholar (`--scholar` says so).
 - `fetch::openalex`: **an extension of papers-rs, not in papers** (see "Extensions" below).
+- `fetch::html::meta_content` and `page_doi`: **extensions too**: the `<meta>` tags that journals put
+  in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and the DOI they give; and
+  `Fetcher::openalex_free_pdf`, the link to a free PDF of a DOI that OpenAlex lists. For a program
+  that adds a paper from the link of its article (Papers Desktop).
 
 The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
 

@@ -185,18 +185,24 @@ impl Library {
                         same.push(item.id.clone());
                     }
                 }
-                Incoming { key: new.key, same }
+                Incoming {
+                    key: new.key.clone(),
+                    same,
+                    item: new,
+                }
             })
             .collect())
     }
 }
 
 /// An entry of a BibTeX text to add, and the items that are the same paper.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Incoming {
     pub key: String,
     /// the ids of the items of the library, newest first; none: a new paper
     pub same: Vec<String>,
+    /// the entry as the library would show it (its `id` is empty)
+    pub item: Item,
 }
 
 /// A title as compared: case, accents, punctuation and white space are gone.

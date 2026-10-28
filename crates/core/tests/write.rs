@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use papers_core::{Error, Library, entry_keys};
+use papers_core::{Error, Library, entry_keys, with_files};
 use tempfile::TempDir;
 
 /// Copies of fixtures in a temporary directory.
@@ -382,4 +382,81 @@ fn permissions_and_links_stay() {
     let lib = Library::load(&bibs).unwrap();
     let error = lib.set_tags(&tags(&[("nofield", &["u"])])).unwrap_err();
     assert!(matches!(error, Error::Write { .. }), "{error}");
+}
+
+#[test]
+fn files_linked_to_an_entry_as_they_are() {
+    let (_dir, bibs) = copies(&["write.bib"]);
+    let lib = Library::load(&bibs).unwrap();
+    let pdf = PathBuf::from("/home/me/Downloads/a b.pdf");
+    // an entry without files gets a `file` field in the style of its fields
+    let changes = lib
+        .attach_files("nofield", None, std::slice::from_ref(&pdf))
+        .unwrap();
+    assert_eq!(changes.len(), 1);
+    let after = read(&bibs[0]);
+    assert!(
+        after.contains(
+            " title = {No keywords},\n year = {2019},\n file = {:/home/me/Downloads/a b.pdf:PDF}"
+        ),
+        "{after}"
+    );
+    let lib = Library::load(&bibs).unwrap();
+    assert_eq!(
+        lib.get("nofield").unwrap().files,
+        std::slice::from_ref(&pdf)
+    );
+    // more links come after those there
+    let other = PathBuf::from("/x/c;d.pdf");
+    lib.attach_files("nofield", None, std::slice::from_ref(&other))
+        .unwrap();
+    let lib = Library::load(&bibs).unwrap();
+    assert_eq!(lib.get("nofield").unwrap().files, [pdf, other]);
+}
+
+#[test]
+fn files_linked_with_the_entry_replaced() {
+    let (_dir, bibs) = copies(&["library.bib"]);
+    let lib = Library::load(&bibs).unwrap();
+    let raw = lib.raw("robinson2012").unwrap().to_string();
+    let had = lib.get("robinson2012").unwrap().files.len();
+    let pdf = PathBuf::from("/d/new.pdf");
+    let new = raw.replace("{2012}", "{2013}");
+    lib.attach_files("robinson2012", Some(&new), std::slice::from_ref(&pdf))
+        .unwrap();
+    let lib = Library::load(&bibs).unwrap();
+    let item = lib.get("robinson2012").unwrap();
+    assert!(lib.raw("robinson2012").unwrap().contains("{2013}"));
+    assert_eq!(item.files.last(), Some(&pdf));
+    assert_eq!(item.files.len(), had + 1);
+    // an edit that changes what is kept is refused, with nothing written
+    let text = read(&bibs[0]);
+    let refused = lib.attach_files(
+        "robinson2012",
+        Some(&new.replace("{robinson2012,", "{x,")),
+        &[pdf],
+    );
+    assert!(matches!(refused, Err(Error::Kept { what: "key" })));
+    assert_eq!(read(&bibs[0]), text);
+}
+
+#[test]
+fn the_text_of_an_entry_with_files() {
+    let pdf = [PathBuf::from("/d/a.pdf")];
+    assert_eq!(
+        with_files("@article{a,\n title = {A}\n}", &pdf).unwrap(),
+        "@article{a,\n title = {A},\n file = {:/d/a.pdf:PDF}\n}"
+    );
+    assert_eq!(
+        with_files(
+            "@article{a,\n file = {:/d/b.pdf:PDF},\n title = {A}\n}",
+            &pdf
+        )
+        .unwrap(),
+        "@article{a,\n file = {:/d/b.pdf:PDF;:/d/a.pdf:PDF},\n title = {A}\n}"
+    );
+    assert!(matches!(
+        with_files("@article{a, title = {A}}\n@article{b, title = {B}}", &pdf),
+        Err(Error::NotOneEntry { found: 2 })
+    ));
 }
