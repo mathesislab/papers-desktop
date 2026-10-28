@@ -22,6 +22,22 @@ papers-rs works; alongside the open questions of `design/` (branch
 - `status --bibtex FILE` ignores the option.
 - A merge turns `month = Mar` (a macro) into `month = {Mar}` (also in
   design/ open questions, (a) 9).
+- `undo`, `redo`, `restore` with nothing to do still create the library id
+  and a start state (history.md 5.3 says no trace).
+- `restore`: a missing piece in `hashes(n)` escapes as a traceback, not the
+  "history is damaged" message.
+- `history --remove` of a place without head still prints "removed the
+  history of …".
+- `tag --rename --porcelain` prints no line (formats.md 7.2 lists
+  `modified`).
+- A refused `file rename` (path safety, unknown placeholder) prints
+  `papers: error:` but exits 0.
+- A CSL-JSON author given as a plain string is split into one name per
+  character (formats.md 2.3: a literal name).
+- `add` of a record without key, author, year or DOI writes `@misc{,`.
+- `edit --key ''` opens the editor (hangs without a terminal).
+- A rename that changes only the case of a key is reported as removed plus
+  added; `crossref` is not updated.
 
 ## Questions
 
@@ -38,4 +54,11 @@ papers-rs works; alongside the open questions of `design/` (branch
   entities; `{doi_or_id}` with an empty `doi`; the extension is `splitext`'s
   (`.hidden` has none); tag patterns strip all trailing `/`; ISBN strips all
   leading `:`; `\d`/`isdigit` are Unicode; `parse_name` does not split a
-  name with a newline; `distinct.json` that is JSON but not an object.
+  name with a newline; `distinct.json` that is JSON but not an object;
+  the "damaged" message quotes the KeyError (`'piece X is missing…'`); a
+  bibtex without library with `history-separate` uses a separate store
+  (2.6 says the shared one).
+- The order of `tag` listing two tags that differ only by case is not
+  reproducible.
+- Is the default line format of `list` a contract (formats.md 6: "should
+  match")?
