@@ -27,7 +27,8 @@ TIMEOUT = 120
 # or <file>.md#<slug>[/<slug>] (library.md, which has no numbers)
 SECTION_REF = re.compile(r'^(library|bibtex|formats|exchange|history)\.md#[a-z0-9][a-z0-9./-]*$')
 
-TIME_IN_TEXT = re.compile(r'\(\d{4}-\d\d-\d\d \d\d:\d\d\)')
+# a time in brackets, alone or before more (`(2026-10-28 16:49, from $WORK/lib)`)
+TIME_IN_TEXT = re.compile(r'\(\d{4}-\d\d-\d\d \d\d:\d\d(?=[),])')
 TIME_IN_JSON = re.compile(r'("time":\s*)[0-9.eE+-]+')
 LIBRARY_ID = re.compile(r'("id":\s*)"[0-9a-f]{32}"')
 ORIGIN_TIME = re.compile(r'papers-time = \{[^}]*\}')
@@ -358,7 +359,7 @@ class Sandbox:
                 text = self.normalize(step[stream])
                 for pid, name in self.projects.items():
                     text = text.replace(pid, name)
-                step[stream] = TIME_IN_TEXT.sub('($TIME)', text)
+                step[stream] = TIME_IN_TEXT.sub('($TIME', text)
 
     def detect_version(self, papers):
         "the version the implementation reports: its output is replaced by $VERSION (asked in an empty HOME)"

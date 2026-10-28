@@ -1,2 +1,2 @@
 redo: papers.bib restored to 2 papers -C lib add ../import/refs.bib ($TIME)
-pool ../pool: changed since, so step 4 reverted there: 5 papers -C lib redo: revert of step 4 (2026-10-28 16:49, from $WORK/lib)
+pool ../pool: changed since, so step 4 reverted there: 5 papers -C lib redo: revert of step 4 ($TIME, from $WORK/lib)

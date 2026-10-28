@@ -1,2 +1,2 @@
 undo: papers.bib restored to 3 papers -C lib add ../new.bib ($TIME)
-pool ../pool: also undone, restored to 2 papers -C lib add ../new.bib (2026-10-28 17:49, from $WORK/lib)
+pool ../pool: also undone, restored to 2 papers -C lib add ../new.bib ($TIME, from $WORK/lib)

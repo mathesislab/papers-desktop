@@ -1,2 +1,2 @@
 redo: papers.bib restored to 4 papers -C lib edit fresh --set note=one ($TIME)
-pool ../pool: also redone, restored to 3 papers -C lib edit fresh --set note=one (2026-10-28 17:49, from $WORK/lib)
+pool ../pool: also redone, restored to 3 papers -C lib edit fresh --set note=one ($TIME, from $WORK/lib)

@@ -311,7 +311,8 @@ not touched.
 What papers-rs has that papers does not. An extension is an option: where it is not used,
 papers-rs does what papers does (the cases above pass without it), and the cases of this suite
 do not cover it. The usage and the help of the commands that have such an option show it,
-marked "(papers-rs)" (they are Free).
+marked "(papers-rs)" (they are Free): in the full comparison, the usage lines of these commands
+differ (`extract/directory`, `extract/errors`, `fetch/usage`); `--contract-only` passes.
 
 - `--openalex` of `add`, `extract` and `fetch`: a full-text search on OpenAlex
   (<https://api.openalex.org>, with an open API) in place of crossref's, where papers has
