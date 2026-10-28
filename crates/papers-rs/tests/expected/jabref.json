@@ -1,0 +1,105 @@
+{
+ "blocks": [
+  {
+   "kind": "text",
+   "value": "% Encoding: UTF-8"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "Meyer2019",
+   "fields": [
+    [
+     "author",
+     "Meyer, Anna and Schmidt, Bernd",
+     false
+    ],
+    [
+     "title",
+     "Gr{\\\"o}{\\ss}e und {Form} des Eises",
+     false
+    ],
+    [
+     "journal",
+     "Zeitschrift f{\\\"u}r Gletscherkunde",
+     false
+    ],
+    [
+     "year",
+     "2019",
+     false
+    ],
+    [
+     "volume",
+     "55",
+     false
+    ],
+    [
+     "pages",
+     "12--34",
+     false
+    ],
+    [
+     "abstract",
+     "Mit {\\'e}l{\\'e}gance.",
+     false
+    ],
+    [
+     "keywords",
+     "ice, sheet",
+     false
+    ],
+    [
+     "owner",
+     "anna",
+     false
+    ],
+    [
+     "timestamp",
+     "2019.05.02",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "inproceedings",
+   "key": "Tanaka2020",
+   "fields": [
+    [
+     "author",
+     "Tanaka, K.",
+     false
+    ],
+    [
+     "title",
+     "A tab-indented entry with \\\"quoted\\\" parts",
+     false
+    ],
+    [
+     "booktitle",
+     "Proc.",
+     false
+    ],
+    [
+     "year",
+     "2020",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "comment",
+   "value": "jabref-meta: databaseType:bibtex;"
+  },
+  {
+   "kind": "comment",
+   "value": "jabref-meta: groupstree:\n0 AllEntriesGroup:;\n1 StaticGroup:Ice\\;0\\;1\\;\\;\\;\\;;"
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "% Encoding: UTF-8\n\n@article{Meyer2019,\n abstract = {Mit {\\'e}l{\\'e}gance.},\n author = {Meyer, Anna and Schmidt, Bernd},\n journal = {Zeitschrift f{\\\"u}r Gletscherkunde},\n keywords = {ice, sheet},\n owner = {anna},\n pages = {12--34},\n timestamp = {2019.05.02},\n title = {Gr{\\\"o}{\\ss}e und {Form} des Eises},\n volume = {55},\n year = {2019}\n}\n\n@inproceedings{Tanaka2020,\n author = {Tanaka, K.},\n booktitle = {Proc.},\n title = {A tab-indented entry with \\\"quoted\\\" parts},\n year = {2020}\n}\n\n@comment{jabref-meta: databaseType:bibtex;}\n\n@comment{jabref-meta: groupstree:\n0 AllEntriesGroup:;\n1 StaticGroup:Ice\\;0\\;1\\;\\;\\;\\;;}\n",
+ "saved_twice": "% Encoding: UTF-8\n\n@article{Meyer2019,\n abstract = {Mit {\\'e}l{\\'e}gance.},\n author = {Meyer, Anna and Schmidt, Bernd},\n journal = {Zeitschrift f{\\\"u}r Gletscherkunde},\n keywords = {ice, sheet},\n owner = {anna},\n pages = {12--34},\n timestamp = {2019.05.02},\n title = {Gr{\\\"o}{\\ss}e und {Form} des Eises},\n volume = {55},\n year = {2019}\n}\n\n@inproceedings{Tanaka2020,\n author = {Tanaka, K.},\n booktitle = {Proc.},\n title = {A tab-indented entry with \\\"quoted\\\" parts},\n year = {2020}\n}\n\n@comment{jabref-meta: databaseType:bibtex;}\n\n@comment{jabref-meta: groupstree:\n0 AllEntriesGroup:;\n1 StaticGroup:Ice\\;0\\;1\\;\\;\\;\\;;}\n",
+ "edited_saved": "% Encoding: UTF-8\n\n@article{Meyer2019,\n author = {Meyer, Anna and Schmidt, Bernd},\n journal = {Zeitschrift f{\\\"u}r Gletscherkunde},\n keywords = {ice, sheet},\n owner = {anna},\n pages = {12--34},\n timestamp = {2019.05.02},\n title = {Gr{\\\"o}{\\ss}e und {Form} des Eises (edited)},\n volume = {55},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2019}\n}\n\n@inproceedings{Tanaka2020,\n author = {Tanaka, K.},\n booktitle = {Proc.},\n title = {A tab-indented entry with \\\"quoted\\\" parts (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2020}\n}\n\n@comment{jabref-meta: databaseType:bibtex;}\n\n@comment{jabref-meta: groupstree:\n0 AllEntriesGroup:;\n1 StaticGroup:Ice\\;0\\;1\\;\\;\\;\\;;}\n"
+}

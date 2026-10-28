@@ -1,0 +1,40 @@
+{
+ "blocks": [
+  {
+   "kind": "text",
+   "value": "% WARNING Parsing failed for the following 3 lines."
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{again,\n title = {x},\n title = {y},\n}",
+   "line": 1,
+   "class": "DuplicateFieldKeyBlock"
+  },
+  {
+   "kind": "text",
+   "value": "% WARNING Parsing failed for the following 1 lines.\n\n% my note\n% WARNING Parsing failed for the following 2 lines."
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "b",
+   "fields": [
+    [
+     "title",
+     "fine",
+     false
+    ]
+   ]
+  }
+ ],
+ "unreadable": [
+  [
+   2,
+   "a field given twice: 'title'"
+  ]
+ ],
+ "cache_agrees": true,
+ "formatted": "% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n\n% my note\n\n@article{b,\n title = {fine}\n}\n",
+ "saved_twice": "% my note\n\n@article{b,\n title = {fine}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n",
+ "edited_saved": "% my note\n\n@article{b,\n title = {fine (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n"
+}

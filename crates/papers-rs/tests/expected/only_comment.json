@@ -1,0 +1,13 @@
+{
+ "blocks": [
+  {
+   "kind": "text",
+   "value": "% just a comment"
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "% just a comment\n",
+ "saved_twice": "% just a comment\n",
+ "edited_saved": "% just a comment\n"
+}

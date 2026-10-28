@@ -1,0 +1,21 @@
+{
+ "blocks": [
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "a",
+   "fields": [
+    [
+     "title",
+     "No newline at the end",
+     false
+    ]
+   ]
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "@article{a,\n title = {No newline at the end}\n}\n",
+ "saved_twice": "@article{a,\n title = {No newline at the end}\n}\n",
+ "edited_saved": "@article{a,\n title = {No newline at the end (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n"
+}

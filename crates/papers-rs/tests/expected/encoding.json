@@ -1,0 +1,492 @@
+{
+"names": [
+{
+"in": "Smith, John",
+"standard": "Smith, John",
+"family": [
+"Smith"
+]
+},
+{
+"in": "John Smith",
+"standard": "Smith, John",
+"family": [
+"Smith"
+]
+},
+{
+"in": "Doe, Jane and Smith, John",
+"standard": "Doe, Jane and Smith, John",
+"family": [
+"Doe",
+"Smith"
+]
+},
+{
+"in": "John Smith and Jane Doe",
+"standard": "Smith, John and Doe, Jane",
+"family": [
+"Smith",
+"Doe"
+]
+},
+{
+"in": "Cher",
+"standard": "Cher",
+"family": [
+"Cher"
+]
+},
+{
+"in": "van der Berg, Jane and {The Collaboration}",
+"standard": "van der Berg, Jane and Collaboration}, {The",
+"family": [
+"van der Berg",
+"Collaboration}"
+]
+},
+{
+"in": " A B  and  C D ",
+"standard": "B, A and D, C",
+"family": [
+"B",
+"D"
+]
+},
+{
+"in": "Perrette, M. and Yool, A.",
+"standard": "Perrette, M. and Yool, A.",
+"family": [
+"Perrette",
+"Yool"
+]
+},
+{
+"in": "",
+"standard": "",
+"family": [
+""
+]
+},
+{
+"in": "A and",
+"standard": "and, A",
+"family": [
+"and"
+]
+},
+{
+"in": "A and and B",
+"standard": "A and B, and",
+"family": [
+"A",
+"B"
+]
+},
+{
+"in": "Jean-Paul Sartre and Simone de Beauvoir",
+"standard": "Sartre, Jean-Paul and Beauvoir, Simone de",
+"family": [
+"Sartre",
+"Beauvoir"
+]
+},
+{
+"in": "x, y, z and u v",
+"standard": "x, y, z and v, u",
+"family": [
+"x",
+"v"
+]
+},
+{
+"in": "Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan",
+"standard": "Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan",
+"family": [
+"Müller",
+"Ångström",
+"Çelik",
+"Dvořák",
+"Łukasiewicz"
+]
+},
+{
+"in": "M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n",
+"standard": "M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n",
+"family": [
+"M{\\\"u}ller",
+"{\\AA}ngstr{\\\"o}m",
+"{\\c C}elik",
+"Dvo{\\v r}{\\'a}k"
+]
+},
+{
+"in": "Müller, Jörg",
+"standard": "Müller, Jörg",
+"family": [
+"Müller"
+]
+},
+{
+"in": "Meyer, Anna and Schmidt, Bernd",
+"standard": "Meyer, Anna and Schmidt, Bernd",
+"family": [
+"Meyer",
+"Schmidt"
+]
+},
+{
+"in": "Tanaka, K.",
+"standard": "Tanaka, K.",
+"family": [
+"Tanaka"
+]
+},
+{
+"in": "Smith, John and Doe, Jane and M{\\\"u}ller, J{\\\"o}rg",
+"standard": "Smith, John and Doe, Jane and M{\\\"u}ller, J{\\\"o}rg",
+"family": [
+"Smith",
+"Doe",
+"M{\\\"u}ller"
+]
+},
+{
+"in": "{\\AA}ngstr{\\\"o}m, Anders",
+"standard": "{\\AA}ngstr{\\\"o}m, Anders",
+"family": [
+"{\\AA}ngstr{\\\"o}m"
+]
+},
+{
+"in": "van der Berg, Jane and {The Collaboration}",
+"standard": "van der Berg, Jane and Collaboration}, {The",
+"family": [
+"van der Berg",
+"Collaboration}"
+]
+},
+{
+"in": "Pool, A.",
+"standard": "Pool, A.",
+"family": [
+"Pool"
+]
+},
+{
+"in": "Em, Space",
+"standard": "Em, Space",
+"family": [
+"Em"
+]
+},
+{
+"in": "",
+"standard": "",
+"family": [
+""
+]
+},
+{
+"in": "M{\\\"u}ller, J{\\\"o}rg and Smith, John",
+"standard": "M{\\\"u}ller, J{\\\"o}rg and Smith, John",
+"family": [
+"M{\\\"u}ller",
+"Smith"
+]
+},
+{
+"in": "Ångström, Anders",
+"standard": "Ångström, Anders",
+"family": [
+"Ångström"
+]
+},
+{
+"in": "van der Berg, Jane and {Collaboration}, The",
+"standard": "van der Berg, Jane and {Collaboration}, The",
+"family": [
+"van der Berg",
+"{Collaboration}"
+]
+}
+],
+"keywords": [
+{
+"in": "",
+"parse": []
+},
+{
+"in": "ocean",
+"parse": [
+"ocean"
+]
+},
+{
+"in": "kiwi, ocean, climate",
+"parse": [
+"kiwi",
+"ocean",
+"climate"
+]
+},
+{
+"in": " sea-level ,  projections ",
+"parse": [
+"sea-level",
+"projections"
+]
+},
+{
+"in": ",,a,,",
+"parse": [
+"a"
+]
+},
+{
+"in": "a;b, c",
+"parse": [
+"a;b",
+"c"
+]
+},
+{
+"in": "Δ, Ω, 北京, 東京, Москва",
+"parse": [
+"Δ",
+"Ω",
+"北京",
+"東京",
+"Москва"
+]
+},
+{
+"in": "ice, sheet",
+"parse": [
+"ice",
+"sheet"
+]
+},
+{
+"in": "amoc, climate, ocean",
+"parse": [
+"amoc",
+"climate",
+"ocean"
+]
+},
+{
+"in": "b, a",
+"parse": [
+"b",
+"a"
+]
+}
+],
+"files": [
+{
+"in": "",
+"parse": []
+},
+{
+"in": "file.pdf:/path/to/file.pdf:pdf",
+"parse": [
+"/path/to/file.pdf"
+]
+},
+{
+"in": ":/path/to/file.pdf:pdf",
+"parse": [
+"/path/to/file.pdf"
+]
+},
+{
+"in": "/path/to/file.pdf:pdf",
+"parse": [
+"/path/to/file.pdf"
+]
+},
+{
+"in": "/path/to/file.pdf",
+"parse": [
+"/path/to/file.pdf"
+]
+},
+{
+"in": ":/path/to/file.pdf:",
+"parse": [
+"/path/to/file.pdf"
+]
+},
+{
+"in": ":/path/to/file1.pdf:pdf;:/path/to/file2.pdf:pdf",
+"parse": [
+"/path/to/file1.pdf",
+"/path/to/file2.pdf"
+]
+},
+{
+"in": ":/path/to/American Economic Journal: Applied Economics.pdf:pdf",
+"parse": [
+"/path/to/American Economic Journal: Applied Economics.pdf"
+]
+},
+{
+"in": "desc:/path/with:colon.pdf:pdf",
+"parse": [
+"/path/with:colon.pdf"
+]
+},
+{
+"in": "::pdf",
+"parse": []
+},
+{
+"in": ":/path/to/file.pdf:pdf;",
+"parse": [
+"/path/to/file.pdf"
+]
+},
+{
+"in": ";;",
+"parse": []
+},
+{
+"in": " ; ",
+"parse": []
+},
+{
+"in": "a:b:c:d:e",
+"parse": [
+"b:c:d"
+]
+},
+{
+"in": "a:b",
+"parse": [
+"a"
+]
+},
+{
+"in": ":",
+"parse": []
+},
+{
+"in": "::",
+"parse": []
+},
+{
+"in": ":::",
+"parse": [
+":"
+]
+},
+{
+"in": "x;y;z",
+"parse": [
+"x",
+"y",
+"z"
+]
+},
+{
+"in": "files/a.b.pdf:pdf",
+"parse": [
+"files/a.b.pdf"
+]
+},
+{
+"in": ":files/Smith_2020.pdf:pdf",
+"parse": [
+"files/Smith_2020.pdf"
+]
+},
+{
+"in": ":files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf",
+"parse": [
+"files/alpha1999.pdf",
+"files/alpha1999-errata.pdf"
+]
+},
+{
+"in": ":files/alpha1999.pdf:pdf",
+"parse": [
+"files/alpha1999.pdf"
+]
+}
+],
+"format_file": [
+{
+"in": [
+"/path/to/file.pdf"
+],
+"out": ":/path/to/file.pdf:pdf"
+},
+{
+"in": [
+"/a/b.pdf",
+"/a/c.tar.gz"
+],
+"out": ":/a/b.pdf:pdf;:/a/c.tar.gz:gz"
+},
+{
+"in": [
+"noext"
+],
+"out": ":noext:"
+},
+{
+"in": [
+".hidden"
+],
+"out": ":.hidden:"
+},
+{
+"in": [
+"x."
+],
+"out": ":x.:"
+},
+{
+"in": [
+"a/.b/c"
+],
+"out": ":a/.b/c:"
+},
+{
+"in": [
+"a.b/c"
+],
+"out": ":a.b/c:"
+},
+{
+"in": [
+"..x.txt"
+],
+"out": ":..x.txt:txt"
+},
+{
+"in": [
+"dir.d/file"
+],
+"out": ":dir.d/file:"
+},
+{
+"in": [
+"a..b"
+],
+"out": ":a..b:b"
+},
+{
+"in": [],
+"out": ""
+},
+{
+"in": [
+"/p/q.PDF",
+"r.djvu"
+],
+"out": ":/p/q.PDF:PDF;:r.djvu:djvu"
+}
+]
+}

@@ -1,0 +1,4460 @@
+[
+{
+"in": "x",
+"to_latex": "x",
+"to_unicode": "x",
+"protect": "x"
+},
+{
+"in": "y",
+"to_latex": "y",
+"to_unicode": "y",
+"protect": "y"
+},
+{
+"in": "Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan",
+"to_latex": "M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n and {\\L}ukasiewicz, Jan",
+"to_unicode": "Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan",
+"protect": "{M}üller, {J}örg and Ångström, {A}nders and Çelik, Ömer and {D}vořák, {A}ntonín and Łukasiewicz, {J}an"
+},
+{
+"in": "Über die Größe des Eises: Café, naïve, résumé, façade",
+"to_latex": "{\\\"U}ber die Gr{\\\"o}{\\ss}e des Eises: Caf{\\'e}, na{\\\"\\i}ve, r{\\'e}sum{\\'e}, fa{\\c c}ade",
+"to_unicode": "Über die Größe des Eises: Café, naïve, résumé, façade",
+"protect": "Über die {G}röße des {E}ises: {C}afé, naïve, résumé, façade"
+},
+{
+"in": "Ænigma",
+"to_latex": "{\\AE}nigma",
+"to_unicode": "Ænigma",
+"protect": "Ænigma"
+},
+{
+"in": "Ünïcödé — “curly quotes” … ‘single’ – en dash",
+"to_latex": "{\\\"U}n{\\\"\\i}c{\\\"o}d{\\'e} \\textemdash  \\textquotedblleft curly quotes\\textquotedblright  \\ldots  ‘single’ \\textendash  en dash",
+"to_unicode": "Ünïcödé — “curly quotes” … ‘single’ – en dash",
+"protect": "Ünïcödé — “curly quotes” … ‘single’ – en dash"
+},
+{
+"in": "Δ, Ω, 北京, 東京, Москва",
+"to_latex": "\\Delta , \\Omega , 北京, 東京, \\cyrchar\\CYRM \\cyrchar\\cyro \\cyrchar\\cyrs \\cyrchar\\cyrk \\cyrchar\\cyrv \\cyrchar\\cyra ",
+"to_unicode": "Δ, Ω, 北京, 東京, Москва",
+"protect": "Δ, Ω, 北京, 東京, Москва"
+},
+{
+"in": "2001",
+"to_latex": "2001",
+"to_unicode": "2001",
+"protect": "2001"
+},
+{
+"in": "M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n",
+"to_latex": "M{\\textbackslash \"u}ller, J{\\textbackslash \"o}rg and {\\textbackslash AA}ngstr{\\textbackslash \"o}m, Anders and {\\textbackslash c C}elik, {\\textbackslash \"O}mer and Dvo{\\textbackslash v r}{\\textbackslash \\textquotesingle a}k, Anton{\\textbackslash \\textquotesingle \\textbackslash i}n",
+"to_unicode": "Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín",
+"protect": "{M}{\\\"u}ller, {J}{\\\"o}rg and {\\{A}A}ngstr{\\\"o}m, {A}nders and {\\c C}elik, {\\\"O}mer and {D}vo{\\v r}{\\'a}k, {A}nton{\\'\\i}n"
+},
+{
+"in": "{\\\"U}ber die Gr{\\\"o}{\\ss}e des Eises: Caf{\\'e}, na{\\\"\\i}ve, r{\\'e}sum{\\'e}, fa{\\c c}ade",
+"to_latex": "{\\textbackslash \"U}ber die Gr{\\textbackslash \"o}{\\textbackslash ss}e des Eises: Caf{\\textbackslash \\textquotesingle e}, na{\\textbackslash \"\\textbackslash i}ve, r{\\textbackslash \\textquotesingle e}sum{\\textbackslash \\textquotesingle e}, fa{\\textbackslash c c}ade",
+"to_unicode": "Über die Größe des Eises: Café, naïve, résumé, façade",
+"protect": "{\\\"U}ber die {G}r{\\\"o}{\\ss}e des {E}ises: {C}af{\\'e}, na{\\\"\\i}ve, r{\\'e}sum{\\'e}, fa{\\c c}ade"
+},
+{
+"in": "{\\AE}nigma",
+"to_latex": "{\\textbackslash AE}nigma",
+"to_unicode": "Ænigma",
+"protect": "{\\{A}E}nigma"
+},
+{
+"in": "\\'{e} \\`{e} \\^{e} \\\"{e} \\~{n} \\c{c} \\v{s} \\H{o} \\k{a} \\r{a} \\={a} \\.{z} \\u{g} \\o \\O \\l \\L \\ss \\i \\j",
+"to_latex": "\\textbackslash \\textquotesingle {e} \\textbackslash \\textasciigrave {e} \\textbackslash \\^{}{e} \\textbackslash \"{e} \\textbackslash \\textasciitilde {n} \\textbackslash c{c} \\textbackslash v{s} \\textbackslash H{o} \\textbackslash k{a} \\textbackslash r{a} \\textbackslash ={a} \\textbackslash .{z} \\textbackslash u{g} \\textbackslash o \\textbackslash O \\textbackslash l \\textbackslash L \\textbackslash ss \\textbackslash i \\textbackslash j",
+"to_unicode": "é è ê ë ñ ç š ő ą ̊a ā ż ğ øØłŁßı\\j",
+"protect": "\\'{e} \\`{e} \\^{e} \\\"{e} \\~{n} \\c{c} \\v{s} \\{H}{o} \\k{a} \\r{a} \\={a} \\.{z} \\u{g} \\o \\{O} \\l \\{L} \\ss \\i \\j"
+},
+{
+"in": "Maths: $\\alpha + \\beta = \\gamma$, \\emph{text}, \\textbf{bold}, 5\\% and \\& and \\_ and \\#",
+"to_latex": "Maths: \\textdollar \\textbackslash alpha + \\textbackslash beta = \\textbackslash gamma\\textdollar , \\textbackslash emph{text}, \\textbackslash textbf{bold}, 5\\textbackslash \\% and \\textbackslash \\& and \\textbackslash \\_ and \\textbackslash \\#",
+"to_unicode": "Maths: $α+ β= \\gamma$, \\emphtext, \\textbfbold, 5% and & and _ and #",
+"protect": "{M}aths: $\\alpha + \\beta = \\gamma$, \\emph{text}, \\textbf{bold}, 5\\% and \\& and \\_ and \\#"
+},
+{
+"in": "2002",
+"to_latex": "2002",
+"to_unicode": "2002",
+"protect": "2002"
+},
+{
+"in": "Müller, Jörg",
+"to_latex": "Mu\\\"ller, Jo\\\"rg",
+"to_unicode": "Mul̈ler, Jor̈g",
+"protect": "{M}üller, {J}örg"
+},
+{
+"in": "Café and naïve",
+"to_latex": "Café and nai\\\"ve",
+"to_unicode": "Cafe ́and naiv̈e",
+"protect": "{C}afé and naïve"
+},
+{
+"in": "2003",
+"to_latex": "2003",
+"to_unicode": "2003",
+"protect": "2003"
+},
+{
+"in": "Back\\\\slash and \\{ escaped \\} braces and a \\\" quote",
+"to_latex": "Back\\textbackslash \\textbackslash slash and \\textbackslash { escaped \\textbackslash } braces and a \\textbackslash \" quote",
+"to_unicode": "Back\\\\slash and \\ escaped \\ braces and a  ̈quote",
+"protect": "{B}ack\\\\slash and \\{ escaped \\} braces and a \\\" quote"
+},
+{
+"in": "a % percent \\% sign",
+"to_latex": "a \\% percent \\textbackslash \\% sign",
+"to_unicode": "a % percent % sign",
+"protect": "a % percent \\% sign"
+},
+{
+"in": "2004",
+"to_latex": "2004",
+"to_unicode": "2004",
+"protect": "2004"
+},
+{
+"in": "Fine",
+"to_latex": "Fine",
+"to_unicode": "Fine",
+"protect": "{F}ine"
+},
+{
+"in": "Capital",
+"to_latex": "Capital",
+"to_unicode": "Capital",
+"protect": "{C}apital"
+},
+{
+"in": "lower",
+"to_latex": "lower",
+"to_unicode": "lower",
+"protect": "lower"
+},
+{
+"in": "Fine too",
+"to_latex": "Fine too",
+"to_unicode": "Fine too",
+"protect": "{F}ine too"
+},
+{
+"in": "Fine 11",
+"to_latex": "Fine 11",
+"to_unicode": "Fine 11",
+"protect": "{F}ine 11"
+},
+{
+"in": "{Still fine 12} year = 2012",
+"to_latex": "{Still fine 12} year = 2012",
+"to_unicode": "Still fine 12 year = 2012",
+"protect": "{Still fine 12} year = 2012"
+},
+{
+"in": "Fine 13",
+"to_latex": "Fine 13",
+"to_unicode": "Fine 13",
+"protect": "{F}ine 13"
+},
+{
+"in": "last good",
+"to_latex": "last good",
+"to_unicode": "last good",
+"protect": "last good"
+},
+{
+"in": "One",
+"to_latex": "One",
+"to_unicode": "One",
+"protect": "{O}ne"
+},
+{
+"in": "Zero",
+"to_latex": "Zero",
+"to_unicode": "Zero",
+"protect": "{Z}ero"
+},
+{
+"in": "Two",
+"to_latex": "Two",
+"to_unicode": "Two",
+"protect": "{T}wo"
+},
+{
+"in": "Two\n  lines",
+"to_latex": "Two\n  lines",
+"to_unicode": "Two\n  lines",
+"protect": "{T}wo\n  lines"
+},
+{
+"in": "2005",
+"to_latex": "2005",
+"to_unicode": "2005",
+"protect": "2005"
+},
+{
+"in": "Lone CR",
+"to_latex": "Lone CR",
+"to_unicode": "Lone CR",
+"protect": "{L}one {C}R"
+},
+{
+"in": "fine",
+"to_latex": "fine",
+"to_unicode": "fine",
+"protect": "fine"
+},
+{
+"in": "Meyer, Anna and Schmidt, Bernd",
+"to_latex": "Meyer, Anna and Schmidt, Bernd",
+"to_unicode": "Meyer, Anna and Schmidt, Bernd",
+"protect": "{M}eyer, {A}nna and {S}chmidt, {B}ernd"
+},
+{
+"in": "Gr{\\\"o}{\\ss}e und {Form} des Eises",
+"to_latex": "Gr{\\textbackslash \"o}{\\textbackslash ss}e und {Form} des Eises",
+"to_unicode": "Größe und Form des Eises",
+"protect": "{G}r{\\\"o}{\\ss}e und {Form} des {E}ises"
+},
+{
+"in": "Zeitschrift f{\\\"u}r Gletscherkunde",
+"to_latex": "Zeitschrift f{\\textbackslash \"u}r Gletscherkunde",
+"to_unicode": "Zeitschrift für Gletscherkunde",
+"protect": "{Z}eitschrift f{\\\"u}r {G}letscherkunde"
+},
+{
+"in": "2019",
+"to_latex": "2019",
+"to_unicode": "2019",
+"protect": "2019"
+},
+{
+"in": "55",
+"to_latex": "55",
+"to_unicode": "55",
+"protect": "55"
+},
+{
+"in": "12--34",
+"to_latex": "12--34",
+"to_unicode": "12--34",
+"protect": "12--34"
+},
+{
+"in": "Mit {\\'e}l{\\'e}gance.",
+"to_latex": "Mit {\\textbackslash \\textquotesingle e}l{\\textbackslash \\textquotesingle e}gance.",
+"to_unicode": "Mit élégance.",
+"protect": "{M}it {\\'e}l{\\'e}gance."
+},
+{
+"in": "ice, sheet",
+"to_latex": "ice, sheet",
+"to_unicode": "ice, sheet",
+"protect": "ice, sheet"
+},
+{
+"in": "anna",
+"to_latex": "anna",
+"to_unicode": "anna",
+"protect": "anna"
+},
+{
+"in": "2019.05.02",
+"to_latex": "2019.05.02",
+"to_unicode": "2019.05.02",
+"protect": "2019.05.02"
+},
+{
+"in": "Tanaka, K.",
+"to_latex": "Tanaka, K.",
+"to_unicode": "Tanaka, K.",
+"protect": "{T}anaka, {K}."
+},
+{
+"in": "A tab-indented entry with \\\"quoted\\\" parts",
+"to_latex": "A tab-indented entry with \\textbackslash \"quoted\\textbackslash \" parts",
+"to_unicode": "A tab-indented entry with q̈uoted ̈parts",
+"protect": "{A} tab-indented entry with \\\"quoted\\\" parts"
+},
+{
+"in": "Proc.",
+"to_latex": "Proc.",
+"to_unicode": "Proc.",
+"protect": "{P}roc."
+},
+{
+"in": "2020",
+"to_latex": "2020",
+"to_unicode": "2020",
+"protect": "2020"
+},
+{
+"in": "We study the Atlantic meridional overturning circulation (AMOC) in a\n  coupled model. The {\\em response} to freshwater is $\\sim 10$\\% of the forcing.",
+"to_latex": "We study the Atlantic meridional overturning circulation (AMOC) in a\n  coupled model. The {\\textbackslash em response} to freshwater is \\textdollar \\textbackslash sim 10\\textdollar \\textbackslash \\% of the forcing.",
+"to_unicode": "We study the Atlantic meridional overturning circulation (AMOC) in a\n  coupled model. The \\em response to freshwater is $∼10$% of the forcing.",
+"protect": "{W}e study the {A}tlantic meridional overturning circulation ({A}MO{C}) in a\n  coupled model. {T}he {\\em response} to freshwater is $\\sim 10$\\% of the forcing."
+},
+{
+"in": "Smith, John and Doe, Jane and M{\\\"u}ller, J{\\\"o}rg",
+"to_latex": "Smith, John and Doe, Jane and M{\\textbackslash \"u}ller, J{\\textbackslash \"o}rg",
+"to_unicode": "Smith, John and Doe, Jane and Müller, Jörg",
+"protect": "{S}mith, {J}ohn and {D}oe, {J}ane and {M}{\\\"u}ller, {J}{\\\"o}rg"
+},
+{
+"in": "10.1000/xyz123",
+"to_latex": "10.1000/xyz123",
+"to_unicode": "10.1000/xyz123",
+"protect": "10.1000/xyz123"
+},
+{
+"in": ":files/Smith_2020.pdf:pdf",
+"to_latex": ":files/Smith\\_2020.pdf:pdf",
+"to_unicode": ":files/Smith_2020.pdf:pdf",
+"protect": ":files/{S}mith_2020.pdf:pdf"
+},
+{
+"in": "Journal of Climate",
+"to_latex": "Journal of Climate",
+"to_unicode": "Journal of Climate",
+"protect": "{J}ournal of {C}limate"
+},
+{
+"in": "amoc, climate, ocean",
+"to_latex": "amoc, climate, ocean",
+"to_unicode": "amoc, climate, ocean",
+"protect": "amoc, climate, ocean"
+},
+{
+"in": "mar",
+"to_latex": "mar",
+"to_unicode": "mar",
+"protect": "mar"
+},
+{
+"in": "5",
+"to_latex": "5",
+"to_unicode": "5",
+"protect": "5"
+},
+{
+"in": "1--20",
+"to_latex": "1--20",
+"to_unicode": "1--20",
+"protect": "1--20"
+},
+{
+"in": "Sea level {Rise} and the {AMOC}: a review",
+"to_latex": "Sea level {Rise} and the {AMOC}: a review",
+"to_unicode": "Sea level Rise and the AMOC: a review",
+"protect": "{S}ea level {Rise} and the {A{M}OC}: a review"
+},
+{
+"in": "33",
+"to_latex": "33",
+"to_unicode": "33",
+"protect": "33"
+},
+{
+"in": "Berlin",
+"to_latex": "Berlin",
+"to_unicode": "Berlin",
+"protect": "{B}erlin"
+},
+{
+"in": "{\\AA}ngstr{\\\"o}m, Anders",
+"to_latex": "{\\textbackslash AA}ngstr{\\textbackslash \"o}m, Anders",
+"to_unicode": "Ångström, Anders",
+"protect": "{\\{A}A}ngstr{\\\"o}m, {A}nders"
+},
+{
+"in": ":files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf",
+"to_latex": ":files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf",
+"to_unicode": ":files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf",
+"protect": ":files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf"
+},
+{
+"in": "978-3-16-148410-0",
+"to_latex": "978-3-16-148410-0",
+"to_unicode": "978-3-16-148410-0",
+"protect": "978-3-16-148410-0"
+},
+{
+"in": "Springer",
+"to_latex": "Springer",
+"to_unicode": "Springer",
+"protect": "{S}pringer"
+},
+{
+"in": "A book: with {Braces} and ``quotes''",
+"to_latex": "A book: with {Braces} and \\textasciigrave \\textasciigrave quotes\\textquotesingle \\textquotesingle ",
+"to_unicode": "A book: with Braces and ``quotes''",
+"protect": "{A} book: with {Braces} and ``quotes''"
+},
+{
+"in": "1999",
+"to_latex": "1999",
+"to_unicode": "1999",
+"protect": "1999"
+},
+{
+"in": "van der Berg, Jane and {The Collaboration}",
+"to_latex": "van der Berg, Jane and {The Collaboration}",
+"to_unicode": "van der Berg, Jane and The Collaboration",
+"protect": "van der {B}erg, {J}ane and {The {C}ollaboration}"
+},
+{
+"in": "Proceedings of the 12th {International} Conference",
+"to_latex": "Proceedings of the 12th {International} Conference",
+"to_unicode": "Proceedings of the 12th International Conference",
+"protect": "{P}roceedings of the 12th {International} {C}onference"
+},
+{
+"in": "100--110",
+"to_latex": "100--110",
+"to_unicode": "100--110",
+"protect": "100--110"
+},
+{
+"in": "Uses of \\texttt{papers} and 50\\% of $\\alpha$",
+"to_latex": "Uses of \\textbackslash texttt{papers} and 50\\textbackslash \\% of \\textdollar \\textbackslash alpha\\textdollar ",
+"to_unicode": "Uses of \\textttpapers and 50% of $\\alpha$",
+"protect": "{U}ses of \\texttt{papers} and 50\\% of $\\alpha$"
+},
+{
+"in": "https://example.org/a_b?c=d&e=f#g",
+"to_latex": "https://example.org/a\\_b?c=d\\&e=f\\#g",
+"to_unicode": "https://example.org/a_b?c=d&e=f#g",
+"protect": "https://example.org/a_b?c=d&e=f#g"
+},
+{
+"in": "2018",
+"to_latex": "2018",
+"to_unicode": "2018",
+"protect": "2018"
+},
+{
+"in": "Pool, A.",
+"to_latex": "Pool, A.",
+"to_unicode": "Pool, A.",
+"protect": "{P}ool, {A}."
+},
+{
+"in": "old2021, older2021",
+"to_latex": "old2021, older2021",
+"to_unicode": "old2021, older2021",
+"protect": "old2021, older2021"
+},
+{
+"in": "tag:first, tag:second",
+"to_latex": "tag:first, tag:second",
+"to_unicode": "tag:first, tag:second",
+"protect": "tag:first, tag:second"
+},
+{
+"in": "An entry with ids",
+"to_latex": "An entry with ids",
+"to_unicode": "An entry with ids",
+"protect": "{A}n entry with ids"
+},
+{
+"in": "2021",
+"to_latex": "2021",
+"to_unicode": "2021",
+"protect": "2021"
+},
+{
+"in": "No newline at the end",
+"to_latex": "No newline at the end",
+"to_unicode": "No newline at the end",
+"protect": "{N}o newline at the end"
+},
+{
+"in": " NBSP around ",
+"to_latex": " NBSP around ",
+"to_unicode": " NBSP around ",
+"protect": " {N}BS{P} around "
+},
+{
+"in": "Em, Space",
+"to_latex": "Em, Space",
+"to_unicode": "Em, Space",
+"protect": "{E}m, {S}pace"
+},
+{
+"in": "2006",
+"to_latex": "2006",
+"to_unicode": "2006",
+"protect": "2006"
+},
+{
+"in": "Block after an em space",
+"to_latex": "Block after an em space",
+"to_unicode": "Block after an em space",
+"protect": "{B}lock after an em space"
+},
+{
+"in": "after a file separator",
+"to_latex": "after a file separator",
+"to_unicode": "after a file separator",
+"protect": "after a file separator"
+},
+{
+"in": "​zero width​ space",
+"to_latex": "​zero width​ space",
+"to_unicode": "​zero width​ space",
+"protect": "​zero width​ space"
+},
+{
+"in": "tab\tinside",
+"to_latex": "tab\tinside",
+"to_unicode": "tab\tinside",
+"protect": "tab\tinside"
+},
+{
+"in": "space before the brace",
+"to_latex": "space before the brace",
+"to_unicode": "space before the brace",
+"protect": "space before the brace"
+},
+{
+"in": "tab before the brace",
+"to_latex": "tab before the brace",
+"to_unicode": "tab before the brace",
+"protect": "tab before the brace"
+},
+{
+"in": "Upper case type and names",
+"to_latex": "Upper case type and names",
+"to_unicode": "Upper case type and names",
+"protect": "{U}pper case type and names"
+},
+{
+"in": "2013",
+"to_latex": "2013",
+"to_unicode": "2013",
+"protect": "2013"
+},
+{
+"in": "unicode type",
+"to_latex": "unicode type",
+"to_unicode": "unicode type",
+"protect": "unicode type"
+},
+{
+"in": "key with spaces around",
+"to_latex": "key with spaces around",
+"to_unicode": "key with spaces around",
+"protect": "key with spaces around"
+},
+{
+"in": "no spaces",
+"to_latex": "no spaces",
+"to_unicode": "no spaces",
+"protect": "no spaces"
+},
+{
+"in": "2016",
+"to_latex": "2016",
+"to_unicode": "2016",
+"protect": "2016"
+},
+{
+"in": "blank lines",
+"to_latex": "blank lines",
+"to_unicode": "blank lines",
+"protect": "blank lines"
+},
+{
+"in": "2017",
+"to_latex": "2017",
+"to_unicode": "2017",
+"protect": "2017"
+},
+{
+"in": "Journal of Geophysical Research",
+"to_latex": "Journal of Geophysical Research",
+"to_unicode": "Journal of Geophysical Research",
+"protect": "{J}ournal of {G}eophysical {R}esearch"
+},
+{
+"in": "jan",
+"to_latex": "jan",
+"to_unicode": "jan",
+"protect": "jan"
+},
+{
+"in": "\"Copernicus \" # \"Publications\"",
+"to_latex": "\"Copernicus \" \\# \"Publications\"",
+"to_unicode": "\"Copernicus \" # \"Publications\"",
+"protect": "\"{C}opernicus \" # \"{P}ublications\""
+},
+{
+"in": "\"a\" # \" b\" # {c}",
+"to_latex": "\"a\" \\# \" b\" \\# {c}",
+"to_unicode": "\"a\" # \" b\" # c",
+"protect": "\"a\" # \" b\" # {c}"
+},
+{
+"in": "Uses strings",
+"to_latex": "Uses strings",
+"to_unicode": "Uses strings",
+"protect": "{U}ses strings"
+},
+{
+"in": "Geophysical Research Letters",
+"to_latex": "Geophysical Research Letters",
+"to_unicode": "Geophysical Research Letters",
+"protect": "{G}eophysical {R}esearch {L}etters"
+},
+{
+"in": "feb",
+"to_latex": "feb",
+"to_unicode": "feb",
+"protect": "feb"
+},
+{
+"in": "12",
+"to_latex": "12",
+"to_unicode": "12",
+"protect": "12"
+},
+{
+"in": "3",
+"to_latex": "3",
+"to_unicode": "3",
+"protect": "3"
+},
+{
+"in": "Case-insensitive reference",
+"to_latex": "Case-insensitive reference",
+"to_unicode": "Case-insensitive reference",
+"protect": "{C}ase-insensitive reference"
+},
+{
+"in": "jgr",
+"to_latex": "jgr",
+"to_unicode": "jgr",
+"protect": "jgr"
+},
+{
+"in": "jgr # \" and \" # grl",
+"to_latex": "jgr \\# \" and \" \\# grl",
+"to_unicode": "jgr # \" and \" # grl",
+"protect": "jgr # \" and \" # grl"
+},
+{
+"in": "Reference to a reference",
+"to_latex": "Reference to a reference",
+"to_unicode": "Reference to a reference",
+"protect": "{R}eference to a reference"
+},
+{
+"in": "undefined",
+"to_latex": "undefined",
+"to_unicode": "undefined",
+"protect": "undefined"
+},
+{
+"in": "may",
+"to_latex": "may",
+"to_unicode": "may",
+"protect": "may"
+},
+{
+"in": "Undefined reference and an enclosed name",
+"to_latex": "Undefined reference and an enclosed name",
+"to_unicode": "Undefined reference and an enclosed name",
+"protect": "{U}ndefined reference and an enclosed name"
+},
+{
+"in": "paren entry",
+"to_latex": "paren entry",
+"to_unicode": "paren entry",
+"protect": "paren entry"
+},
+{
+"in": "quoted {with} \\\"escaped\\\" quotes and {\\\"}braced{\\\"} ones",
+"to_latex": "quoted {with} \\textbackslash \"escaped\\textbackslash \" quotes and {\\textbackslash \"}braced{\\textbackslash \"} ones",
+"to_unicode": "quoted with ëscaped ̈quotes and ̈braced̈ ones",
+"protect": "quoted {with} \\\"escaped\\\" quotes and {\\\"}braced{\\\"} ones"
+},
+{
+"in": "",
+"to_latex": "",
+"to_unicode": "",
+"protect": ""
+},
+{
+"in": "Sea level {Rise} and the {AMOC}",
+"to_latex": "Sea level {Rise} and the {AMOC}",
+"to_unicode": "Sea level Rise and the AMOC",
+"protect": "{S}ea level {Rise} and the {A{M}OC}"
+},
+{
+"in": "M{\\\"u}ller, J{\\\"o}rg and Smith, John",
+"to_latex": "M{\\textbackslash \"u}ller, J{\\textbackslash \"o}rg and Smith, John",
+"to_unicode": "Müller, Jörg and Smith, John",
+"protect": "{M}{\\\"u}ller, {J}{\\\"o}rg and {S}mith, {J}ohn"
+},
+{
+"in": "1--10",
+"to_latex": "1--10",
+"to_unicode": "1--10",
+"protect": "1--10"
+},
+{
+"in": "10.1000/ZETA",
+"to_latex": "10.1000/ZETA",
+"to_unicode": "10.1000/ZETA",
+"protect": "10.1000/{Z}ET{A}"
+},
+{
+"in": "Ångström, Anders",
+"to_latex": "{\\AA}ngstr{\\\"o}m, Anders",
+"to_unicode": "Ångström, Anders",
+"protect": "Ångström, {A}nders"
+},
+{
+"in": "\"first\" # \" and second\"",
+"to_latex": "\"first\" \\# \" and second\"",
+"to_unicode": "\"first\" # \" and second\"",
+"protect": "\"first\" # \" and second\""
+},
+{
+"in": ":files/alpha1999.pdf:pdf",
+"to_latex": ":files/alpha1999.pdf:pdf",
+"to_unicode": ":files/alpha1999.pdf:pdf",
+"protect": ":files/alpha1999.pdf:pdf"
+},
+{
+"in": "Ünïcödé title",
+"to_latex": "{\\\"U}n{\\\"\\i}c{\\\"o}d{\\'e} title",
+"to_unicode": "Ünïcödé title",
+"protect": "Ünïcödé title"
+},
+{
+"in": "b, a",
+"to_latex": "b, a",
+"to_unicode": "b, a",
+"protect": "b, a"
+},
+{
+"in": "Line one\n  line two",
+"to_latex": "Line one\n  line two",
+"to_unicode": "Line one\n  line two",
+"protect": "{L}ine one\n  line two"
+},
+{
+"in": "Lower-case key sorted after upper case",
+"to_latex": "Lower-case key sorted after upper case",
+"to_unicode": "Lower-case key sorted after upper case",
+"protect": "{L}ower-case key sorted after upper case"
+},
+{
+"in": "7",
+"to_latex": "7",
+"to_unicode": "7",
+"protect": "7"
+},
+{
+"in": "2",
+"to_latex": "2",
+"to_unicode": "2",
+"protect": "2"
+},
+{
+"in": "Uses @string other",
+"to_latex": "Uses @string other",
+"to_unicode": "Uses @string other",
+"protect": "{U}ses @string other"
+},
+{
+"in": "Other",
+"to_latex": "Other",
+"to_unicode": "Other",
+"protect": "{O}ther"
+},
+{
+"in": "van der Berg, Jane and {Collaboration}, The",
+"to_latex": "van der Berg, Jane and {Collaboration}, The",
+"to_unicode": "van der Berg, Jane and Collaboration, The",
+"protect": "van der {B}erg, {J}ane and {Collaboration}, {T}he"
+},
+{
+"in": "hello",
+"to_latex": "hello",
+"to_unicode": "hello",
+"protect": "hello"
+},
+{
+"in": "Hello World",
+"to_latex": "Hello World",
+"to_unicode": "Hello World",
+"protect": "{H}ello {W}orld"
+},
+{
+"in": "{\\'e}",
+"to_latex": "{\\textbackslash \\textquotesingle e}",
+"to_unicode": "é",
+"protect": "{\\'e}"
+},
+{
+"in": "{\\'E}",
+"to_latex": "{\\textbackslash \\textquotesingle E}",
+"to_unicode": "É",
+"protect": "{\\'E}"
+},
+{
+"in": "{\\\"u}",
+"to_latex": "{\\textbackslash \"u}",
+"to_unicode": "ü",
+"protect": "{\\\"u}"
+},
+{
+"in": "{\\c{c}}",
+"to_latex": "{\\textbackslash c{c}}",
+"to_unicode": "ç",
+"protect": "{\\c{c}}"
+},
+{
+"in": "{\\~n}",
+"to_latex": "{\\textbackslash \\textasciitilde n}",
+"to_unicode": "ñ",
+"protect": "{\\~n}"
+},
+{
+"in": "\\'{e}",
+"to_latex": "\\textbackslash \\textquotesingle {e}",
+"to_unicode": "é",
+"protect": "\\'{e}"
+},
+{
+"in": "\\'{a}",
+"to_latex": "\\textbackslash \\textquotesingle {a}",
+"to_unicode": "á",
+"protect": "\\'{a}"
+},
+{
+"in": "\\`{e}",
+"to_latex": "\\textbackslash \\textasciigrave {e}",
+"to_unicode": "è",
+"protect": "\\`{e}"
+},
+{
+"in": "\\'",
+"to_latex": "\\textbackslash \\textquotesingle ",
+"to_unicode": "",
+"protect": "\\'"
+},
+{
+"in": "\\",
+"to_latex": "\\textbackslash ",
+"to_unicode": "\\",
+"protect": "\\"
+},
+{
+"in": "{",
+"to_latex": "{",
+"to_unicode": "",
+"protect": "{"
+},
+{
+"in": "}",
+"to_latex": "}",
+"to_unicode": "",
+"protect": "}"
+},
+{
+"in": " { } ",
+"to_latex": " { } ",
+"to_unicode": "   ",
+"protect": " { } "
+},
+{
+"in": "é",
+"to_latex": "{\\'e}",
+"to_unicode": "é",
+"protect": "é"
+},
+{
+"in": "á",
+"to_latex": "{\\'a}",
+"to_unicode": "á",
+"protect": "á"
+},
+{
+"in": "ñ",
+"to_latex": "{\\~n}",
+"to_unicode": "ñ",
+"protect": "ñ"
+},
+{
+"in": "ç",
+"to_latex": "{\\c c}",
+"to_unicode": "ç",
+"protect": "ç"
+},
+{
+"in": "ü",
+"to_latex": "{\\\"u}",
+"to_unicode": "ü",
+"protect": "ü"
+},
+{
+"in": "ö",
+"to_latex": "{\\\"o}",
+"to_unicode": "ö",
+"protect": "ö"
+},
+{
+"in": "François",
+"to_latex": "Fran{\\c c}ois",
+"to_unicode": "François",
+"protect": "{F}rançois"
+},
+{
+"in": "Ångström",
+"to_latex": "{\\AA}ngstr{\\\"o}m",
+"to_unicode": "Ångström",
+"protect": "Ångström"
+},
+{
+"in": "Œuvre",
+"to_latex": "{\\OE}uvre",
+"to_unicode": "Œuvre",
+"protect": "Œuvre"
+},
+{
+"in": "ß",
+"to_latex": "{\\ss}",
+"to_unicode": "ß",
+"protect": "ß"
+},
+{
+"in": "ø",
+"to_latex": "{\\o}",
+"to_unicode": "ø",
+"protect": "ø"
+},
+{
+"in": "é́",
+"to_latex": "{\\'e}́",
+"to_unicode": "é",
+"protect": "é́"
+},
+{
+"in": "é",
+"to_latex": "é",
+"to_unicode": "e",
+"protect": "é"
+},
+{
+"in": "ABC",
+"to_latex": "ABC",
+"to_unicode": "ABC",
+"protect": "A{B}C"
+},
+{
+"in": "Hello",
+"to_latex": "Hello",
+"to_unicode": "Hello",
+"protect": "{H}ello"
+},
+{
+"in": "A{B}C",
+"to_latex": "A{B}C",
+"to_unicode": "ABC",
+"protect": "{A}{B}{C}"
+},
+{
+"in": "{A}",
+"to_latex": "{A}",
+"to_unicode": "A",
+"protect": "{A}"
+},
+{
+"in": "Zeta2020",
+"to_latex": "Zeta2020",
+"to_unicode": "Zeta2020",
+"protect": "{Z}eta2020"
+},
+{
+"in": "a_b~c",
+"to_latex": "a\\_b\\textasciitilde c",
+"to_unicode": "a_b~c",
+"protect": "a_b~c"
+},
+{
+"in": "5% of $x$",
+"to_latex": "5\\% of \\textdollar x\\textdollar ",
+"to_unicode": "5% of $x$",
+"protect": "5% of $x$"
+},
+{
+"in": "\"quoted\"",
+"to_latex": "\"quoted\"",
+"to_unicode": "\"quoted\"",
+"protect": "\"quoted\""
+},
+{
+"in": "\\'e\\`a",
+"to_latex": "\\textbackslash \\textquotesingle e\\textbackslash \\textasciigrave a",
+"to_unicode": "eá",
+"protect": "\\'e\\`a"
+},
+{
+"in": "\\^{o}\\v{s}\\H{o}",
+"to_latex": "\\textbackslash \\^{}{o}\\textbackslash v{s}\\textbackslash H{o}",
+"to_unicode": "ôšő",
+"protect": "\\^{o}\\v{s}\\{H}{o}"
+},
+{
+"in": "\\c c",
+"to_latex": "\\textbackslash c c",
+"to_unicode": " ç",
+"protect": "\\c c"
+},
+{
+"in": "\\AA ngstr\\\"om",
+"to_latex": "\\textbackslash AA ngstr\\textbackslash \"om",
+"to_unicode": "Ångström",
+"protect": "\\{A}A ngstr\\\"om"
+},
+{
+"in": "M{\\\"u}ller",
+"to_latex": "M{\\textbackslash \"u}ller",
+"to_unicode": "Müller",
+"protect": "{M}{\\\"u}ller"
+},
+{
+"in": "x\\\\y",
+"to_latex": "x\\textbackslash \\textbackslash y",
+"to_unicode": "x\\\\y",
+"protect": "x\\\\y"
+},
+{
+"in": "– — “",
+"to_latex": "\\textendash  \\textemdash  \\textquotedblleft ",
+"to_unicode": "– — “",
+"protect": "– — “"
+},
+{
+"in": "𝟘",
+"to_latex": "𝟘",
+"to_unicode": "𝟘",
+"protect": "𝟘"
+},
+{
+"in": "αβγ",
+"to_latex": "\\alpha \\beta \\gamma ",
+"to_unicode": "αβγ",
+"protect": "αβγ"
+},
+{
+"in": "\\alpha",
+"to_latex": "\\textbackslash alpha",
+"to_unicode": "\\alpha",
+"protect": "\\alpha"
+},
+{
+"in": "\\textbf{a}",
+"to_latex": "\\textbackslash textbf{a}",
+"to_unicode": "\\textbfa",
+"protect": "\\textbf{a}"
+},
+{
+"in": "a\n\nb",
+"to_latex": "a\n\nb",
+"to_unicode": "a\n\nb",
+"protect": "a\n\nb"
+},
+{
+"in": "\\ss{}",
+"to_latex": "\\textbackslash ss{}",
+"to_unicode": "\\ss",
+"protect": "\\ss{}"
+},
+{
+"in": "\\o{}",
+"to_latex": "\\textbackslash o{}",
+"to_unicode": "\\o",
+"protect": "\\o{}"
+},
+{
+"in": "\\\"{\\i}",
+"to_latex": "\\textbackslash \"{\\textbackslash i}",
+"to_unicode": "ï",
+"protect": "\\\"{\\i}"
+},
+{
+"in": "\\^\\i",
+"to_latex": "\\textbackslash \\^{}\\textbackslash i",
+"to_unicode": "\\î",
+"protect": "\\^\\i"
+},
+{
+"in": "\\'\\i",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash i",
+"to_unicode": "\\í",
+"protect": "\\'\\i"
+},
+{
+"in": "\\'́CssA{",
+"to_latex": "\\textbackslash \\textquotesingle ́CssA{",
+"to_unicode": "́́CssA",
+"protect": "\\'́{C}ss{A}{"
+},
+{
+"in": "\\alphaC&\\~o ",
+"to_latex": "\\textbackslash alphaC\\&\\textbackslash \\textasciitilde o ",
+"to_unicode": "\\alphaC&õ ",
+"protect": "\\alpha{C}&\\~o "
+},
+{
+"in": "̈ss\\v Z$C",
+"to_latex": "\\\"ss\\textbackslash v Z\\textdollar C",
+"to_unicode": "s̈s ̌Z$C",
+"protect": "̈ss\\v {Z}$C"
+},
+{
+"in": "\\c\\alpha",
+"to_latex": "\\textbackslash c\\textbackslash alpha",
+"to_unicode": "\\a̧lpha",
+"protect": "\\c\\alpha"
+},
+{
+"in": "\\textbf",
+"to_latex": "\\textbackslash textbf",
+"to_unicode": "\\textbf",
+"protect": "\\textbf"
+},
+{
+"in": "C\\coZ\\\\=̈",
+"to_latex": "C\\textbackslash coZ\\textbackslash \\textbackslash =\\\"",
+"to_unicode": "CoZ̧\\̈̄",
+"protect": "{C}\\co{Z}\\\\=̈"
+},
+{
+"in": "A}\\textbf",
+"to_latex": "A}\\textbackslash textbf",
+"to_unicode": "A\\textbf",
+"protect": "A}\\textbf"
+},
+{
+"in": "Z\\`{\\alpha\\textbf",
+"to_latex": "Z\\textbackslash \\textasciigrave {\\textbackslash alpha\\textbackslash textbf",
+"to_unicode": "Z\\̀alpha\\textbf",
+"protect": "{Z}\\`{\\alpha\\textbf"
+},
+{
+"in": "é{Zss",
+"to_latex": "{\\'e}{Zss",
+"to_unicode": "éZss",
+"protect": "é{Zss"
+},
+{
+"in": "\\~",
+"to_latex": "\\textbackslash \\textasciitilde ",
+"to_unicode": "",
+"protect": "\\~"
+},
+{
+"in": "A$\\AA_\\alpha_é\\.",
+"to_latex": "A\\textdollar \\textbackslash AA\\_\\textbackslash alpha\\_{\\'e}\\textbackslash .",
+"to_unicode": "A$\\AA_\\alpha_é",
+"protect": "{A}$\\{A}A_\\alpha_é\\."
+},
+{
+"in": "\\`\\v \\textbf",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash v \\textbackslash textbf",
+"to_unicode": "̀̌ \\textbf",
+"protect": "\\`\\v \\textbf"
+},
+{
+"in": "–#\\ss%\\=",
+"to_latex": "\\textendash \\#\\textbackslash ss\\%\\textbackslash =",
+"to_unicode": "–#\\ss%",
+"protect": "–#\\ss%\\="
+},
+{
+"in": "}&",
+"to_latex": "}\\&",
+"to_unicode": "&",
+"protect": "}&"
+},
+{
+"in": "\\\"\\ss\\'#̈oss",
+"to_latex": "\\textbackslash \"\\textbackslash ss\\textbackslash \\textquotesingle \\#\\\"oss",
+"to_unicode": "\\̈ss#̈́oss",
+"protect": "\\\"\\ss\\'#̈oss"
+},
+{
+"in": "\\ss\\i\\\\#\\alpha_",
+"to_latex": "\\textbackslash ss\\textbackslash i\\textbackslash \\textbackslash \\#\\textbackslash alpha\\_",
+"to_unicode": "\\ss\\i\\#\\alpha_",
+"protect": "\\ss\\i\\\\#\\alpha_"
+},
+{
+"in": " \\u",
+"to_latex": " \\textbackslash u",
+"to_unicode": " ",
+"protect": " \\u"
+},
+{
+"in": "ssC\\.\\textbf%\\=ü\\i",
+"to_latex": "ssC\\textbackslash .\\textbackslash textbf\\%\\textbackslash ={\\\"u}\\textbackslash i",
+"to_unicode": "ssC\\̇textbf%ǖ\\i",
+"protect": "ss{C}\\.\\textbf%\\=ü\\i"
+},
+{
+"in": "_",
+"to_latex": "\\_",
+"to_unicode": "_",
+"protect": "_"
+},
+{
+"in": "\\\"}#C\\~\\=",
+"to_latex": "\\textbackslash \"}\\#C\\textbackslash \\textasciitilde \\textbackslash =",
+"to_unicode": "̈#C̄̃",
+"protect": "\\\"}#{C}\\~\\="
+},
+{
+"in": "\\v́́",
+"to_latex": "\\textbackslash v́́",
+"to_unicode": "́̌",
+"protect": "\\v́́"
+},
+{
+"in": " \\\"%́Z\\u\\$",
+"to_latex": " \\textbackslash \"\\%́Z\\textbackslash u\\textbackslash \\textdollar ",
+"to_unicode": " %̈Ź\\̆$",
+"protect": " \\\"%́{Z}\\u\\$"
+},
+{
+"in": "̈\\iü\\c\\'",
+"to_latex": "\\\"\\textbackslash i{\\\"u}\\textbackslash c\\textbackslash \\textquotesingle ",
+"to_unicode": "\\̈iǘ̧",
+"protect": "̈\\iü\\c\\'"
+},
+{
+"in": "\\`\\'",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash \\textquotesingle ",
+"to_unicode": "\\'̀",
+"protect": "\\`\\'"
+},
+{
+"in": "\\ca#\\alpha",
+"to_latex": "\\textbackslash ca\\#\\textbackslash alpha",
+"to_unicode": "a#̧\\alpha",
+"protect": "\\ca#\\alpha"
+},
+{
+"in": "\\H\\=a",
+"to_latex": "\\textbackslash H\\textbackslash =a",
+"to_unicode": "̄̋a",
+"protect": "\\{H}\\=a"
+},
+{
+"in": "̈Aé",
+"to_latex": "\\\"A{\\'e}",
+"to_unicode": "Äé",
+"protect": "̈{A}é"
+},
+{
+"in": "\\&C_Ź",
+"to_latex": "\\textbackslash \\&C\\_Ź",
+"to_unicode": "&C_Z",
+"protect": "\\&{C}_Ź"
+},
+{
+"in": "́́{~́C\\^",
+"to_latex": "́́{\\textasciitilde ́C\\textbackslash \\^{}",
+"to_unicode": "́́~Ć",
+"protect": "́́{~́{C}\\^"
+},
+{
+"in": "\\~%",
+"to_latex": "\\textbackslash \\textasciitilde \\%",
+"to_unicode": "%̃",
+"protect": "\\~%"
+},
+{
+"in": "}\\ss\\\\",
+"to_latex": "}\\textbackslash ss\\textbackslash \\textbackslash ",
+"to_unicode": "\\ss\\\\",
+"protect": "}\\ss\\\\"
+},
+{
+"in": "A{é",
+"to_latex": "A{{\\'e}",
+"to_unicode": "Aé",
+"protect": "{A}{é"
+},
+{
+"in": "ss",
+"to_latex": "ss",
+"to_unicode": "ss",
+"protect": "ss"
+},
+{
+"in": "ü\\'\\H\\i",
+"to_latex": "{\\\"u}\\textbackslash \\textquotesingle \\textbackslash H\\textbackslash i",
+"to_unicode": "ǘ̋\\i",
+"protect": "ü\\'\\{H}\\i"
+},
+{
+"in": "~}}#_~",
+"to_latex": "\\textasciitilde }}\\#\\_\\textasciitilde ",
+"to_unicode": "~#_~",
+"protect": "~}}#_~"
+},
+{
+"in": "\\. \\'{\\ss\\H~\\\"",
+"to_latex": "\\textbackslash . \\textbackslash \\textquotesingle {\\textbackslash ss\\textbackslash H\\textasciitilde \\textbackslash \"",
+"to_unicode": " ̇\\́ss~̋",
+"protect": "\\. \\'{\\ss\\{H}~\\\""
+},
+{
+"in": "\\'Ae–\\. ",
+"to_latex": "\\textbackslash \\textquotesingle Ae\\textendash \\textbackslash . ",
+"to_unicode": "Aé– ̇",
+"protect": "\\'{A}e–\\. "
+},
+{
+"in": "–é\\\"\\i\\c",
+"to_latex": "\\textendash {\\'e}\\textbackslash \"\\textbackslash i\\textbackslash c",
+"to_unicode": "–é\\̈i",
+"protect": "–é\\\"\\i\\c"
+},
+{
+"in": "\\c\\^\\v́\\c\\^",
+"to_latex": "\\textbackslash c\\textbackslash \\^{}\\textbackslash v́\\textbackslash c\\textbackslash \\^{}",
+"to_unicode": "̧̧̌́̂̂",
+"protect": "\\c\\^\\v́\\c\\^"
+},
+{
+"in": "\\iee\\u~\\H\\^\\\\",
+"to_latex": "\\textbackslash iee\\textbackslash u\\textasciitilde \\textbackslash H\\textbackslash \\^{}\\textbackslash \\textbackslash ",
+"to_unicode": "\\iee~̆\\̋\\̂",
+"protect": "\\iee\\u~\\{H}\\^\\\\"
+},
+{
+"in": "%\\ié \\c{",
+"to_latex": "\\%\\textbackslash i{\\'e} \\textbackslash c{",
+"to_unicode": "%\\ié ",
+"protect": "%\\ié \\c{"
+},
+{
+"in": "~\\^\\ss\\~",
+"to_latex": "\\textasciitilde \\textbackslash \\^{}\\textbackslash ss\\textbackslash \\textasciitilde ",
+"to_unicode": "~\\ŝs",
+"protect": "~\\^\\ss\\~"
+},
+{
+"in": "a~\\i }ü\\^~",
+"to_latex": "a\\textasciitilde \\textbackslash i }{\\\"u}\\textbackslash \\^{}\\textasciitilde ",
+"to_unicode": "a~ıü~",
+"protect": "a~\\i }ü\\^~"
+},
+{
+"in": "$\\ss ",
+"to_latex": "\\textdollar \\textbackslash ss ",
+"to_unicode": "$ß",
+"protect": "$\\ss "
+},
+{
+"in": "_́ \\\"\\\"\\e",
+"to_latex": "\\_́ \\textbackslash \"\\textbackslash \"\\textbackslash e",
+"to_unicode": "_ ́̈̈\\e",
+"protect": "_́ \\\"\\\"\\e"
+},
+{
+"in": "\\alpha_\\'",
+"to_latex": "\\textbackslash alpha\\_\\textbackslash \\textquotesingle ",
+"to_unicode": "\\alpha_",
+"protect": "\\alpha_\\'"
+},
+{
+"in": "\\i\\'ZZ\\ea{",
+"to_latex": "\\textbackslash i\\textbackslash \\textquotesingle ZZ\\textbackslash ea{",
+"to_unicode": "\\iZŹ\\ea",
+"protect": "\\i\\'{Z}Z\\ea{"
+},
+{
+"in": "$\\^\\~",
+"to_latex": "\\textdollar \\textbackslash \\^{}\\textbackslash \\textasciitilde ",
+"to_unicode": "$̂̃",
+"protect": "$\\^\\~"
+},
+{
+"in": "\\H",
+"to_latex": "\\textbackslash H",
+"to_unicode": "",
+"protect": "\\{H}"
+},
+{
+"in": "\\=&\\v\\alpha",
+"to_latex": "\\textbackslash =\\&\\textbackslash v\\textbackslash alpha",
+"to_unicode": "&̄\\̌alpha",
+"protect": "\\=&\\v\\alpha"
+},
+{
+"in": "\\HÄ\\C\\i",
+"to_latex": "\\textbackslash HA\\\"\\textbackslash C\\textbackslash i",
+"to_unicode": "A̋\\̈C\\i",
+"protect": "\\{H}Ä\\{C}\\i"
+},
+{
+"in": "\\alpha–̈&\\A\\'–",
+"to_latex": "\\textbackslash alpha\\textendash \\\"\\&\\textbackslash A\\textbackslash \\textquotesingle \\textendash ",
+"to_unicode": "\\alpha–&̈\\A–",
+"protect": "\\alpha–̈&\\{A}\\'–"
+},
+{
+"in": "%",
+"to_latex": "\\%",
+"to_unicode": "%",
+"protect": "%"
+},
+{
+"in": "\\\\a\\'",
+"to_latex": "\\textbackslash \\textbackslash a\\textbackslash \\textquotesingle ",
+"to_unicode": "\\\\a",
+"protect": "\\\\a\\'"
+},
+{
+"in": "\\'~}",
+"to_latex": "\\textbackslash \\textquotesingle \\textasciitilde }",
+"to_unicode": "~́",
+"protect": "\\'~}"
+},
+{
+"in": "\\AA",
+"to_latex": "\\textbackslash AA",
+"to_unicode": "\\AA",
+"protect": "\\{A}A"
+},
+{
+"in": "{ZC\\v\\^\\uo{",
+"to_latex": "{ZC\\textbackslash v\\textbackslash \\^{}\\textbackslash uo{",
+"to_unicode": "ZC̆̌ô",
+"protect": "{Z{C}\\v\\^\\uo{"
+},
+{
+"in": "Zess%\\AA&\\\\&",
+"to_latex": "Zess\\%\\textbackslash AA\\&\\textbackslash \\textbackslash \\&",
+"to_unicode": "Zess%\\AA&\\&",
+"protect": "{Z}ess%\\{A}A&\\\\&"
+},
+{
+"in": "\\u%&A",
+"to_latex": "\\textbackslash u\\%\\&A",
+"to_unicode": "%̆&A",
+"protect": "\\u%&{A}"
+},
+{
+"in": "&\\v–\\HZ\\^%\\",
+"to_latex": "\\&\\textbackslash v\\textendash \\textbackslash HZ\\textbackslash \\^{}\\%\\textbackslash ",
+"to_unicode": "&–̌Z̋%\\̂",
+"protect": "&\\v–\\{H}Z\\^%\\"
+},
+{
+"in": "}́%\\AAss\\v$",
+"to_latex": "}́\\%\\textbackslash AAss\\textbackslash v\\textdollar ",
+"to_unicode": "%́\\AAss$̌",
+"protect": "}́%\\{A}Ass\\v$"
+},
+{
+"in": "\\~\\.",
+"to_latex": "\\textbackslash \\textasciitilde \\textbackslash .",
+"to_unicode": "̇̃",
+"protect": "\\~\\."
+},
+{
+"in": "\\'é",
+"to_latex": "\\textbackslash \\textquotesingle {\\'e}",
+"to_unicode": "é",
+"protect": "\\'é"
+},
+{
+"in": "\\H\\_",
+"to_latex": "\\textbackslash H\\textbackslash \\_",
+"to_unicode": "_̋",
+"protect": "\\{H}\\_"
+},
+{
+"in": "{́#\\\"",
+"to_latex": "{́\\#\\textbackslash \"",
+"to_unicode": "#́",
+"protect": "{́#\\\""
+},
+{
+"in": "\\\"$&́",
+"to_latex": "\\textbackslash \"\\textdollar \\&́",
+"to_unicode": "$̈&",
+"protect": "\\\"$&́"
+},
+{
+"in": "̈\\^\\i\\AA é",
+"to_latex": "\\\"\\textbackslash \\^{}\\textbackslash i\\textbackslash AA {\\'e}",
+"to_unicode": "\\̈îÅé",
+"protect": "̈\\^\\i\\{A}A é"
+},
+{
+"in": "\\ss",
+"to_latex": "\\textbackslash ss",
+"to_unicode": "\\ss",
+"protect": "\\ss"
+},
+{
+"in": "%eü\\ss–\\=&ss",
+"to_latex": "\\%e{\\\"u}\\textbackslash ss\\textendash \\textbackslash =\\&ss",
+"to_unicode": "%eü\\ss–&̄ss",
+"protect": "%eü\\ss–\\=&ss"
+},
+{
+"in": "\\c{",
+"to_latex": "\\textbackslash c{",
+"to_unicode": "",
+"protect": "\\c{"
+},
+{
+"in": "\\H\\u",
+"to_latex": "\\textbackslash H\\textbackslash u",
+"to_unicode": "̆̋",
+"protect": "\\{H}\\u"
+},
+{
+"in": "\\`",
+"to_latex": "\\textbackslash \\textasciigrave ",
+"to_unicode": "",
+"protect": "\\`"
+},
+{
+"in": "\\$\\H́\\'",
+"to_latex": "\\textbackslash \\textdollar \\textbackslash H́\\textbackslash \\textquotesingle ",
+"to_unicode": "\\$́̋",
+"protect": "\\$\\{H}́\\'"
+},
+{
+"in": "\\AA \\uC\\`$ss\\u",
+"to_latex": "\\textbackslash AA \\textbackslash uC\\textbackslash \\textasciigrave \\textdollar ss\\textbackslash u",
+"to_unicode": "ÅC̆$s̀s",
+"protect": "\\{A}A \\u{C}\\`$ss\\u"
+},
+{
+"in": " ",
+"to_latex": " ",
+"to_unicode": " ",
+"protect": " "
+},
+{
+"in": " \\\\\\css\\H",
+"to_latex": " \\textbackslash \\textbackslash \\textbackslash css\\textbackslash H",
+"to_unicode": " \\\\sş",
+"protect": " \\\\\\css\\{H}"
+},
+{
+"in": "_a",
+"to_latex": "\\_a",
+"to_unicode": "_a",
+"protect": "_a"
+},
+{
+"in": "Z̈\\u\\o–",
+"to_latex": "Z\\\"\\textbackslash u\\textbackslash o\\textendash ",
+"to_unicode": "Z̆̈\\o–",
+"protect": "{Z}̈\\u\\o–"
+},
+{
+"in": "}\\\"\\HC",
+"to_latex": "}\\textbackslash \"\\textbackslash HC",
+"to_unicode": "̋̈C",
+"protect": "}\\\"\\{H}C"
+},
+{
+"in": "\\^\\.\\.",
+"to_latex": "\\textbackslash \\^{}\\textbackslash .\\textbackslash .",
+"to_unicode": "̂̇",
+"protect": "\\^\\.\\."
+},
+{
+"in": "\\=%&\\`",
+"to_latex": "\\textbackslash =\\%\\&\\textbackslash \\textasciigrave ",
+"to_unicode": "%̄&",
+"protect": "\\=%&\\`"
+},
+{
+"in": "\\ie\\Hoa",
+"to_latex": "\\textbackslash ie\\textbackslash Hoa",
+"to_unicode": "\\ieőa",
+"protect": "\\ie\\{H}oa"
+},
+{
+"in": "&",
+"to_latex": "\\&",
+"to_unicode": "&",
+"protect": "&"
+},
+{
+"in": "&~\\v%",
+"to_latex": "\\&\\textasciitilde \\textbackslash v\\%",
+"to_unicode": "&~%̌",
+"protect": "&~\\v%"
+},
+{
+"in": "$#",
+"to_latex": "\\textdollar \\#",
+"to_unicode": "$#",
+"protect": "$#"
+},
+{
+"in": "&\\.\\~\\c\\ss\\^\\",
+"to_latex": "\\&\\textbackslash .\\textbackslash \\textasciitilde \\textbackslash c\\textbackslash ss\\textbackslash \\^{}\\textbackslash ",
+"to_unicode": "&̃̇\\şs\\",
+"protect": "&\\.\\~\\c\\ss\\^\\"
+},
+{
+"in": "\\iC\\ass\\H$",
+"to_latex": "\\textbackslash iC\\textbackslash ass\\textbackslash H\\textdollar ",
+"to_unicode": "\\iC\\ass$̋",
+"protect": "\\i{C}\\ass\\{H}$"
+},
+{
+"in": "C ü",
+"to_latex": "C {\\\"u}",
+"to_unicode": "C ü",
+"protect": "{C} ü"
+},
+{
+"in": "\\\\\\v\\=o_",
+"to_latex": "\\textbackslash \\textbackslash \\textbackslash v\\textbackslash =o\\_",
+"to_unicode": "\\\\̄̌o_",
+"protect": "\\\\\\v\\=o_"
+},
+{
+"in": "\\\"\\u%",
+"to_latex": "\\textbackslash \"\\textbackslash u\\%",
+"to_unicode": "̆̈%",
+"protect": "\\\"\\u%"
+},
+{
+"in": "\\ssZ\\AA\\vo\\.",
+"to_latex": "\\textbackslash ssZ\\textbackslash AA\\textbackslash vo\\textbackslash .",
+"to_unicode": "\\ssZ\\AAǒ",
+"protect": "\\ss{Z}\\A{A}\\vo\\."
+},
+{
+"in": "\\i\\`a\\ss",
+"to_latex": "\\textbackslash i\\textbackslash \\textasciigrave a\\textbackslash ss",
+"to_unicode": "\\ia\\̀ss",
+"protect": "\\i\\`a\\ss"
+},
+{
+"in": " ~\\u&\\^\\v&",
+"to_latex": " \\textasciitilde \\textbackslash u\\&\\textbackslash \\^{}\\textbackslash v\\&",
+"to_unicode": " ~&̆̂̌&",
+"protect": " ~\\u&\\^\\v&"
+},
+{
+"in": " \\'́\\alphao",
+"to_latex": " \\textbackslash \\textquotesingle ́\\textbackslash alphao",
+"to_unicode": " ́́\\alphao",
+"protect": " \\'́\\alphao"
+},
+{
+"in": "e\\.\\.\\c \\alpha–",
+"to_latex": "e\\textbackslash .\\textbackslash .\\textbackslash c \\textbackslash alpha\\textendash ",
+"to_unicode": "ė̇ \\̧alpha–",
+"protect": "e\\.\\.\\c \\alpha–"
+},
+{
+"in": "\\\\ü\\AA",
+"to_latex": "\\textbackslash \\textbackslash {\\\"u}\\textbackslash AA",
+"to_unicode": "\\\\ü\\AA",
+"protect": "\\\\ü\\{A}A"
+},
+{
+"in": "\\'\\=\\'o&$&\\",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash =\\textbackslash \\textquotesingle o\\&\\textdollar \\&\\textbackslash ",
+"to_unicode": "́̄o&́$&\\",
+"protect": "\\'\\=\\'o&$&\\"
+},
+{
+"in": " eo\\",
+"to_latex": " eo\\textbackslash ",
+"to_unicode": " eo\\",
+"protect": " eo\\"
+},
+{
+"in": "{ü%ZCe",
+"to_latex": "{{\\\"u}\\%ZCe",
+"to_unicode": "ü%ZCe",
+"protect": "{ü%{Z}Ce"
+},
+{
+"in": "#\\Ha_",
+"to_latex": "\\#\\textbackslash Ha\\_",
+"to_unicode": "#a̋_",
+"protect": "#\\{H}a_"
+},
+{
+"in": "&A",
+"to_latex": "\\&A",
+"to_unicode": "&A",
+"protect": "&{A}"
+},
+{
+"in": "–ss",
+"to_latex": "\\textendash ss",
+"to_unicode": "–ss",
+"protect": "–ss"
+},
+{
+"in": "\\Hss\\H\\v\\~\\c_#",
+"to_latex": "\\textbackslash Hss\\textbackslash H\\textbackslash v\\textbackslash \\textasciitilde \\textbackslash c\\_\\#",
+"to_unicode": "s̋š̋_̃#̧",
+"protect": "\\{H}ss\\{H}\\v\\~\\c_#"
+},
+{
+"in": "ss~\\=o\\^ss\\\\",
+"to_latex": "ss\\textasciitilde \\textbackslash =o\\textbackslash \\^{}ss\\textbackslash \\textbackslash ",
+"to_unicode": "ss~ōsŝ\\\\",
+"protect": "ss~\\=o\\^ss\\\\"
+},
+{
+"in": "\\ss\\H\\.",
+"to_latex": "\\textbackslash ss\\textbackslash H\\textbackslash .",
+"to_unicode": "\\sṡ̋",
+"protect": "\\ss\\{H}\\."
+},
+{
+"in": "a~C",
+"to_latex": "a\\textasciitilde C",
+"to_unicode": "a~C",
+"protect": "a~{C}"
+},
+{
+"in": "\\u{\\~#\\=–\\=_",
+"to_latex": "\\textbackslash u{\\textbackslash \\textasciitilde \\#\\textbackslash =\\textendash \\textbackslash =\\_",
+"to_unicode": "̆#̃–̄_̄",
+"protect": "\\u{\\~#\\=–\\=_"
+},
+{
+"in": "_}Z\\^\\. ~e",
+"to_latex": "\\_}Z\\textbackslash \\^{}\\textbackslash . \\textasciitilde e",
+"to_unicode": "_Ẑ̇ ~e",
+"protect": "_}{Z}\\^\\. ~e"
+},
+{
+"in": "_ss&%\\u",
+"to_latex": "\\_ss\\&\\%\\textbackslash u",
+"to_unicode": "_ss&%",
+"protect": "_ss&%\\u"
+},
+{
+"in": "\\~\\~ss\\alpha \\'–",
+"to_latex": "\\textbackslash \\textasciitilde \\textbackslash \\textasciitilde ss\\textbackslash alpha \\textbackslash \\textquotesingle \\textendash ",
+"to_unicode": "̃̃ssα–",
+"protect": "\\~\\~ss\\alpha \\'–"
+},
+{
+"in": "é\\\\\\&\\u",
+"to_latex": "{\\'e}\\textbackslash \\textbackslash \\textbackslash \\&\\textbackslash u",
+"to_unicode": "é\\\\&",
+"protect": "é\\\\\\&\\u"
+},
+{
+"in": "é\\c",
+"to_latex": "{\\'e}\\textbackslash c",
+"to_unicode": "é",
+"protect": "é\\c"
+},
+{
+"in": "#́e\\\"a#%́",
+"to_latex": "\\#́e\\textbackslash \"a\\#\\%́",
+"to_unicode": "#éä#%",
+"protect": "#́e\\\"a#%́"
+},
+{
+"in": "\\'̈\\iü\\AA",
+"to_latex": "\\textbackslash \\textquotesingle \\\"\\textbackslash i{\\\"u}\\textbackslash AA",
+"to_unicode": "́̈\\iü\\AA",
+"protect": "\\'̈\\iü\\{A}A"
+},
+{
+"in": "\\ssa",
+"to_latex": "\\textbackslash ssa",
+"to_unicode": "\\ssa",
+"protect": "\\ssa"
+},
+{
+"in": "\\sś}\\^a\\=",
+"to_latex": "\\textbackslash sś}\\textbackslash \\^{}a\\textbackslash =",
+"to_unicode": "\\sśā̂",
+"protect": "\\sś}\\^a\\="
+},
+{
+"in": "ésśü\\alpha",
+"to_latex": "{\\'e}sś{\\\"u}\\textbackslash alpha",
+"to_unicode": "éssǘ\\alpha",
+"protect": "ésśü\\alpha"
+},
+{
+"in": "é$",
+"to_latex": "{\\'e}\\textdollar ",
+"to_unicode": "é$",
+"protect": "é$"
+},
+{
+"in": "C\\u{C\\=",
+"to_latex": "C\\textbackslash u{C\\textbackslash =",
+"to_unicode": "C̆C",
+"protect": "{C}\\u{C\\="
+},
+{
+"in": "\\v\\u$",
+"to_latex": "\\textbackslash v\\textbackslash u\\textdollar ",
+"to_unicode": "̆̌$",
+"protect": "\\v\\u$"
+},
+{
+"in": "\\^é$éZ",
+"to_latex": "\\textbackslash \\^{}{\\'e}\\textdollar éZ",
+"to_unicode": "é$̂eŹ",
+"protect": "\\^é$é{Z}"
+},
+{
+"in": " C̈%",
+"to_latex": " C\\\"\\%",
+"to_unicode": " C%̈",
+"protect": " {C}̈%"
+},
+{
+"in": "\\=#C",
+"to_latex": "\\textbackslash =\\#C",
+"to_unicode": "#̄C",
+"protect": "\\=#{C}"
+},
+{
+"in": "\\\"~̈",
+"to_latex": "\\textbackslash \"\\textasciitilde \\\"",
+"to_unicode": "~̈",
+"protect": "\\\"~̈"
+},
+{
+"in": "\\=\\.\\H\\H́\\v",
+"to_latex": "\\textbackslash =\\textbackslash .\\textbackslash H\\textbackslash H́\\textbackslash v",
+"to_unicode": "̇̄̋̋̌́",
+"protect": "\\=\\.\\{H}\\H́\\v"
+},
+{
+"in": "~Ź}\\\"",
+"to_latex": "\\textasciitilde Ź}\\textbackslash \"",
+"to_unicode": "~Ź",
+"protect": "~{Z}́}\\\""
+},
+{
+"in": "ss\\~&",
+"to_latex": "ss\\textbackslash \\textasciitilde \\&",
+"to_unicode": "ss&̃",
+"protect": "ss\\~&"
+},
+{
+"in": "Z\\c%\\ss%$\\Z",
+"to_latex": "Z\\textbackslash c\\%\\textbackslash ss\\%\\textdollar \\textbackslash Z",
+"to_unicode": "Z%\\̧ss%$\\Z",
+"protect": "{Z}\\c%\\ss%$\\{Z}"
+},
+{
+"in": "\\v \\`\\ss",
+"to_latex": "\\textbackslash v \\textbackslash \\textasciigrave \\textbackslash ss",
+"to_unicode": " ̌\\s̀s",
+"protect": "\\v \\`\\ss"
+},
+{
+"in": "\\AA\\v",
+"to_latex": "\\textbackslash AA\\textbackslash v",
+"to_unicode": "\\AA",
+"protect": "\\{A}A\\v"
+},
+{
+"in": "\\H\\textbf\\^ëü",
+"to_latex": "\\textbackslash H\\textbackslash textbf\\textbackslash \\^{}e\\\"{\\\"u}",
+"to_unicode": "\\̋textbfë̂ü",
+"protect": "\\{H}\\textbf\\^ëü"
+},
+{
+"in": "–\\~ü\\u\\ssC#",
+"to_latex": "\\textendash \\textbackslash \\textasciitilde {\\\"u}\\textbackslash u\\textbackslash ssC\\#",
+"to_unicode": "–ü̃\\̆ssC#",
+"protect": "–\\~ü\\u\\ss{C}#"
+},
+{
+"in": "\\textbfé\\&–",
+"to_latex": "\\textbackslash textbf{\\'e}\\textbackslash \\&\\textendash ",
+"to_unicode": "\\textbfé&–",
+"protect": "\\textbfé\\&–"
+},
+{
+"in": " \\u\\vü",
+"to_latex": " \\textbackslash u\\textbackslash v{\\\"u}",
+"to_unicode": " ̌̆ü",
+"protect": " \\u\\vü"
+},
+{
+"in": "%$\\.e\\o$",
+"to_latex": "\\%\\textdollar \\textbackslash .e\\textbackslash o\\textdollar ",
+"to_unicode": "%$ė\\o$",
+"protect": "%$\\.e\\o$"
+},
+{
+"in": "\\alpha#asś–_%",
+"to_latex": "\\textbackslash alpha\\#asś\\textendash \\_\\%",
+"to_unicode": "\\alpha#ass–́_%",
+"protect": "\\alpha#asś–_%"
+},
+{
+"in": "{\\c\\'\\'",
+"to_latex": "{\\textbackslash c\\textbackslash \\textquotesingle \\textbackslash \\textquotesingle ",
+"to_unicode": "̧́",
+"protect": "{\\c\\'\\'"
+},
+{
+"in": "_ ",
+"to_latex": "\\_ ",
+"to_unicode": "_ ",
+"protect": "_ "
+},
+{
+"in": "a",
+"to_latex": "a",
+"to_unicode": "a",
+"protect": "a"
+},
+{
+"in": "\\c\\textbfo",
+"to_latex": "\\textbackslash c\\textbackslash textbfo",
+"to_unicode": "\\ţextbfo",
+"protect": "\\c\\textbfo"
+},
+{
+"in": "\\\\H–$}",
+"to_latex": "\\textbackslash \\textbackslash H\\textendash \\textdollar }",
+"to_unicode": "\\–̋$",
+"protect": "\\\\{H}–$}"
+},
+{
+"in": "ss\\.",
+"to_latex": "ss\\textbackslash .",
+"to_unicode": "ss",
+"protect": "ss\\."
+},
+{
+"in": "ü\\H\\c\\\\",
+"to_latex": "{\\\"u}\\textbackslash H\\textbackslash c\\textbackslash \\textbackslash ",
+"to_unicode": "ü\\̋\\̧",
+"protect": "ü\\{H}\\c\\\\"
+},
+{
+"in": "_\\u\\AA\\v~",
+"to_latex": "\\_\\textbackslash u\\textbackslash AA\\textbackslash v\\textasciitilde ",
+"to_unicode": "_\\̆AA~̌",
+"protect": "_\\u\\{A}A\\v~"
+},
+{
+"in": "Z\\vë",
+"to_latex": "Z\\textbackslash ve\\\"",
+"to_unicode": "Zě",
+"protect": "{Z}\\vë"
+},
+{
+"in": "Ce\\^#̈",
+"to_latex": "Ce\\textbackslash \\^{}\\#\\\"",
+"to_unicode": "Ce#̈̂",
+"protect": "{C}e\\^#̈"
+},
+{
+"in": "\\H\\c",
+"to_latex": "\\textbackslash H\\textbackslash c",
+"to_unicode": "̧̋",
+"protect": "\\{H}\\c"
+},
+{
+"in": "é\\c#o\\ss̈é",
+"to_latex": "{\\'e}\\textbackslash c\\#o\\textbackslash ss\\\"{\\'e}",
+"to_unicode": "é#o̧\\ssé̈",
+"protect": "é\\c#o\\ss̈é"
+},
+{
+"in": "\\^a\\=&ss\\~#",
+"to_latex": "\\textbackslash \\^{}a\\textbackslash =\\&ss\\textbackslash \\textasciitilde \\#",
+"to_unicode": "ā̂&ss#̃",
+"protect": "\\^a\\=&ss\\~#"
+},
+{
+"in": "\\.\\^\\c_",
+"to_latex": "\\textbackslash .\\textbackslash \\^{}\\textbackslash c\\_",
+"to_unicode": "\\̇ĉ_",
+"protect": "\\.\\^\\c_"
+},
+{
+"in": "\\H\\={#",
+"to_latex": "\\textbackslash H\\textbackslash ={\\#",
+"to_unicode": "̄̋#",
+"protect": "\\{H}\\={#"
+},
+{
+"in": "\\c#̈",
+"to_latex": "\\textbackslash c\\#\\\"",
+"to_unicode": "#̧̈",
+"protect": "\\c#̈"
+},
+{
+"in": "\\\\",
+"to_latex": "\\textbackslash \\textbackslash ",
+"to_unicode": "\\\\",
+"protect": "\\\\"
+},
+{
+"in": "́C\\~",
+"to_latex": "́C\\textbackslash \\textasciitilde ",
+"to_unicode": "Ć",
+"protect": "́{C}\\~"
+},
+{
+"in": "̈CC",
+"to_latex": "\\\"CC",
+"to_unicode": "C̈C",
+"protect": "̈{C}C"
+},
+{
+"in": "́%\\AA",
+"to_latex": "́\\%\\textbackslash AA",
+"to_unicode": "%́\\AA",
+"protect": "́%\\{A}A"
+},
+{
+"in": " \\\"",
+"to_latex": " \\textbackslash \"",
+"to_unicode": " ",
+"protect": " \\\""
+},
+{
+"in": "\\^\\`–_o\\.",
+"to_latex": "\\textbackslash \\^{}\\textbackslash \\textasciigrave \\textendash \\_o\\textbackslash .",
+"to_unicode": "–̀̂_o",
+"protect": "\\^\\`–_o\\."
+},
+{
+"in": "é\\ss%\\\"{a ",
+"to_latex": "{\\'e}\\textbackslash ss\\%\\textbackslash \"{a ",
+"to_unicode": "é\\ss%̈a ",
+"protect": "é\\ss%\\\"{a "
+},
+{
+"in": " \\ï}Z",
+"to_latex": " \\textbackslash i\\\"}Z",
+"to_unicode": " \\ïZ",
+"protect": " \\ï}{Z}"
+},
+{
+"in": "ü\\i\\.$",
+"to_latex": "{\\\"u}\\textbackslash i\\textbackslash .\\textdollar ",
+"to_unicode": "ü\\i$̇",
+"protect": "ü\\i\\.$"
+},
+{
+"in": "C~",
+"to_latex": "C\\textasciitilde ",
+"to_unicode": "C~",
+"protect": "{C}~"
+},
+{
+"in": "éA%\\^",
+"to_latex": "{\\'e}A\\%\\textbackslash \\^{}",
+"to_unicode": "éA%",
+"protect": "é{A}%\\^"
+},
+{
+"in": "é~ë\\v́",
+"to_latex": "{\\'e}\\textasciitilde e\\\"\\textbackslash v́",
+"to_unicode": "é~ě̈",
+"protect": "é~ë\\v́"
+},
+{
+"in": "C\\H",
+"to_latex": "C\\textbackslash H",
+"to_unicode": "C",
+"protect": "{C}\\H"
+},
+{
+"in": "ss\\\\\\ssé",
+"to_latex": "ss\\textbackslash \\textbackslash \\textbackslash ss{\\'e}",
+"to_unicode": "ss\\\\\\ssé",
+"protect": "ss\\\\\\ssé"
+},
+{
+"in": "\\sso\\H\\AA\\u",
+"to_latex": "\\textbackslash sso\\textbackslash H\\textbackslash AA\\textbackslash u",
+"to_unicode": "\\sso\\̋AA",
+"protect": "\\sso\\{H}\\A{A}\\u"
+},
+{
+"in": "a\\\\sse\\c",
+"to_latex": "a\\textbackslash \\textbackslash sse\\textbackslash c",
+"to_unicode": "a\\\\sse",
+"protect": "a\\\\sse\\c"
+},
+{
+"in": "~_",
+"to_latex": "\\textasciitilde \\_",
+"to_unicode": "~_",
+"protect": "~_"
+},
+{
+"in": "\\H$#\\#\\`a",
+"to_latex": "\\textbackslash H\\textdollar \\#\\textbackslash \\#\\textbackslash \\textasciigrave a",
+"to_unicode": "$̋##a",
+"protect": "\\{H}$#\\#\\`a"
+},
+{
+"in": "\\'\\\\\\v\\AA\\AA",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash \\textbackslash \\textbackslash v\\textbackslash AA\\textbackslash AA",
+"to_unicode": "\\\\́\\̌AA\\AA",
+"protect": "\\'\\\\\\v\\{A}A\\{A}A"
+},
+{
+"in": "é\\\\ &\\^́\\\"\\v",
+"to_latex": "{\\'e}\\textbackslash \\textbackslash  \\&\\textbackslash \\^{}́\\textbackslash \"\\textbackslash v",
+"to_unicode": "é\\\\ &̂́̌̈",
+"protect": "é\\\\ &\\^́\\\"\\v"
+},
+{
+"in": "sso~ZA\\AA\\\"",
+"to_latex": "sso\\textasciitilde ZA\\textbackslash AA\\textbackslash \"",
+"to_unicode": "sso~ZA\\AA",
+"protect": "sso~{Z}A\\{A}A\\\""
+},
+{
+"in": "{ss\\H \\~{̈",
+"to_latex": "{ss\\textbackslash H \\textbackslash \\textasciitilde {\\\"",
+"to_unicode": "ss ̋̃",
+"protect": "{ss\\{H} \\~{̈"
+},
+{
+"in": "%\\`\\c\\̈_\\vA",
+"to_latex": "\\%\\textbackslash \\textasciigrave \\textbackslash c\\textbackslash \\\"\\_\\textbackslash vA",
+"to_unicode": "%\\c̀\\_̈Ǎ",
+"protect": "%\\`\\c\\̈_\\v{A}"
+},
+{
+"in": "\\=\\=",
+"to_latex": "\\textbackslash =\\textbackslash =",
+"to_unicode": "̄̄",
+"protect": "\\=\\="
+},
+{
+"in": "\\textbf\\ué\\H\\H",
+"to_latex": "\\textbackslash textbf\\textbackslash u{\\'e}\\textbackslash H\\textbackslash H",
+"to_unicode": "\\textbfé̆̋̋",
+"protect": "\\textbf\\ué\\{H}\\H"
+},
+{
+"in": "%\\v\\`\\v",
+"to_latex": "\\%\\textbackslash v\\textbackslash \\textasciigrave \\textbackslash v",
+"to_unicode": "%̌̌",
+"protect": "%\\v\\`\\v"
+},
+{
+"in": "\\'\\=\\alpha\\^",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash =\\textbackslash alpha\\textbackslash \\^{}",
+"to_unicode": "́̄\\alpha",
+"protect": "\\'\\=\\alpha\\^"
+},
+{
+"in": "sś\\H\\v&–",
+"to_latex": "sś\\textbackslash H\\textbackslash v\\&\\textendash ",
+"to_unicode": "ss̋́&̌–",
+"protect": "sś\\{H}\\v&–"
+},
+{
+"in": "{_o{",
+"to_latex": "{\\_o{",
+"to_unicode": "_o",
+"protect": "{_o{"
+},
+{
+"in": "~",
+"to_latex": "\\textasciitilde ",
+"to_unicode": "~",
+"protect": "~"
+},
+{
+"in": "%éo\\=",
+"to_latex": "\\%{\\'e}o\\textbackslash =",
+"to_unicode": "%éo",
+"protect": "%éo\\="
+},
+{
+"in": "}C\\^\\\\",
+"to_latex": "}C\\textbackslash \\^{}\\textbackslash \\textbackslash ",
+"to_unicode": "C\\\\̂",
+"protect": "}{C}\\^\\\\"
+},
+{
+"in": "ssé&\\`",
+"to_latex": "ss{\\'e}\\&\\textbackslash \\textasciigrave ",
+"to_unicode": "ssé&",
+"protect": "ssé&\\`"
+},
+{
+"in": "\\\\\\Ha{\\\\\\i\\~o",
+"to_latex": "\\textbackslash \\textbackslash \\textbackslash Ha{\\textbackslash \\textbackslash \\textbackslash i\\textbackslash \\textasciitilde o",
+"to_unicode": "\\\\a̋\\\\\\iõ",
+"protect": "\\\\\\{H}a{\\\\\\i\\~o"
+},
+{
+"in": "\\ss\\'o\\~\\Ho",
+"to_latex": "\\textbackslash ss\\textbackslash \\textquotesingle o\\textbackslash \\textasciitilde \\textbackslash Ho",
+"to_unicode": "\\ssṍő",
+"protect": "\\ss\\'o\\~\\{H}o"
+},
+{
+"in": "a\\AÄé",
+"to_latex": "a\\textbackslash AA\\\"{\\'e}",
+"to_unicode": "a\\AAé̈",
+"protect": "a\\{A}Äé"
+},
+{
+"in": "\\.ss\\~",
+"to_latex": "\\textbackslash .ss\\textbackslash \\textasciitilde ",
+"to_unicode": "ṡs",
+"protect": "\\.ss\\~"
+},
+{
+"in": "#",
+"to_latex": "\\#",
+"to_unicode": "#",
+"protect": "#"
+},
+{
+"in": "ss̈{́Z\\'A ",
+"to_latex": "ss\\\"{́Z\\textbackslash \\textquotesingle A ",
+"to_unicode": "ss̈ŹA ́",
+"protect": "ss̈{́{Z}\\'{A} "
+},
+{
+"in": "́\\ü",
+"to_latex": "́\\textbackslash u\\\"",
+"to_unicode": "̆́",
+"protect": "́\\ü"
+},
+{
+"in": "\\.̈C\\.\\textbf",
+"to_latex": "\\textbackslash .\\\"C\\textbackslash .\\textbackslash textbf",
+"to_unicode": "̈̇C\\̇textbf",
+"protect": "\\.̈{C}\\.\\textbf"
+},
+{
+"in": "̈̈eé\\^́",
+"to_latex": "\\\"\\\"e{\\'e}\\textbackslash \\^{}́",
+"to_unicode": "̈̈eé̂́",
+"protect": "̈̈eé\\^́"
+},
+{
+"in": "\\~a$\\\"$} ",
+"to_latex": "\\textbackslash \\textasciitilde a\\textdollar \\textbackslash \"\\textdollar } ",
+"to_unicode": "ã$$̈ ",
+"protect": "\\~a$\\\"$} "
+},
+{
+"in": "\\textbfé_\\\"\\aC",
+"to_latex": "\\textbackslash textbf{\\'e}\\_\\textbackslash \"\\textbackslash aC",
+"to_unicode": "\\textbfé_\\̈aC",
+"protect": "\\textbfé_\\\"\\a{C}"
+},
+{
+"in": "́ \\textbf",
+"to_latex": "́ \\textbackslash textbf",
+"to_unicode": " ́\\textbf",
+"protect": "́ \\textbf"
+},
+{
+"in": "&\\\"\\'\\i\\=\\\"",
+"to_latex": "\\&\\textbackslash \"\\textbackslash \\textquotesingle \\textbackslash i\\textbackslash =\\textbackslash \"",
+"to_unicode": "&\\̈í̈̄",
+"protect": "&\\\"\\'\\i\\=\\\""
+},
+{
+"in": "ss{ü",
+"to_latex": "ss{{\\\"u}",
+"to_unicode": "ssü",
+"protect": "ss{ü"
+},
+{
+"in": "\\^\\.\\o~\\AAC\\\\",
+"to_latex": "\\textbackslash \\^{}\\textbackslash .\\textbackslash o\\textasciitilde \\textbackslash AAC\\textbackslash \\textbackslash ",
+"to_unicode": "̂̇\\o~\\AAC\\\\",
+"protect": "\\^\\.\\o~\\{A}AC\\\\"
+},
+{
+"in": " \\\"\\ć\\^~\\`",
+"to_latex": " \\textbackslash \"\\textbackslash ć\\textbackslash \\^{}\\textasciitilde \\textbackslash \\textasciigrave ",
+"to_unicode": " ́̈~̧̀̂",
+"protect": " \\\"\\ć\\^~\\`"
+},
+{
+"in": "ó–\\\"",
+"to_latex": "ó\\textendash \\textbackslash \"",
+"to_unicode": "o–́",
+"protect": "ó–\\\""
+},
+{
+"in": "\\i}\\'\\v\\^oZ",
+"to_latex": "\\textbackslash i}\\textbackslash \\textquotesingle \\textbackslash v\\textbackslash \\^{}oZ",
+"to_unicode": "\\í̌oẐ",
+"protect": "\\i}\\'\\v\\^o{Z}"
+},
+{
+"in": "ü\\\\",
+"to_latex": "{\\\"u}\\textbackslash \\textbackslash ",
+"to_unicode": "ü\\\\",
+"protect": "ü\\\\"
+},
+{
+"in": "Z\\.̈\\.\\alpha\\v$ü",
+"to_latex": "Z\\textbackslash .\\\"\\textbackslash .\\textbackslash alpha\\textbackslash v\\textdollar {\\\"u}",
+"to_unicode": "Z̈̇\\̇alpha$̌ü",
+"protect": "{Z}\\.̈\\.\\alpha\\v$ü"
+},
+{
+"in": "%&%\\`ea",
+"to_latex": "\\%\\&\\%\\textbackslash \\textasciigrave ea",
+"to_unicode": "%&%eà",
+"protect": "%&%\\`ea"
+},
+{
+"in": "_\\v%_\\`~́{",
+"to_latex": "\\_\\textbackslash v\\%\\_\\textbackslash \\textasciigrave \\textasciitilde ́{",
+"to_unicode": "_%̌_~́̀",
+"protect": "_\\v%_\\`~́{"
+},
+{
+"in": "\\\\i",
+"to_latex": "\\textbackslash \\textbackslash i",
+"to_unicode": "\\\\i",
+"protect": "\\\\i"
+},
+{
+"in": "é %&&oo",
+"to_latex": "{\\'e} \\%\\&\\&oo",
+"to_unicode": "é %&&oo",
+"protect": "é %&&oo"
+},
+{
+"in": " \\AA&",
+"to_latex": " \\textbackslash AA\\&",
+"to_unicode": " \\AA&",
+"protect": " \\{A}A&"
+},
+{
+"in": "C&",
+"to_latex": "C\\&",
+"to_unicode": "C&",
+"protect": "{C}&"
+},
+{
+"in": "\\ess}\\^\\#",
+"to_latex": "\\textbackslash ess}\\textbackslash \\^{}\\textbackslash \\#",
+"to_unicode": "\\ess#",
+"protect": "\\ess}\\^\\#"
+},
+{
+"in": "\\\"\\css\\i\\H",
+"to_latex": "\\textbackslash \"\\textbackslash css\\textbackslash i\\textbackslash H",
+"to_unicode": "s̈ş\\i",
+"protect": "\\\"\\css\\i\\{H}"
+},
+{
+"in": "\\AA\\u_",
+"to_latex": "\\textbackslash AA\\textbackslash u\\_",
+"to_unicode": "\\AA_̆",
+"protect": "\\{A}A\\u_"
+},
+{
+"in": "\\H&~",
+"to_latex": "\\textbackslash H\\&\\textasciitilde ",
+"to_unicode": "&̋~",
+"protect": "\\{H}&~"
+},
+{
+"in": "\\alpha\\H&\\v",
+"to_latex": "\\textbackslash alpha\\textbackslash H\\&\\textbackslash v",
+"to_unicode": "\\alpha&̋",
+"protect": "\\alpha\\{H}&\\v"
+},
+{
+"in": "éo\\^\\`́\\\"",
+"to_latex": "{\\'e}o\\textbackslash \\^{}\\textbackslash \\textasciigrave ́\\textbackslash \"",
+"to_unicode": "éố̈̀",
+"protect": "éo\\^\\`́\\\""
+},
+{
+"in": "\\AAü\\\"\\H}",
+"to_latex": "\\textbackslash AA{\\\"u}\\textbackslash \"\\textbackslash H}",
+"to_unicode": "\\AAü̋̈",
+"protect": "\\{A}Aü\\\"\\H}"
+},
+{
+"in": "Z–\\alpha{\\HÁé",
+"to_latex": "Z\\textendash \\textbackslash alpha{\\textbackslash HÁ{\\'e}",
+"to_unicode": "Z–\\alphaA̋é́",
+"protect": "{Z}–\\alpha{\\{H}Áé"
+},
+{
+"in": "üé\\textbf\\'é",
+"to_latex": "{\\\"u}{\\'e}\\textbackslash textbf\\textbackslash \\textquotesingle {\\'e}",
+"to_unicode": "üé\\textbfé",
+"protect": "üé\\textbf\\'é"
+},
+{
+"in": " %\\c\\`C\\=",
+"to_latex": " \\%\\textbackslash c\\textbackslash \\textasciigrave C\\textbackslash =",
+"to_unicode": " %Ç̀",
+"protect": " %\\c\\`{C}\\="
+},
+{
+"in": "\\.\\alpha\\AAao",
+"to_latex": "\\textbackslash .\\textbackslash alpha\\textbackslash AAao",
+"to_unicode": "\\̇alpha\\AAao",
+"protect": "\\.\\alpha\\{A}Aao"
+},
+{
+"in": "\\'\\=$̈",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash =\\textdollar \\\"",
+"to_unicode": "́̄$",
+"protect": "\\'\\=$̈"
+},
+{
+"in": "C\\#\\coe",
+"to_latex": "C\\textbackslash \\#\\textbackslash coe",
+"to_unicode": "C#oȩ",
+"protect": "{C}\\#\\coe"
+},
+{
+"in": "\\.{–\\iA\\c",
+"to_latex": "\\textbackslash .{\\textendash \\textbackslash iA\\textbackslash c",
+"to_unicode": "̇–\\iA",
+"protect": "\\.{–\\i{A}\\c"
+},
+{
+"in": "\\alpha\\.\\alpha\\\\~é~",
+"to_latex": "\\textbackslash alpha\\textbackslash .\\textbackslash alpha\\textbackslash \\textbackslash \\textasciitilde {\\'e}\\textasciitilde ",
+"to_unicode": "\\alpha\\̇alpha\\é̃~",
+"protect": "\\alpha\\.\\alpha\\\\~é~"
+},
+{
+"in": "\\a\\v",
+"to_latex": "\\textbackslash a\\textbackslash v",
+"to_unicode": "\\a",
+"protect": "\\a\\v"
+},
+{
+"in": "%{ss",
+"to_latex": "\\%{ss",
+"to_unicode": "%ss",
+"protect": "%{ss"
+},
+{
+"in": "\\ú\\H",
+"to_latex": "\\textbackslash ú\\textbackslash H",
+"to_unicode": "́̆",
+"protect": "\\ú\\{H}"
+},
+{
+"in": "C",
+"to_latex": "C",
+"to_unicode": "C",
+"protect": "{C}"
+},
+{
+"in": "\\\\\\alpha%\\\\–#",
+"to_latex": "\\textbackslash \\textbackslash \\textbackslash alpha\\%\\textbackslash \\textbackslash \\textendash \\#",
+"to_unicode": "\\\\\\alpha%\\\\–#",
+"protect": "\\\\\\alpha%\\\\–#"
+},
+{
+"in": "\\\"aoC",
+"to_latex": "\\textbackslash \"aoC",
+"to_unicode": "äoC",
+"protect": "\\\"ao{C}"
+},
+{
+"in": "́",
+"to_latex": "́",
+"to_unicode": "",
+"protect": "́"
+},
+{
+"in": "\\v\\\"C",
+"to_latex": "\\textbackslash v\\textbackslash \"C",
+"to_unicode": "̈̌C",
+"protect": "\\v\\\"{C}"
+},
+{
+"in": "aZ",
+"to_latex": "aZ",
+"to_unicode": "aZ",
+"protect": "a{Z}"
+},
+{
+"in": "\\'̈\\^–",
+"to_latex": "\\textbackslash \\textquotesingle \\\"\\textbackslash \\^{}\\textendash ",
+"to_unicode": "́̈–",
+"protect": "\\'̈\\^–"
+},
+{
+"in": "\\`&\\.ss\\.C~",
+"to_latex": "\\textbackslash \\textasciigrave \\&\\textbackslash .ss\\textbackslash .C\\textasciitilde ",
+"to_unicode": "&̇̀ssĊ~",
+"protect": "\\`&\\.ss\\.{C}~"
+},
+{
+"in": "_ %\\`\\c{\\H",
+"to_latex": "\\_ \\%\\textbackslash \\textasciigrave \\textbackslash c{\\textbackslash H",
+"to_unicode": "_ %\\c̀",
+"protect": "_ %\\`\\c{\\{H}"
+},
+{
+"in": "o}\\ss\\H",
+"to_latex": "o}\\textbackslash ss\\textbackslash H",
+"to_unicode": "o\\ss",
+"protect": "o}\\ss\\{H}"
+},
+{
+"in": "\\u",
+"to_latex": "\\textbackslash u",
+"to_unicode": "",
+"protect": "\\u"
+},
+{
+"in": "–\\H\\=\\~ &a",
+"to_latex": "\\textendash \\textbackslash H\\textbackslash =\\textbackslash \\textasciitilde  \\&a",
+"to_unicode": "–̄̋ ̃&a",
+"protect": "–\\{H}\\=\\~ &a"
+},
+{
+"in": "\\H\\v\\^",
+"to_latex": "\\textbackslash H\\textbackslash v\\textbackslash \\^{}",
+"to_unicode": "̌̋",
+"protect": "\\{H}\\v\\^"
+},
+{
+"in": "\\AA\\^ü",
+"to_latex": "\\textbackslash AA\\textbackslash \\^{}{\\\"u}",
+"to_unicode": "\\AAü",
+"protect": "\\{A}A\\^ü"
+},
+{
+"in": "\\\\\\vüA~~",
+"to_latex": "\\textbackslash \\textbackslash \\textbackslash v{\\\"u}A\\textasciitilde \\textasciitilde ",
+"to_unicode": "\\\\ǚA~~",
+"protect": "\\\\\\vü{A}~~"
+},
+{
+"in": "e",
+"to_latex": "e",
+"to_unicode": "e",
+"protect": "e"
+},
+{
+"in": "\\c\\textbf\\.\\~́\\alphass",
+"to_latex": "\\textbackslash c\\textbackslash textbf\\textbackslash .\\textbackslash \\textasciitilde ́\\textbackslash alphass",
+"to_unicode": "\\ţextbf̃̇\\́alphass",
+"protect": "\\c\\textbf\\.\\~́\\alphass"
+},
+{
+"in": "\\'oe",
+"to_latex": "\\textbackslash \\textquotesingle oe",
+"to_unicode": "oé",
+"protect": "\\'oe"
+},
+{
+"in": "{\\\"",
+"to_latex": "{\\textbackslash \"",
+"to_unicode": "",
+"protect": "{\\\""
+},
+{
+"in": "\\'eeo\\o",
+"to_latex": "\\textbackslash \\textquotesingle eeo\\textbackslash o",
+"to_unicode": "eéo\\o",
+"protect": "\\'eeo\\o"
+},
+{
+"in": "oss",
+"to_latex": "oss",
+"to_unicode": "oss",
+"protect": "oss"
+},
+{
+"in": "\\^Assü{\\v",
+"to_latex": "\\textbackslash \\^{}Ass{\\\"u}{\\textbackslash v",
+"to_unicode": "Aŝsü",
+"protect": "\\^{A}ssü{\\v"
+},
+{
+"in": "\\~}oo",
+"to_latex": "\\textbackslash \\textasciitilde }oo",
+"to_unicode": "̃oo",
+"protect": "\\~}oo"
+},
+{
+"in": "\\=~",
+"to_latex": "\\textbackslash =\\textasciitilde ",
+"to_unicode": "~̄",
+"protect": "\\=~"
+},
+{
+"in": "\\{",
+"to_latex": "\\textbackslash {",
+"to_unicode": "\\",
+"protect": "\\{"
+},
+{
+"in": "\\=\\AA\\ss$",
+"to_latex": "\\textbackslash =\\textbackslash AA\\textbackslash ss\\textdollar ",
+"to_unicode": "\\̄AA\\ss$",
+"protect": "\\=\\{A}A\\ss$"
+},
+{
+"in": "e\\i\\H\\=C",
+"to_latex": "e\\textbackslash i\\textbackslash H\\textbackslash =C",
+"to_unicode": "e\\ī̋C",
+"protect": "e\\i\\{H}\\={C}"
+},
+{
+"in": "\\AA\\\\&~\\=e",
+"to_latex": "\\textbackslash AA\\textbackslash \\textbackslash \\&\\textasciitilde \\textbackslash =e",
+"to_unicode": "\\AA\\&~ē",
+"protect": "\\{A}A\\\\&~\\=e"
+},
+{
+"in": "e$–{\\i~C",
+"to_latex": "e\\textdollar \\textendash {\\textbackslash i\\textasciitilde C",
+"to_unicode": "e$–\\i~C",
+"protect": "e$–{\\i~{C}"
+},
+{
+"in": " \\textbf\\=\\\"",
+"to_latex": " \\textbackslash textbf\\textbackslash =\\textbackslash \"",
+"to_unicode": " \\textbf̈̄",
+"protect": " \\textbf\\=\\\""
+},
+{
+"in": "a–\\^\\=Ca\\i",
+"to_latex": "a\\textendash \\textbackslash \\^{}\\textbackslash =Ca\\textbackslash i",
+"to_unicode": "a–̂̄Ca\\i",
+"protect": "a–\\^\\={C}a\\i"
+},
+{
+"in": "{#\\`#\\alpha\\i&\\H",
+"to_latex": "{\\#\\textbackslash \\textasciigrave \\#\\textbackslash alpha\\textbackslash i\\&\\textbackslash H",
+"to_unicode": "##\\̀alpha\\i&",
+"protect": "{#\\`#\\alpha\\i&\\{H}"
+},
+{
+"in": "\\=\\~\\c",
+"to_latex": "\\textbackslash =\\textbackslash \\textasciitilde \\textbackslash c",
+"to_unicode": "̃̄",
+"protect": "\\=\\~\\c"
+},
+{
+"in": "\\\"} #Z{\\AA\\i",
+"to_latex": "\\textbackslash \"} \\#Z{\\textbackslash AA\\textbackslash i",
+"to_unicode": "̈ #Z\\AA\\i",
+"protect": "\\\"} #{Z}{\\{A}A\\i"
+},
+{
+"in": "́́",
+"to_latex": "́́",
+"to_unicode": "́́",
+"protect": "́́"
+},
+{
+"in": "$e",
+"to_latex": "\\textdollar e",
+"to_unicode": "$e",
+"protect": "$e"
+},
+{
+"in": "\\~\\.\\H$A&",
+"to_latex": "\\textbackslash \\textasciitilde \\textbackslash .\\textbackslash H\\textdollar A\\&",
+"to_unicode": "̇̃$̋A&",
+"protect": "\\~\\.\\{H}$A&"
+},
+{
+"in": "ü\\c_",
+"to_latex": "{\\\"u}\\textbackslash c\\_",
+"to_unicode": "ü_",
+"protect": "ü\\c_"
+},
+{
+"in": "A\\\\\\\\",
+"to_latex": "A\\textbackslash \\textbackslash \\textbackslash \\textbackslash ",
+"to_unicode": "A\\\\\\\\",
+"protect": "{A}\\\\\\\\"
+},
+{
+"in": "\\i",
+"to_latex": "\\textbackslash i",
+"to_unicode": "\\i",
+"protect": "\\i"
+},
+{
+"in": "–\\'%Z\\AA\\\"",
+"to_latex": "\\textendash \\textbackslash \\textquotesingle \\%Z\\textbackslash AA\\textbackslash \"",
+"to_unicode": "–%Ź\\AA",
+"protect": "–\\'%{Z}\\A{A}\\\""
+},
+{
+"in": "%\\H\\alpha\\c\\\\ss_\\v",
+"to_latex": "\\%\\textbackslash H\\textbackslash alpha\\textbackslash c\\textbackslash \\textbackslash ss\\_\\textbackslash v",
+"to_unicode": "%\\̋alpha\\\\̧ss_",
+"protect": "%\\{H}\\alpha\\c\\\\ss_\\v"
+},
+{
+"in": "\\u\\.\\'\\'",
+"to_latex": "\\textbackslash u\\textbackslash .\\textbackslash \\textquotesingle \\textbackslash \\textquotesingle ",
+"to_unicode": "̇̆́́",
+"protect": "\\u\\.\\'\\'"
+},
+{
+"in": "\\AA\\\\–\\i",
+"to_latex": "\\textbackslash AA\\textbackslash \\textbackslash \\textendash \\textbackslash i",
+"to_unicode": "\\AA\\\\–\\i",
+"protect": "\\{A}A\\\\–\\i"
+},
+{
+"in": "\\v\\AA\\^",
+"to_latex": "\\textbackslash v\\textbackslash AA\\textbackslash \\^{}",
+"to_unicode": "\\̌AA",
+"protect": "\\v\\{A}A\\^"
+},
+{
+"in": "{\\\"{\\^ü",
+"to_latex": "{\\textbackslash \"{\\textbackslash \\^{}{\\\"u}",
+"to_unicode": "̈ü",
+"protect": "{\\\"{\\^ü"
+},
+{
+"in": "\\'\\.\\.",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash .\\textbackslash .",
+"to_unicode": "́̇",
+"protect": "\\'\\.\\."
+},
+{
+"in": "\\u\\^{{\\u\\~ü",
+"to_latex": "\\textbackslash u\\textbackslash \\^{}{{\\textbackslash u\\textbackslash \\textasciitilde {\\\"u}",
+"to_unicode": "̆̂̃̆ü",
+"protect": "\\u\\^{{\\u\\~ü"
+},
+{
+"in": "oá$\\c&\\=_",
+"to_latex": "oá\\textdollar \\textbackslash c\\&\\textbackslash =\\_",
+"to_unicode": "oa$́&̧̄_",
+"protect": "oá$\\c&\\=_"
+},
+{
+"in": "\\\\́a\\v$",
+"to_latex": "\\textbackslash \\textbackslash ́a\\textbackslash v\\textdollar ",
+"to_unicode": "\\\\á$̌",
+"protect": "\\\\́a\\v$"
+},
+{
+"in": "\\c\\alpha\\c\\`}_$",
+"to_latex": "\\textbackslash c\\textbackslash alpha\\textbackslash c\\textbackslash \\textasciigrave }\\_\\textdollar ",
+"to_unicode": "\\a̧lphà̧_$",
+"protect": "\\c\\alpha\\c\\`}_$"
+},
+{
+"in": "\\H{̈\\v́\\\"",
+"to_latex": "\\textbackslash H{\\\"\\textbackslash v́\\textbackslash \"",
+"to_unicode": "̋̌̈̈́",
+"protect": "\\{H}{̈\\v́\\\""
+},
+{
+"in": "$~_ë",
+"to_latex": "\\textdollar \\textasciitilde \\_e\\\"",
+"to_unicode": "$~_e",
+"protect": "$~_ë"
+},
+{
+"in": "\\AAaü",
+"to_latex": "\\textbackslash AAa{\\\"u}",
+"to_unicode": "\\AAaü",
+"protect": "\\{A}Aaü"
+},
+{
+"in": "{o\\HA\\~\\\"\\^–",
+"to_latex": "{o\\textbackslash HA\\textbackslash \\textasciitilde \\textbackslash \"\\textbackslash \\^{}\\textendash ",
+"to_unicode": "oA̋̈̃–",
+"protect": "{o\\{H}A\\~\\\"\\^–"
+},
+{
+"in": "{\\textbf_A\\~~",
+"to_latex": "{\\textbackslash textbf\\_A\\textbackslash \\textasciitilde \\textasciitilde ",
+"to_unicode": "\\textbf_A~̃",
+"protect": "{\\textbf_{A}\\~~"
+},
+{
+"in": "̈_\\~\\`́&",
+"to_latex": "\\\"\\_\\textbackslash \\textasciitilde \\textbackslash \\textasciigrave ́\\&",
+"to_unicode": "_̈́̃&̀",
+"protect": "̈_\\~\\`́&"
+},
+{
+"in": "\\iC",
+"to_latex": "\\textbackslash iC",
+"to_unicode": "\\iC",
+"protect": "\\i{C}"
+},
+{
+"in": "\\uǘCa",
+"to_latex": "\\textbackslash u{\\\"u}́Ca",
+"to_unicode": "ü̆Ća",
+"protect": "\\uǘ{C}a"
+},
+{
+"in": "̈̈",
+"to_latex": "\\\"\\\"",
+"to_unicode": "̈̈",
+"protect": "̈̈"
+},
+{
+"in": "\\alpha\\H{\\c\\.́",
+"to_latex": "\\textbackslash alpha\\textbackslash H{\\textbackslash c\\textbackslash .́",
+"to_unicode": "\\alpha̧̋̇",
+"protect": "\\alpha\\{H}{\\c\\.́"
+},
+{
+"in": "́_\\~\\\"",
+"to_latex": "́\\_\\textbackslash \\textasciitilde \\textbackslash \"",
+"to_unicode": "_́̈̃",
+"protect": "́_\\~\\\""
+},
+{
+"in": "ss\\^~",
+"to_latex": "ss\\textbackslash \\^{}\\textasciitilde ",
+"to_unicode": "ss~",
+"protect": "ss\\^~"
+},
+{
+"in": "\\'\\ï_",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash i\\\"\\_",
+"to_unicode": "\\í_̈",
+"protect": "\\'\\ï_"
+},
+{
+"in": "Z\\~\\i\\c",
+"to_latex": "Z\\textbackslash \\textasciitilde \\textbackslash i\\textbackslash c",
+"to_unicode": "Z\\̃i",
+"protect": "{Z}\\~\\i\\c"
+},
+{
+"in": "ü\\H$\\`~",
+"to_latex": "{\\\"u}\\textbackslash H\\textdollar \\textbackslash \\textasciigrave \\textasciitilde ",
+"to_unicode": "ü$̋~",
+"protect": "ü\\{H}$\\`~"
+},
+{
+"in": "\\v\\.\\AA~#$",
+"to_latex": "\\textbackslash v\\textbackslash .\\textbackslash AA\\textasciitilde \\#\\textdollar ",
+"to_unicode": "̇̌\\AA~#$",
+"protect": "\\v\\.\\{A}A~#$"
+},
+{
+"in": "é\\'",
+"to_latex": "{\\'e}\\textbackslash \\textquotesingle ",
+"to_unicode": "é",
+"protect": "é\\'"
+},
+{
+"in": "üC \\textbf\\AA",
+"to_latex": "{\\\"u}C \\textbackslash textbf\\textbackslash AA",
+"to_unicode": "üC \\textbf\\AA",
+"protect": "ü{C} \\textbf\\{A}A"
+},
+{
+"in": "–\\i\\alpha",
+"to_latex": "\\textendash \\textbackslash i\\textbackslash alpha",
+"to_unicode": "–\\i\\alpha",
+"protect": "–\\i\\alpha"
+},
+{
+"in": "ss\\=\\H\\\\",
+"to_latex": "ss\\textbackslash =\\textbackslash H\\textbackslash \\textbackslash ",
+"to_unicode": "ss̋̄\\\\",
+"protect": "ss\\=\\{H}\\\\"
+},
+{
+"in": "\\alpha\\'",
+"to_latex": "\\textbackslash alpha\\textbackslash \\textquotesingle ",
+"to_unicode": "\\alpha",
+"protect": "\\alpha\\'"
+},
+{
+"in": "\\`%\\i\\'",
+"to_latex": "\\textbackslash \\textasciigrave \\%\\textbackslash i\\textbackslash \\textquotesingle ",
+"to_unicode": "%\\̀i",
+"protect": "\\`%\\i\\'"
+},
+{
+"in": "́A\\\"\\\\",
+"to_latex": "́A\\textbackslash \"\\textbackslash \\textbackslash ",
+"to_unicode": "Á\\̈\\",
+"protect": "́{A}\\\"\\\\"
+},
+{
+"in": "Z\\.",
+"to_latex": "Z\\textbackslash .",
+"to_unicode": "Z",
+"protect": "{Z}\\."
+},
+{
+"in": "#\\~– ",
+"to_latex": "\\#\\textbackslash \\textasciitilde \\textendash  ",
+"to_unicode": "#–̃ ",
+"protect": "#\\~– "
+},
+{
+"in": "}Z}\\Ḧ\\c\\~",
+"to_latex": "}Z}\\textbackslash H\\\"\\textbackslash c\\textbackslash \\textasciitilde ",
+"to_unicode": "Z̧̈̋̃",
+"protect": "}Z}\\{H}̈\\c\\~"
+},
+{
+"in": "ZC~_\\'#\\v#",
+"to_latex": "ZC\\textasciitilde \\_\\textbackslash \\textquotesingle \\#\\textbackslash v\\#",
+"to_unicode": "ZC~_#̌́#",
+"protect": "Z{C}~_\\'#\\v#"
+},
+{
+"in": "A\\\\a",
+"to_latex": "A\\textbackslash \\textbackslash a",
+"to_unicode": "A\\\\a",
+"protect": "{A}\\\\a"
+},
+{
+"in": "\\AA_\\textbf",
+"to_latex": "\\textbackslash AA\\_\\textbackslash textbf",
+"to_unicode": "\\AA_\\textbf",
+"protect": "\\{A}A_\\textbf"
+},
+{
+"in": "\\=_é$̈ss\\`é",
+"to_latex": "\\textbackslash =\\_{\\'e}\\textdollar \\\"ss\\textbackslash \\textasciigrave {\\'e}",
+"to_unicode": "_̄é$s̈sé",
+"protect": "\\=_é$̈ss\\`é"
+},
+{
+"in": "&~",
+"to_latex": "\\&\\textasciitilde ",
+"to_unicode": "&~",
+"protect": "&~"
+},
+{
+"in": "\\'o\\~̈\\\\ss{é",
+"to_latex": "\\textbackslash \\textquotesingle o\\textbackslash \\textasciitilde \\\"\\textbackslash \\textbackslash ss{{\\'e}",
+"to_unicode": "ṍ\\̈\\ssé",
+"protect": "\\'o\\~̈\\\\ss{é"
+},
+{
+"in": "~–Z\\~\\=$",
+"to_latex": "\\textasciitilde \\textendash Z\\textbackslash \\textasciitilde \\textbackslash =\\textdollar ",
+"to_unicode": "~–Z̄̃$",
+"protect": "~–{Z}\\~\\=$"
+},
+{
+"in": "$\\HZC\\=\\=",
+"to_latex": "\\textdollar \\textbackslash HZC\\textbackslash =\\textbackslash =",
+"to_unicode": "$Z̋C̄̄",
+"protect": "$\\{H}ZC\\=\\="
+},
+{
+"in": "#́\\ss&\\u&",
+"to_latex": "\\#́\\textbackslash ss\\&\\textbackslash u\\&",
+"to_unicode": "#\\́ss&&̆",
+"protect": "#́\\ss&\\u&"
+},
+{
+"in": "\\~#}\\ss\\^\\AA",
+"to_latex": "\\textbackslash \\textasciitilde \\#}\\textbackslash ss\\textbackslash \\^{}\\textbackslash AA",
+"to_unicode": "#̃\\ss\\ÂA",
+"protect": "\\~#}\\ss\\^\\{A}A"
+},
+{
+"in": "\\\\alpha ó",
+"to_latex": "\\textbackslash \\textbackslash alpha ó",
+"to_unicode": "\\αo",
+"protect": "\\\\alpha ó"
+},
+{
+"in": "A\\textbfĆ\\.{a",
+"to_latex": "A\\textbackslash textbfĆ\\textbackslash .{a",
+"to_unicode": "A\\textbfĊ́a",
+"protect": "{A}\\textbf{C}́\\.{a"
+},
+{
+"in": "\\^",
+"to_latex": "\\textbackslash \\^{}",
+"to_unicode": "",
+"protect": "\\^"
+},
+{
+"in": "\\\\C&Aü\\'\\\\ ",
+"to_latex": "\\textbackslash \\textbackslash C\\&A{\\\"u}\\textbackslash \\textquotesingle \\textbackslash \\textbackslash  ",
+"to_unicode": "\\\\C&Aü\\\\́ ",
+"protect": "\\\\{C}&Aü\\'\\\\ "
+},
+{
+"in": "o_\\`{",
+"to_latex": "o\\_\\textbackslash \\textasciigrave {",
+"to_unicode": "o_",
+"protect": "o_\\`{"
+},
+{
+"in": "ö{",
+"to_latex": "o\\\"{",
+"to_unicode": "ö",
+"protect": "ö{"
+},
+{
+"in": "\\.Z\\H",
+"to_latex": "\\textbackslash .Z\\textbackslash H",
+"to_unicode": "Ż",
+"protect": "\\.{Z}\\H"
+},
+{
+"in": "\\`̈o\\AAe",
+"to_latex": "\\textbackslash \\textasciigrave \\\"o\\textbackslash AAe",
+"to_unicode": "̀̈o\\AAe",
+"protect": "\\`̈o\\{A}Ae"
+},
+{
+"in": "\\textbf\\alphaC#\\textbf–o",
+"to_latex": "\\textbackslash textbf\\textbackslash alphaC\\#\\textbackslash textbf\\textendash o",
+"to_unicode": "\\textbf\\alphaC#\\textbf–o",
+"protect": "\\textbf\\alpha{C}#\\textbf–o"
+},
+{
+"in": "̈\\textbf",
+"to_latex": "\\\"\\textbackslash textbf",
+"to_unicode": "\\̈textbf",
+"protect": "̈\\textbf"
+},
+{
+"in": "%ssaü\\\\\\alpha\\'",
+"to_latex": "\\%ssa{\\\"u}\\textbackslash \\textbackslash \\textbackslash alpha\\textbackslash \\textquotesingle ",
+"to_unicode": "%ssaü\\\\\\alpha",
+"protect": "%ssaü\\\\\\alpha\\'"
+},
+{
+"in": "̈Z{ ~\\~\\'a",
+"to_latex": "\\\"Z{ \\textasciitilde \\textbackslash \\textasciitilde \\textbackslash \\textquotesingle a",
+"to_unicode": "Z̈ ~ã",
+"protect": "̈{Z}{ ~\\~\\'a"
+},
+{
+"in": "aa} \\~}\\",
+"to_latex": "aa} \\textbackslash \\textasciitilde }\\textbackslash ",
+"to_unicode": "aa ̃\\",
+"protect": "aa} \\~}\\"
+},
+{
+"in": "e\\u\\textbf\\v%\\`Cé",
+"to_latex": "e\\textbackslash u\\textbackslash textbf\\textbackslash v\\%\\textbackslash \\textasciigrave C{\\'e}",
+"to_unicode": "e\\̆textbf%̌Cé̀",
+"protect": "e\\u\\textbf\\v%\\`{C}é"
+},
+{
+"in": " \\=Z",
+"to_latex": " \\textbackslash =Z",
+"to_unicode": " Z̄",
+"protect": " \\={Z}"
+},
+{
+"in": "_\\HCoaCa ",
+"to_latex": "\\_\\textbackslash HCoaCa ",
+"to_unicode": "_C̋oaCa ",
+"protect": "_\\{H}Coa{C}a "
+},
+{
+"in": "\\.\\.\\\\\\\"#\\\\C",
+"to_latex": "\\textbackslash .\\textbackslash .\\textbackslash \\textbackslash \\textbackslash \"\\#\\textbackslash \\textbackslash C",
+"to_unicode": "̇̇\\\\#̈\\\\C",
+"protect": "\\.\\.\\\\\\\"#\\\\{C}"
+},
+{
+"in": "é\\textbf%~\\\"\\'",
+"to_latex": "{\\'e}\\textbackslash textbf\\%\\textasciitilde \\textbackslash \"\\textbackslash \\textquotesingle ",
+"to_unicode": "é\\textbf%~́̈",
+"protect": "é\\textbf%~\\\"\\'"
+},
+{
+"in": "é\\\"",
+"to_latex": "{\\'e}\\textbackslash \"",
+"to_unicode": "é",
+"protect": "é\\\""
+},
+{
+"in": "~ü%\\u\\textbf\\ss\\=",
+"to_latex": "\\textasciitilde {\\\"u}\\%\\textbackslash u\\textbackslash textbf\\textbackslash ss\\textbackslash =",
+"to_unicode": "~ü%\\̆textbf\\ss",
+"protect": "~ü%\\u\\textbf\\ss\\="
+},
+{
+"in": "C\\\\\\ss\\\\a",
+"to_latex": "C\\textbackslash \\textbackslash \\textbackslash ss\\textbackslash \\textbackslash a",
+"to_unicode": "C\\\\\\ss\\\\a",
+"protect": "{C}\\\\\\ss\\\\a"
+},
+{
+"in": "\\\\\\.\\alpha",
+"to_latex": "\\textbackslash \\textbackslash \\textbackslash .\\textbackslash alpha",
+"to_unicode": "\\\\\\̇alpha",
+"protect": "\\\\\\.\\alpha"
+},
+{
+"in": "\\vüüü\\\\\\c%",
+"to_latex": "\\textbackslash v{\\\"u}{\\\"u}{\\\"u}\\textbackslash \\textbackslash \\textbackslash c\\%",
+"to_unicode": "ǚüü\\\\%",
+"protect": "\\vüüü\\\\\\c%"
+},
+{
+"in": "a\\AA\\H\\u$",
+"to_latex": "a\\textbackslash AA\\textbackslash H\\textbackslash u\\textdollar ",
+"to_unicode": "a\\AĂ̋$",
+"protect": "a\\{A}A\\{H}\\u$"
+},
+{
+"in": "\\alphao\\=",
+"to_latex": "\\textbackslash alphao\\textbackslash =",
+"to_unicode": "\\alphao",
+"protect": "\\alphao\\="
+},
+{
+"in": "\\textbf\\'\\u",
+"to_latex": "\\textbackslash textbf\\textbackslash \\textquotesingle \\textbackslash u",
+"to_unicode": "\\textbf́̆",
+"protect": "\\textbf\\'\\u"
+},
+{
+"in": "\\iA AZ#ü\\^",
+"to_latex": "\\textbackslash iA AZ\\#{\\\"u}\\textbackslash \\^{}",
+"to_unicode": "\\iA AZ#ü",
+"protect": "\\i{A} A{Z}#ü\\^"
+},
+{
+"in": "\\.\\\\Ć",
+"to_latex": "\\textbackslash .\\textbackslash \\textbackslash Ć",
+"to_unicode": "\\̇\\C",
+"protect": "\\.\\\\{C}́"
+},
+{
+"in": "\\~\\H\\alphaaü_A ",
+"to_latex": "\\textbackslash \\textasciitilde \\textbackslash H\\textbackslash alphaa{\\\"u}\\_A ",
+"to_unicode": "̋̃\\alphaaü_A ",
+"protect": "\\~\\{H}\\alphaaü_{A} "
+},
+{
+"in": "ss\\ć\\alpha–\\H",
+"to_latex": "ss\\textbackslash ć\\textbackslash alpha\\textendash \\textbackslash H",
+"to_unicode": "sş́\\alpha–",
+"protect": "ss\\ć\\alpha–\\{H}"
+},
+{
+"in": "~&\\alpha\\^\\^\\~",
+"to_latex": "\\textasciitilde \\&\\textbackslash alpha\\textbackslash \\^{}\\textbackslash \\^{}\\textbackslash \\textasciitilde ",
+"to_unicode": "~&\\alphã̂",
+"protect": "~&\\alpha\\^\\^\\~"
+},
+{
+"in": " \\`\\=é",
+"to_latex": " \\textbackslash \\textasciigrave \\textbackslash ={\\'e}",
+"to_unicode": " ̀̄é",
+"protect": " \\`\\=é"
+},
+{
+"in": "́–\\'\\vo#",
+"to_latex": "́\\textendash \\textbackslash \\textquotesingle \\textbackslash vo\\#",
+"to_unicode": "–́́̌o#",
+"protect": "́–\\'\\vo#"
+},
+{
+"in": "{é_ \\'\\AA",
+"to_latex": "{{\\'e}\\_ \\textbackslash \\textquotesingle \\textbackslash AA",
+"to_unicode": "é_ \\ÁA",
+"protect": "{é_ \\'\\{A}A"
+},
+{
+"in": "–\\\\e{o",
+"to_latex": "\\textendash \\textbackslash \\textbackslash e{o",
+"to_unicode": "–\\\\eo",
+"protect": "–\\\\e{o"
+},
+{
+"in": "\\textbf#\\alpha\\textbf",
+"to_latex": "\\textbackslash textbf\\#\\textbackslash alpha\\textbackslash textbf",
+"to_unicode": "\\textbf#\\alpha\\textbf",
+"protect": "\\textbf#\\alpha\\textbf"
+},
+{
+"in": "\\H\\u${",
+"to_latex": "\\textbackslash H\\textbackslash u\\textdollar {",
+"to_unicode": "̆̋$",
+"protect": "\\{H}\\u${"
+},
+{
+"in": "\\alpha\\\\\\\\Ho\\ss\\^\\`",
+"to_latex": "\\textbackslash alpha\\textbackslash \\textbackslash \\textbackslash \\textbackslash Ho\\textbackslash ss\\textbackslash \\^{}\\textbackslash \\textasciigrave ",
+"to_unicode": "\\alpha\\\\\\ő\\sŝ̀",
+"protect": "\\alpha\\\\\\\\{H}o\\ss\\^\\`"
+},
+{
+"in": " eCoZé_",
+"to_latex": " eCoZ{\\'e}\\_",
+"to_unicode": " eCoZé_",
+"protect": " e{C}oZé_"
+},
+{
+"in": "ss\\\\́} \\H\\AA\\textbf",
+"to_latex": "ss\\textbackslash \\textbackslash ́} \\textbackslash H\\textbackslash AA\\textbackslash textbf",
+"to_unicode": "ss\\\\́ \\̋AA\\textbf",
+"protect": "ss\\\\́} \\{H}\\A{A}\\textbf"
+},
+{
+"in": " &́\\`",
+"to_latex": " \\&́\\textbackslash \\textasciigrave ",
+"to_unicode": " &̀́",
+"protect": " &́\\`"
+},
+{
+"in": "\\\"é\\v\\c\\`o\\H\\i",
+"to_latex": "\\textbackslash \"{\\'e}\\textbackslash v\\textbackslash c\\textbackslash \\textasciigrave o\\textbackslash H\\textbackslash i",
+"to_unicode": "é̈ǒ̧̀\\̋i",
+"protect": "\\\"é\\v\\c\\`o\\{H}\\i"
+},
+{
+"in": "Z",
+"to_latex": "Z",
+"to_unicode": "Z",
+"protect": "{Z}"
+},
+{
+"in": "&~C{\\'",
+"to_latex": "\\&\\textasciitilde C{\\textbackslash \\textquotesingle ",
+"to_unicode": "&~C",
+"protect": "&~{C}{\\'"
+},
+{
+"in": "a\\^\\.\\alpha\\alpha%",
+"to_latex": "a\\textbackslash \\^{}\\textbackslash .\\textbackslash alpha\\textbackslash alpha\\%",
+"to_unicode": "â̇\\alpha\\alpha%",
+"protect": "a\\^\\.\\alpha\\alpha%"
+},
+{
+"in": "~\\AA",
+"to_latex": "\\textasciitilde \\textbackslash AA",
+"to_unicode": "~\\AA",
+"protect": "~\\{A}A"
+},
+{
+"in": "\\Hü}é~ü",
+"to_latex": "\\textbackslash H{\\\"u}}{\\'e}\\textasciitilde {\\\"u}",
+"to_unicode": "ü̋é~ü",
+"protect": "\\{H}ü}é~ü"
+},
+{
+"in": "%\\v\\'",
+"to_latex": "\\%\\textbackslash v\\textbackslash \\textquotesingle ",
+"to_unicode": "%́̌",
+"protect": "%\\v\\'"
+},
+{
+"in": "o\\\"\\css",
+"to_latex": "o\\textbackslash \"\\textbackslash css",
+"to_unicode": "os̈ş",
+"protect": "o\\\"\\css"
+},
+{
+"in": "\\%{üess",
+"to_latex": "\\textbackslash \\%{{\\\"u}ess",
+"to_unicode": "%üess",
+"protect": "\\%{üess"
+},
+{
+"in": "\\ss\\AA\\c~}é\\'\\ss",
+"to_latex": "\\textbackslash ss\\textbackslash AA\\textbackslash c\\textasciitilde }{\\'e}\\textbackslash \\textquotesingle \\textbackslash ss",
+"to_unicode": "\\ss\\AA~̧é\\śs",
+"protect": "\\ss\\{A}A\\c~}é\\'\\ss"
+},
+{
+"in": "C\\`%Z",
+"to_latex": "C\\textbackslash \\textasciigrave \\%Z",
+"to_unicode": "C%Z̀",
+"protect": "{C}\\`%{Z}"
+},
+{
+"in": "%\\'\\u",
+"to_latex": "\\%\\textbackslash \\textquotesingle \\textbackslash u",
+"to_unicode": "%́̆",
+"protect": "%\\'\\u"
+},
+{
+"in": "̈\\v\\'e\\u\\textbf\\=",
+"to_latex": "\\\"\\textbackslash v\\textbackslash \\textquotesingle e\\textbackslash u\\textbackslash textbf\\textbackslash =",
+"to_unicode": "̌̈ĕ́\\textbf",
+"protect": "̈\\v\\'e\\u\\textbf\\="
+},
+{
+"in": "\\\"\\H#{\\AA_",
+"to_latex": "\\textbackslash \"\\textbackslash H\\#{\\textbackslash AA\\_",
+"to_unicode": "̋̈#\\AA_",
+"protect": "\\\"\\{H}#{\\{A}A_"
+},
+{
+"in": "}\\'&C\\~Z~\\=",
+"to_latex": "}\\textbackslash \\textquotesingle \\&C\\textbackslash \\textasciitilde Z\\textasciitilde \\textbackslash =",
+"to_unicode": "&ĆZ̃~",
+"protect": "}\\'&{C}\\~{Z}~\\="
+},
+{
+"in": "\\H\\^",
+"to_latex": "\\textbackslash H\\textbackslash \\^{}",
+"to_unicode": "̂̋",
+"protect": "\\{H}\\^"
+},
+{
+"in": "$\\H\\v\\v{ü",
+"to_latex": "\\textdollar \\textbackslash H\\textbackslash v\\textbackslash v{{\\\"u}",
+"to_unicode": "$̌̋̌ü",
+"protect": "$\\{H}\\v\\v{ü"
+},
+{
+"in": "̈\\\"C\\=\\'",
+"to_latex": "\\\"\\textbackslash \"C\\textbackslash =\\textbackslash \\textquotesingle ",
+"to_unicode": "̈̈Ć̄",
+"protect": "̈\\\"{C}\\=\\'"
+},
+{
+"in": "&\\%a–\\=",
+"to_latex": "\\&\\textbackslash \\%a\\textendash \\textbackslash =",
+"to_unicode": "&%a–",
+"protect": "&\\%a–\\="
+},
+{
+"in": "é$o",
+"to_latex": "{\\'e}\\textdollar o",
+"to_unicode": "é$o",
+"protect": "é$o"
+},
+{
+"in": "\\~\\u\\textbf\\`\\\\`–",
+"to_latex": "\\textbackslash \\textasciitilde \\textbackslash u\\textbackslash textbf\\textbackslash \\textasciigrave \\textbackslash \\textbackslash \\textasciigrave \\textendash ",
+"to_unicode": "̆̃\\textbf\\–̀",
+"protect": "\\~\\u\\textbf\\`\\\\`–"
+},
+{
+"in": "\\`\\^\\\\ ",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash \\^{}\\textbackslash \\textbackslash  ",
+"to_unicode": "\\^̀\\\\ ",
+"protect": "\\`\\^\\\\ "
+},
+{
+"in": "\\\\#",
+"to_latex": "\\textbackslash \\textbackslash \\#",
+"to_unicode": "\\#",
+"protect": "\\\\#"
+},
+{
+"in": "\\`\\~\\\\^\\alpha",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash \\textasciitilde \\textbackslash \\textbackslash \\^{}\\textbackslash alpha",
+"to_unicode": "̀̃\\\\âlpha",
+"protect": "\\`\\~\\\\^\\alpha"
+},
+{
+"in": "\\^ass–̈",
+"to_latex": "\\textbackslash \\^{}ass\\textendash \\\"",
+"to_unicode": "aŝs–",
+"protect": "\\^ass–̈"
+},
+{
+"in": "–",
+"to_latex": "\\textendash ",
+"to_unicode": "–",
+"protect": "–"
+},
+{
+"in": "\\ss\\=# ä",
+"to_latex": "\\textbackslash ss\\textbackslash =\\# a\\\"",
+"to_unicode": "\\ss#̄ a",
+"protect": "\\ss\\=# ä"
+},
+{
+"in": "\\\\u\\v\\`\\textbféo\\\"",
+"to_latex": "\\textbackslash \\textbackslash u\\textbackslash v\\textbackslash \\textasciigrave \\textbackslash textbf{\\'e}o\\textbackslash \"",
+"to_unicode": "\\̌̆\\t̀extbféo",
+"protect": "\\\\u\\v\\`\\textbféo\\\""
+},
+{
+"in": "\\textbf\\\\a\\i–%",
+"to_latex": "\\textbackslash textbf\\textbackslash \\textbackslash a\\textbackslash i\\textendash \\%",
+"to_unicode": "\\textbf\\\\a\\i–%",
+"protect": "\\textbf\\\\a\\i–%"
+},
+{
+"in": "}\\i",
+"to_latex": "}\\textbackslash i",
+"to_unicode": "\\i",
+"protect": "}\\i"
+},
+{
+"in": "\\AAü\\textbfC",
+"to_latex": "\\textbackslash AA{\\\"u}\\textbackslash textbfC",
+"to_unicode": "\\AAü\\textbfC",
+"protect": "\\{A}Aü\\textbf{C}"
+},
+{
+"in": "{#%&e",
+"to_latex": "{\\#\\%\\&e",
+"to_unicode": "#%&e",
+"protect": "{#%&e"
+},
+{
+"in": "e\\v ",
+"to_latex": "e\\textbackslash v ",
+"to_unicode": "e ̌",
+"protect": "e\\v "
+},
+{
+"in": "\\`\\\"{\\.",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash \"{\\textbackslash .",
+"to_unicode": "̀̈",
+"protect": "\\`\\\"{\\."
+},
+{
+"in": "Zee{\\^",
+"to_latex": "Zee{\\textbackslash \\^{}",
+"to_unicode": "Zee",
+"protect": "{Z}ee{\\^"
+},
+{
+"in": "e\\\\\\textbf_–",
+"to_latex": "e\\textbackslash \\textbackslash \\textbackslash textbf\\_\\textendash ",
+"to_unicode": "e\\\\\\textbf_–",
+"protect": "e\\\\\\textbf_–"
+},
+{
+"in": "%{\\i{",
+"to_latex": "\\%{\\textbackslash i{",
+"to_unicode": "%\\i",
+"protect": "%{\\i{"
+},
+{
+"in": "o\\u}",
+"to_latex": "o\\textbackslash u}",
+"to_unicode": "ŏ",
+"protect": "o\\u}"
+},
+{
+"in": "#\\alpha&\\u}}}́",
+"to_latex": "\\#\\textbackslash alpha\\&\\textbackslash u}}}́",
+"to_unicode": "#\\alpha&̆",
+"protect": "#\\alpha&\\u}}}́"
+},
+{
+"in": "A\\alpha\\c",
+"to_latex": "A\\textbackslash alpha\\textbackslash c",
+"to_unicode": "A\\alpha",
+"protect": "{A}\\alpha\\c"
+},
+{
+"in": "\\'\\textbf_́",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash textbf\\_́",
+"to_unicode": "\\t́extbf_",
+"protect": "\\'\\textbf_́"
+},
+{
+"in": "eü̈",
+"to_latex": "e{\\\"u}\\\"",
+"to_unicode": "eü",
+"protect": "eü̈"
+},
+{
+"in": "́\\v\\ss$\\textbf\\AA",
+"to_latex": "́\\textbackslash v\\textbackslash ss\\textdollar \\textbackslash textbf\\textbackslash AA",
+"to_unicode": "̌́\\ss$\\textbf\\AA",
+"protect": "́\\v\\ss$\\textbf\\{A}A"
+},
+{
+"in": "ZC\\AA–\\'\\i\\v",
+"to_latex": "ZC\\textbackslash AA\\textendash \\textbackslash \\textquotesingle \\textbackslash i\\textbackslash v",
+"to_unicode": "ZC\\AA–\\í",
+"protect": "Z{C}\\A{A}–\\'\\i\\v"
+},
+{
+"in": "aé{–\\`ss\\AA",
+"to_latex": "a{\\'e}{\\textendash \\textbackslash \\textasciigrave ss\\textbackslash AA",
+"to_unicode": "aé–ss̀\\AA",
+"protect": "aé{–\\`ss\\{A}A"
+},
+{
+"in": "\\^&e\\c\\̈́",
+"to_latex": "\\textbackslash \\^{}\\&e\\textbackslash c\\textbackslash \\\"́",
+"to_unicode": "&ê\\̧̈",
+"protect": "\\^&e\\c\\̈́"
+},
+{
+"in": "ooo\\u\\uAo{",
+"to_latex": "ooo\\textbackslash u\\textbackslash uAo{",
+"to_unicode": "ooŏ̆Ao",
+"protect": "ooo\\u\\u{A}o{"
+},
+{
+"in": "}–a$\\v",
+"to_latex": "}\\textendash a\\textdollar \\textbackslash v",
+"to_unicode": "–a$",
+"protect": "}–a$\\v"
+},
+{
+"in": "\\=",
+"to_latex": "\\textbackslash =",
+"to_unicode": "",
+"protect": "\\="
+},
+{
+"in": "\\.\\i",
+"to_latex": "\\textbackslash .\\textbackslash i",
+"to_unicode": "\\̇i",
+"protect": "\\.\\i"
+},
+{
+"in": "}C\\\\",
+"to_latex": "}C\\textbackslash \\textbackslash ",
+"to_unicode": "C\\\\",
+"protect": "}{C}\\\\"
+},
+{
+"in": " _\\alphaA\\'",
+"to_latex": " \\_\\textbackslash alphaA\\textbackslash \\textquotesingle ",
+"to_unicode": " _\\alphaA",
+"protect": " _\\alpha{A}\\'"
+},
+{
+"in": "}&\\\\=̈\\textbf\\=\\u",
+"to_latex": "}\\&\\textbackslash \\textbackslash =\\\"\\textbackslash textbf\\textbackslash =\\textbackslash u",
+"to_unicode": "&\\̈̄\\textbf̆̄",
+"protect": "}&\\\\=̈\\textbf\\=\\u"
+},
+{
+"in": " A\\=_",
+"to_latex": " A\\textbackslash =\\_",
+"to_unicode": " A_̄",
+"protect": " {A}\\=_"
+},
+{
+"in": "ü\\^Zé",
+"to_latex": "{\\\"u}\\textbackslash \\^{}Z{\\'e}",
+"to_unicode": "üZé̂",
+"protect": "ü\\^{Z}é"
+},
+{
+"in": "Z\\.~~\\.e\\v\\ss",
+"to_latex": "Z\\textbackslash .\\textasciitilde \\textasciitilde \\textbackslash .e\\textbackslash v\\textbackslash ss",
+"to_unicode": "Z~̇~ė\\̌ss",
+"protect": "{Z}\\.~~\\.e\\v\\ss"
+},
+{
+"in": "\\^&Aü",
+"to_latex": "\\textbackslash \\^{}\\&A{\\\"u}",
+"to_unicode": "&Âü",
+"protect": "\\^&{A}ü"
+},
+{
+"in": "a\\i\\\"\\v\\AAZ\\AA",
+"to_latex": "a\\textbackslash i\\textbackslash \"\\textbackslash v\\textbackslash AAZ\\textbackslash AA",
+"to_unicode": "a\\ǐ̈\\AAZ\\AA",
+"protect": "a\\i\\\"\\v\\{A}AZ\\{A}A"
+},
+{
+"in": "\\u\\=\\~\\=Ce\\\"Z",
+"to_latex": "\\textbackslash u\\textbackslash =\\textbackslash \\textasciitilde \\textbackslash =Ce\\textbackslash \"Z",
+"to_unicode": "̄̆̄̃CeZ̈",
+"protect": "\\u\\=\\~\\={C}e\\\"{Z}"
+},
+{
+"in": "\\\\\\i",
+"to_latex": "\\textbackslash \\textbackslash \\textbackslash i",
+"to_unicode": "\\\\\\i",
+"protect": "\\\\\\i"
+},
+{
+"in": "C–ü%\\i{–\\c",
+"to_latex": "C\\textendash {\\\"u}\\%\\textbackslash i{\\textendash \\textbackslash c",
+"to_unicode": "C–ü%\\i–",
+"protect": "{C}–ü%\\i{–\\c"
+},
+{
+"in": "̈\\ss\\i",
+"to_latex": "\\\"\\textbackslash ss\\textbackslash i",
+"to_unicode": "\\̈ss\\i",
+"protect": "̈\\ss\\i"
+},
+{
+"in": "\\^\\u–",
+"to_latex": "\\textbackslash \\^{}\\textbackslash u\\textendash ",
+"to_unicode": "̂̆–",
+"protect": "\\^\\u–"
+},
+{
+"in": "~\\u",
+"to_latex": "\\textasciitilde \\textbackslash u",
+"to_unicode": "~",
+"protect": "~\\u"
+},
+{
+"in": "̈{a",
+"to_latex": "\\\"{a",
+"to_unicode": "̈a",
+"protect": "̈{a"
+},
+{
+"in": "Z\\alpha}#́\\textbf\\'",
+"to_latex": "Z\\textbackslash alpha}\\#́\\textbackslash textbf\\textbackslash \\textquotesingle ",
+"to_unicode": "Z\\alpha#\\́textbf",
+"protect": "{Z}\\alpha}#́\\textbf\\'"
+},
+{
+"in": "\\u\\\\}ü%_\\=",
+"to_latex": "\\textbackslash u\\textbackslash \\textbackslash }{\\\"u}\\%\\_\\textbackslash =",
+"to_unicode": "\\̆\\ü%_",
+"protect": "\\u\\\\}ü%_\\="
+},
+{
+"in": "\\=\\í–Z\\\\",
+"to_latex": "\\textbackslash =\\textbackslash í\\textendash Z\\textbackslash \\textbackslash ",
+"to_unicode": "\\̄i–́Z\\\\",
+"protect": "\\=\\í–{Z}\\\\"
+},
+{
+"in": "\\AAa#ü%\\.\\`",
+"to_latex": "\\textbackslash AAa\\#{\\\"u}\\%\\textbackslash .\\textbackslash \\textasciigrave ",
+"to_unicode": "\\AAa#ü%̀̇",
+"protect": "\\{A}Aa#ü%\\.\\`"
+},
+{
+"in": "\\'$\\textbfü\\alpha",
+"to_latex": "\\textbackslash \\textquotesingle \\textdollar \\textbackslash textbf{\\\"u}\\textbackslash alpha",
+"to_unicode": "$\\́textbfü\\alpha",
+"protect": "\\'$\\textbfü\\alpha"
+},
+{
+"in": " \\ss\\AA\\\\",
+"to_latex": " \\textbackslash ss\\textbackslash AA\\textbackslash \\textbackslash ",
+"to_unicode": " \\ss\\AA\\\\",
+"protect": " \\ss\\{A}A\\\\"
+},
+{
+"in": "\\AA\\~$a",
+"to_latex": "\\textbackslash AA\\textbackslash \\textasciitilde \\textdollar a",
+"to_unicode": "\\AA$̃a",
+"protect": "\\{A}A\\~$a"
+},
+{
+"in": "\\textbf#\\.A\\.",
+"to_latex": "\\textbackslash textbf\\#\\textbackslash .A\\textbackslash .",
+"to_unicode": "\\textbf#Ȧ",
+"protect": "\\textbf#\\.{A}\\."
+},
+{
+"in": "––$ü_\\io",
+"to_latex": "\\textendash \\textendash \\textdollar {\\\"u}\\_\\textbackslash io",
+"to_unicode": "––$ü_\\io",
+"protect": "––$ü_\\io"
+},
+{
+"in": "%ass–\\c{",
+"to_latex": "\\%ass\\textendash \\textbackslash c{",
+"to_unicode": "%ass–",
+"protect": "%ass–\\c{"
+},
+{
+"in": "é&́Z\\textbf\\'\\^",
+"to_latex": "{\\'e}\\&́Z\\textbackslash textbf\\textbackslash \\textquotesingle \\textbackslash \\^{}",
+"to_unicode": "é&Ź\\textbf\\^́",
+"protect": "é&́{Z}\\textbf\\'\\^"
+},
+{
+"in": "#́%\\alpha\\ss– ",
+"to_latex": "\\#́\\%\\textbackslash alpha\\textbackslash ss\\textendash  ",
+"to_unicode": "#%́\\alpha\\ss– ",
+"protect": "#́%\\alpha\\ss– "
+},
+{
+"in": "é\\AAé",
+"to_latex": "{\\'e}\\textbackslash AA{\\'e}",
+"to_unicode": "é\\AAé",
+"protect": "é\\{A}Aé"
+},
+{
+"in": "\\.&",
+"to_latex": "\\textbackslash .\\&",
+"to_unicode": "&̇",
+"protect": "\\.&"
+},
+{
+"in": "}\\=\\ss",
+"to_latex": "}\\textbackslash =\\textbackslash ss",
+"to_unicode": "\\̄ss",
+"protect": "}\\=\\ss"
+},
+{
+"in": "\\\"–\\=&\\~&\\^",
+"to_latex": "\\textbackslash \"\\textendash \\textbackslash =\\&\\textbackslash \\textasciitilde \\&\\textbackslash \\^{}",
+"to_unicode": "–̈&̄&̃",
+"protect": "\\\"–\\=&\\~&\\^"
+},
+{
+"in": "\\`C\\textbf\\\\{\\i\\textbf",
+"to_latex": "\\textbackslash \\textasciigrave C\\textbackslash textbf\\textbackslash \\textbackslash {\\textbackslash i\\textbackslash textbf",
+"to_unicode": "C\\̀textbf\\\\\\i\\textbf",
+"protect": "\\`{C}\\textbf\\\\{\\i\\textbf"
+},
+{
+"in": "̈",
+"to_latex": "\\\"",
+"to_unicode": "",
+"protect": "̈"
+},
+{
+"in": "Za\\.́{",
+"to_latex": "Za\\textbackslash .́{",
+"to_unicode": "Zá̇",
+"protect": "{Z}a\\.́{"
+},
+{
+"in": "\\`#Z\\textbf",
+"to_latex": "\\textbackslash \\textasciigrave \\#Z\\textbackslash textbf",
+"to_unicode": "#Z̀\\textbf",
+"protect": "\\`#{Z}\\textbf"
+},
+{
+"in": "A&\\'\\textbf\\^",
+"to_latex": "A\\&\\textbackslash \\textquotesingle \\textbackslash textbf\\textbackslash \\^{}",
+"to_unicode": "A&\\t́extbf",
+"protect": "{A}&\\'\\textbf\\^"
+},
+{
+"in": "\\\\}\\'\\\"–&{",
+"to_latex": "\\textbackslash \\textbackslash }\\textbackslash \\textquotesingle \\textbackslash \"\\textendash \\&{",
+"to_unicode": "\\\\́̈–&",
+"protect": "\\\\}\\'\\\"–&{"
+},
+{
+"in": "\\\"–",
+"to_latex": "\\textbackslash \"\\textendash ",
+"to_unicode": "–̈",
+"protect": "\\\"–"
+},
+{
+"in": "_$Ca\\alpha\\AA\\'\\v",
+"to_latex": "\\_\\textdollar Ca\\textbackslash alpha\\textbackslash AA\\textbackslash \\textquotesingle \\textbackslash v",
+"to_unicode": "_$Ca\\alpha\\AÁ̌",
+"protect": "_${C}a\\alpha\\{A}A\\'\\v"
+},
+{
+"in": "\\u\\\"o\\u{\\alpha",
+"to_latex": "\\textbackslash u\\textbackslash \"o\\textbackslash u{\\textbackslash alpha",
+"to_unicode": "̈̆ŏ\\alpha",
+"protect": "\\u\\\"o\\u{\\alpha"
+},
+{
+"in": "\\i\\^",
+"to_latex": "\\textbackslash i\\textbackslash \\^{}",
+"to_unicode": "\\i",
+"protect": "\\i\\^"
+},
+{
+"in": "üeC\\ć\\alphao%",
+"to_latex": "{\\\"u}eC\\textbackslash ć\\textbackslash alphao\\%",
+"to_unicode": "üeḈ\\alphao%",
+"protect": "üe{C}\\ć\\alphao%"
+},
+{
+"in": "\\v",
+"to_latex": "\\textbackslash v",
+"to_unicode": "",
+"protect": "\\v"
+},
+{
+"in": "\\co\\\"\\alpha",
+"to_latex": "\\textbackslash co\\textbackslash \"\\textbackslash alpha",
+"to_unicode": "ö̧\\alpha",
+"protect": "\\co\\\"\\alpha"
+},
+{
+"in": "\\AAa_",
+"to_latex": "\\textbackslash AAa\\_",
+"to_unicode": "\\AAa_",
+"protect": "\\{A}Aa_"
+},
+{
+"in": "̈\\\\\\H#ss",
+"to_latex": "\\\"\\textbackslash \\textbackslash \\textbackslash H\\#ss",
+"to_unicode": "\\̈\\#̋ss",
+"protect": "̈\\\\\\{H}#ss"
+},
+{
+"in": "ü\\alpha\\c̈",
+"to_latex": "{\\\"u}\\textbackslash alpha\\textbackslash c\\\"",
+"to_unicode": "ü\\alphä̧",
+"protect": "ü\\alpha\\c̈"
+},
+{
+"in": "́#e\\v ",
+"to_latex": "́\\#e\\textbackslash v ",
+"to_unicode": "#́e ̌",
+"protect": "́#e\\v "
+},
+{
+"in": "\\\"\\iü",
+"to_latex": "\\textbackslash \"\\textbackslash i{\\\"u}",
+"to_unicode": "\\̈iü",
+"protect": "\\\"\\iü"
+},
+{
+"in": "a\\=́",
+"to_latex": "a\\textbackslash =́",
+"to_unicode": "á̄",
+"protect": "a\\=́"
+},
+{
+"in": "}\\ssAü\\sś",
+"to_latex": "}\\textbackslash ssA{\\\"u}\\textbackslash sś",
+"to_unicode": "\\ssAü\\ss",
+"protect": "}\\ss{A}ü\\sś"
+},
+{
+"in": "}$",
+"to_latex": "}\\textdollar ",
+"to_unicode": "$",
+"protect": "}$"
+},
+{
+"in": "Z\\vü\\^_\\=",
+"to_latex": "Z\\textbackslash v{\\\"u}\\textbackslash \\^{}\\_\\textbackslash =",
+"to_unicode": "Zǚ_̄̂",
+"protect": "{Z}\\vü\\^_\\="
+},
+{
+"in": "\\v$o\\ue\\ss",
+"to_latex": "\\textbackslash v\\textdollar o\\textbackslash ue\\textbackslash ss",
+"to_unicode": "$̌oĕ\\ss",
+"protect": "\\v$o\\ue\\ss"
+},
+{
+"in": "\\v\\ ",
+"to_latex": "\\textbackslash v\\textbackslash  ",
+"to_unicode": "\\̌ ",
+"protect": "\\v\\ "
+},
+{
+"in": "\\uA\\Z",
+"to_latex": "\\textbackslash uA\\textbackslash Z",
+"to_unicode": "Ă\\Z",
+"protect": "\\u{A}\\Z"
+},
+{
+"in": "_\\v\\\"é\\i\\~́ü",
+"to_latex": "\\_\\textbackslash v\\textbackslash \"{\\'e}\\textbackslash i\\textbackslash \\textasciitilde ́{\\\"u}",
+"to_unicode": "_̈̌é\\í̃ü",
+"protect": "_\\v\\\"é\\i\\~́ü"
+},
+{
+"in": "\\.~&\\~",
+"to_latex": "\\textbackslash .\\textasciitilde \\&\\textbackslash \\textasciitilde ",
+"to_unicode": "~̇&",
+"protect": "\\.~&\\~"
+},
+{
+"in": "%\\\\H\\\\",
+"to_latex": "\\%\\textbackslash \\textbackslash H\\textbackslash \\textbackslash ",
+"to_unicode": "%\\\\̋\\",
+"protect": "%\\\\{H}\\\\"
+},
+{
+"in": "\\alphaéA\\v́\\\\&\\~",
+"to_latex": "\\textbackslash alpha{\\'e}A\\textbackslash v́\\textbackslash \\textbackslash \\&\\textbackslash \\textasciitilde ",
+"to_unicode": "\\alphaéÁ̌\\&",
+"protect": "\\alphaé{A}\\v́\\\\&\\~"
+},
+{
+"in": "}& ",
+"to_latex": "}\\& ",
+"to_unicode": "& ",
+"protect": "}& "
+},
+{
+"in": "üe\\textbf\\'\\.",
+"to_latex": "{\\\"u}e\\textbackslash textbf\\textbackslash \\textquotesingle \\textbackslash .",
+"to_unicode": "üe\\textbf́̇",
+"protect": "üe\\textbf\\'\\."
+},
+{
+"in": "\\`\\c",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash c",
+"to_unicode": "\\c̀",
+"protect": "\\`\\c"
+},
+{
+"in": "\\^{ssZé&",
+"to_latex": "\\textbackslash \\^{}{ssZ{\\'e}\\&",
+"to_unicode": "ŝsZé&",
+"protect": "\\^{ss{Z}é&"
+},
+{
+"in": "\\^ss\\. \\c",
+"to_latex": "\\textbackslash \\^{}ss\\textbackslash . \\textbackslash c",
+"to_unicode": "sŝ ̇",
+"protect": "\\^ss\\. \\c"
+},
+{
+"in": "\\́\\=\\í",
+"to_latex": "\\textbackslash ́\\textbackslash =\\textbackslash í",
+"to_unicode": "\\̄́\\i",
+"protect": "\\́\\=\\í"
+},
+{
+"in": "\\\\u\\`eé\\ïe",
+"to_latex": "\\textbackslash \\textbackslash u\\textbackslash \\textasciigrave e{\\'e}\\textbackslash i\\\"e",
+"to_unicode": "\\ĕé̀\\ië",
+"protect": "\\\\u\\`eé\\ïe"
+},
+{
+"in": "\\v́\\i{\\`\\=}\\u",
+"to_latex": "\\textbackslash v́\\textbackslash i{\\textbackslash \\textasciigrave \\textbackslash =}\\textbackslash u",
+"to_unicode": "́̌\\ì̄",
+"protect": "\\v́\\i{\\`\\=}\\u"
+},
+{
+"in": "óo\\\\",
+"to_latex": "óo\\textbackslash \\textbackslash ",
+"to_unicode": "oó\\\\",
+"protect": "óo\\\\"
+},
+{
+"in": "$\\^\\.",
+"to_latex": "\\textdollar \\textbackslash \\^{}\\textbackslash .",
+"to_unicode": "$̂̇",
+"protect": "$\\^\\."
+},
+{
+"in": "üoZ",
+"to_latex": "{\\\"u}oZ",
+"to_unicode": "üoZ",
+"protect": "üo{Z}"
+},
+{
+"in": "\\`\\textbf\\c\\textbf#",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash textbf\\textbackslash c\\textbackslash textbf\\#",
+"to_unicode": "\\t̀extbf\\ţextbf#",
+"protect": "\\`\\textbf\\c\\textbf#"
+},
+{
+"in": "$\\textbf\\ia}",
+"to_latex": "\\textdollar \\textbackslash textbf\\textbackslash ia}",
+"to_unicode": "$\\textbf\\ia",
+"protect": "$\\textbf\\ia}"
+},
+{
+"in": "o\\alpha\\\\C\\v",
+"to_latex": "o\\textbackslash alpha\\textbackslash \\textbackslash C\\textbackslash v",
+"to_unicode": "o\\alpha\\\\C",
+"protect": "o\\alpha\\\\{C}\\v"
+},
+{
+"in": "o\\AA",
+"to_latex": "o\\textbackslash AA",
+"to_unicode": "o\\AA",
+"protect": "o\\{A}A"
+},
+{
+"in": "\\i ̈́",
+"to_latex": "\\textbackslash i \\\"́",
+"to_unicode": "ı́̈",
+"protect": "\\i ̈́"
+},
+{
+"in": "\\u– \\i",
+"to_latex": "\\textbackslash u\\textendash  \\textbackslash i",
+"to_unicode": "–̆ \\i",
+"protect": "\\u– \\i"
+},
+{
+"in": "%\\ss&%&C\\~",
+"to_latex": "\\%\\textbackslash ss\\&\\%\\&C\\textbackslash \\textasciitilde ",
+"to_unicode": "%\\ss&%&C",
+"protect": "%\\ss&%&{C}\\~"
+},
+{
+"in": "&\\#\\^oZ\\H",
+"to_latex": "\\&\\textbackslash \\#\\textbackslash \\^{}oZ\\textbackslash H",
+"to_unicode": "&#oẐ",
+"protect": "&\\#\\^o{Z}\\H"
+},
+{
+"in": "A\\\"\\v",
+"to_latex": "A\\textbackslash \"\\textbackslash v",
+"to_unicode": "Ǎ̈",
+"protect": "{A}\\\"\\v"
+},
+{
+"in": "\\vC\\\"\\i\\i",
+"to_latex": "\\textbackslash vC\\textbackslash \"\\textbackslash i\\textbackslash i",
+"to_unicode": "Č\\̈i\\i",
+"protect": "\\v{C}\\\"\\i\\i"
+},
+{
+"in": " \\^\\.\\\\#~",
+"to_latex": " \\textbackslash \\^{}\\textbackslash .\\textbackslash \\textbackslash \\#\\textasciitilde ",
+"to_unicode": " ̂̇\\#~",
+"protect": " \\^\\.\\\\#~"
+},
+{
+"in": "\\va&%",
+"to_latex": "\\textbackslash va\\&\\%",
+"to_unicode": "ǎ&%",
+"protect": "\\va&%"
+},
+{
+"in": "\\i\\.\\",
+"to_latex": "\\textbackslash i\\textbackslash .\\textbackslash ",
+"to_unicode": "\\i\\̇",
+"protect": "\\i\\.\\"
+},
+{
+"in": "\\alpha\\textbf\\v",
+"to_latex": "\\textbackslash alpha\\textbackslash textbf\\textbackslash v",
+"to_unicode": "\\alpha\\textbf",
+"protect": "\\alpha\\textbf\\v"
+},
+{
+"in": "}Z$\\\"\\'\\\\",
+"to_latex": "}Z\\textdollar \\textbackslash \"\\textbackslash \\textquotesingle \\textbackslash \\textbackslash ",
+"to_unicode": "Z$\\̈\\́",
+"protect": "}{Z}$\\\"\\'\\\\"
+},
+{
+"in": "́\\~}\\=aé#\\~",
+"to_latex": "́\\textbackslash \\textasciitilde }\\textbackslash =a{\\'e}\\#\\textbackslash \\textasciitilde ",
+"to_unicode": "̃́āé#",
+"protect": "́\\~}\\=aé#\\~"
+},
+{
+"in": "\\.\\^}\\.%",
+"to_latex": "\\textbackslash .\\textbackslash \\^{}}\\textbackslash .\\%",
+"to_unicode": "̇̇̂%",
+"protect": "\\.\\^}\\.%"
+},
+{
+"in": "\\\"\\AA",
+"to_latex": "\\textbackslash \"\\textbackslash AA",
+"to_unicode": "\\̈AA",
+"protect": "\\\"\\{A}A"
+},
+{
+"in": "_\\textbfé\\=\\\"Zsso",
+"to_latex": "\\_\\textbackslash textbf{\\'e}\\textbackslash =\\textbackslash \"Zsso",
+"to_unicode": "_\\textbfé̈̄Zsso",
+"protect": "_\\textbfé\\=\\\"{Z}sso"
+},
+{
+"in": " \\ss\\textbf\\H{#$#",
+"to_latex": " \\textbackslash ss\\textbackslash textbf\\textbackslash H{\\#\\textdollar \\#",
+"to_unicode": " \\ss\\textbf̋#$#",
+"protect": " \\ss\\textbf\\{H}{#$#"
+},
+{
+"in": "A\\AAa\\i",
+"to_latex": "A\\textbackslash AAa\\textbackslash i",
+"to_unicode": "A\\AAa\\i",
+"protect": "{A}\\A{A}a\\i"
+},
+{
+"in": "\\=\\H",
+"to_latex": "\\textbackslash =\\textbackslash H",
+"to_unicode": "̋̄",
+"protect": "\\=\\{H}"
+},
+{
+"in": " \\ee",
+"to_latex": " \\textbackslash ee",
+"to_unicode": " \\ee",
+"protect": " \\ee"
+},
+{
+"in": "\\'\\=é\\`–\\\"{",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash ={\\'e}\\textbackslash \\textasciigrave \\textendash \\textbackslash \"{",
+"to_unicode": "́̄é–̈̀",
+"protect": "\\'\\=é\\`–\\\"{"
+},
+{
+"in": "\\AAü\\`\\i\\AA",
+"to_latex": "\\textbackslash AA{\\\"u}\\textbackslash \\textasciigrave \\textbackslash i\\textbackslash AA",
+"to_unicode": "\\AAü\\ì\\AA",
+"protect": "\\{A}Aü\\`\\i\\{A}A"
+},
+{
+"in": "é\\Zé",
+"to_latex": "{\\'e}\\textbackslash Z{\\'e}",
+"to_unicode": "é\\Zé",
+"protect": "é\\{Z}é"
+},
+{
+"in": "\\vCo{\\textbf",
+"to_latex": "\\textbackslash vCo{\\textbackslash textbf",
+"to_unicode": "Čo\\textbf",
+"protect": "\\v{C}o{\\textbf"
+},
+{
+"in": "C\\~#$#\\\"\\.",
+"to_latex": "C\\textbackslash \\textasciitilde \\#\\textdollar \\#\\textbackslash \"\\textbackslash .",
+"to_unicode": "C#̃$#̇̈",
+"protect": "{C}\\~#$#\\\"\\."
+},
+{
+"in": "\\'\\c",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash c",
+"to_unicode": "\\ć",
+"protect": "\\'\\c"
+},
+{
+"in": "\\%́",
+"to_latex": "\\textbackslash \\%́",
+"to_unicode": "%",
+"protect": "\\%́"
+},
+{
+"in": "o%",
+"to_latex": "o\\%",
+"to_unicode": "o%",
+"protect": "o%"
+},
+{
+"in": "\\^\\~éao&$\\'",
+"to_latex": "\\textbackslash \\^{}\\textbackslash \\textasciitilde {\\'e}ao\\&\\textdollar \\textbackslash \\textquotesingle ",
+"to_unicode": "̂̃éao&$",
+"protect": "\\^\\~éao&$\\'"
+},
+{
+"in": "ssC&̈\\ss",
+"to_latex": "ssC\\&\\\"\\textbackslash ss",
+"to_unicode": "ssC&\\̈ss",
+"protect": "ss{C}&̈\\ss"
+},
+{
+"in": "%a",
+"to_latex": "\\%a",
+"to_unicode": "%a",
+"protect": "%a"
+},
+{
+"in": "\\\"ü\\=",
+"to_latex": "\\textbackslash \"{\\\"u}\\textbackslash =",
+"to_unicode": "ü̈",
+"protect": "\\\"ü\\="
+},
+{
+"in": "\\textbf\\^~ A\\AA",
+"to_latex": "\\textbackslash textbf\\textbackslash \\^{}\\textasciitilde  A\\textbackslash AA",
+"to_unicode": "\\textbf~ ̂A\\AA",
+"protect": "\\textbf\\^~ {A}\\A{A}"
+},
+{
+"in": "$A\\'́\\\\ C\\ss",
+"to_latex": "\\textdollar A\\textbackslash \\textquotesingle ́\\textbackslash \\textbackslash  C\\textbackslash ss",
+"to_unicode": "$Á́\\\\ C\\ss",
+"protect": "${A}\\'́\\\\ {C}\\ss"
+},
+{
+"in": "\\textbf\\textbf̈é~",
+"to_latex": "\\textbackslash textbf\\textbackslash textbf\\\"{\\'e}\\textasciitilde ",
+"to_unicode": "\\textbf\\textbfé̈~",
+"protect": "\\textbf\\textbf̈é~"
+},
+{
+"in": "\\.\\ss–",
+"to_latex": "\\textbackslash .\\textbackslash ss\\textendash ",
+"to_unicode": "\\̇ss–",
+"protect": "\\.\\ss–"
+},
+{
+"in": "% \\'\\alpha",
+"to_latex": "\\% \\textbackslash \\textquotesingle \\textbackslash alpha",
+"to_unicode": "% \\álpha",
+"protect": "% \\'\\alpha"
+},
+{
+"in": "Z\\alphäé–\\v",
+"to_latex": "Z\\textbackslash alpha\\\"{\\'e}\\textendash \\textbackslash v",
+"to_unicode": "Z\\alphaé̈–",
+"protect": "{Z}\\alphäé–\\v"
+},
+{
+"in": "́\\H}\\c\\`\\^Z}",
+"to_latex": "́\\textbackslash H}\\textbackslash c\\textbackslash \\textasciigrave \\textbackslash \\^{}Z}",
+"to_unicode": "̋́\\̧̀^Z",
+"protect": "́\\H}\\c\\`\\^Z}"
+},
+{
+"in": "\\H{\\^–",
+"to_latex": "\\textbackslash H{\\textbackslash \\^{}\\textendash ",
+"to_unicode": "̋–",
+"protect": "\\{H}{\\^–"
+},
+{
+"in": "#\\cZ_\\c",
+"to_latex": "\\#\\textbackslash cZ\\_\\textbackslash c",
+"to_unicode": "#Z_̧",
+"protect": "#\\c{Z}_\\c"
+},
+{
+"in": "&\\alpha",
+"to_latex": "\\&\\textbackslash alpha",
+"to_unicode": "&\\alpha",
+"protect": "&\\alpha"
+},
+{
+"in": "̈ss",
+"to_latex": "\\\"ss",
+"to_unicode": "s̈s",
+"protect": "̈ss"
+},
+{
+"in": "\\&Z&}&{_",
+"to_latex": "\\textbackslash \\&Z\\&}\\&{\\_",
+"to_unicode": "&Z&&_",
+"protect": "\\&{Z}&}&{_"
+},
+{
+"in": "A\\\"\\^\\textbf~ \\",
+"to_latex": "A\\textbackslash \"\\textbackslash \\^{}\\textbackslash textbf\\textasciitilde  \\textbackslash ",
+"to_unicode": "A\\̈t̂extbf~ \\",
+"protect": "{A}\\\"\\^\\textbf~ \\"
+},
+{
+"in": "Ć\\vCéo",
+"to_latex": "Ć\\textbackslash vC{\\'e}o",
+"to_unicode": "Č́Céo",
+"protect": "{C}́\\v{C}éo"
+},
+{
+"in": "_\\.}\\",
+"to_latex": "\\_\\textbackslash .}\\textbackslash ",
+"to_unicode": "_̇\\",
+"protect": "_\\.}\\"
+},
+{
+"in": " \\^\\textbf}\\i\\\"é",
+"to_latex": " \\textbackslash \\^{}\\textbackslash textbf}\\textbackslash i\\textbackslash \"{\\'e}",
+"to_unicode": " \\t̂extbf\\ié̈",
+"protect": " \\^\\textbf}\\i\\\"é"
+},
+{
+"in": "a\\H}\\vé&",
+"to_latex": "a\\textbackslash H}\\textbackslash v{\\'e}\\&",
+"to_unicode": "a̋é̌&",
+"protect": "a\\H}\\vé&"
+},
+{
+"in": "#o\\\\\\i{\\i",
+"to_latex": "\\#o\\textbackslash \\textbackslash \\textbackslash i{\\textbackslash i",
+"to_unicode": "#o\\\\\\i\\i",
+"protect": "#o\\\\\\i{\\i"
+},
+{
+"in": "\\\\}o\\v\\H\\i",
+"to_latex": "\\textbackslash \\textbackslash }o\\textbackslash v\\textbackslash H\\textbackslash i",
+"to_unicode": "\\\\ő̌\\i",
+"protect": "\\\\}o\\v\\{H}\\i"
+},
+{
+"in": "%e\\alpha%",
+"to_latex": "\\%e\\textbackslash alpha\\%",
+"to_unicode": "%e\\alpha%",
+"protect": "%e\\alpha%"
+},
+{
+"in": "e#",
+"to_latex": "e\\#",
+"to_unicode": "e#",
+"protect": "e#"
+},
+{
+"in": "ss\\H",
+"to_latex": "ss\\textbackslash H",
+"to_unicode": "ss",
+"protect": "ss\\{H}"
+},
+{
+"in": "\\'Z\\=",
+"to_latex": "\\textbackslash \\textquotesingle Z\\textbackslash =",
+"to_unicode": "Z̄́",
+"protect": "\\'{Z}\\="
+},
+{
+"in": "\\'\\alpha\\HA\\u%a",
+"to_latex": "\\textbackslash \\textquotesingle \\textbackslash alpha\\textbackslash HA\\textbackslash u\\%a",
+"to_unicode": "\\álphaA̋%̆a",
+"protect": "\\'\\alpha\\{H}A\\u%a"
+},
+{
+"in": "#&~",
+"to_latex": "\\#\\&\\textasciitilde ",
+"to_unicode": "#&~",
+"protect": "#&~"
+},
+{
+"in": "o",
+"to_latex": "o",
+"to_unicode": "o",
+"protect": "o"
+},
+{
+"in": "\\`\\\\",
+"to_latex": "\\textbackslash \\textasciigrave \\textbackslash \\textbackslash ",
+"to_unicode": "\\\\̀",
+"protect": "\\`\\\\"
+},
+{
+"in": "~\\\"%́\\c–ss",
+"to_latex": "\\textasciitilde \\textbackslash \"\\%́\\textbackslash c\\textendash ss",
+"to_unicode": "~%̈–́şs",
+"protect": "~\\\"%́\\c–ss"
+},
+{
+"in": "\\ss–\\~\\.\\\\alpha",
+"to_latex": "\\textbackslash ss\\textendash \\textbackslash \\textasciitilde \\textbackslash .\\textbackslash \\textbackslash alpha",
+"to_unicode": "\\ss–̇̃\\\\alpha",
+"protect": "\\ss–\\~\\.\\\\alpha"
+},
+{
+"in": "é_\\ss",
+"to_latex": "{\\'e}\\_\\textbackslash ss",
+"to_unicode": "é_\\ss",
+"protect": "é_\\ss"
+},
+{
+"in": "ü\\i\\AAa\\ss\\alpha~\\ss",
+"to_latex": "{\\\"u}\\textbackslash i\\textbackslash AAa\\textbackslash ss\\textbackslash alpha\\textasciitilde \\textbackslash ss",
+"to_unicode": "ü\\i\\AAa\\ss\\alpha~\\ss",
+"protect": "ü\\i\\{A}Aa\\ss\\alpha~\\ss"
+},
+{
+"in": "e\\v_\\\\",
+"to_latex": "e\\textbackslash v\\_\\textbackslash \\textbackslash ",
+"to_unicode": "e_̌\\\\",
+"protect": "e\\v_\\\\"
+},
+{
+"in": "\\uü\\u",
+"to_latex": "\\textbackslash u{\\\"u}\\textbackslash u",
+"to_unicode": "ü̆",
+"protect": "\\uü\\u"
+},
+{
+"in": "&\\H",
+"to_latex": "\\&\\textbackslash H",
+"to_unicode": "&",
+"protect": "&\\{H}"
+},
+{
+"in": "\\textbf\\textbf–\\alpha\\o",
+"to_latex": "\\textbackslash textbf\\textbackslash textbf\\textendash \\textbackslash alpha\\textbackslash o",
+"to_unicode": "\\textbf\\textbf–\\alpha\\o",
+"protect": "\\textbf\\textbf–\\alpha\\o"
+},
+{
+"in": "\\^$",
+"to_latex": "\\textbackslash \\^{}\\textdollar ",
+"to_unicode": "$",
+"protect": "\\^$"
+},
+{
+"in": "é\\=",
+"to_latex": "{\\'e}\\textbackslash =",
+"to_unicode": "é",
+"protect": "é\\="
+},
+{
+"in": "\\'ss\\.\\ss",
+"to_latex": "\\textbackslash \\textquotesingle ss\\textbackslash .\\textbackslash ss",
+"to_unicode": "sś\\̇ss",
+"protect": "\\'ss\\.\\ss"
+},
+{
+"in": "&\\v\\iŹ\\ss",
+"to_latex": "\\&\\textbackslash v\\textbackslash iŹ\\textbackslash ss",
+"to_unicode": "&\\̌iZ\\́ss",
+"protect": "&\\v\\i{Z}́\\ss"
+},
+{
+"in": "~&é\\v\\v\\i",
+"to_latex": "\\textasciitilde \\&{\\'e}\\textbackslash v\\textbackslash v\\textbackslash i",
+"to_unicode": "~&é̌̌\\i",
+"protect": "~&é\\v\\v\\i"
+},
+{
+"in": "\\\\~a",
+"to_latex": "\\textbackslash \\textbackslash \\textasciitilde a",
+"to_unicode": "\\ã",
+"protect": "\\\\~a"
+},
+{
+"in": "́%́\\textbf\\.\\\"\\alphass",
+"to_latex": "́\\%́\\textbackslash textbf\\textbackslash .\\textbackslash \"\\textbackslash alphass",
+"to_unicode": "%́\\́textbf̈̇\\alphass",
+"protect": "́%́\\textbf\\.\\\"\\alphass"
+},
+{
+"in": "\\.\\.\\H",
+"to_latex": "\\textbackslash .\\textbackslash .\\textbackslash H",
+"to_unicode": "̇̇",
+"protect": "\\.\\.\\{H}"
+},
+{
+"in": "ss\\^\\alpha \\alpha\\`",
+"to_latex": "ss\\textbackslash \\^{}\\textbackslash alpha \\textbackslash alpha\\textbackslash \\textasciigrave ",
+"to_unicode": "ssα\\̂alpha",
+"protect": "ss\\^\\alpha \\alpha\\`"
+},
+{
+"in": "\\alpha\\i_\\i$",
+"to_latex": "\\textbackslash alpha\\textbackslash i\\_\\textbackslash i\\textdollar ",
+"to_unicode": "\\alpha\\i_\\i$",
+"protect": "\\alpha\\i_\\i$"
+},
+{
+"in": "#\\AA",
+"to_latex": "\\#\\textbackslash AA",
+"to_unicode": "#\\AA",
+"protect": "#\\{A}A"
+}
+]

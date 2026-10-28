@@ -1,0 +1,193 @@
+{
+ "blocks": [
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "Smith_2020",
+   "fields": [
+    [
+     "abstract",
+     "We study the Atlantic meridional overturning circulation (AMOC) in a\n  coupled model. The {\\em response} to freshwater is $\\sim 10$\\% of the forcing.",
+     false
+    ],
+    [
+     "author",
+     "Smith, John and Doe, Jane and M{\\\"u}ller, J{\\\"o}rg",
+     false
+    ],
+    [
+     "doi",
+     "10.1000/xyz123",
+     false
+    ],
+    [
+     "file",
+     ":files/Smith_2020.pdf:pdf",
+     false
+    ],
+    [
+     "journal",
+     "Journal of Climate",
+     false
+    ],
+    [
+     "keywords",
+     "amoc, climate, ocean",
+     false
+    ],
+    [
+     "month",
+     "mar",
+     false
+    ],
+    [
+     "number",
+     "5",
+     false
+    ],
+    [
+     "pages",
+     "1--20",
+     false
+    ],
+    [
+     "title",
+     "Sea level {Rise} and the {AMOC}: a review",
+     false
+    ],
+    [
+     "volume",
+     "33",
+     false
+    ],
+    [
+     "year",
+     "2020",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "book",
+   "key": "alpha1999",
+   "fields": [
+    [
+     "address",
+     "Berlin",
+     false
+    ],
+    [
+     "author",
+     "{\\AA}ngstr{\\\"o}m, Anders",
+     false
+    ],
+    [
+     "file",
+     ":files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf",
+     false
+    ],
+    [
+     "isbn",
+     "978-3-16-148410-0",
+     false
+    ],
+    [
+     "publisher",
+     "Springer",
+     false
+    ],
+    [
+     "title",
+     "A book: with {Braces} and ``quotes''",
+     false
+    ],
+    [
+     "year",
+     "1999",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "inproceedings",
+   "key": "Berg_2018",
+   "fields": [
+    [
+     "author",
+     "van der Berg, Jane and {The Collaboration}",
+     false
+    ],
+    [
+     "booktitle",
+     "Proceedings of the 12th {International} Conference",
+     false
+    ],
+    [
+     "pages",
+     "100--110",
+     false
+    ],
+    [
+     "title",
+     "Uses of \\texttt{papers} and 50\\% of $\\alpha$",
+     false
+    ],
+    [
+     "url",
+     "https://example.org/a_b?c=d&e=f#g",
+     false
+    ],
+    [
+     "year",
+     "2018",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "misc",
+   "key": "no_fields_but_key",
+   "fields": []
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "pooled2021",
+   "fields": [
+    [
+     "author",
+     "Pool, A.",
+     false
+    ],
+    [
+     "ids",
+     "old2021, older2021",
+     false
+    ],
+    [
+     "note",
+     "tag:first, tag:second",
+     false
+    ],
+    [
+     "title",
+     "An entry with ids",
+     false
+    ],
+    [
+     "year",
+     "2021",
+     false
+    ]
+   ]
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "@article{Smith_2020,\n abstract = {We study the Atlantic meridional overturning circulation (AMOC) in a\n  coupled model. The {\\em response} to freshwater is $\\sim 10$\\% of the forcing.},\n author = {Smith, John and Doe, Jane and M{\\\"u}ller, J{\\\"o}rg},\n doi = {10.1000/xyz123},\n file = {:files/Smith_2020.pdf:pdf},\n journal = {Journal of Climate},\n keywords = {amoc, climate, ocean},\n month = {mar},\n number = {5},\n pages = {1--20},\n title = {Sea level {Rise} and the {AMOC}: a review},\n volume = {33},\n year = {2020}\n}\n\n@book{alpha1999,\n address = {Berlin},\n author = {{\\AA}ngstr{\\\"o}m, Anders},\n file = {:files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf},\n isbn = {978-3-16-148410-0},\n publisher = {Springer},\n title = {A book: with {Braces} and ``quotes''},\n year = {1999}\n}\n\n@inproceedings{Berg_2018,\n author = {van der Berg, Jane and {The Collaboration}},\n booktitle = {Proceedings of the 12th {International} Conference},\n pages = {100--110},\n title = {Uses of \\texttt{papers} and 50\\% of $\\alpha$},\n url = {https://example.org/a_b?c=d&e=f#g},\n year = {2018}\n}\n\n@misc{no_fields_but_key,\n}\n\n@article{pooled2021,\n author = {Pool, A.},\n ids = {old2021, older2021},\n note = {tag:first, tag:second},\n title = {An entry with ids},\n year = {2021}\n}\n",
+ "saved_twice": "@inproceedings{Berg_2018,\n author = {van der Berg, Jane and {The Collaboration}},\n booktitle = {Proceedings of the 12th {International} Conference},\n pages = {100--110},\n title = {Uses of \\texttt{papers} and 50\\% of $\\alpha$},\n url = {https://example.org/a_b?c=d&e=f#g},\n year = {2018}\n}\n\n@article{Smith_2020,\n abstract = {We study the Atlantic meridional overturning circulation (AMOC) in a\n  coupled model. The {\\em response} to freshwater is $\\sim 10$\\% of the forcing.},\n author = {Smith, John and Doe, Jane and M{\\\"u}ller, J{\\\"o}rg},\n doi = {10.1000/xyz123},\n file = {:files/Smith_2020.pdf:pdf},\n journal = {Journal of Climate},\n keywords = {amoc, climate, ocean},\n month = {mar},\n number = {5},\n pages = {1--20},\n title = {Sea level {Rise} and the {AMOC}: a review},\n volume = {33},\n year = {2020}\n}\n\n@book{alpha1999,\n address = {Berlin},\n author = {{\\AA}ngstr{\\\"o}m, Anders},\n file = {:files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf},\n isbn = {978-3-16-148410-0},\n publisher = {Springer},\n title = {A book: with {Braces} and ``quotes''},\n year = {1999}\n}\n\n@misc{no_fields_but_key,\n}\n\n@article{pooled2021,\n author = {Pool, A.},\n ids = {old2021, older2021},\n note = {tag:first, tag:second},\n title = {An entry with ids},\n year = {2021}\n}\n",
+ "edited_saved": "@inproceedings{Berg_2018,\n author = {van der Berg, Jane and {The Collaboration}},\n booktitle = {Proceedings of the 12th {International} Conference},\n pages = {100--110},\n title = {Uses of \\texttt{papers} and 50\\% of $\\alpha$ (edited)},\n url = {https://example.org/a_b?c=d&e=f#g},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2018}\n}\n\n@article{Smith_2020,\n author = {Smith, John and Doe, Jane and M{\\\"u}ller, J{\\\"o}rg},\n doi = {10.1000/xyz123},\n file = {:files/Smith_2020.pdf:pdf},\n journal = {Journal of Climate},\n keywords = {amoc, climate, ocean},\n month = {mar},\n number = {5},\n pages = {1--20},\n title = {Sea level {Rise} and the {AMOC}: a review (edited)},\n volume = {33},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2020}\n}\n\n@book{alpha1999,\n address = {Berlin},\n author = {{\\AA}ngstr{\\\"o}m, Anders},\n file = {:files/alpha1999.pdf:pdf;:files/alpha1999-errata.pdf:pdf},\n isbn = {978-3-16-148410-0},\n publisher = {Springer},\n title = {A book: with {Braces} and ``quotes'' (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {1999}\n}\n\n@misc{no_fields_but_key,\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{pooled2021,\n author = {Pool, A.},\n ids = {old2021, older2021},\n note = {tag:first, tag:second},\n title = {An entry with ids (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2021}\n}\n"
+}

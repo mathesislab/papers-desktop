@@ -1,0 +1,42 @@
+{
+ "blocks": [
+  {
+   "kind": "text",
+   "value": "% crlf file"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "crlf1",
+   "fields": [
+    [
+     "title",
+     "Two\n  lines",
+     false
+    ],
+    [
+     "year",
+     "2005",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "cr2",
+   "fields": [
+    [
+     "title",
+     "Lone CR",
+     false
+    ]
+   ]
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "% crlf file\n\n@article{crlf1,\n title = {Two\n  lines},\n year = {2005}\n}\n\n@article{cr2,\n title = {Lone CR}\n}\n",
+ "saved_twice": "@article{cr2,\n title = {Lone CR}\n}\n\n% crlf file\n\n@article{crlf1,\n title = {Two\n  lines},\n year = {2005}\n}\n",
+ "edited_saved": "@article{cr2,\n title = {Lone CR (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% crlf file\n\n@article{crlf1,\n title = {Two\n  lines (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2005}\n}\n"
+}

@@ -1,0 +1,127 @@
+{
+ "blocks": [
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "unicode1",
+   "fields": [
+    [
+     "author",
+     "Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan",
+     false
+    ],
+    [
+     "title",
+     "Über die Größe des Eises: Café, naïve, résumé, façade",
+     false
+    ],
+    [
+     "journal",
+     "Ænigma",
+     false
+    ],
+    [
+     "note",
+     "Ünïcödé — “curly quotes” … ‘single’ – en dash",
+     false
+    ],
+    [
+     "keywords",
+     "Δ, Ω, 北京, 東京, Москва",
+     false
+    ],
+    [
+     "year",
+     "2001",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "latex1",
+   "fields": [
+    [
+     "author",
+     "M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n",
+     false
+    ],
+    [
+     "title",
+     "{\\\"U}ber die Gr{\\\"o}{\\ss}e des Eises: Caf{\\'e}, na{\\\"\\i}ve, r{\\'e}sum{\\'e}, fa{\\c c}ade",
+     false
+    ],
+    [
+     "journal",
+     "{\\AE}nigma",
+     false
+    ],
+    [
+     "note",
+     "\\'{e} \\`{e} \\^{e} \\\"{e} \\~{n} \\c{c} \\v{s} \\H{o} \\k{a} \\r{a} \\={a} \\.{z} \\u{g} \\o \\O \\l \\L \\ss \\i \\j",
+     false
+    ],
+    [
+     "abstract",
+     "Maths: $\\alpha + \\beta = \\gamma$, \\emph{text}, \\textbf{bold}, 5\\% and \\& and \\_ and \\#",
+     false
+    ],
+    [
+     "year",
+     "2002",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "decomposed3",
+   "fields": [
+    [
+     "author",
+     "Müller, Jörg",
+     false
+    ],
+    [
+     "title",
+     "Café and naïve",
+     false
+    ],
+    [
+     "year",
+     "2003",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "escapes4",
+   "fields": [
+    [
+     "title",
+     "Back\\\\slash and \\{ escaped \\} braces and a \\\" quote",
+     false
+    ],
+    [
+     "note",
+     "a % percent \\% sign",
+     false
+    ],
+    [
+     "year",
+     "2004",
+     false
+    ]
+   ]
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "@article{unicode1,\n author = {Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan},\n journal = {Ænigma},\n keywords = {Δ, Ω, 北京, 東京, Москва},\n note = {Ünïcödé — “curly quotes” … ‘single’ – en dash},\n title = {Über die Größe des Eises: Café, naïve, résumé, façade},\n year = {2001}\n}\n\n@article{latex1,\n abstract = {Maths: $\\alpha + \\beta = \\gamma$, \\emph{text}, \\textbf{bold}, 5\\% and \\& and \\_ and \\#},\n author = {M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n},\n journal = {{\\AE}nigma},\n note = {\\'{e} \\`{e} \\^{e} \\\"{e} \\~{n} \\c{c} \\v{s} \\H{o} \\k{a} \\r{a} \\={a} \\.{z} \\u{g} \\o \\O \\l \\L \\ss \\i \\j},\n title = {{\\\"U}ber die Gr{\\\"o}{\\ss}e des Eises: Caf{\\'e}, na{\\\"\\i}ve, r{\\'e}sum{\\'e}, fa{\\c c}ade},\n year = {2002}\n}\n\n@article{decomposed3,\n author = {Müller, Jörg},\n title = {Café and naïve},\n year = {2003}\n}\n\n@article{escapes4,\n note = {a % percent \\% sign},\n title = {Back\\\\slash and \\{ escaped \\} braces and a \\\" quote},\n year = {2004}\n}\n",
+ "saved_twice": "@article{decomposed3,\n author = {Müller, Jörg},\n title = {Café and naïve},\n year = {2003}\n}\n\n@article{escapes4,\n note = {a % percent \\% sign},\n title = {Back\\\\slash and \\{ escaped \\} braces and a \\\" quote},\n year = {2004}\n}\n\n@article{latex1,\n abstract = {Maths: $\\alpha + \\beta = \\gamma$, \\emph{text}, \\textbf{bold}, 5\\% and \\& and \\_ and \\#},\n author = {M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n},\n journal = {{\\AE}nigma},\n note = {\\'{e} \\`{e} \\^{e} \\\"{e} \\~{n} \\c{c} \\v{s} \\H{o} \\k{a} \\r{a} \\={a} \\.{z} \\u{g} \\o \\O \\l \\L \\ss \\i \\j},\n title = {{\\\"U}ber die Gr{\\\"o}{\\ss}e des Eises: Caf{\\'e}, na{\\\"\\i}ve, r{\\'e}sum{\\'e}, fa{\\c c}ade},\n year = {2002}\n}\n\n@article{unicode1,\n author = {Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan},\n journal = {Ænigma},\n keywords = {Δ, Ω, 北京, 東京, Москва},\n note = {Ünïcödé — “curly quotes” … ‘single’ – en dash},\n title = {Über die Größe des Eises: Café, naïve, résumé, façade},\n year = {2001}\n}\n",
+ "edited_saved": "@article{decomposed3,\n author = {Müller, Jörg},\n title = {Café and naïve (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2003}\n}\n\n@article{escapes4,\n note = {a % percent \\% sign},\n title = {Back\\\\slash and \\{ escaped \\} braces and a \\\" quote (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2004}\n}\n\n@article{latex1,\n author = {M{\\\"u}ller, J{\\\"o}rg and {\\AA}ngstr{\\\"o}m, Anders and {\\c C}elik, {\\\"O}mer and Dvo{\\v r}{\\'a}k, Anton{\\'\\i}n},\n journal = {{\\AE}nigma},\n note = {\\'{e} \\`{e} \\^{e} \\\"{e} \\~{n} \\c{c} \\v{s} \\H{o} \\k{a} \\r{a} \\={a} \\.{z} \\u{g} \\o \\O \\l \\L \\ss \\i \\j},\n title = {{\\\"U}ber die Gr{\\\"o}{\\ss}e des Eises: Caf{\\'e}, na{\\\"\\i}ve, r{\\'e}sum{\\'e}, fa{\\c c}ade (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2002}\n}\n\n@article{unicode1,\n author = {Müller, Jörg and Ångström, Anders and Çelik, Ömer and Dvořák, Antonín and Łukasiewicz, Jan},\n journal = {Ænigma},\n keywords = {Δ, Ω, 北京, 東京, Москва},\n note = {Ünïcödé — “curly quotes” … ‘single’ – en dash},\n title = {Über die Größe des Eises: Café, naïve, résumé, façade (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2001}\n}\n"
+}

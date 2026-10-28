@@ -1,0 +1,261 @@
+{
+ "blocks": [
+  {
+   "kind": "string",
+   "key": "jgr",
+   "value": "Journal of Geophysical Research",
+   "verbatim": false
+  },
+  {
+   "kind": "string",
+   "key": "GRL",
+   "value": "Geophysical Research Letters",
+   "verbatim": false
+  },
+  {
+   "kind": "string",
+   "key": "tc",
+   "value": "The Cryosphere",
+   "verbatim": false
+  },
+  {
+   "kind": "string",
+   "key": "paren",
+   "value": "in parens",
+   "verbatim": false
+  },
+  {
+   "kind": "string",
+   "key": "pub",
+   "value": "\"Copernicus \" # \"Publications\"",
+   "verbatim": true
+  },
+  {
+   "kind": "string",
+   "key": "num",
+   "value": "2020",
+   "verbatim": false
+  },
+  {
+   "kind": "string",
+   "key": "mixed",
+   "value": "jgr # \" and \" # grl",
+   "verbatim": true
+  },
+  {
+   "kind": "string",
+   "key": "ref",
+   "value": "jgr",
+   "verbatim": true
+  },
+  {
+   "kind": "preamble",
+   "value": " \"\\newcommand{\\noop}[1]{}\" "
+  },
+  {
+   "kind": "preamble",
+   "value": "\"paren preamble\""
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "s1",
+   "fields": [
+    [
+     "journal",
+     "Journal of Geophysical Research",
+     false
+    ],
+    [
+     "month",
+     "jan",
+     true
+    ],
+    [
+     "year",
+     "2020",
+     false
+    ],
+    [
+     "publisher",
+     "\"Copernicus \" # \"Publications\"",
+     true
+    ],
+    [
+     "note",
+     "\"a\" # \" b\" # {c}",
+     true
+    ],
+    [
+     "title",
+     "Uses strings",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "s2",
+   "fields": [
+    [
+     "journal",
+     "Geophysical Research Letters",
+     false
+    ],
+    [
+     "month",
+     "feb",
+     false
+    ],
+    [
+     "year",
+     "2020",
+     false
+    ],
+    [
+     "volume",
+     "12",
+     false
+    ],
+    [
+     "number",
+     "3",
+     false
+    ],
+    [
+     "title",
+     "Case-insensitive reference",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "s3",
+   "fields": [
+    [
+     "journal",
+     "jgr",
+     true
+    ],
+    [
+     "month",
+     "mar",
+     false
+    ],
+    [
+     "note",
+     "jgr # \" and \" # grl",
+     true
+    ],
+    [
+     "title",
+     "Reference to a reference",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "s4",
+   "fields": [
+    [
+     "journal",
+     "undefined",
+     true
+    ],
+    [
+     "month",
+     "may",
+     true
+    ],
+    [
+     "note",
+     "jgr",
+     false
+    ],
+    [
+     "title",
+     "Undefined reference and an enclosed name",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "p5",
+   "fields": [
+    [
+     "title",
+     "paren entry",
+     false
+    ],
+    [
+     "year",
+     "2005",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "s6",
+   "fields": [
+    [
+     "title",
+     "quoted {with} \\\"escaped\\\" quotes and {\\\"}braced{\\\"} ones",
+     false
+    ],
+    [
+     "year",
+     "2006",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "s7",
+   "fields": [
+    [
+     "title",
+     "",
+     false
+    ],
+    [
+     "note",
+     "",
+     false
+    ],
+    [
+     "author",
+     "",
+     true
+    ]
+   ]
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@string{jgr = \"A second definition of jgr\"}",
+   "line": 53,
+   "class": "DuplicateBlockKeyBlock",
+   "key": "jgr"
+  }
+ ],
+ "unreadable": [
+  [
+   54,
+   "syntax error"
+  ]
+ ],
+ "cache_agrees": true,
+ "formatted": "@string{jgr = {Journal of Geophysical Research}}\n\n@string{GRL = {Geophysical Research Letters}}\n\n@string{tc = {The Cryosphere}}\n\n@string{paren = {in parens}}\n\n@string{pub = \"Copernicus \" # \"Publications\"}\n\n@string{num = {2020}}\n\n@string{mixed = jgr # \" and \" # grl}\n\n@string{ref = jgr}\n\n@preamble{ \"\\newcommand{\\noop}[1]{}\" }\n\n@preamble{\"paren preamble\"}\n\n@article{s1,\n journal = {Journal of Geophysical Research},\n month = jan,\n note = \"a\" # \" b\" # {c},\n publisher = \"Copernicus \" # \"Publications\",\n title = {Uses strings},\n year = {2020}\n}\n\n@article{s2,\n journal = {Geophysical Research Letters},\n month = {feb},\n number = {3},\n title = {Case-insensitive reference},\n volume = {12},\n year = {2020}\n}\n\n@article{s3,\n journal = jgr,\n month = {mar},\n note = jgr # \" and \" # grl,\n title = {Reference to a reference}\n}\n\n@article{s4,\n journal = undefined,\n month = may,\n note = {jgr},\n title = {Undefined reference and an enclosed name}\n}\n\n@article{p5,\n title = {paren entry},\n year = {2005}\n}\n\n@article{s6,\n title = {quoted {with} \\\"escaped\\\" quotes and {\\\"}braced{\\\"} ones},\n year = {2006}\n}\n\n@article{s7,\n author = ,\n note = {},\n title = {}\n}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{jgr = \"A second definition of jgr\"}\n",
+ "saved_twice": "@string{GRL = {Geophysical Research Letters}}\n\n@string{jgr = {Journal of Geophysical Research}}\n\n@string{mixed = jgr # \" and \" # grl}\n\n@string{num = {2020}}\n\n@string{paren = {in parens}}\n\n@string{pub = \"Copernicus \" # \"Publications\"}\n\n@string{ref = jgr}\n\n@string{tc = {The Cryosphere}}\n\n@preamble{ \"\\newcommand{\\noop}[1]{}\" }\n\n@preamble{\"paren preamble\"}\n\n@article{p5,\n title = {paren entry},\n year = {2005}\n}\n\n@article{s1,\n journal = {Journal of Geophysical Research},\n month = jan,\n note = \"a\" # \" b\" # {c},\n publisher = \"Copernicus \" # \"Publications\",\n title = {Uses strings},\n year = {2020}\n}\n\n@article{s2,\n journal = {Geophysical Research Letters},\n month = {feb},\n number = {3},\n title = {Case-insensitive reference},\n volume = {12},\n year = {2020}\n}\n\n@article{s3,\n journal = {Journal of Geophysical Research},\n month = {mar},\n note = jgr # \" and \" # grl,\n title = {Reference to a reference}\n}\n\n@article{s4,\n journal = undefined,\n month = may,\n note = {jgr},\n title = {Undefined reference and an enclosed name}\n}\n\n@article{s6,\n title = {quoted {with} \\\"escaped\\\" quotes and {\\\"}braced{\\\"} ones},\n year = {2006}\n}\n\n@article{s7,\n author = ,\n note = {},\n title = {}\n}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{jgr = \"A second definition of jgr\"}\n",
+ "edited_saved": "@string{GRL = {Geophysical Research Letters}}\n\n@string{jgr = {Journal of Geophysical Research}}\n\n@string{mixed = jgr # \" and \" # grl}\n\n@string{num = {2020}}\n\n@string{paren = {in parens}}\n\n@string{pub = \"Copernicus \" # \"Publications\"}\n\n@string{ref = jgr}\n\n@string{tc = {The Cryosphere}}\n\n@preamble{ \"\\newcommand{\\noop}[1]{}\" }\n\n@preamble{\"paren preamble\"}\n\n@article{p5,\n title = {paren entry (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2005}\n}\n\n@article{s1,\n journal = {Journal of Geophysical Research},\n month = jan,\n note = \"a\" # \" b\" # {c},\n publisher = \"Copernicus \" # \"Publications\",\n title = {Uses strings (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2020}\n}\n\n@article{s2,\n journal = {Geophysical Research Letters},\n month = {feb},\n number = {3},\n title = {Case-insensitive reference (edited)},\n volume = {12},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2020}\n}\n\n@article{s3,\n journal = jgr,\n month = {mar},\n note = jgr # \" and \" # grl,\n title = {Reference to a reference (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{s4,\n journal = undefined,\n month = may,\n note = {jgr},\n title = {Undefined reference and an enclosed name (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{s6,\n title = {quoted {with} \\\"escaped\\\" quotes and {\\\"}braced{\\\"} ones (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2006}\n}\n\n@article{s7,\n author = ,\n note = {},\n title = { (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{jgr = \"A second definition of jgr\"}\n"
+}

@@ -1,0 +1,95 @@
+{
+ "blocks": [
+  {
+   "kind": "text",
+   "value": "A first line of the file, outside of any block\nand a second one."
+  },
+  {
+   "kind": "comment",
+   "value": "an explicit comment"
+  },
+  {
+   "kind": "comment",
+   "value": "with {nested} braces\n and two lines"
+  },
+  {
+   "kind": "comment",
+   "value": "in parens"
+  },
+  {
+   "kind": "comment",
+   "value": "not an entry but a comment too"
+  },
+  {
+   "kind": "comment",
+   "value": "Upper case"
+  },
+  {
+   "kind": "text",
+   "value": "comment before c1"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "c1",
+   "fields": [
+    [
+     "title",
+     "One",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "text",
+   "value": "% a percent comment\n% and another"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "c0",
+   "fields": [
+    [
+     "title",
+     "Zero",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "text",
+   "value": "text with an @ sign and a { brace"
+  },
+  {
+   "kind": "entry",
+   "type": "misc",
+   "key": "c2",
+   "fields": [
+    [
+     "title",
+     "Two",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "text",
+   "value": "trailing words on the line\nsome email: a@b.c and"
+  },
+  {
+   "kind": "entry",
+   "type": "x",
+   "key": "y",
+   "fields": []
+  },
+  {
+   "kind": "text",
+   "value": "indented trailing comment"
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "A first line of the file, outside of any block\nand a second one.\n\n@comment{an explicit comment}\n\n@comment{with {nested} braces\n and two lines}\n\n@comment{in parens}\n\n@comment{not an entry but a comment too}\n\n@comment{Upper case}\n\ncomment before c1\n\n@article{c1,\n title = {One}\n}\n\n% a percent comment\n% and another\n\n@article{c0,\n title = {Zero}\n}\n\ntext with an @ sign and a { brace\n\n@misc{c2,\n title = {Two}\n}\n\ntrailing words on the line\nsome email: a@b.c and\n\n@x{y,\n}\n\nindented trailing comment\n",
+ "saved_twice": "% a percent comment\n% and another\n\n@article{c0,\n title = {Zero}\n}\n\nA first line of the file, outside of any block\nand a second one.\n\n@comment{an explicit comment}\n\n@comment{with {nested} braces\n and two lines}\n\n@comment{in parens}\n\n@comment{not an entry but a comment too}\n\n@comment{Upper case}\n\ncomment before c1\n\n@article{c1,\n title = {One}\n}\n\ntext with an @ sign and a { brace\n\n@misc{c2,\n title = {Two}\n}\n\ntrailing words on the line\nsome email: a@b.c and\n\n@x{y,\n}\n\nindented trailing comment\n",
+ "edited_saved": "% a percent comment\n% and another\n\n@article{c0,\n title = {Zero (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\nA first line of the file, outside of any block\nand a second one.\n\n@comment{an explicit comment}\n\n@comment{with {nested} braces\n and two lines}\n\n@comment{in parens}\n\n@comment{not an entry but a comment too}\n\n@comment{Upper case}\n\ncomment before c1\n\n@article{c1,\n title = {One (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\ntext with an @ sign and a { brace\n\n@misc{c2,\n title = {Two (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\ntrailing words on the line\nsome email: a@b.c and\n\n@x{y,\n x-edited = {yes {braced} & \"quoted\"}\n}\n\nindented trailing comment\n"
+}

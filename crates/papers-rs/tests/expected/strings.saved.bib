@@ -1,0 +1,70 @@
+@string{GRL = {Geophysical Research Letters}}
+
+@string{jgr = {Journal of Geophysical Research}}
+
+@string{mixed = jgr # " and " # grl}
+
+@string{num = {2020}}
+
+@string{paren = {in parens}}
+
+@string{pub = "Copernicus " # "Publications"}
+
+@string{ref = jgr}
+
+@string{tc = {The Cryosphere}}
+
+@preamble{ "\newcommand{\noop}[1]{}" }
+
+@preamble{"paren preamble"}
+
+@article{p5,
+ title = {paren entry},
+ year = {2005}
+}
+
+@article{s1,
+ journal = {Journal of Geophysical Research},
+ month = jan,
+ note = "a" # " b" # {c},
+ publisher = "Copernicus " # "Publications",
+ title = {Uses strings},
+ year = {2020}
+}
+
+@article{s2,
+ journal = {Geophysical Research Letters},
+ month = {feb},
+ number = {3},
+ title = {Case-insensitive reference},
+ volume = {12},
+ year = {2020}
+}
+
+@article{s3,
+ journal = jgr,
+ month = {mar},
+ note = jgr # " and " # grl,
+ title = {Reference to a reference}
+}
+
+@article{s4,
+ journal = undefined,
+ month = may,
+ note = {jgr},
+ title = {Undefined reference and an enclosed name}
+}
+
+@article{s6,
+ title = {quoted {with} \"escaped\" quotes and {\"}braced{\"} ones},
+ year = {2006}
+}
+
+@article{s7,
+ author = ,
+ note = {},
+ title = {}
+}
+
+% WARNING Parsing failed for the following 1 lines.
+@string{jgr = "A second definition of jgr"}

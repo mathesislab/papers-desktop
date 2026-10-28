@@ -1,0 +1,64 @@
+{
+ "blocks": [
+  {
+   "kind": "unreadable",
+   "raw": "@article{u1,\n title = {unclosed, then a block after a no-break space\n",
+   "line": 0,
+   "class": "ParsingFailedBlock"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "u2",
+   "fields": [
+    [
+     "title",
+     "x",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{u3,\n title = {é unclosed, then an indented block\n",
+   "line": 6,
+   "class": "ParsingFailedBlock"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "u4",
+   "fields": [
+    [
+     "title",
+     "y",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{u5, title = {no closing at the end}\n",
+   "line": 12,
+   "class": "ParsingFailedBlock"
+  }
+ ],
+ "unreadable": [
+  [
+   1,
+   "syntax error"
+  ],
+  [
+   7,
+   "syntax error"
+  ],
+  [
+   13,
+   "syntax error"
+  ]
+ ],
+ "cache_agrees": true,
+ "formatted": "% WARNING Parsing failed for the following 2 lines.\n@article{u1,\n title = {unclosed, then a block after a no-break space\n\n\n@article{u2,\n title = {x}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{u3,\n title = {é unclosed, then an indented block\n\n\n@article{u4,\n title = {y}\n}\n\n% WARNING Parsing failed for the following 1 lines.\n@article{u5, title = {no closing at the end}\n\n",
+ "saved_twice": "@article{u2,\n title = {x}\n}\n\n@article{u4,\n title = {y}\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{u1,\n title = {unclosed, then a block after a no-break space\n\n\n% WARNING Parsing failed for the following 2 lines.\n\n% WARNING Parsing failed for the following 5 lines.\n@article{u3,\n title = {é unclosed, then an indented block\n\n\n% WARNING Parsing failed for the following 1 lines.\n\n% WARNING Parsing failed for the following 2 lines.\n@article{u5, title = {no closing at the end}\n\n\n",
+ "edited_saved": "@article{u2,\n title = {x (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{u4,\n title = {y (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{u1,\n title = {unclosed, then a block after a no-break space\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{u3,\n title = {é unclosed, then an indented block\n\n\n% WARNING Parsing failed for the following 1 lines.\n@article{u5, title = {no closing at the end}\n\n"
+}

@@ -1,0 +1,54 @@
+@string{jgr = "Journal of Geophysical Research"}
+@string{ GRL = {Geophysical Research Letters} }
+@STRING{tc = "The Cryosphere"}
+@string(paren = "in parens")
+@string{pub = "Copernicus " # "Publications"}
+@string{ num = 2020 }
+@string{mixed = jgr # " and " # grl}
+@string{ref = jgr}
+
+@preamble{ "\newcommand{\noop}[1]{}" }
+@preamble("paren preamble")
+
+@article{s1,
+ journal = jgr,
+ month = jan,
+ year = num,
+ publisher = pub,
+ note = "a" # " b" # {c},
+ title = {Uses strings},
+}
+@article{s2,
+ journal = GRL,
+ month = "feb",
+ year = 2020,
+ volume = 12,
+ number = {3},
+ title = {Case-insensitive reference},
+}
+@article{s3,
+ journal = ref,
+ month = {mar},
+ note = mixed,
+ title = {Reference to a reference},
+}
+@article{s4,
+ journal = undefined,
+ month = may,
+ note = {jgr},
+ title = {Undefined reference and an enclosed name},
+}
+@article(p5,
+ title = {paren entry},
+ year = 2005
+)
+@article{s6,
+ title = "quoted {with} \"escaped\" quotes and {\"}braced{\"} ones",
+ year = "2006",
+}
+@article{s7,
+ title = {} ,
+ note = "",
+ author = ,
+}
+@string{jgr = "A second definition of jgr"}
