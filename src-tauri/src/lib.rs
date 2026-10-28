@@ -1,3 +1,4 @@
+mod fetch;
 #[cfg(target_os = "macos")]
 mod focus;
 mod hotkey;
@@ -18,7 +19,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
 use main_window::{Layout, MAIN};
-use papers_core::{BibWatch, Cite, Found, Item, Library, Matching, Row, TagCount};
+use papers_core::{BibWatch, Cite, Found, Incoming, Item, Library, Matching, Row, TagCount};
 use recent::Recent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -136,6 +137,22 @@ fn tags(state: State<AppState>) -> Vec<TagCount> {
 #[tauri::command]
 fn duplicates(state: State<AppState>) -> Vec<Vec<String>> {
     state.library.read().unwrap().duplicates()
+}
+
+/// The entries of a BibTeX text to add, and the items that are the same paper.
+#[tauri::command]
+fn incoming(state: State<AppState>, text: String) -> Result<Vec<Incoming>, String> {
+    let library = state.library.read().unwrap();
+    library.incoming(&text).map_err(|e| e.to_string())
+}
+
+/// The ids of the items of a .bib file with these keys; the keys not there
+/// are left out.
+#[tauri::command]
+fn ids_of(state: State<AppState>, bib: PathBuf, keys: Vec<String>) -> Vec<String> {
+    let library = state.library.read().unwrap();
+    let item = |key: &String| library.find(&bib, key).map(|it| it.id.clone());
+    keys.iter().filter_map(item).collect()
 }
 
 /// The ids of the recent papers, the last first.
@@ -797,6 +814,9 @@ pub fn run() {
             matching,
             tags,
             duplicates,
+            incoming,
+            ids_of,
+            fetch::fetch_doi,
             recent,
             opened,
             export_bib,

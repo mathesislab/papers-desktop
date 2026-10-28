@@ -9,9 +9,10 @@
   import { hasTag, renameTagFilter, toggleTag } from "$lib/query";
   import { foldTag, movedTag, sameTag } from "$lib/tags";
   import Details from "$lib/library/Details.svelte";
+  import Add from "$lib/library/Add.svelte";
   import PapersMissing from "$lib/library/PapersMissing.svelte";
   import { Editor } from "$lib/library/editor.svelte";
-  import { renameTag, replaceEntry, setTags, writeError, writers } from "$lib/library/writes";
+  import { addBibtex, errorText, renameTag, replaceEntry, setTags, writeError, writers } from "$lib/library/writes";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -19,7 +20,7 @@
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
-  import type { Item, Row, Status, TagCount, WriteError } from "$lib/types";
+  import type { Added, Item, Row, Status, TagCount, WriteError } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
@@ -81,6 +82,8 @@
   let exporting = $state(false);
   /** papers to install, to write a papers library: the version found, too old */
   let missing = $state<{ version: string | null } | null>(null);
+  /** the sheet to add papers, open */
+  let adding = $state(false);
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
@@ -94,6 +97,7 @@
    *  the page elsewhere. */
   const commands: Record<string, Shortcut> = {
     close: { key: "w", mod: true },
+    add: { key: "n", mod: true },
     find: { key: "f", mod: true },
     "zoom-in": { key: "=", mod: true },
     "zoom-out": { key: "-", mod: true },
@@ -406,10 +410,10 @@
     }
   }
 
-  /** Run a write: its error said, or how to install papers when a papers
-   *  library cannot be written without it. The library is read again after
-   *  a write (a "status" event). Whether it was written. */
-  async function write(action: () => Promise<unknown>, fail?: (error: WriteError) => void): Promise<boolean> {
+  /** Run a write: its error said (by `fail`: as a notice), or how to install
+   *  papers when a papers library cannot be written without it. The library
+   *  is read again after a write (a "status" event). Whether it was written. */
+  async function write(action: () => Promise<unknown>, fail = (error: WriteError) => say(error.message)): Promise<boolean> {
     try {
       await action();
       return true;
@@ -418,13 +422,37 @@
       if (error.kind === "papers-missing") {
         const found = (await writers()).find((w) => w.kind === "papers-missing");
         missing = { version: found?.version ?? null };
-      } else if (fail) {
-        fail(error);
       } else {
-        say(error.message);
+        fail(error);
       }
       return false;
     }
+  }
+
+  /** The papers of BibTeX added to a .bib file. Then the sheet closes, and
+   *  the first paper added (else the first that was there) is selected, in
+   *  the library as it is without search or view to hide it. */
+  async function addPapers(bib: string, text: string, fail: (message: string) => void): Promise<boolean> {
+    let added: Added | undefined;
+    if (!(await write(async () => (added = await addBibtex(bib, text)), (error) => fail(errorText(error)))) || !added) return false;
+    adding = false;
+    const keys = added.added.length ? added.added : added.existing;
+    const [id] = await invoke<string[]>("ids_of", { bib, keys });
+    if (id) {
+      query = "";
+      view = "all";
+      await loadLibrary();
+      selected = new Set([id]);
+      anchor = focus = id;
+      showLibrary();
+    }
+    const n = added.added.length;
+    say(
+      n
+        ? `Added ${n} ${n === 1 ? "paper" : "papers"}` + (added.existing.length ? `, ${added.existing.length} already there` : "")
+        : `Already in the library: ${added.existing.join(", ")}`,
+    );
+    return true;
   }
 
   function say(text: string) {
@@ -497,6 +525,9 @@
     switch (name) {
       case "close":
         return closeActive();
+      case "add":
+        adding = true;
+        return;
       case "find":
         return reader ? reader.focusFind() : input?.select();
       case "zoom-in":
@@ -606,6 +637,9 @@
 {#if missing}
   <PapersMissing version={missing.version} onclose={() => (missing = null)} />
 {/if}
+{#if adding}
+  <Add bib={focus ? byId.get(focus)?.bib : null} rows={byId} onadd={addPapers} onclose={() => (adding = false)} />
+{/if}
 
 <main>
   {#if layout.showSidebar}
@@ -666,6 +700,7 @@
         </div>
       {/if}
       <span class="spacer"></span>
+      <button class="tool" title="Add papers ({label(commands.add)})" onclick={() => (adding = true)}>Add…</button>
       <button
         class="tool"
         class:on={layout.showDetails}

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use papers_core::{FileState, Library, Matching, TagCount};
+use papers_core::{Error, FileState, Incoming, Library, Matching, TagCount};
 
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -106,6 +106,41 @@ fn duplicates() {
             vec!["twin2019", "twin2019b"]
         ]
     );
+}
+
+#[test]
+fn incoming() {
+    let lib = library();
+    let text = "\
+@article{a,\n title = {Brand new},\n year = {2020}\n}
+% a comment
+@article{b,\n doi = {https://doi.org/10.1000/ABC},\n title = {Another title},\n year = {2021}\n}
+@article{c,\n title = {A twin {T}itle!},\n year = {2019}\n}
+@article{d,\n title = {A twin title},\n year = {2020}\n}
+@article{e,\n title = {The same paper, as a preprint},\n doi = {10.1000/abc},\n year = {2020}\n}";
+    let incoming = |key: &str, same: &[&str]| Incoming {
+        key: key.to_string(),
+        same: same.iter().map(|s| s.to_string()).collect(),
+    };
+    assert_eq!(
+        lib.incoming(text).unwrap(),
+        [
+            incoming("a", &[]),
+            // the same DOI, whatever its form and case
+            incoming("b", &["same2020", "preprint2020"]),
+            // the same title (case, braces, punctuation) and year
+            incoming("c", &["twin2019", "twin2019b"]),
+            // the year differs
+            incoming("d", &[]),
+            // the DOI of one, the title of another: each once
+            incoming("e", &["same2020", "preprint2020"]),
+        ]
+    );
+    assert!(matches!(
+        lib.incoming("@article{a, title = {A"),
+        Err(Error::Bibtex { .. })
+    ));
+    assert!(matches!(lib.incoming("  "), Err(Error::NoEntry)));
 }
 
 #[test]

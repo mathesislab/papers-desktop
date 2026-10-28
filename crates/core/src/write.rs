@@ -313,7 +313,7 @@ fn not_found(id: &str) -> Error {
 
 /// The entries of a BibTeX text given to write, with their spans: it must
 /// parse, with nothing but white space and comments outside its entries.
-fn given_entries(text: &str) -> Result<Vec<(String, Range<usize>)>> {
+pub(crate) fn given_entries(text: &str) -> Result<Vec<(String, Range<usize>)>> {
     let raw = RawBibliography::parse(text).map_err(|e| Error::Bibtex {
         line: line_of(text, e.span.start.min(text.len())),
         message: e.kind.to_string(),

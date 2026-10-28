@@ -86,6 +86,14 @@ export type Added = {
   existing: string[];
 };
 
+/** mirrors papers_core::Incoming: an entry of BibTeX to add */
+export type Incoming = {
+  key: string;
+  /** the ids of the papers of the library that are the same paper: the same
+   *  DOI, or the same title and year; none for a new paper */
+  same: string[];
+};
+
 /** mirrors writer::WriteError: what a write is rejected with */
 export type WriteError = {
   /** "papers-missing": a papers library without papers 3.0.0b4 or later; "changed": the .bib

@@ -2,14 +2,17 @@
 //! the items that may be the same paper.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use crate::bib;
 use crate::item::Item;
 use crate::search::Library;
 use crate::tag::branch;
-use crate::text::fold;
+use crate::text::{fold, words};
+use crate::write::given_entries;
+use crate::{Error, Result};
 
 /// Whether an item links a file, and whether the files are there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -123,7 +126,7 @@ impl Library {
                 let first = *doi.entry(d.to_lowercase()).or_insert(i);
                 groups.join(first, i);
             }
-            let t = fold(&item.title);
+            let t = title_words(&item.title);
             if !t.is_empty() {
                 let first = *title.entry((t, item.year)).or_insert(i);
                 groups.join(first, i);
@@ -144,6 +147,61 @@ impl Library {
         found.sort_by_key(|(root, _)| groups.first[*root]);
         found.into_iter().map(|(_, ids)| ids).collect()
     }
+
+    /// The entries of a BibTeX text to add, each with the items of the
+    /// library that are the same paper: with the same DOI, or the same title
+    /// and year. The text must parse, as for `add_entries`.
+    pub fn incoming(&self, text: &str) -> Result<Vec<Incoming>> {
+        let text = text.trim();
+        if given_entries(text)?.is_empty() {
+            return Err(Error::NoEntry);
+        }
+        let entries = bib::parse(Path::new(""), text).map_err(|(at, message)| Error::Bibtex {
+            line: text[..at.min(text.len())].matches('\n').count() + 1,
+            message,
+        })?;
+        let mut doi: HashMap<String, Vec<&Item>> = HashMap::new();
+        let mut title: HashMap<(String, Option<i32>), Vec<&Item>> = HashMap::new();
+        for item in self.ordered() {
+            if let Some(d) = &item.doi {
+                doi.entry(d.to_lowercase()).or_default().push(item);
+            }
+            title
+                .entry((title_words(&item.title), item.year))
+                .or_default()
+                .push(item);
+        }
+        Ok(entries
+            .iter()
+            .map(|e| {
+                let new = Item::from_entry(e, String::new());
+                let by_doi = new.doi.iter().flat_map(|d| doi.get(&d.to_lowercase()));
+                let by_title = Some(title_words(&new.title))
+                    .filter(|t| !t.is_empty())
+                    .and_then(|t| title.get(&(t, new.year)));
+                let mut same: Vec<String> = Vec::new();
+                for item in by_doi.chain(by_title).flatten() {
+                    if !same.contains(&item.id) {
+                        same.push(item.id.clone());
+                    }
+                }
+                Incoming { key: new.key, same }
+            })
+            .collect())
+    }
+}
+
+/// An entry of a BibTeX text to add, and the items that are the same paper.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Incoming {
+    pub key: String,
+    /// the ids of the items of the library, newest first; none: a new paper
+    pub same: Vec<String>,
+}
+
+/// A title as compared: case, accents, punctuation and white space are gone.
+fn title_words(title: &str) -> String {
+    words(&fold(title)).join(" ")
 }
 
 fn row(item: &Item) -> Row {

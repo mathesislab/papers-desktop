@@ -11,7 +11,7 @@ use crate::main_window::MAIN;
 
 /// the commands that lead to the fields and lists of the page, which take
 /// the keys back from the PDF view
-const TO_PAGE: &[&str] = &["find", "library", "next-tab", "previous-tab"];
+const TO_PAGE: &[&str] = &["add", "find", "library", "next-tab", "previous-tab"];
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let separator = || PredefinedMenuItem::separator(app);
@@ -44,13 +44,11 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 app,
                 "File",
                 true,
-                &[&MenuItem::with_id(
-                    app,
-                    "close",
-                    "Close",
-                    true,
-                    Some("CmdOrCtrl+W"),
-                )?],
+                &[
+                    &item("add", "Add…", "CmdOrCtrl+N")?,
+                    &separator()?,
+                    &MenuItem::with_id(app, "close", "Close", true, Some("CmdOrCtrl+W"))?,
+                ],
             )?,
             &Submenu::with_items(
                 app,
