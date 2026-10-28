@@ -2988,6 +2988,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "papers-rs"
+version = "0.1.0"
+
+[[package]]
+name = "papers-rs-cli"
+version = "0.1.0"
+dependencies = [
+ "papers-rs",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

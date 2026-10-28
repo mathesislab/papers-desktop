@@ -1,0 +1,9 @@
+[package]
+name = "papers-rs"
+version = "0.1.0"
+description = "A Rust port of papers-cli: the library"
+authors = ["Alexander Robinson", "Mahé Perrette"]
+edition = "2024"
+license = "MIT"
+
+[dependencies]
