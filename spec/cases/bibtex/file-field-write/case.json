@@ -1,5 +1,5 @@
 {
-  "description": "the file field is written as :path:type joined by \";\" only when the files of the entry change; the type is the extension as written; paths follow the paths setting; the same path twice is kept once",
+  "description": "the file field is written as :path:type joined by \";\" only when the files of the entry change; the type is the extension as written; paths follow the paths setting; the same path twice is kept once; the history store is not compared: with absolute paths the bibtex holds the sandbox path, and its pieces depend on it",
   "sections": [
     "bibtex.md#5.1",
     "bibtex.md#5.2",
@@ -89,5 +89,8 @@
         "bibtex"
       ]
     }
+  ],
+  "ignore": [
+    "home/data/history/*"
   ]
 }
