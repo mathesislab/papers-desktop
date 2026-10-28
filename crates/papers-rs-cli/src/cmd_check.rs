@@ -7,7 +7,7 @@ use papers_rs::command::check::{
 };
 use papers_rs::command::edit::Editor;
 use papers_rs::command::read_selection;
-use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::report::print_changes;
 use papers_rs::config::Config;
 use papers_rs::config::dirs::cache_dir;
 use papers_rs::config::json::py_repr_str;
@@ -113,13 +113,13 @@ pub fn check_cmd(leaf: &Leaf, config: Config) -> Done {
             fetcher.as_ref().map(|f| f as &dyn Fetch),
             &mut resolver,
         )?;
-        session.commit()?;
+        let committed = session.commit()?;
         let color = session.color();
         print_changes(
             &session.library,
             &touched,
             false,
-            &Notes::new(),
+            &committed.notes,
             porcelain,
             color,
             &session.say,

@@ -13,7 +13,6 @@ use papers_rs::error::Error;
 use papers_rs::export::FilesMode;
 use papers_rs::formats::line::{Style, field_value, format_entry, format_key};
 use papers_rs::formats::{Format, dumps};
-use papers_rs::library::Library;
 use papers_rs::log;
 use papers_rs::search::{By, Search};
 
@@ -128,13 +127,6 @@ pub fn color_enabled(choice: &str) -> bool {
     }
     std::io::stdout().is_terminal()
 }
-
-/// The options of `papers list` that exchange with the pool: not ported yet.
-const WRITING_ACTIONS: [(&str, &str); 3] = [
-    ("--push", "push"),
-    ("--pull", "pull"),
-    ("--sync", "sync"),
-];
 
 /// Whether an option was given, with or without values (`is not None`).
 fn given(leaf: &Leaf, id: &str) -> bool {
@@ -344,10 +336,8 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
     if let Some(action) = Action::of(leaf) {
         return cmd_list_actions::run(leaf, config, &search_of(leaf), action);
     }
-    for (name, id) in WRITING_ACTIONS {
-        if leaf.flag(id) {
-            return Err(Error::exit(format!("{name}: not implemented in papers-rs yet")).into());
-        }
+    if let Some(kind) = exchange {
+        return crate::cmd_exchange::list_exchange(kind, leaf, config, &search_of(leaf));
     }
     // the actions on the files: `papers file` on the listed entries
     if let Some(action) = crate::cmd_list_files::FileAction::from_leaf(leaf) {
@@ -363,7 +353,7 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
         None
     };
 
-    let library = Library::open(&config)?;
+    let library = papers_rs::command::pool::load_library(&config)?;
     let all: Vec<&Entry> = library.entries().collect();
     warn_similarity(leaf);
     let search = search_of(leaf);

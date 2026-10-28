@@ -193,7 +193,7 @@ fn a_dry_run_writes_nothing_and_says_so() {
 }
 
 #[test]
-fn a_library_with_a_pool_is_refused() {
+fn a_library_with_a_pool_pushes_what_it_adds() {
     let s = sandbox();
     s.library("");
     s.write("pool/.papers/config.json", "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}");
@@ -202,14 +202,30 @@ fn a_library_with_a_pool_is_refused() {
         "lib/.papers/config.json",
         "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"../pool\",\n  \"version\": 3\n}",
     );
-    let error = Session::open(s.config(), Options::default())
-        .err()
-        .expect("refused");
-    assert!(
-        error.message().contains("not implemented in papers-rs yet"),
-        "{error}"
+    // a shallow library is written as the others: what it adds goes to the pool, which has its own step
+    let mut session = s.session("papers add new.bib");
+    // the lock of the pool is taken when the command reads it
+    assert!(Path::new(&s.path("lib/.papers/lock")).exists());
+    assert!(Path::new(&s.path("pool/.papers/lock")).exists());
+    s.write("lib/new.bib", &entry("new2001", ""));
+    let mut resolver = Resolver::new(OnDuplicate::Error);
+    let request = AddRequest {
+        files: vec![s.path("lib/new.bib")],
+        ..AddRequest::default()
+    };
+    let keys = add(&mut session, &request, &mut resolver).unwrap();
+    assert_eq!(keys, ["new2001"]);
+    let committed = session.commit().unwrap();
+    assert_eq!(
+        committed.notes.get("new2001").map(String::as_str),
+        Some("also added to pool ../pool")
     );
+    session.finish();
+    assert!(s.read("pool/papers.bib").contains("title = {Title of new2001}"));
+    assert!(s.read("lib/papers.bib").contains("@article{new2001,"));
+    assert!(Path::new(&s.path("lib/.papers/origin")).is_dir());
     assert!(!Path::new(&s.path("lib/.papers/lock")).exists());
+    assert!(!Path::new(&s.path("pool/.papers/lock")).exists());
 }
 
 #[test]

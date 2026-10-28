@@ -5,8 +5,9 @@
 //! (`--attach`, `--detach`, `--rename`, `--fix-files`) are these functions on the listed entries.
 //!
 //! Operations on a [`Session`]: the command line selects the entries, calls one, commits the
-//! session and prints what changed. A library with a pool is not supported (see `Session::open`):
-//! the pools of `check` and `fix` (`--pool PATH`) are not either.
+//! session and prints what changed. In a shallow library the files go to the pool (the command calls
+//! [`Session::use_pool_files`]) and the links that change are updated in the pool entries (the automatic
+//! push at the commit); `check` and `fix` also look in the libraries of `--pool PATH`.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -23,10 +24,13 @@ use crate::error::{Error, Result};
 use crate::extract::{doi::isvaliddoi, extract_pdf_doi};
 use crate::fetch::download::{download_url, is_download};
 use crate::history::{FilesJson, OpKind};
-use crate::library::{Action, Library, Policy};
+use crate::library::{Library, Policy};
+use crate::names::Format;
+use crate::pools::PoolIx;
 use crate::log;
 
-use super::files::{Mode, Placement, files_mode, files_policy};
+use super::pool::push_note_lines;
+use super::files::{Mode, Placement, PolicyOptions, files_mode, files_policy_with};
 use super::queries::Queries;
 use super::session::Session;
 
@@ -59,35 +63,41 @@ fn setting_mode(session: &Session) -> Mode {
         .unwrap_or(Mode::Move)
 }
 
-/// What to do with each file placed in the files directory (`FilesPolicy`, with its `keep` and
-/// `copied`): the files that papers downloaded are moved; those of `keep` (the files an entry
-/// had) stay where they are; in link mode all stay; those of `copied` (the files that `fix`
-/// found) are copied, never moved, even from the files directory; for the others, see
-/// [`files_policy`].
+/// What to do with each file placed in the files directory (`FilesPolicy`, with its `keep`, `copied`
+/// and `pool_files`): the files that papers downloaded are moved; those of `keep` (the files an entry
+/// had) stay where they are; in link mode all stay; those of `copied` (the files that `fix` found)
+/// are copied, never moved, even from the files directory; those of `pool_files` (files of pool
+/// entries) are copied (linked, in a shallow library); for the others, see [`files_policy_with`].
 fn policy_for(
-    session: &Session,
+    session: &mut Session,
     mode: Mode,
     keep: &[String],
     copied: &[String],
+    pool_files: &[String],
 ) -> (Policy, Placement) {
-    let placement = files_policy(&session.config, mode, session.say.clone(), session.prompt());
-    let inner = placement.policy.clone();
-    let keep: HashSet<String> = keep.iter().map(|f| realpath(f)).collect();
-    let copied: HashSet<String> = copied.iter().map(|f| realpath(f)).collect();
-    let policy = Policy::by_file(move |file: &str| {
-        if is_download(file) {
-            return Action::Move;
-        }
-        let real = realpath(file);
-        if keep.contains(&real) || mode == Mode::Link {
-            return Action::Link;
-        }
-        if copied.contains(&real) {
-            return Action::Copy;
-        }
-        inner.action(file)
-    });
-    (policy, placement)
+    let pool_dirs = session.pool_files_dirs();
+    let filesdir = session.library.filesdir.clone();
+    // a shallow library places its files in the files directory of its pool (`use_pool_files`)
+    let in_pool = session.config.shallow()
+        && filesdir
+            .as_deref()
+            .is_some_and(|d| pool_dirs.iter().any(|p| realpath(p) == realpath(d)));
+    let mut config = session.config.clone();
+    config.filesdir = filesdir;
+    let placement = files_policy_with(
+        &config,
+        mode,
+        session.say.clone(),
+        session.prompt(),
+        &PolicyOptions {
+            keep: keep.to_vec(),
+            copied: copied.to_vec(),
+            pool_files: pool_files.to_vec(),
+            pool_dirs,
+            in_pool,
+        },
+    );
+    (placement.policy.clone(), placement)
 }
 
 // rename
@@ -113,7 +123,7 @@ pub fn rename_entries(
     } else {
         mode.unwrap_or_else(|| setting_mode(session))
     };
-    let (policy, placement) = policy_for(session, mode, &[], &[]);
+    let (policy, placement) = policy_for(session, mode, &[], &[], &[]);
     for key in keys {
         if let Err(error) = session
             .library
@@ -137,6 +147,8 @@ pub struct Attach {
     pub replace: Vec<(String, Vec<String>)>,
     /// Files that are copied, never moved (the files that `fix` found).
     pub copied: Vec<String>,
+    /// Files of pool entries: never moved (linked, in a shallow library).
+    pub pool_files: Vec<String>,
 }
 
 impl Attach {
@@ -145,6 +157,7 @@ impl Attach {
             mode,
             replace: Vec::new(),
             copied: Vec::new(),
+            pool_files: Vec::new(),
         }
     }
 }
@@ -198,7 +211,13 @@ pub fn attach_files(
         .collect();
     session.library.set_files(key, &all)?;
     if options.mode != Mode::Link || downloaded {
-        let (policy, placement) = policy_for(session, options.mode, &kept, &options.copied);
+        let (policy, placement) = policy_for(
+            session,
+            options.mode,
+            &kept,
+            &options.copied,
+            &options.pool_files,
+        );
         session
             .library
             .rename_entry_files(key, &policy, None, None, true)?;
@@ -391,7 +410,10 @@ pub fn detach_entries(
     let links: Vec<(String, Vec<String>)> =
         links.into_iter().filter(|(_, fs)| !fs.is_empty()).collect();
     detach(session, &links)?;
-    session.commit()?;
+    let committed = session.commit()?;
+    for line in push_note_lines(&session.library, &committed.notes) {
+        session.say.line(line);
+    }
     if links.is_empty() {
         session.say.line("no link removed");
     }
@@ -483,16 +505,42 @@ pub fn rm_files(
     let links = links_to_paths(&session.library, files, keys, recursive)?;
     detach(session, &links)?;
     let removed: Vec<String> = links.iter().flat_map(|(_, fs)| fs.clone()).collect();
-    let (inside, outside, kept) = files_to_delete(&session.library, &removed);
-    session.commit()?;
+    let (mut inside, mut outside, kept) = files_to_delete(&session.library, &removed);
+    let mut keep = vec![session.config.filesdir.clone()];
+    let mut pool_kept: Vec<String> = Vec::new();
+    if session.config.shallow() {
+        // the links of the pool entries were removed too (the commit): a pool file that no entry of the
+        // pool or of the library links to any more is deleted
+        let pool_linked = session.pool_linked_files();
+        let pool_dirs = session.pool_files_dirs();
+        if !pool_dirs.is_empty() {
+            keep.extend(pool_dirs.into_iter().map(Some));
+        }
+        pool_kept = inside
+            .iter()
+            .chain(&outside)
+            .filter(|f| pool_linked.contains(&realpath(f)))
+            .cloned()
+            .collect();
+        inside.retain(|f| !pool_linked.contains(&realpath(f)));
+        outside.retain(|f| !pool_linked.contains(&realpath(f)));
+    }
+    let committed = session.commit()?;
+    for line in push_note_lines(&session.library, &committed.notes) {
+        session.say.line(line);
+    }
     for f in &kept {
         session
             .say
             .line(format!("kept {f}: another entry links to it"));
     }
+    for f in &pool_kept {
+        session
+            .say
+            .line(format!("kept {f}: an entry of the pool links to it"));
+    }
     let deleted: Vec<String> = inside.into_iter().chain(outside).collect();
     session.delete_files(&deleted, &[])?;
-    let keep = [session.config.filesdir.clone()];
     for path in files {
         if isdir(path) {
             remove_empty_folders(session, &deleted, path, &keep);
@@ -793,7 +841,7 @@ pub fn move_files(
     for (key, _, new) in &changes {
         session.library.set_files(key, new)?;
     }
-    session.commit()?;
+    let committed = session.commit()?;
     if let Some(filesdir) = new_filesdir(session, &done) {
         session.config.filesdir = Some(filesdir.clone());
         if let Some(file) = session.config.file.clone() {
@@ -809,6 +857,9 @@ pub fn move_files(
         moves.len(),
         changes.len()
     ));
+    for line in push_note_lines(&session.library, &committed.notes) {
+        session.say.line(line);
+    }
     match error {
         Some(error) => Err(Error::exit(format!(
             "{error}: the links of the files moved before were saved"
@@ -949,6 +1000,11 @@ fn broken_links(library: &Library, e: &Entry) -> Vec<String> {
         .filter(|(f, repaired)| repaired.is_none() && !exists(f))
         .map(|(f, _)| f)
         .collect()
+}
+
+/// The number of broken links of the entries of the library (`broken_links` of each).
+pub fn broken_link_count(library: &Library) -> usize {
+    library.entries().map(|e| broken_links(library, e).len()).sum()
 }
 
 fn checksum(file: &str) -> String {
@@ -1112,7 +1168,7 @@ pub fn check_entry_lines(
 /// (`rest`: its broken links not found elsewhere): the link's file name, then the name that the
 /// library's name template gives the entry, with the link's extension (only when no other broken
 /// link has that extension: the template names one file).
-fn search_names(library: &Library, e: &Entry, link: &str, rest: &[String]) -> Vec<String> {
+fn search_names(nameformat: &Format, e: &Entry, link: &str, rest: &[String]) -> Vec<String> {
     let mut names = vec![basename(link)];
     let ext = splitext_ext(link);
     if rest
@@ -1121,7 +1177,7 @@ fn search_names(library: &Library, e: &Entry, link: &str, rest: &[String]) -> Ve
         .count()
         == 1
     {
-        match library.nameformat.render(e) {
+        match nameformat.render(e) {
             Ok(name) => names.push(format!("{}{ext}", basename(&name))),
             Err(error) => log::debug(&format!("{}: no template name: {}", e.key, error.0)),
         }
@@ -1129,31 +1185,72 @@ fn search_names(library: &Library, e: &Entry, link: &str, rest: &[String]) -> Ve
     names
 }
 
-/// The files found for the broken links of an entry: `{link: [files]}` in order, and the
-/// `--search` folder of each link.
+/// Where the file found for a broken link comes from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Source {
+    /// the pool of the library
+    Pool,
+    /// a library given with `--pool PATH` (how it is shown)
+    Library(String),
+    /// a `--search` folder
+    Folder(String),
+}
+
+impl Source {
+    fn describe(&self) -> String {
+        match self {
+            Source::Pool => "from the pool".to_string(),
+            Source::Library(shown) => format!("from the library {shown}"),
+            Source::Folder(folder) => format!("found in {}", short_home(folder)),
+        }
+    }
+}
+
+/// The files found for the broken links of an entry: `{link: [files]}` in order, and where each
+/// comes from.
 #[derive(Debug, Default)]
 struct Plan {
     key: String,
     found: Vec<(String, Vec<String>)>,
-    sources: HashMap<String, String>,
+    sources: HashMap<String, Source>,
 }
 
-/// The files found for the broken links of the entries, without parsing any file: by the link's
-/// file name in the `--search` folders, else by the template name of the entry. Returns the plans,
-/// the links that several files match (`(key, link, reason)`), and the number of broken links
+/// The files found for the broken links of the entries, without parsing any file: the pool of the
+/// library first, then the libraries of `--pool PATH` (`others`, see [`Exchange::pool_relinks`]), then
+/// the `--search` folders (by the link's file name, else by the template name of the entry). Returns the
+/// plans, the links that several files match (`(key, link, reason)`), and the number of broken links
 /// (`plan_relinks`).
+#[allow(clippy::type_complexity)]
 fn plan_relinks(
-    library: &Library,
+    session: &mut Session,
     keys: &[String],
     search: &SearchFolders,
-) -> (Vec<Plan>, Vec<(String, String, String)>, usize) {
+    nameformat: &Format,
+    others: &[PoolIx],
+) -> Result<(Vec<Plan>, Vec<(String, String, String)>, usize)> {
     let (mut plans, mut unclear, mut count): (Vec<Plan>, Vec<(String, String, String)>, usize) =
         (Vec::new(), Vec::new(), 0);
+    let own = if session.config.shallow() {
+        session.exchange().pools.pool(true)
+    } else {
+        None
+    };
+    let mut pools: Vec<(PoolIx, Source)> = own.map(|p| (p, Source::Pool)).into_iter().collect();
+    if !others.is_empty() {
+        let exchange = session.exchange();
+        for p in others {
+            if Some(*p) != own {
+                pools.push((*p, Source::Library(exchange.pools.at(*p).shown.clone())));
+            }
+        }
+    }
     // real path of a file found in a --search folder: [(plan, link)]
     let mut claims: Vec<(String, Vec<(usize, String)>)> = Vec::new();
     for key in keys {
-        let Some(e) = library.get(key) else { continue };
-        let broken = broken_links(library, e);
+        let Some(e) = session.library.get(key).cloned() else {
+            continue;
+        };
+        let broken = broken_links(&session.library, &e);
         if broken.is_empty() {
             continue;
         }
@@ -1162,15 +1259,34 @@ fn plan_relinks(
             key: e.key.clone(),
             ..Plan::default()
         };
-        let linked: HashSet<String> = library
+        for (pool, source) in &pools {
+            let todo: Vec<String> = broken
+                .iter()
+                .filter(|f| !plan.found.iter().any(|(l, _)| l == *f))
+                .cloned()
+                .collect();
+            let exchange = session.exchange.as_mut().expect("the exchange");
+            for (link, files) in exchange.pool_relinks(&session.library, &e, *pool, &todo)? {
+                plan.sources.insert(link.clone(), source.clone());
+                plan.found.push((link, files));
+            }
+        }
+        let linked: HashSet<String> = session
+            .library
             .files(&e.key)
-            .iter()
+            .into_iter()
+            .chain(plan.found.iter().flat_map(|(_, fs)| fs.clone()))
             .filter(|f| exists(f))
-            .map(|f| realpath(f))
+            .map(|f| realpath(&f))
             .collect();
-        for link in &broken {
+        let rest: Vec<String> = broken
+            .iter()
+            .filter(|f| !plan.found.iter().any(|(l, _)| l == *f))
+            .cloned()
+            .collect();
+        for link in &rest {
             let mut candidates: Vec<String> = Vec::new();
-            for name in search_names(library, e, link, &broken) {
+            for name in search_names(nameformat, &e, link, &rest) {
                 candidates = search
                     .find(&name)
                     .into_iter()
@@ -1195,11 +1311,9 @@ fn plan_relinks(
                 ));
             } else if let Some(first) = candidates.first() {
                 let real = realpath(first);
-                plan.sources.insert(link.clone(), search.folder(first));
-                match plan.found.iter_mut().find(|(l, _)| l == link) {
-                    Some((_, fs)) => *fs = candidates.clone(),
-                    None => plan.found.push((link.clone(), candidates.clone())),
-                }
+                plan.sources
+                    .insert(link.clone(), Source::Folder(search.folder(first)));
+                plan.found.push((link.clone(), candidates.clone()));
                 let at = plans.len();
                 match claims.iter_mut().find(|(r, _)| *r == real) {
                     Some((_, c)) => c.push((at, link.clone())),
@@ -1230,11 +1344,11 @@ fn plan_relinks(
             }
         }
     }
-    (
+    Ok((
         plans.into_iter().filter(|p| !p.found.is_empty()).collect(),
         unclear,
         count,
-    )
+    ))
 }
 
 fn links_count(n: usize) -> String {
@@ -1250,6 +1364,8 @@ pub struct CheckOptions {
     pub metadata: bool,
     /// `--move`: the files of the `--search` folders are moved.
     pub move_: bool,
+    /// `--pool PATH`: the libraries to take the files of the broken links from (also of a library with a pool).
+    pub pools: Vec<String>,
     /// The command that applies the repairs, for the hint of `check`.
     pub fix_command: String,
 }
@@ -1269,18 +1385,41 @@ pub fn check_entries_files(
 ) -> Result<()> {
     let dry_run = session.dry_run();
     let place = fix && !dry_run;
+    // the library's own name template (a shallow library places files with the pool's)
+    let nameformat = session.own_nameformat();
     let search = SearchFolders::new(&options.search)?;
+    let mut others: Vec<PoolIx> = Vec::new();
+    for path in &options.pools {
+        others.push(session.exchange().pools.get_library(path)?);
+    }
     let mode = if fix {
         Some(files_mode(false, options.move_, false, &session.config)?)
     } else {
         None
     };
-    let (plans, unclear, count) = plan_relinks(&session.library, keys, &search);
+    // the links to pool files repaired when a shallow library is loaded (already linked), then the others
+    let loaded: Vec<Plan> = session
+        .repaired
+        .iter()
+        .filter(|(key, _)| keys.contains(key))
+        .map(|(key, found)| Plan {
+            key: key.clone(),
+            found: found.clone(),
+            sources: found.iter().map(|(l, _)| (l.clone(), Source::Pool)).collect(),
+        })
+        .collect();
+    let (plans, unclear, count) = plan_relinks(session, keys, &search, &nameformat, &others)?;
+    let count = count + loaded.iter().map(|p| p.found.len()).sum::<usize>();
 
     let mut lines: Vec<String> = Vec::new();
-    for plan in &plans {
+    let all: Vec<(&Plan, bool)> = loaded
+        .iter()
+        .map(|p| (p, true))
+        .chain(plans.iter().map(|p| (p, false)))
+        .collect();
+    for (plan, linked) in all {
         let mut found: Vec<(String, Vec<String>)> = plan.found.clone();
-        if place {
+        if place && !linked {
             // placed as `papers file attach` does, in place of the broken links
             let old = session.library.files(&plan.key);
             let mut positions: HashMap<String, (usize, usize)> = HashMap::new();
@@ -1293,15 +1432,26 @@ pub fn check_entries_files(
                 positions.insert(f.clone(), (i, i + n));
                 i += n;
             }
-            let copied: Vec<String> = if options.move_ {
-                Vec::new()
-            } else {
-                found.iter().flat_map(|(_, fs)| fs.clone()).collect()
-            };
+            let from_pool = |link: &String| plan.sources.get(link) == Some(&Source::Pool);
+            let pool_files: Vec<String> = found
+                .iter()
+                .filter(|(l, _)| from_pool(l))
+                .flat_map(|(_, fs)| fs.clone())
+                .collect();
+            let copied: Vec<String> = found
+                .iter()
+                .filter(|(l, _)| {
+                    !from_pool(l)
+                        && !(options.move_
+                            && matches!(plan.sources.get(l), Some(Source::Folder(_))))
+                })
+                .flat_map(|(_, fs)| fs.clone())
+                .collect();
             let attach = Attach {
                 mode: mode.unwrap_or(Mode::Move),
                 replace: found.clone(),
                 copied,
+                pool_files,
             };
             attach_files(session, &plan.key, &[], &attach)?;
             let newfiles = session.library.files(&plan.key);
@@ -1332,7 +1482,7 @@ pub fn check_entries_files(
                 )
             })
             .collect();
-        let source = |link: &str| format!("found in {}", short_home(&plan.sources[link]));
+        let source = |link: &str| plan.sources[link].describe();
         if place {
             lines.push(format!(
                 "{}: relinked to {}",
@@ -1370,7 +1520,7 @@ pub fn check_entries_files(
         ));
     }
 
-    let relinked: usize = plans.iter().map(|p| p.found.len()).sum();
+    let relinked: usize = loaded.iter().chain(&plans).map(|p| p.found.len()).sum();
     let mut issues: Vec<String> = lines.clone();
     let mut repairs: Vec<String> = Vec::new();
     let mut skip: HashSet<String> = unclear.iter().map(|(_, link, _)| link.clone()).collect();
@@ -1447,7 +1597,10 @@ pub fn check_entries_files(
         ));
     }
     if fix && !issues.is_empty() {
-        session.commit()?;
+        let committed = session.commit()?;
+        for line in push_note_lines(&session.library, &committed.notes) {
+            session.say.line(line);
+        }
     }
     Ok(())
 }

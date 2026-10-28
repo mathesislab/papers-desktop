@@ -4,7 +4,7 @@ use std::io::IsTerminal;
 
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::files::files_mode;
-use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::report::print_changes;
 use papers_rs::config::paths::isfile;
 use papers_rs::error::Error;
 use papers_rs::log;
@@ -84,7 +84,7 @@ pub fn field_values(texts: &[String]) -> Vec<(String, String)> {
 
 /// The resolver of the duplicates: `--on-duplicate`, else the deprecated
 /// `-m/--mode` letter, else ask in a terminal and error otherwise.
-fn duplicate_resolver(
+pub(crate) fn duplicate_resolver(
     leaf: &Leaf,
     config: &papers_rs::config::Config,
     no_check_duplicate: &mut bool,
@@ -195,8 +195,7 @@ fn run(
     let mut session = session;
     let result = (|| -> Done {
         let touched = add(&mut session, &request, resolver.as_mut())?;
-        session.commit()?;
-        let notes = Notes::new();
+        let notes = session.commit()?.notes;
         let color = session.color();
         print_changes(
             &session.library,

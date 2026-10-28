@@ -112,7 +112,7 @@ pub fn run(
     action: FileAction,
 ) -> Result<(), Failure> {
     if let FileAction::Open = action {
-        let library = Library::open(&config)?;
+        let library = papers_rs::command::pool::load_library(&config)?;
         let keys = selected(&library, search)?;
         open_entries(&library, &keys);
         return Ok(());
@@ -124,13 +124,16 @@ pub fn run(
         FileAction::Attach { mode: None, .. } => Some(files_mode(false, false, false, &config)?),
         _ => None,
     };
-    if let FileAction::FixFiles { .. } = action
-        && !leaf.strings("pool").is_empty()
-    {
-        return Err(Error::exit("--pool PATH: not implemented in papers-rs yet").into());
-    }
     let mut session = open(leaf, config, false, false)?;
     let result = (|| -> Result<(), Failure> {
+        // in a shallow library the files that `attach`, `rename` and `fix-files` place go to the pool
+        if matches!(
+            action,
+            FileAction::Attach { .. } | FileAction::Rename { .. } | FileAction::FixFiles { .. }
+        ) && !(matches!(action, FileAction::FixFiles { .. }) && session.dry_run())
+        {
+            session.use_pool_files()?;
+        }
         let keys = selected(&session.library, search)?;
         match action {
             FileAction::Attach { files, .. } => {
@@ -143,14 +146,15 @@ pub fn run(
                 }
                 let attach = Attach::new(mode.unwrap_or(Mode::Move));
                 attach_files(&mut session, &keys[0], &files, &attach)?;
-                session.commit()?;
-                report(&session, leaf, &keys);
+                let committed = session.commit()?;
+                report(&session, leaf, &keys, &committed.notes);
             }
             FileAction::Detach { files, broken } => {
                 detach_entries(&mut session, Some(&keys), &files, broken, false)?;
             }
             FileAction::FixFiles { search, move_ } => {
                 let options = CheckOptions {
+                    pools: leaf.strings("pool"),
                     search,
                     move_,
                     ..CheckOptions::default()
@@ -164,8 +168,8 @@ pub fn run(
                     keep_source,
                     move_.then_some(Mode::Move),
                 )?;
-                session.commit()?;
-                report(&session, leaf, &keys);
+                let committed = session.commit()?;
+                report(&session, leaf, &keys, &committed.notes);
             }
             FileAction::Open => {}
         }
@@ -175,12 +179,12 @@ pub fn run(
     result
 }
 
-fn report(session: &papers_rs::command::Session, leaf: &Leaf, keys: &[String]) {
+fn report(session: &papers_rs::command::Session, leaf: &Leaf, keys: &[String], notes: &Notes) {
     print_changes(
         &session.library,
         keys,
         false,
-        &Notes::new(),
+        notes,
         leaf.flag("porcelain"),
         session.color(),
         &session.say,

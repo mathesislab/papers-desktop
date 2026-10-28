@@ -663,11 +663,14 @@ fn status_of_a_library() {
 }
 
 #[test]
-fn the_status_of_a_library_with_a_pool_is_not_ported() {
+fn the_status_of_a_library_with_a_pool_has_its_pool_line() {
     let b = Sandbox::new();
     b.init("lib");
     ok(b.run(&["init", "project", "--pool", "../lib"]));
-    assert!(error(b.run_in("project", &["status"])).ends_with("not implemented in papers-rs yet\n"));
+    let status = ok(b.run_in("project", &["status", "--no-check-files"]));
+    assert!(status.contains("* files:  in the pool, $ROOT/work/lib/files\n"), "{status}");
+    assert!(status.contains("* pool:   ../lib (not pulled from yet)\n"), "{status}");
+    assert!(status.ends_with("`papers pull` takes the entries shared with the pool\n"), "{status}");
 }
 
 // with the reference
@@ -828,21 +831,14 @@ fn papers_rs_writes_and_papers_undoes() {
 }
 
 #[test]
-fn auto_push_after_undo_is_not_ported() {
+fn undo_and_redo_of_a_library_with_auto_push_say_there_is_nothing_when_there_is_nothing() {
     let b = Sandbox::new();
     b.init("lib");
     ok(b.run(&["init", "project", "--pool", "../lib"]));
     ok(b.run_in("project", &["config", "auto-push", "true"]));
-    // stopped before anything moves
     for command in ["undo", "redo"] {
-        assert_eq!(
-            error(b.run_in("project", &[command])),
-            format!(
-                "papers: error: auto-push after {command} in a shallow library: not implemented in papers-rs yet\n"
-            )
-        );
+        assert_eq!(error(b.run_in("project", &[command])), format!("papers: error: nothing to {command}\n"));
     }
-    // without the push, the command is the one of papers
     assert_eq!(error(b.run_in("project", &["undo", "--library-only"])), "papers: error: nothing to undo\n");
     assert_eq!(error(b.run_in("project", &["redo", "--dry-run"])), "papers: error: nothing to redo\n");
 }

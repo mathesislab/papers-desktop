@@ -5,11 +5,12 @@
 
 use papers_rs::command::check::{Fetch, FixOptions, fix_entries};
 use papers_rs::command::edit::{Editor, edit_selected};
-use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::report::print_changes;
 use papers_rs::command::rm::{Files, remove_entries};
 use papers_rs::command::tag::add_remove;
 use papers_rs::config::Config;
 use papers_rs::config::dirs::cache_dir;
+use papers_rs::error::Error;
 use papers_rs::fetch::Fetcher;
 use papers_rs::search::Search;
 
@@ -109,6 +110,12 @@ pub fn run(
                         "--delete-files and --keep-files are mutually exclusive".to_string(),
                     ));
                 }
+                if delete_files && session.config.shallow() {
+                    return Err(Error::exit(
+                        "--delete-files: the files of a shallow library are the pool's: remove them with `papers file rm FILE`",
+                    )
+                    .into());
+                }
                 let files = if delete_files {
                     Files::Delete
                 } else if keep_files {
@@ -119,7 +126,7 @@ pub fn run(
                 after_save = remove_entries(session, &keys, files, true)?;
             }
         }
-        session.commit()?;
+        let committed = session.commit()?;
         if matches!(action, Action::Delete) {
             // the files go before the lines of what was removed (papers lists after it deletes)
             session.delete_files(&after_save, &[])?;
@@ -129,7 +136,7 @@ pub fn run(
             &session.library,
             &touched,
             false,
-            &Notes::new(),
+            &committed.notes,
             porcelain,
             color,
             &session.say,

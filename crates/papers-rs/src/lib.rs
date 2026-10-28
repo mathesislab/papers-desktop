@@ -23,6 +23,7 @@ pub mod lock;
 pub mod log;
 pub mod merge;
 pub mod names;
+pub mod pools;
 pub mod search;
 #[rustfmt::skip]
 mod pytables;

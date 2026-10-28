@@ -95,7 +95,7 @@ pub fn export_entries(
 pub fn export_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
     let formats = formats_of("--format", &leaf.strings("format"))?;
     let config = check_install(leaf, config, true)?;
-    let library = Library::open(&config)?;
+    let library = papers_rs::command::pool::load_library(&config)?;
     let args = leaf.strings("entries");
     let entries: Vec<&Entry> = if args.is_empty() {
         library.entries().collect()

@@ -142,6 +142,7 @@ pub fn convert_file_links(config: Config) -> Result<(), Error> {
         ..Options::default()
     };
     let mut session = Session::open(config, options)?;
+    session.no_auto_push();
     // links to the files of the directory of the bibtex: written relative to it, as the setting says
     let relative_to = session.library.relative_to.clone();
     session.library.set_relative_to(&relative_to);

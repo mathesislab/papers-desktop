@@ -139,12 +139,44 @@ impl Placement {
     }
 }
 
+/// What a files policy knows besides the mode (`FilesPolicy` of papers): the files that stay where
+/// they are, those that are never moved, and the pools.
+#[derive(Debug, Clone, Default)]
+pub struct PolicyOptions {
+    /// Files to leave where they are, whatever the mode (the files an entry had already).
+    pub keep: Vec<String>,
+    /// Files that are copied, never moved, even from the files directory (the files that `file fix` found).
+    pub copied: Vec<String>,
+    /// Files of pool entries (outside `pool_dirs` too): never moved.
+    pub pool_files: Vec<String>,
+    /// The files directories of pools: a file in one of them is never moved.
+    pub pool_dirs: Vec<String>,
+    /// `filesdir` is the files directory of the pool of a shallow library: the files already there
+    /// are linked where they are, never renamed (other libraries may link to them).
+    pub in_pool: bool,
+}
+
 /// The policy of a library for a files mode (`files_policy`): a file that papers
 /// downloaded is always moved; a file that
 /// belongs to another library is never moved (`move` copies it); a file
 /// already in the files directory is moved (renamed), also in copy mode;
 /// with `ask`, each other file is asked about.
 pub fn files_policy(config: &Config, mode: Mode, say: Say, prompt: SharedPrompt) -> Placement {
+    files_policy_with(config, mode, say, prompt, &PolicyOptions::default())
+}
+
+/// [`files_policy`] with the options of `FilesPolicy`: in order, a file that papers downloaded is
+/// moved; one of `keep` is linked; in link mode every file is linked; one of `copied` is copied
+/// (linked, in a shallow library, if it is in the files directory); one in the files directory is
+/// moved (linked, in a shallow library); one of `pool_files` is copied (linked, in a shallow
+/// library); one in a files directory of `pool_dirs` is copied; for the others the mode decides.
+pub fn files_policy_with(
+    config: &Config,
+    mode: Mode,
+    say: Say,
+    prompt: SharedPrompt,
+    options: &PolicyOptions,
+) -> Placement {
     let filesdir = config.filesdir.clone();
     let others = OtherLibraries {
         current: config.file.as_deref().map(|f| realpath(&config_root(f))),
@@ -155,6 +187,11 @@ pub fn files_policy(config: &Config, mode: Mode, say: Say, prompt: SharedPrompt)
         for_all: None,
     });
     let failure = Arc::new(Mutex::new(None));
+    let keep: HashSet<String> = options.keep.iter().map(|f| realpath(f)).collect();
+    let copied: HashSet<String> = options.copied.iter().map(|f| realpath(f)).collect();
+    let pool_files: HashSet<String> = options.pool_files.iter().map(|f| realpath(f)).collect();
+    let pool_dirs: Vec<String> = options.pool_dirs.iter().filter(|d| !d.is_empty()).cloned().collect();
+    let in_pool = options.in_pool;
     let policy = {
         let failure = Arc::clone(&failure);
         Policy::by_file(move |file: &str| -> Action {
@@ -162,11 +199,22 @@ pub fn files_policy(config: &Config, mode: Mode, say: Say, prompt: SharedPrompt)
             if is_download(file) {
                 return Action::Move;
             }
-            if mode == Mode::Link {
+            let real = realpath(file);
+            if keep.contains(&real) || mode == Mode::Link {
                 return Action::Link;
             }
-            if filesdir.as_deref().is_some_and(|d| is_inside(file, d)) {
-                return Action::Move;
+            let inside = filesdir.as_deref().is_some_and(|d| is_inside(file, d));
+            if copied.contains(&real) {
+                return if in_pool && inside { Action::Link } else { Action::Copy };
+            }
+            if inside {
+                return if in_pool { Action::Link } else { Action::Move };
+            }
+            if pool_files.contains(&real) {
+                return if in_pool { Action::Link } else { Action::Copy };
+            }
+            if pool_dirs.iter().any(|d| is_inside(file, d)) {
+                return Action::Copy;
             }
             let mut state = state.lock().expect("the policy");
             let action = match mode {

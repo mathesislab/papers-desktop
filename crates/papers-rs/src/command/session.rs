@@ -15,8 +15,10 @@
 //! **Opening.** The library as it is is kept in memory for the first state of
 //! its history (nothing is written: a command that changes nothing leaves no
 //! trace), the lock of the library is taken (a dry run takes none), the bibtex
-//! is loaded. A library with a pool (a shallow library) is not supported yet:
-//! `open` fails with a clear error.
+//! is loaded. A shallow library (a library with a pool) has the broken links to the files of its pool
+//! repaired, and an [`Exchange`] with its pool: at the commit, the entries that the command added or
+//! changed go to the pool (the automatic push, see [`super::pool`]), then the pool is saved, then the origin
+//! records, then the library.
 //!
 //! **Committing** ([`Session::commit`]). A library that did not change is not
 //! saved and has no new state. Otherwise: the lock is checked (a command that
@@ -42,7 +44,7 @@
 //! logger (`papers: warning: ...`) go through [`crate::log`], as everywhere in
 //! this crate. Questions are put to a [`Prompt`]; the default has no terminal.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex};
 
 use crate::bib::Entry;
@@ -56,6 +58,7 @@ use crate::history::{FilesJson, History, OpKind, PoolLink, Step};
 use crate::library::{FileOp, Library, OpKind as LibraryOpKind, SaveError, SaveStatus};
 use crate::lock::{self, Lock};
 use crate::log;
+use crate::pools::Exchange;
 
 /// Where the text of a command goes, as it comes.
 pub type Sink = Box<dyn FnMut(&str) + Send>;
@@ -190,6 +193,12 @@ pub struct Committed {
     /// For a library written by the command of another (see [`Session::mark_from`]): the link
     /// (project id, step) that the step of the command's own library records in its `pools`.
     pub link: Option<(String, PoolLink)>,
+    /// What the automatic push of a shallow library did, as notes for the lines of the entries
+    /// (lower-case key -> note: `also added to pool ../pool`).
+    pub notes: HashMap<String, String>,
+    /// For a library written by the command of another: the file operations that its save did
+    /// (copies into its files directory); they belong to the step of the command's library.
+    pub ops: Vec<HistoryOp>,
 }
 
 /// A command that writes a library, from the lock to the history.
@@ -214,6 +223,27 @@ pub struct Session {
     /// The directory of the bibtex of the library of the command, when this library is another
     /// one that the command writes (its pool): its step says where it came from.
     from: Option<String>,
+    /// The exchanges with the pool of a shallow library, and with the libraries given by `--pool
+    /// PATH` (made when first needed in a self-contained library).
+    pub(crate) exchange: Option<Exchange>,
+    /// The notes that the command adds to the lines of the entries (`from pool X` for `add`).
+    pub(crate) notes: HashMap<String, String>,
+    /// The pool of which `add` took entries (`after_take`).
+    pub(crate) taken_from: Vec<crate::pools::PoolIx>,
+    /// The steps that the command (or an undo before it) added to the histories of other libraries:
+    /// the step of this library records them in its `pools`.
+    pub(crate) pending_links: Vec<(String, PoolLink)>,
+    /// The file operations of the pools that the command wrote: they join the step of this library.
+    pub(crate) pool_ops: Vec<HistoryOp>,
+    /// The broken links to pool files repaired when the library was loaded: key and what replaced what.
+    pub(crate) repaired: crate::pools::Repaired,
+    /// The name template of the library itself, when a shallow library places its files with the pool's.
+    pub(crate) own_nameformat: Option<crate::names::Format>,
+    /// `add` looks in this pool first (`--pool PATH`, else the pool of the library), unless `--no-pool`.
+    pub(crate) lookup: Option<crate::pools::lookup::PoolLookup>,
+    /// The commit does not push the entries that the command changed (the exchange commands push
+    /// what they say).
+    skip_auto_push: bool,
 }
 
 /// The error of what is not ported yet.
@@ -238,11 +268,6 @@ impl Session {
         mut options: Options,
         held: Option<Option<Lock>>,
     ) -> Result<Session> {
-        if config.shallow() {
-            return Err(not_implemented(
-                "a library with a pool (a shallow library; `papers config pool none` makes it self-contained)",
-            ));
-        }
         let before = if options.dry_run {
             None
         } else {
@@ -271,7 +296,7 @@ impl Session {
                 }
             });
         }
-        Ok(Session {
+        let mut session = Session {
             config,
             library,
             say,
@@ -285,7 +310,66 @@ impl Session {
             ops_after: Vec::new(),
             reverts: Vec::new(),
             from: None,
-        })
+            exchange: None,
+            notes: HashMap::new(),
+            taken_from: Vec::new(),
+            pending_links: Vec::new(),
+            pool_ops: Vec::new(),
+            lookup: None,
+            repaired: Vec::new(),
+            own_nameformat: None,
+            skip_auto_push: false,
+        };
+        if session.config.shallow() {
+            session.repair_pool_links();
+        }
+        Ok(session)
+    }
+
+    /// A session on a library that is already loaded (a pool that an exchange changed): the
+    /// lock, if the caller holds it, is given back by [`Session::finish_keeping_lock`].
+    pub fn adopt(config: Config, library: Library, options: Options, lock: Option<Lock>) -> Session {
+        let mut options = options;
+        let prompt: SharedPrompt = Arc::new(Mutex::new(std::mem::replace(
+            &mut options.prompt,
+            Box::new(NoPrompt),
+        )));
+        let say = Say::new(options.sink.take());
+        let mut config = config;
+        let before = if options.dry_run {
+            None
+        } else {
+            History::before_command(&mut config)
+        };
+        Session {
+            config,
+            library,
+            say,
+            options,
+            prompt,
+            lock,
+            before,
+            history: None,
+            recorded: None,
+            rolled_back: false,
+            ops_after: Vec::new(),
+            reverts: Vec::new(),
+            from: None,
+            exchange: None,
+            notes: HashMap::new(),
+            taken_from: Vec::new(),
+            pending_links: Vec::new(),
+            pool_ops: Vec::new(),
+            lookup: None,
+            repaired: Vec::new(),
+            own_nameformat: None,
+            skip_auto_push: false,
+        }
+    }
+
+    /// The library of the session, to hand over after the command.
+    pub fn into_library(self) -> Library {
+        self.library
     }
 
     /// The step of the command takes back these steps of the history (`reverts` of the state).
@@ -302,6 +386,17 @@ impl Session {
 
     pub fn dry_run(&self) -> bool {
         self.options.dry_run
+    }
+
+    /// The commit of this session does not push what the command changed to the pool of a shallow
+    /// library (`pull`, `push` and `sync` do what they say).
+    pub fn no_auto_push(&mut self) {
+        self.skip_auto_push = true;
+    }
+
+    /// The command holds the lock of its library.
+    pub(crate) fn holds_lock(&self) -> bool {
+        self.lock.is_some()
     }
 
     pub fn color(&self) -> bool {
@@ -338,7 +433,7 @@ impl Session {
         )
     }
 
-    fn history(&mut self) -> Result<&mut History> {
+    pub(crate) fn history(&mut self) -> Result<&mut History> {
         if self.history.is_none() {
             let opened = History::open(&mut self.config, true, self.options.dry_run)?;
             self.history = Some(opened.ok_or_else(|| Error::other("the library has no history"))?);
@@ -363,23 +458,27 @@ impl Session {
     }
 
     fn commit_with(&mut self, other_changes: bool) -> Result<Committed> {
+        let mut other_changes = other_changes;
+        if self.from.is_none() {
+            other_changes |= self.follow_exchange()?;
+        }
+        let notes = self.notes.clone();
         let bibtex = self.library.bibtex.clone();
+        let unsaved = |link| Committed {
+            saved: false,
+            step: None,
+            link,
+            notes: notes.clone(),
+            ops: Vec::new(),
+        };
         if self.options.dry_run {
             self.say.line(format!("DRYRUN: {bibtex} not saved"));
-            return Ok(Committed {
-                saved: false,
-                step: None,
-                link: None,
-            });
+            return Ok(unsaved(None));
         }
         if !other_changes && self.library.unchanged() {
             // logs that nothing changed; nothing is written, and the history has no new state
             self.library.save(false).map_err(Error::from)?;
-            return Ok(Committed {
-                saved: false,
-                step: None,
-                link: None,
-            });
+            return Ok(unsaved(None));
         }
         if let Some(lock) = &self.lock {
             lock.check()?;
@@ -415,10 +514,23 @@ impl Session {
                 return Err(error);
             }
         };
-        let ops: Vec<HistoryOp> = early
+        let own = self.from.is_none();
+        let mut ops: Vec<HistoryOp> = early
             .into_iter()
             .chain(saved.file_ops.iter().map(history_op))
             .collect();
+        // the operations of the pools that the command wrote are those of the step of its library
+        let mut handed = Vec::new();
+        if own {
+            ops.extend(std::mem::take(&mut self.pool_ops));
+        } else {
+            handed = std::mem::take(&mut ops);
+        }
+        let pools = if own {
+            self.pending_links.clone()
+        } else {
+            Vec::new()
+        };
         let message = self.options.message.clone();
         let (reverts, from) = (self.reverts.clone(), self.from.clone());
         // the history comes last: a failure must not undo the work done above
@@ -428,11 +540,15 @@ impl Session {
                 ops,
                 reverts,
                 from,
+                pools,
                 ..Step::default()
             })
         }) {
             Ok(recorded) => {
                 self.recorded = Some(recorded.number);
+                if own && recorded.number.is_some() {
+                    self.pending_links.clear();
+                }
                 (recorded.number, recorded.link)
             }
             Err(error) => {
@@ -446,7 +562,39 @@ impl Session {
             saved: saved.status != SaveStatus::Unchanged,
             step,
             link,
+            notes,
+            ops: handed,
         })
+    }
+
+    /// The exchanges with pools that go with the save of the library of the command (see
+    /// [`super::pool`]): the records follow the keys that changed, the entries that the command
+    /// added or changed are pushed to the pool of a shallow library, the pools and the origin records
+    /// are saved. Whether the origin records changed.
+    fn follow_exchange(&mut self) -> Result<bool> {
+        let renamed = self.library.renamed_keys();
+        if self.exchange.is_none() && !self.config.shallow() {
+            if !renamed.is_empty() && !self.options.dry_run {
+                let mut origin = crate::pools::Origin::for_bibtex(&self.library.bibtex, false);
+                for (old, new) in &renamed {
+                    origin.rekey(old, new);
+                }
+                origin.save()?;
+            }
+            return Ok(false);
+        }
+        // the records follow the key, before the push looks them up
+        self.exchange();
+        if let Some(exchange) = self.exchange.as_mut() {
+            for (old, new) in &renamed {
+                exchange.origin.rekey(old, new);
+            }
+        }
+        if !self.skip_auto_push {
+            self.auto_push()?;
+        }
+        self.after_taking();
+        self.save_exchange()
     }
 
     /// `.papers/files.json` before the bibtex is written: the checksums of the
@@ -624,6 +772,17 @@ impl Session {
         result
     }
 
+    /// Delete a file that has an identical copy that stays: recorded as removed (`dst` is the copy), not
+    /// kept in the history (undo copies the copy back).
+    pub(crate) fn remove_same(&mut self, file: &str, copy: &str) {
+        let digest = file_digest(file);
+        self.ops_after
+            .push(HistoryOp::new(OpKind::Removed, file, Some(copy), digest));
+        if let Err(error) = std::fs::remove_file(file) {
+            log::error(&format!("{file}: {error}"));
+        }
+    }
+
     /// Record a file operation that the command did itself, after the save of the
     /// library (`journal.record`): the history step of the command has it. The
     /// checksum of `dst` is taken now. Nothing in a dry run.
@@ -653,6 +812,18 @@ impl Session {
     /// [`Session::finish`], giving back the lock of the library instead of releasing it (see
     /// [`Session::open_locked`]).
     pub fn finish_keeping_lock(mut self) -> (Outcome, Option<Lock>) {
+        let (outcome, lock) = self.finish_parts();
+        (outcome, lock)
+    }
+
+    /// [`Session::finish_keeping_lock`] for a session on a library that the caller keeps
+    /// ([`Session::adopt`]): the library is given back too.
+    pub fn finish_adopted(mut self) -> (Outcome, Option<Lock>, Library) {
+        let (outcome, lock) = self.finish_parts();
+        (outcome, lock, self.library)
+    }
+
+    fn finish_parts(&mut self) -> (Outcome, Option<Lock>) {
         let mut ops: Vec<HistoryOp> = Vec::new();
         if self.recorded.is_none() && !self.rolled_back {
             ops.extend(self.library.file_ops().iter().map(history_op));

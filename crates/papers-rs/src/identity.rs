@@ -584,6 +584,12 @@ pub fn same_paper(a: &Entry, b: &Entry, distinct: Option<&Distinct>) -> Verdict 
     same_paper_ids(&Identifiers::of(a), &Identifiers::of(b), distinct)
 }
 
+/// Whether an identifier that both entries have differs (DOI, arXiv id or ISBN, see
+/// [`same_paper`]; the pairs of `distinct.json` aside).
+pub fn contradicts(a: &Entry, b: &Entry) -> bool {
+    CONTRADICTIONS.contains(&same_paper(a, b, None).reason.as_str())
+}
+
 // not the same paper
 // ------------------
 

@@ -64,16 +64,37 @@ fn config_paths_rewrites_the_file_links() {
     assert!(fs::read_to_string(dir.path().join("papers.bib")).unwrap().contains("file = {:x.pdf:pdf}"));
 }
 
-/// A library whose entries have files cannot change its pool yet (the files follow): nothing is changed.
+/// A library whose entries have files changes its pool with the files following: nothing is changed without the
+/// answer (`-y`), and a pool that lacks a file is an error that says so.
 #[test]
-fn config_pool_with_file_links_is_not_ported() {
+fn config_pool_with_file_links_moves_the_files_after_the_answer() {
     let dir = tempfile::tempdir().unwrap();
     for lib in ["A", "B"] {
         assert_eq!(papers(&["init", lib], dir.path()).status.code(), Some(0));
     }
-    fs::write(dir.path().join("B/papers.bib"), "@article{x,\n file = {:x.pdf:pdf}\n}\n").unwrap();
+    fs::create_dir_all(dir.path().join("B/files")).unwrap();
+    fs::write(dir.path().join("B/files/x.pdf"), "the file\n").unwrap();
+    fs::write(dir.path().join("B/papers.bib"), "@article{x,\n title = {X},\n author = {Doe, Jane},\n file = {:files/x.pdf:pdf}\n}\n").unwrap();
+    // the pool does not have the paper: nothing changes, the entry is named
     let output = papers(&["-C", "B", "config", "pool", "../A"], dir.path());
     assert_eq!(output.status.code(), Some(1));
-    assert!(text(&output.stderr).contains("not implemented in papers-rs yet"), "{}", text(&output.stderr));
+    assert!(text(&output.stderr).contains("1 entry links to PDFs that the pool ../A does not have"), "{}", text(&output.stderr));
     assert!(!fs::read_to_string(dir.path().join("B/.papers/config.json")).unwrap().contains("pool\": \"../A"));
+    // with the paper and its file in the pool, the library links to the pool's copy; a terminal or -y is needed
+    fs::create_dir_all(dir.path().join("A/files")).unwrap();
+    fs::write(dir.path().join("A/files/x.pdf"), "the file\n").unwrap();
+    fs::write(dir.path().join("A/papers.bib"), "@article{x,\n title = {X},\n author = {Doe, Jane},\n file = {:files/x.pdf:pdf}\n}\n").unwrap();
+    let output = papers(&["-C", "B", "config", "pool", "../A"], dir.path());
+    assert_eq!(output.status.code(), Some(1));
+    assert!(text(&output.stderr).contains("confirm in a terminal, or pass -y"), "{}", text(&output.stderr));
+    let output = papers(&["-C", "B", "config", "pool", "../A", "-y"], dir.path());
+    assert_eq!(output.status.code(), Some(0), "{}", text(&output.stderr));
+    assert!(fs::read_to_string(dir.path().join("B/.papers/config.json")).unwrap().contains("pool\": \"../A"));
+    assert!(fs::read_to_string(dir.path().join("B/papers.bib")).unwrap().contains("file = {:../A/files/x.pdf:pdf}"));
+    assert!(!dir.path().join("B/files/x.pdf").exists());
+    // and back to a library of its own: the file is copied into its files directory
+    let output = papers(&["-C", "B", "config", "pool", "none", "-y"], dir.path());
+    assert_eq!(output.status.code(), Some(0), "{}", text(&output.stderr));
+    assert!(fs::read_to_string(dir.path().join("B/papers.bib")).unwrap().contains("file = {:files/"));
+    assert!(dir.path().join("A/files/x.pdf").exists());
 }

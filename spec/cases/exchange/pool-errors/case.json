@@ -1,0 +1,95 @@
+{
+  "description": "the pool conditions: no pool, a pool that does not exist, that is not a library, that has a pool itself, that is the library itself; an unreadable pool bibtex is not written to",
+  "sections": [
+    "exchange.md#2.2",
+    "exchange.md#2.1"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "push",
+        "--pool",
+        "../nowhere"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "../plain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "../twolevel"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "."
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "push",
+        "--pool",
+        "../broken",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "../broken",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "push",
+        "--all",
+        "--pool",
+        "../pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "nosuchkey",
+        "--pool",
+        "../pool"
+      ]
+    }
+  ]
+}

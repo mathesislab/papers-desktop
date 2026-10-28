@@ -2,6 +2,7 @@
 //! `--global` of the global configuration.
 
 use std::fs;
+use std::io::{BufRead, IsTerminal, Write};
 
 use papers_rs::config::json::loads;
 use papers_rs::config::paths::{abspath, exists, expanduser, getcwd, short_home};
@@ -10,10 +11,16 @@ use papers_rs::config::{
     Config, DEFAULT_LIBRARY, LIBRARY_ONLY, MACHINE_ONLY, MachineConfig, NO_POOL, Origin, format_value, json_get,
     library_without_pool, parse_value, pool_setting, removed_setting,
 };
+use papers_rs::command::file_cmd::broken_link_count;
+use papers_rs::command::pool::{OwnPlan, RelinkPlan};
+use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::{Options, Session};
 use papers_rs::error::{Error, Result};
 use papers_rs::log;
 use serde_json::Value;
 
+use crate::cmd_init::show;
+use crate::cmd_write::Terminal;
 use crate::parse::Leaf;
 
 pub struct ConfigArgs {
@@ -23,6 +30,8 @@ pub struct ConfigArgs {
     pub prune: bool,
     pub is_global: bool,
     pub dry_run: bool,
+    pub yes: bool,
+    pub porcelain: bool,
 }
 
 impl ConfigArgs {
@@ -35,6 +44,8 @@ impl ConfigArgs {
             prune: leaf.flag("prune"),
             is_global: leaf.flag("is_global"),
             dry_run: leaf.flag("dry_run"),
+            yes: leaf.flag("yes"),
+            porcelain: leaf.flag("porcelain"),
         }
     }
 }
@@ -105,7 +116,7 @@ fn parse_setting(name: &str, values: &[String]) -> Result<Value> {
 }
 
 /// The bibtex of a library has file links: changing the `paths` setting rewrites them
-/// (`cmd_write::convert_file_links`); a library with a pool is not supported there yet.
+/// (`cmd_write::convert_file_links`).
 fn has_file_links(bibtex: &str) -> bool {
     let Ok(text) = fs::read_to_string(bibtex) else { return false };
     let lower = text.to_lowercase();
@@ -114,10 +125,6 @@ fn has_file_links(bibtex: &str) -> bool {
         let after = lower[i + 4..].trim_start();
         before_ok && after.starts_with('=')
     })
-}
-
-fn not_implemented(what: &str) -> Error {
-    Error::exit(format!("{what}: not implemented in papers-rs yet (the bibtex has file links)"))
 }
 
 pub fn config_cmd(o: &ConfigArgs, mut config: Config) -> Outcome {
@@ -265,9 +272,7 @@ fn prune(config: &mut Config, dry_run: bool) -> Outcome {
 /// it links to into its files directory. A pool PATH (an existing library
 /// without pool) needs each PDF of the library in the pool entry of the same
 /// paper: the library then links to the pool's copies, and its own copies are
-/// deleted. Only a library whose entries have no files is handled here: for
-/// the others, the files are the work of the exchanges with the pool, which
-/// this port does not have yet.
+/// deleted. The change of the files is shown and confirmed first (`-y`, `--dry-run`).
 fn set_pool(o: &ConfigArgs, mut config: Config, unset: bool) -> Outcome {
     let file = config.file.clone().unwrap_or_default();
     let was_shallow = config.shallow();
@@ -322,12 +327,34 @@ fn set_pool(o: &ConfigArgs, mut config: Config, unset: bool) -> Outcome {
     }
 
     // the library as `get_biblio` loads it: the files of its entries are what the change moves
-    let Some(bibtex) = config.bibtex.clone() else {
-        return Err(Error::other("bibtex is not initialized").into());
+    let options = Options {
+        message: crate::cmd_write::command_line(),
+        dry_run: o.dry_run,
+        assume_yes: o.yes,
+        color: false,
+        prompt: Box::new(Terminal),
+        sink: Some(Box::new(|line: &str| log::println(line))),
     };
-    if exists(&bibtex) && has_file_links(&bibtex) {
-        return Err(not_implemented(&format!("config pool {}", o.values.first().cloned().unwrap_or_default())).into());
-    }
+    let mut session = Session::open(config.clone(), options)?;
+    let result = change_pool_files(o, &mut session, &new, &mut config, to_self, &done);
+    config.id = session.config.id.clone();
+    crate::cmd_write::finish(session);
+    result
+}
+
+/// What a change of the pool does to the files (`_set_pool`, after the checks): the plan is shown and
+/// confirmed, the files are copied or relinked, the library is saved, then the setting.
+fn change_pool_files(
+    o: &ConfigArgs,
+    session: &mut Session,
+    new: &Config,
+    config: &mut Config,
+    to_self: bool,
+    done: &dyn Fn(&mut Config) -> Outcome,
+) -> Outcome {
+    let old_dirs: Vec<String> = if config.shallow() { session.pool_files_dirs() } else { Vec::new() };
+    let mut delete: Vec<String> = Vec::new();
+    let mut hint: Option<String> = None;
     if to_self {
         if config.filesdir.is_none() {
             return Err(Error::exit(
@@ -335,10 +362,170 @@ fn set_pool(o: &ConfigArgs, mut config: Config, unset: bool) -> Outcome {
             )
             .into());
         }
-        // no file to copy
-        log::println("pool none: the library becomes self-contained, with its own files");
+        let plan = session.plan_own_files(Some(&old_dirs))?;
+        let intro = ["pool none: the library becomes self-contained, with its own files".to_string()];
+        let (summary, details) = if plan.is_empty() { (Vec::new(), Vec::new()) } else { own_files_lines(&plan, config) };
+        if !plan.is_empty() {
+            let lines: Vec<String> = intro.iter().chain(&summary).cloned().collect();
+            if !confirm_change(o, &lines, "pool none", &details)? {
+                return Ok(());
+            }
+        } else {
+            log::println(&intro.join("\n"));
+        }
+        if o.dry_run {
+            return done(config);
+        }
+        session.own_files(&plan, &old_dirs)?;
+    } else {
+        // the library links to the files of the pool: each PDF must be in the pool already
+        let what = format!("pool {}", o.values.first().cloned().unwrap_or_default());
+        let pool_label = format!("the pool {}", new.pool_label().unwrap_or_default());
+        let Some(pool) = session.use_new_pool(new) else {
+            return Err(Error::exit(format!("{what}: the pool cannot be read (nothing was changed)")).into());
+        };
+        let (plan, missing) = session.plan_relink(pool)?;
+        if !missing.is_empty() {
+            return Err(missing_error(&what, &missing, &pool_label, o.values.first().map_or("", String::as_str)).into());
+        }
+        let (summary, details) = if plan.is_empty() { (Vec::new(), Vec::new()) } else { relink_lines(&plan, config, &pool_label) };
+        if !plan.is_empty() && !confirm_change(o, &summary, &what, &details)? {
+            return Ok(());
+        }
+        if o.dry_run {
+            return done(config);
+        }
+        // the broken links are not changed: file fix relinks those that the pool has
+        let broken = broken_link_count(&session.library);
+        if broken > 0 {
+            hint = Some(format!(
+                "{broken} link{} already broken: `papers file fix` relinks those that the pool has",
+                if broken > 1 { "s were" } else { " was" }
+            ));
+        }
+        if plan.is_empty() {
+            done(config)?;
+            if let Some(hint) = hint {
+                log::println(&hint);
+            }
+            return Ok(());
+        }
+        let mut keep = old_dirs.clone();
+        keep.extend(session.exchange().pools.at(pool).filesdir());
+        delete = session.relink(&plan, pool, &keep)?;
     }
-    done(&mut config)
+    // the library (and the origin records) saved, then the setting
+    session.no_auto_push();
+    session.commit()?;
+    let keys: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
+    print_changes(&session.library, &keys, false, &Notes::new(), o.porcelain, false, &session.say);
+    config.id = session.config.id.clone();
+    done(config)?;
+    let same = session.relinked_same();
+    session.delete_files(&delete, &same)?;
+    if let Some(hint) = hint {
+        log::println(&hint);
+    }
+    Ok(())
+}
+
+/// Print what a change does to the files, and ask to continue (`_confirm`): `-y` answers yes, `--dry-run`
+/// stops here (and lists `details`, each file), and without a terminal it is an error.
+fn confirm_change(o: &ConfigArgs, lines: &[String], what: &str, details: &[String]) -> Result<bool> {
+    log::println(&lines.join("\n"));
+    if o.dry_run {
+        if !details.is_empty() {
+            log::println(&details.join("\n"));
+        }
+        log::println("DRYRUN: nothing was changed");
+        return Ok(false);
+    }
+    if o.yes {
+        return Ok(true);
+    }
+    if !std::io::stdin().is_terminal() {
+        return Err(Error::exit(format!(
+            "{what}: confirm in a terminal, or pass -y to proceed (nothing was changed)"
+        )));
+    }
+    if !details.is_empty() {
+        log::println(&format!("(`papers config {what} --dry-run` lists each file)"));
+    }
+    log::print("Continue? [y/N] ");
+    let _ = std::io::stdout().flush();
+    let mut answer = String::new();
+    let read = std::io::stdin().lock().read_line(&mut answer).unwrap_or(0);
+    if read == 0 {
+        return Err(papers_rs::command::session::no_input_error());
+    }
+    if matches!(answer.trim().to_lowercase().as_str(), "y" | "yes") {
+        return Ok(true);
+    }
+    log::println("nothing was changed");
+    Ok(false)
+}
+
+fn files_word(n: usize) -> String {
+    format!("{n} file{}", if n != 1 { "s" } else { "" })
+}
+
+/// The summary and the details (each file) of `papers config pool none` in a shallow library.
+fn own_files_lines(plan: &OwnPlan, config: &Config) -> (Vec<String>, Vec<String>) {
+    let n: usize = plan.iter().map(|(_, files)| files.len()).sum();
+    let summary = vec![format!(
+        "copy {} of the pool into {} (hard links when possible); the library will link to the copies, and the pool keeps its files.",
+        files_word(n),
+        show(config.filesdir.as_deref().unwrap_or_default())
+    )];
+    let details = plan
+        .iter()
+        .flat_map(|(key, files)| files.iter().map(move |f| format!("  {key}: {}", show(f))))
+        .collect();
+    (summary, details)
+}
+
+/// The summary and the details (each file) of linking the library to the files of a pool.
+fn relink_lines(plan: &RelinkPlan, config: &Config, pool_label: &str) -> (Vec<String>, Vec<String>) {
+    let n: usize = plan.iter().map(|(_, actions)| actions.len()).sum();
+    let own = config.filesdir.clone();
+    let in_own = |f: &str| own.as_deref().is_some_and(|d| papers_rs::config::paths::is_inside(f, d));
+    let deleted = plan.iter().flat_map(|(_, a)| a.iter()).filter(|(f, _)| in_own(f)).count();
+    let mut summary = format!("link to the copies in {pool_label} for {} (same content)", files_word(n));
+    if deleted > 0 {
+        summary.push_str(&format!(
+            "; the library's copies in {} ({}) are deleted",
+            show(own.as_deref().unwrap_or_default()),
+            files_word(deleted)
+        ));
+    }
+    let details = plan
+        .iter()
+        .flat_map(|(key, actions)| {
+            actions.iter().map(move |(f, target)| {
+                format!("  {key}: {} -> {}{}", show(f), show(target), if in_own(f) { " (deleted)" } else { "" })
+            })
+        })
+        .collect();
+    (vec![summary], details)
+}
+
+const MAX_KEYS: usize = 10;
+
+/// The error of `config pool PATH` when entries link to PDFs that the pool entry does not have.
+fn missing_error(what: &str, missing: &[String], pool_label: &str, given: &str) -> Error {
+    let shown = missing.iter().take(MAX_KEYS).cloned().collect::<Vec<_>>().join(", ")
+        + &if missing.len() > MAX_KEYS { format!(" and {} more", missing.len() - MAX_KEYS) } else { String::new() };
+    let n = missing.len();
+    let selection = if n <= MAX_KEYS { missing.join(" ") } else { "--all".to_string() };
+    let lines = [
+        format!(
+            "{what}: {n} entr{} to PDFs that {pool_label} does not have (nothing was changed): {shown}",
+            if n != 1 { "ies link" } else { "y links" }
+        ),
+        format!("Copy them to the pool first: `papers push --pool {given} {selection}`"),
+        format!("Then run `papers config {what}` again."),
+    ];
+    Error::exit(lines.join("\n"))
 }
 
 /// `papers config --global`.

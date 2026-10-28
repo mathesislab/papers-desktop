@@ -3,8 +3,9 @@
 //! (`papers.cli.entry_cmds.addcmd`, `papers.bib.Biblio.insert_entry`).
 //!
 //! PDFs, folders (`-R`) and DOIs are in [`super::add_pdf`]; URLs as attachments are downloaded.
-//! Not ported yet: the pool of a library (`--pool`) and Google Scholar (`--scholar`): each is an
-//! error that says so, before anything is changed.
+//! `add` looks in the pool of the library (or in the library of `--pool PATH`) first, unless `--no-pool`
+//! (`pools::lookup`); in a shallow library the files go to the pool (`Session::use_pool_files`).
+//! Not ported yet: Google Scholar (`--scholar`), an error that says so before anything is changed.
 
 use std::collections::HashSet;
 
@@ -316,14 +317,35 @@ pub fn add(
     if request.pool.is_some() && request.no_pool {
         return Err(Error::exit("--pool PATH and --no-pool exclude each other"));
     }
-    if request.pool.is_some() {
-        return Err(not_implemented("add --pool"));
+    // in a shallow library, the files go to the pool, under the template of the pool
+    session.use_pool_files()?;
+    let mut source_dirs: Vec<String> = Vec::new();
+    if !request.no_pool
+        && let Some(pool) = session.start_pool_lookup(request.pool.as_deref())?
+        && request.pool.is_some()
+    {
+        source_dirs.extend(session.exchange().pools.at(pool).filesdir());
     }
-    let placement = files::files_policy(
-        &session.config,
+    let mut pool_dirs = session.pool_files_dirs();
+    pool_dirs.extend(source_dirs);
+    let in_pool = session.config.shallow()
+        && session
+            .library
+            .filesdir
+            .as_deref()
+            .is_some_and(|d| pool_dirs.iter().any(|p| realpath(p) == realpath(d)));
+    let mut config = session.config.clone();
+    config.filesdir = session.library.filesdir.clone();
+    let placement = files::files_policy_with(
+        &config,
         request.mode,
         session.say.clone(),
         session.prompt(),
+        &files::PolicyOptions {
+            pool_dirs,
+            in_pool,
+            ..files::PolicyOptions::default()
+        },
     );
 
     let mut metadata: Vec<(String, String)> = Vec::new();
@@ -447,14 +469,30 @@ pub fn add(
                     placement.check()?;
                 }
                 None => {
-                    let where_ = if request.no_pool {
-                        "the library (--no-pool)"
-                    } else {
-                        "the library (it has no pool)"
+                    // the pool entry of that key, as it is written there
+                    let taken = match (session.lookup.as_mut(), session.exchange.as_mut()) {
+                        (Some(lookup), Some(exchange)) => {
+                            let files: Vec<String> = attachments.iter().map(|f| abspath(f)).collect();
+                            lookup.key(exchange, &session.library, &key, &files)?
+                        }
+                        _ => None,
                     };
-                    return Err(Error::exit(format!(
-                        "nothing to add: no file, identifier or bibtex given, and no entry {key} in {where_}"
-                    )));
+                    let Some(taken) = taken else {
+                        let where_ = if request.no_pool {
+                            "the library (--no-pool)".to_string()
+                        } else if let Some(pool) = session.lookup.as_ref().map(|l| l.pool) {
+                            session.exchange().label(pool)
+                        } else {
+                            "the library (it has no pool)".to_string()
+                        };
+                        return Err(Error::exit(format!(
+                            "nothing to add: no file, identifier or bibtex given, and no entry {key} in {where_}"
+                        )));
+                    };
+                    let mut keyed = options.clone();
+                    keyed.metadata = others;
+                    touched.extend(add_pdf::insert_taken(session, taken, &keyed, &mut watch)?);
+                    placement.check()?;
                 }
             }
         } else {
@@ -593,7 +631,19 @@ pub fn add(
             .collect();
         touched = edit_added(session, &unique)?;
     }
+    session.finish_pool_lookup();
     Ok(touched)
+}
+
+/// The taker of the pool lookup of the session, if it has one.
+fn taker_of<'a>(
+    lookup: &'a mut Option<crate::pools::lookup::PoolLookup>,
+    exchange: &'a mut Option<crate::pools::Exchange>,
+) -> Option<crate::pools::lookup::PoolTaker<'a>> {
+    match (lookup.as_mut(), exchange.as_mut()) {
+        (Some(lookup), Some(exchange)) => Some(crate::pools::lookup::PoolTaker { lookup, exchange }),
+        _ => None,
+    }
 }
 
 /// The entries of one file added: bibtex, CSL-JSON or BibJSON.
@@ -616,26 +666,32 @@ pub(super) fn add_file(
     // file links in the added file are relative to its own directory
     let relative_to = dirname(&abspath(file));
     let inserted = if format == Format::Bibtex {
-        session.library.add_bibtex(
-            &text,
+        let entries: Vec<Entry> = crate::bib::Bib::parse(&text).entries().cloned().collect();
+        let mut taker = taker_of(&mut session.lookup, &mut session.exchange);
+        session.library.add_entries_taking(
+            entries,
             Some(&relative_to),
             attachments,
-            false,
+            "bibtex",
             options,
             resolver,
+            taker.as_mut().map(|t| t as &mut dyn crate::library::Taker),
         )?
     } else {
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
         let entries = loads(text, format).map_err(Error::exit)?;
         let what = format!("{} file", format.label());
-        session.library.add_entries(
+        let mut taker = taker_of(&mut session.lookup, &mut session.exchange);
+        session.library.add_entries_taking(
             entries,
             Some(&relative_to),
             attachments,
             &what,
             options,
             resolver,
+            taker.as_mut().map(|t| t as &mut dyn crate::library::Taker),
         )?
     };
+    session.remove_stored_duplicates();
     Ok(insert_messages(session, &inserted))
 }

@@ -138,6 +138,23 @@ pub(super) fn add_pdf(
             );
         }
     }
+    // then the pool of the library
+    if session.lookup.is_some() {
+        let files: Vec<String> = std::iter::once(&pdf)
+            .chain(attachments)
+            .map(|f| abspath(f))
+            .collect();
+        let taken = match (session.lookup.as_mut(), session.exchange.as_mut()) {
+            (Some(lookup), Some(exchange)) => {
+                lookup.pdf(exchange, &session.library, &files[0], &files, job.doi)?
+            }
+            _ => None,
+        };
+        if let Some(taken) = taken {
+            options.update_key = true;
+            return insert_taken(session, taken, &options, resolver);
+        }
+    }
     let fetcher = job.queries.fetcher().map_err(fetch_error)?;
     let bibtex = match job.doi {
         Some(doi) => fetcher.fetch_bibtex_by_doi(doi),
@@ -166,6 +183,21 @@ pub(super) fn add_pdf(
     Ok(insert_messages(session, std::slice::from_ref(&inserted)))
 }
 
+/// Insert an entry taken from the pool and record its origin (`_insert_taken`): the keys of the entries it ended in.
+pub(super) fn insert_taken(
+    session: &mut Session,
+    taken: Entry,
+    options: &InsertOptions,
+    resolver: &mut dyn Resolve,
+) -> Result<Vec<String>> {
+    let inserted = session.library.insert(taken, options, resolver)?;
+    if let (Some(lookup), Some(exchange)) = (session.lookup.as_mut(), session.exchange.as_mut()) {
+        lookup.inserted(exchange, &session.library, &inserted, options.rename.as_ref())?;
+    }
+    session.remove_stored_duplicates();
+    Ok(insert_messages(session, std::slice::from_ref(&inserted)))
+}
+
 /// `Biblio.fetch_doi` (`add --doi DOI` without file): the entry of the DOI is added to the
 /// library, or, if the library has it, the attachments are added to its entry.
 pub(super) fn add_doi(
@@ -186,6 +218,18 @@ pub(super) fn add_doi(
             &job.options.metadata,
             job.options.rename.as_ref(),
         );
+    }
+    // the pool of the library, then online
+    let taken = match (session.lookup.as_mut(), session.exchange.as_mut()) {
+        (Some(lookup), Some(exchange)) => lookup.doi(exchange, &session.library, doi, &attachments)?,
+        _ => None,
+    };
+    if let Some(taken) = taken {
+        let options = InsertOptions {
+            update_key: true,
+            ..job.options.clone()
+        };
+        return insert_taken(session, taken, &options, resolver);
     }
     let fetcher = job.queries.fetcher().map_err(fetch_error)?;
     let bibtex = fetcher.fetch_bibtex_by_doi(doi).map_err(fetch_error)?;

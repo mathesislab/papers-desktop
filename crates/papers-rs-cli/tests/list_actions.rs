@@ -160,7 +160,7 @@ fn a_listing_that_changes_nothing_records_nothing() {
 }
 
 #[test]
-fn one_action_at_a_time_and_the_exchanges_are_not_ported() {
+fn one_action_at_a_time_and_the_exchanges_need_a_pool() {
     let s = Sandbox::new();
     let output = s.output(RS, &["list", "--add-tag", "x", "--delete"]);
     assert_eq!(output.status.code(), Some(2));
@@ -170,7 +170,7 @@ fn one_action_at_a_time_and_the_exchanges_are_not_ported() {
         assert_eq!(output.status.code(), Some(1), "{option}");
         assert_eq!(
             text(&output.stderr),
-            format!("papers: error: {option}: not implemented in papers-rs yet\n")
+            "papers: error: this library has no pool: give one with `--pool PATH`\n"
         );
     }
     assert_eq!(s.read("lib/papers.bib"), START);

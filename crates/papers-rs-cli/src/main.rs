@@ -7,6 +7,7 @@ mod cmd_add;
 mod cmd_check;
 mod cmd_config;
 mod cmd_edit;
+mod cmd_exchange;
 mod cmd_export;
 mod cmd_fetch;
 mod cmd_file;
@@ -234,6 +235,7 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
         "rm" => written(&command, cmd_rm::rm_cmd(leaf, config))?,
         "tag" => written(&command, cmd_tag::tag_cmd(leaf, config))?,
         "check" => written(&command, cmd_check::check_cmd(leaf, config))?,
+        "pull" | "push" | "sync" => written(&command, cmd_exchange::exchange_cmd(&command, leaf, config))?,
         "migrate" => written(&command, cmd_migrate::migrate_cmd(leaf, config))?,
         "filecheck" => written(&command, cmd_file::filecheck(leaf, config))?,
         file if file.starts_with("file ") => written(&command, cmd_file::file_cmd(file, leaf, config))?,

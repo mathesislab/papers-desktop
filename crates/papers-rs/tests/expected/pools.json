@@ -1,0 +1,1329 @@
+{
+ "matching": [
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "smith2020",
+      "pool_key": "smith2020",
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "smith2020": "smith2020"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "smith2020"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Ice"
+       ],
+       [
+        "doi",
+        "10.1000/abc"
+       ]
+      ],
+      "key": "smith2020",
+      "type": "article"
+     }
+    ],
+    "name": "same key and doi",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Ice"
+       ],
+       [
+        "doi",
+        "10.1000/abc"
+       ]
+      ],
+      "key": "smith2020",
+      "type": "article"
+     }
+    ],
+    "records": []
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "smith2020",
+      "pool_key": "smith_doe2020",
+      "record": "smith2020"
+     }
+    ],
+    "library_entries": {
+     "smith_doe2020": "smith2020"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "smith2020"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Ice"
+       ],
+       [
+        "doi",
+        "10.1000/abc"
+       ]
+      ],
+      "key": "smith2020",
+      "type": "article"
+     }
+    ],
+    "name": "the pool renamed the key",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Ice"
+       ],
+       [
+        "doi",
+        "10.1000/abc"
+       ]
+      ],
+      "key": "smith_doe2020",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Ice"
+       ],
+       [
+        "doi",
+        "10.1000/abc"
+       ],
+       [
+        "papers-pool-key",
+        "smith2020"
+       ]
+      ],
+      "key": "smith2020",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "mine",
+      "pool_key": "theirs",
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "theirs": "mine"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "mine"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Mine"
+       ],
+       [
+        "doi",
+        "10.1000/xyz"
+       ]
+      ],
+      "key": "mine",
+      "type": "article"
+     }
+    ],
+    "name": "no record, the same doi under another key",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Mine"
+       ],
+       [
+        "doi",
+        "10.1000/XYZ"
+       ]
+      ],
+      "key": "theirs",
+      "type": "article"
+     }
+    ],
+    "records": []
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "a1",
+      "pool_key": "b1",
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "b1": "a1"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "a1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Same title"
+       ]
+      ],
+      "key": "a1",
+      "type": "article"
+     }
+    ],
+    "name": "no record, same authors and title without doi",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, J. and Doe, J."
+       ],
+       [
+        "title",
+        "Same  Title"
+       ]
+      ],
+      "key": "b1",
+      "type": "article"
+     }
+    ],
+    "records": []
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": "pool1",
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "pool1": "lib1"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "lib1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Library title"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the title changed on both sides: found by the pool key",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Pool title"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Old title"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": null,
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "pool1": "lib1"
+    },
+    "missing": [],
+    "removed": [
+     "lib1"
+    ],
+    "shared": []
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "A"
+       ],
+       [
+        "doi",
+        "10.1/a"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the pool key was reused by another paper",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "B"
+       ],
+       [
+        "doi",
+        "10.1/b"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "title",
+        "A"
+       ],
+       [
+        "doi",
+        "10.1/a"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": "second",
+      "record": "second"
+     }
+    ],
+    "library_entries": {
+     "first": "lib1",
+     "second": "lib1"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "lib1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Twice"
+       ],
+       [
+        "doi",
+        "10.1/t"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the pool has the paper twice: the record picks one",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Twice"
+       ],
+       [
+        "doi",
+        "10.1/t"
+       ]
+      ],
+      "key": "first",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "Twice"
+       ],
+       [
+        "doi",
+        "10.1/t"
+       ]
+      ],
+      "key": "second",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "title",
+        "Twice"
+       ],
+       [
+        "doi",
+        "10.1/t"
+       ],
+       [
+        "papers-pool-key",
+        "second"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": "first",
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "first": "lib1",
+     "second": "lib1"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "lib1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Twice"
+       ],
+       [
+        "doi",
+        "10.1/t"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the pool has the paper twice, no record: the first",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Twice"
+       ],
+       [
+        "doi",
+        "10.1/t"
+       ]
+      ],
+      "key": "first",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "Twice"
+       ],
+       [
+        "doi",
+        "10.1/t"
+       ]
+      ],
+      "key": "second",
+      "type": "article"
+     }
+    ],
+    "records": []
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": null,
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "pool1": null
+    },
+    "missing": [
+     "pool1"
+    ],
+    "removed": [],
+    "shared": []
+   },
+   "scenario": {
+    "distinct": [
+     [
+      {
+       "doi": "10.1/d",
+       "title": "distinct"
+      },
+      {
+       "doi": "10.1/d",
+       "title": "distinct"
+      }
+     ]
+    ],
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Distinct"
+       ],
+       [
+        "doi",
+        "10.1/d"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "distinct pairs",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Distinct"
+       ],
+       [
+        "doi",
+        "10.1/d"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": []
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": null,
+      "record": "gone"
+     },
+     {
+      "key": "lib2",
+      "pool_key": "here",
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "here": "lib2"
+    },
+    "missing": [],
+    "removed": [
+     "lib1"
+    ],
+    "shared": [
+     "lib2"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Gone"
+       ],
+       [
+        "doi",
+        "10.1/g"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "Here"
+       ],
+       [
+        "doi",
+        "10.1/h"
+       ]
+      ],
+      "key": "lib2",
+      "type": "article"
+     }
+    ],
+    "name": "removed from the pool",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Here"
+       ],
+       [
+        "doi",
+        "10.1/h"
+       ]
+      ],
+      "key": "here",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "title",
+        "Gone"
+       ],
+       [
+        "doi",
+        "10.1/g"
+       ],
+       [
+        "papers-pool-key",
+        "gone"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "newkey",
+      "pool_key": "pool1",
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "pool1": "newkey"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "newkey"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Renamed"
+       ],
+       [
+        "doi",
+        "10.1/r"
+       ],
+       [
+        "ids",
+        "oldkey"
+       ]
+      ],
+      "key": "newkey",
+      "type": "article"
+     }
+    ],
+    "name": "a former key of the entry finds its record",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Renamed"
+       ],
+       [
+        "doi",
+        "10.1/r"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "title",
+        "Renamed"
+       ],
+       [
+        "doi",
+        "10.1/r"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "oldkey",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "Lib1",
+      "pool_key": "Pool1",
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "Pool1": "Lib1"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "Lib1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Case"
+       ],
+       [
+        "doi",
+        "10.1/c"
+       ]
+      ],
+      "key": "Lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the record key without case",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Case"
+       ],
+       [
+        "doi",
+        "10.1/c"
+       ]
+      ],
+      "key": "Pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "title",
+        "Case"
+       ],
+       [
+        "doi",
+        "10.1/c"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "x1",
+      "pool_key": "y1",
+      "record": null
+     },
+     {
+      "key": "b1",
+      "pool_key": "b2",
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "b2": "b1",
+     "y1": "x1"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "x1",
+     "b1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Preprint"
+       ],
+       [
+        "eprint",
+        "arXiv:2101.00001"
+       ]
+      ],
+      "key": "x1",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "A book"
+       ],
+       [
+        "isbn",
+        "978-3-16-148410-0"
+       ]
+      ],
+      "key": "b1",
+      "type": "book"
+     }
+    ],
+    "name": "arxiv and isbn",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Preprint"
+       ],
+       [
+        "eprint",
+        "2101.00001v2"
+       ]
+      ],
+      "key": "y1",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "A book"
+       ],
+       [
+        "isbn",
+        "9783161484100"
+       ]
+      ],
+      "key": "b2",
+      "type": "book"
+     }
+    ],
+    "records": []
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": null,
+      "record": null
+     }
+    ],
+    "library_entries": {
+     "pool1": null
+    },
+    "missing": [
+     "pool1"
+    ],
+    "removed": [],
+    "shared": []
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "Same title"
+       ],
+       [
+        "doi",
+        "10.1/one"
+       ],
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "different dois are not the same paper",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "Same title"
+       ],
+       [
+        "doi",
+        "10.1/two"
+       ],
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": []
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "l1",
+      "pool_key": "p1",
+      "record": "p1"
+     }
+    ],
+    "library_entries": {
+     "p1": "l1",
+     "p2": null,
+     "p3": null
+    },
+    "missing": [
+     "p2",
+     "p3"
+    ],
+    "removed": [],
+    "shared": [
+     "l1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "title",
+        "One"
+       ],
+       [
+        "doi",
+        "10.1/1"
+       ]
+      ],
+      "key": "l1",
+      "type": "article"
+     }
+    ],
+    "name": "missing entries and entries of two records",
+    "pool": [
+     {
+      "fields": [
+       [
+        "title",
+        "One"
+       ],
+       [
+        "doi",
+        "10.1/1"
+       ]
+      ],
+      "key": "p1",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "Two"
+       ],
+       [
+        "doi",
+        "10.1/2"
+       ]
+      ],
+      "key": "p2",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "Three"
+       ],
+       [
+        "doi",
+        "10.1/3"
+       ]
+      ],
+      "key": "p3",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "title",
+        "One"
+       ],
+       [
+        "doi",
+        "10.1/1"
+       ],
+       [
+        "papers-pool-key",
+        "p1"
+       ]
+      ],
+      "key": "l1",
+      "type": "article"
+     },
+     {
+      "fields": [
+       [
+        "title",
+        "Two"
+       ],
+       [
+        "doi",
+        "10.1/2"
+       ],
+       [
+        "papers-pool-key",
+        "p2"
+       ]
+      ],
+      "key": "l9",
+      "type": "article"
+     }
+    ]
+   }
+  }
+ ],
+ "names": {
+  "": "pool-da39a3.bib",
+  ".": "pool-3a52ce.bib",
+  "../../home/me/Documents/bob": "bob-2f63d4.bib",
+  "../My Papers": "my-papers-94036c.bib",
+  "../a b/c.d": "c-d-5b1285.bib",
+  "../longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong": "longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong-78ed95.bib",
+  "../pool": "pool-615fe0.bib",
+  "../pool/": "pool-b6adbc.bib",
+  "../shared-with-bob": "shared-with-bob-d15650.bib",
+  "../x/../pool": "pool-0847a6.bib",
+  "../ü-pool": "u-pool-f2f2c5.bib",
+  "./sub": "sub-ec91bf.bib",
+  "/abs/path/to/library": "library-cf2cd1.bib",
+  "pool": "pool-51a4b1.bib",
+  "~/Documents/papers": "papers-e311da.bib"
+ },
+ "origin": [
+  {
+   "files": {
+    "pool-615fe0.bib": "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 1793189510108569698}\n\n@article{Smith2021,\n file = {:../pool/files/a.pdf:pdf},\n papers-pool-key = {smith_2020},\n papers-time = {$TIME},\n title = {T},\n year = {2020}\n}\n"
+   },
+   "ops": [
+    [
+     "set",
+     "Smith2020",
+     "../pool",
+     {
+      "ID": "smith_2020",
+      "title": "T",
+      "year": "2020"
+     },
+     ""
+    ],
+    [
+     "set",
+     "brown2021",
+     "../pool",
+     {
+      "ID": "brown2021",
+      "file": ":f.pdf:pdf",
+      "title": "B"
+     },
+     null
+    ],
+    [
+     "pulled",
+     "../pool",
+     1793189510108569698
+    ],
+    [
+     "set_files",
+     "Smith2020",
+     "../pool",
+     ":../pool/files/a.pdf:pdf"
+    ],
+    [
+     "rekey",
+     "Smith2020",
+     "Smith2021"
+    ],
+    [
+     "remove",
+     "brown2021",
+     "../pool"
+    ]
+   ]
+  },
+  {
+   "files": {
+    "one-abc0eb.bib": "@comment{papers-pool ../one}\n\n@comment{papers-pulled 7}\n\n@article{a,\n file = {:y:pdf},\n papers-pool-key = {a1},\n papers-time = {$TIME},\n title = {A2}\n}\n",
+    "two-5719f5.bib": "@comment{papers-pool ../two}\n\n@comment{papers-pulled 5}\n\n@article{a,\n doi = {10.1/x},\n file = {:x:pdf},\n papers-pool-key = {a2},\n papers-time = {$TIME},\n title = {A}\n}\n"
+   },
+   "ops": [
+    [
+     "set",
+     "a",
+     "../one",
+     {
+      "ID": "a1",
+      "title": "A"
+     },
+     null
+    ],
+    [
+     "set",
+     "a",
+     "../two",
+     {
+      "ID": "a2",
+      "doi": "10.1/x",
+      "title": "A"
+     },
+     ":x:pdf"
+    ],
+    [
+     "set",
+     "a",
+     "../one",
+     {
+      "ID": "a1",
+      "title": "A"
+     },
+     ":y:pdf"
+    ],
+    [
+     "set",
+     "a",
+     "../one",
+     {
+      "ID": "a1",
+      "title": "A2"
+     },
+     ":y:pdf"
+    ],
+    [
+     "pulled",
+     "../two",
+     5
+    ],
+    [
+     "pulled",
+     "../one",
+     7
+    ]
+   ]
+  },
+  {
+   "files": {
+    "p-54ee86.bib": "@comment{papers-pool ../p}\n\n@article{abc,\n papers-pool-key = {abc},\n papers-time = {$TIME},\n title = {A}\n}\n\n@article{Müller2019,\n abstract = {x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x },\n author = {Müller, Hans and Doe, Jane},\n file = {},\n papers-pool-key = {mueller},\n papers-time = {$TIME},\n title = {Über {Ice}}\n}\n\n@article{ZED,\n papers-pool-key = {zed},\n papers-time = {$TIME},\n title = {Z}\n}\n"
+   },
+   "ops": [
+    [
+     "set",
+     "Müller2019",
+     "../p",
+     {
+      "ID": "mueller",
+      "abstract": "x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x ",
+      "author": "Müller, Hans and Doe, Jane",
+      "title": "Über {Ice}"
+     },
+     ""
+    ],
+    [
+     "set",
+     "ZED",
+     "../p",
+     {
+      "ID": "zed",
+      "title": "Z"
+     },
+     null
+    ],
+    [
+     "set",
+     "abc",
+     "../p",
+     {
+      "ID": "abc",
+      "title": "A"
+     },
+     null
+    ]
+   ]
+  }
+ ]
+}

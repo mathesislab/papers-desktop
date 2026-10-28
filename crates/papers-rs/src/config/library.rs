@@ -237,6 +237,18 @@ impl Config {
         self.file.is_some() && self.has_pool()
     }
 
+    /// For a command on a shallow library: its files go to the files directory of its pool,
+    /// named with the pool's `name.*` settings (`use_pool_files`). Only this configuration in memory
+    /// changes: the settings are not set in the library.
+    pub fn use_pool_files(&mut self, pool: &Config) {
+        self.filesdir = pool.filesdir.clone();
+        for (name, value) in &pool.values {
+            if name.starts_with("name.") {
+                self.values.insert(name.clone(), value.clone());
+            }
+        }
+    }
+
     /// The settings that a shallow library does not use: its files are in the
     /// pool, named with the pool's template (filesdir is where
     /// `papers config pool none` copies them).

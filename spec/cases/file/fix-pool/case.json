@@ -1,0 +1,96 @@
+{
+  "description": "file fix with a pool: the broken links of a shallow library are relinked to the files of its pool entry (repaired when the library is loaded, by name or when the pool renamed them), the libraries of --pool PATH too; check reports them",
+  "sections": [
+    "exchange.md#15.3",
+    "library.md#pools-and-shallow-libraries/files-of-a-shallow-library"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "check"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "fix",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "fix"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "plain",
+        "file",
+        "check",
+        "--pool",
+        "../pool",
+        "--pool",
+        "../other"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "plain",
+        "file",
+        "fix",
+        "--pool",
+        "../pool",
+        "--pool",
+        "../other"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "plain",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "plain",
+        "history"
+      ]
+    }
+  ]
+}

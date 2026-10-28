@@ -48,7 +48,7 @@ use crate::config::{Config, write_atomic};
 use crate::entry::{self, files as entry_files, set_files, val};
 use crate::error::{Error, Result};
 use crate::identity::{
-    Distinct, IdKind, IdentityIndex, Kind, duplicate_groups, entry_identifiers, find_duplicates,
+    Distinct, IdKind, IdentityIndex, Kind, Verdict, duplicate_groups, entry_identifiers, find_duplicates,
     parse_identifier, same_paper,
 };
 use crate::log;
@@ -188,6 +188,21 @@ pub struct InsertOptions {
     /// fields of the entry; `ID` sets the key, `ENTRYTYPE` the type, and the
     /// files of `file` are added to those of the entry
     pub metadata: Vec<(String, String)>,
+}
+
+/// Finds an added entry elsewhere (in the pool of the library): [`Library::add_entries_taking`]
+/// inserts the entry that it takes instead of the added one, and tells it where it ended.
+pub trait Taker {
+    /// The entry to insert in place of an added entry (`pool_lookup.entry`), if it is found.
+    fn take(&mut self, library: &Library, entry: &Entry) -> Result<Option<Entry>>;
+
+    /// The entry taken was inserted (`inserted`): `rename` is how the files are placed.
+    fn inserted(
+        &mut self,
+        library: &mut Library,
+        inserted: &Inserted,
+        rename: Option<&Policy>,
+    ) -> Result<()>;
 }
 
 /// The entries as loaded: for the changes and the keys renamed.
@@ -425,6 +440,31 @@ impl Library {
             library = Library::create(bibtex, filesdir, Some(&relative_to), nameformat, keyformat)?;
         }
         library.mark_loaded();
+        Ok(library)
+    }
+
+    /// [`Library::open`] for a library that is read, not written to: a bibtex that does not
+    /// exist is an empty library in memory, not created (`load_biblio` of the pools).
+    pub fn open_existing(config: &Config) -> Result<Library> {
+        let Some(bibtex) = config.bibtex.as_deref() else {
+            return Err(Error::other("bibtex is not initialized"));
+        };
+        if exists(bibtex) {
+            return Library::open(config);
+        }
+        let relative_to = if config.absolute_paths {
+            "/".to_string()
+        } else {
+            dirname(bibtex)
+        };
+        let mut library = Library::new(
+            bibtex,
+            config.filesdir.as_deref(),
+            Some(&relative_to),
+            Format::from_config(config, FormatKind::Name),
+            Format::from_config(config, FormatKind::Key),
+        );
+        library.distinct = Distinct::for_bibtex(bibtex);
         Ok(library)
     }
 
@@ -1278,6 +1318,22 @@ impl Library {
         options: &InsertOptions,
         resolver: &mut dyn Resolve,
     ) -> Result<Vec<Inserted>> {
+        self.add_entries_taking(added, relative_to, attachments, what, options, resolver, None)
+    }
+
+    /// [`Library::add_entries`] with a [`Taker`]: an entry that it finds elsewhere (in a pool) is
+    /// inserted in place of the added one (`pool_lookup.entry`, `_insert_taken`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_entries_taking(
+        &mut self,
+        added: Vec<Entry>,
+        relative_to: Option<&str>,
+        attachments: &[String],
+        what: &str,
+        options: &InsertOptions,
+        resolver: &mut dyn Resolve,
+        mut taker: Option<&mut dyn Taker>,
+    ) -> Result<Vec<Inserted>> {
         let fields = options.metadata.iter().filter(|(k, _)| k != "file").count();
         if fields > 0 && added.len() > 1 {
             return Err(Error::other(format!(
@@ -1302,7 +1358,18 @@ impl Library {
             if !files.is_empty() {
                 set_files(&mut e, &files, &self.relative_to);
             }
-            out.push(self.insert(e, options, resolver)?);
+            let taken = match taker.as_deref_mut() {
+                Some(taker) => taker.take(self, &e)?,
+                None => None,
+            };
+            match (taken, taker.as_deref_mut()) {
+                (Some(taken), Some(taker)) => {
+                    let inserted = self.insert(taken, options, resolver)?;
+                    taker.inserted(self, &inserted, options.rename.as_ref())?;
+                    out.push(inserted);
+                }
+                _ => out.push(self.insert(e, options, resolver)?),
+            }
         }
         Ok(out)
     }
@@ -1328,8 +1395,8 @@ impl Library {
     }
 
     /// Add an entry as it is, at the end (`db.add`): no search for the same paper, no key from the template.
-    pub fn add_unchecked(&mut self, entry: Entry) {
-        self.push_entry(entry);
+    pub fn add_unchecked(&mut self, entry: Entry) -> u64 {
+        self.push_entry(entry)
     }
 
     /// Take an entry out of the library (`db.remove`): the entry, if there was one. Its files are for the caller.
@@ -1341,6 +1408,106 @@ impl Library {
             Block::Entry(e) => Some(e),
             _ => None,
         }
+    }
+
+    // entries by handle (for the pools: an entry keeps its handle while it is in the library)
+    // -------------------------------------------------------------------------------------
+
+    /// The handles of the entries, in the order of the library.
+    pub fn uids(&self) -> Vec<u64> {
+        self.uid_entries().map(|(u, _)| u).collect()
+    }
+
+    /// The entry of a handle.
+    pub fn entry_by_uid(&self, uid: u64) -> Option<&Entry> {
+        match &self.bib.blocks[self.block_of_uid(uid)?] {
+            Block::Entry(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    /// The handle of the first entry of this key without case.
+    pub fn uid_of_key(&self, key: &str) -> Option<u64> {
+        let lower = key.to_lowercase();
+        self.uid_entries()
+            .find(|(_, e)| e.key.to_lowercase() == lower)
+            .map(|(u, _)| u)
+    }
+
+    /// The entries that are the same paper as `entry` (`same` first, then `ask`, each in the
+    /// order of the library), with the pairs of `distinct`: the handle and the verdict.
+    pub fn find_same(&mut self, entry: &Entry, distinct: Option<&Distinct>) -> Vec<(u64, Verdict)> {
+        self.ensure_index();
+        find_duplicates(entry, self.index.as_ref().expect("the index"), distinct, None)
+    }
+
+    /// Make the entry of a handle equal to `entry` (`apply_entry`), keeping the index of
+    /// identities up to date.
+    pub fn apply_by_uid(&mut self, uid: u64, entry: &Entry) {
+        let Some(at) = self.block_of_uid(uid) else {
+            return;
+        };
+        if let Some(index) = &mut self.index {
+            index.remove(uid);
+        }
+        if let Block::Entry(target) = &mut self.bib.blocks[at] {
+            target.entry_type = entry.entry_type.clone();
+            target.key = entry.key.clone();
+            target.fields = entry
+                .fields
+                .iter()
+                .map(|f| Field::new(&f.key, &f.value))
+                .collect();
+        }
+        if let (Some(index), Block::Entry(target)) = (&mut self.index, &self.bib.blocks[at]) {
+            index.add(uid, target);
+        }
+    }
+
+    /// Give the entry of a handle these links (`set_files`).
+    pub fn set_files_by_uid(&mut self, uid: u64, files: &[String]) {
+        let relative_to = self.relative_to.clone();
+        if let Some(at) = self.block_of_uid(uid)
+            && let Block::Entry(e) = &mut self.bib.blocks[at]
+        {
+            set_files(e, files, &relative_to);
+        }
+    }
+
+    /// The entry of the bibtex as it was loaded that this entry is the one of now: by its key, a
+    /// key it had before in the command, or a former key of its `ids` (`_loaded_state`); none for
+    /// an entry new since [`Library::mark_loaded`].
+    pub fn loaded_entry_of(&self, e: &Entry) -> Option<&Entry> {
+        let loaded = self.loaded.as_ref()?;
+        let renamed: HashMap<String, String> = self
+            .renamed_keys()
+            .into_iter()
+            .map(|(old, new)| (new.to_lowercase(), old.to_lowercase()))
+            .collect();
+        let key = e.key.to_lowercase();
+        let keys = std::iter::once(key.clone())
+            .chain(renamed.get(&key).cloned())
+            .chain(entry::ids(e).into_iter().map(|i| i.to_lowercase()));
+        keys.into_iter().find_map(|k| {
+            loaded
+                .entries
+                .iter()
+                .find(|(_, x)| x.key.to_lowercase() == k)
+                .map(|(_, x)| x)
+        })
+    }
+
+    /// The files of an entry as loaded (`loaded_files`): none for an entry new since, `None`
+    /// without [`Library::mark_loaded`].
+    pub fn loaded_files(&self, e: &Entry) -> Option<Vec<String>> {
+        let loaded = self.loaded.as_ref()?;
+        Some(match self.loaded_entry_of(e) {
+            Some(old) => entry_files(old, Some(&self.relative_to)),
+            None => {
+                let _ = loaded;
+                Vec::new()
+            }
+        })
     }
 
     /// The entries as they were at [`Library::mark_loaded`] (copies), in the order of the library then:

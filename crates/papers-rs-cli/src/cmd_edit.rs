@@ -4,7 +4,7 @@ use std::io::{BufRead, IsTerminal, Read};
 
 use papers_rs::command::edit::{Editor, edit_selected, replace_from_text, set_fields, set_key};
 use papers_rs::command::read_selection;
-use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::report::print_changes;
 use papers_rs::config::Config;
 use papers_rs::error::Error;
 use papers_rs::formats::{Format, file_format};
@@ -154,14 +154,14 @@ pub fn edit_cmd(leaf: &Leaf, config: Config) -> Done {
             editor.tty = entries.iter().any(|e| e == "-") && !std::io::stdin().is_terminal();
             edit_selected(&mut session.library, &keys, &editor)?;
         }
-        session.commit()?;
+        let committed = session.commit()?;
         let all: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
         let color = session.color();
         print_changes(
             &session.library,
             &all,
             false,
-            &Notes::new(),
+            &committed.notes,
             porcelain,
             color,
             &session.say,

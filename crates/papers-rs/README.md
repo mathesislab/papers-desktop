@@ -79,8 +79,23 @@ files, so that both can work on the same library. The conformance suite
   `edit`, `rm`, `tag` and the `papers file` commands (`command::file_cmd`: rename, mv, attach, detach,
   rm, check, fix, clean, checksum, and the actions of `papers list` on the files) are operations on a
   `Session`; the other writing commands use the same `Session`. Not yet: Google Scholar
-  (`add --scholar`), `--pool PATH` of `add`, `file check`, `file fix` and `list --fix-files`, a library with a pool
-  (`Session::open` says so; `file clean` says what papers says of it).
+  (`add --scholar`).
+- `pools`: the pools of a library (spec `exchange.md`). `pools::origin`: `.papers/origin/`, the records
+  of what was exchanged with each pool (the base of the next three-way merge), the pool ids and the names of
+  their files, the legacy `origin.bib`; `pools::pool`: the pool of a library and the libraries given by `--pool PATH`,
+  loaded when first used and locked with the library; `pools::exchange`: `Exchange`, the pool entry of a library
+  entry (and the other way round), `pull`, `push`, the links of a shallow library, the repair of broken links to
+  pool files, with the merge of `merge`; `pools::lookup`: `add` looks in the pool first; `pools::state`: the pool
+  line of `papers status` and `exchanges.json` (the pieces of the bibtex texts, so that only what changed is
+  compared).
+- `command::pool`: what a writing command does with the pool of a shallow library: the broken links repaired
+  when it loads the library, the files placed in the pool (`Session::use_pool_files`), the **automatic push** at
+  `Session::commit` (new entries always, changed ones with `auto-push`, the links that changed; conflicts are
+  skipped, the notes are in `Committed::notes`), the pools saved as steps of their own histories linked to the
+  step of the library (`Committed::link`, `Step::pools`), then the origin records, then the library;
+  `push_after_travel` for undo and redo; the conversions of `papers config pool` (`plan_own_files`,
+  `plan_relink`, `relink`). `command::exchange`: `pull`, `push` and `sync`, operations on a `Session` that
+  say what they did to its `Say` and take the questions of a conflict from a `Resolve`.
 - `command::revert`: `papers history --revert N` (`Session::revert`): the changes of step N taken back
   per entry by a three-way merge (base: the entry at N; incoming: the entry before N; target: the entry
   now), the file links and the tags one by one, the key, `distinct.json`, and the files as undo moves
@@ -100,11 +115,10 @@ files, so that both can work on the same library. The conformance suite
 
 `papers-rs` (the `papers-rs-cli` crate) has the commands, options and errors of
 papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `file` (and the deprecated `filecheck`), `list`,
-`export`, `check`, `migrate`, `history` (with `--revert`), `undo`, `redo` and `restore` are ported; the other commands print
-`papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
-selection and the outputs are there, and `--export`, and the actions on the files (`--attach`,
-`--detach`, `--detach-broken`, `--rename`, `--fix-files`, `--open`); the other actions that change the
-library (`--delete`, `--edit`, `--add-tag`, `--rm-tag`, `--fetch`, `--push`, `--pull`, `--sync`) say so.
+`export`, `check`, `migrate`, `pull`, `push`, `sync`, `history` (with `--revert`), `undo`, `redo` and `restore` are ported;
+`open` and the viewer passthrough print `papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
+selection and the outputs are there, and `--export`, and all the actions (on the files, `--delete`, `--edit`,
+`--add-tag`, `--rm-tag`, `--fetch`, `--push`, `--pull`, `--sync`).
 
 Tests: `cargo test -p papers-rs -p papers-rs-cli`. The history is checked against
 recordings of papers (`crates/papers-rs/tests/history/*.json`, made by
@@ -221,6 +235,13 @@ changed, `(removed)`, the `origin` line, the additions in `f`).
   `papers-rs-cli`'s `dialogue::tests` the rest; `gen_merge3.py --count 30000 --seed 11 --out FILE` makes a
   larger set (`PAPERS_RS_MERGE3_FUZZ=FILE cargo test -p papers-rs --test merge3 fuzz_file`, and
   `cargo test -p papers-rs-cli --bin papers-rs a_larger_file`).
+- `tests/gen_pools.py` makes `tests/expected/pools.json` with the reference python: the origin file of each pool id,
+  the files that `Origin.save` writes for sequences of operations, and, for libraries made of a bibtex, a pool bibtex,
+  origin records and `distinct.json`, the pool entry of each library entry and its record, the entries shared with
+  the pool or removed from it, the library entry of each pool entry, the pool entries missing. `tests/pools.rs`
+  replays them. `crates/papers-rs-cli/tests/pools_interop.rs` (with `PAPERS_REFERENCE`) has papers and papers-rs
+  exchange with the same pool: what one records the other reads (the origin records, the times, `exchanges.json`),
+  the same commands by both print the same and leave the same records, and one undoes what the other pushed.
 - `tests/revert.rs`: the tests of papers for `history --revert` (`test_revert.py`), on the API.
   `spec/cases/history/revert-*` and `undo-pool-moved-on` are the cases recorded from papers, and
   `crates/papers-rs-cli/tests/revert_interop.rs` (with `PAPERS_REFERENCE`) has papers and papers-rs

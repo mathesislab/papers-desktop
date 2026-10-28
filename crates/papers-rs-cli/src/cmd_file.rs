@@ -98,23 +98,16 @@ fn key_option_entries(session: &Session, keys: &[String]) -> Result<Option<Vec<S
 }
 
 /// What a command prints of the entries it changed (`_print_biblio_diff`).
-fn report(session: &Session, leaf: &Leaf, keys: &[String]) {
+fn report(session: &Session, leaf: &Leaf, keys: &[String], notes: &Notes) {
     print_changes(
         &session.library,
         keys,
         false,
-        &Notes::new(),
+        notes,
         leaf.flag("porcelain"),
         session.color(),
         &session.say,
     );
-}
-
-fn no_pool(leaf: &Leaf) -> Result<(), Error> {
-    if !leaf.strings("pool").is_empty() {
-        return Err(Error::exit("--pool PATH: not implemented in papers-rs yet"));
-    }
-    Ok(())
 }
 
 /// The command to repair what `file check` reports (`_fix_command`): `-C DIR`, `--bibtex FILE`, the
@@ -189,10 +182,12 @@ fn rename(leaf: &Leaf, config: Config) -> Done {
     let mode = mode_options(leaf, &config)?;
     let session = open(leaf, config, false, false)?;
     run_session(session, |session| {
+        // in a shallow library, the files go to the pool
+        session.use_pool_files()?;
         let keys = entries_or_all(session, &leaf.strings("entries"))?;
         rename_entries(session, &keys, leaf.flag("keep_source"), mode)?;
-        session.commit()?;
-        report(session, leaf, &keys);
+        let committed = session.commit()?;
+        report(session, leaf, &keys, &committed.notes);
         Ok(())
     })
 }
@@ -224,6 +219,7 @@ fn attach(leaf: &Leaf, config: Config) -> Done {
     let files = files_of(leaf, "files");
     let session = open(leaf, config, false, false)?;
     run_session(session, |session| {
+        session.use_pool_files()?;
         let key = leaf.string("key").unwrap_or_default();
         let keys = session.library.select(std::slice::from_ref(&key))?;
         if keys.len() != 1 {
@@ -232,8 +228,8 @@ fn attach(leaf: &Leaf, config: Config) -> Done {
             );
         }
         attach_files(session, &keys[0], &files, &Attach::new(mode))?;
-        session.commit()?;
-        report(session, leaf, &keys);
+        let committed = session.commit()?;
+        report(session, leaf, &keys, &committed.notes);
         Ok(())
     })
 }
@@ -276,8 +272,8 @@ fn rm(leaf: &Leaf, config: Config) -> Done {
 }
 
 fn check(leaf: &Leaf, config: Config, fix: bool) -> Done {
-    no_pool(leaf)?;
     let options = CheckOptions {
+        pools: leaf.strings("pool"),
         search: leaf.strings("search"),
         metadata: leaf.flag("metadata"),
         move_: leaf.flag("move"),
@@ -289,6 +285,10 @@ fn check(leaf: &Leaf, config: Config, fix: bool) -> Done {
     };
     let session = open(leaf, config, false, !fix)?;
     run_session(session, |session| {
+        if fix && !session.dry_run() {
+            // a shallow library places the files it finds in its pool
+            session.use_pool_files()?;
+        }
         let keys = entries_or_all(session, &leaf.strings("entries"))?;
         check_entries_files(session, &options, fix, &keys, &Queries::default())?;
         Ok(())

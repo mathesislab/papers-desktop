@@ -1,5 +1,5 @@
 //! `papers status`: where the library, its bibtex and its files are, and how it stands with its
-//! pool (not ported: a library with a pool says so), with a hint of what to do about it on the
+//! pool (`papers_rs::pools::state`), with a hint of what to do about it on the
 //! last line (`papers/config.py: Config.status`).
 
 use std::fs;
@@ -10,9 +10,11 @@ use papers_rs::config::dirs::cache_dir;
 use papers_rs::config::paths::{exists, isdir, relpath, short_home};
 use papers_rs::config::{Config, Origin};
 use papers_rs::entry;
-use papers_rs::error::{Error, PAPERS_VERSION, Result};
+use papers_rs::error::{PAPERS_VERSION, Result};
 use papers_rs::history::History;
 use papers_rs::log;
+use papers_rs::pools::pool_files_dir;
+use papers_rs::pools::state::{Palette, status_line};
 
 use crate::parse::Leaf;
 
@@ -104,13 +106,17 @@ pub fn status(args: StatusArgs, config: Config) -> Result<()> {
     let header = format!("{}{}{}", colors.bold, format!("papers library: {status}").trim_end(), colors.end);
 
     let mut items: Vec<(&str, String)> = Vec::new();
+    let mut hint: Option<String> = None;
     if config.file.is_some() || config.bibtex.is_some() {
         items.push(("bibtex", bibtex_status(&config, &colors, args.check_files, &fmt_path)));
-        if config.shallow() {
-            // the line of the pool (when it was last pulled from, what to do next)
-            return Err(Error::exit("the status of a library with a pool: not implemented in papers-rs yet"));
-        }
         items.push(("files", files_status(&config, &colors, args.check_files, &fmt_path)));
+        if config.file.is_some() && config.shallow() {
+            // the line of the pool (when it was last pulled from, what to do next)
+            let palette = Palette { warning: colors.warning, end: colors.end };
+            let (line, pool_hint) = status_line(&config, palette);
+            items.push(("pool", line));
+            hint = pool_hint;
+        }
         if args.verbose {
             items.push(("history", history_summary(&config)));
         }
@@ -130,7 +136,9 @@ pub fn status(args: StatusArgs, config: Config) -> Result<()> {
     for (label, value) in &items {
         lines.push(format!("* {:<width$} {value}", format!("{label}:")));
     }
-    if config.file.is_some() {
+    if let Some(hint) = hint {
+        lines.push(hint);
+    } else if config.file.is_some() {
         lines.push("`papers config` lists and sets the settings".to_string());
     }
     log::println(&lines.join("\n"));
@@ -175,6 +183,13 @@ fn bibtex_status(config: &Config, colors: &Colors, check_files: bool, fmt_path: 
 
 /// Where the files of the library are.
 fn files_status(config: &Config, colors: &Colors, check_files: bool, fmt_path: &dyn Fn(&str) -> String) -> String {
+    if config.shallow() {
+        // the files of a shallow library are in its pool
+        return match pool_files_dir(config) {
+            Some(dir) => format!("in the pool, {}", short_home(&dir)),
+            None => "in the pool".to_string(),
+        };
+    }
     let Some(filesdir) = config.filesdir.as_deref() else {
         return "linked where they are (no files directory)".to_string();
     };

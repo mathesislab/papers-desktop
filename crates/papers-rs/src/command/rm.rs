@@ -33,6 +33,8 @@ pub struct Candidates {
     pub inside: Vec<String>,
     pub outside: Vec<String>,
     pub kept: Vec<String>,
+    /// in the files directory of a pool, or linked by an entry of the pool of a shallow library: never deleted
+    pub in_pool: Vec<String>,
 }
 
 /// Remove the entries of these keys from the library, and list what becomes of their files.
@@ -49,6 +51,9 @@ pub fn take_out(session: &mut Session, keys: &[String]) -> Candidates {
         .map(|f| realpath(&f))
         .collect();
     let filesdir = session.library.filesdir.clone();
+    let pool_dirs = session.pool_files_dirs();
+    // a shallow library: the files that the pool entries link to, wherever they are, are the pool's
+    let pool_linked = session.pool_linked_files();
     let mut found = Candidates::default();
     let mut seen: HashSet<String> = HashSet::new();
     for file in files {
@@ -56,9 +61,14 @@ pub fn take_out(session: &mut Session, keys: &[String]) -> Candidates {
         if !seen.insert(real.clone()) || std::fs::metadata(&file).is_err() {
             continue;
         }
+        let inside = filesdir.as_deref().is_some_and(|d| is_inside(&file, d));
         if still_linked.contains(&real) {
             found.kept.push(file);
-        } else if filesdir.as_deref().is_some_and(|d| is_inside(&file, d)) {
+        } else if (pool_dirs.iter().any(|d| is_inside(&file, d)) && !inside)
+            || pool_linked.contains(&real)
+        {
+            found.in_pool.push(file);
+        } else if inside {
             found.inside.push(file);
         } else {
             found.outside.push(file);
@@ -103,12 +113,20 @@ pub fn remove_entries(
             .say
             .line(format!("kept {f}: another entry links to it"));
     }
+    for f in &found.in_pool {
+        session.say.line(format!("kept {f}: it is a file of a pool"));
+    }
     if files == Files::Delete {
         return Ok(found.inside.into_iter().chain(found.outside).collect());
     }
     if !found.outside.is_empty() {
+        let note = if session.config.shallow() {
+            ""
+        } else {
+            " (`--delete-files` deletes them)"
+        };
         session.say.line(format!(
-            "kept {} file(s) outside the files directory (`--delete-files` deletes them):",
+            "kept {} file(s) outside the files directory{note}:",
             found.outside.len()
         ));
         for f in &found.outside {

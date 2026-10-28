@@ -6,7 +6,8 @@
 use std::io::{BufRead, IsTerminal, Write};
 
 use papers_rs::command::Options;
-use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::pool::push_after_travel;
+use papers_rs::command::report::print_changes;
 use papers_rs::command::session::Prompt;
 use papers_rs::config::json::py_repr_str;
 use papers_rs::config::paths::{abspath, dirname, exists, realpath};
@@ -21,7 +22,6 @@ use papers_rs::history::{History, Moved, Setup};
 use papers_rs::lock::{self, Lock};
 use papers_rs::log;
 use papers_rs::merge::{OnDuplicate, Resolve, Resolver};
-use serde_json::Value;
 
 use crate::cmd_config::no_library_message;
 use crate::cmd_write::{Terminal, color_enabled, finish};
@@ -130,15 +130,10 @@ fn check_install(leaf: &Leaf, mut config: Config, bibtex_must_exist: bool) -> Re
 /// `_time_travel`: undo, redo or restore, then say which state is restored, the files that moved,
 /// the pools that followed, and which files of the files directory no entry links to any more.
 /// `pushes`: after undo and redo of a shallow library with auto-push papers pushes what differs
-/// from the pool (`_auto_push`, history.md 7.6), which is not ported: the command stops before it
-/// moves anything.
-///
-/// **The hook for the exchange commands**: the push goes after the lines below are printed, as papers
-/// does (`undocmd`: `_time_travel`, then `_auto_push`). It pushes the entries shared with the pool that
-/// differ from their origin record (conflicts: `OnDuplicate::Skip`, no new entries), and if an entry was
-/// updated, saves the exchange (a pool step, then a library step) and puts the redo list from before the
-/// push on the new head. A pool step that this undo or redo reverted is pending in `Moved::links`: the
-/// library step of the push records it in its `pools` (the `link` of a `Committed`, `Step::pools`).
+/// from the pool (`_auto_push`, history.md 7.6: `papers_rs::command::pool::push_after_travel`), after the
+/// lines below are printed, as papers does (`undocmd`: `_time_travel`, then `_auto_push`). A pool step that
+/// this undo or redo reverted is pending in `Moved::links`: the library step of the push records it in its
+/// `pools`.
 fn time_travel(
     kind: &str,
     leaf: &Leaf,
@@ -149,14 +144,6 @@ fn time_travel(
 ) -> Result<()> {
     let mut config = check_install(leaf, config, bibtex_must_exist)?;
     let dry_run = leaf.flag("dry_run");
-    if pushes
-        && config.shallow()
-        && config.get("auto-push") == Value::Bool(true)
-        && !dry_run
-        && !leaf.flag("library_only")
-    {
-        return Err(Error::exit(format!("auto-push after {kind} in a shallow library: {NOT_IMPLEMENTED}")));
-    }
     let command = command_line();
     let lock = if dry_run { None } else { lock::acquire(&config, &command, None)? };
     let bibtex = config.bibtex.clone().unwrap_or_default();
@@ -178,6 +165,18 @@ fn time_travel(
     }
     for line in unlinked_notice(&before, &linked_files(&bibtex), config.filesdir.as_deref()) {
         log::println(&line);
+    }
+    if pushes && !leaf.flag("library_only") {
+        // after undo and redo of a shallow library with auto-push: what differs from the pool is pushed
+        let options = Options {
+            message: command.clone(),
+            dry_run,
+            assume_yes: false,
+            color: color_enabled(leaf),
+            prompt: Box::new(Terminal) as Box<dyn Prompt>,
+            sink: Some(Box::new(|line: &str| log::println(line))),
+        };
+        push_after_travel(config.clone(), options, lock, moved.links.clone())?;
     }
     Ok(())
 }
@@ -320,10 +319,10 @@ fn revert(args: &HistoryArgs, config: Config) -> Result<()> {
     let result = (|| -> Result<()> {
         let lines = session.revert(n, &mut *resolver, true)?;
         session.mark_reverts(&[n as u64]);
-        session.commit()?;
+        let committed = session.commit()?;
         let keys: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
         let color = session.color();
-        print_changes(&session.library, &keys, false, &Notes::new(), args.porcelain, color, &session.say);
+        print_changes(&session.library, &keys, false, &committed.notes, args.porcelain, color, &session.say);
         for line in lines {
             session.say.line(line);
         }

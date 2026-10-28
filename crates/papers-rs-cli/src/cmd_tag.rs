@@ -1,7 +1,7 @@
 //! `papers tag`: the command line of `papers_rs::command::tag`.
 
 use papers_rs::command::read_selection;
-use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::report::print_changes;
 use papers_rs::command::tag::{add_remove, rename, renamed_line, tag_tree};
 use papers_rs::config::Config;
 use papers_rs::error::Error;
@@ -41,13 +41,13 @@ pub fn tag_cmd(leaf: &Leaf, config: Config) -> Done {
             let args = read_selection(&entries, &mut std::io::stdin()).map_err(Error::from)?;
             let keys = session.library.select(&args)?;
             add_remove(&mut session.library, &keys, &add, &remove);
-            session.commit()?;
+            let committed = session.commit()?;
             let color = session.color();
             print_changes(
                 &session.library,
                 &keys,
                 false,
-                &Notes::new(),
+                &committed.notes,
                 porcelain,
                 color,
                 &session.say,
