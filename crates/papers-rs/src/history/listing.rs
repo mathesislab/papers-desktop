@@ -26,13 +26,14 @@ fn size_text(size: u64) -> String {
 }
 
 /// The lines of `papers history` for a library: the redo list, the line of
-/// the head (`n` states: 0 for all), and the store's line. `history` is the
+/// the head (`n` states: 0 for all; a negative `n` leaves out that many of the
+/// oldest, as Python's `line[:n]` does), and the store's line. `history` is the
 /// library's (none: no history yet, or no library).
 pub fn history_lines(
     setup: &Setup,
     history: Option<&History>,
     has_bibtex: bool,
-    n: usize,
+    n: i64,
 ) -> Vec<String> {
     let mut lines = Vec::new();
     let head = history.and_then(|h| h.head());
@@ -40,11 +41,12 @@ pub fn history_lines(
         (Some(head), Some(h)) => {
             let project = &h.project;
             let line = project.line(head.state);
-            let shown: &[u64] = if n == 0 || n >= line.len() {
-                &line
+            let count = if n >= 0 {
+                (n as usize).min(line.len())
             } else {
-                &line[..n]
+                line.len().saturating_sub(n.unsigned_abs() as usize)
             };
+            let shown: &[u64] = if n == 0 { &line } else { &line[..count] };
             let kept = |n: u64| {
                 let size = kept_size(project, &h.store, n);
                 if size > 0 {

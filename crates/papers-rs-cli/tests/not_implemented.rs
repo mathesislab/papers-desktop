@@ -24,13 +24,10 @@ fn text(bytes: &[u8]) -> String {
 fn the_commands_that_are_not_ported_say_so() {
     let dir = tempfile::tempdir().unwrap();
     for args in [
-        &["status"][..],
-        &["add", "x.pdf"],
+        &["add", "x.pdf"][..],
         &["list"],
         &["rm", "key"],
         &["file", "clean"],
-        &["history"],
-        &["undo", "-n", "2"],
     ] {
         let output = papers(args, dir.path());
         assert_eq!(output.status.code(), Some(1), "papers {args:?}");

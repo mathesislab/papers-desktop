@@ -437,6 +437,8 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.flag("all", &["--all"]);
             b.opt("remove", &["--remove"], Nargs::Opt);
             b.opt("drop_files", &["--drop-files"], Nargs::One);
+            b.int("revert", &["--revert"]);
+            b.choice("on_duplicate", &["--on-duplicate"], ON_DUPLICATE_ALL);
             b.int("n", &["-n"]);
             b.flag("yes", &["-y", "--yes"]);
             if path == "backup" {

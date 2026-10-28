@@ -268,7 +268,7 @@
    "env": {},
    "rc": 2,
    "stdout": "",
-   "stderr": "usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--all] [--remove [ID]]\n                      [--drop-files N|PATH] [-n N] [-y]\npapers history: error: argument -n: invalid int value: 'x'\n",
+   "stderr": "usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--all] [--remove [ID]]\n                      [--drop-files N|PATH] [--revert N]\n                      [--on-duplicate {ask,keep,update,skip,error}] [-n N]\n                      [-y]\npapers history: error: argument -n: invalid int value: 'x'\n",
    "tree": {}
   },
   {

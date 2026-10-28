@@ -804,7 +804,7 @@ fn listing(e: &Universe, fx: &Value, step: &Value, ctx: &str) {
             &setup,
             history.as_ref(),
             config.bibtex.is_some(),
-            option_n(&args, 20),
+            option_n(&args, 20) as i64,
         )
     };
     let got = norm_lines(&lines.join("\n"), e);

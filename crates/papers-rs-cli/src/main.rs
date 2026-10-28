@@ -4,7 +4,9 @@
 //! files. The commands that are not ported yet say so (status 1).
 
 mod cmd_config;
+mod cmd_history;
 mod cmd_init;
+mod cmd_status;
 mod commands;
 mod help;
 mod help_text;
@@ -212,6 +214,11 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
             Err(cmd_config::Failure::Usage(message)) => return Err(Exit::Usage { path: command, message }),
             Err(cmd_config::Failure::Error(error)) => return Err(error.into()),
         },
+        "status" => cmd_status::status(cmd_status::StatusArgs::from_leaf(leaf), config)?,
+        "undo" => cmd_history::undo(leaf, config)?,
+        "redo" => cmd_history::redo(leaf, config)?,
+        "restore" | "restore-backup" => cmd_history::restore(leaf, config, &command)?,
+        "history" | "backup" => cmd_history::history(cmd_history::HistoryArgs::from_leaf(leaf), config, &command)?,
         _ => return Err(Error::exit("not implemented in papers-rs yet").into()),
     }
     Ok(())

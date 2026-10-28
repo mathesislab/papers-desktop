@@ -18,7 +18,7 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json was written by a newer papers (configuration version 4; papers 3.0.0b5.dev8+g66cccb320 reads up to version 3): upgrade papers\n",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json was written by a newer papers (configuration version 4; papers 3.0.0b5 reads up to version 3): upgrade papers\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 4}"
    }
@@ -36,7 +36,7 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json was written by a newer papers (configuration version 4; papers 3.0.0b5.dev8+g66cccb320 reads up to version 3): upgrade papers\n",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json was written by a newer papers (configuration version 4; papers 3.0.0b5 reads up to version 3): upgrade papers\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 4}"
    }

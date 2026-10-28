@@ -18,7 +18,8 @@ positional arguments:
                         step of its history (`papers history`); a change made
                         outside papers (an editor, another program) is
                         recorded as a step of its own when papers next writes
-                        the library
+                        the library. To take back an older step alone: `papers
+                        history --revert N`
     redo                redo a change undone by `papers undo`
     restore             bring the library to the step N of its history (see
                         `papers history`), with its files; without N, to its
@@ -2279,7 +2280,8 @@ undo the last change of the library: the bibtex and the files (moved back,
 deleted files restored from the history). Each command that changes the
 library is a step of its history (`papers history`); a change made outside
 papers (an editor, another program) is recorded as a step of its own when
-papers next writes the library
+papers next writes the library. To take back an older step alone: `papers
+history --revert N`
 
 options:
   -h, --help            show this help message and exit
@@ -2431,11 +2433,15 @@ options:
     ("history", r#"usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
                       [--dry-run] [--all] [--remove [ID]]
-                      [--drop-files N|PATH] [-n N] [-y]
+                      [--drop-files N|PATH] [--revert N]
+                      [--on-duplicate {ask,keep,update,skip,error}] [-n N]
+                      [-y]
 "#, r#"usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
                       [--dry-run] [--all] [--remove [ID]]
-                      [--drop-files N|PATH] [-n N] [-y]
+                      [--drop-files N|PATH] [--revert N]
+                      [--on-duplicate {ask,keep,update,skip,error}] [-n N]
+                      [-y]
 
 the steps of the library (number, command, time; > marks where the library
 is), the history of the machine (where, its size: the history-size setting),
@@ -2466,6 +2472,20 @@ options:
                         or the file deleted from PATH (by any step): they go
                         to the trash of the system, and undo no longer brings
                         them back
+  --revert N            take back the changes of step N alone, as a new step
+                        (`papers undo` takes the revert back); unlike `papers
+                        undo -n N`, which goes back over the last N steps, the
+                        later steps are kept. Per entry, a three-way merge:
+                        what step N changed goes back, unless it changed since
+                        (a conflict, as in pull); the files of step N go back
+                        as undo moves them
+  --on-duplicate {ask,keep,update,skip,error}
+                        with --revert: what to do with an entry that changed
+                        since step N too: ask (dialogue; the default in a
+                        terminal), keep (its values now are kept), update (the
+                        values before step N are taken), skip (the entry is
+                        left as it is), error (stop before saving; the default
+                        without a terminal)
   -n N                  number of steps to show (default: 20; 0: all)
   -y, --yes             remove or drop without confirmation
 
@@ -2478,11 +2498,13 @@ config:
     ("backup", r#"usage: papers backup [-h] [-v] [--debug] [--color {auto,always,never}]
                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
                      [--dry-run] [--all] [--remove [ID]] [--drop-files N|PATH]
-                     [-n N] [-y]
+                     [--revert N]
+                     [--on-duplicate {ask,keep,update,skip,error}] [-n N] [-y]
 "#, r#"usage: papers backup [-h] [-v] [--debug] [--color {auto,always,never}]
                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
                      [--dry-run] [--all] [--remove [ID]] [--drop-files N|PATH]
-                     [-n N] [-y]
+                     [--revert N]
+                     [--on-duplicate {ask,keep,update,skip,error}] [-n N] [-y]
 
 deprecated: use `papers history`
 
@@ -2509,6 +2531,20 @@ options:
                         or the file deleted from PATH (by any step): they go
                         to the trash of the system, and undo no longer brings
                         them back
+  --revert N            take back the changes of step N alone, as a new step
+                        (`papers undo` takes the revert back); unlike `papers
+                        undo -n N`, which goes back over the last N steps, the
+                        later steps are kept. Per entry, a three-way merge:
+                        what step N changed goes back, unless it changed since
+                        (a conflict, as in pull); the files of step N go back
+                        as undo moves them
+  --on-duplicate {ask,keep,update,skip,error}
+                        with --revert: what to do with an entry that changed
+                        since step N too: ask (dialogue; the default in a
+                        terminal), keep (its values now are kept), update (the
+                        values before step N are taken), skip (the entry is
+                        left as it is), error (stop before saving; the default
+                        without a terminal)
   -n N                  number of steps to show (default: 20; 0: all)
   -y, --yes             remove or drop without confirmation
 
