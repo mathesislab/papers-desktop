@@ -62,6 +62,20 @@ PDF) drive either. The open papers, their pages, the pane widths and the
 details shown or not are kept in the data folder of the app, as the recent
 papers are; the window opens again at start if it was open at the end.
 
+A gear button at the bottom of the sidebar opens the settings window, as the
+app menu's Settings… does.
+
+**Text size** (setting, five levels: Smallest 0.9, Smaller 1.0, Default 1.1,
+Larger 1.25, Largest 1.4; Smaller is the size before the setting): the zoom of
+the web views of all windows (`text_size.rs`, `Webview::set_zoom`, as a
+browser's), so everything scales; one level for the windows, kept in
+`settings.json` and applied at once. The panel and the settings window, of a
+fixed size, grow with it (within the screen). `⌘+` `⌘-` `⌘0` (Ctrl elsewhere)
+step through the levels and reset to Default, in every window; in the main
+window, with a PDF in front they are the zoom of the PDF (and `⌘0` its fit to
+the width) instead. The native PDF view is placed in points, so its frame is
+the page's multiplied by the zoom.
+
 A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 `references.bib` (for texmark).
 

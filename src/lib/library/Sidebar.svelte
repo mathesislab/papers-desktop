@@ -8,6 +8,7 @@
 </script>
 
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/core";
   import { CheckMenuItem, Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
   import { foldTag, lastSegment, parentsOf, sameTag } from "$lib/tags";
   import type { Row, TagCount } from "$lib/types";
@@ -172,6 +173,7 @@
   }
 </script>
 
+<div class="box">
 <nav>
   {#if libraries.length > 1}
     <h4>Libraries</h4>
@@ -254,9 +256,50 @@
   {/if}
 </nav>
 
+<footer>
+  <button class="gear" title="Settings" aria-label="Settings" onclick={() => invoke("open_settings")}>
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  </button>
+</footer>
+</div>
+
 <style>
+  /* the sidebar fills its pane: the gear stays at the bottom, over the list when it scrolls */
+  .box {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
   nav {
+    flex: 1;
     padding: 6px 0 12px;
+  }
+  footer {
+    position: sticky;
+    bottom: 0;
+    padding: 4px 8px;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(var(--sidebar), var(--sidebar)), var(--bg);
+  }
+  .gear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    color: var(--muted);
+    cursor: default;
+  }
+  .gear:hover {
+    background: var(--line);
+    color: var(--fg);
   }
   h4 {
     margin: 14px 16px 4px;
