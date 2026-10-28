@@ -117,35 +117,73 @@ the paper, or the papers selected), the menu of a tag in the sidebar
 tags (the search, the tree, the rename of a parent, the chips). Tried in
 the built app on a library of papers.
 
+*Edit* in the details turns the BibTeX of the entry into a text to edit
+(`⌘S` saves, `Esc` cancels; a change of key, tags or files is refused
+under the text, `{ kind: "kept", what }`; unsaved changes ask before they
+are lost, a dot on the paper's tab). *Add…* (`⌘N`): a DOI, fetched from
+doi.org (`fetch_doi`, one field per line as papers writes it), or BibTeX;
+the papers already in the library listed first (`incoming`: the same DOI,
+or the same title and year); for a papers library, what to do with them
+(`--on-duplicate`: *Skip*, *Fill in*, *Update*), and a fetched entry takes
+the library's key (`--update-key`); the `.bib` to add to when there are
+several. Tried in the built app, but for the choices on duplicates (tested
+against papers in `writer.rs`).
+
 **Next** (proposed, to confirm before starting; one agent each, in a git
 worktree, merged one by one):
 
-1. **Edit and add**: *Edit* in the details turns the BibTeX of the entry into
-   an editor, `⌘S` saves, `Esc` cancels. *Add…* in the toolbar: a DOI
-   (its BibTeX from doi.org, the first use of the network) or BibTeX pasted;
-   a duplicate check first (the same DOI, or the same title and year); the
-   `.bib` to add to, when there are several.
-2. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
+1. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
    selection, after asking (the PDFs stay); attach a PDF, detach it, rename
    it by the names of papers (`papers file rename`, papers libraries only);
    `⌘Z` / `⌘⇧Z` undo and redo the last change of the library, but undo the
    typing in a field.
-3. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
+2. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
    `.tex` or `.aux` tag their papers, and the keys not in the library are
    listed.
 
 **Upstream** (perrette/papers, branch `v3`, not in a release yet): `edit
 --from` (#117), safe writes (#119) and the smaller points (#121) are in
 (pull request #123), with `--porcelain` and BibJSON (#118, pull requests
-#125, #126). Open: #120 (changes made outside papers, in the history),
-#128 (nested tags, as the app has them).
+#125, #126), nested tags (#128) and the history without git (3.0.0b5).
+To report: with `add --on-duplicate skip --porcelain`, a skipped entry has
+no `existing` line (it is not returned as touched in
+`_insert_entry_check`); and what the conformance suite found (below).
 
-Towards the app's own writer for everything: it follows the conventions of
-papers (`.papers/config.json` for the key and file names, tags in
-`keywords`, the `file` field, the format of papers for an edited entry) and
-records its changes in the history of papers (`papers backup record`, #120);
-then papers is optional, still the command line and the source of metadata
-from a DOI or a PDF until the app has its own.
+Towards the app's own writer for everything: papers-rs (below), once it
+writes as papers does; then the app links it and needs no Python.
+
+## papers-rs: a Rust port of papers
+
+Decided with Mahé Perrette: a second implementation of papers, in Rust,
+here for now, that can leave as its own repository. papers (Python) is the
+truth; papers-rs does what it does, with the same output and the same
+files, so that both (and the app) work on the same libraries and the same
+history. In the long run a standard both follow and change together.
+
+- `crates/papers-rs` (the library) and `crates/papers-rs-cli` (the command,
+  `papers-rs`): no dependency on the app's crates. MIT, Mahé's copyright
+  kept.
+- `crates/latexenc-rs` (library `latexenc`): a port of pylatexenc 2.11 (the
+  LaTeX parser, LaTeX to text, Unicode to LaTeX), with all its options; on
+  its own, for anyone. Started from tex2word-latexwalker (yfyang86).
+- `spec/`: the conformance suite. A case is a library before, commands, and
+  what they print and leave after; recorded by running papers
+  (`record.py`), checked on any implementation (`run.py --papers CMD`).
+- **The standard**: Mahé's specification (perrette/papers, branch
+  `design-spec`, `design/`: library, bibtex, formats, exchange, history)
+  marks each rule *Contract* (files, keys, formats on disk: identical) or
+  *Free* (messages, prompts, caches). The suite is its executable side: a
+  case names its section and whether it checks a contract.
+
+**Done**: the bibtex read and written as papers does (bibtexparser's
+splitter, sort, format; papers' LaTeX tables), checked against papers on
+fixtures and random texts; the configuration, the lock, the command line
+(every command's options and usage errors), `init` and `config`; 77 cases
+(papers passes all, papers-rs 14: the others need commands not ported).
+The app uses papers-rs to lay out fetched BibTeX.
+
+**Next**: LaTeX to Unicode in papers-rs through latexenc; then the
+commands, by the sections of the specification.
 
 ## Later (P2)
 
