@@ -205,10 +205,13 @@ impl PapersWriter for Builtin {
         let command = command_line(folder, if back { "undo" } else { "redo" }, &[]);
         let lock = lock::acquire(&config, &command, None)?;
         let mut history = History::require(&mut config, false)?;
+        // a pool's step reverted with conflicts: skipped, as papers does
+        // without a terminal (the app asks nothing)
+        let mut skip = Resolver::new(Merging::Skip);
         if back {
-            history.undo(1, false, lock.as_ref(), &command)?;
+            history.undo(1, false, lock.as_ref(), &command, &mut skip)?;
         } else {
-            history.redo(1, false, lock.as_ref(), &command)?;
+            history.redo(1, false, lock.as_ref(), &command, &mut skip)?;
         }
         Ok(())
     }
