@@ -9,10 +9,12 @@ mod cmd_config;
 mod cmd_edit;
 mod cmd_export;
 mod cmd_fetch;
+mod cmd_file;
 mod cmd_history;
 mod cmd_init;
 mod cmd_list;
 mod cmd_list_actions;
+mod cmd_list_files;
 mod cmd_migrate;
 mod cmd_rm;
 mod cmd_status;
@@ -233,6 +235,8 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
         "tag" => written(&command, cmd_tag::tag_cmd(leaf, config))?,
         "check" => written(&command, cmd_check::check_cmd(leaf, config))?,
         "migrate" => written(&command, cmd_migrate::migrate_cmd(leaf, config))?,
+        "filecheck" => written(&command, cmd_file::filecheck(leaf, config))?,
+        file if file.starts_with("file ") => written(&command, cmd_file::file_cmd(file, leaf, config))?,
         "status" => cmd_status::status(cmd_status::StatusArgs::from_leaf(leaf), config)?,
         "undo" => cmd_history::undo(leaf, config)?,
         "redo" => cmd_history::redo(leaf, config)?,

@@ -1307,6 +1307,26 @@ impl Library {
         Ok(out)
     }
 
+    /// The key of the library entry that is the same paper as an entry of this DOI (an arXiv
+    /// DOI matches the eprint), if there is one (`find_doi`).
+    pub fn find_doi(&mut self, doi: &str) -> Option<String> {
+        self.ensure_index();
+        let mut probe = Entry::new("misc", "doi");
+        probe.set("doi", doi.to_string());
+        let found = find_duplicates(
+            &probe,
+            self.index.as_ref().expect("the index"),
+            Some(&self.distinct),
+            None,
+        );
+        let (uid, _) = found.into_iter().find(|(_, v)| v.kind == Kind::Same)?;
+        let at = self.block_of_uid(uid)?;
+        match &self.bib.blocks[at] {
+            Block::Entry(e) => Some(e.key.clone()),
+            _ => None,
+        }
+    }
+
     /// Add an entry as it is, at the end (`db.add`): no search for the same paper, no key from the template.
     pub fn add_unchecked(&mut self, entry: Entry) {
         self.push_entry(entry);

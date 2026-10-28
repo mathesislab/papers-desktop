@@ -23,7 +23,7 @@ fn text(bytes: &[u8]) -> String {
 #[test]
 fn the_commands_that_are_not_ported_say_so() {
     let dir = tempfile::tempdir().unwrap();
-    let args = &["file", "clean"];
+    let args = &["open", "x"];
     let output = papers(args, dir.path());
     assert_eq!(output.status.code(), Some(1), "papers {args:?}");
     assert_eq!(text(&output.stderr), "papers: error: not implemented in papers-rs yet\n", "papers {args:?}");
@@ -38,15 +38,15 @@ fn the_version_is_that_of_papers() {
     assert_eq!(text(&output.stdout), format!("{}\n", papers_rs::error::PAPERS_VERSION));
 }
 
-/// What `add` does not do yet says so, before anything is changed: PDFs, a library with a pool.
+/// What `add` does not do yet says so, before anything is changed: Google Scholar.
 #[test]
-fn add_of_a_pdf_is_not_ported() {
+fn add_with_scholar_is_not_ported() {
     let dir = tempfile::tempdir().unwrap();
     assert_eq!(papers(&["init"], dir.path()).status.code(), Some(0));
     let before = fs::read_to_string(dir.path().join("papers.bib")).unwrap();
-    let output = papers(&["add", "x.pdf"], dir.path());
+    let output = papers(&["add", "x.pdf", "--scholar"], dir.path());
     assert_eq!(output.status.code(), Some(1));
-    assert_eq!(text(&output.stderr), "papers: error: add of a PDF: not implemented in papers-rs yet\n");
+    assert_eq!(text(&output.stderr), "papers: error: add --scholar: not implemented in papers-rs yet\n");
     assert_eq!(fs::read_to_string(dir.path().join("papers.bib")).unwrap(), before);
 }
 

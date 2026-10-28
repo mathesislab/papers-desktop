@@ -9,12 +9,18 @@
 //!   [`session::Session`]; the command line only parses and prints.
 //! - [`files`]: what `add` does with the files of the entries added
 //!   (`--move`, `--copy`, `--link`, the `files` setting).
+//! - [`add_pdf`]: `add` of PDFs, folders and DOIs; [`queries`]: where their queries go.
+//! - [`file_cmd`]: `papers file` (rename, mv, attach, detach, rm, check, fix, clean, checksum) and the
+//!   file actions of `papers list`.
 
 pub mod add;
+pub mod add_pdf;
 pub mod check;
 pub mod edit;
+pub mod file_cmd;
 pub mod files;
 pub mod migrate;
+pub mod queries;
 pub mod report;
 pub mod rm;
 pub mod session;

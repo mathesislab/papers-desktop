@@ -260,6 +260,13 @@ pub fn extract_txt_metadata(
     options: &Options,
     tail: &str,
 ) -> Result<String> {
+    // an `assert` of papers
+    if !options.search_doi && !options.search_fulltext {
+        return Err(FetchError::new(
+            ErrorKind::Other,
+            "no search criteria specified for metadata",
+        ));
+    }
     if options.search_doi {
         log::debug("parse doi");
         let dois = match parse_dois(txt, tail) {

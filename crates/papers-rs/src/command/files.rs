@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use crate::config::paths::{abspath, dirname, is_inside, realpath, short_home};
 use crate::config::{Config, MachineConfig, config_root, find_library_config};
 use crate::error::{Error, Result};
+use crate::fetch::download::is_download;
 use crate::library::{Action, Policy};
 use crate::log;
 
@@ -138,7 +139,8 @@ impl Placement {
     }
 }
 
-/// The policy of a library for a files mode (`files_policy`): a file that
+/// The policy of a library for a files mode (`files_policy`): a file that papers
+/// downloaded is always moved; a file that
 /// belongs to another library is never moved (`move` copies it); a file
 /// already in the files directory is moved (renamed), also in copy mode;
 /// with `ask`, each other file is asked about.
@@ -156,6 +158,10 @@ pub fn files_policy(config: &Config, mode: Mode, say: Say, prompt: SharedPrompt)
     let policy = {
         let failure = Arc::clone(&failure);
         Policy::by_file(move |file: &str| -> Action {
+            // a file that papers downloaded is always moved into the files directory
+            if is_download(file) {
+                return Action::Move;
+            }
             if mode == Mode::Link {
                 return Action::Link;
             }

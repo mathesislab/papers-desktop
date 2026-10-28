@@ -145,6 +145,8 @@ pub fn add_cmd(leaf: &Leaf, config: papers_rs::config::Config) -> Done {
         ignore_errors: leaf.flag("ignore_errors"),
         recursive: leaf.flag("recursive"),
         no_query_doi: leaf.flag("no_query_doi"),
+        no_query_fulltext: leaf.flag("no_query_fulltext"),
+        scholar: leaf.flag("scholar"),
         no_pool: leaf.flag("no_pool"),
         pool: leaf.string("pool"),
         ..AddRequest::default()

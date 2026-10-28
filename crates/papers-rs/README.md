@@ -69,9 +69,13 @@ files, so that both can work on the same library. The conformance suite
   back, `.papers/files.json`, the history step with papers' command text, the file
   operations after the save, the dry run; nothing is printed there: lines go to a `Say`,
   questions to a `Prompt`). `add` (bibtex, CSL-JSON, BibJSON, RIS files; the fields given;
-  `--key` with `--attach`), `edit`, `rm`, `tag` are operations on a `Session`; the other
-  writing commands use the same `Session`. Not yet: PDFs, folders, `--doi`, URLs as
-  attachments, a library with a pool (`Session::open` says so).
+  `--key` with `--attach`; PDFs, folders with `-R`, `--doi`, URLs as attachments: `command::add_pdf`,
+  the DOI of a PDF and the queries through `command::queries`, a download by `fetch::download`),
+  `edit`, `rm`, `tag` and the `papers file` commands (`command::file_cmd`: rename, mv, attach, detach,
+  rm, check, fix, clean, checksum, and the actions of `papers list` on the files) are operations on a
+  `Session`; the other writing commands use the same `Session`. Not yet: Google Scholar
+  (`add --scholar`), `--pool PATH` of `add`, `file check`, `file fix` and `list --fix-files`, a library with a pool
+  (`Session::open` says so; `file clean` says what papers says of it).
 - `command::check`: `papers check` (and the `list --fetch` of the CLI): the fixes of an entry
   (names, encoding, DOI, fetch, key; `fix_entry`, with the question and the diff of papers), the
   duplicates merged, the lines of what changed. A fetch goes through the `Fetch` trait (crossref in
@@ -86,12 +90,12 @@ files, so that both can work on the same library. The conformance suite
 ## The command line
 
 `papers-rs` (the `papers-rs-cli` crate) has the commands, options and errors of
-papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `list`, `export`, `check` and `migrate` are ported; the other commands print
+papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `file` (and the deprecated `filecheck`), `list`,
+`export`, `check` and `migrate` are ported; the other commands print
 `papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
-selection and the outputs are there, and `--export`; the actions that change the
-library (`--delete`, `--edit`, `--add-tag`, `--rm-tag`, `--attach`, `--detach`,
-`--detach-broken`, `--rename`, `--fix-files`, `--fetch`, `--push`, `--pull`, `--sync`) and
-`--open` say so too.
+selection and the outputs are there, and `--export`, and the actions on the files (`--attach`,
+`--detach`, `--detach-broken`, `--rename`, `--fix-files`, `--open`); the other actions that change the
+library (`--delete`, `--edit`, `--add-tag`, `--rm-tag`, `--fetch`, `--push`, `--pull`, `--sync`) say so.
 
 Tests: `cargo test -p papers-rs -p papers-rs-cli`. The history is checked against
 recordings of papers (`crates/papers-rs/tests/history/*.json`, made by
@@ -174,3 +178,20 @@ The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
   network are marked `requires: network` (`spec/run.py --with network`).
 - `crates/papers-rs-cli/tests/fetch_extract.rs`: the command where it needs no network;
   `cargo test -- --ignored` has one that asks crossref.
+
+## Adding PDFs and folders, the file commands
+
+`add` of a PDF finds its DOI as `extract` does (the PDF metadata, else the text, a DOI being accepted
+only if the title of its crossref record is in the text), looks the paper up in the library first
+(`command::add_pdf::find_pdf`: no query when the library has the DOI), then asks crossref; the
+fields given on the command line replace those of the record, and the key is made from the key
+template. A folder (`-R`) is scanned in sorted order (papers: the order of the file system); the
+files `<name>--<label>.<ext>` are attachments of `<name>.pdf`. Several PDFs are looked up one by
+one: papers fetches their metadata concurrently first (the same results, faster).
+
+The `papers file` commands and the file actions of `list` are `command::file_cmd`; what a command
+does with a file (`move`, `copy`, `link`, `ask`) is `command::files`, with the rules of
+`library.md` (a downloaded file is always moved, a file of another library is copied). The tests
+are the cases `file/*`, `add/pdf-*`, `add/folder*`, `add/*doi*`, `list/file-actions` of `spec/` (those
+that need the network or a PDF say so), and `tests/command_files.rs`; `tests/interop.rs` has papers
+undo what papers-rs did and the reverse (`PAPERS_REFERENCE`).

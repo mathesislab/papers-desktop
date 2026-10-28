@@ -2,9 +2,9 @@
 //! made of the fields given, or files to an entry that the library has
 //! (`papers.cli.entry_cmds.addcmd`, `papers.bib.Biblio.insert_entry`).
 //!
-//! Not ported yet: PDFs, folders (`-R`), `--doi` (fetching), URLs as
-//! attachments, the pool of a library (`--pool`): each is an error
-//! that says so, before anything is changed.
+//! PDFs, folders (`-R`) and DOIs are in [`super::add_pdf`]; URLs as attachments are downloaded.
+//! Not ported yet: the pool of a library (`--pool`) and Google Scholar (`--scholar`): each is an
+//! error that says so, before anything is changed.
 
 use std::collections::HashSet;
 
@@ -14,13 +14,16 @@ use crate::config::json::py_repr_str;
 use crate::config::paths::{abspath, dirname, isdir, realpath};
 use crate::entry;
 use crate::error::{Error, Result};
+use crate::fetch::download::download_url;
 use crate::formats::{Format, file_format, import::loads};
 use crate::library::{InsertOptions, Inserted, Policy, What};
 use crate::log;
 use crate::merge::{Context, Decision, DuplicateError, Merge, OnDuplicate, Resolve};
 
+use super::add_pdf::{self, Job};
 use super::edit;
 use super::files::{self, Mode};
+use super::queries::Queries;
 use super::session::{Session, not_implemented};
 
 /// What the command line of `add` asks for.
@@ -52,8 +55,14 @@ pub struct AddRequest {
     pub ignore_errors: bool,
     pub recursive: bool,
     pub no_query_doi: bool,
+    /// `--no-query-fulltext`: a PDF without a DOI is not looked up by its text.
+    pub no_query_fulltext: bool,
+    /// `--scholar`: Google Scholar (not ported).
+    pub scholar: bool,
     pub no_pool: bool,
     pub pool: Option<String>,
+    /// Where the queries (DOIs, PDFs) go: the network.
+    pub queries: Queries,
 }
 
 impl Default for AddRequest {
@@ -77,8 +86,11 @@ impl Default for AddRequest {
             ignore_errors: false,
             recursive: false,
             no_query_doi: false,
+            no_query_fulltext: false,
+            scholar: false,
             no_pool: false,
             pool: None,
+            queries: Queries::default(),
         }
     }
 }
@@ -118,9 +130,15 @@ fn os_error(error: &std::io::Error, path: &str) -> String {
 
 /// A resolver that remembers that it failed: an error of the duplicates stops
 /// the command (`--ignore-errors` does not apply to it).
-struct Watch<'a> {
+pub(super) struct Watch<'a> {
     inner: &'a mut dyn Resolve,
     failed: bool,
+}
+
+impl Watch<'_> {
+    pub(super) fn failed(&self) -> bool {
+        self.failed
+    }
 }
 
 impl Resolve for Watch<'_> {
@@ -146,7 +164,7 @@ impl Resolve for Watch<'_> {
 
 /// What to say of the entries inserted, and their keys for the report: an
 /// entry that is already there, one skipped.
-fn insert_messages(session: &Session, inserted: &[Inserted]) -> Vec<String> {
+pub(super) fn insert_messages(session: &Session, inserted: &[Inserted]) -> Vec<String> {
     let mut keys = Vec::new();
     for i in inserted {
         match &i.what {
@@ -194,7 +212,7 @@ fn same_content(file: &str, files: &[String]) -> Option<String> {
 /// `add` of files to a paper that the library has: the files are added to the
 /// entry and placed as `file attach` does; its fields and other files are not touched
 /// (`attach_to_existing`).
-fn attach_to_existing(
+pub(super) fn attach_to_existing(
     session: &mut Session,
     key: &str,
     attachments: &[String],
@@ -307,8 +325,6 @@ pub fn add(
         session.say.clone(),
         session.prompt(),
     );
-    let rename = request.mode != Mode::Link;
-    let policy = rename.then(|| placement.policy.clone());
 
     let mut metadata: Vec<(String, String)> = Vec::new();
     for (k, v) in &request.metadata {
@@ -330,13 +346,20 @@ pub fn add(
     if let Some(author) = get_meta(&metadata, "author").map(standard_name) {
         set_meta(&mut metadata, "author", &author);
     }
-    let attachments: Vec<String> = request.attachments.clone();
-    if attachments
-        .iter()
-        .any(|a| a.starts_with("http://") || a.starts_with("https://"))
-    {
-        return Err(not_implemented("add --attach URL: downloading"));
+    let mut attachments: Vec<String> = Vec::new();
+    let mut downloaded = false;
+    for a in &request.attachments {
+        if a.starts_with("http://") || a.starts_with("https://") {
+            attachments.push(download_url(a, false, None).map_err(Error::exit)?);
+            downloaded = true;
+        } else {
+            attachments.push(a.clone());
+        }
     }
+    // downloaded attachments live in a temporary directory: they are moved into the files
+    // directory whatever the mode
+    let rename = request.mode != Mode::Link || downloaded;
+    let policy = rename.then(|| placement.policy.clone());
     if !attachments.is_empty() {
         let relative_to = session.library.relative_to.clone();
         let files: Vec<String> = metadata_files(&metadata, &relative_to)
@@ -367,10 +390,30 @@ pub fn add(
     };
     let mut touched: Vec<String> = Vec::new();
 
-    if request.files.is_empty() && request.doi.is_some() && !request.no_query_doi {
-        return Err(not_implemented("add --doi: fetching the metadata of a DOI"));
-    }
-    if request.files.is_empty() {
+    let check = || placement.check();
+    let job = Job {
+        search_doi: !request.no_query_doi,
+        search_fulltext: !request.no_query_fulltext,
+        scholar: request.scholar,
+        doi: request.doi.as_deref().filter(|d| !d.is_empty()),
+        check_duplicate: request.check_duplicate,
+        options: &options,
+        placement: &placement.policy,
+        queries: &request.queries,
+        check: &check,
+    };
+
+    if request.files.is_empty() && job.doi.is_some() && !request.no_query_doi {
+        let doi = job.doi.unwrap_or_default();
+        touched.extend(add_pdf::add_doi(
+            session,
+            doi,
+            &attachments,
+            &job,
+            &mut watch,
+        )?);
+        placement.check()?;
+    } else if request.files.is_empty() {
         let only_key = request.key.is_some()
             && !(request.edit
                 || !request.metadata.is_empty()
@@ -494,25 +537,38 @@ pub fn add(
     }
 
     // what is not ported yet: before anything is added
-    for file in &request.files {
-        if isdir(file) {
-            if request.recursive {
-                return Err(not_implemented("add -R: adding a folder"));
-            }
-        } else if file.to_lowercase().ends_with(".pdf") {
-            return Err(not_implemented("add of a PDF"));
-        }
+    if request.scholar
+        && request.doi.is_none()
+        && request.files.iter().any(|f| {
+            (isdir(f) && request.recursive) || (!isdir(f) && f.to_lowercase().ends_with(".pdf"))
+        })
+    {
+        return Err(not_implemented("add --scholar"));
     }
 
-    let many = request.files.len() > 1;
     for file in &request.files {
-        match add_file(session, file, request, &attachments, &options, &mut watch) {
+        let many = request.files.len() > 1 || (isdir(file) && request.recursive);
+        let added = if isdir(file) && request.recursive {
+            // the PDFs of a folder: their own DOI, never the one given
+            let scan = Job {
+                doi: None,
+                scholar: false,
+                ..job
+            };
+            add_pdf::scan_dir(session, file, &scan, &mut watch)
+        } else if !isdir(file) && file.to_lowercase().ends_with(".pdf") {
+            add_pdf::add_pdf(session, file, &attachments, &job, &mut watch)
+        } else {
+            let format = file_format(file, request.format.as_deref().and_then(Format::from_id));
+            add_file(session, file, format, &attachments, &options, &mut watch)
+        };
+        match added {
             Ok(keys) => {
                 placement.check()?;
                 touched.extend(keys);
             }
             Err(error) => {
-                if watch.failed {
+                if watch.failed() {
                     return Err(error);
                 }
                 if request.ignore_errors {
@@ -541,10 +597,10 @@ pub fn add(
 }
 
 /// The entries of one file added: bibtex, CSL-JSON or BibJSON.
-fn add_file(
+pub(super) fn add_file(
     session: &mut Session,
     file: &str,
-    request: &AddRequest,
+    format: Format,
     attachments: &[String],
     options: &InsertOptions,
     resolver: &mut dyn Resolve,
@@ -554,7 +610,6 @@ fn add_file(
             "{file} is a directory, requires -R/--recursive to explore"
         )));
     }
-    let format = file_format(file, request.format.as_deref().and_then(Format::from_id));
     let bytes = std::fs::read(file).map_err(|e| Error::exit(os_error(&e, file)))?;
     let text = String::from_utf8(bytes).map_err(|e| Error::exit(format!("{e}")))?;
     let text = crate::bib::universal_newlines(&text);

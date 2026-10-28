@@ -7,6 +7,8 @@
 //! ... change session.library ...                        // the operations of this module: add, edit, rm, tag
 //! session.commit()?;                                    // history head, checksums, atomic save, history step
 //! session.delete_files(files)?;                         // (rm) after the save, kept for undo
+//! session.remove_file(path)?; session.record_operation(..) // (file commands) a file deleted or moved by the command
+//!                                                        // itself: before `commit` it joins the step of the command
 //! let outcome = session.finish();                       // file operations not yet recorded; the lock is released
 //! ```
 //!
@@ -201,7 +203,8 @@ pub struct Session {
     recorded: Option<Option<u64>>,
     /// The library's file operations were put back after a refused save.
     rolled_back: bool,
-    /// The operations done after the save (files deleted), oldest first.
+    /// The operations of the command not recorded yet (files it moved or deleted itself), oldest
+    /// first: those done before the save join its step, those done after are added to it.
     ops_after: Vec<HistoryOp>,
 }
 
@@ -313,6 +316,17 @@ impl Session {
     /// Save the library, and record the step of the command in its history
     /// (see the module). With `--dry-run`, only the line that says so.
     pub fn commit(&mut self) -> Result<Committed> {
+        self.commit_with(false)
+    }
+
+    /// [`Session::commit`] for a command whose change is not in the bibtex
+    /// (`savebib(other_changes=True)`: `file checksum` writes `.papers/files.json`):
+    /// a state is recorded even if the library did not change.
+    pub fn commit_other_changes(&mut self) -> Result<Committed> {
+        self.commit_with(true)
+    }
+
+    fn commit_with(&mut self, other_changes: bool) -> Result<Committed> {
         let bibtex = self.library.bibtex.clone();
         if self.options.dry_run {
             self.say.line(format!("DRYRUN: {bibtex} not saved"));
@@ -321,7 +335,7 @@ impl Session {
                 step: None,
             });
         }
-        if self.library.unchanged() {
+        if !other_changes && self.library.unchanged() {
             // logs that nothing changed; nothing is written, and the history has no new state
             self.library.save(false).map_err(Error::from)?;
             return Ok(Committed {
@@ -340,10 +354,16 @@ impl Session {
                 "the history of the library could not record its state before the command: {error}"
             )),
         }
-        self.update_files_json()?;
-        let saved = match self.library.save(false) {
+        // the file operations done so far (`mv`) are the step's, and their files get checksums
+        let early = std::mem::take(&mut self.ops_after);
+        if let Err(error) = self.update_files_json(&early) {
+            self.ops_after = early;
+            return Err(error);
+        }
+        let saved = match self.library.save(other_changes) {
             Ok(saved) => saved,
             Err(SaveError::BibtexChanged(message)) => {
+                self.ops_after = early;
                 let lines = rollback(self.library.file_ops());
                 self.rolled_back = true;
                 if !lines.is_empty() {
@@ -352,9 +372,15 @@ impl Session {
                 }
                 return Err(Error::exit(message));
             }
-            Err(SaveError::Error(error)) => return Err(error),
+            Err(SaveError::Error(error)) => {
+                self.ops_after = early;
+                return Err(error);
+            }
         };
-        let ops: Vec<HistoryOp> = saved.file_ops.iter().map(history_op).collect();
+        let ops: Vec<HistoryOp> = early
+            .into_iter()
+            .chain(saved.file_ops.iter().map(history_op))
+            .collect();
         let message = self.options.message.clone();
         // the history comes last: a failure must not undo the work done above
         let step = match self.history().and_then(|h| {
@@ -384,7 +410,7 @@ impl Session {
     /// `.papers/files.json` before the bibtex is written: the checksums of the
     /// files that the command moved, copied, added or linked; the files that
     /// no entry links to any more are dropped (`papers.checksums.update`).
-    fn update_files_json(&self) -> Result<()> {
+    fn update_files_json(&self, early: &[HistoryOp]) -> Result<()> {
         let Some(libdir) = self.config.bibtex.as_deref().map(|b| dirname(&abspath(b))) else {
             return Ok(());
         };
@@ -406,6 +432,12 @@ impl Session {
             .file_ops()
             .iter()
             .map(|op| normpath(&op.dst))
+            .chain(
+                early
+                    .iter()
+                    .filter(|op| matches!(op.kind, OpKind::Moved | OpKind::Copied))
+                    .filter_map(|op| op.dst.as_deref().map(normpath)),
+            )
             .collect();
         if let Some(loaded) = self.library.loaded_entries() {
             let loaded_relative_to = self
@@ -524,6 +556,46 @@ impl Session {
         }
         self.ops_after = record.unwrap_or_default();
         result
+    }
+
+    /// Delete a file for the command, without the guard and the lines of
+    /// [`Session::delete_files`] (`journal.remove`): kept in the history for
+    /// undo (the `keep-deleted-files` setting), else sent to the trash of the
+    /// system. Nothing in a dry run.
+    pub fn remove_file(&mut self, path: &str) -> Result<()> {
+        if self.options.dry_run {
+            return Ok(());
+        }
+        let keep = self.keeps_deleted();
+        let mut record = Some(std::mem::take(&mut self.ops_after));
+        let trash = |path: &str| (crate::history::store::to_system_trash)(path);
+        let result = {
+            let history = self.history()?;
+            Deleter {
+                keep,
+                store: Some(&history.store),
+                trash: &trash,
+            }
+            .remove(path, &mut record)
+        };
+        self.ops_after = record.unwrap_or_default();
+        result
+    }
+
+    /// Record a file operation that the command did itself, after the save of the
+    /// library (`journal.record`): the history step of the command has it. The
+    /// checksum of `dst` is taken now. Nothing in a dry run.
+    pub fn record_operation(&mut self, kind: OpKind, src: &str, dst: &str) {
+        if self.options.dry_run {
+            return;
+        }
+        let digest = file_digest(dst);
+        self.ops_after.push(HistoryOp::new(
+            kind,
+            &abspath(src),
+            Some(&abspath(dst)),
+            digest,
+        ));
     }
 
     // the end

@@ -129,17 +129,8 @@ pub fn color_enabled(choice: &str) -> bool {
     std::io::stdout().is_terminal()
 }
 
-/// The options of `papers list` that act on the entries listed, and are not ported yet.
-const WRITING_ACTIONS: [(&str, &str); 12] = [
-    ("--delete", "delete"),
-    ("--edit", "edit"),
-    ("--fetch", "fetch"),
-    ("--add-tag", "add_keywords"),
-    ("--rm-tag", "rm_tag"),
-    ("--attach", "attach"),
-    ("--detach", "detach"),
-    ("--rename", "rename"),
-    ("--fix-files", "fix_files"),
+/// The options of `papers list` that exchange with the pool: not ported yet.
+const WRITING_ACTIONS: [(&str, &str); 3] = [
     ("--push", "push"),
     ("--pull", "pull"),
     ("--sync", "sync"),
@@ -354,20 +345,13 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
         return cmd_list_actions::run(leaf, config, &search_of(leaf), action);
     }
     for (name, id) in WRITING_ACTIONS {
-        let on = match id {
-            "attach" => attach,
-            "detach" => detach,
-            "rename" => rename,
-            "fix_files" => fix_files,
-            "add_keywords" | "rm_tag" => !leaf.strings(id).is_empty(),
-            id => leaf.flag(id),
-        };
-        if on {
+        if leaf.flag(id) {
             return Err(Error::exit(format!("{name}: not implemented in papers-rs yet")).into());
         }
     }
-    if leaf.flag("open") {
-        return Err(Error::exit("--open: not implemented in papers-rs yet").into());
+    // the actions on the files: `papers file` on the listed entries
+    if let Some(action) = crate::cmd_list_files::FileAction::from_leaf(leaf) {
+        return crate::cmd_list_files::run(leaf, config, &search_of(leaf), action);
     }
     // the formats of --export-format, before the library is read
     let export_formats = if export.is_some() {

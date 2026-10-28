@@ -44,6 +44,12 @@ impl Pdf {
                 crate::config::json::py_repr_str(path)
             ))
         };
+        if !std::path::Path::new(path).exists() {
+            return Err(PdfError(format!(
+                "no such file: {}",
+                crate::config::json::py_repr_str(path)
+            )));
+        }
         let loaded = catch_unwind(|| Document::load(path)).map_err(|_| failed())?;
         let mut doc = loaded.map_err(|_| failed())?;
         if doc.is_encrypted() {

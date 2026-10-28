@@ -229,3 +229,52 @@ fn papers_rs_adds_tags_edits_and_removes_without_the_reference() {
         "the library before, and three commands"
     );
 }
+
+/// The file commands (attach, mv, rm, clean) run by `first`, then undone and redone by `second`:
+/// each finds the files that the other moved, copied and deleted.
+fn file_commands_run_by_one_are_undone_by_the_other(first: &str, second: &str) {
+    let s = Sandbox::new();
+    s.write("lib/x.txt", "x\n");
+    s.write("lib/y.txt", "y\n");
+    s.write("lib/files/unlinked.txt", "u\n");
+    let start = s.read("lib/papers.bib");
+
+    s.run(first, &["file", "attach", "old2000", "x.txt", "y.txt"]);
+    assert!(Path::new(&s.path("lib/files/doe_2000_old.txt")).exists());
+    assert!(Path::new(&s.path("lib/files/doe_2000_old--y.txt")).exists());
+    s.run(first, &["file", "mv", "files", "archive"]);
+    let moved = s.read("lib/papers.bib");
+    assert!(moved.contains("archive/doe_2000_old.txt"), "{moved}");
+    s.run(first, &["file", "rm", "archive/doe_2000_old--y.txt"]);
+    assert!(!Path::new(&s.path("lib/archive/doe_2000_old--y.txt")).exists());
+    s.run(first, &["file", "clean", "-y"]);
+    assert!(!Path::new(&s.path("lib/archive/unlinked.txt")).exists());
+    let cleaned = s.read("lib/papers.bib");
+
+    // undo all: the files are where they were
+    s.run(second, &["undo", "-n", "4"]);
+    assert_eq!(s.read("lib/papers.bib"), start);
+    assert_eq!(s.read("lib/x.txt"), "x\n");
+    assert_eq!(s.read("lib/y.txt"), "y\n");
+    // the file that clean deleted is back where it was deleted: the folder had been moved
+    assert_eq!(s.read("lib/archive/unlinked.txt"), "u\n");
+    assert!(!Path::new(&s.path("lib/archive/doe_2000_old.txt")).exists());
+    s.run(second, &["redo", "-n", "4"]);
+    assert_eq!(s.read("lib/papers.bib"), cleaned);
+    assert!(Path::new(&s.path("lib/archive/doe_2000_old.txt")).exists());
+    assert!(!Path::new(&s.path("lib/archive/unlinked.txt")).exists());
+}
+
+#[test]
+#[ignore = "needs the reference papers: PAPERS_REFERENCE=papers cargo test -p papers-rs-cli --test interop -- --ignored"]
+fn papers_undoes_and_redoes_the_file_commands_of_papers_rs() {
+    let Some(papers) = reference() else { return };
+    file_commands_run_by_one_are_undone_by_the_other(RS, &papers);
+}
+
+#[test]
+#[ignore = "needs the reference papers: PAPERS_REFERENCE=papers cargo test -p papers-rs-cli --test interop -- --ignored"]
+fn papers_rs_undoes_and_redoes_the_file_commands_of_papers() {
+    let Some(papers) = reference() else { return };
+    file_commands_run_by_one_are_undone_by_the_other(&papers, RS);
+}
