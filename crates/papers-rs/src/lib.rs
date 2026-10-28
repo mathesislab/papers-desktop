@@ -11,6 +11,8 @@ pub mod config;
 pub mod entry;
 pub mod error;
 pub mod export;
+pub mod extract;
+pub mod fetch;
 pub mod formats;
 pub mod history;
 pub mod identity;

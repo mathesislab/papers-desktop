@@ -41,3 +41,5 @@ print('];\n')
 table('DECIMAL', 'The characters of `str.isdecimal()` (category Nd: `\\d` of `re`), as ranges.',
       ranges(lambda c: c.isdecimal()))
 table('DIGIT', 'The characters of `str.isdigit()`, as ranges.', ranges(lambda c: c.isdigit()))
+table('ALNUM', 'The characters of `str.isalnum()` (`\\w` of `re` is these and `_`), as ranges.',
+      ranges(lambda c: c.isalnum()))

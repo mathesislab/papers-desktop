@@ -63,9 +63,28 @@ pub fn splitlines(s: &str) -> Vec<&str> {
     lines
 }
 
-/// `\w` of Python's `re` on a `str`: letters, digits and `_`.
+/// `str.isalnum()` of one character.
+pub fn is_alnum(c: char) -> bool {
+    if c.is_ascii() {
+        return c.is_ascii_alphanumeric();
+    }
+    let c = c as u32;
+    crate::pytables::ALNUM
+        .binary_search_by(|&(a, b)| {
+            if c < a {
+                std::cmp::Ordering::Greater
+            } else if c > b {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        })
+        .is_ok()
+}
+
+/// `\w` of Python's `re` on a `str`: `str.isalnum()` and `_`.
 pub fn is_word(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
+    is_alnum(c) || c == '_'
 }
 
 #[cfg(test)]

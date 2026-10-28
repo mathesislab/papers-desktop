@@ -7,6 +7,7 @@ mod cmd_add;
 mod cmd_config;
 mod cmd_edit;
 mod cmd_export;
+mod cmd_fetch;
 mod cmd_history;
 mod cmd_init;
 mod cmd_list;
@@ -238,6 +239,18 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
                 Ok(()) => {}
                 Err(cmd_config::Failure::Usage(message)) => return Err(Exit::Usage { path: command, message }),
                 Err(cmd_config::Failure::Error(error)) => return Err(error.into()),
+            }
+        }
+        "fetch" | "extract" | "doi" => {
+            let outcome = match command.as_str() {
+                "fetch" => cmd_fetch::fetch(leaf),
+                "extract" => cmd_fetch::extract(leaf),
+                _ => cmd_fetch::doi(leaf),
+            };
+            match outcome {
+                Ok(()) => {}
+                Err(cmd_fetch::Failure::Usage(message)) => return Err(Exit::Usage { path: command, message }),
+                Err(cmd_fetch::Failure::Error(error)) => return Err(error.into()),
             }
         }
         _ => return Err(Error::exit("not implemented in papers-rs yet").into()),

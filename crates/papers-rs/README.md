@@ -117,3 +117,53 @@ mostly CJK and the other large scripts; the Latin letters that names are made of
 agree) a differing result is counted as a known difference by the tests
 (`tests/common/translit.rs`), not a failure, and a change of the table of
 `deunicode` fails `the_transliteration_differences_are_the_recorded_ones`.
+
+## Fetching and extracting
+
+`papers-rs fetch`, `extract` and the deprecated `doi` print metadata and write no library. The
+modules:
+
+- `extract::doi`: the DOIs of a text, papers' parser character by character (`parse_dois`: the
+  normalization of the text, the DOI regexps with Python's `\w`, `\d`, `\s` and the lookbehind
+  written out, the choice of the article's DOI among the citations, the cleaning of what follows
+  a DOI), the arXiv fallback, the DOI of the XMP and of the document information of a PDF, the
+  check of a title in a text, `query_text`.
+- `extract::pdf`, `extract::text`: the text of a PDF. papers uses PyMuPDF (AGPL, not usable);
+  papers-rs reads the characters with `pdf-extract` (MIT, on `lopdf`) and makes the lines
+  itself (a line end where the position jumps, as MuPDF does). The text is not papers' text: the
+  words are mostly the same, the line ends and the order of columns are not always, and a font
+  that `pdf-extract` decodes differently gives other characters. The DOI parser and the check of
+  the title are papers' own, so what matters is whether the same DOIs come out:
+  `tests/measure_pdfs.py` measures it on a set of PDFs (it runs papers on them).
+  `pdf-extract` panics on some PDFs: papers-rs catches it (the page has no text), which needs a
+  build that unwinds; with `panic = "abort"` (the release profile of this workspace) such a PDF
+  ends the process.
+- `extract` (mod): `extract_pdf_doi`, `extract_pdf_metadata`, `extract_txt_metadata`,
+  `confirm_doi` (a DOI is taken only if its crossref title is in the text), with papers'
+  messages. `--image` runs `pdftoppm` and `tesseract` as papers does.
+- `fetch`: crossref (by DOI, and the bibliographic search with papers' score: `fuzz` is
+  rapidfuzz's `token_set_ratio`), doi.org content negotiation (DataCite and the others), arXiv,
+  the journal website (`html`), the conversion of a record to bibtex (`crossref`: the fields
+  as papers chooses them, written as a library is), the cache (`cache`: the files of papers'
+  `~/.cache/papers`, which both read; the old single-file caches are not migrated) and the
+  transport (`http`: reqwest with rustls and ring, as the app does; a `Transport` trait, so
+  that the tests replay recorded answers). The requests and their user agent are papers'.
+  Not ported: Google Scholar (`--scholar` says so).
+
+The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
+
+- `tests/gen_extract_expected.py` runs papers (python with papers installed) and records
+  `tests/expected/extract/*.json`: the DOIs of texts (the unit tests of papers and generated
+  texts), the pieces, crossref records as bibtex (real ones from the cache of papers, invented
+  and random ones), scores, cache files, links of HTML, and flows (by DOI, arXiv, doi.org,
+  full text, a text, the PDFs of `tests/fixtures/pdf`) with the network replayed from
+  fixtures: the same results and errors, and the same requests. `tests/extract.rs` and
+  `tests/fetch.rs` replay them. A larger fuzz run:
+  `gen_extract_expected.py --count 100000 --seed 7 --out DIR`, then
+  `PAPERS_RS_EXTRACT_FUZZ=DIR/doi_text.json cargo test -p papers-rs --test extract fuzz_file`.
+- `tests/record_network.py` recorded eight real answers (crossref, doi.org, arXiv) once, into
+  `tests/fixtures/network.json` (the list of references of the crossref record removed).
+- `spec/cases/fetch`, `spec/cases/extract`: cases for the conformance suite; those that need the
+  network are marked `requires: network` (`spec/run.py --with network`).
+- `crates/papers-rs-cli/tests/fetch_extract.rs`: the command where it needs no network;
+  `cargo test -- --ignored` has one that asks crossref.
