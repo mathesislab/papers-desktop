@@ -1,0 +1,15 @@
+{
+  "bibtex": "papers.bib",
+  "editor": "vim",
+  "filesdir": "files",
+  "keyformat": {
+    "author_num": 3,
+    "template": "{author}_{year}"
+  },
+  "nameformat": {
+    "template": "{author}_{title}",
+    "title_sep": "_"
+  },
+  "pool": "none",
+  "version": 3
+}

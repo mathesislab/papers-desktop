@@ -1,0 +1,13 @@
+{
+  "description": "init --pool of a folder that is not a library fails and changes nothing",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "project",
+        "--pool",
+        "../nowhere"
+      ]
+    }
+  ]
+}

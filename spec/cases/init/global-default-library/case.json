@@ -1,0 +1,28 @@
+{
+  "description": "init --global registers the library as the default library, used outside any library",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "shared",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]
+                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                      [--dry-run] [--ref N]
+                      [N]
+papers restore: error: argument N: invalid int value: 'last'

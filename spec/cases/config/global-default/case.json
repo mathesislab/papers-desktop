@@ -1,0 +1,47 @@
+{
+  "description": "config --global default sets, reads and removes the default library",
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default",
+        "lib"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default",
+        "nowhere"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default",
+        "none"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    }
+  ]
+}

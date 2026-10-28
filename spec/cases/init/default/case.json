@@ -1,0 +1,20 @@
+{
+  "description": "init in an empty folder: the library files and the message",
+  "steps": [
+    {
+      "argv": [
+        "init"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    }
+  ]
+}

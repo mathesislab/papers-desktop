@@ -1,0 +1,51 @@
+{
+  "description": "commands outside of a library",
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "x.bib"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "x",
+        "--set",
+        "a=b"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "name.template"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    }
+  ]
+}

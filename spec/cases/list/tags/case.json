@@ -1,0 +1,73 @@
+{
+  "description": "tags are the keywords: --tag matches whole tags, whatever their case, with wildcards",
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ICE"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ic"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ic*"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice",
+        "to-read"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice",
+        "to-read",
+        "--any"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice",
+        "--invert"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "sea-level"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "nothing"
+      ]
+    }
+  ]
+}

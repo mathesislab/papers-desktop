@@ -1,0 +1,70 @@
+{
+  "description": "accents: the search sees the bibtex as written (LaTeX or unicode), not the decoded text",
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "Müller"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Muller"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "M{\\\"u}ller"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Škoda"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Sm"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "smith"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Sm{\\\"i}th"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "kälte"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Cold",
+        "Water"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json",
+        "smith"
+      ]
+    }
+  ]
+}

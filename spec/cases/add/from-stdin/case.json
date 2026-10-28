@@ -1,0 +1,18 @@
+{
+  "description": "add /dev/stdin reads the bibtex from the standard input",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "/dev/stdin",
+        "--porcelain"
+      ],
+      "stdin_file": "stdin/01.txt"
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    }
+  ]
+}

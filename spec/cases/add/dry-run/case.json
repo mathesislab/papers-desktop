@@ -1,0 +1,17 @@
+{
+  "description": "add --dry-run changes nothing",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    }
+  ]
+}

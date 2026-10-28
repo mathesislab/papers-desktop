@@ -1,0 +1,43 @@
+{
+  "description": "list --duplicates: entries that are the same paper (same DOI, or authors and title)",
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--duplicates"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "doi"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "title"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--invert",
+        "-K"
+      ]
+    }
+  ]
+}

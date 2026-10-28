@@ -1,0 +1,17 @@
+{
+  "description": "config --prune removes the values equal to the global or default value",
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--prune"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--prune"
+      ]
+    }
+  ]
+}

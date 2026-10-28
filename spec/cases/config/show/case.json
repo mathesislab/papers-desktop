@@ -1,0 +1,10 @@
+{
+  "description": "config lists the settings and where each comes from",
+  "steps": [
+    {
+      "argv": [
+        "config"
+      ]
+    }
+  ]
+}

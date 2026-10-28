@@ -1,0 +1,29 @@
+{
+  "description": "edit --from FILE",
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--from",
+        "new.bib"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--from",
+        "nosuch.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette2013"
+      ]
+    }
+  ]
+}

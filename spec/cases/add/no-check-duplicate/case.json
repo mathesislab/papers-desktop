@@ -1,0 +1,20 @@
+{
+  "description": "add --no-check-duplicate creates duplicates; list --duplicates finds them",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--no-check-duplicate",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    }
+  ]
+}

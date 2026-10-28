@@ -1,0 +1,18 @@
+{
+  "description": "a command in a subfolder acts on the library above",
+  "steps": [
+    {
+      "argv": [
+        "status"
+      ],
+      "cwd": "a/b"
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ],
+      "cwd": "a/b"
+    }
+  ]
+}

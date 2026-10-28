@@ -1,0 +1,26 @@
+{
+  "description": "-C of a folder that does not exist or is not a library",
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "nodir",
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "plain",
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "file.txt",
+        "list"
+      ]
+    }
+  ]
+}

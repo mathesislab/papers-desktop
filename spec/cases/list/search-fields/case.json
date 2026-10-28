@@ -1,0 +1,97 @@
+{
+  "description": "search in a field: --key, --author, --first-author, --year, --title, --doi...",
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--key",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Doe"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--first-author",
+        "Doe"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--first-author",
+        "Perrette"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Landerer"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-y",
+        "2013",
+        "2019"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--year",
+        "2020"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--title",
+        "ocean"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--doi",
+        "10.1234"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--abstract",
+        "overview"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--keywords",
+        "to-read"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "perrette2013",
+        "--author",
+        "Perrette",
+        "--year",
+        "2013",
+        "--title",
+        "scaling",
+        "approach"
+      ]
+    }
+  ]
+}

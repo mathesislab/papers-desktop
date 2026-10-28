@@ -1,0 +1,15 @@
+{
+  "description": "a bibtex that is not valid",
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    }
+  ]
+}

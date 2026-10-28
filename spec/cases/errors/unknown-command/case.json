@@ -1,0 +1,15 @@
+{
+  "description": "an unknown command",
+  "steps": [
+    {
+      "argv": [
+        "frobnicate"
+      ]
+    },
+    {
+      "argv": [
+        "lst"
+      ]
+    }
+  ]
+}

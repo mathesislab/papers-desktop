@@ -1,0 +1,35 @@
+{
+  "description": "list of a library without entries",
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    }
+  ]
+}

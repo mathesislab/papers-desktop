@@ -1,0 +1,15 @@
+{
+  "description": "init picks the first .bib file of the folder and an existing pdfs folder",
+  "steps": [
+    {
+      "argv": [
+        "init"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    }
+  ]
+}

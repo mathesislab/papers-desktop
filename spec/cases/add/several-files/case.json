@@ -1,0 +1,18 @@
+{
+  "description": "several bibtex files in one command",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "a.bib",
+        "b.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

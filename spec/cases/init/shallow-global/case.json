@@ -1,0 +1,19 @@
+{
+  "description": "init --shallow takes the default library of the global configuration as pool",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "project",
+        "--shallow"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "project",
+        "status"
+      ]
+    }
+  ]
+}

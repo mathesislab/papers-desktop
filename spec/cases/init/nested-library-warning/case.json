@@ -1,0 +1,11 @@
+{
+  "description": "init inside a library warns",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "sub"
+      ]
+    }
+  ]
+}

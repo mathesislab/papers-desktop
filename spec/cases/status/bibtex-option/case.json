@@ -1,0 +1,20 @@
+{
+  "description": "status --bibtex FILE for a bibtex outside of the library",
+  "steps": [
+    {
+      "argv": [
+        "status",
+        "--bibtex",
+        "other.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--bibtex",
+        "other.bib",
+        "-K"
+      ]
+    }
+  ]
+}

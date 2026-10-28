@@ -1,0 +1,25 @@
+{
+  "description": "add --porcelain: only added/existing lines on stdout",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "refs.bib"
+      ]
+    }
+  ]
+}

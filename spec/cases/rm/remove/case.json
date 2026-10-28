@@ -1,0 +1,38 @@
+{
+  "description": "rm removes entries; --porcelain prints removed lines",
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "bretreger1978",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "bretreger1978"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "perrette2013",
+        "nosuch"
+      ]
+    }
+  ]
+}

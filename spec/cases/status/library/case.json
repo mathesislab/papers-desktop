@@ -1,0 +1,23 @@
+{
+  "description": "status of a library without pool, empty and with entries",
+  "steps": [
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "empty",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "status",
+        "-v"
+      ]
+    }
+  ]
+}

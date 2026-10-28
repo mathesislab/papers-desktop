@@ -1,0 +1,50 @@
+{
+  "description": "tag --rename renames a tag in the whole library",
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "to-read",
+        "reading"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "ice",
+        "ice-sheets",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "nothere",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "sea-level",
+        "projections"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "keywords"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "description": "the output formats: line, bibtex, plain, key, field, csl-json, bibjson",
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-l"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--plain",
+        "doe"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "key",
+        "ice"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "year",
+        "doi"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "title",
+        "--no-key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json",
+        "smith"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibjson",
+        "--any",
+        "doe",
+        "perrette"
+      ]
+    }
+  ]
+}

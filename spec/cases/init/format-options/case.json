@@ -1,0 +1,26 @@
+{
+  "description": "the name and key format options of init go to the library configuration",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "--key-template",
+        "{author}_{year}",
+        "--key-author-num",
+        "3",
+        "--name-template",
+        "{author}_{title}",
+        "--name-title-sep",
+        "_",
+        "--no-name-unknown-strict",
+        "--editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    }
+  ]
+}

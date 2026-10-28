@@ -1,0 +1,27 @@
+{
+  "description": "tag of an unknown entry changes nothing",
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "nosuch",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "nosuch",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "description": "add -u regenerates the keys of the new entries from the key template",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "-u",
+        "--no-check-duplicate"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "new.bib",
+        "-u"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "description": "rm --keep-files removes the entry and leaves its files",
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "linked2020",
+        "--keep-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

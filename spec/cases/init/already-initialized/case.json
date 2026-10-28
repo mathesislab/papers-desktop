@@ -1,0 +1,10 @@
+{
+  "description": "init in a folder that has a library fails",
+  "steps": [
+    {
+      "argv": [
+        "init"
+      ]
+    }
+  ]
+}

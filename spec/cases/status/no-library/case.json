@@ -1,0 +1,16 @@
+{
+  "description": "status outside of a library",
+  "steps": [
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "status",
+        "-v"
+      ]
+    }
+  ]
+}

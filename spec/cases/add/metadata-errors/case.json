@@ -1,0 +1,35 @@
+{
+  "description": "fields given on the command line apply to one entry only",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--key",
+        "zz"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--metadata",
+        "note=hello"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "a.bib",
+        "b.bib",
+        "--key",
+        "zz"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    }
+  ]
+}

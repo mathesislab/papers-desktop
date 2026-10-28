@@ -1,0 +1,63 @@
+{
+  "description": "tag --add and --rm",
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "smith2020",
+        "--add",
+        "to-read",
+        "climate/amoc/tipping",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "--rm",
+        "to-read"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "--rm",
+        "notthere"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "--add",
+        "projections"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "bretreger1978",
+        "--add",
+        "Tidal Gravity"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "--any",
+        "perrette2013",
+        "bretreger1978"
+      ]
+    }
+  ]
+}

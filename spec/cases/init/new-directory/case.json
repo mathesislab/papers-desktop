@@ -1,0 +1,18 @@
+{
+  "description": "init DIR creates DIR and its parents",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "projects/sealevel"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "projects/sealevel",
+        "status"
+      ]
+    }
+  ]
+}

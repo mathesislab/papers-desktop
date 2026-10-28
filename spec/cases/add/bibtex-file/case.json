@@ -1,0 +1,21 @@
+{
+  "description": "add a bibtex file to an empty library: keys kept, bibtex normalized and sorted",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    }
+  ]
+}

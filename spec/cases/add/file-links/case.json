@@ -1,0 +1,23 @@
+{
+  "description": "a bibtex with file links: a file that exists is renamed into the files folder, a broken link is warned about",
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "links.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "description": "init with --bibtex, --filesdir and --paths: stored in the library configuration",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "lib",
+        "--bibtex",
+        "refs.bib",
+        "--filesdir",
+        "pdfs",
+        "--paths",
+        "absolute"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config"
+      ]
+    }
+  ]
+}

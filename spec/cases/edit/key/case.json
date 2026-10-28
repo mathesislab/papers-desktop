@@ -1,0 +1,55 @@
+{
+  "description": "edit --key renames an entry (--keep-old-key: the old key goes to ids)",
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--key",
+        "perrette_2013",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette_2013",
+        "--key",
+        "perrette2013",
+        "--keep-old-key"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--key",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "bad key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--set",
+        "note=found by key"
+      ]
+    }
+  ]
+}

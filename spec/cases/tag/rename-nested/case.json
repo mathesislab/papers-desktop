@@ -1,0 +1,47 @@
+{
+  "description": "renaming a tag renames the tags under it; a nested tag can be renamed alone",
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "climate",
+        "ocean"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "ocean/amoc",
+        "ocean/moc"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "ocean/moc"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "ocean/moc/tipping",
+        "tipping"
+      ]
+    }
+  ]
+}

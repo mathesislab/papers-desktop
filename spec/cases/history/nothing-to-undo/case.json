@@ -1,0 +1,30 @@
+{
+  "description": "undo and redo with nothing to do",
+  "steps": [
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

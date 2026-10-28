@@ -1,0 +1,68 @@
+{
+  "description": "init, add, edit, tag, rm, then undo all: the whole history of a new library",
+  "steps": [
+    {
+      "argv": [
+        "init"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "import/refs.bib"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=n"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "4"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "3"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "description": "init --pool creates a shallow library; the pool is relative to DIR",
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "project",
+        "--pool",
+        "../lib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "project",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "project",
+        "config",
+        "pool"
+      ]
+    }
+  ]
+}

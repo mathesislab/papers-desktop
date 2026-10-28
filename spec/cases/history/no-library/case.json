@@ -1,0 +1,32 @@
+{
+  "description": "history outside of a library",
+  "steps": [
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "1"
+      ]
+    }
+  ]
+}
