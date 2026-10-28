@@ -3,13 +3,19 @@
 //! It behaves as `papers`: same options, same output, same exit status, same
 //! files. The commands that are not ported yet say so (status 1).
 
+mod cmd_add;
 mod cmd_config;
+mod cmd_edit;
 mod cmd_export;
 mod cmd_history;
 mod cmd_init;
 mod cmd_list;
+mod cmd_rm;
 mod cmd_status;
+mod cmd_tag;
+mod cmd_write;
 mod commands;
+mod dialogue;
 mod help;
 mod help_text;
 mod parse;
@@ -98,6 +104,7 @@ fn pop_directory_options(mut argv: Vec<String>) -> Result<(Option<String>, Vec<S
 }
 
 fn run(argv: Vec<String>) -> Result<(), Exit> {
+    cmd_write::set_command_line(&argv);
     let (directory, argv) = pop_directory_options(argv)?;
     if let Some(directory) = &directory {
         if !isdir(directory) {
@@ -216,6 +223,10 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
             Err(cmd_config::Failure::Usage(message)) => return Err(Exit::Usage { path: command, message }),
             Err(cmd_config::Failure::Error(error)) => return Err(error.into()),
         },
+        "add" => written(&command, cmd_add::add_cmd(leaf, config))?,
+        "edit" => written(&command, cmd_edit::edit_cmd(leaf, config))?,
+        "rm" => written(&command, cmd_rm::rm_cmd(leaf, config))?,
+        "tag" => written(&command, cmd_tag::tag_cmd(leaf, config))?,
         "status" => cmd_status::status(cmd_status::StatusArgs::from_leaf(leaf), config)?,
         "undo" => cmd_history::undo(leaf, config)?,
         "redo" => cmd_history::redo(leaf, config)?,
@@ -232,4 +243,13 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
         _ => return Err(Error::exit("not implemented in papers-rs yet").into()),
     }
     Ok(())
+}
+
+/// The end of a command that writes a library: a usage error of its command line, or an error.
+fn written(command: &str, outcome: cmd_write::Done) -> Result<(), Exit> {
+    match outcome {
+        Ok(()) => Ok(()),
+        Err(cmd_write::Failure::Usage(message)) => Err(Exit::Usage { path: command.to_string(), message }),
+        Err(cmd_write::Failure::Error(error)) => Err(error.into()),
+    }
 }

@@ -63,6 +63,15 @@ files, so that both can work on the same library. The conformance suite
   operations, `.papers/files.json`, the lines of `papers history`; not yet
   `history --revert` (it needs the merge). `history::Step` is what the library
   model hands over after a save.
+- `command`: the commands that write a library, and the write path they share
+  (`command::session`: the lock, the history before the command and the head sync,
+  the load, the atomic save refused when the bibtex changed meanwhile with the files put
+  back, `.papers/files.json`, the history step with papers' command text, the file
+  operations after the save, the dry run; nothing is printed there: lines go to a `Say`,
+  questions to a `Prompt`). `add` (bibtex, CSL-JSON, BibJSON, RIS files; the fields given;
+  `--key` with `--attach`), `edit`, `rm`, `tag` are operations on a `Session`; the other
+  writing commands use the same `Session`. Not yet: PDFs, folders, `--doi`, URLs as
+  attachments, a library with a pool (`Session::open` says so).
 - `install`: what `papers init` creates.
 - `lock`: the lock of a library (`.papers/lock`), a lease with a refresh thread.
 - `error`, `log`: papers' errors, and its messages (`papers: warning: ...`).
@@ -70,7 +79,7 @@ files, so that both can work on the same library. The conformance suite
 ## The command line
 
 `papers-rs` (the `papers-rs-cli` crate) has the commands, options and errors of
-papers. `init`, `config`, `list` and `export` are ported; the other commands print
+papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `list` and `export` are ported; the other commands print
 `papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
 selection and the outputs are there, and `--export`; the actions that change the
 library (`--delete`, `--edit`, `--add-tag`, `--rm-tag`, `--attach`, `--detach`,

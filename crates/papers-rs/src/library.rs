@@ -82,7 +82,8 @@ impl Policy {
         Policy(Arc::new(f))
     }
 
-    fn action(&self, file: &str) -> Action {
+    /// What to do with this file.
+    pub fn action(&self, file: &str) -> Action {
         (self.0)(file)
     }
 }
@@ -1320,6 +1321,51 @@ impl Library {
             Block::Entry(e) => Some(e),
             _ => None,
         }
+    }
+
+    /// The entries as they were at [`Library::mark_loaded`] (copies), in the order of the library then:
+    /// for the report of a command (`loaded_entries`). None without `mark_loaded`.
+    pub fn loaded_entries(&self) -> Option<Vec<&Entry>> {
+        self.loaded
+            .as_ref()
+            .map(|l| l.entries.iter().map(|(_, e)| e).collect())
+    }
+
+    /// Put `edited` entries in place of the entries of the keys `old` (`replace_entries`:
+    /// `biblio.entries = others + edited`): they are new entries for the report of the changes (a key
+    /// that changed is a removal and an addition, not a rename). A key of the edited entries that
+    /// another entry has is refused, and nothing is changed (papers compares these keys with case).
+    pub fn replace_entries(&mut self, old: &[String], edited: Vec<Entry>) -> Result<()> {
+        let old_positions: Vec<usize> = old.iter().filter_map(|k| self.position(k)).collect();
+        let taken: HashSet<&str> = self
+            .bib
+            .blocks
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !old_positions.contains(i))
+            .filter_map(|(_, b)| match b {
+                Block::Entry(e) => Some(e.key.as_str()),
+                _ => None,
+            })
+            .collect();
+        if let Some(e) = edited.iter().find(|e| taken.contains(e.key.as_str())) {
+            return Err(Error::exit(format!(
+                "{}: another entry of the library has this key -- keeping original entries",
+                e.key
+            )));
+        }
+        let mut gone = old_positions;
+        gone.sort_unstable();
+        gone.dedup();
+        for i in gone.into_iter().rev() {
+            self.bib.blocks.remove(i);
+            self.uids.remove(i);
+        }
+        self.index = None;
+        for e in edited {
+            self.push_entry(e);
+        }
+        Ok(())
     }
 
     /// The entries that are new since [`Library::mark_loaded`] (neither their key nor a former key

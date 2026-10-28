@@ -6,6 +6,7 @@
 //! `latexenc-rs` (pylatexenc), which is independent of it too.
 
 pub mod bib;
+pub mod command;
 pub mod config;
 pub mod entry;
 pub mod error;

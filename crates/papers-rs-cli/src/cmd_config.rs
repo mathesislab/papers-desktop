@@ -104,8 +104,8 @@ fn parse_setting(name: &str, values: &[String]) -> Result<Value> {
     parse_value(name, values).map_err(Error::exit)
 }
 
-/// The bibtex of a library has file links: changing the `paths` setting
-/// rewrites them, which this port does not do yet.
+/// The bibtex of a library has file links: changing the `paths` setting rewrites them
+/// (`cmd_write::convert_file_links`); a library with a pool is not supported there yet.
 fn has_file_links(bibtex: &str) -> bool {
     let Ok(text) = fs::read_to_string(bibtex) else { return false };
     let lower = text.to_lowercase();
@@ -188,22 +188,19 @@ pub fn config_cmd(o: &ConfigArgs, mut config: Config) -> Outcome {
         ));
         return Ok(());
     }
+    config.save()?;
+
     // the file links of the bibtex follow the paths setting
     if name == "paths"
         && let Some(bibtex) = config.bibtex.clone()
         && exists(&bibtex)
-        && has_file_links(&bibtex)
     {
-        return Err(not_implemented("config paths").into());
-    }
-    config.save()?;
-
-    if name == "paths"
-        && let Some(bibtex) = config.bibtex.as_deref()
-        && exists(bibtex)
-    {
-        // the file links are written as the setting says: none to change
-        log::info(&format!("{bibtex}: nothing changed, not saved"));
+        if has_file_links(&bibtex) {
+            crate::cmd_write::convert_file_links(config.clone())?;
+        } else {
+            // no link to write as the setting says
+            log::info(&format!("{bibtex}: nothing changed, not saved"));
+        }
     }
     if name == "checksums" {
         let checksums = config.get("checksums");

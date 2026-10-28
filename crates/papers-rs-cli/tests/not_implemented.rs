@@ -23,16 +23,11 @@ fn text(bytes: &[u8]) -> String {
 #[test]
 fn the_commands_that_are_not_ported_say_so() {
     let dir = tempfile::tempdir().unwrap();
-    for args in [
-        &["add", "x.pdf"][..],
-        &["rm", "key"],
-        &["file", "clean"],
-    ] {
-        let output = papers(args, dir.path());
-        assert_eq!(output.status.code(), Some(1), "papers {args:?}");
-        assert_eq!(text(&output.stderr), "papers: error: not implemented in papers-rs yet\n", "papers {args:?}");
-        assert!(output.stdout.is_empty());
-    }
+    let args = &["file", "clean"];
+    let output = papers(args, dir.path());
+    assert_eq!(output.status.code(), Some(1), "papers {args:?}");
+    assert_eq!(text(&output.stderr), "papers: error: not implemented in papers-rs yet\n", "papers {args:?}");
+    assert!(output.stdout.is_empty());
 }
 
 #[test]
@@ -43,17 +38,30 @@ fn the_version_is_that_of_papers() {
     assert_eq!(text(&output.stdout), format!("{}\n", papers_rs::error::PAPERS_VERSION));
 }
 
-/// Changing the paths setting rewrites the file links of the bibtex: not ported yet, and nothing is changed.
+/// What `add` does not do yet says so, before anything is changed: PDFs, a library with a pool.
 #[test]
-fn config_paths_with_file_links_is_not_ported() {
+fn add_of_a_pdf_is_not_ported() {
+    let dir = tempfile::tempdir().unwrap();
+    assert_eq!(papers(&["init"], dir.path()).status.code(), Some(0));
+    let before = fs::read_to_string(dir.path().join("papers.bib")).unwrap();
+    let output = papers(&["add", "x.pdf"], dir.path());
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(text(&output.stderr), "papers: error: add of a PDF: not implemented in papers-rs yet\n");
+    assert_eq!(fs::read_to_string(dir.path().join("papers.bib")).unwrap(), before);
+}
+
+/// Changing the paths setting rewrites the file links of the bibtex.
+#[test]
+fn config_paths_rewrites_the_file_links() {
     let dir = tempfile::tempdir().unwrap();
     assert_eq!(papers(&["init"], dir.path()).status.code(), Some(0));
     fs::write(dir.path().join("papers.bib"), "@article{x,\n file = {:x.pdf:pdf}\n}\n").unwrap();
-    let before = fs::read_to_string(dir.path().join(".papers/config.json")).unwrap();
     let output = papers(&["config", "paths", "absolute"], dir.path());
-    assert_eq!(output.status.code(), Some(1));
-    assert!(text(&output.stderr).contains("not implemented in papers-rs yet"), "{}", text(&output.stderr));
-    assert_eq!(fs::read_to_string(dir.path().join(".papers/config.json")).unwrap(), before);
+    assert_eq!(output.status.code(), Some(0), "{}", text(&output.stderr));
+    let bib = fs::read_to_string(dir.path().join("papers.bib")).unwrap();
+    assert!(bib.contains("file = {:/") && bib.contains("x.pdf:pdf}"), "{bib}");
+    assert_eq!(papers(&["config", "paths", "relative"], dir.path()).status.code(), Some(0));
+    assert!(fs::read_to_string(dir.path().join("papers.bib")).unwrap().contains("file = {:x.pdf:pdf}"));
 }
 
 /// A library whose entries have files cannot change its pool yet (the files follow): nothing is changed.
