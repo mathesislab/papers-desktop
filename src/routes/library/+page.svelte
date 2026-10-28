@@ -20,7 +20,7 @@
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
-  import type { Added, Item, Row, Status, TagCount, WriteError } from "$lib/types";
+  import type { AddOptions, Added, Item, Row, Status, TagCount, WriteError } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
@@ -432,9 +432,10 @@
   /** The papers of BibTeX added to a .bib file. Then the sheet closes, and
    *  the first paper added (else the first that was there) is selected, in
    *  the library as it is without search or view to hide it. */
-  async function addPapers(bib: string, text: string, fail: (message: string) => void): Promise<boolean> {
+  async function addPapers(bib: string, text: string, options: AddOptions, fail: (message: string) => void): Promise<boolean> {
     let added: Added | undefined;
-    if (!(await write(async () => (added = await addBibtex(bib, text)), (error) => fail(errorText(error)))) || !added) return false;
+    if (!(await write(async () => (added = await addBibtex(bib, text, options)), (error) => fail(errorText(error)))) || !added)
+      return false;
     adding = false;
     const keys = added.added.length ? added.added : added.existing;
     const [id] = await invoke<string[]>("ids_of", { bib, keys });
@@ -450,7 +451,9 @@
     say(
       n
         ? `Added ${n} ${n === 1 ? "paper" : "papers"}` + (added.existing.length ? `, ${added.existing.length} already there` : "")
-        : `Already in the library: ${added.existing.join(", ")}`,
+        : added.existing.length
+          ? `Already in the library: ${added.existing.join(", ")}`
+          : "Nothing added",
     );
     return true;
   }

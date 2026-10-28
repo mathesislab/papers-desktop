@@ -13,7 +13,7 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use papers_core::{Added, Change, Item, same_tag, under};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
@@ -566,8 +566,48 @@ pub async fn replace_entry(app: AppHandle, id: String, text: String) -> Result<(
 /// Add the entries of pasted BibTeX to a .bib file; returns their keys,
 /// added and existing.
 #[tauri::command]
-pub async fn add_bibtex(app: AppHandle, bib: PathBuf, text: String) -> Result<Added, WriteError> {
-    write(app, move |state| add(state, &bib, &text)).await
+pub async fn add_bibtex(
+    app: AppHandle,
+    bib: PathBuf,
+    text: String,
+    options: AddOptions,
+) -> Result<Added, WriteError> {
+    write(app, move |state| add(state, &bib, &text, options)).await
+}
+
+/// How entries are added to a papers library; a plain .bib has no merge and
+/// no key template: its entries are added as they are.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddOptions {
+    /// an entry that is a paper of the library already, by papers' rule
+    pub on_duplicate: OnDuplicate,
+    /// the keys of the new entries made by the library's key template
+    /// (papers `--update-key`)
+    pub update_key: bool,
+}
+
+/// papers `--on-duplicate`: an added entry that is a paper of the library.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OnDuplicate {
+    /// the library's entry as it is
+    #[default]
+    Skip,
+    /// merged, the library's values kept where they differ
+    Keep,
+    /// merged, the added values taken where they differ
+    Update,
+}
+
+impl OnDuplicate {
+    fn arg(self) -> &'static str {
+        match self {
+            OnDuplicate::Skip => "skip",
+            OnDuplicate::Keep => "keep",
+            OnDuplicate::Update => "update",
+        }
+    }
 }
 
 /// Remove entries from the library; their files stay.
@@ -715,7 +755,7 @@ fn replace(state: &AppState, id: &str, text: &str) -> Result<(), WriteError> {
     Ok(())
 }
 
-fn add(state: &AppState, bib: &Path, text: &str) -> Result<Added, WriteError> {
+fn add(state: &AppState, bib: &Path, text: &str, options: AddOptions) -> Result<Added, WriteError> {
     in_library(state, bib)?;
     papers_core::entry_keys(text)?;
     let targets = state.writers.targets([bib])?;
@@ -729,13 +769,23 @@ fn add(state: &AppState, bib: &Path, text: &str) -> Result<Added, WriteError> {
             let pasted = std::env::temp_dir().join(name);
             fs::write(&pasted, text)
                 .map_err(|e| WriteError::failed(format!("{}: {e}", pasted.display())))?;
-            let args = [pasted.to_string_lossy().into()];
+            let mut args = vec![
+                pasted.to_string_lossy().into(),
+                "--on-duplicate".into(),
+                options.on_duplicate.arg().into(),
+            ];
+            if options.update_key {
+                args.push("--update-key".into());
+            }
             let report = state.writers.run(library, "add", &args, None);
             let _ = fs::remove_file(&pasted);
             let report = report?;
+            // a paper of the library: as it was, or merged with the entry
+            let mut existing = report.keys("existing");
+            existing.extend(report.keys("modified"));
             Ok(Added {
                 added: report.keys("added"),
-                existing: report.keys("existing"),
+                existing,
             })
         }
         None => {
@@ -1032,21 +1082,39 @@ mod tests {
         *state.library.write().unwrap() = Library::load(std::slice::from_ref(&bib)).unwrap();
         let text = |bib: &Path| fs::read_to_string(bib).unwrap();
 
-        let added = add(&state, &bib, ENTRIES).unwrap();
+        let added = add(&state, &bib, ENTRIES, AddOptions::default()).unwrap();
         assert_eq!(added.added, ["a", "b"]);
         reload(&state);
         // the same paper (by papers' rule: its DOI), or another with a key taken
         let c = "@article{c,\n doi = {10.1/c},\n title = {C}\n}";
-        assert_eq!(add(&state, &bib, c).unwrap().added, ["c"]);
+        assert_eq!(add(&state, &bib, c, AddOptions::default()).unwrap().added, ["c"]);
         reload(&state);
-        assert_eq!(add(&state, &bib, c).unwrap().existing, ["c"]);
+        assert_eq!(add(&state, &bib, c, AddOptions::default()).unwrap().existing, ["c"]);
         reload(&state);
-        let error = add(&state, &bib, "@article{b,\n title = {Other}\n}").unwrap_err();
+        let error = add(&state, &bib, "@article{b,\n title = {Other}\n}", AddOptions::default()).unwrap_err();
         assert!(
             error.message.contains("already in the library"),
             "{}",
             error.message
         );
+        // the same paper with other values: left as it is, filled in, updated
+        let c2 = "@article{c,\n doi = {10.1/c},\n journal = {J},\n title = {C2}\n}";
+        let merged = |on_duplicate| AddOptions { on_duplicate, update_key: false };
+        // (papers 3.0.0b5 reports no line for a skipped entry)
+        add(&state, &bib, c2, merged(OnDuplicate::Skip)).unwrap();
+        reload(&state);
+        assert!(!text(&bib).contains("{J}"), "{}", text(&bib));
+        assert_eq!(add(&state, &bib, c2, merged(OnDuplicate::Keep)).unwrap().existing, ["c"]);
+        reload(&state);
+        assert!(text(&bib).contains("journal = {J}") && text(&bib).contains("title = {C}"), "{}", text(&bib));
+        add(&state, &bib, c2, merged(OnDuplicate::Update)).unwrap();
+        reload(&state);
+        assert!(text(&bib).contains("title = {C2}"), "{}", text(&bib));
+        // a new entry keyed by the library's template
+        let fetched = "@article{FETCHED_2020,\n author = {Smith, Jane},\n doi = {10.1/d},\n title = {D},\n year = {2020}\n}";
+        let keyed = AddOptions { update_key: true, ..AddOptions::default() };
+        assert_eq!(add(&state, &bib, fetched, keyed).unwrap().added, ["smith2020"]);
+        reload(&state);
 
         tag(&state, &strings(&["a", "b"]), &strings(&["new"]), &[]).unwrap();
         reload(&state);

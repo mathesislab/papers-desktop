@@ -7,7 +7,7 @@
   import { onMount } from "svelte";
   import { label } from "$lib/keys";
   import { writers } from "$lib/library/writes";
-  import type { Incoming, Row } from "$lib/types";
+  import type { AddOptions, Incoming, Row, Writer } from "$lib/types";
 
   let {
     bib: preferred = null,
@@ -20,7 +20,7 @@
     /** the papers of the library, by id */
     rows: Map<string, Row>;
     /** write the BibTeX; whether it was written, else `fail` was told why */
-    onadd: (bib: string, text: string, fail: (message: string) => void) => Promise<boolean>;
+    onadd: (bib: string, text: string, options: AddOptions, fail: (message: string) => void) => Promise<boolean>;
     onclose: () => void;
   } = $props();
 
@@ -30,9 +30,13 @@
 
   let text = $state("");
   let field = $state<HTMLTextAreaElement>();
-  /** the .bib files of the library; the one to add to */
-  let bibs = $state<string[]>([]);
+  /** the .bib files of the library, and their writers; the one to add to */
+  let bibs = $state<Writer[]>([]);
   let target = $state("");
+  /** for a papers library: what papers does with the papers already there */
+  let onDuplicate = $state<AddOptions["onDuplicate"]>("skip");
+  /** the key doi.org gave the entry it fetched: while it stays, the library's key template makes the key */
+  let fetchedKey = $state<string | null>(null);
   /** the DOI being fetched, and the one that failed with why */
   let fetching = $state<string | null>(null);
   let failed = $state<{ doi: string; message: string } | null>(null);
@@ -50,6 +54,8 @@
     return ids.map((id) => rows.get(id)).filter((r): r is Row => r !== undefined);
   });
   let canAdd = $derived(kind === "bibtex" && entries.length > 0 && !adding && target !== "");
+  /** whether papers writes the .bib file: it merges the papers already there, and makes keys */
+  let papers = $derived(bibs.find((w) => w.bib === target)?.kind === "papers");
 
   /** the line under the field: what it is taken for */
   let said = $derived.by((): { text: string; error?: boolean } => {
@@ -68,8 +74,8 @@
 
   onMount(async () => {
     field?.focus();
-    bibs = (await writers()).map((w) => w.bib);
-    target = preferred && bibs.includes(preferred) ? preferred : (bibs[0] ?? "");
+    bibs = await writers();
+    target = preferred && bibs.some((w) => w.bib === preferred) ? preferred : (bibs[0]?.bib ?? "");
   });
 
   // the entries of the BibTeX, and the papers they are the same as: a moment
@@ -104,7 +110,10 @@
     try {
       const bibtex = await invoke<string>("fetch_doi", { doi });
       // not when the field changed meanwhile
-      if (text.trim() === doi) text = bibtex;
+      if (text.trim() === doi) {
+        text = bibtex;
+        fetchedKey = /^\s*@\w+\s*\{\s*([^,\s]+)/.exec(bibtex)?.[1] ?? null;
+      }
     } catch (e) {
       failed = { doi, message: String(e) };
     } finally {
@@ -116,7 +125,8 @@
     if (!canAdd) return;
     adding = true;
     error = null;
-    await onadd(target, text, (message) => (error = message));
+    const updateKey = fetchedKey !== null && entries.length === 1 && entries[0].key === fetchedKey;
+    await onadd(target, text, { onDuplicate, updateKey }, (message) => (error = message));
     adding = false;
   }
 
@@ -178,16 +188,26 @@
         <label class="target">
           To
           <select bind:value={target}>
-            {#each bibs as b (b)}
+            {#each bibs as { bib: b } (b)}
               <option value={b} title={b}>{name(b)}</option>
             {/each}
+          </select>
+        </label>
+      {/if}
+      {#if known.length && papers}
+        <label class="target">
+          Already there
+          <select bind:value={onDuplicate}>
+            <option value="skip" title="Leave the paper in the library as it is">Skip</option>
+            <option value="keep" title="Add the fields it lacks; where they differ, keep the library's">Fill in</option>
+            <option value="update" title="Add the fields it lacks; where they differ, take the new values">Update</option>
           </select>
         </label>
       {/if}
       <span class="spacer"></span>
       <button onclick={onclose}>Cancel</button>
       <button class="primary" disabled={!canAdd} title={label(ADD)} onclick={add}>
-        {adding ? "Adding…" : known.length ? "Add anyway" : "Add"}
+        {adding ? "Adding…" : known.length && !papers ? "Add anyway" : "Add"}
       </button>
     </div>
   </div>

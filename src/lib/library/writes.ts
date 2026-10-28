@@ -4,7 +4,7 @@
 // WriteError.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { Added, WriteError, Writer } from "$lib/types";
+import type { AddOptions, Added, WriteError, Writer } from "$lib/types";
 
 export function isWriteError(e: unknown): e is WriteError {
   return typeof e === "object" && e !== null && "kind" in e && "message" in e;
@@ -59,9 +59,9 @@ export function replaceEntry(id: string, text: string): Promise<void> {
 }
 
 /** Add the entries of pasted BibTeX to a .bib file; resolves to their keys,
- *  added and existing. */
-export function addBibtex(bib: string, text: string): Promise<Added> {
-  return write("add_bibtex", { bib, text });
+ *  added and existing (for papers: merged too). */
+export function addBibtex(bib: string, text: string, options: AddOptions): Promise<Added> {
+  return write("add_bibtex", { bib, text, options });
 }
 
 /** Remove entries; their files stay. */

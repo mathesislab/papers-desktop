@@ -86,6 +86,16 @@ export type Added = {
   existing: string[];
 };
 
+/** mirrors writer::AddOptions of src-tauri: how entries are added to a papers
+ *  library (a plain .bib adds them as they are) */
+export type AddOptions = {
+  /** an entry that is a paper of the library already: left as it is (skip),
+   *  merged keeping the library's values (keep) or taking the entry's (update) */
+  onDuplicate: "skip" | "keep" | "update";
+  /** the keys of the new entries made by the library's key template */
+  updateKey: boolean;
+};
+
 /** mirrors papers_core::Incoming: an entry of BibTeX to add */
 export type Incoming = {
   key: string;

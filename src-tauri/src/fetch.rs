@@ -67,10 +67,16 @@ pub async fn fetch_doi(doi: String) -> Result<String, String> {
     }
     let text = response.text().await.map_err(|e| failed(&e))?;
     if text.trim_start().starts_with('@') {
-        Ok(text.trim().to_string())
+        Ok(formatted(&text))
     } else {
         Err(format!("No BibTeX for DOI {doi}"))
     }
+}
+
+/// BibTeX as papers writes it, one field per line (doi.org gives it on one
+/// line): what the entry will look like in the library.
+fn formatted(text: &str) -> String {
+    papers_rs::bib::Bib::parse(text).to_string().trim().to_string()
 }
 
 /// A request that failed, as a message.
@@ -87,6 +93,15 @@ fn failed(e: &reqwest::Error) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn formatted_one_field_per_line() {
+        let text = "@article{WATSON_1953, title={Molecular Structure}, DOI={10.1038/171737a0}, month=Apr, year={1953} }";
+        assert_eq!(
+            formatted(text),
+            "@article{WATSON_1953,\n doi = {10.1038/171737a0},\n month = Apr,\n title = {Molecular Structure},\n year = {1953}\n}"
+        );
+    }
 
     #[test]
     fn doi_forms() {
