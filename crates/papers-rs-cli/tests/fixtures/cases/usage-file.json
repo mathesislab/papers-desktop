@@ -1,0 +1,226 @@
+{
+ "name": "usage-file",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "file"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "usage: papers file [-h]\n                   {rename,mv,attach,detach,rm,check,fix,clean,checksum} ...\n\nthe files of the entries: rename, move, attach, detach, remove, check them,\nand clean the files directory\n\npositional arguments:\n  {rename,mv,attach,detach,rm,check,fix,clean,checksum}\n    rename              place the files in the files directory under their\n                        template name\n    mv                  move files or folders, and update the links of the\n                        entries\n    attach              attach files to an entry\n    detach              remove file links from the entries (the files are\n                        kept)\n    rm                  remove file links from the entries and delete the\n                        files\n    check               report broken links, identical files, DOI mismatches\n    fix                 repair the file links that `papers file check` reports\n    clean               remove the files of the files directory that no entry\n                        links to\n    checksum            write the checksums of the files, for undo and to find\n                        changed files\n\noptions:\n  -h, --help            show this help message and exit\n",
+   "stderr": "",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file [-h]\n                   {rename,mv,attach,detach,rm,check,fix,clean,checksum} ...\npapers file: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file [-h]\n                   {rename,mv,attach,detach,rm,check,fix,clean,checksum} ...\npapers file: error: unknown command 'bogus' (commands: rename, mv, attach, detach, rm, check, fix, clean, checksum)\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "-h"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "usage: papers file [-h]\n                   {rename,mv,attach,detach,rm,check,fix,clean,checksum} ...\n\nthe files of the entries: rename, move, attach, detach, remove, check them,\nand clean the files directory\n\npositional arguments:\n  {rename,mv,attach,detach,rm,check,fix,clean,checksum}\n    rename              place the files in the files directory under their\n                        template name\n    mv                  move files or folders, and update the links of the\n                        entries\n    attach              attach files to an entry\n    detach              remove file links from the entries (the files are\n                        kept)\n    rm                  remove file links from the entries and delete the\n                        files\n    check               report broken links, identical files, DOI mismatches\n    fix                 repair the file links that `papers file check` reports\n    clean               remove the files of the files directory that no entry\n                        links to\n    checksum            write the checksums of the files, for undo and to find\n                        changed files\n\noptions:\n  -h, --help            show this help message and exit\n",
+   "stderr": "",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "rename",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file rename [-h] [-v] [--debug] [--color {auto,always,never}]\n                          [--porcelain] [--filesdir FILESDIR]\n                          [--bibtex BIBTEX] [--dry-run]\n                          [--name-template NAME_TEMPLATE]\n                          [--name-author-num NAME_AUTHOR_NUM]\n                          [--name-author-sep NAME_AUTHOR_SEP]\n                          [--name-title-word-num NAME_TITLE_WORD_NUM]\n                          [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                          [--name-title-length NAME_TITLE_LENGTH]\n                          [--name-title-sep NAME_TITLE_SEP]\n                          [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                          [--name-unknown-strict | --no-name-unknown-strict]\n                          [--move] [--copy] [--link] [--keep-source]\n                          [KEY ...]\npapers file rename: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "--bogus",
+    "rename"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file rename [-h] [-v] [--debug] [--color {auto,always,never}]\n                          [--porcelain] [--filesdir FILESDIR]\n                          [--bibtex BIBTEX] [--dry-run]\n                          [--name-template NAME_TEMPLATE]\n                          [--name-author-num NAME_AUTHOR_NUM]\n                          [--name-author-sep NAME_AUTHOR_SEP]\n                          [--name-title-word-num NAME_TITLE_WORD_NUM]\n                          [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                          [--name-title-length NAME_TITLE_LENGTH]\n                          [--name-title-sep NAME_TITLE_SEP]\n                          [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                          [--name-unknown-strict | --no-name-unknown-strict]\n                          [--move] [--copy] [--link] [--keep-source]\n                          [KEY ...]\npapers file rename: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "attach"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file attach [-h] [-v] [--debug] [--color {auto,always,never}]\n                          [--porcelain] [--filesdir FILESDIR]\n                          [--bibtex BIBTEX] [--dry-run]\n                          [--name-template NAME_TEMPLATE]\n                          [--name-author-num NAME_AUTHOR_NUM]\n                          [--name-author-sep NAME_AUTHOR_SEP]\n                          [--name-title-word-num NAME_TITLE_WORD_NUM]\n                          [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                          [--name-title-length NAME_TITLE_LENGTH]\n                          [--name-title-sep NAME_TITLE_SEP]\n                          [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                          [--name-unknown-strict | --no-name-unknown-strict]\n                          [--move] [--copy] [--link]\n                          KEY FILE [FILE ...]\npapers file attach: error: the following arguments are required: KEY, FILE\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "attach",
+    "k"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file attach [-h] [-v] [--debug] [--color {auto,always,never}]\n                          [--porcelain] [--filesdir FILESDIR]\n                          [--bibtex BIBTEX] [--dry-run]\n                          [--name-template NAME_TEMPLATE]\n                          [--name-author-num NAME_AUTHOR_NUM]\n                          [--name-author-sep NAME_AUTHOR_SEP]\n                          [--name-title-word-num NAME_TITLE_WORD_NUM]\n                          [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                          [--name-title-length NAME_TITLE_LENGTH]\n                          [--name-title-sep NAME_TITLE_SEP]\n                          [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                          [--name-unknown-strict | --no-name-unknown-strict]\n                          [--move] [--copy] [--link]\n                          KEY FILE [FILE ...]\npapers file attach: error: the following arguments are required: FILE\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "mv"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file mv [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [-f] [-n]\n                      SRC... DEST [SRC... DEST ...]\npapers file mv: error: the following arguments are required: SRC... DEST\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "mv",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or pass --bibtex\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "rm",
+    "-k"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [-k KEY [KEY ...]] [-r]\n                      [FILE ...]\npapers file rm: error: argument -k/--key: expected at least one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "detach",
+    "--key"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file detach [-h] [-v] [--debug] [--color {auto,always,never}]\n                          [--porcelain] [--filesdir FILESDIR]\n                          [--bibtex BIBTEX] [--dry-run] [-k KEY [KEY ...]]\n                          [-y] [-r] [--broken]\n                          [FILE ...]\npapers file detach: error: argument -k/--key: expected at least one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "check",
+    "--pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file check [-h] [-v] [--debug] [--color {auto,always,never}]\n                         [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                         [--dry-run] [--metadata] [--pool PATH] [--search DIR]\n                         [KEY ...]\npapers file check: error: argument --pool: expected one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "fix",
+    "--move=1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file fix [-h] [-v] [--debug] [--color {auto,always,never}]\n                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                       [--dry-run] [--pool PATH] [--search DIR] [--move]\n                       [KEY ...]\npapers file fix: error: argument --move: ignored explicit argument '1'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "-x",
+    "clean"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file clean [-h] [-v] [--debug] [--color {auto,always,never}]\n                         [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                         [--dry-run] [-y]\npapers file clean: error: unrecognized arguments: -x\n",
+   "tree": {}
+  }
+ ]
+}

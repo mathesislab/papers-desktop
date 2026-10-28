@@ -1,0 +1,75 @@
+{
+ "name": "config-bibtex-dirs",
+ "home": {},
+ "cwd": {
+  "a/.papers/config.json": "{\"version\": 3, \"bibtex\": \"x.bib\"}",
+  "a/x.bib": ""
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "bibtex",
+    "sub/x.bib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: sub/x.bib does not exist\n",
+   "tree": {
+    "cwd/a/x.bib": "",
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"sub/x.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "paths",
+    "absolute"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/a/x.bib": "",
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"sub/x.bib\",\n  \"filesdir\": null,\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "-v",
+    "paths",
+    "relative"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/a/x.bib": "",
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"sub/x.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

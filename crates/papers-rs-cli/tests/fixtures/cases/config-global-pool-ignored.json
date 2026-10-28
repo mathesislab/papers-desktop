@@ -1,0 +1,67 @@
+{
+ "name": "config-global-pool-ignored",
+ "home": {
+  "<MC>": "{\n  \"editor\": \"vim\",\n  \"pool\": \"/some/pool\",\n  \"version\": 3\n}"
+ },
+ "cwd": {
+  "v/.papers/config.json": "{\"version\": 3}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\neditor = vim\n",
+   "stderr": "papers: warning: <MC>: the global pool setting is no longer used (ignored); `papers config --global default PATH` sets a default library\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": "{\n  \"editor\": \"vim\",\n  \"pool\": \"/some/pool\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "none\n",
+   "stderr": "papers: warning: <MC>: the global pool setting is no longer used (ignored); `papers config --global default PATH` sets a default library\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": "{\n  \"editor\": \"vim\",\n  \"pool\": \"/some/pool\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: <MC>: the global pool setting is no longer used (ignored); `papers config --global default PATH` sets a default library\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": "{\n  \"editor\": \"vim\",\n  \"files\": \"link\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

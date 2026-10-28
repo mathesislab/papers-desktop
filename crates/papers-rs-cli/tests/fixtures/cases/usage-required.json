@@ -1,0 +1,668 @@
+{
+ "name": "usage-required",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "rm"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: the following arguments are required: KEY\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "edit"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers edit [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--from FILE]\n                   [--format {bibtex,ris,csl-json,bibjson}]\n                   [--set FIELD=VALUE [FIELD=VALUE ...]]\n                   [--unset FIELD [FIELD ...]] [--key NEW] [--keep-old-key]\n                   KEY [KEY ...]\npapers edit: error: the following arguments are required: KEY\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "export"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers export [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                     [--dry-run] [--files {copy,link,none}] [--format FORMAT]\n                     DIR [KEY ...]\npapers export: error: the following arguments are required: DIR\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "open"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers open [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run]\n                   key [key ...]\npapers open: error: the following arguments are required: key\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "doi"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers doi [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--image]\n                  pdf\npapers doi: error: the following arguments are required: pdf\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "fetch"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]\n                    [--porcelain] [--scholar]\n                    doi_or_text [doi_or_text ...]\npapers fetch: error: the following arguments are required: doi_or_text\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "extract"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers extract [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--doi-only] [-R] [-n WORD_COUNT]\n                      [--fulltext] [--scholar] [--image]\n                      pdf [pdf ...]\npapers extract: error: the following arguments are required: pdf\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "attach"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file attach [-h] [-v] [--debug] [--color {auto,always,never}]\n                          [--porcelain] [--filesdir FILESDIR]\n                          [--bibtex BIBTEX] [--dry-run]\n                          [--name-template NAME_TEMPLATE]\n                          [--name-author-num NAME_AUTHOR_NUM]\n                          [--name-author-sep NAME_AUTHOR_SEP]\n                          [--name-title-word-num NAME_TITLE_WORD_NUM]\n                          [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                          [--name-title-length NAME_TITLE_LENGTH]\n                          [--name-title-sep NAME_TITLE_SEP]\n                          [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                          [--name-unknown-strict | --no-name-unknown-strict]\n                          [--move] [--copy] [--link]\n                          KEY FILE [FILE ...]\npapers file attach: error: the following arguments are required: KEY, FILE\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "file",
+    "mv"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers file mv [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [-f] [-n]\n                      SRC... DEST [SRC... DEST ...]\npapers file mv: error: the following arguments are required: SRC... DEST\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--format"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument --format: expected one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "rm",
+    "--yes"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: the following arguments are required: KEY\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--format",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument --format: invalid choice: 'x' (choose from 'bibtex', 'ris', 'csl-json', 'bibjson')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--mode",
+    "z"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument -m/--mode: invalid choice: 'z' (choose from 'u', 'U', 'o', 's', 'r', 'i', 'a')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "check",
+    "--on-duplicate",
+    "update"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers check [-h] [-v] [--debug] [--color {auto,always,never}]\n                    [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                    [--dry-run] [--key-template KEY_TEMPLATE]\n                    [--key-author-num KEY_AUTHOR_NUM]\n                    [--key-author-sep KEY_AUTHOR_SEP]\n                    [--key-title-word-num KEY_TITLE_WORD_NUM]\n                    [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                    [--key-title-length KEY_TITLE_LENGTH]\n                    [--key-title-sep KEY_TITLE_SEP]\n                    [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                    [--key-unknown-strict | --no-key-unknown-strict]\n                    [-k KEYS [KEYS ...]] [-y] [--fix-key] [--key-ascii]\n                    [--auto-key] [--fix-doi] [--fetch] [--fetch-all]\n                    [--format-name] [--encoding {latex,unicode}]\n                    [--duplicates] [--on-duplicate {ask,keep,skip,error}]\n                    [KEY ...]\npapers check: error: argument --on-duplicate: invalid choice: 'update' (choose from 'ask', 'keep', 'skip', 'error')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "check",
+    "--encoding",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers check [-h] [-v] [--debug] [--color {auto,always,never}]\n                    [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                    [--dry-run] [--key-template KEY_TEMPLATE]\n                    [--key-author-num KEY_AUTHOR_NUM]\n                    [--key-author-sep KEY_AUTHOR_SEP]\n                    [--key-title-word-num KEY_TITLE_WORD_NUM]\n                    [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                    [--key-title-length KEY_TITLE_LENGTH]\n                    [--key-title-sep KEY_TITLE_SEP]\n                    [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                    [--key-unknown-strict | --no-key-unknown-strict]\n                    [-k KEYS [KEYS ...]] [-y] [--fix-key] [--key-ascii]\n                    [--auto-key] [--fix-doi] [--fetch] [--fetch-all]\n                    [--format-name] [--encoding {latex,unicode}]\n                    [--duplicates] [--on-duplicate {ask,keep,skip,error}]\n                    [KEY ...]\npapers check: error: argument --encoding: invalid choice: 'x' (choose from 'latex', 'unicode')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--format",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument --format: invalid choice: 'x' (choose from 'line', 'bibtex', 'ris', 'csl-json', 'bibjson', 'key')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--by",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument --by: invalid choice: 'x' (choose from 'key', 'doi', 'title')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--on-duplicate",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument --on-duplicate: invalid choice: 'x' (choose from 'ask', 'keep', 'update', 'skip', 'error')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "history",
+    "-n",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--all] [--remove [ID]]\n                      [--drop-files N|PATH] [-n N] [-y]\npapers history: error: argument -n: invalid int value: 'x'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "extract",
+    "-n",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers extract [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--doi-only] [-R] [-n WORD_COUNT]\n                      [--fulltext] [--scholar] [--image]\n                      pdf [pdf ...]\npapers extract: error: argument -n/--word-count: invalid int value: 'x'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "undo",
+    "--steps",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers undo [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [-n STEPS] [--library-only]\npapers undo: error: argument -n/--steps: invalid int value: 'x'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "restore",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--ref N]\n                      [N]\npapers restore: error: argument N: invalid int value: 'x'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "restore",
+    "--ref",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--ref N]\n                      [N]\npapers restore: error: argument --ref: invalid int value: 'x'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--fuzzy-ratio",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument --fuzzy-ratio: invalid int value: 'x'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--metadata",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument --metadata: 'x': FIELD=VALUE expected\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--metadata"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument --metadata: expected at least one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "edit",
+    "k",
+    "--set",
+    "novalue"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers edit [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--from FILE]\n                   [--format {bibtex,ris,csl-json,bibjson}]\n                   [--set FIELD=VALUE [FIELD=VALUE ...]]\n                   [--unset FIELD [FIELD ...]] [--key NEW] [--keep-old-key]\n                   KEY [KEY ...]\npapers edit: error: argument --set: 'novalue': FIELD=VALUE expected\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "edit",
+    "k",
+    "--set",
+    "=v"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers edit [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--from FILE]\n                   [--format {bibtex,ris,csl-json,bibjson}]\n                   [--set FIELD=VALUE [FIELD=VALUE ...]]\n                   [--unset FIELD [FIELD ...]] [--key NEW] [--keep-old-key]\n                   KEY [KEY ...]\npapers edit: error: argument --set: '=v': FIELD=VALUE expected\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "tag",
+    "--rename",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers tag [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--add TAG [TAG ...]] [--rm TAG [TAG ...]]\n                  [--rename OLD NEW]\n                  [KEY ...]\npapers tag: error: argument --rename: expected 2 arguments\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "tag",
+    "--rename"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers tag [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--add TAG [TAG ...]] [--rm TAG [TAG ...]]\n                  [--rename OLD NEW]\n                  [KEY ...]\npapers tag: error: argument --rename: expected 2 arguments\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "tag",
+    "--rename",
+    "a",
+    "b",
+    "c"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or pass --bibtex\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "-a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument -a: expected at least one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--attach"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: argument --attach: expected at least one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--author"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument -a/--author: expected at least one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--detach"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or pass --bibtex\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--export-files",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument --export-files: invalid choice: 'x' (choose from 'copy', 'link', 'none')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "export",
+    "d",
+    "--files",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers export [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                     [--dry-run] [--files {copy,link,none}] [--format FORMAT]\n                     DIR [KEY ...]\npapers export: error: argument --files: invalid choice: 'x' (choose from 'copy', 'link', 'none')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "export",
+    "d",
+    "--format"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers export [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                     [--dry-run] [--files {copy,link,none}] [--format FORMAT]\n                     DIR [KEY ...]\npapers export: error: argument --format: expected one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "rm",
+    "k",
+    "--color",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: argument --color: invalid choice: 'x' (choose from 'auto', 'always', 'never')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--strict",
+    "--fuzzy"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument --fuzzy: not allowed with argument --strict\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--format",
+    "bibtex",
+    "--plain"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument --plain: not allowed with argument --format\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--plain",
+    "-l"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument -l/-1/--one-liner: not allowed with argument --plain\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "-K",
+    "--field",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument --field: not allowed with argument -K/--key-only\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "--field",
+    "a",
+    "-f",
+    "b"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument -f: not allowed with argument --field\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "list",
+    "-1",
+    "-K"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: argument -K/--key-only: not allowed with argument -l/-1/--one-liner\n",
+   "tree": {}
+  }
+ ]
+}

@@ -1,0 +1,74 @@
+{
+ "name": "init-inside-library",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "sub"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/sub\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: the new library is inside the library of <TMP>/cwd/.papers/config.json\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/sub/papers.bib": "",
+    "cwd/sub/files/": null,
+    "cwd/sub/.papers/.gitignore": "*\n",
+    "cwd/sub/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "none\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/sub/papers.bib": "",
+    "cwd/sub/files/": null,
+    "cwd/sub/.papers/.gitignore": "*\n",
+    "cwd/sub/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

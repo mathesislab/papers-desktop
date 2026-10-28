@@ -1,0 +1,48 @@
+{
+ "name": "config-unreadable-global-empty",
+ "home": {
+  "<MC>": ""
+ },
+ "cwd": {
+  "v/.papers/config.json": "{\"version\": 3}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 1 (char 0) -- ignored\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": ""
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 1 (char 0) -- ignored\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": ""
+   }
+  }
+ ]
+}

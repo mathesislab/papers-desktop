@@ -1,0 +1,50 @@
+{
+ "name": "init-abbreviations",
+ "home": {
+  "<MC>": "{\n  \"default\": \"~/x\",\n  \"version\": 3\n}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "--verb",
+    "--bib",
+    "x.bib",
+    "--files",
+    "f",
+    "--sha",
+    "--shall"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool ~/x: ~/x does not exist: create it first with `papers init ~/x` (nothing was changed)\n",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/x\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "d",
+    "--sh",
+    "--glob"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --global: the default library has no pool (no --pool or --shallow)\n",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/x\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

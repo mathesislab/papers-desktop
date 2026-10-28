@@ -1,0 +1,79 @@
+{
+ "name": "init-none-values",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "a",
+    "--bibtex",
+    "none",
+    "--filesdir",
+    "none"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/a\n* bibtex:  none\n* files:   linked where they are (no files directory)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "b",
+    "--bibtex",
+    "NULL",
+    "--filesdir",
+    "Unset"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/b\n* bibtex:  none\n* files:   linked where they are (no files directory)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "c",
+    "--bibtex",
+    "",
+    "--filesdir",
+    ""
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/c\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/papers.bib": "",
+    "cwd/c/files/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "name": "init-porcelain",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "--porcelain"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "created the library <TMP>/cwd\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "x",
+    "--porcelain",
+    "-v"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: the new library is inside the library of <TMP>/cwd/.papers/config.json\npapers: info: create empty bibliography database: papers.bib\npapers: info: create empty files directory: files\npapers: info: save config file: .papers/config.json\ncreated the library <TMP>/cwd/x\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/x/papers.bib": "",
+    "cwd/x/files/": null,
+    "cwd/x/.papers/.gitignore": "*\n",
+    "cwd/x/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

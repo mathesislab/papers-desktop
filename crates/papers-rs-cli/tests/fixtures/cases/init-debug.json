@@ -1,0 +1,28 @@
+{
+ "name": "init-debug",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "--debug",
+    "lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/lib\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: debug: LOGGER LEVEL: DEBUG\npapers: info: create empty bibliography database: papers.bib\npapers: info: create empty files directory: files\npapers: info: save config file: .papers/config.json\n",
+   "tree": {
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/files/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

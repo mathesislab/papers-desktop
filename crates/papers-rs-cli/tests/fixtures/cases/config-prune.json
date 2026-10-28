@@ -1,0 +1,223 @@
+{
+ "name": "config-prune",
+ "home": {
+  "<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "nothing to remove from <TMP>/cwd/.papers/config.json\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: --prune takes no setting: papers config --prune\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune",
+    "--unset",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: --prune takes no setting: papers config --prune\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"move\",\n  \"git\": true,\n  \"history-size\": 500,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "removed from <TMP>/cwd/.papers/config.json (equal to the global or default value): files, history-size, git\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"move\",\n  \"history-size\": 500,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "removed from <TMP>/cwd/.papers/config.json (equal to the global or default value): files, history-size\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--dry-run",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"move\",\n  \"history-size\": 500,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "DRYRUN: files, history-size not removed from <TMP>/cwd/.papers/config.json\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"move\",\n  \"history-size\": 500,\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "removed from <TMP>/cwd/.papers/config.json (equal to the global or default value): files, history-size\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"backup_files\": true,\n  \"bibtex\": \"papers.bib\",\n  \"git\": true,\n  \"gitdir\": \"x\",\n  \"gitlfs\": true,\n  \"trash-days\": 3,\n  \"trash-size\": 1,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "removed from <TMP>/cwd/.papers/config.json (equal to the global or default value): git, gitlfs, backup_files, gitdir, trash-days, trash-size\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "removed from <TMP>/cwd/.papers/config.json (equal to the global or default value): paths, name.template, name.author-num\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

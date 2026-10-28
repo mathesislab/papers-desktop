@@ -1,0 +1,99 @@
+{
+ "name": "usage-negative-numbers",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "history-size",
+    "-5"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "history-size",
+    "-x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: unrecognized arguments: -x\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--name-author-num",
+    "-1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": -1\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--",
+    "history-size",
+    "-5"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"history-size\": -5,\n  \"nameformat\": {\n    \"author_num\": -1\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "a",
+    "-1.5"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: unknown setting: a. Settings: bibtex, filesdir, pool, paths, files, auto-push, editor, checksums, history-dir, history-size, history-separate, keep-deleted-files, name.template, name.author-num, name.author-sep, name.title-word-num, name.title-word-size, name.title-length, name.title-sep, name.unknown-template, name.unknown-strict, key.template, key.author-num, key.author-sep, key.title-word-num, key.title-word-size, key.title-length, key.title-sep, key.unknown-template, key.unknown-strict\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"history-size\": -5,\n  \"nameformat\": {\n    \"author_num\": -1\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

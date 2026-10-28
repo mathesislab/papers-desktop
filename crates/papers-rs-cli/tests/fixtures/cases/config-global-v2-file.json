@@ -1,0 +1,67 @@
+{
+ "name": "config-global-v2-file",
+ "home": {
+  "<MC>": "{\"editor\": \"vim\", \"absolute_paths\": true, \"pool\": \"none\"}"
+ },
+ "cwd": {
+  "v/.papers/config.json": "{\"version\": 3}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\npaths = absolute\neditor = vim\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": "{\"editor\": \"vim\", \"absolute_paths\": true, \"pool\": \"none\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "vim\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": "{\"editor\": \"vim\", \"absolute_paths\": true, \"pool\": \"none\"}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3}",
+    "home/<MC>": "{\n  \"absolute_paths\": true,\n  \"editor\": \"vim\",\n  \"files\": \"link\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

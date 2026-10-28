@@ -1,0 +1,80 @@
+{
+ "name": "init-pool-not-library",
+ "home": {},
+ "cwd": {
+  "plain/": null,
+  "haspool/.papers/config.json": "{\n  \"bibtex\": \"p.bib\",\n  \"pool\": \"../other\",\n  \"version\": 3\n}",
+  "other/.papers/config.json": "{\n  \"version\": 3\n}",
+  "both/.papers/config.json": "{}",
+  "both/.papersconfig.json": "{}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "x",
+    "--pool",
+    "../plain"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool ../plain: <TMP>/cwd/plain is not a library (no .papers/config.json): create it first with `papers init <TMP>/cwd/plain` (nothing was changed)\n",
+   "tree": {
+    "cwd/plain/": null,
+    "cwd/both/.papersconfig.json": "{}",
+    "cwd/both/.papers/config.json": "{}",
+    "cwd/haspool/.papers/config.json": "{\n  \"bibtex\": \"p.bib\",\n  \"pool\": \"../other\",\n  \"version\": 3\n}",
+    "cwd/other/.papers/config.json": "{\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "x",
+    "--pool",
+    "../haspool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool ../haspool: <TMP>/cwd/haspool has a pool itself (../other): give a library without pool (nothing was changed)\n",
+   "tree": {
+    "cwd/plain/": null,
+    "cwd/both/.papersconfig.json": "{}",
+    "cwd/both/.papers/config.json": "{}",
+    "cwd/haspool/.papers/config.json": "{\n  \"bibtex\": \"p.bib\",\n  \"pool\": \"../other\",\n  \"version\": 3\n}",
+    "cwd/other/.papers/config.json": "{\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "x",
+    "--pool",
+    "../both"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/both has two library configurations, .papers/config.json and .papersconfig.json (of papers 2): keep one of them and remove the other (nothing was changed)\n",
+   "tree": {
+    "cwd/plain/": null,
+    "cwd/both/.papersconfig.json": "{}",
+    "cwd/both/.papers/config.json": "{}",
+    "cwd/haspool/.papers/config.json": "{\n  \"bibtex\": \"p.bib\",\n  \"pool\": \"../other\",\n  \"version\": 3\n}",
+    "cwd/other/.papers/config.json": "{\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

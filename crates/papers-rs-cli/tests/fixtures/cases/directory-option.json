@@ -1,0 +1,341 @@
+{
+ "name": "directory-option",
+ "home": {},
+ "cwd": {
+  "lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+  "sub/deep/": null,
+  "file.txt": "x"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "lib",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/lib/lib.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub/deep",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "nosuch",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: -C nosuch: not a directory\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub/deep",
+    "-C",
+    "../../lib",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/lib/lib.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-Clib",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/lib/lib.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub",
+    "-Clib",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: -C sub/lib: not a directory\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: -C requires a directory\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    ""
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: -C : not a directory\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib/",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/lib/lib.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib",
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: a library already exists here (./.papers/config.json): change its settings with `papers config`\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    ".",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib/../lib",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/lib/lib.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "file.txt",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: -C file.txt: not a directory\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "config",
+    "-C",
+    "lib",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: unrecognized arguments: -C\n",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "--version",
+    "-C",
+    "lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3.0.0b5.dev8+g66cccb320\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib",
+    "--version"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3.0.0b5.dev8+g66cccb320\n",
+   "stderr": "",
+   "tree": {
+    "cwd/file.txt": "x",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"version\": 3\n}",
+    "cwd/sub/deep/": null
+   }
+  }
+ ]
+}

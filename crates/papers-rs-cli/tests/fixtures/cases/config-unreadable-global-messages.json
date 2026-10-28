@@ -1,0 +1,170 @@
+{
+ "name": "config-unreadable-global-messages",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"a\" 1}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting ':' delimiter: line 1 column 6 (char 5) -- ignored\n",
+   "tree": {
+    "home/<MC>": "{\"a\" 1}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"a\": 1,}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Illegal trailing comma before end of object: line 1 column 8 (char 7) -- ignored\n",
+   "tree": {
+    "home/<MC>": "{\"a\": 1,}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "[1,]"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Illegal trailing comma before end of array: line 1 column 3 (char 2) -- ignored\n",
+   "tree": {
+    "home/<MC>": "[1,]"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{} x"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Extra data: line 1 column 4 (char 3) -- ignored\n",
+   "tree": {
+    "home/<MC>": "{} x"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "\"abc"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Unterminated string starting at: line 1 column 1 (char 0) -- ignored\n",
+   "tree": {
+    "home/<MC>": "\"abc"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"a\": }"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 7 (char 6) -- ignored\n",
+   "tree": {
+    "home/<MC>": "{\"a\": }"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "﻿{}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0) -- ignored\n",
+   "tree": {
+    "home/<MC>": "﻿{}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "nul"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 1 (char 0) -- ignored\n",
+   "tree": {
+    "home/<MC>": "nul"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"a\": 1 \"b\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting ',' delimiter: line 1 column 9 (char 8) -- ignored\n",
+   "tree": {
+    "home/<MC>": "{\"a\": 1 \"b\"}"
+   }
+  }
+ ]
+}

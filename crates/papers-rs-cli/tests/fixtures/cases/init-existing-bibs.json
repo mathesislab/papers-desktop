@@ -1,0 +1,149 @@
+{
+ "name": "init-existing-bibs",
+ "home": {},
+ "cwd": {
+  "b/z.bib": "@article{x, title={t}}\n",
+  "b/a.bib": "",
+  "b/papers/": null,
+  "b/pdfs/": null,
+  "c/papers.bib": "",
+  "c/other.bib": "",
+  "c/pdf/": null,
+  "d/.hidden.bib": "",
+  "d/bibliography/": null,
+  "e/papers/": null,
+  "e/files/": null,
+  "e/x.bib/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "b"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/b\n* bibtex:  a.bib\n* files:   pdfs (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: Several bibtex files found: a.bib z.bib\n",
+   "tree": {
+    "cwd/b/a.bib": "",
+    "cwd/b/z.bib": "@article{x, title={t}}\n",
+    "cwd/b/papers/": null,
+    "cwd/b/pdfs/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"filesdir\": \"pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/other.bib": "",
+    "cwd/c/papers.bib": "",
+    "cwd/c/pdf/": null,
+    "cwd/d/.hidden.bib": "",
+    "cwd/d/bibliography/": null,
+    "cwd/e/files/": null,
+    "cwd/e/papers/": null,
+    "cwd/e/x.bib/": null
+   }
+  },
+  {
+   "args": [
+    "init",
+    "c"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/c\n* bibtex:  papers.bib\n* files:   pdf (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: Several bibtex files found: papers.bib other.bib\n",
+   "tree": {
+    "cwd/b/a.bib": "",
+    "cwd/b/z.bib": "@article{x, title={t}}\n",
+    "cwd/b/papers/": null,
+    "cwd/b/pdfs/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"filesdir\": \"pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/other.bib": "",
+    "cwd/c/papers.bib": "",
+    "cwd/c/pdf/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"pdf\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/d/.hidden.bib": "",
+    "cwd/d/bibliography/": null,
+    "cwd/e/files/": null,
+    "cwd/e/papers/": null,
+    "cwd/e/x.bib/": null
+   }
+  },
+  {
+   "args": [
+    "init",
+    "d"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/d\n* bibtex:  .hidden.bib\n* files:   bibliography (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/b/a.bib": "",
+    "cwd/b/z.bib": "@article{x, title={t}}\n",
+    "cwd/b/papers/": null,
+    "cwd/b/pdfs/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"filesdir\": \"pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/other.bib": "",
+    "cwd/c/papers.bib": "",
+    "cwd/c/pdf/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"pdf\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/d/.hidden.bib": "",
+    "cwd/d/bibliography/": null,
+    "cwd/d/.papers/.gitignore": "*\n",
+    "cwd/d/.papers/config.json": "{\n  \"bibtex\": \".hidden.bib\",\n  \"filesdir\": \"bibliography\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/e/files/": null,
+    "cwd/e/papers/": null,
+    "cwd/e/x.bib/": null
+   }
+  },
+  {
+   "args": [
+    "init",
+    "e"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/e\n* bibtex:  x.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/b/a.bib": "",
+    "cwd/b/z.bib": "@article{x, title={t}}\n",
+    "cwd/b/papers/": null,
+    "cwd/b/pdfs/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"filesdir\": \"pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/other.bib": "",
+    "cwd/c/papers.bib": "",
+    "cwd/c/pdf/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"pdf\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/d/.hidden.bib": "",
+    "cwd/d/bibliography/": null,
+    "cwd/d/.papers/.gitignore": "*\n",
+    "cwd/d/.papers/config.json": "{\n  \"bibtex\": \".hidden.bib\",\n  \"filesdir\": \"bibliography\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/e/files/": null,
+    "cwd/e/papers/": null,
+    "cwd/e/x.bib/": null,
+    "cwd/e/.papers/.gitignore": "*\n",
+    "cwd/e/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

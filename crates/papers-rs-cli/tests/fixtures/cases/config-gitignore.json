@@ -1,0 +1,120 @@
+{
+ "name": "config-gitignore",
+ "home": {},
+ "cwd": {
+  "a/.papers/config.json": "{\"version\": 3}",
+  "b/.papers/config.json": "{\"version\": 3}",
+  "b/.papers/.gitignore": "backup/\n",
+  "c/.papers/config.json": "{\"version\": 3}",
+  "c/.papers/.gitignore": "mine\n",
+  "d/.papers/config.json": "{\"version\": 3}",
+  "d/.papers/.gitignore": ""
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/b/.papers/.gitignore": "backup/\n",
+    "cwd/b/.papers/config.json": "{\"version\": 3}",
+    "cwd/c/.papers/.gitignore": "mine\n",
+    "cwd/c/.papers/config.json": "{\"version\": 3}",
+    "cwd/d/.papers/.gitignore": "",
+    "cwd/d/.papers/config.json": "{\"version\": 3}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "b",
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/c/.papers/.gitignore": "mine\n",
+    "cwd/c/.papers/config.json": "{\"version\": 3}",
+    "cwd/d/.papers/.gitignore": "",
+    "cwd/d/.papers/config.json": "{\"version\": 3}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "c",
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/c/.papers/.gitignore": "mine\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/d/.papers/.gitignore": "",
+    "cwd/d/.papers/config.json": "{\"version\": 3}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "d",
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/c/.papers/.gitignore": "mine\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}",
+    "cwd/d/.papers/.gitignore": "",
+    "cwd/d/.papers/config.json": "{\n  \"bibtex\": null,\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

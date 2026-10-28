@@ -1,0 +1,63 @@
+{
+ "name": "config-v2-library-moved-by-dry-run",
+ "home": {},
+ "cwd": {
+  ".papersconfig.json": "{\"bibtex\": \"lib.bib\", \"local\": true}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--dry-run",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "DRYRUN: files = link not saved to <TMP>/cwd/.papersconfig.json\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papersconfig.json": "{\"bibtex\": \"lib.bib\", \"local\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "nothing to remove from <TMP>/cwd/.papersconfig.json\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papersconfig.json": "{\"bibtex\": \"lib.bib\", \"local\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "--dry-run",
+    "files",
+    "copy"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "DRYRUN: <MC> not saved\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papersconfig.json": "{\"bibtex\": \"lib.bib\", \"local\": true}"
+   }
+  }
+ ]
+}

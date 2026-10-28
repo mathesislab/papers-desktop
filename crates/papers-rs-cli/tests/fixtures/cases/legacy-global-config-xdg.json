@@ -1,0 +1,65 @@
+{
+ "name": "legacy-global-config-xdg",
+ "home": {
+  ".config/papersconfig.json": "{\"bibtex\": \"/x/p.bib\", \"local\": false}"
+ },
+ "cwd": {},
+ "platform": "macos",
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC> (does not exist)\n",
+   "stderr": "papers: warning: Move legacy config file <TMP>/home/.config/papersconfig.json to <V2>\npapers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "home/.config/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/p.bib\", \"local\": false}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC> (does not exist)\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "home/.config/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/p.bib\", \"local\": false}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/lib\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/files/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/.config/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/p.bib\", \"local\": false}"
+   }
+  }
+ ]
+}

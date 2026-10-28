@@ -1,0 +1,26 @@
+{
+ "name": "config-global-version-invalid",
+ "home": {
+  "<MC>": "{\n  \"version\": \"x\"\n}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid configuration version 'x'\n",
+   "tree": {
+    "home/<MC>": "{\n  \"version\": \"x\"\n}"
+   }
+  }
+ ]
+}

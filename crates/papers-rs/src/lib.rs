@@ -6,3 +6,7 @@
 
 pub mod bib;
 pub mod config;
+pub mod error;
+pub mod install;
+pub mod lock;
+pub mod log;

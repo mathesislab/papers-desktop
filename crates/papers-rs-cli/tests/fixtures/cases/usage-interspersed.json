@@ -1,0 +1,73 @@
+{
+ "name": "usage-interspersed",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "bibtex",
+    "--global",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: bibtex is a setting of a library: the global configuration holds the default library and the default settings of the libraries (the global library of papers v2 is now the default library, see `papers config --global default`)\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "default",
+    "x",
+    "--dry-run"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: the default library <TMP>/cwd/x does not exist: create it first with `papers init <TMP>/cwd/x` (nothing was changed)\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "a",
+    "--bibtex",
+    "x.bib",
+    "b"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: b\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "-y",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {}
+  }
+ ]
+}

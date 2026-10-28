@@ -1,0 +1,41 @@
+{
+ "name": "init-existing-v2-library",
+ "home": {},
+ "cwd": {
+  ".papersconfig.json": "{\"bibtex\": \"x.bib\"}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: a library already exists here (./.papersconfig.json): change its settings with `papers config`\n",
+   "tree": {
+    "cwd/.papersconfig.json": "{\"bibtex\": \"x.bib\"}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --global needs the directory of the library: `papers init PATH --global` (`papers init . --global` for the current directory)\n",
+   "tree": {
+    "cwd/.papersconfig.json": "{\"bibtex\": \"x.bib\"}"
+   }
+  }
+ ]
+}

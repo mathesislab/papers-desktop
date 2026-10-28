@@ -1,0 +1,135 @@
+{
+ "name": "config-default-library-used",
+ "home": {
+  "<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vim\",\n  \"version\": 3\n}"
+ },
+ "cwd": {
+  "lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"filesdir\": \"pdfs\",\n  \"version\": 3\n}",
+  "sub/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/lib/.papers/config.json\nbibtex                = <TMP>/cwd/lib/lib.bib  (library)\nfilesdir              = <TMP>/cwd/lib/pdfs  (library)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                = vim  (global)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"filesdir\": \"pdfs\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vim\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/lib/lib.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"filesdir\": \"pdfs\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vim\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"files\": \"link\",\n  \"filesdir\": \"pdfs\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vim\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub",
+    "config",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "link\n",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"files\": \"link\",\n  \"filesdir\": \"pdfs\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vim\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "x",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/x\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    <TMP>/cwd/lib\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"files\": \"link\",\n  \"filesdir\": \"pdfs\",\n  \"version\": 3\n}",
+    "cwd/x/papers.bib": "",
+    "cwd/x/.papers/.gitignore": "*\n",
+    "cwd/x/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"<TMP>/cwd/lib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vim\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "x",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/x/.papers/config.json\nbibtex                = <TMP>/cwd/x/papers.bib  (library)\nfilesdir              = <TMP>/cwd/x/files  (library, not used: shallow library)\npool                  = <TMP>/cwd/lib  (library)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                = vim  (global)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default, not used: shallow library)\nname.author-num       = 2  (default, not used: shallow library)\nname.author-sep       = _  (default, not used: shallow library)\nname.title-word-num   = 100  (default, not used: shallow library)\nname.title-word-size  = 1  (default, not used: shallow library)\nname.title-length     = 100  (default, not used: shallow library)\nname.title-sep        = -  (default, not used: shallow library)\nname.unknown-template = unknown_{doi_or_id}  (default, not used: shallow library)\nname.unknown-strict   = false  (default, not used: shallow library)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"files\": \"link\",\n  \"filesdir\": \"pdfs\",\n  \"version\": 3\n}",
+    "cwd/x/papers.bib": "",
+    "cwd/x/.papers/.gitignore": "*\n",
+    "cwd/x/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"<TMP>/cwd/lib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vim\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "name": "config-preserves-id",
+ "home": {},
+ "cwd": {
+  "v/.papers/config.json": "{\"version\": 3, \"id\": \"ffffffffffffffffffffffffffffffff\", \"bibtex\": \"a.bib\"}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"id\": \"ffffffffffffffffffffffffffffffff\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "--unset",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"filesdir\": null,\n  \"id\": \"ffffffffffffffffffffffffffffffff\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"id\": \"0123456789abcdef0123456789abcdef\", \"bibtex\": \"a.bib\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"id\": \"0123456789abcdef0123456789abcdef\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "files",
+    "copy"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"id\": \"NOTANID\", \"bibtex\": \"a.bib\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"id\": 12, \"bibtex\": \"a.bib\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

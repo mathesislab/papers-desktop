@@ -1,0 +1,43 @@
+{
+ "name": "config-global-version",
+ "home": {
+  "<MC>": "{\n  \"version\": 4\n}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> was written by a newer papers (configuration version 4; papers 3.0.0b5.dev8+g66cccb320 reads up to version 3): upgrade papers\n",
+   "tree": {
+    "home/<MC>": "{\n  \"version\": 4\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> was written by a newer papers (configuration version 4; papers 3.0.0b5.dev8+g66cccb320 reads up to version 3): upgrade papers\n",
+   "tree": {
+    "home/<MC>": "{\n  \"version\": 4\n}"
+   }
+  }
+ ]
+}

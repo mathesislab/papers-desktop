@@ -1,0 +1,52 @@
+{
+ "name": "config-global-absolute-paths-v2-key",
+ "home": {
+  "<MC>": "{\"absolute_paths\": true}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/a\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"absolute_paths\": true}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "paths"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "absolute\n",
+   "stderr": "",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"absolute_paths\": true}"
+   }
+  }
+ ]
+}

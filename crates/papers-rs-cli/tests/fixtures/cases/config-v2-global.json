@@ -1,0 +1,279 @@
+{
+ "name": "config-v2-global",
+ "home": {
+  "<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+ },
+ "cwd": {
+  "sub/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <V2>\nbibtex                = /x/y/papers.bib  (library)\nfilesdir              = /x/y/files  (library)\npool                  = none  (default)\npaths                 = absolute  (library)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {author}  (library)\nname.author-num       = 3  (library)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "paths"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "absolute\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "paths",
+    "relative"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\npapers: error: <V2> is the global configuration of papers v2: run `papers migrate` first, to turn it into a library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\npapers: error: <V2> is the global configuration of papers v2: run `papers migrate` first\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC> (does not exist)\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "/x/y/papers.bib\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--unset",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\npapers: error: <V2> is the global configuration of papers v2: run `papers migrate` first, to turn it into a library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "pool",
+    "none"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\npapers: error: <V2> is the global configuration of papers v2: run `papers migrate` first, to turn it into a library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "name.author-num"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "name.template"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "{author}\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/lib\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/files/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/lib/papers.bib\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/files/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/sub/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/files/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/papers.bib\n",
+   "stderr": "papers: warning: found the global configuration of papers v2 (<V2>): it still applies outside of libraries; `papers migrate` turns it into a library, the default library\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/sub/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/files/": null,
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
+   }
+  }
+ ]
+}

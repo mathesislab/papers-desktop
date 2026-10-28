@@ -1,0 +1,41 @@
+{
+ "name": "config-no-library-default-not-library",
+ "home": {
+  "<MC>": "{\n  \"default\": \"~/nolib\",\n  \"version\": 3\n}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here (the default library ~/nolib is not a library): `papers init`, or use `papers config --global`\n",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/nolib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\ndefault = ~/nolib\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/nolib\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,181 @@
+{
+ "name": "config-bibtex-filesdir-values",
+ "home": {},
+ "cwd": {
+  "v/.papers/config.json": "{\"version\": 3, \"bibtex\": \"../outside/./a/../a.bib\", \"filesdir\": \"pdfs//x/\"}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                = <TMP>/cwd/outside/a.bib  (library)\nfilesdir              = <TMP>/cwd/v/pdfs/x  (library)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"bibtex\": \"../outside/./a/../a.bib\", \"filesdir\": \"pdfs//x/\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/outside/a.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"bibtex\": \"../outside/./a/../a.bib\", \"filesdir\": \"pdfs//x/\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "filesdir"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/v/pdfs/x\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"bibtex\": \"../outside/./a/../a.bib\", \"filesdir\": \"pdfs//x/\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "bibtex",
+    "sub/../x.bib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: sub/../x.bib does not exist\n",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": \"pdfs/x\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "filesdir",
+    "/abs/elsewhere"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: /abs/elsewhere does not exist\n",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "bibtex",
+    "~/home.bib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: ~/home.bib does not exist\n",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"~/home.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "bibtex",
+    "../v2/../../out/y.bib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: ../v2/../../out/y.bib does not exist\n",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"../../out/y.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "bibtex",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"../../out/y.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "bibtex",
+    "file://<TMP>/cwd/v/uri.bib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: file://<TMP>/cwd/v/uri.bib does not exist\n",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"file:<TMP>/cwd/v/uri.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

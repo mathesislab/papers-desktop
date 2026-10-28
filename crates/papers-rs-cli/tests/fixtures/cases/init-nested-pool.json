@@ -1,0 +1,126 @@
+{
+ "name": "init-nested-pool",
+ "home": {},
+ "cwd": {
+  "pdfs/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "A"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/A\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/pdfs/": null,
+    "cwd/A/papers.bib": "",
+    "cwd/A/files/": null,
+    "cwd/A/.papers/.gitignore": "*\n",
+    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "pdfs/deeper/nested",
+    "--pool",
+    "../../../A"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/pdfs/deeper/nested\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    ../../../A\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/A/papers.bib": "",
+    "cwd/A/files/": null,
+    "cwd/A/.papers/.gitignore": "*\n",
+    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "pdfs/deeper/nested",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "../../../A\n",
+   "stderr": "",
+   "tree": {
+    "cwd/A/papers.bib": "",
+    "cwd/A/files/": null,
+    "cwd/A/.papers/.gitignore": "*\n",
+    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "B",
+    "--pool",
+    "A"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool A: <TMP>/cwd/B/A: <TMP>/cwd/B does not exist (disk not mounted?): create it first with `papers init <TMP>/cwd/B/A` (nothing was changed)\n",
+   "tree": {
+    "cwd/A/papers.bib": "",
+    "cwd/A/files/": null,
+    "cwd/A/.papers/.gitignore": "*\n",
+    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "C",
+    "--pool",
+    "~/nowhere"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool ~/nowhere: ~/nowhere does not exist: create it first with `papers init ~/nowhere` (nothing was changed)\n",
+   "tree": {
+    "cwd/A/papers.bib": "",
+    "cwd/A/files/": null,
+    "cwd/A/.papers/.gitignore": "*\n",
+    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

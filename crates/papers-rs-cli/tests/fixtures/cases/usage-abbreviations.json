@@ -1,0 +1,139 @@
+{
+ "name": "usage-abbreviations",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--verb",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--dr",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: unknown setting: x. Settings: bibtex, filesdir, pool, paths, files, auto-push, editor, checksums, history-dir, history-size, history-separate, keep-deleted-files, name.template, name.author-num, name.author-sep, name.title-word-num, name.title-word-size, name.title-length, name.title-sep, name.unknown-template, name.unknown-strict, key.template, key.author-num, key.author-sep, key.title-word-num, key.title-word-size, key.title-length, key.title-sep, key.unknown-template, key.unknown-strict\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--p"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: ambiguous option: --p could match --porcelain, --prune\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--po"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--un",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--glob"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC> (does not exist)\n",
+   "stderr": "",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--g"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC> (does not exist)\n",
+   "stderr": "",
+   "tree": {}
+  },
+  {
+   "args": [
+    "rm",
+    "--d",
+    "k"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: ambiguous option: --d could match --debug, --dry-run, --delete-files\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "rm",
+    "--delete",
+    "k"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or pass --bibtex\n",
+   "tree": {}
+  }
+ ]
+}

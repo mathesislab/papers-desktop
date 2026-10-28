@@ -1,0 +1,28 @@
+{
+ "name": "config-no-trailing-newline-input",
+ "home": {},
+ "cwd": {
+  ".papers/config.json": "{\n  \"version\": 3,\n  \"bibtex\": \"a.bib\"\n}\n"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

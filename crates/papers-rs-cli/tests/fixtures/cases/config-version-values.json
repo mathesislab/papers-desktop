@@ -1,0 +1,181 @@
+{
+ "name": "config-version-values",
+ "home": {},
+ "cwd": {
+  "v/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": \"x\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid configuration version 'x'\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": \"x\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": true}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid configuration version True\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": true}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3.5}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid configuration version 3.5\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3.5}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": null}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid configuration version None\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": null}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 2, \"bibtex\": \"a.bib\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                = <TMP>/cwd/v/a.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 2, \"bibtex\": \"a.bib\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"absolute_paths\": true, \"backup_files\": true, \"local\": true}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                =   (default)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"absolute_paths\": true, \"backup_files\": true, \"local\": true}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"absolute_paths\": true, \"bibtex\": \"a.bib\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                = <TMP>/cwd/v/a.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = absolute  (library)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"absolute_paths\": true, \"bibtex\": \"a.bib\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"bibtex\": \"a.bib\", \"pool\": \"../p\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                = <TMP>/cwd/v/a.bib  (library)\nfilesdir              =   (default, not used: shallow library)\npool                  = ../p  (library)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default, not used: shallow library)\nname.author-num       = 2  (default, not used: shallow library)\nname.author-sep       = _  (default, not used: shallow library)\nname.title-word-num   = 100  (default, not used: shallow library)\nname.title-word-size  = 1  (default, not used: shallow library)\nname.title-length     = 100  (default, not used: shallow library)\nname.title-sep        = -  (default, not used: shallow library)\nname.unknown-template = unknown_{doi_or_id}  (default, not used: shallow library)\nname.unknown-strict   = false  (default, not used: shallow library)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"bibtex\": \"a.bib\", \"pool\": \"../p\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": \"../p\", \"bibtex\": \"a.bib\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                = <TMP>/cwd/v/a.bib  (library)\nfilesdir              =   (default, not used: shallow library)\npool                  = ../p  (library)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default, not used: shallow library)\nname.author-num       = 2  (default, not used: shallow library)\nname.author-sep       = _  (default, not used: shallow library)\nname.title-word-num   = 100  (default, not used: shallow library)\nname.title-word-size  = 1  (default, not used: shallow library)\nname.title-length     = 100  (default, not used: shallow library)\nname.title-sep        = -  (default, not used: shallow library)\nname.unknown-template = unknown_{doi_or_id}  (default, not used: shallow library)\nname.unknown-strict   = false  (default, not used: shallow library)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": \"../p\", \"bibtex\": \"a.bib\"}"
+   }
+  }
+ ]
+}

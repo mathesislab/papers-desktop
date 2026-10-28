@@ -1,0 +1,228 @@
+{
+ "name": "init-ignored-options",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "a",
+    "--git"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/a\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: --git is ignored: papers keeps the history of the libraries without git (see `papers history`)\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "b",
+    "--no-git",
+    "--git-lfs"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/b\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: --no-git is ignored: papers keeps the history of the libraries without git (see `papers history`)\npapers: warning: --git-lfs is ignored: papers keeps the files that its commands delete in its history (see `papers history`)\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/papers.bib": "",
+    "cwd/b/files/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "c",
+    "--git",
+    "--git",
+    "--no-git"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/c\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: --git is ignored: papers keeps the history of the libraries without git (see `papers history`)\npapers: warning: --no-git is ignored: papers keeps the history of the libraries without git (see `papers history`)\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/papers.bib": "",
+    "cwd/b/files/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/papers.bib": "",
+    "cwd/c/files/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "--git",
+    "--paths",
+    "bad"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "papers: warning: --git is ignored: papers keeps the history of the libraries without git (see `papers history`)\nusage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --paths: invalid choice: 'bad' (choose from 'relative', 'absolute')\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/papers.bib": "",
+    "cwd/b/files/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/papers.bib": "",
+    "cwd/c/files/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "--no-git",
+    "a",
+    "b",
+    "--git-lfs"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "papers: warning: --no-git is ignored: papers keeps the history of the libraries without git (see `papers history`)\npapers: warning: --git-lfs is ignored: papers keeps the files that its commands delete in its history (see `papers history`)\nusage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: b\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/papers.bib": "",
+    "cwd/b/files/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/papers.bib": "",
+    "cwd/c/files/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "--info",
+    "--git",
+    "-h"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\n\ncreate a library in the current directory, or in DIR (created if missing): a\nself-contained library (its own entries and files, no pool), or with --pool\nPATH a shallow library, which takes its entries from the library PATH and\nlinks to its files. It asks no questions: every setting has a default (from\nthe global configuration, or built in), the options below override them, and\nlater changes go through `papers config`.\n\npositional arguments:\n  DIR                   directory of the library (default: the current\n                        directory); --bibtex and --filesdir are relative to it\n\noptions:\n  -h, --help            show this help message and exit\n  -v, --verbose         say what papers does, step by step\n  --debug               debugging messages, and the traceback of errors\n  --color {auto,always,never}\n                        colours and hyperlinks in the output: auto (default)\n                        when the output is a terminal and the NO_COLOR\n                        environment variable is not set\n  --porcelain           output for programs (as git's): the standard output\n                        has only the entries that the command added, modified,\n                        renamed or removed, or found already in the library,\n                        one per line: \"added KEY\", \"modified KEY\", \"renamed\n                        OLD NEW\", \"removed KEY\", \"existing KEY\"; every other\n                        message goes to the standard error\n  --bibtex BIBTEX       bibtex file (default: papers.bib, or the first .bib\n                        file of the directory)\n  --filesdir FILESDIR   files directory (default: files, or an existing pdfs/,\n                        papers/... folder)\n  --pool PATH           a shallow library that uses the library PATH as pool\n                        (a path relative to the library; PATH must be a\n                        library without pool): `papers add` looks in PATH\n                        first and adds the new entries and their files to it,\n                        and the library links to the files of PATH. Default:\n                        no pool, a self-contained library\n  --shallow             same as --pool with the default library (`papers\n                        config --global default`)\n  --global              also register the library as the default library (used\n                        outside of any library, and by --shallow); DIR is\n                        required (`papers init . --global` for the current\n                        directory)\n  --paths {relative,absolute}\n                        file links in the bibtex relative to the bibtex\n                        directory, or absolute (default: relative)\n  --editor EDITOR       command to open a text editor; it must wait until the\n                        editor is closed, e.g. vim or \"subl -w\"\n\nfilename format:\n  --name-template NAME_TEMPLATE\n                        python template for renaming files (default:\n                        {authorX}_{year}_{title})\n  --name-author-num NAME_AUTHOR_NUM\n                        number of authors in the filename (not for {authorX})\n                        (default: 2)\n  --name-author-sep NAME_AUTHOR_SEP\n                        separator of the authors in the filename (default: _)\n  --name-title-word-num NAME_TITLE_WORD_NUM\n                        maximum number of title words in the filename\n                        (default: 100)\n  --name-title-word-size NAME_TITLE_WORD_SIZE\n                        minimum length of a title word: shorter words are left\n                        out of the filename (default: 1)\n  --name-title-length NAME_TITLE_LENGTH\n                        maximum length of the title in the filename (the last\n                        words are dropped until it fits; a longer first word\n                        is cut) (default: 100)\n  --name-title-sep NAME_TITLE_SEP\n                        separator of the title words in the filename (default:\n                        -)\n  --name-unknown-template NAME_UNKNOWN_TEMPLATE\n                        template of the filename of an entry without author,\n                        year or title (default: unknown_{doi_or_id})\n  --name-unknown-strict, --no-name-unknown-strict\n                        the unknown template applies when the author, the year\n                        or the title is missing; with this option, only when\n                        all three are missing (default: False)\n\nbibtex key format:\n  --key-template KEY_TEMPLATE\n                        python template for generating keys (default:\n                        {author}{year}). The template applies to entries\n                        generated from a PDF or a DOI; entries added from a\n                        bibtex file keep their original key unless\n                        -u/--update-key is passed.\n  --key-author-num KEY_AUTHOR_NUM\n                        number of authors in the key (not for {authorX})\n                        (default: 2)\n  --key-author-sep KEY_AUTHOR_SEP\n                        separator of the authors in the key (default: _)\n  --key-title-word-num KEY_TITLE_WORD_NUM\n                        maximum number of title words in the key (default:\n                        100)\n  --key-title-word-size KEY_TITLE_WORD_SIZE\n                        minimum length of a title word: shorter words are left\n                        out of the key (default: 1)\n  --key-title-length KEY_TITLE_LENGTH\n                        maximum length of the title in the key (the last words\n                        are dropped until it fits; a longer first word is cut)\n                        (default: 100)\n  --key-title-sep KEY_TITLE_SEP\n                        separator of the title words in the key (default: -)\n  --key-unknown-template KEY_UNKNOWN_TEMPLATE\n                        template of the key of an entry without author, year\n                        or title (default: {doi_})\n  --key-unknown-strict, --no-key-unknown-strict\n                        the unknown template applies when the author, the year\n                        or the title is missing; with this option, only when\n                        all three are missing (default: False)\n",
+   "stderr": "papers: warning: --info is deprecated: use -v\npapers: warning: --git is ignored: papers keeps the history of the libraries without git (see `papers history`)\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/papers.bib": "",
+    "cwd/b/files/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/papers.bib": "",
+    "cwd/c/files/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--info",
+    "--no-git",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "papers: warning: --info is deprecated: use -v\nusage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: unrecognized arguments: --no-git --bogus\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/papers.bib": "",
+    "cwd/b/files/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/papers.bib": "",
+    "cwd/c/files/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "rm",
+    "--no-git",
+    "--info"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "papers: warning: --no-git is ignored: papers keeps the history of the libraries without git (see `papers history`)\npapers: warning: --info is deprecated: use -v\nusage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: the following arguments are required: KEY\n",
+   "tree": {
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/papers.bib": "",
+    "cwd/b/files/": null,
+    "cwd/b/.papers/.gitignore": "*\n",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/c/papers.bib": "",
+    "cwd/c/files/": null,
+    "cwd/c/.papers/.gitignore": "*\n",
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

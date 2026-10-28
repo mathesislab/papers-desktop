@@ -1,0 +1,185 @@
+{
+ "name": "usage-unrecognized",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "rm",
+    "a",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "rm",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: the following arguments are required: KEY\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "rm",
+    "--bogus",
+    "--bogus2"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]\n                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                 [--dry-run] [--delete-files] [--keep-files] [-y]\n                 KEY [KEY ...]\npapers rm: error: the following arguments are required: KEY\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "a",
+    "--bogus",
+    "b"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "add",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--name-template NAME_TEMPLATE]\n                  [--name-author-num NAME_AUTHOR_NUM]\n                  [--name-author-sep NAME_AUTHOR_SEP]\n                  [--name-title-word-num NAME_TITLE_WORD_NUM]\n                  [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                  [--name-title-length NAME_TITLE_LENGTH]\n                  [--name-title-sep NAME_TITLE_SEP]\n                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                  [--name-unknown-strict | --no-name-unknown-strict]\n                  [--key-template KEY_TEMPLATE]\n                  [--key-author-num KEY_AUTHOR_NUM]\n                  [--key-author-sep KEY_AUTHOR_SEP]\n                  [--key-title-word-num KEY_TITLE_WORD_NUM]\n                  [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                  [--key-title-length KEY_TITLE_LENGTH]\n                  [--key-title-sep KEY_TITLE_SEP]\n                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                  [--key-unknown-strict | --no-key-unknown-strict]\n                  [--format {bibtex,ris,csl-json,bibjson}]\n                  [--on-duplicate {ask,keep,update,skip,error}]\n                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]\n                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]\n                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]\n                  [--journal JOURNAL] [--year YEAR]\n                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]\n                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n                  [file ...]\npapers add: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "-z",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: unrecognized arguments: -z\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "bibtex",
+    "--global=1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: argument --global: ignored explicit argument '1'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "-vy"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "--info"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: warning: --info is deprecated: use -v\npapers: error: no library found here: `papers init`, or use `papers config --global`\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--git-lfs=1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --git-lfs: ignored explicit argument '1'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "config",
+    "a",
+    "b",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "tag",
+    "a",
+    "--bogus=3"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers tag [-h] [-v] [--debug] [--color {auto,always,never}]\n                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                  [--dry-run] [--add TAG [TAG ...]] [--rm TAG [TAG ...]]\n                  [--rename OLD NEW]\n                  [KEY ...]\npapers tag: error: unrecognized arguments: --bogus=3\n",
+   "tree": {}
+  }
+ ]
+}

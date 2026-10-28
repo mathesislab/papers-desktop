@@ -1,0 +1,44 @@
+{
+ "name": "init-two-configs",
+ "home": {},
+ "cwd": {
+  ".papers/config.json": "{}",
+  ".papersconfig.json": "{}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd has two library configurations, .papers/config.json and .papersconfig.json (of papers 2): keep one of them and remove the other (nothing was changed)\n",
+   "tree": {
+    "cwd/.papersconfig.json": "{}",
+    "cwd/.papers/config.json": "{}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "sub"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd has two library configurations, .papers/config.json and .papersconfig.json (of papers 2): keep one of them and remove the other (nothing was changed)\n",
+   "tree": {
+    "cwd/.papersconfig.json": "{}",
+    "cwd/.papers/config.json": "{}"
+   }
+  }
+ ]
+}

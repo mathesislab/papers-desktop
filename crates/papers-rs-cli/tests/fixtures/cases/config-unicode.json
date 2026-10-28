@@ -1,0 +1,68 @@
+{
+ "name": "config-unicode",
+ "home": {},
+ "cwd": {
+  "v/.papers/config.json": "{\"version\": 3}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "editor",
+    "éditeur 😀"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": null,\n  \"editor\": \"\\u00e9diteur \\ud83d\\ude00\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                =   (default)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                = éditeur 😀  (library)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": null,\n  \"editor\": \"\\u00e9diteur \\ud83d\\ude00\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "name.template",
+    "{auteur}_é\\n\t\"x\""
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/.gitignore": "*\n",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": null,\n  \"editor\": \"\\u00e9diteur \\ud83d\\ude00\",\n  \"filesdir\": null,\n  \"nameformat\": {\n    \"template\": \"{auteur}_\\u00e9\\\\n\\t\\\"x\\\"\"\n  },\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

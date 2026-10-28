@@ -1,0 +1,327 @@
+{
+ "name": "config-global",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global",
+    "history-dir",
+    "/x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "history-size",
+    "7"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "name.template",
+    "{author}"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\nhistory-dir = /x\nhistory-size = 7\nname.template = {author}\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "name.template"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "{author}\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "history-size",
+    "3",
+    "4"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: history-size takes one value, got 2\n",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "editor",
+    "vim"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"editor\": \"vim\",\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "--unset",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-dir\": \"/x\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "--unset",
+    "history-dir"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "paths",
+    "absolute"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"files\": \"link\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "checksums",
+    "false"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"checksums\": false,\n  \"files\": \"link\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\npaths = absolute\nfiles = link\nchecksums = false\nhistory-size = 7\nname.template = {author}\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"checksums\": false,\n  \"files\": \"link\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "--dry-run",
+    "files",
+    "copy"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "DRYRUN: <MC> not saved\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"checksums\": false,\n  \"files\": \"link\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "paths",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: paths: expected one of relative, absolute, got 'x'\n",
+   "tree": {
+    "home/<MC>": "{\n  \"checksums\": false,\n  \"files\": \"link\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "editor",
+    ""
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"checksums\": false,\n  \"editor\": \"\",\n  \"files\": \"link\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\npaths = absolute\nfiles = link\neditor = \nchecksums = false\nhistory-size = 7\nname.template = {author}\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"checksums\": false,\n  \"editor\": \"\",\n  \"files\": \"link\",\n  \"history-size\": 7,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

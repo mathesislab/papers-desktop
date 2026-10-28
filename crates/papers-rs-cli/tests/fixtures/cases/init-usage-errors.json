@@ -1,0 +1,212 @@
+{
+ "name": "init-usage-errors",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "--name-author-num",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --name-author-num: invalid int value: 'x'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--name-author-num"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --name-author-num: expected one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "a",
+    "b"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: b\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--paths",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --paths: invalid choice: 'x' (choose from 'relative', 'absolute')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--color",
+    "red"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --color: invalid choice: 'red' (choose from 'auto', 'always', 'never')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: --bogus\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--bogus",
+    "x",
+    "--paths",
+    "y"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --paths: invalid choice: 'y' (choose from 'relative', 'absolute')\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --pool: expected one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--shallow=1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --shallow: ignored explicit argument '1'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--key-title-word-num",
+    "1.5"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --key-title-word-num: invalid int value: '1.5'\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --editor: expected one argument\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "-z"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: -z\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--dry-run"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: --dry-run\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "init",
+    "--filesdir"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: argument --filesdir: expected one argument\n",
+   "tree": {}
+  }
+ ]
+}

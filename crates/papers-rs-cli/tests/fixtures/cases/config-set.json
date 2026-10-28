@@ -1,0 +1,503 @@
+{
+ "name": "config-set",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "bibtex",
+    "other.bib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: other.bib does not exist\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"other.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "filesdir",
+    "../x/pdfs"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: ../x/pdfs does not exist\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"other.bib\",\n  \"filesdir\": \"../x/pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "paths",
+    "absolute"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"other.bib\",\n  \"filesdir\": \"../x/pdfs\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "paths",
+    "foo"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: paths: expected one of relative, absolute, got 'foo'\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"other.bib\",\n  \"filesdir\": \"../x/pdfs\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "files",
+    "copy"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "copy\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "auto-push",
+    "yes"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "auto-push",
+    "maybe"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: auto-push: expected true or false, got 'maybe'\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "history-size",
+    "12x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: history-size: expected an integer, got '12x'\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "history-size",
+    "12"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": 12,\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "history-size",
+    "-3"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "name.template",
+    "{author}"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "name.template",
+    "{author}",
+    "extra"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: name.template takes one value, got 2\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "name.template"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "{author}\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"nameformat\": {\n    \"template\": \"{author}\"\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "name.unknown-strict",
+    "on"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "key.author-num",
+    "1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "editor",
+    "subl -w"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "checksums",
+    "false"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "the commands write no checksum (undo finds the files through the journal of the commands)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"checksums\": false,\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "checksums",
+    "true"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "the files get a checksum when a command moves, copies, adds or links them: `papers file checksum` writes those of all the files\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "checksums",
+    "yes"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "the files get a checksum when a command moves, copies, adds or links them: `papers file checksum` writes those of all the files\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/.papers/config.json\nbibtex                = <TMP>/cwd/other.bib  (library)\nfilesdir              = <TMP>/x/pdfs  (library)\npool                  = none  (library)\npaths                 = absolute  (library)\nfiles                 = copy  (library)\nauto-push             = true  (library)\neditor                = subl -w  (library)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = -3  (library)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {author}  (library)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = true  (library)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 1  (library)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "history-separate",
+    "true"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-separate\": true,\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "keep-deleted-files",
+    "false"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: keep-deleted-files is a setting of the machine, not of a library (a library received from someone cannot set it): `papers config --global keep-deleted-files VALUE`\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-separate\": true,\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "history-dir",
+    "/x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: history-dir is a setting of the machine, not of a library (a library received from someone cannot set it): `papers config --global history-dir VALUE`\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/files/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"auto-push\": true,\n  \"bibtex\": \"other.bib\",\n  \"editor\": \"subl -w\",\n  \"files\": \"copy\",\n  \"filesdir\": \"../x/pdfs\",\n  \"history-separate\": true,\n  \"history-size\": -3,\n  \"keyformat\": {\n    \"author_num\": 1\n  },\n  \"nameformat\": {\n    \"template\": \"{author}\",\n    \"unknown_strict\": true\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

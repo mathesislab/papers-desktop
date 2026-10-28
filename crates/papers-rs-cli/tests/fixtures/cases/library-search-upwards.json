@@ -1,0 +1,100 @@
+{
+ "name": "library-search-upwards",
+ "home": {},
+ "cwd": {
+  ".papers/config.json": "{\n  \"bibtex\": \"top.bib\",\n  \"version\": 3\n}",
+  "a/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"version\": 3\n}",
+  "a/b/c/": null,
+  "x/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/top.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x/": null,
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"top.bib\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"version\": 3\n}",
+    "cwd/a/b/c/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a/b/c",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/a/a.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x/": null,
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"top.bib\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"version\": 3\n}",
+    "cwd/a/b/c/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a/b/c",
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/a/b/c\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: the new library is inside the library of <TMP>/cwd/a/.papers/config.json\n",
+   "tree": {
+    "cwd/x/": null,
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"top.bib\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"version\": 3\n}",
+    "cwd/a/b/c/papers.bib": "",
+    "cwd/a/b/c/files/": null,
+    "cwd/a/b/c/.papers/.gitignore": "*\n",
+    "cwd/a/b/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "x",
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/top.bib\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x/": null,
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"top.bib\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"a.bib\",\n  \"version\": 3\n}",
+    "cwd/a/b/c/papers.bib": "",
+    "cwd/a/b/c/files/": null,
+    "cwd/a/b/c/.papers/.gitignore": "*\n",
+    "cwd/a/b/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

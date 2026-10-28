@@ -1,0 +1,31 @@
+{
+ "name": "init-uri",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "a",
+    "--bibtex",
+    "file://<TMP>/cwd/my%20lib.bib",
+    "--filesdir",
+    "file://<TMP>/cwd/my%20files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/a\n* bibtex:  <TMP>/cwd/my lib.bib\n* files:   <TMP>/cwd/my files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/my lib.bib": "",
+    "cwd/my files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"../my lib.bib\",\n  \"filesdir\": \"../my files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,242 @@
+{
+ "name": "config-pool-lists",
+ "home": {
+  "<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+ },
+ "cwd": {
+  "v/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": [\"a\", \"b\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: the pool setting lists several pools (a, b); papers takes one pool: write one path, or none, in this file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": [\"a\", \"b\"]}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": [\"a\"], \"bibtex\": \"b.bib\", \"id\": \"abc\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "a\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": [\"a\"], \"bibtex\": \"b.bib\", \"id\": \"abc\"}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": []}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "none\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": []}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": [\"\", \"z\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "z\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pool\": [\"\", \"z\"]}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"default\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "~/def\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"default\"]}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"../x\", \"default\"], \"light\": true, \"sync\": \"push\", \"local\": true}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "../x\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"../x\", \"default\"], \"light\": true, \"sync\": \"push\", \"local\": true}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"shared\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "/shared/pool\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"shared\"]}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"unknown\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "none\n",
+   "stderr": "papers: warning: <TMP>/cwd/v/.papers/config.json: unknown pool name unknown: the library has no pool\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"unknown\"]}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": []}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "none\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": []}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"none\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "none\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"none\"]}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"~/p\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "~/p\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"pools\": [\"~/p\"]}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"pools\": {\n    \"shared\": \"/shared/pool\"\n  },\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

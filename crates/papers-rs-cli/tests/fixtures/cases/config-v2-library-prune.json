@@ -1,0 +1,44 @@
+{
+ "name": "config-v2-library-prune",
+ "home": {},
+ "cwd": {
+  ".papersconfig.json": "{\"bibtex\": \"lib.bib\", \"local\": true, \"files\": \"move\", \"git\": true}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "moved <TMP>/cwd/.papersconfig.json to <TMP>/cwd/.papers/config.json\nremoved from <TMP>/cwd/.papers/config.json (equal to the global or default value): files, git\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "nothing to remove from <TMP>/cwd/.papers/config.json\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"filesdir\": null,\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,450 @@
+{
+ "name": "usage-top",
+ "home": {},
+ "cwd": {
+  "x.pdf": "",
+  "lib/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "-h"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--help"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--he"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--version"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3.0.0b5.dev8+g66cccb320\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--vers"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3.0.0b5.dev8+g66cccb320\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--v"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3.0.0b5.dev8+g66cccb320\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--version=1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: argument --version: ignored explicit argument '1'\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unknown command 'bogus' (commands: status, init, config, migrate, add, check, file, list, edit, rm, tag, pull, push, sync, export, open, fetch, extract, undo, redo, restore, history)\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unrecognized arguments: --bogus\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--bogus",
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: --bogus\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--bogus",
+    "init",
+    "--bogus2"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: --bogus --bogus2\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: -C x: not a directory\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--version",
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3.0.0b5.dev8+g66cccb320\n",
+   "stderr": "",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "init",
+    "--version"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers init [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--name-template NAME_TEMPLATE]\n                   [--name-author-num NAME_AUTHOR_NUM]\n                   [--name-author-sep NAME_AUTHOR_SEP]\n                   [--name-title-word-num NAME_TITLE_WORD_NUM]\n                   [--name-title-word-size NAME_TITLE_WORD_SIZE]\n                   [--name-title-length NAME_TITLE_LENGTH]\n                   [--name-title-sep NAME_TITLE_SEP]\n                   [--name-unknown-template NAME_UNKNOWN_TEMPLATE]\n                   [--name-unknown-strict | --no-name-unknown-strict]\n                   [--key-template KEY_TEMPLATE]\n                   [--key-author-num KEY_AUTHOR_NUM]\n                   [--key-author-sep KEY_AUTHOR_SEP]\n                   [--key-title-word-num KEY_TITLE_WORD_NUM]\n                   [--key-title-word-size KEY_TITLE_WORD_SIZE]\n                   [--key-title-length KEY_TITLE_LENGTH]\n                   [--key-title-sep KEY_TITLE_SEP]\n                   [--key-unknown-template KEY_UNKNOWN_TEMPLATE]\n                   [--key-unknown-strict | --no-key-unknown-strict]\n                   [--bibtex BIBTEX] [--filesdir FILESDIR] [--pool PATH]\n                   [--shallow] [--global] [--paths {relative,absolute}]\n                   [--editor EDITOR]\n                   [DIR]\npapers init: error: unrecognized arguments: --version\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "-v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers config [-h] [-v] [--debug] [--color {auto,always,never}]\n                     [--porcelain] [--unset KEY] [--prune] [--global] [-y]\n                     [--dry-run]\n                     [KEY] [VALUE ...]\npapers config: error: unrecognized arguments: -v\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--version",
+    "--bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unrecognized arguments: --bogus\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "-5"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unknown command '-5' (commands: status, init, config, migrate, add, check, file, list, edit, rm, tag, pull, push, sync, export, open, fetch, extract, undo, redo, restore, history)\n",
+   "tree": {
+    "cwd/x.pdf": "",
+    "cwd/lib/": null
+   }
+  },
+  {
+   "args": [
+    "--",
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/x.pdf": "",
+    "cwd/files/": null,
+    "cwd/lib/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "--",
+    "bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unknown command 'bogus' (commands: status, init, config, migrate, add, check, file, list, edit, rm, tag, pull, push, sync, export, open, fetch, extract, undo, redo, restore, history)\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/x.pdf": "",
+    "cwd/files/": null,
+    "cwd/lib/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-h",
+    "bogus"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/x.pdf": "",
+    "cwd/files/": null,
+    "cwd/lib/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "bogus",
+    "-h"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unknown command 'bogus' (commands: status, init, config, migrate, add, check, file, list, edit, rm, tag, pull, push, sync, export, open, fetch, extract, undo, redo, restore, history)\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/x.pdf": "",
+    "cwd/files/": null,
+    "cwd/lib/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unknown command 'lib' (commands: status, init, config, migrate, add, check, file, list, edit, rm, tag, pull, push, sync, export, open, fetch, extract, undo, redo, restore, history)\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/x.pdf": "",
+    "cwd/files/": null,
+    "cwd/lib/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unrecognized arguments: -x\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/x.pdf": "",
+    "cwd/files/": null,
+    "cwd/lib/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-",
+    "init"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\npapers: error: unknown command '-' (commands: status, init, config, migrate, add, check, file, list, edit, rm, tag, pull, push, sync, export, open, fetch, extract, undo, redo, restore, history)\n",
+   "tree": {
+    "cwd/papers.bib": "",
+    "cwd/x.pdf": "",
+    "cwd/files/": null,
+    "cwd/lib/": null,
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}
