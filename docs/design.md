@@ -210,15 +210,29 @@ history. In the long run a standard both follow and change together.
   *Free* (messages, prompts, caches). The suite is its executable side: a
   case names its section and whether it checks a contract.
 
-**Done**: the bibtex read and written as papers does (bibtexparser's
-splitter, sort, format; papers' LaTeX tables), checked against papers on
-fixtures and random texts; the configuration, the lock, the command line
-(every command's options and usage errors), `init` and `config`; 77 cases
-(papers passes all, papers-rs 14: the others need commands not ported).
-The app uses papers-rs to lay out fetched BibTeX.
+**Done**: every command of papers 3.0.0b5 but `open`, `install`,
+`uninstall`, `git` and Google Scholar (`--scholar`: scraping, left out),
+pools and the exchanges included. The conformance suite has 218 cases:
+papers and papers-rs pass all 212 offline ones in contract-only mode (the
+full comparison differs only in Free output: bibtexparser's warnings, the
+usage lines of `--openalex`). Interop both ways: each reads, undoes and
+pulls what the other recorded. 3 to 8 times faster than papers
+(`crates/papers-rs/PERFORMANCE.md`). The app writes with it, built in
+(*Writing*). Decided: transliteration with `deunicode` (Unidecode is GPL;
+to settle with Mahé), PDF text with `pdf-extract` (PyMuPDF has no
+permissive Rust binding), the release profile unwinds (a panic of
+pdf-extract is caught).
 
-**Next**: LaTeX to Unicode in papers-rs through latexenc; then the
-commands, by the sections of the specification.
+**Extension**: `--openalex` (add, extract, fetch), a full-text search on
+OpenAlex's open API where papers has `--scholar`; off by default. On 300 of
+the user's PDFs it finds 21 of the 38 (with text) that papers' chain
+misses. To propose to Mahé.
+
+**Next**: tell Mahé (the suite as the executable side of `design/`, the
+bugs and questions in `docs/drafts/papers-upstream.md`, `--openalex`);
+then the crates leave for a repository of their own and are published
+(crates.io: `latexenc-rs`, `papers-rs`, `papers-rs-cli`; prebuilt binaries
+in releases, Homebrew), the app depending on the published crates.
 
 ## Later (P2)
 
