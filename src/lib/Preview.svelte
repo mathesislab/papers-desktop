@@ -1,6 +1,8 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import * as cite from "$lib/cite";
+  import { label, matches } from "$lib/keys";
+  import type { Editor } from "$lib/library/editor.svelte";
   import { cached, thumbnail } from "$lib/pdf";
   import Share from "$lib/Share.svelte";
   import type { Item } from "$lib/types";
@@ -10,6 +12,9 @@
     marked,
     onopen,
     keywords = true,
+    editor,
+    onsave,
+    oncancel,
   }: {
     item: Item;
     /** for each author, whether the search matched it */
@@ -17,6 +22,10 @@
     onopen: () => void;
     /** whether to list the tags: not where they are chips already */
     keywords?: boolean;
+    /** the BibTeX being edited: when it is of this paper, the BibTeX is a text to edit */
+    editor?: Editor;
+    onsave?: () => void;
+    oncancel?: () => void;
   } = $props();
 
   const PAGE_WIDTH = 170;
@@ -32,6 +41,13 @@
   // the BibTeX stays open or closed, formatted or raw, between sessions
   let showBibtex = $state(stored("bibtex", "open"));
   let raw = $state(stored("bibtex-view", "raw"));
+  let area = $state<HTMLTextAreaElement>();
+
+  const saveKey = { key: "s", mod: true };
+  let editing = $derived(editor !== undefined && editor.id === item.id);
+  // an edit opens the BibTeX, raw, without changing what is kept
+  let open = $derived(showBibtex || editing);
+  let asRaw = $derived(raw || editing);
 
   function stored(name: string, value: string): boolean {
     try {
@@ -91,9 +107,9 @@
 
   // the BibTeX is in memory: no delay
   $effect(() => {
-    if (!showBibtex) return;
+    if (!open) return;
     let live = true;
-    invoke<string>("bibtex", { id: item.id, raw })
+    invoke<string>("bibtex", { id: item.id, raw: asRaw })
       .then((text) => live && (bibtex = text))
       .catch((err) => live && (bibtex = String(err)));
     return () => {
@@ -102,6 +118,28 @@
   });
 
   const fileName = (path: string) => path.split(/[\\/]/).pop();
+
+  // the editor takes the keys, and the height of its text
+  $effect(() => {
+    if (area) area.focus();
+  });
+  $effect(() => {
+    editor?.text;
+    if (!area) return;
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight}px`;
+  });
+
+  /** ⌘S saves, Esc cancels; the other keys are the text's (the page leaves them alone). */
+  function editorKey(e: KeyboardEvent) {
+    if (matches(e, saveKey)) {
+      e.preventDefault();
+      onsave?.();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      oncancel?.();
+    }
+  }
 
   /** Drag the citation out, formatted for the apps that take it so. */
   function dragCitation(e: DragEvent) {
@@ -154,20 +192,41 @@
   </section>
   <section>
     <div class="bibtex-head">
-      <button class="disclosure" onclick={toggleBibtex} aria-expanded={showBibtex}>
-        <span class="caret" class:open={showBibtex}>▸</span> BibTeX
+      <button class="disclosure" onclick={toggleBibtex} disabled={editing} aria-expanded={open}>
+        <span class="caret" class:open>▸</span> BibTeX
       </button>
-      {#if showBibtex}
+      {#if editing && editor}
         <span class="views">
-          <button class:active={!raw} onclick={() => setRaw(false)}>formatted</button>
-          <button class:active={raw} onclick={() => setRaw(true)} title="As written in the file"
+          <button disabled={!editor.changed || editor.saving} onclick={onsave} title="Save ({label(saveKey)})">Save</button>
+          <button disabled={editor.saving} onclick={oncancel} title="Cancel (Esc)">Cancel</button>
+        </span>
+        <span class="file" title={item.bib}>{fileName(item.bib)}</span>
+      {:else if open}
+        <span class="views">
+          <button class:active={!asRaw} onclick={() => setRaw(false)}>formatted</button>
+          <button class:active={asRaw} onclick={() => setRaw(true)} title="As written in the file"
             >raw</button
           >
         </span>
         <span class="file" title={item.bib}>{fileName(item.bib)}</span>
       {/if}
     </div>
-    {#if showBibtex}<pre class="bibtex">{bibtex ?? ""}</pre>{/if}
+    {#if editing && editor}
+      <textarea
+        class="bibtex"
+        bind:this={area}
+        bind:value={editor.text}
+        onkeydown={editorKey}
+        readonly={editor.saving}
+        spellcheck="false"
+        autocomplete="off"
+        autocapitalize="off"
+        rows="3"
+      ></textarea>
+      {#if editor.error}<p class="edit-error">{editor.error}</p>{/if}
+    {:else if open}
+      <pre class="bibtex">{bibtex ?? ""}</pre>
+    {/if}
   </section>
 </div>
 
@@ -266,7 +325,7 @@
     text-transform: none;
     letter-spacing: 0;
   }
-  .disclosure {
+  .disclosure:not(:disabled) {
     cursor: pointer;
   }
   .section-head {
@@ -299,6 +358,10 @@
     font-size: 11px;
     cursor: pointer;
   }
+  .views button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
   .views button.active {
     background: var(--line);
     color: var(--fg);
@@ -325,6 +388,7 @@
     color: var(--error);
   }
   .bibtex {
+    display: block;
     margin: 0;
     padding: 8px 10px;
     border-radius: 6px;
@@ -334,5 +398,22 @@
     line-height: 1.45;
     white-space: pre-wrap;
     word-break: break-all;
+  }
+  textarea.bibtex {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid transparent;
+    color: var(--fg);
+    resize: none;
+    overflow: hidden;
+    outline: none;
+  }
+  textarea.bibtex:focus {
+    border-color: var(--accent);
+  }
+  .edit-error {
+    margin: 6px 0 0;
+    color: var(--error);
+    font-size: 12px;
   }
 </style>

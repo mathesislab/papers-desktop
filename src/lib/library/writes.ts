@@ -15,6 +15,21 @@ export function writeError(e: unknown): WriteError {
   return isWriteError(e) ? e : { kind: "failed", message: String(e) };
 }
 
+/** What an error says to the user: a refused edit of an entry names what to use instead. */
+export function errorText(e: WriteError): string {
+  if (e.kind !== "kept") return e.message;
+  switch (e.what) {
+    case "key":
+      return "The key can't be changed here.";
+    case "tags":
+      return "The tags can't be changed here: use the tags above.";
+    case "file":
+      return "The files can't be changed here.";
+    default:
+      return e.message;
+  }
+}
+
 async function write<T>(command: string, args: Record<string, unknown>): Promise<T> {
   try {
     return await invoke<T>(command, args);

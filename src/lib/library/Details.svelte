@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { mac } from "$lib/keys";
   import Preview from "$lib/Preview.svelte";
+  import type { Editor } from "$lib/library/editor.svelte";
   import Tags from "$lib/library/Tags.svelte";
   import type { Item, Row, TagCount } from "$lib/types";
 
@@ -13,6 +14,10 @@
     ontag,
     onset,
     onopen,
+    editor,
+    onedit,
+    onsave,
+    oncancel,
   }: {
     item: Item;
     /** the papers the tags change: the selection when it has several, else the paper */
@@ -23,6 +28,11 @@
     ontag: (tag: string) => void;
     onset: (add: string[], remove: string[]) => Promise<boolean>;
     onopen: () => void;
+    /** the BibTeX being edited */
+    editor: Editor;
+    onedit: () => void;
+    onsave: () => void;
+    oncancel: () => void;
   } = $props();
 
   let copied = $state(false);
@@ -49,6 +59,7 @@
         <button onclick={() => invoke("reveal", { id: item.id })}>{mac ? "Reveal in Finder" : "Show in folder"}</button>
       {/if}
       <button onclick={copyKey}>{copied ? "Copied" : "Copy [@key]"}</button>
+      <button onclick={onedit} disabled={editor.id === item.id}>Edit</button>
     </div>
   {/if}
   {#if rows.length > 1}
@@ -58,7 +69,7 @@
     <Tags {rows} {tags} {filtered} ontoggle={ontag} {onset} />
   {/if}
   {#if rows.length <= 1}
-    <Preview {item} marked={item.authors.map(() => false)} {onopen} keywords={false} />
+    <Preview {item} marked={item.authors.map(() => false)} {onopen} keywords={false} {editor} {onsave} {oncancel} />
   {/if}
 </div>
 
@@ -88,6 +99,9 @@
     color: var(--fg);
     font: inherit;
     font-size: 12px;
+  }
+  button:disabled {
+    opacity: 0.4;
   }
   button.primary {
     border-color: var(--accent);

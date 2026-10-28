@@ -89,7 +89,10 @@ export type Added = {
 /** mirrors writer::WriteError: what a write is rejected with */
 export type WriteError = {
   /** "papers-missing": a papers library without papers 3.0.0b4 or later; "changed": the .bib
-   *  changed since it was read, and is read again: try again */
-  kind: "papers-missing" | "changed" | "failed";
+   *  changed since it was read, and is read again: try again; "kept": an edit of the BibTeX of an
+   *  entry changed what it keeps (`what`) */
+  kind: "papers-missing" | "changed" | "kept" | "failed";
   message: string;
+  /** of a "kept" error: what the edit changed */
+  what?: "key" | "tags" | "file";
 };

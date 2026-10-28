@@ -2,7 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { save } from "@tauri-apps/plugin-dialog";
+  import { ask, save } from "@tauri-apps/plugin-dialog";
   import { onMount, tick, untrack } from "svelte";
   import "$lib/theme.css";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
@@ -10,7 +10,8 @@
   import { foldTag, movedTag, sameTag } from "$lib/tags";
   import Details from "$lib/library/Details.svelte";
   import PapersMissing from "$lib/library/PapersMissing.svelte";
-  import { renameTag, setTags, writeError, writers } from "$lib/library/writes";
+  import { Editor } from "$lib/library/editor.svelte";
+  import { renameTag, replaceEntry, setTags, writeError, writers } from "$lib/library/writes";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -18,7 +19,7 @@
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
-  import type { Item, Row, Status, TagCount } from "$lib/types";
+  import type { Item, Row, Status, TagCount, WriteError } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
@@ -83,6 +84,8 @@
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
+  /** the BibTeX of the paper in the details, being edited */
+  const editor = new Editor();
   /** after a paper is closed: the library, or the next paper open (a setting) */
   let afterClose: "library" | "next" = "library";
 
@@ -284,6 +287,7 @@
     if (focus && !byId.has(focus)) focus = null;
     layout.open = layout.open.filter((id) => byId.has(id));
     if (layout.active && !byId.has(layout.active)) layout.active = null;
+    if (editor.id && !byId.has(editor.id)) editor.stop();
     await search(query);
   }
 
@@ -325,8 +329,8 @@
     };
   });
 
-  function select(id: string, e: MouseEvent) {
-    if (e.button !== 0) return;
+  async function select(id: string, e: MouseEvent) {
+    if (e.button !== 0 || !(await leave(id))) return;
     if (e.shiftKey && anchor) {
       selectRange(anchor, id);
     } else if (mac ? e.metaKey : e.ctrlKey) {
@@ -350,13 +354,14 @@
 
   /** Move the focus by some rows, or to the first or last; extending the
    *  selection, or not. */
-  function move(to: number | "first" | "last", extend: boolean) {
+  async function move(to: number | "first" | "last", extend: boolean) {
     const ids = shown.map((r) => r.id);
     if (!ids.length) return;
     const at = focus ? ids.indexOf(focus) : -1;
     const index =
       to === "first" ? 0 : to === "last" ? ids.length - 1 : at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + to));
     const next = ids[index];
+    if (!(await leave(next))) return;
     if (extend && anchor) {
       selectRange(anchor, next);
     } else {
@@ -377,7 +382,8 @@
     }
   }
 
-  function openPaper(id: string) {
+  async function openPaper(id: string) {
+    if (!(await leave(id))) return;
     if (!layout.open.includes(id)) layout.open = [...layout.open, id];
     layout.active = id;
     invoke("opened", { id }).then(refresh);
@@ -403,7 +409,7 @@
   /** Run a write: its error said, or how to install papers when a papers
    *  library cannot be written without it. The library is read again after
    *  a write (a "status" event). Whether it was written. */
-  async function write(action: () => Promise<unknown>): Promise<boolean> {
+  async function write(action: () => Promise<unknown>, fail?: (error: WriteError) => void): Promise<boolean> {
     try {
       await action();
       return true;
@@ -412,6 +418,8 @@
       if (error.kind === "papers-missing") {
         const found = (await writers()).find((w) => w.kind === "papers-missing");
         missing = { version: found?.version ?? null };
+      } else if (fail) {
+        fail(error);
       } else {
         say(error.message);
       }
@@ -426,23 +434,62 @@
   }
 
   /** A paper closed: the library comes to the front, or the next paper open. */
-  function closePaper(id: string) {
+  async function closePaper(id: string) {
     const at = layout.open.indexOf(id);
-    layout.open = layout.open.filter((x) => x !== id);
+    const rest = layout.open.filter((x) => x !== id);
+    const next = layout.active !== id ? layout.active : afterClose === "next" ? (rest[at] ?? rest[at - 1] ?? null) : null;
+    // the edit of the paper goes with its tab
+    if (!(await leave(editor.id === id ? null : (next ?? focus)))) return;
+    layout.open = rest;
     delete layout.pages[id];
-    if (layout.active !== id) return;
-    layout.active = afterClose === "next" ? (layout.open[at] ?? layout.open[at - 1] ?? null) : null;
+    if (layout.active === id) layout.active = next;
   }
 
   /** ⌘W: the paper in front, else the window. */
-  function closeActive() {
+  async function closeActive() {
     if (layout.active) closePaper(layout.active);
-    else getCurrentWindow().close();
+    else if (await leave(null)) getCurrentWindow().close();
   }
 
-  function showLibrary() {
+  async function showLibrary() {
+    if (!(await leave(focus))) return;
     layout.active = null;
     tick().then(() => input?.focus());
+  }
+
+  /** Whether to go on to show another paper (none: no paper) than the one edited, which is left: after asking
+   *  when its BibTeX has changes. */
+  async function leave(next: string | null): Promise<boolean> {
+    const id = editor.id;
+    if (id === null || id === next) return true;
+    if (editor.changed) {
+      const message = `Discard the changes to ${byId.get(id)?.key ?? id}?`;
+      if (!(await ask(message, { title: "Edit", kind: "warning", okLabel: "Discard", cancelLabel: "Keep editing" }))) return false;
+    }
+    editor.stop();
+    return true;
+  }
+
+  /** Edit the BibTeX of the paper in the details. */
+  async function edit(id: string) {
+    try {
+      await editor.start(id);
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** ⌘S in the editor: the entry replaced in its .bib file; a refusal stays under the editor, with its text. */
+  async function saveEdit() {
+    const id = editor.id;
+    if (id === null || !editor.changed || editor.saving) return;
+    editor.saving = true;
+    editor.error = null;
+    const saved = await write(() => replaceEntry(id, editor.text), (error) => editor.fail(error));
+    editor.saving = false;
+    if (!saved) return;
+    editor.stop();
+    say(`Saved ${byId.get(id)?.key ?? id}`);
   }
 
   /** A command of the window, from the menu of the app or its keys. */
@@ -494,8 +541,8 @@
         return;
       }
     }
-    // a paper in front has the keys of its reader
-    if (!layout.active) libraryKey(e);
+    // a paper in front has the keys of its reader, the editor of BibTeX its own
+    if (!layout.active && !(e.target instanceof HTMLTextAreaElement)) libraryKey(e);
   }
 
   /** The keys of the library: / to search, the arrows, the page keys, Home
@@ -539,12 +586,17 @@
     }
   }
 
+  /** A tab to the front. */
+  async function activate(id: string) {
+    if (await leave(id)) layout.active = id;
+  }
+
   /** ⌃Tab: the next tab, the library first; ⌃⇧Tab: the one before. */
   function cycle(step: number) {
     const tabs = [null, ...layout.open];
     const at = tabs.indexOf(layout.active);
     const next = tabs[(at + step + tabs.length) % tabs.length];
-    if (next) layout.active = next;
+    if (next) activate(next);
     else showLibrary();
   }
 </script>
@@ -579,7 +631,8 @@
         onfold={fold}
         onrename={rename}
         onpin={pin}
-        onpaper={(id) => (layout.active = id)}
+        dirty={editor.changed ? editor.id : null}
+        onpaper={activate}
         onclose={closePaper}
       />
     </aside>
@@ -663,6 +716,10 @@
               }}
               onset={(add, remove) => write(() => setTags(targets.map((r) => r.id), add, remove))}
               onopen={() => open(item!.id)}
+              {editor}
+              onedit={() => edit(item!.id)}
+              onsave={saveEdit}
+              oncancel={() => leave(null)}
             />
           {:else}
             <p class="empty">No paper selected</p>

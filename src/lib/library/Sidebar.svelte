@@ -22,6 +22,7 @@
     open,
     papers,
     active,
+    dirty,
     onview,
     ontag,
     onfold,
@@ -46,6 +47,8 @@
     papers: Row[];
     /** the paper in front */
     active: string | null;
+    /** the paper whose BibTeX has unsaved changes */
+    dirty: string | null;
     onview: (view: View) => void;
     ontag: (tag: string) => void;
     /** a parent tag unfolded or folded by its triangle */
@@ -244,6 +247,7 @@
           <span class="name">{paper.authors} {paper.year ?? ""}</span>
           <span class="title">{paper.title}</span>
         </button>
+        {#if paper.id === dirty}<span class="dot" title="Unsaved changes"></span>{/if}
         <button class="close" aria-label="Close" onclick={() => onclose(paper.id)}>×</button>
       </div>
     {/each}
@@ -358,6 +362,13 @@
     text-overflow: ellipsis;
     color: var(--muted);
     font-size: 11.5px;
+  }
+  .dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
   }
   .close {
     flex: none;

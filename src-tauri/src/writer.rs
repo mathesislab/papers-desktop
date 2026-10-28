@@ -51,6 +51,9 @@ pub struct Writer {
 pub struct WriteError {
     kind: ErrorKind,
     message: String,
+    /// for `Kept`: what an edit of an entry changed, "key", "tags" or "file"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    what: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -60,6 +63,8 @@ pub enum ErrorKind {
     PapersMissing,
     /// the .bib changed since it was read: the library is read again
     Changed,
+    /// an edit of the BibTeX of an entry changed what it keeps: see `what`
+    Kept,
     Failed,
 }
 
@@ -68,6 +73,7 @@ impl WriteError {
         WriteError {
             kind: ErrorKind::Failed,
             message: message.into(),
+            what: None,
         }
     }
 
@@ -83,19 +89,22 @@ impl WriteError {
         WriteError {
             kind: ErrorKind::PapersMissing,
             message,
+            what: None,
         }
     }
 }
 
 impl From<papers_core::Error> for WriteError {
     fn from(e: papers_core::Error) -> WriteError {
-        let kind = match e {
-            papers_core::Error::Changed { .. } => ErrorKind::Changed,
-            _ => ErrorKind::Failed,
+        let (kind, what) = match e {
+            papers_core::Error::Changed { .. } => (ErrorKind::Changed, None),
+            papers_core::Error::Kept { what } => (ErrorKind::Kept, Some(what)),
+            _ => (ErrorKind::Failed, None),
         };
         WriteError {
             kind,
             message: e.to_string(),
+            what,
         }
     }
 }
@@ -329,6 +338,7 @@ impl Writers {
                         "{}: changed since the app wrote it; nothing to {what}",
                         path.display()
                     ),
+                    what: None,
                 })
             }
             Err(e) => {
@@ -1059,6 +1069,10 @@ mod tests {
         assert!(text(&bib).contains("title = {A2}"), "{}", text(&bib));
         let error = replace(&state, "a", &a.replace("{a,", "{a2,")).unwrap_err();
         assert!(error.message.contains("key"), "{}", error.message);
+        assert_eq!(error.kind, ErrorKind::Kept);
+        assert_eq!(serde_json::to_value(&error).unwrap()["what"], "key");
+        let tags = replace(&state, "a", &a.replace("ocean/amoc", "x")).unwrap_err();
+        assert_eq!(tags.what, Some("tags"));
         // a text that does not parse
         let error = replace(&state, "a", "@article{a, title = {A3}").unwrap_err();
         assert_eq!(error.kind, ErrorKind::Failed);
