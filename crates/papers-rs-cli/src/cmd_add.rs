@@ -147,6 +147,7 @@ pub fn add_cmd(leaf: &Leaf, config: papers_rs::config::Config) -> Done {
         no_query_doi: leaf.flag("no_query_doi"),
         no_query_fulltext: leaf.flag("no_query_fulltext"),
         scholar: leaf.flag("scholar"),
+        openalex: leaf.flag("openalex").then(crate::util::openalex_access),
         no_pool: leaf.flag("no_pool"),
         pool: leaf.string("pool"),
         ..AddRequest::default()

@@ -8,12 +8,12 @@ use papers_rs::config::dirs::cache_dir;
 use papers_rs::config::settings::py_int;
 use papers_rs::error::Error;
 use papers_rs::extract::{Options, extract_pdf_doi, extract_pdf_metadata};
-use papers_rs::fetch::{ErrorKind, FetchError, Fetcher};
+use papers_rs::fetch::{ErrorKind, FetchError, Fetcher, openalex};
 use papers_rs::identity::strip_doi;
 use papers_rs::log;
 
 use crate::parse::Leaf;
-use crate::util::file_uri_to_path;
+use crate::util::{file_uri_to_path, openalex_access};
 
 /// What ends the command other than a result.
 pub enum Failure {
@@ -45,12 +45,18 @@ fn fetcher() -> Result<Fetcher, Failure> {
 pub fn fetch(leaf: &Leaf) -> Outcome {
     let fields = leaf.strings("doi_or_text");
     let scholar = leaf.flag("scholar");
+    let openalex = leaf.flag("openalex");
     // either one or several DOIs
     let dois: Vec<Option<String>> = fields.iter().map(|f| strip_doi(f)).collect();
     if dois.iter().all(|d| d.is_some()) {
         if scholar {
             return Err(Failure::Usage(
                 "Fetching from DOI does not support Google Scholar option".into(),
+            ));
+        }
+        if openalex {
+            return Err(Failure::Usage(
+                "Fetching from DOI does not support the OpenAlex option".into(),
             ));
         }
         let fetcher = fetcher()?;
@@ -63,9 +69,15 @@ pub fn fetch(leaf: &Leaf) -> Outcome {
     if scholar {
         return Err(Error::exit(SCHOLAR).into());
     }
-    let bibtex = fetcher()?
-        .fetch_bibtex_by_fulltext_crossref(&fields.join(" "), None, None, 5)
-        .map_err(uncaught)?;
+    let text = fields.join(" ");
+    let bibtex = if openalex {
+        // papers-rs, not in papers: the search of OpenAlex instead of crossref's
+        let access = openalex_access();
+        fetcher()?.fetch_bibtex_by_fulltext_openalex(&text, &access, openalex::ROWS, None)
+    } else {
+        fetcher()?.fetch_bibtex_by_fulltext_crossref(&text, None, None, 5)
+    }
+    .map_err(uncaught)?;
     log::println(&bibtex);
     Ok(())
 }
@@ -205,6 +217,7 @@ pub fn extract(leaf: &Leaf) -> Outcome {
         minwords: word_count,
         max_query_words: word_count,
         scholar: leaf.flag("scholar"),
+        openalex: leaf.flag("openalex").then(openalex_access),
         image: leaf.flag("image"),
         ..Options::default()
     };

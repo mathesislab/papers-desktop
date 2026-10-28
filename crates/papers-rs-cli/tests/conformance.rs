@@ -9,6 +9,9 @@ use std::process::{Command, Stdio};
 
 use serde_json::Value;
 
+#[path = "common/openalex.rs"]
+mod openalex;
+
 /// The global configuration of papers, relative to the home directory, on this platform.
 const MC: &str = if cfg!(target_os = "macos") { "Library/Application Support/papers/config.json" } else { ".config/papers/config.json" };
 /// The global configuration of papers 2.
@@ -157,10 +160,10 @@ fn run_case(case: &Value) -> Vec<String> {
         if rc as i64 != step["rc"].as_i64().unwrap() {
             problems.push(format!("exit status {rc}, expected {}", step["rc"]));
         }
-        if stdout != step["stdout"].as_str().unwrap() {
+        if !openalex::is_as_papers(&stdout, step["stdout"].as_str().unwrap()) {
             problems.push(format!("stdout:\n{stdout}\n--- expected:\n{}", step["stdout"].as_str().unwrap()));
         }
-        if stderr != step["stderr"].as_str().unwrap() {
+        if !openalex::is_as_papers(&stderr, step["stderr"].as_str().unwrap()) {
             problems.push(format!("stderr:\n{stderr}\n--- expected:\n{}", step["stderr"].as_str().unwrap()));
         }
         let tree = snapshot(&tmp_path);

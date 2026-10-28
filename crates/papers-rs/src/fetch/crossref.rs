@@ -139,6 +139,14 @@ fn institution_name(message: &Value) -> Result<Value, FetchError> {
 /// `crossref_to_bibtex`: the bibtex of a crossref record, as papers writes a library (the
 /// fields in alphabetical order, the empty ones dropped).
 pub fn crossref_to_bibtex(message: &Value) -> Result<String, FetchError> {
+    Ok(Bib {
+        blocks: vec![Block::Entry(crossref_to_entry(message)?)],
+    }
+    .format())
+}
+
+/// The entry of `crossref_to_bibtex`: the key is the DOI (`unknown` without one).
+pub fn crossref_to_entry(message: &Value) -> Result<Entry, FetchError> {
     let entry_type = message
         .get("type")
         .cloned()
@@ -242,10 +250,7 @@ pub fn crossref_to_bibtex(message: &Value) -> Result<String, FetchError> {
             entry.fields.push(Field::new(name, py_str(&value)));
         }
     }
-    Ok(Bib {
-        blocks: vec![Block::Entry(entry)],
-    }
-    .format())
+    Ok(entry)
 }
 
 /// `_crossref_score`: how alike a result of the search is to the text (high is alike), and

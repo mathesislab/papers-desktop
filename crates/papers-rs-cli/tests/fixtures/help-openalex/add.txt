@@ -1,0 +1,223 @@
+usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]
+                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                  [--dry-run] [--name-template NAME_TEMPLATE]
+                  [--name-author-num NAME_AUTHOR_NUM]
+                  [--name-author-sep NAME_AUTHOR_SEP]
+                  [--name-title-word-num NAME_TITLE_WORD_NUM]
+                  [--name-title-word-size NAME_TITLE_WORD_SIZE]
+                  [--name-title-length NAME_TITLE_LENGTH]
+                  [--name-title-sep NAME_TITLE_SEP]
+                  [--name-unknown-template NAME_UNKNOWN_TEMPLATE]
+                  [--name-unknown-strict | --no-name-unknown-strict]
+                  [--key-template KEY_TEMPLATE]
+                  [--key-author-num KEY_AUTHOR_NUM]
+                  [--key-author-sep KEY_AUTHOR_SEP]
+                  [--key-title-word-num KEY_TITLE_WORD_NUM]
+                  [--key-title-word-size KEY_TITLE_WORD_SIZE]
+                  [--key-title-length KEY_TITLE_LENGTH]
+                  [--key-title-sep KEY_TITLE_SEP]
+                  [--key-unknown-template KEY_UNKNOWN_TEMPLATE]
+                  [--key-unknown-strict | --no-key-unknown-strict]
+                  [--format {bibtex,ris,csl-json,bibjson}]
+                  [--on-duplicate {ask,keep,update,skip,error}]
+                  [--no-check-duplicate] [--no-pool] [--pool PATH] [-u] [-R]
+                  [--ignore-errors] [--doi DOI] [--key KEY] [--type TYPE]
+                  [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]
+                  [--journal JOURNAL] [--year YEAR]
+                  [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]
+                  [--no-query-fulltext] [--scholar] [--openalex]
+                  [--attach FILE [FILE ...]] [--move] [-r] [-c] [--link] [-e]
+                  [-o]
+                  [file ...]
+
+add PDF(s), bibtex(s), RIS (.ris) or CSL-JSON (.json) file(s) to library. In a
+shallow library, the files go to the files directory of the pool (files mode
+move or copy; with link, they stay where they are), and the entries to the
+pool too. Adding a bibtex file (`papers add other.bib`) copies its entries
+once, with no memory of where they came from; `papers pull` instead keeps the
+entries linked to the pool, and later pulls bring its corrections.
+
+positional arguments:
+  file
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         say what papers does, step by step
+  --debug               debugging messages, and the traceback of errors
+  --color {auto,always,never}
+                        colours and hyperlinks in the output: auto (default)
+                        when the output is a terminal and the NO_COLOR
+                        environment variable is not set
+  --porcelain           output for programs (as git's): the standard output
+                        has only the entries that the command added, modified,
+                        renamed or removed, or found already in the library,
+                        one per line: "added KEY", "modified KEY", "renamed
+                        OLD NEW", "removed KEY", "existing KEY"; every other
+                        message goes to the standard error
+  --format {bibtex,ris,csl-json,bibjson}
+                        the format of the added files that are not PDFs
+                        (default: from the extension: .ris is RIS, .json is
+                        CSL-JSON, .bib.json is BibJSON, other files are
+                        bibtex). RIS needs the rispy package.
+
+config:
+  --filesdir FILESDIR   files directory (default: None)
+  --bibtex BIBTEX       bibtex database (default: None)
+  --dry-run             no PDF renaming/copying, no bibtex writing on disk
+                        (for testing)
+
+filename format:
+  --name-template NAME_TEMPLATE
+                        python template for renaming files (default:
+                        {authorX}_{year}_{title})
+  --name-author-num NAME_AUTHOR_NUM
+                        number of authors in the filename (not for {authorX})
+                        (default: 2)
+  --name-author-sep NAME_AUTHOR_SEP
+                        separator of the authors in the filename (default: _)
+  --name-title-word-num NAME_TITLE_WORD_NUM
+                        maximum number of title words in the filename
+                        (default: 100)
+  --name-title-word-size NAME_TITLE_WORD_SIZE
+                        minimum length of a title word: shorter words are left
+                        out of the filename (default: 1)
+  --name-title-length NAME_TITLE_LENGTH
+                        maximum length of the title in the filename (the last
+                        words are dropped until it fits; a longer first word
+                        is cut) (default: 100)
+  --name-title-sep NAME_TITLE_SEP
+                        separator of the title words in the filename (default:
+                        -)
+  --name-unknown-template NAME_UNKNOWN_TEMPLATE
+                        template of the filename of an entry without author,
+                        year or title (default: unknown_{doi_or_id})
+  --name-unknown-strict, --no-name-unknown-strict
+                        the unknown template applies when the author, the year
+                        or the title is missing; with this option, only when
+                        all three are missing (default: False)
+
+bibtex key format:
+  --key-template KEY_TEMPLATE
+                        python template for generating keys (default:
+                        {author}{year}). The template applies to entries
+                        generated from a PDF or a DOI; entries added from a
+                        bibtex file keep their original key unless
+                        -u/--update-key is passed.
+  --key-author-num KEY_AUTHOR_NUM
+                        number of authors in the key (not for {authorX})
+                        (default: 2)
+  --key-author-sep KEY_AUTHOR_SEP
+                        separator of the authors in the key (default: _)
+  --key-title-word-num KEY_TITLE_WORD_NUM
+                        maximum number of title words in the key (default:
+                        100)
+  --key-title-word-size KEY_TITLE_WORD_SIZE
+                        minimum length of a title word: shorter words are left
+                        out of the key (default: 1)
+  --key-title-length KEY_TITLE_LENGTH
+                        maximum length of the title in the key (the last words
+                        are dropped until it fits; a longer first word is cut)
+                        (default: 100)
+  --key-title-sep KEY_TITLE_SEP
+                        separator of the title words in the key (default: -)
+  --key-unknown-template KEY_UNKNOWN_TEMPLATE
+                        template of the key of an entry without author, year
+                        or title (default: {doi_})
+  --key-unknown-strict, --no-key-unknown-strict
+                        the unknown template applies when the author, the year
+                        or the title is missing; with this option, only when
+                        all three are missing (default: False)
+
+duplicate check:
+  An added entry is the same paper as a library entry when they have the
+  same DOI, arXiv id, ISBN (two books), or else the same authors and title.
+  The library entry keeps its key; fields only in the added entry are added
+  and the file links are merged. An entry that brings nothing new is not
+  asked about.
+
+  --on-duplicate {ask,keep,update,skip,error}
+                        what to do when the added entry is in the library,
+                        with conflicting values or fields to add: ask
+                        (dialogue; the default in a terminal), keep (merge,
+                        conflicts keep the library value), update (merge,
+                        conflicts take the added value), skip (leave the
+                        library entry untouched, do not add), error (stop
+                        before saving; the default without a terminal)
+  --no-check-duplicate  disable duplicate check (faster, create duplicates)
+  --no-pool             do not look in the pool first (by default, a PDF, DOI
+                        or bibtex entry that is the same paper as a pool entry
+                        is taken from the pool, with its files, without
+                        fetching)
+  --pool PATH           look in the library PATH first, instead of the pool
+                        (PATH must be a library without pool): a paper that
+                        PATH has is taken from it, with its files (copied as
+                        the files mode says; in a shallow library, into the
+                        files directory of its pool), and later `papers pull
+                        --pool PATH` brings its corrections. Nothing is added
+                        to PATH. Not the same as `papers -C PATH add`, which
+                        adds to the library PATH.
+  -u, --update-key      regenerate the key of the entries new to the library
+                        from the key template (see "bibtex key format"
+                        options). A duplicate always keeps the key of the
+                        library.
+
+directory scan:
+  -R, --recursive       accept directory as argument, for recursive scan of
+                        .pdf and .bib files; files named <name>--<label>.<ext>
+                        next to <name>.pdf are added as attachments of its
+                        entry
+  --ignore-errors       ignore errors when adding multiple files
+
+metadata:
+  The fields given here replace those found in the PDF, fetched from the
+  DOI, or read from the added bibtex (one entry only). They do not change an
+  entry already in the library (same DOI): use `papers edit`.
+
+  --doi DOI             provide DOI -- skip parsing PDF
+  --key KEY             the key of the entry (instead of a key made from the
+                        key template); alone, the entry of that key is taken
+                        from the pool
+  --type TYPE           entry type (article, book...)
+  --title TITLE         the title
+  --author AUTHOR       the authors, e.g. "Smith, John and Doe, Jane"
+  -a NAME [NAME ...]    same as --author (the values after the name are files
+                        to add, as the FILE arguments). In papers v2, -a
+                        FILE... attached files: when every value of -a is an
+                        existing file (or a URL), they are attached as with
+                        --attach, with a warning (until v4)
+  --journal JOURNAL     the journal
+  --year YEAR           the year
+  --metadata FIELD=VALUE [FIELD=VALUE ...]
+                        any fields
+  --no-query-doi        do not attempt to parse and query doi
+  --no-query-fulltext   do not attempt to query fulltext in case doi query
+                        fails
+  --scholar             use google scholar instead of crossref
+  --openalex            (papers-rs) use OpenAlex instead of crossref for the
+                        full-text search (environment: PAPERS_MAILTO,
+                        OPENALEX_API_KEY)
+
+files:
+  What happens to the added PDF, the files of an added bibtex, and the
+  attached files, is the `files` setting of the library (found: move): move:
+  place them in the files directory, under a name made from the name
+  template, and remove the original; copy: place them there, and keep the
+  original (a hard link when possible, otherwise a copy); link: leave them
+  where they are, the entry links to them there. A file that belongs to
+  another library (inside its files directory) is never moved: it is copied
+  instead. In a library that is shallow, the file links are those of the
+  pool entry: move and copy place the files in the files directory of the
+  pool, link leaves them where they are and the pool entry links to them
+  there too.
+
+  --attach FILE [FILE ...]
+                        attach these files to the entry (e.g. supplementary
+                        material)
+  --move                files mode move, whatever the setting
+  -r, --rename          same as --move
+  -c, --copy            files mode copy, whatever the setting
+  --link                files mode link, whatever the setting
+
+actions:
+  -e, --edit            edit entry
+  -o, --open            open files

@@ -1,0 +1,28 @@
+usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]
+                    [--porcelain] [--scholar] [--openalex]
+                    doi_or_text [doi_or_text ...]
+
+fetch bibtex from DOI or full-text
+
+positional arguments:
+  doi_or_text           DOI or full text.
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         say what papers does, step by step
+  --debug               debugging messages, and the traceback of errors
+  --color {auto,always,never}
+                        colours and hyperlinks in the output: auto (default)
+                        when the output is a terminal and the NO_COLOR
+                        environment variable is not set
+  --porcelain           output for programs (as git's): the standard output
+                        has only the entries that the command added, modified,
+                        renamed or removed, or found already in the library,
+                        one per line: "added KEY", "modified KEY", "renamed
+                        OLD NEW", "removed KEY", "existing KEY"; every other
+                        message goes to the standard error
+  --scholar             use google scholar instead of default crossref for
+                        fulltext search
+  --openalex            (papers-rs) use OpenAlex instead of default crossref
+                        for fulltext search (environment: PAPERS_MAILTO,
+                        OPENALEX_API_KEY)

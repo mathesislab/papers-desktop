@@ -1,5 +1,16 @@
 //! Small helpers of papers' command line.
 
+/// How the full-text search of `--openalex` (papers-rs, not in papers) identifies itself to
+/// OpenAlex: the e-mail address of `PAPERS_MAILTO` (the polite pool) and the key of
+/// `OPENALEX_API_KEY`, when they are set.
+pub fn openalex_access() -> papers_rs::fetch::openalex::OpenAlex {
+    let var = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());
+    papers_rs::fetch::openalex::OpenAlex {
+        mailto: var("PAPERS_MAILTO"),
+        api_key: var("OPENALEX_API_KEY"),
+    }
+}
+
 /// The local path of a `file://` URI, or the argument unchanged otherwise
 /// (desktop entries launch viewers with `%U`, i.e. with file:// URIs).
 pub fn file_uri_to_path(arg: &str) -> String {

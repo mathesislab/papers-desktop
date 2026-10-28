@@ -2,7 +2,8 @@
 //! bibliographic search), doi.org content negotiation, arXiv, and the journal website, with
 //! the results cached as papers caches them (`cache`).
 //!
-//! Not ported: Google Scholar (`scholarly`).
+//! Not ported: Google Scholar (`scholarly`). An extension of papers-rs instead: the search of
+//! OpenAlex (`openalex`).
 //!
 //! Where papers raises an exception, a [`FetchError`] has its message and what papers
 //! does with it: `NotFound` and `Request` are its `DOINotFoundError` and `DOIRequestError`,
@@ -14,6 +15,7 @@ pub mod download;
 pub mod fuzz;
 pub mod html;
 pub mod http;
+pub mod openalex;
 
 use std::fmt;
 
@@ -95,6 +97,8 @@ fn csl_type(t: &str) -> &str {
 pub struct Fetcher {
     transport: Box<dyn Transport>,
     cache: Cache,
+    /// when the last request to OpenAlex was made (`openalex`)
+    openalex_last: std::sync::Mutex<Option<std::time::Instant>>,
 }
 
 impl Fetcher {
@@ -108,6 +112,7 @@ impl Fetcher {
         Fetcher {
             transport,
             cache: Cache::new(cache_dir),
+            openalex_last: std::sync::Mutex::new(None),
         }
     }
 

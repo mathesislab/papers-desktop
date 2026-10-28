@@ -650,6 +650,18 @@ pub fn title_in_text(title: &str, txt: &str) -> bool {
     normalize_for_match(txt).contains(&title)
 }
 
+/// The least letters and digits of a title that `title_in_text_strict` takes as telling.
+pub const STRICT_TITLE_LENGTH: usize = 20;
+
+/// The title appears in the text, as `title_in_text` has it, but a title of less than
+/// [`STRICT_TITLE_LENGTH`] letters and digits is too short to tell (papers: less than ten, and it
+/// lets those pass). For a search of OpenAlex (papers-rs, not in papers), which has hits whose
+/// title is garbled, or is the name of a journal or a word that any text has.
+pub fn title_in_text_strict(title: &str, txt: &str) -> bool {
+    let title = normalize_for_match(title);
+    title.chars().count() >= STRICT_TITLE_LENGTH && normalize_for_match(txt).contains(&title)
+}
+
 /// `query_text`: the words of the text for a full-text query, without the paragraphs that
 /// start with "reference". The error is the message of papers' `ValueError`.
 pub fn query_text(txt: &str, max_query_words: i64) -> Result<String, String> {

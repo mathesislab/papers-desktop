@@ -14,6 +14,7 @@ use crate::error::{Error, Result};
 use crate::extract::doi::{parse_dois, title_in_text};
 use crate::extract::{Options, PdfFile, extract_pdf_metadata};
 use crate::fetch::download::download_url;
+use crate::fetch::openalex::OpenAlex;
 use crate::library::{InsertOptions, Library, Policy};
 use crate::log;
 use crate::merge::Resolve;
@@ -34,6 +35,8 @@ pub(super) struct Job<'a> {
     pub search_doi: bool,
     pub search_fulltext: bool,
     pub scholar: bool,
+    /// papers-rs: the search of OpenAlex instead of crossref's (`--openalex`).
+    pub openalex: Option<&'a OpenAlex>,
     /// `--doi`: the metadata of the DOI, not of the PDF.
     pub doi: Option<&'a str>,
     pub check_duplicate: bool,
@@ -165,6 +168,7 @@ pub(super) fn add_pdf(
                 search_doi: job.search_doi,
                 search_fulltext: job.search_fulltext,
                 scholar: job.scholar,
+                openalex: job.openalex.cloned(),
                 ..Options::default()
             },
         ),

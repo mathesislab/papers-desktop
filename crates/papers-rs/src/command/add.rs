@@ -16,6 +16,7 @@ use crate::config::paths::{abspath, dirname, isdir, realpath};
 use crate::entry;
 use crate::error::{Error, Result};
 use crate::fetch::download::download_url;
+use crate::fetch::openalex::OpenAlex;
 use crate::formats::{Format, file_format, import::loads};
 use crate::library::{InsertOptions, Inserted, Policy, What};
 use crate::log;
@@ -60,6 +61,9 @@ pub struct AddRequest {
     pub no_query_fulltext: bool,
     /// `--scholar`: Google Scholar (not ported).
     pub scholar: bool,
+    /// `--openalex` (papers-rs, not in papers): the full-text search on OpenAlex, with how it is
+    /// reached (the e-mail address, a key).
+    pub openalex: Option<OpenAlex>,
     pub no_pool: bool,
     pub pool: Option<String>,
     /// Where the queries (DOIs, PDFs) go: the network.
@@ -89,6 +93,7 @@ impl Default for AddRequest {
             no_query_doi: false,
             no_query_fulltext: false,
             scholar: false,
+            openalex: None,
             no_pool: false,
             pool: None,
             queries: Queries::default(),
@@ -417,6 +422,7 @@ pub fn add(
         search_doi: !request.no_query_doi,
         search_fulltext: !request.no_query_fulltext,
         scholar: request.scholar,
+        openalex: request.openalex.as_ref(),
         doi: request.doi.as_deref().filter(|d| !d.is_empty()),
         check_duplicate: request.check_duplicate,
         options: &options,
@@ -591,6 +597,7 @@ pub fn add(
             let scan = Job {
                 doi: None,
                 scholar: false,
+                openalex: None,
                 ..job
             };
             add_pdf::scan_dir(session, file, &scan, &mut watch)

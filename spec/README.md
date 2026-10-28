@@ -306,6 +306,18 @@ running papers by hand to explore (`HOME=$(mktemp -d)`, in a temporary
 working folder), so the global configuration and the history of the user are
 not touched.
 
+## Extensions of papers-rs (not in the standard)
+
+What papers-rs has that papers does not. An extension is an option: where it is not used,
+papers-rs does what papers does (the cases above pass without it), and the cases of this suite
+do not cover it. The usage and the help of the commands that have such an option show it,
+marked "(papers-rs)" (they are Free).
+
+- `--openalex` of `add`, `extract` and `fetch`: a full-text search on OpenAlex
+  (<https://api.openalex.org>, with an open API) in place of crossref's, where papers has
+  `--scholar` (Google Scholar). The e-mail address of `PAPERS_MAILTO` and the key of
+  `OPENALEX_API_KEY` are sent when set. See `crates/papers-rs/src/fetch/openalex.rs`.
+
 ## Coverage of the specification
 
 The rows are those of the compatibility table of `design/README.md` (what two

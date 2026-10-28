@@ -175,6 +175,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.flag("no_query_doi", &["--no-query-doi"]);
             b.flag("no_query_fulltext", &["--no-query-fulltext"]);
             b.flag("scholar", &["--scholar"]);
+            b.flag("openalex", &["--openalex"]);
             b.opt("attachment", &["--attach"], Nargs::Plus);
             b.opt("attachment_deprecated", &["--attachment"], Nargs::Plus);
             files_mode(&mut b, true);
@@ -404,6 +405,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             logging(&mut b);
             b.pos("doi_or_text", "doi_or_text", Nargs::Plus);
             b.flag("scholar", &["--scholar"]);
+            b.flag("openalex", &["--openalex"]);
         }
         "extract" => {
             logging(&mut b);
@@ -413,6 +415,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.int("word_count", &["-n", "--word-count"]);
             b.flag("fulltext", &["--fulltext"]);
             b.flag("scholar", &["--scholar"]);
+            b.flag("openalex", &["--openalex"]);
             b.flag("image", &["--image"]);
         }
         "undo" | "redo" => {

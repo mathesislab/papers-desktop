@@ -183,6 +183,7 @@ modules:
   transport (`http`: reqwest with rustls and ring, as the app does; a `Transport` trait, so
   that the tests replay recorded answers). The requests and their user agent are papers'.
   Not ported: Google Scholar (`--scholar` says so).
+- `fetch::openalex`: **an extension of papers-rs, not in papers** (see "Extensions" below).
 
 The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
 
@@ -201,6 +202,26 @@ The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
   network are marked `requires: network` (`spec/run.py --with network`).
 - `crates/papers-rs-cli/tests/fetch_extract.rs`: the command where it needs no network;
   `cargo test -- --ignored` has one that asks crossref.
+
+### Extensions
+
+papers-rs has options that papers has not. Where one is not used, papers-rs does what papers does
+(the conformance suite passes without it); its help is marked "(papers-rs)", and the help tests
+expect exactly that option and nothing else (`tests/fixtures/help-openalex`).
+
+- `--openalex` of `add`, `extract` and `fetch`: a full-text search on [OpenAlex](https://openalex.org)
+  (open API, no key needed), in place of crossref's, where papers has `--scholar` (Google Scholar by
+  scraping, often blocked: not ported). Same inputs as papers' chain: the query that papers makes of the
+  text of a PDF (`query_text`), the result accepted only if its title is in the text. The hits of OpenAlex's
+  semantic search are scored as papers scores crossref's (`token_set_ratio` of the authors, title and
+  abstract), the best that has its title in the text is taken, and its DOI gives the entry by papers' own
+  path (crossref, doi.org, arXiv); a hit without DOI gives an entry made of the OpenAlex work (the types,
+  the names, the pages, the key `W...`). The answers are cached under `openalex/` in the cache directory.
+  `PAPERS_MAILTO` (an e-mail address, the "polite pool") and `OPENALEX_API_KEY` (a free key: without it
+  OpenAlex allows about 100 searches a day per IP address) are sent when set; the library takes them as
+  a parameter (`fetch::openalex::OpenAlex`, `extract::Options::openalex`, `AddRequest::openalex`). The module
+  documentation has the details, `tests/openalex.rs` (recorded answers, no network) the tests, and
+  `examples/measure_openalex.rs` measures what it adds on a set of PDFs.
 
 ## Adding PDFs and folders, the file commands
 

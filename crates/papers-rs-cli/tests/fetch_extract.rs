@@ -185,6 +185,42 @@ fn doi_is_the_deprecated_extract_doi_only() {
     );
 }
 
+/// `--openalex` is an extension of papers-rs (not in papers): where it is not used, nothing changes.
+#[test]
+fn openalex_is_not_for_a_doi() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = papers(&["fetch", "10.1000/abc", "--openalex"], dir.path());
+    assert_eq!(output.status.code(), Some(2));
+    assert!(
+        text(&output.stderr).ends_with("papers fetch: error: Fetching from DOI does not support the OpenAlex option\n"),
+        "{}",
+        text(&output.stderr)
+    );
+}
+
+#[test]
+fn openalex_changes_nothing_before_the_search() {
+    let dir = tempfile::tempdir().unwrap();
+    for args in [vec!["extract", "missing.pdf"], vec!["extract", "--doi-only", "missing.pdf"]] {
+        let plain = papers(&args, dir.path());
+        let mut with = args.clone();
+        with.push("--openalex");
+        let with = papers(&with, dir.path());
+        assert_eq!(plain.status.code(), with.status.code());
+        assert_eq!(text(&plain.stdout), text(&with.stdout));
+        assert_eq!(text(&plain.stderr), text(&with.stderr), "{args:?}");
+    }
+}
+
+/// Google Scholar is still not ported, with or without the option of papers-rs.
+#[test]
+fn scholar_is_still_not_ported_with_openalex() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = papers(&["fetch", "some", "words", "--scholar", "--openalex"], dir.path());
+    assert_eq!(output.status.code(), Some(1));
+    assert!(text(&output.stderr).contains("not implemented in papers-rs yet"));
+}
+
 /// The network: `cargo test -- --ignored`
 #[test]
 #[ignore]

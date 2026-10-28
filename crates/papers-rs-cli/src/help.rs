@@ -17,8 +17,67 @@ fn entry(path: &str) -> &'static (&'static str, &'static str, &'static str) {
 }
 
 /// `usage: papers init [-h] ...` (ends with a newline).
-pub fn usage(path: &str) -> &'static str {
-    entry(path).1
+pub fn usage(path: &str) -> String {
+    extended_usage(path, entry(path).1)
+}
+
+/// The extension of papers-rs, the option `--openalex` (not in papers), where papers has
+/// `--scholar`: the commands that have it, the end of their usage as papers prints it and as
+/// it is with the option (wrapped as argparse wraps it: made by running papers with the option
+/// added to its parser), and the entry of the option in the help, after that of `--scholar`.
+const OPENALEX: [(&str, &str, &str); 3] = [
+    (
+        "add",
+        "[--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]\n                  [--move] [-r] [-c] [--link] [-e] [-o]\n",
+        "[--no-query-fulltext] [--scholar] [--openalex]\n                  [--attach FILE [FILE ...]] [--move] [-r] [-c] [--link] [-e]\n                  [-o]\n",
+    ),
+    ("fetch", "[--porcelain] [--scholar]\n", "[--porcelain] [--scholar] [--openalex]\n"),
+    ("extract", "[--fulltext] [--scholar] [--image]\n", "[--fulltext] [--scholar] [--openalex] [--image]\n"),
+];
+
+const OPENALEX_ENTRIES: [(&str, &str); 3] = [
+    (
+        "add",
+        "  --openalex            (papers-rs) use OpenAlex instead of crossref for the\n                        full-text search (environment: PAPERS_MAILTO,\n                        OPENALEX_API_KEY)\n",
+    ),
+    (
+        "fetch",
+        "  --openalex            (papers-rs) use OpenAlex instead of default crossref\n                        for fulltext search (environment: PAPERS_MAILTO,\n                        OPENALEX_API_KEY)\n",
+    ),
+    (
+        "extract",
+        "  --openalex            (papers-rs) use OpenAlex instead of default crossref\n                        for fulltext search (environment: PAPERS_MAILTO,\n                        OPENALEX_API_KEY)\n",
+    ),
+];
+
+/// The usage of papers, with `--openalex` where the command has it.
+pub fn extended_usage(path: &str, usage: &str) -> String {
+    match OPENALEX.iter().find(|(name, ..)| *name == path) {
+        Some((_, old, new)) => {
+            assert!(usage.contains(old), "the usage of papers {path} has changed");
+            usage.replace(old, new)
+        }
+        None => usage.to_string(),
+    }
+}
+
+/// The help of papers, with `--openalex` where the command has it.
+pub fn extended_help(path: &str, text: &str) -> String {
+    let Some((_, entry)) = OPENALEX_ENTRIES.iter().find(|(name, _)| *name == path) else {
+        return text.to_string();
+    };
+    let usage_end = text.find("\n\n").map_or(0, |i| i + 1);
+    let (usage, rest) = text.split_at(usage_end);
+    // after the entry of --scholar: its lines, up to the next option or group
+    let start = rest.find("\n  --scholar ").expect("the help of papers has --scholar") + 1;
+    let mut end = start;
+    for (i, line) in rest[start..].split_inclusive('\n').enumerate() {
+        if i > 0 && !line.starts_with(&" ".repeat(24)) {
+            break;
+        }
+        end += line.len();
+    }
+    format!("{}{}{entry}{}", extended_usage(path, usage), &rest[..end], &rest[end..])
 }
 
 /// The values that the help of the options shows.
@@ -138,7 +197,7 @@ fn render_entry(invocation: &str, help: &str) -> String {
 
 /// The help of a command (`--help`) with the values of the configuration.
 pub fn help(path: &str, values: &HelpValues) -> String {
-    let mut text = entry(path).2.to_string();
+    let mut text = extended_help(path, entry(path).2);
     let recorded = HelpValues::recorded();
     if *values == recorded {
         return text;
@@ -159,7 +218,7 @@ mod tests {
     fn block_of(path: &str, invocation: &str) -> bool {
         let recorded = HelpValues::recorded();
         let (_, help) = dynamic_entries(&recorded).into_iter().find(|(i, _)| i == invocation).expect("an entry");
-        entry(path).2.contains(&render_entry(invocation, &help))
+        extended_help(path, entry(path).2).contains(&render_entry(invocation, &help))
     }
 
     #[test]
@@ -197,7 +256,8 @@ mod tests {
         };
         for case in fixture["cases"].as_array().unwrap() {
             let path = case["path"].as_str().unwrap();
-            assert_eq!(help(path, &values), case["text"].as_str().unwrap(), "papers {path} -h");
+            let recorded = case["text"].as_str().unwrap();
+            assert_eq!(help(path, &values), extended_help(path, recorded), "papers {path} -h");
         }
     }
 }
