@@ -11,3 +11,6 @@ vite.config.ts.timestamp-*
 
 # Rust workspace
 /target
+
+# the papers-rs sidecar (scripts/sidecar.sh)
+/src-tauri/binaries/

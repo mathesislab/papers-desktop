@@ -1,3 +1,4 @@
+mod cli_tool;
 mod fetch;
 #[cfg(target_os = "macos")]
 mod focus;
@@ -840,6 +841,9 @@ pub fn run() {
             save_settings,
             set_pinned_tags,
             set_start_at_login,
+            cli_tool::cli_status,
+            cli_tool::install_cli,
+            cli_tool::uninstall_cli,
             open_settings,
             open_library,
             open_paper,

@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && sh scripts/sidecar.sh",
     "frontendDist": "../build"
   },
   "app": {
@@ -34,6 +34,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": ["binaries/papers-rs"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

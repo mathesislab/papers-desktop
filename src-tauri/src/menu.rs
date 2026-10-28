@@ -30,6 +30,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                     &PredefinedMenuItem::about(app, None, None)?,
                     &separator()?,
                     &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
+                    &MenuItem::with_id(app, "install-cli", "Install Command Line Tool…", true, None::<&str>)?,
                     &separator()?,
                     &PredefinedMenuItem::services(app, None)?,
                     &separator()?,
@@ -98,6 +99,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
         "settings" => crate::settings_window(app, None),
+        "install-cli" => crate::cli_tool::install_from_menu(app),
         id => command(app, id),
     });
     Ok(())

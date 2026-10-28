@@ -99,6 +99,20 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   sent. Next to it, an **OpenAlex API key** (free, empty by default, in
   settings.json like the others, a password field): sent to OpenAlex only,
   as `api_key` of the same `OpenAlex` (`Settings::openalex()`).
+- **The command line tool**: the app ships `papers-rs` (crates/papers-rs-cli,
+  release) as a Tauri sidecar (`bundle.externalBin`, in `Contents/MacOS/` next
+  to the executable); `scripts/sidecar.sh`, run by `beforeBuildCommand`,
+  builds it into `src-tauri/binaries/papers-rs-<triple>` (`build.rs` puts a
+  placeholder there for `cargo check` and `cargo test`). Settings (General)
+  and the app menu (macOS: *Install Command Line Tool…*) install it as a link
+  `papers-rs` → the binary in the bundle (`cli_tool.rs`): macOS
+  `/usr/local/bin`, with the administrator prompt (`osascript`; cancelled: the
+  command to run in a terminal is shown); Linux `~/.local/bin`, no prompt (not
+  from an AppImage, which is mounted only while it runs). Settings shows
+  whether it is installed and where it points, with *Uninstall*; a file or
+  link at the path that is not ours (a link to the app's `papers-rs`, whichever
+  copy) is never replaced or removed. papers-rs is the same program as the
+  built-in writer; papers (Python) can be installed alongside.
 - **Any other `.bib`** is written by the app (`crates/core/src/write.rs`):
   only the edited entries are rewritten, the rest of the file stays byte for
   byte; the file is written to a temporary file then renamed, and not at all

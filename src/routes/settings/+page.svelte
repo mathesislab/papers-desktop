@@ -31,6 +31,16 @@
     /** the tags pinned to the keys 1–9, set from the sidebar of the main window: kept as they are */
     pinned_tags: (string | null)[];
   };
+  /** mirrors cli_tool::Status */
+  type Cli = {
+    available: boolean;
+    link: string | null;
+    state: "missing" | "ours" | "foreign";
+    points_to: string | null;
+    current: boolean;
+  };
+  /** mirrors cli_tool::Failure; `command`: what to run in a terminal when the prompt was cancelled */
+  type CliFailure = { kind: "foreign" | "cancelled" | "denied" | "failed"; message: string; command?: string };
   /** mirrors update::Available */
   type Update = { version: string };
   /** mirrors update::Installed */
@@ -144,6 +154,41 @@
     startAtLogin = view.start_at_login;
     home = view.home;
     writers = await listWriters();
+    cli = await invoke<Cli>("cli_status");
+  }
+
+  /** the papers-rs command line tool: its link, and the command to run in a terminal after a cancelled prompt */
+  let cli = $state<Cli | null>(null);
+  let cliBusy = $state(false);
+  let cliCommand = $state<string | null>(null);
+
+  let cliStatus = $derived.by(() => {
+    if (!cli) return "";
+    if (!cli.available) return "Not in this build of the app";
+    const link = cli.link ? tilde(cli.link) : "";
+    if (cli.state === "foreign") return `${link} is another program: left as it is`;
+    if (cli.state === "missing") return "Not installed";
+    return cli.current ? `Installed: ${link}` : `${link} points to another copy: ${tilde(cli.points_to ?? "")}`;
+  });
+
+  async function changeCli(command: "install_cli" | "uninstall_cli") {
+    cliBusy = true;
+    cliCommand = null;
+    try {
+      cli = await invoke<Cli>(command);
+      show(command === "install_cli" ? "Installed" : "Removed", false);
+    } catch (err) {
+      const failure = err as CliFailure;
+      show(failure.message ?? String(err), true);
+      cliCommand = failure.command ?? null;
+    } finally {
+      cliBusy = false;
+    }
+  }
+
+  /** A path with ~ for the home folder. */
+  function tilde(path: string): string {
+    return home && path.startsWith(home + "/") ? "~" + path.slice(home.length) : path;
   }
 
   /** how each .bib file is written: by papers-rs, by a papers command, or by the app */
@@ -439,6 +484,31 @@
           <option value="next">Show the next paper open</option>
         </select>
       </label>
+      <div class="row">
+        <span>
+          <span class="label">Command line tool</span>
+          <span class="hint" class:error={cli?.state === "foreign"}>{cliStatus}</span>
+          <span class="hint"
+            >papers-rs is the same program as the built-in writer; papers (Python) can be installed alongside.</span
+          >
+          {#if cliCommand}
+            <span class="hint">In a terminal, run:</span>
+            <code class="cmd">{cliCommand}</code>
+          {/if}
+        </span>
+        {#if cli?.available && cli.state !== "foreign"}
+          <span class="buttons">
+            {#if cli.state === "ours"}
+              <button disabled={cliBusy} onclick={() => changeCli("uninstall_cli")}>Uninstall</button>
+            {/if}
+            {#if cli.state === "missing" || !cli.current}
+              <button disabled={cliBusy} onclick={() => changeCli("install_cli")}>
+                {cli.state === "missing" ? "Install…" : "Point to This App"}
+              </button>
+            {/if}
+          </span>
+        {/if}
+      </div>
       <label class="row">
         <span>
           <span class="label">Email</span>
@@ -622,6 +692,19 @@
     font: inherit;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 12px;
+  }
+  .buttons {
+    display: flex;
+    flex: none;
+    gap: 6px;
+  }
+  code.cmd {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    word-break: break-all;
+    -webkit-user-select: text;
+    user-select: text;
   }
   .files .none {
     color: var(--muted);
