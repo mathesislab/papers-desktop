@@ -3,6 +3,7 @@ mod fetch;
 #[cfg(target_os = "macos")]
 mod focus;
 mod hotkey;
+mod input;
 mod main_window;
 #[cfg(target_os = "macos")]
 mod menu;
@@ -858,6 +859,12 @@ pub fn run() {
             incoming,
             ids_of,
             fetch::fetch_doi,
+            fetch::read_pdf_doi,
+            fetch::journal_page,
+            fetch::free_pdf,
+            fetch::download_pdf,
+            input::classify_input,
+            input::merge_fetched,
             recent,
             opened,
             export_bib,
@@ -913,6 +920,8 @@ pub fn run() {
             writer::rename_tag,
             writer::replace_entry,
             writer::add_bibtex,
+            writer::attach_pdf,
+            writer::default_files_mode,
             writer::remove_entries,
             writer::undo,
             writer::redo

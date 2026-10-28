@@ -26,6 +26,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use papers_core::{Added, Change, Item, same_tag, under};
 use papers_rs::command::report::Changes;
 use papers_rs::config::MachineConfig;
+use papers_rs::fetch::download::is_download;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
@@ -152,8 +153,19 @@ trait PapersWriter: Send + Sync {
     /// `papers edit KEY --from -`: the BibTeX of an entry replaced
     fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Changes, WriteError>;
 
-    /// `papers add FILE --on-duplicate ...`: the entries of BibTeX added
-    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Changes, WriteError>;
+    /// `papers add FILE --on-duplicate ... [--attach PDF --move|--copy|--link]`: the entries of
+    /// BibTeX added, with a PDF for them when the options have one
+    fn add(&self, folder: &Path, text: &str, options: &AddOptions) -> Result<Changes, WriteError>;
+
+    /// `papers add --key KEY --attach PDF --move|--copy|--link`: a PDF added to the files of an
+    /// entry of the library, placed as the mode says (none: the `files` setting of the library)
+    fn attach(
+        &self,
+        folder: &Path,
+        key: &str,
+        pdf: &Path,
+        files: Option<FilesMode>,
+    ) -> Result<Changes, WriteError>;
 
     /// `papers rm KEY... --keep-files`
     fn remove(&self, folder: &Path, keys: &[String]) -> Result<Changes, WriteError>;
@@ -517,16 +529,67 @@ pub async fn add_bibtex(
     write(app, move |state| add(state, &bib, &text, options)).await
 }
 
+/// Add a PDF to a paper of the library, with the changes of `text` to its entry first, if any
+/// (the entry as edited: its key, tags and files stay).
+#[tauri::command]
+pub async fn attach_pdf(
+    app: AppHandle,
+    id: String,
+    text: Option<String>,
+    pdf: PathBuf,
+    files: Option<FilesMode>,
+) -> Result<(), WriteError> {
+    write(app, move |state| attach(state, &id, text.as_deref(), &pdf, files)).await
+}
+
+/// What a PDF added to a paper of a .bib file is done with by default (see `default_files`).
+#[tauri::command]
+pub async fn default_files_mode(app: AppHandle, bib: PathBuf) -> Result<Option<FilesMode>, WriteError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        default_files(&state, &bib)
+    })
+    .await
+    .map_err(|e| WriteError::failed(e.to_string()))?
+}
+
 /// How entries are added to a papers library; a plain .bib has no merge and
 /// no key template: its entries are added as they are.
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct AddOptions {
     /// an entry that is a paper of the library already, by papers' rule
     pub on_duplicate: OnDuplicate,
     /// the keys of the new entries made by the library's key template
     /// (papers `--update-key`)
     pub update_key: bool,
+    /// a PDF for the entry (one entry only): placed in a papers library as `files` says, linked
+    /// where it is in a plain .bib
+    pub pdf: Option<PathBuf>,
+    /// what to do with the PDF in a papers library; none: the `files` setting of the library
+    pub files: Option<FilesMode>,
+}
+
+/// papers `--move`, `--copy`, `--link`: what is done with a file added to an entry. A file is
+/// placed in the files directory under the name the library's template makes (move and copy:
+/// papers has no placing without naming), or left where it is and linked there.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FilesMode {
+    Move,
+    Copy,
+    Link,
+}
+
+impl FilesMode {
+    /// The option of papers
+    fn flag(self) -> &'static str {
+        match self {
+            FilesMode::Move => "--move",
+            FilesMode::Copy => "--copy",
+            FilesMode::Link => "--link",
+        }
+    }
 }
 
 /// papers `--on-duplicate`: an added entry that is a paper of the library.
@@ -690,13 +753,43 @@ fn replace(state: &AppState, id: &str, text: &str) -> Result<(), WriteError> {
     Ok(())
 }
 
-fn add(state: &AppState, bib: &Path, text: &str, options: AddOptions) -> Result<Added, WriteError> {
+/// The PDF to add, which must be a file the writers can find from any folder: its absolute path,
+/// links resolved (the link to a file left where it is is relative to the library, which papers
+/// works out from real paths).
+fn checked_pdf(pdf: &Path) -> Result<PathBuf, WriteError> {
+    if !pdf.is_absolute() {
+        return Err(WriteError::failed(format!("{}: not an absolute path", pdf.display())));
+    }
+    if !pdf.is_file() {
+        return Err(WriteError::failed(format!("{}: not a file", pdf.display())));
+    }
+    fs::canonicalize(pdf).map_err(|e| WriteError::failed(format!("{}: {e}", pdf.display())))
+}
+
+/// A downloaded PDF is in a temporary folder: a plain .bib, which only links files where they
+/// are, cannot keep it.
+fn check_kept(pdf: &Path) -> Result<(), WriteError> {
+    if is_download(&pdf.to_string_lossy()) {
+        return Err(WriteError::failed(
+            "A plain .bib file has no folder for a downloaded PDF: save the PDF in a folder of its own, and add that",
+        ));
+    }
+    Ok(())
+}
+
+fn add(state: &AppState, bib: &Path, text: &str, mut options: AddOptions) -> Result<Added, WriteError> {
     in_library(state, bib)?;
-    papers_core::entry_keys(text)?;
+    let keys = papers_core::entry_keys(text)?;
+    if let Some(pdf) = &options.pdf {
+        if keys.len() != 1 {
+            return Err(WriteError::failed("A PDF goes with one entry"));
+        }
+        options.pdf = Some(checked_pdf(pdf)?);
+    }
     let targets = state.writers.targets([bib])?;
     match targets.papers(bib) {
         Some(library) => {
-            let report = library.writer.add(&library.folder, text, options)?;
+            let report = library.writer.add(&library.folder, text, &options)?;
             // a paper of the library: as it was, or merged with the entry
             let mut existing = report.existing;
             existing.extend(report.modified);
@@ -706,11 +799,71 @@ fn add(state: &AppState, bib: &Path, text: &str, options: AddOptions) -> Result<
             })
         }
         None => {
+            // a plain .bib: the file linked where it is
+            let linked;
+            let text = match &options.pdf {
+                Some(pdf) => {
+                    check_kept(pdf)?;
+                    linked = papers_core::with_files(text, std::slice::from_ref(pdf))?;
+                    &linked
+                }
+                None => text,
+            };
             let (changes, added) = state.library.read().unwrap().add_entries(bib, text)?;
             state.writers.done(changes);
             Ok(added)
         }
     }
+}
+
+/// Add a PDF to a paper of the library, which first takes the changes in `text` (the entry as
+/// edited, with the key, tags and files it has); a plain .bib links the file where it is.
+fn attach(
+    state: &AppState,
+    id: &str,
+    text: Option<&str>,
+    pdf: &Path,
+    files: Option<FilesMode>,
+) -> Result<(), WriteError> {
+    let item = state.item(id).map_err(WriteError::failed)?;
+    let pdf = &checked_pdf(pdf)?;
+    let targets = state.writers.targets([item.bib.as_path()])?;
+    let raw = state.library.read().unwrap().raw(id).map(str::to_string);
+    let changed = text.filter(|t| raw.as_deref().is_none_or(|r| t.trim() != r.trim()));
+    match targets.papers(&item.bib) {
+        Some(library) => {
+            // (the edit first: it keeps the files the entry has, and the PDF is not one yet)
+            if let Some(text) = changed {
+                state.library.read().unwrap().check_edit(id, text)?;
+                library.writer.edit(&library.folder, &item.key, text)?;
+            }
+            library
+                .writer
+                .attach(&library.folder, &item.key, pdf, files)?;
+        }
+        None => {
+            check_kept(pdf)?;
+            let changes = state
+                .library
+                .read()
+                .unwrap()
+                .attach_files(id, changed, std::slice::from_ref(&pdf.to_path_buf()))?;
+            state.writers.done(changes);
+        }
+    }
+    Ok(())
+}
+
+/// What is done with a PDF added to a paper of this .bib by default: the `files` setting of its
+/// papers library (move when it has none), link in a library without files folder; none for a
+/// plain .bib, which links the file where it is.
+fn default_files(state: &AppState, bib: &Path) -> Result<Option<FilesMode>, WriteError> {
+    in_library(state, bib)?;
+    let Some(folder) = papers_folder(bib) else {
+        return Ok(None);
+    };
+    let machine = state.writers.machine.lock().unwrap().clone();
+    Builtin::new(machine).files_mode(&folder).map(Some)
 }
 
 fn remove(state: &AppState, ids: &[String]) -> Result<(), WriteError> {
@@ -958,6 +1111,81 @@ mod tests {
         assert_eq!(fs::read_to_string(&bib).unwrap(), ENTRIES);
     }
 
+    fn fixture_pdf(to: &Path, fixture: &str) -> PathBuf {
+        let fixtures =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/papers-rs/tests/fixtures/pdf");
+        fs::create_dir_all(to.parent().unwrap()).unwrap();
+        fs::copy(fixtures.join(fixture), to).unwrap();
+        to.to_path_buf()
+    }
+
+    #[test]
+    fn native_links_a_pdf_where_it_is() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = dir.path().join("refs.bib");
+        fs::write(&bib, ENTRIES).unwrap();
+        let state = state(dir.path(), std::slice::from_ref(&bib), WriterChoice::BuiltIn, "");
+        let id = |key: &str| state.library.read().unwrap().find(&bib, key).unwrap().id.clone();
+        let pdf = fixture_pdf(&dir.path().join("dl/x.pdf"), "no-doi.pdf");
+        // (the writer links the file by its real path)
+        let pdf = fs::canonicalize(pdf).unwrap();
+        // a new entry with its PDF: a link to it, whatever the files mode says, and the file stays
+        let options = AddOptions {
+            pdf: Some(pdf.clone()),
+            files: Some(FilesMode::Move),
+            ..AddOptions::default()
+        };
+        let added = add(&state, &bib, "@article{c,\n title = {C}\n}", options).unwrap();
+        assert_eq!(added.added, ["c"]);
+        reload(&state);
+        let link = format!("file = {{:{}:PDF}}", pdf.display());
+        assert!(fs::read_to_string(&bib).unwrap().contains(&link));
+        assert!(pdf.is_file());
+        assert_eq!(state.library.read().unwrap().get(&id("c")).unwrap().files, std::slice::from_ref(&pdf));
+
+        // a PDF for a paper that is there, with the changes of its entry
+        let other = fs::canonicalize(fixture_pdf(&dir.path().join("dl/y.pdf"), "two-pages.pdf")).unwrap();
+        let raw = state.library.read().unwrap().raw(&id("a")).unwrap().to_string();
+        attach(&state, &id("a"), Some(&raw.replace("{A}", "{A2}")), &other, None).unwrap();
+        reload(&state);
+        let text = fs::read_to_string(&bib).unwrap();
+        assert!(text.contains("title = {A2}") && text.contains(&format!("{{:{}:PDF}}", other.display())), "{text}");
+        // the undo of the app takes it back as one step
+        step(&state, &bib, true).unwrap();
+        assert!(!fs::read_to_string(&bib).unwrap().contains("A2"));
+
+        // a downloaded PDF is in a folder that does not stay: a plain .bib cannot keep it
+        let held = Path::new(&papers_rs::fetch::download::temp_dir()).join(format!("papers_dl_test{}", std::process::id()));
+        let download = fixture_pdf(&held.join("z.pdf"), "no-doi.pdf");
+        let error = attach(&state, &id("b"), None, &download, None).unwrap_err();
+        assert!(error.message.contains("downloaded PDF"), "{}", error.message);
+        fs::remove_dir_all(held).unwrap();
+    }
+
+    #[test]
+    fn the_default_files_mode_is_the_setting_of_the_library() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = init_library(dir.path());
+        let state = state(dir.path(), std::slice::from_ref(&bib), WriterChoice::BuiltIn, "");
+        // move, unless the library says otherwise (`ask` needs a terminal)
+        assert_eq!(default_files(&state, &bib).unwrap(), Some(FilesMode::Move));
+        let config = dir.path().join(".papers/config.json");
+        let set = |files: &str| {
+            let mut js: Value = serde_json::from_str(&fs::read_to_string(&config).unwrap()).unwrap();
+            js["files"] = json!(files);
+            fs::write(&config, js.to_string()).unwrap();
+        };
+        for (setting, mode) in [("copy", FilesMode::Copy), ("link", FilesMode::Link), ("ask", FilesMode::Move)] {
+            set(setting);
+            assert_eq!(default_files(&state, &bib).unwrap(), Some(mode), "{setting}");
+        }
+        // a plain .bib links the file where it is
+        let plain = dir.path().join("plain.bib");
+        fs::write(&plain, ENTRIES).unwrap();
+        let state = self::state(dir.path(), &[bib.clone(), plain.clone()], WriterChoice::BuiltIn, "");
+        assert_eq!(default_files(&state, &plain).unwrap(), None);
+    }
+
     #[test]
     fn native_renames_a_subtree() {
         let dir = tempfile::tempdir().unwrap();
@@ -1057,7 +1285,7 @@ mod tests {
         let c2 = "@article{c,\n doi = {10.1/c},\n journal = {J},\n title = {C2}\n}";
         let merged = |on_duplicate| AddOptions {
             on_duplicate,
-            update_key: false,
+            ..AddOptions::default()
         };
         // (papers 3.0.0b5 reports no line for a skipped entry)
         add(state, bib, c2, merged(OnDuplicate::Skip)).unwrap();
@@ -1089,6 +1317,84 @@ mod tests {
             ["smith2020"]
         );
         reload(state);
+
+        // a PDF for a new entry, copied, moved or linked, named by the library's template
+        let dl = bib.parent().unwrap().join("dl");
+        fs::create_dir(&dl).unwrap();
+        let pdf = |name: &str, fixture: &str| {
+            let path = dl.join(name);
+            let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../crates/papers-rs/tests/fixtures/pdf");
+            fs::copy(fixtures.join(fixture), &path).unwrap();
+            path
+        };
+        let entry = |key: &str, author: &str, year: u32| {
+            format!("@article{{{key},\n author = {{{author}}},\n title = {{T}},\n year = {{{year}}}\n}}")
+        };
+        let with = |path: &Path, files| AddOptions {
+            pdf: Some(path.to_path_buf()),
+            files: Some(files),
+            update_key: true,
+            ..AddOptions::default()
+        };
+        let placed = |name: &str| bib.parent().unwrap().join("files").join(name);
+        let copied = pdf("copied.pdf", "no-doi.pdf");
+        let new = entry("K1", "Brown, Ann", 2021);
+        let added = add(state, bib, &new, with(&copied, FilesMode::Copy)).unwrap();
+        assert_eq!(added.added, ["brown2021"]);
+        reload(state);
+        assert!(copied.is_file() && placed("brown_2021_t.pdf").is_file());
+        assert!(text(bib).contains("file = {:files/brown_2021_t.pdf:pdf}"), "{}", text(bib));
+        let moved = pdf("moved.pdf", "two-pages.pdf");
+        add(state, bib, &entry("K2", "Green, Bob", 2022), with(&moved, FilesMode::Move)).unwrap();
+        reload(state);
+        assert!(!moved.exists() && placed("green_2022_t.pdf").is_file());
+        let linked = pdf("linked.pdf", "text-doi.pdf");
+        add(state, bib, &entry("K3", "White, Cy", 2023), with(&linked, FilesMode::Link)).unwrap();
+        reload(state);
+        assert!(linked.is_file() && !placed("white_2023_t.pdf").exists());
+        assert!(text(bib).contains("file = {:dl/linked.pdf:pdf}"), "{}", text(bib));
+        // the same paper as one the library has, with fields to take and a PDF: merged and attached
+        let more = pdf("more.pdf", "info-doi.pdf");
+        let same = "@article{c,\n doi = {10.1/c},\n volume = {9},\n title = {C2}\n}";
+        let options = AddOptions {
+            on_duplicate: OnDuplicate::Keep,
+            ..with(&more, FilesMode::Copy)
+        };
+        add(state, bib, same, options).unwrap();
+        reload(state);
+        assert!(text(bib).contains("volume = {9}"), "{}", text(bib));
+        let id = |key: &str| state.library.read().unwrap().find(bib, key).unwrap().id.clone();
+        let files = |key: &str| state.library.read().unwrap().get(&id(key)).unwrap().files.clone();
+        assert_eq!(files("c").len(), 1, "{}", text(bib));
+        // more than one entry cannot have the PDF, and the PDF must be there
+        let error = add(state, bib, ENTRIES, with(&more, FilesMode::Copy)).unwrap_err();
+        assert!(error.message.contains("one entry"), "{}", error.message);
+        let gone = dl.join("gone.pdf");
+        let error = add(state, bib, &entry("K4", "Gray, Di", 2024), with(&gone, FilesMode::Copy)).unwrap_err();
+        assert!(error.message.contains("not a file"), "{}", error.message);
+
+        // a PDF added to a paper that is there: placed as asked, and the entry is the one edited
+        let doc = pdf("attached.pdf", "real-text-doi.pdf");
+        attach(state, &id("a"), None, &doc, Some(FilesMode::Copy)).unwrap();
+        reload(state);
+        let a = files("a");
+        assert!(a.len() == 1 && a[0].is_file() && doc.is_file(), "{a:?}");
+        let raw = state.library.read().unwrap().raw(&id("b")).unwrap().to_string();
+        let doc = pdf("second.pdf", "real-xmp-doi.pdf");
+        let edited = raw.replace("{B}", "{B2}");
+        attach(state, &id("b"), Some(&edited), &doc, Some(FilesMode::Move)).unwrap();
+        reload(state);
+        assert!(text(bib).contains("title = {B2}") && !doc.exists(), "{}", text(bib));
+        assert_eq!(files("b").len(), 1);
+        // the key and tags stay: a text that changes them is refused, and the PDF is not added
+        let third = pdf("third.pdf", "no-doi.pdf");
+        let raw = state.library.read().unwrap().raw(&id("b")).unwrap().to_string();
+        let error = attach(state, &id("b"), Some(&raw.replace("{b,", "{x,")), &third, None).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Kept);
+        assert!(third.is_file());
+        let error = attach(state, &id("b"), None, Path::new("relative.pdf"), None).unwrap_err();
+        assert!(error.message.contains("absolute"), "{}", error.message);
 
         tag(state, &strings(&["a", "b"]), &strings(&["new"]), &[]).unwrap();
         reload(state);
@@ -1123,7 +1429,7 @@ mod tests {
         remove(state, &strings(&["b"])).unwrap();
         reload(state);
         let removed = text(bib);
-        assert!(!removed.contains("@article{b"), "{removed}");
+        assert!(!removed.contains("@article{b,"), "{removed}");
         step(state, bib, true).unwrap();
         assert_eq!(text(bib), before);
         reload(state);

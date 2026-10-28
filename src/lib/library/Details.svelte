@@ -18,6 +18,7 @@
     onedit,
     onsave,
     oncancel,
+    onaddpdf,
   }: {
     item: Item;
     /** the papers the tags change: the selection when it has several, else the paper */
@@ -33,9 +34,12 @@
     onedit: () => void;
     onsave: () => void;
     oncancel: () => void;
+    /** add a PDF to the paper: the sheet, with the chooser of the PDF */
+    onaddpdf: () => void;
   } = $props();
 
   let copied = $state(false);
+  let hasPdf = $derived(item.files.some((f) => f.toLowerCase().endsWith(".pdf")));
 
   $effect(() => {
     item.id;
@@ -58,6 +62,9 @@
       {#if item.files.length}
         <button onclick={() => invoke("reveal", { id: item.id })}>{mac ? "Reveal in Finder" : "Show in folder"}</button>
       {/if}
+      {#if !hasPdf}
+        <button onclick={onaddpdf} title="Add a PDF to this paper, or drop one on the page below">Add PDF…</button>
+      {/if}
       <button onclick={copyKey}>{copied ? "Copied" : "Copy [@key]"}</button>
       <button onclick={onedit} disabled={editor.id === item.id}>Edit</button>
     </div>
@@ -69,7 +76,7 @@
     <Tags {rows} {tags} {filtered} ontoggle={ontag} {onset} />
   {/if}
   {#if rows.length <= 1}
-    <Preview {item} marked={item.authors.map(() => false)} {onopen} keywords={false} {editor} {onsave} {oncancel} />
+    <Preview {item} marked={item.authors.map(() => false)} {onopen} keywords={false} {editor} {onsave} {oncancel} {onaddpdf} />
   {/if}
 </div>
 

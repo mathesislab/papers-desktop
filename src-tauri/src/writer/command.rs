@@ -6,7 +6,7 @@ use std::io::{ErrorKind as IoErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use super::{AddOptions, Changes, Kind, PapersWriter, Pasted, WriteError};
+use super::{AddOptions, Changes, FilesMode, Kind, PapersWriter, Pasted, WriteError};
 
 /// The first version of papers with the options used here (`edit --from`,
 /// `--porcelain`), as `release` orders it.
@@ -148,7 +148,7 @@ impl PapersWriter for PapersCommand {
     }
 
     /// papers adds a .bib file: the text in a temporary one
-    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Changes, WriteError> {
+    fn add(&self, folder: &Path, text: &str, options: &AddOptions) -> Result<Changes, WriteError> {
         let pasted = Pasted::new(text)?;
         let mut args = vec![
             pasted.path().to_string_lossy().into(),
@@ -158,6 +158,27 @@ impl PapersWriter for PapersCommand {
         if options.update_key {
             args.push("--update-key".into());
         }
+        if let Some(pdf) = &options.pdf {
+            args.extend(["--attach".to_string(), pdf.to_string_lossy().into()]);
+            args.extend(options.files.map(|m| m.flag().to_string()));
+        }
+        self.run(folder, "add", &args, None)
+    }
+
+    fn attach(
+        &self,
+        folder: &Path,
+        key: &str,
+        pdf: &Path,
+        files: Option<FilesMode>,
+    ) -> Result<Changes, WriteError> {
+        let mut args = vec![
+            "--key".to_string(),
+            key.to_string(),
+            "--attach".into(),
+            pdf.to_string_lossy().into(),
+        ];
+        args.extend(files.map(|m| m.flag().to_string()));
         self.run(folder, "add", &args, None)
     }
 

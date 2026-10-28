@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
+  import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { ask, save } from "@tauri-apps/plugin-dialog";
   import { onMount, tick, untrack } from "svelte";
@@ -12,7 +13,7 @@
   import Add from "$lib/library/Add.svelte";
   import PapersMissing from "$lib/library/PapersMissing.svelte";
   import { Editor } from "$lib/library/editor.svelte";
-  import { addBibtex, errorText, renameTag, replaceEntry, setTags, writeError, writers } from "$lib/library/writes";
+  import { addBibtex, attachPdf, errorText, renameTag, replaceEntry, setTags, writeError, writers } from "$lib/library/writes";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -20,7 +21,7 @@
   import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
-  import type { AddOptions, Added, Item, Row, Status, TagCount, WriteError } from "$lib/types";
+  import type { AddOptions, Added, FilesMode, Item, Row, Status, TagCount, WriteError } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
@@ -82,8 +83,11 @@
   let exporting = $state(false);
   /** papers to install, to write a papers library: the version found, too old */
   let missing = $state<{ version: string | null } | null>(null);
-  /** the sheet to add papers, open */
-  let adding = $state(false);
+  /** the sheet to add a paper, open: for a PDF to add to the paper `id`, else a new paper; with a PDF to start with, or the chooser of one */
+  let adding = $state<{ id: string | null; pdf: string | null; choose: boolean } | null>(null);
+  let sheet = $state<ReturnType<typeof Add>>();
+  /** a PDF is being dragged over the window: onto the paper that would get it (none: a new paper), or onto the sheet */
+  let dragging = $state<{ id: string | null; sheet: boolean } | null>(null);
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
@@ -197,6 +201,8 @@
       listen<string>("open", (e) => openPaper(e.payload)),
       // from the menu of the app
       listen<string>("command", (e) => command(e.payload)),
+      // a PDF dropped on the window
+      getCurrentWebview().onDragDropEvent((e) => drag(e.payload)),
     ];
     load();
     return () => unlisten.forEach((u) => u.then((f) => f()));
@@ -429,6 +435,44 @@
     }
   }
 
+  /** The paper selected, in the library as it is without search or view to hide it, with its details. */
+  async function show(id: string) {
+    query = "";
+    view = "all";
+    await loadLibrary();
+    selected = new Set([id]);
+    anchor = focus = id;
+    layout.showDetails = true;
+    showLibrary();
+  }
+
+  /** A PDF dragged over the window or dropped on it: it opens the sheet, to add the paper it is of; dropped on the
+   *  empty preview of a paper in the details, to add it to that paper; on the open sheet, it is the sheet's PDF. */
+  function drag(e: DragDropEvent) {
+    if (e.type === "leave") {
+      dragging = null;
+      return;
+    }
+    const ratio = window.devicePixelRatio;
+    const under = document.elementFromPoint(e.position.x / ratio, e.position.y / ratio);
+    const id = under?.closest<HTMLElement>("[data-drop-pdf]")?.dataset.dropPdf ?? null;
+    if (e.type !== "drop") {
+      dragging = { id, sheet: adding !== null };
+      return;
+    }
+    dragging = null;
+    const pdfs = e.paths.filter((p) => p.toLowerCase().endsWith(".pdf"));
+    if (!pdfs.length) return say("Not a PDF");
+    if (pdfs.length > 1) say("One PDF at a time: the first is used");
+    if (sheet && adding) sheet.setPdf(pdfs[0]);
+    else adding = { id, pdf: pdfs[0], choose: false };
+  }
+
+  /** The sheet, to add a PDF to a paper: with the chooser of the PDF open. */
+  function addPdf(id: string) {
+    adding = { id, pdf: null, choose: true };
+  }
+
   /** The papers of BibTeX added to a .bib file. Then the sheet closes, and
    *  the first paper added (else the first that was there) is selected, in
    *  the library as it is without search or view to hide it. */
@@ -436,17 +480,10 @@
     let added: Added | undefined;
     if (!(await write(async () => (added = await addBibtex(bib, text, options)), (error) => fail(errorText(error)))) || !added)
       return false;
-    adding = false;
+    adding = null;
     const keys = added.added.length ? added.added : added.existing;
     const [id] = await invoke<string[]>("ids_of", { bib, keys });
-    if (id) {
-      query = "";
-      view = "all";
-      await loadLibrary();
-      selected = new Set([id]);
-      anchor = focus = id;
-      showLibrary();
-    }
+    if (id) await show(id);
     const n = added.added.length;
     say(
       n
@@ -455,6 +492,22 @@
           ? `Already in the library: ${added.existing.join(", ")}`
           : "Nothing added",
     );
+    return true;
+  }
+
+  /** A PDF added to a paper, whose entry takes the changes of `text` first. Then the sheet closes and the paper is shown. */
+  async function attachPapers(
+    id: string,
+    text: string | null,
+    pdf: string,
+    files: FilesMode | null,
+    fail: (message: string) => void,
+  ): Promise<boolean> {
+    if (!(await write(() => attachPdf(id, text, pdf, files), (error) => fail(errorText(error))))) return false;
+    adding = null;
+    const key = byId.get(id)?.key ?? id;
+    await show(id);
+    say(`Added the PDF to ${key}`);
     return true;
   }
 
@@ -529,7 +582,7 @@
       case "close":
         return closeActive();
       case "add":
-        adding = true;
+        adding = { id: null, pdf: null, choose: false };
         return;
       case "find":
         return reader ? reader.focusFind() : input?.select();
@@ -649,7 +702,28 @@
   <PapersMissing version={missing.version} onclose={() => (missing = null)} />
 {/if}
 {#if adding}
-  <Add bib={focus ? byId.get(focus)?.bib : null} rows={byId} onadd={addPapers} onclose={() => (adding = false)} />
+  <Add
+    bind:this={sheet}
+    bib={focus ? byId.get(focus)?.bib : null}
+    rows={byId}
+    forId={adding.id}
+    pdf={adding.pdf}
+    choose={adding.choose}
+    onadd={addPapers}
+    onattach={attachPapers}
+    onclose={() => (adding = null)}
+  />
+{/if}
+{#if dragging}
+  <div class="drop">
+    <span>
+      {dragging.sheet
+        ? "Drop the PDF to use it"
+        : dragging.id
+          ? `Drop the PDF to add it to ${byId.get(dragging.id)?.key ?? "the paper"}`
+          : "Drop the PDF to add a paper"}
+    </span>
+  </div>
 {/if}
 
 <main>
@@ -711,7 +785,9 @@
         </div>
       {/if}
       <span class="spacer"></span>
-      <button class="tool" title="Add papers ({label(commands.add)})" onclick={() => (adding = true)}>Add…</button>
+      <button class="tool" title="Add a paper ({label(commands.add)}), or drop a PDF on the window"
+        onclick={() => (adding = { id: null, pdf: null, choose: false })}>Add…</button
+      >
       <button
         class="tool"
         class:on={layout.showDetails}
@@ -764,6 +840,7 @@
               onopen={() => open(item!.id)}
               {editor}
               onedit={() => edit(item!.id)}
+              onaddpdf={() => addPdf(item!.id)}
               onsave={saveEdit}
               oncancel={() => leave(null)}
             />
@@ -854,6 +931,28 @@
   }
   .export {
     position: relative;
+  }
+  /* a PDF is over the window: the frame says where it would go */
+  .drop {
+    position: fixed;
+    inset: 6px;
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    box-sizing: border-box;
+    padding-bottom: 18px;
+    border: 2px dashed var(--accent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    pointer-events: none;
+  }
+  .drop span {
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 12px;
   }
   .backdrop {
     position: fixed;

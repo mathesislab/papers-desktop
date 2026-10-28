@@ -176,9 +176,8 @@ impl Settings {
     }
 
     /// How a search on OpenAlex identifies itself: the email and the key,
-    /// each when set. For the calls of papers-rs that take it; the app makes
-    /// none yet (it adds pasted BibTeX).
-    #[allow(dead_code)]
+    /// each when set. For the calls of papers-rs that take it: the lookup of
+    /// a free PDF.
     pub fn openalex(&self) -> OpenAlex {
         OpenAlex {
             mailto: self.mailto().map(str::to_string),

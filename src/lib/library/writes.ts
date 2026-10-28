@@ -4,7 +4,7 @@
 // WriteError.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { AddOptions, Added, WriteError, Writer } from "$lib/types";
+import type { AddOptions, Added, FilesMode, WriteError, Writer } from "$lib/types";
 
 export function isWriteError(e: unknown): e is WriteError {
   return typeof e === "object" && e !== null && "kind" in e && "message" in e;
@@ -62,6 +62,18 @@ export function replaceEntry(id: string, text: string): Promise<void> {
  *  added and existing (for papers: merged too). */
 export function addBibtex(bib: string, text: string, options: AddOptions): Promise<Added> {
   return write("add_bibtex", { bib, text, options });
+}
+
+/** Add a PDF to a paper of the library, after the changes of `text` to its entry (the key, tags
+ *  and files stay); a plain .bib links the file where it is. */
+export function attachPdf(id: string, text: string | null, pdf: string, files: FilesMode | null): Promise<void> {
+  return write("attach_pdf", { id, text, pdf, files });
+}
+
+/** What is done by default with a PDF added to a paper of a .bib file: the `files` setting of a
+ *  papers library; none for a plain .bib. */
+export function defaultFiles(bib: string): Promise<FilesMode | null> {
+  return invoke("default_files_mode", { bib });
 }
 
 /** Remove entries; their files stay. */

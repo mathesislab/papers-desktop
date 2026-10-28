@@ -97,6 +97,43 @@ export type AddOptions = {
   onDuplicate: "skip" | "keep" | "update";
   /** the keys of the new entries made by the library's key template */
   updateKey: boolean;
+  /** a PDF for the entry (one entry only): placed in a papers library as `files` says, linked where it is in a plain .bib */
+  pdf?: string | null;
+  /** what to do with the PDF in a papers library; none: the library's `files` setting */
+  files?: FilesMode | null;
+};
+
+/** mirrors writer::FilesMode: what is done with a file added to an entry (papers --move, --copy, --link);
+ *  the file is placed in the files folder under the name of the library's template */
+export type FilesMode = "move" | "copy" | "link";
+
+/** mirrors input::Input: what a text typed or pasted in the field of the sheet is */
+export type Input =
+  | { kind: "empty" | "bibtex" }
+  | { kind: "doi"; doi: string }
+  | { kind: "pdf"; path: string }
+  | { kind: "pdf-url" | "url"; url: string }
+  | { kind: "other"; message: string };
+
+/** mirrors fetch::PdfRead: what `papers add FILE.pdf` finds of a PDF */
+export type PdfRead = {
+  doi: string | null;
+  /** where the DOI was read: the PDF's metadata, its text, or a search of Crossref by the text */
+  source: "metadata" | "text" | "search" | null;
+  /** the entry of the DOI, fetched */
+  bibtex: string | null;
+  /** why there is no DOI or no entry */
+  message: string | null;
+};
+
+/** mirrors fetch::Page: what a link to a page says of its article */
+export type Page = {
+  /** where the link led */
+  url: string;
+  /** the DOI the page gives the article */
+  doi: string | null;
+  /** the link is a PDF, not a page */
+  pdf: boolean;
 };
 
 /** mirrors papers_core::Incoming: an entry of BibTeX to add */
@@ -105,6 +142,8 @@ export type Incoming = {
   /** the ids of the papers of the library that are the same paper: the same
    *  DOI, or the same title and year; none for a new paper */
   same: string[];
+  /** the entry as the library would show it (its `id` is empty) */
+  item: Item;
 };
 
 /** mirrors writer::WriteError: what a write is rejected with */

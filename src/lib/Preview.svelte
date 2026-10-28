@@ -15,6 +15,7 @@
     editor,
     onsave,
     oncancel,
+    onaddpdf,
   }: {
     item: Item;
     /** for each author, whether the search matched it */
@@ -26,6 +27,8 @@
     editor?: Editor;
     onsave?: () => void;
     oncancel?: () => void;
+    /** add a PDF to a paper that has none (a click on the empty page, or a PDF dropped on it) */
+    onaddpdf?: () => void;
   } = $props();
 
   const PAGE_WIDTH = 170;
@@ -141,6 +144,48 @@
     }
   }
 
+  // the DOI to fetch into the entry being edited: the paper's, until the user types another
+  let doi = $state("");
+  let merging = $state<"keep" | "update">("keep");
+  let fetching = $state(false);
+  let fetchError = $state<string | null>(null);
+  $effect(() => {
+    if (!editing) return;
+    doi = item.doi ?? "";
+    fetchError = null;
+  });
+
+  /** The entry of the DOI merged into the text being edited, to review and save: the fields it lacks are
+   *  added, and where they differ the text's are kept, or the fetched ones taken. The key, tags and files stay. */
+  async function fetchInto() {
+    if (!editor || !doi.trim() || fetching) return;
+    fetching = true;
+    fetchError = null;
+    try {
+      const fetched = await invoke<string>("fetch_doi", { doi });
+      editor.text = await invoke<string>("merge_fetched", { current: editor.text, fetched, update: merging === "update" });
+    } catch (e) {
+      fetchError = String(e);
+    } finally {
+      fetching = false;
+    }
+  }
+
+  /** The DOI field is a field of the sheet of the edit: Enter fetches, ⌘S saves, Esc cancels; the keys of the library stay out. */
+  function doiKey(e: KeyboardEvent) {
+    e.stopPropagation();
+    if (matches(e, saveKey)) {
+      e.preventDefault();
+      onsave?.();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      oncancel?.();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      fetchInto();
+    }
+  }
+
   /** Drag the citation out, formatted for the apps that take it so. */
   function dragCitation(e: DragEvent) {
     if (!citation || !e.dataTransfer) return;
@@ -153,13 +198,20 @@
 
 <div class="preview">
   <div class="head">
-    <button class="page" onclick={onopen} title="Open" style:width="{PAGE_WIDTH}px">
-      {#if image}
-        <img src={image} alt="First page" />
-      {:else}
-        <span>{hasPdf ? (failed ? "Cannot read the PDF" : "") : "No PDF"}</span>
-      {/if}
-    </button>
+    <!-- no PDF, where a PDF can be added: a click opens the chooser, a drop adds the file (data-drop-pdf) -->
+    {#if !hasPdf && onaddpdf}
+      <button class="page" onclick={onaddpdf} title="Add a PDF, or drop one here" data-drop-pdf={item.id} style:width="{PAGE_WIDTH}px">
+        <span>No PDF<br />Click or drop one</span>
+      </button>
+    {:else}
+      <button class="page" onclick={onopen} title="Open" style:width="{PAGE_WIDTH}px">
+        {#if image}
+          <img src={image} alt="First page" />
+        {:else}
+          <span>{hasPdf ? (failed ? "Cannot read the PDF" : "") : "No PDF"}</span>
+        {/if}
+      </button>
+    {/if}
     <div class="meta">
       <h2>{item.title}</h2>
       {#if item.authors.length}
@@ -212,6 +264,16 @@
       {/if}
     </div>
     {#if editing && editor}
+      <div class="doi-fetch">
+        <label for="edit-doi">DOI</label>
+        <input id="edit-doi" type="text" bind:value={doi} onkeydown={doiKey} placeholder="Fetch an entry to merge into the text" spellcheck="false" autocomplete="off" />
+        <button disabled={fetching || !doi.trim() || editor.saving} onclick={fetchInto}>{fetching ? "Fetching…" : "Fetch"}</button>
+        <select bind:value={merging} title="How the fetched entry is merged into the text">
+          <option value="keep" title="Add the fields the text lacks; where they differ, keep the text's">Fill in</option>
+          <option value="update" title="Add the fields the text lacks; where they differ, take the fetched values">Update</option>
+        </select>
+      </div>
+      {#if fetchError}<p class="edit-error">{fetchError}</p>{/if}
       <textarea
         class="bibtex"
         bind:this={area}
@@ -415,5 +477,45 @@
     margin: 6px 0 0;
     color: var(--error);
     font-size: 12px;
+  }
+  .doi-fetch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .doi-fetch label {
+    color: var(--muted);
+  }
+  .doi-fetch input {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 2px 6px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
+    outline: none;
+  }
+  .doi-fetch input:focus {
+    border-color: var(--accent);
+  }
+  .doi-fetch button {
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+  }
+  .doi-fetch button:disabled {
+    opacity: 0.5;
+  }
+  .doi-fetch select {
+    font: inherit;
+    color: var(--fg);
   }
 </style>

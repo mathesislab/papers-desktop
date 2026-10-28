@@ -107,12 +107,64 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 - **An email** (setting, empty by default, never filled in by the app: not
   the system's, not git's): used only when set. The DOI fetch gives it in
   its User-Agent, `Papers Desktop/<version> (mailto:<email>)`, as Crossref
-  and doi.org recommend; OpenAlex takes it as `mailto` (`OpenAlex`), but no
-  command of the writers reaches OpenAlex (only `add --openalex` does, and
-  the app adds pasted BibTeX), so it is not passed yet. Empty: nothing is
-  sent. Next to it, an **OpenAlex API key** (free, empty by default, in
-  settings.json like the others, a password field): sent to OpenAlex only,
-  as `api_key` of the same `OpenAlex` (`Settings::openalex()`).
+  and doi.org recommend; OpenAlex takes it as `mailto` (`OpenAlex`): the
+  lookup of a free PDF in the sheet that adds a paper (below) sends it. Empty:
+  nothing is sent. Next to it, an **OpenAlex API key** (free, empty by
+  default, in settings.json like the others, a password field): sent to
+  OpenAlex only, as `api_key` of the same `OpenAlex` (`Settings::openalex()`).
+- **Add paper** (⌘N, *Add…*): one sheet for a new paper and for a PDF added
+  to a paper of the library (mockup of the layout: the PDF, the DOI with where
+  it came from, the entry, the file). It replaces `papers add FILE.pdf
+  --rename --copy --open`. Everything it reads is read-only and in the
+  process, whatever the writer (`src-tauri/src/fetch.rs`, `input.rs`; papers-rs
+  with the queries and the cache of papers, the app's user agent):
+  - *Opened by*: a PDF dropped on the main window (Tauri drag-drop events,
+    anywhere; dropped on the empty page of the paper in the details it is that
+    paper's), *Add…* / ⌘N, then *Choose…*, or a text pasted or typed in the
+    field, which `classify_input` takes for a DOI or doi.org link, the path of
+    a PDF (quoted, with escaped spaces, `file://`, `~`), a link to a PDF
+    (downloaded), a link to a page, or BibTeX (the entry).
+  - *A PDF*: `read_pdf_doi` reads its DOI as `papers add FILE.pdf` does (the
+    DOI of its metadata; else of its text, if the title of that DOI is in the
+    text; else a search of Crossref by the text) and fetches its entry; the
+    field says where the DOI came from (*from the PDF*, *found by a search of
+    the PDF's text*, *typed*, *from the page*, *none found*). *Read PDF again*
+    goes back to what the PDF gives; another DOI typed and fetched replaces the
+    entry. The BibTeX is a text to fix (folded when the entry has a DOI), above
+    the papers already in the library (as before: *Skip*, *Fill in*, *Update*).
+  - *A journal article's link*: `journal_page` reads the DOI from the
+    `citation_doi`, `prism.doi` and `dc.identifier` tags of the page
+    (`papers_rs::fetch::html::page_doi`); with a DOI (typed or from the page)
+    and no PDF, OpenAlex is asked for a free PDF (`free_pdf`,
+    `Fetcher::openalex_free_pdf`: `best_oa_location.pdf_url`, else an open
+    location, else `open_access.oa_url`): *Download free PDF* (`download_pdf`,
+    into a temporary folder papers knows as a download, always placed in the
+    library) and *Open in browser* (the article's page, to download there and
+    drop the file).
+  - *The file*: *Move*, *Copy*, *Leave in place* (papers' `--move`, `--copy`,
+    `--link`), by default the `files` setting of the library (`default_files_mode`;
+    move without one). papers 3.0.0b5 has no separate *rename*: `--rename` is
+    `--move`, and a file placed in the files folder is always named by the
+    library's name template, so there is no such checkbox. A plain `.bib` has no
+    files folder: the PDF is linked in the `file` field where it is
+    (`papers_core::with_files`), and the sheet says so; a downloaded file is
+    refused there.
+  - *Adding*: `add_bibtex` with the entry and `options.pdf`, `options.files`:
+    `papers add ENTRY.bib --attach PDF --move|--copy|--link --on-duplicate …`
+    (the same entry that is a paper of the library already is merged and gets the
+    file, in one step). The paper is then selected, with its details.
+  - *A PDF for a paper that has none*: the details have *Add PDF…* (and a click
+    on the empty page, or a PDF dropped on it): the sheet opens on that paper's
+    entry, its DOI in the field and the chooser of the PDF open. *Fetch* merges
+    the fetched entry into the paper's text (*Fill in* or *Update*); the PDF's
+    DOI is compared with the paper's and a difference told. `attach_pdf`: the
+    changes of the text first (`papers edit KEY --from -`, its key, tags and
+    files stay), then `papers add --key KEY --attach PDF --move|--copy|--link`
+    (two steps of the history when both happen; a plain `.bib` makes one:
+    `Library::attach_files`).
+  - *Edit* in the details has the same *DOI* field and *Fetch*, merged into the
+    text being edited (`merge_fetched`: papers' merge, the key stays), to review
+    and save with ⌘S.
 - **The command line tool**: the app ships `papers-rs` (crates/papers-rs-cli,
   release) as a Tauri sidecar (`bundle.externalBin`, in `Contents/MacOS/` next
   to the executable); `scripts/sidecar.sh`, run by `beforeBuildCommand`,
@@ -137,7 +189,9 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   byte; the file is written to a temporary file then renamed, and not at all
   if it changed since it was read; the new text must load as the library
   reads it. Undo and redo: a stack of the changes of the session. Pasted
-  entries whose key is in the file already are not added, but reported.
+  entries whose key is in the file already are not added, but reported. A PDF
+  added to an entry is linked in its `file` field where it is (JabRef's
+  `:path:PDF`, the real path), not moved or renamed.
 - **An edit of the BibTeX** of an entry keeps its key, tags and files, in
   either library, as `papers edit --from` does: an edit that changes them is
   refused. Tags have their own commands, files will too.
@@ -174,21 +228,24 @@ the built app on a library of papers.
 *Edit* in the details turns the BibTeX of the entry into a text to edit
 (`⌘S` saves, `Esc` cancels; a change of key, tags or files is refused
 under the text, `{ kind: "kept", what }`; unsaved changes ask before they
-are lost, a dot on the paper's tab). *Add…* (`⌘N`): a DOI, fetched from
-doi.org (`fetch_doi`, one field per line as papers writes it), or BibTeX;
+are lost, a dot on the paper's tab). *Add…* (`⌘N`): see *Add paper* above;
 the papers already in the library listed first (`incoming`: the same DOI,
 or the same title and year); for a papers library, what to do with them
 (`--on-duplicate`: *Skip*, *Fill in*, *Update*), and a fetched entry takes
 the library's key (`--update-key`); the `.bib` to add to when there are
-several. Tried in the built app, but for the choices on duplicates (tested
-against papers in `writer.rs`).
+several. The sheet as it was (a DOI fetched from doi.org, or BibTeX) was
+tried in the built app, but for the choices on duplicates (tested against
+papers in `writer.rs`); the import sheet is tested in `writer.rs` (both
+backends, the command one against papers 3.0.0b5) and `fetch.rs` (recorded
+answers), not yet tried in the built app.
 
 **Next** (proposed, to confirm before starting; one agent each, in a git
 worktree, merged one by one):
 
 1. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
-   selection, after asking (the PDFs stay); attach a PDF, detach it, rename
-   it by the names of papers (`papers file rename`, papers libraries only);
+   selection, after asking (the PDFs stay); detach a PDF (attaching one is
+   done: *Add paper*), rename it by the names of papers (`papers file rename`,
+   papers libraries only);
    `⌘Z` / `⌘⇧Z` undo and redo the last change of the library, but undo the
    typing in a field.
 2. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
@@ -262,15 +319,17 @@ kept in the PDF.
 
 ## Later: adding papers without a browser extension
 
-1. Paste a DOI or an article URL in the panel, or *Add current page*
-   (Safari and Brave tell their current URL through AppleScript; paste on
-   Linux and Windows).
-2. The metadata first (`papers fetch DOI`, or the `citation_*` meta tags of
-   the page), shown with the key, the file name and a duplicate check.
-3. The PDF: downloaded by the app when open access, or when the
-   institution's network gives access; otherwise *armed*: the app waits for
-   the next PDF in `~/Downloads` (downloaded in the browser, with its
-   login), checks its DOI, and runs `papers add PDF --doi DOI`.
+Done in the main window (*Add paper*, above): a DOI or an article URL pasted
+in the sheet, the metadata from the DOI (the `citation_doi` tags of the page),
+the free PDF from OpenAlex, else the page in the browser and the PDF dropped
+on the window. Left:
+
+1. *Add current page* in the panel (Safari and Brave tell their current URL
+   through AppleScript; paste on Linux and Windows).
+2. The PDF when the institution's network gives access (not only open
+   access); *armed*: the app waits for the next PDF in `~/Downloads`
+   (downloaded in the browser, with its login), checks its DOI, and opens the
+   sheet with it.
 
 ## Later: feeds
 

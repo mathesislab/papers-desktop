@@ -3212,8 +3212,6 @@ dependencies = [
  "objc2-pdf-kit",
  "papers-core",
  "papers-rs",
- "reqwest",
- "rustls",
  "serde",
  "serde_json",
  "tauri",

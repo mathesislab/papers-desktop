@@ -7,7 +7,7 @@ use std::path::Path;
 
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::edit::replace_from_text;
-use papers_rs::command::files::files_mode;
+use papers_rs::command::files::{Mode, files_mode};
 use papers_rs::command::pool::push_after_travel;
 use papers_rs::command::report::Changes;
 use papers_rs::command::rm::{Files, remove_entries};
@@ -21,7 +21,7 @@ use papers_rs::history::History;
 use papers_rs::lock;
 use papers_rs::merge::{OnDuplicate as Merging, Resolver};
 
-use super::{AddOptions, Kind, OnDuplicate, PapersWriter, Pasted, WriteError};
+use super::{AddOptions, FilesMode, Kind, OnDuplicate, PapersWriter, Pasted, WriteError};
 
 impl From<Error> for WriteError {
     fn from(e: Error) -> WriteError {
@@ -85,6 +85,29 @@ impl Builtin {
         });
         session.finish();
         Ok(done?)
+    }
+}
+
+/// The files mode of an addition: the one chosen, else the `files` setting of the library.
+fn mode(chosen: Option<FilesMode>, config: &Config) -> Result<Mode, Error> {
+    files_mode(
+        chosen == Some(FilesMode::Link),
+        chosen == Some(FilesMode::Move),
+        chosen == Some(FilesMode::Copy),
+        config,
+    )
+}
+
+impl Builtin {
+    /// What a file added to the library of a folder is done with when the user does not say:
+    /// its `files` setting (`ask`, which needs a terminal, as move), else move; link when the
+    /// library has no files directory.
+    pub fn files_mode(&self, folder: &Path) -> Result<FilesMode, WriteError> {
+        Ok(match mode(None, &self.config(folder)?)? {
+            Mode::Ask | Mode::Move => FilesMode::Move,
+            Mode::Copy => FilesMode::Copy,
+            Mode::Link => FilesMode::Link,
+        })
     }
 }
 
@@ -157,7 +180,7 @@ impl PapersWriter for Builtin {
         })
     }
 
-    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Changes, WriteError> {
+    fn add(&self, folder: &Path, text: &str, options: &AddOptions) -> Result<Changes, WriteError> {
         let pasted = Pasted::new(text)?;
         let file = pasted.path().to_string_lossy().into_owned();
         let mut args = vec![
@@ -168,11 +191,20 @@ impl PapersWriter for Builtin {
         if options.update_key {
             args.push("--update-key".into());
         }
+        let pdf = options
+            .pdf
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned());
+        if let Some(pdf) = &pdf {
+            args.extend(["--attach".to_string(), pdf.clone()]);
+            args.extend(options.files.map(|m| m.flag().to_string()));
+        }
         self.transact(folder, ("add", &args), |session| {
             let request = AddRequest {
                 files: vec![file],
                 update_key: options.update_key,
-                mode: files_mode(false, false, false, &session.config)?,
+                attachments: pdf.into_iter().collect(),
+                mode: mode(options.files, &session.config)?,
                 ..AddRequest::default()
             };
             let mut resolver = Resolver::new(match options.on_duplicate {
@@ -181,6 +213,32 @@ impl PapersWriter for Builtin {
                 OnDuplicate::Update => Merging::Update,
             });
             add(session, &request, &mut resolver)
+        })
+    }
+
+    fn attach(
+        &self,
+        folder: &Path,
+        key: &str,
+        pdf: &Path,
+        files: Option<FilesMode>,
+    ) -> Result<Changes, WriteError> {
+        let pdf = pdf.to_string_lossy().into_owned();
+        let mut args = vec![
+            "--key".to_string(),
+            key.to_string(),
+            "--attach".into(),
+            pdf.clone(),
+        ];
+        args.extend(files.map(|m| m.flag().to_string()));
+        self.transact(folder, ("add", &args), |session| {
+            let request = AddRequest {
+                key: Some(key.to_string()),
+                attachments: vec![pdf],
+                mode: mode(files, &session.config)?,
+                ..AddRequest::default()
+            };
+            add(session, &request, &mut Resolver::new(Merging::Skip))
         })
     }
 
