@@ -541,8 +541,8 @@ fn time_travel(
         .find(|a| a.parse::<u64>().is_ok())
         .and_then(|a| a.parse().ok());
     let result = match kind {
-        "undo" => history.undo(steps, library_only, None, "papers undo"),
-        "redo" => history.redo(steps, library_only, None, "papers redo"),
+        "undo" => history.undo(steps, library_only, None, "papers undo", &mut skip()),
+        "redo" => history.redo(steps, library_only, None, "papers redo", &mut skip()),
         _ => history.restore(n, None),
     };
     let stdout = step["stdout"].as_str().unwrap();
@@ -1223,4 +1223,9 @@ fn the_retention_drops_what_papers_drops() {
         assert_eq!(after, want_after, "{ctx}: what is left");
     }
     let _ = now();
+}
+
+/// What `papers undo` uses without a terminal for the conflicts of the revert of a pool step.
+fn skip() -> papers_rs::merge::Resolver {
+    papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip)
 }

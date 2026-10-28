@@ -121,7 +121,7 @@ fn open(config: &mut Config) -> History {
 fn undo(config: &mut Config, steps: usize) -> papers_rs::error::Result<papers_rs::history::Moved> {
     History::require(config, false)
         .unwrap()
-        .undo(steps, false, None, "papers undo")
+        .undo(steps, false, None, "papers undo", &mut skip())
 }
 
 fn id_of(config: &Config) -> String {
@@ -271,7 +271,7 @@ fn changes_made_outside_papers_are_a_step_of_their_own() {
     );
     History::require(&mut config, false)
         .unwrap()
-        .redo(1, false, None, "papers redo")
+        .redo(1, false, None, "papers redo", &mut skip())
         .unwrap();
     assert_eq!(keys(&config), vec!["one2000", "two2000"]);
     // a change after the undo clears the redo list: redo says why
@@ -283,7 +283,7 @@ fn changes_made_outside_papers_are_a_step_of_their_own() {
     .unwrap();
     let error = History::require(&mut config, false)
         .unwrap()
-        .redo(1, false, None, "papers redo")
+        .redo(1, false, None, "papers redo", &mut skip())
         .unwrap_err();
     assert!(
         error
@@ -300,7 +300,7 @@ fn changes_made_outside_papers_are_a_step_of_their_own() {
     assert_eq!(bibtex(&config), text);
     History::require(&mut config, false)
         .unwrap()
-        .redo(1, false, None, "papers redo")
+        .redo(1, false, None, "papers redo", &mut skip())
         .unwrap();
     assert_eq!(bibtex(&config), "");
     // and when nothing changed outside, there is nothing to restore
@@ -331,7 +331,10 @@ fn undo_and_redo_stop_where_the_history_does() {
     );
     let mut history = History::require(&mut config, false).unwrap();
     assert_eq!(
-        history.redo(9, false, None, "").unwrap_err().message(),
+        history
+            .redo(9, false, None, "", &mut skip())
+            .unwrap_err()
+            .message(),
         "only 2 step(s) to redo"
     );
     assert_eq!(
@@ -340,7 +343,7 @@ fn undo_and_redo_stop_where_the_history_does() {
     );
     // a dry run changes nothing
     let mut dry = History::require(&mut config, true).unwrap();
-    let moved = dry.redo(2, false, None, "").unwrap();
+    let moved = dry.redo(2, false, None, "", &mut skip()).unwrap();
     assert!(moved.files.is_none() && keys(&config).is_empty());
     assert!(moved.lines("redo", &dry)[0].starts_with("DRYRUN: redo: "));
 }
@@ -391,7 +394,7 @@ fn a_file_taken_out_of_downloads_goes_back_there() {
     assert!(!Path::new(&dst).exists());
     History::require(&mut config, false)
         .unwrap()
-        .redo(1, false, None, "papers redo")
+        .redo(1, false, None, "papers redo", &mut skip())
         .unwrap();
     assert!(!Path::new(&src).exists());
     assert_eq!(fs::read_to_string(&dst).unwrap(), "%PDF the paper");
@@ -494,7 +497,7 @@ fn the_files_json_of_a_state_finds_a_file_by_content() {
     fs::write(s.path("lib/files/renamed.pdf"), "something else").unwrap();
     History::require(&mut config, false)
         .unwrap()
-        .redo(1, false, None, "")
+        .redo(1, false, None, "", &mut skip())
         .unwrap();
     assert_eq!(
         fs::read_to_string(s.path("lib/files/renamed.pdf")).unwrap(),
@@ -619,4 +622,9 @@ fn the_store_is_pruned_at_every_fiftieth_state() {
     );
     assert_eq!(rec.number, Some(50));
     assert!(!Path::new(&path).exists());
+}
+
+/// What `papers undo` uses without a terminal for the conflicts of the revert of a pool step.
+fn skip() -> papers_rs::merge::Resolver {
+    papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip)
 }

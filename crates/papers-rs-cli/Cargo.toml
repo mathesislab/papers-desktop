@@ -17,4 +17,5 @@ clap = { version = "4", default-features = false, features = ["std", "error-cont
 
 [dev-dependencies]
 tempfile = "3"
+flate2 = "1"
 libc = "0.2"

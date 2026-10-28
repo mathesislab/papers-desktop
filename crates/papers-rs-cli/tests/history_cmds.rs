@@ -450,14 +450,34 @@ fn drop_files_needs_a_history_and_a_step() {
 }
 
 #[test]
-fn revert_is_not_ported() {
+fn revert_takes_back_a_step_alone() {
     let b = Sandbox::new();
     b.init("lib");
     b.add("lib", "one2000");
+    b.add("lib", "two2000");
+    // step 3 added two2000: reverted, as a step of its own (undo takes it back); the first step has nothing before it
     assert_eq!(
-        error(b.run_in("lib", &["history", "--revert", "2"])),
-        "papers: error: history --revert: not implemented in papers-rs yet\n"
+        ok(b.run_in("lib", &["history", "--revert", "3"])).lines().next().unwrap(),
+        "Removed -> two2000: Title of two2000 "
     );
+    assert!(!fs::read_to_string(b.path("lib/papers.bib")).unwrap().contains("two2000"));
+    assert!(ok(b.run_in("lib", &["history"])).starts_with("> 4 papers history --revert 3 ($TIME)\n"));
+    assert!(ok(b.run_in("lib", &["undo"])).starts_with("undo: papers.bib restored to 3 papers add "));
+    assert!(fs::read_to_string(b.path("lib/papers.bib")).unwrap().contains("two2000"));
+    assert_eq!(
+        error(b.run_in("lib", &["history", "--revert", "1"])),
+        "papers: error: step 1 is the first step of the history: nothing before it to go back to\n"
+    );
+    assert_eq!(
+        error(b.run_in("lib", &["history", "--revert", "9"])),
+        "papers: error: no step 9 in the history of the library (see `papers history`)\n"
+    );
+    // nothing is written with --dry-run
+    let before = fs::read_to_string(b.path("lib/papers.bib")).unwrap();
+    let out = ok(b.run_in("lib", &["history", "--revert", "3", "--dry-run"]));
+    assert!(out.starts_with("DRYRUN: "), "{out}");
+    assert_eq!(fs::read_to_string(b.path("lib/papers.bib")).unwrap(), before);
+    // without a library
     assert_eq!(
         error(b.run(&["history", "--revert", "2"])),
         "papers: error: no library: --revert takes back a step of the history of a library\n"
@@ -474,6 +494,11 @@ fn revert_is_not_ported() {
 
 /// What a command prints on a terminal, when it asks and is given `answer`.
 fn on_terminal(b: &Sandbox, args: &[&str], cwd: &str, answer: &[u8]) -> (i32, String) {
+    on_terminal_at(b, args, cwd, answer, b"[y/N] ")
+}
+
+/// What a command prints on a terminal, when it asks (the transcript ends with `prompt`) and is given `answer`.
+fn on_terminal_at(b: &Sandbox, args: &[&str], cwd: &str, answer: &[u8], prompt: &[u8]) -> (i32, String) {
     use std::io::Write;
     let (mut master, mut slave) = (0, 0);
     // SAFETY: openpty fills the two descriptors it is given
@@ -503,13 +528,31 @@ fn on_terminal(b: &Sandbox, args: &[&str], cwd: &str, answer: &[u8]) -> (i32, St
             Ok(0) | Err(_) => break,
             Ok(n) => transcript.extend_from_slice(&buffer[..n]),
         }
-        if !sent && transcript.ends_with(b"[y/N] ") {
+        if !sent && transcript.ends_with(prompt) {
             master.write_all(answer).unwrap();
             sent = true;
         }
     }
     let code = child.wait().unwrap().code().unwrap_or(-1);
     (code, b.show(&String::from_utf8_lossy(&transcript)).replace("\r\n", "\n"))
+}
+
+/// On a terminal a conflict of a revert is asked (the dialogue); the answers are those of the duplicates.
+#[test]
+fn a_revert_asks_about_a_conflict_on_a_terminal() {
+    let b = Sandbox::new();
+    b.init("lib");
+    b.add("lib", "one2000");
+    for (message, year) in [("papers edit one2000 --set year=2001", "2001"), ("papers edit one2000 --set year=2002", "2002")] {
+        b.step("lib", message, |old| old.replace("year = {2000}", &format!("year = {{{year}}}")).replace("year = {2001}", &format!("year = {{{year}}}")));
+    }
+    let (code, transcript) = on_terminal_at(&b, &["history", "--revert", "3"], "lib", b"2\n", b">>> ");
+    assert_eq!(code, 0, "{transcript}");
+    assert!(transcript.starts_with("Same paper: 2 entries (step 3)\n"), "{transcript}");
+    assert!(transcript.contains("!  year   = {2002}"), "{transcript}");
+    assert!(transcript.contains("  2 take values of 2"), "{transcript}");
+    assert!(transcript.ends_with("Modified -> one2000: Title of one2000 \n"), "{transcript}");
+    assert!(fs::read_to_string(b.path("lib/papers.bib")).unwrap().contains("year = {2000}"));
 }
 
 #[test]

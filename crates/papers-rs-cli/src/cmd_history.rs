@@ -5,6 +5,9 @@
 
 use std::io::{BufRead, IsTerminal, Write};
 
+use papers_rs::command::Options;
+use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::session::Prompt;
 use papers_rs::config::json::py_repr_str;
 use papers_rs::config::paths::{abspath, dirname, exists, realpath};
 use papers_rs::config::{Config, Origin, find_library_config};
@@ -17,9 +20,12 @@ use papers_rs::history::store::to_system_trash;
 use papers_rs::history::{History, Moved, Setup};
 use papers_rs::lock::{self, Lock};
 use papers_rs::log;
+use papers_rs::merge::{OnDuplicate, Resolve, Resolver};
 use serde_json::Value;
 
 use crate::cmd_config::no_library_message;
+use crate::cmd_write::{Terminal, color_enabled, finish};
+use crate::dialogue::Dialogue;
 use crate::parse::Leaf;
 use crate::util::file_uri_to_path;
 
@@ -124,14 +130,22 @@ fn check_install(leaf: &Leaf, mut config: Config, bibtex_must_exist: bool) -> Re
 /// `_time_travel`: undo, redo or restore, then say which state is restored, the files that moved,
 /// the pools that followed, and which files of the files directory no entry links to any more.
 /// `pushes`: after undo and redo of a shallow library with auto-push papers pushes what differs
-/// from the pool, which is not ported: the command stops before it moves anything.
+/// from the pool (`_auto_push`, history.md 7.6), which is not ported: the command stops before it
+/// moves anything.
+///
+/// **The hook for the exchange commands**: the push goes after the lines below are printed, as papers
+/// does (`undocmd`: `_time_travel`, then `_auto_push`). It pushes the entries shared with the pool that
+/// differ from their origin record (conflicts: `OnDuplicate::Skip`, no new entries), and if an entry was
+/// updated, saves the exchange (a pool step, then a library step) and puts the redo list from before the
+/// push on the new head. A pool step that this undo or redo reverted is pending in `Moved::links`: the
+/// library step of the push records it in its `pools` (the `link` of a `Committed`, `Step::pools`).
 fn time_travel(
     kind: &str,
     leaf: &Leaf,
     config: Config,
     bibtex_must_exist: bool,
     pushes: bool,
-    run: impl FnOnce(&mut History, Option<&Lock>, &str) -> Result<Moved>,
+    run: impl FnOnce(&mut History, Option<&Lock>, &str, &mut dyn Resolve) -> Result<Moved>,
 ) -> Result<()> {
     let mut config = check_install(leaf, config, bibtex_must_exist)?;
     let dry_run = leaf.flag("dry_run");
@@ -148,7 +162,14 @@ fn time_travel(
     let bibtex = config.bibtex.clone().unwrap_or_default();
     let before = linked_files(&bibtex);
     let mut history = History::require(&mut config, dry_run)?;
-    let moved = run(&mut history, lock.as_ref(), &command)?;
+    // a conflict of the revert of a pool step (an entry changed in the pool since) is asked in a
+    // terminal, else the entry is left as it is
+    let mut resolver: Box<dyn Resolve> = if std::io::stdin().is_terminal() {
+        Box::new(Dialogue::new(false, papers_rs::command::edit::Editor::of(&config)))
+    } else {
+        Box::new(Resolver::new(OnDuplicate::Skip))
+    };
+    let moved = run(&mut history, lock.as_ref(), &command, &mut *resolver)?;
     for line in moved.lines(kind, &history) {
         log::println(&line);
     }
@@ -174,22 +195,22 @@ fn odd_steps(n: i64) -> Error {
 pub fn undo(leaf: &Leaf, config: Config) -> Result<()> {
     let n = int_option(leaf, "steps").unwrap_or(1);
     let library_only = leaf.flag("library_only");
-    time_travel("undo", leaf, config, true, true, |h, lock, command| {
+    time_travel("undo", leaf, config, true, true, |h, lock, command, resolver| {
         if n < 0 {
             return Err(odd_steps(n));
         }
-        h.undo(n as usize, library_only, lock, command)
+        h.undo(n as usize, library_only, lock, command, resolver)
     })
 }
 
 pub fn redo(leaf: &Leaf, config: Config) -> Result<()> {
     let n = int_option(leaf, "steps").unwrap_or(1);
     let library_only = leaf.flag("library_only");
-    time_travel("redo", leaf, config, true, true, |h, lock, command| {
+    time_travel("redo", leaf, config, true, true, |h, lock, command, resolver| {
         if n <= 0 {
             return Err(odd_steps(n));
         }
-        h.redo(n as usize, library_only, lock, command)
+        h.redo(n as usize, library_only, lock, command, resolver)
     })
 }
 
@@ -198,7 +219,7 @@ pub fn restore(leaf: &Leaf, config: Config, command: &str) -> Result<()> {
         log::warning("`papers restore-backup` is deprecated: use `papers restore`");
     }
     let state = int_option(leaf, "state").or_else(|| int_option(leaf, "reference"));
-    time_travel("restore", leaf, config, false, false, |h, lock, _| match state {
+    time_travel("restore", leaf, config, false, false, |h, lock, _, _| match state {
         Some(n) if n < 0 => Err(no_step(&n.to_string())),
         n => h.restore(n.map(|n| n as u64), lock),
     })
@@ -215,10 +236,13 @@ pub struct HistoryArgs {
     remove: Option<String>,
     all: bool,
     drop_files: Option<String>,
-    revert: bool,
+    revert: Option<i64>,
+    on_duplicate: Option<String>,
     n: i64,
     yes: bool,
     dry_run: bool,
+    porcelain: bool,
+    color: bool,
 }
 
 impl HistoryArgs {
@@ -227,10 +251,13 @@ impl HistoryArgs {
             remove: leaf.matches.contains_id("remove").then(|| leaf.string("remove").unwrap_or_default()),
             all: leaf.flag("all"),
             drop_files: leaf.string("drop_files"),
-            revert: leaf.string("revert").is_some(),
+            revert: int_option(leaf, "revert"),
+            on_duplicate: leaf.string("on_duplicate"),
             n: int_option(leaf, "n").unwrap_or(20),
             yes: leaf.flag("yes"),
             dry_run: leaf.flag("dry_run"),
+            porcelain: leaf.flag("porcelain"),
+            color: color_enabled(leaf),
         }
     }
 }
@@ -251,12 +278,8 @@ pub fn history(args: HistoryArgs, mut config: Config, command: &str) -> Result<(
     if let Some(target) = args.drop_files.as_deref().filter(|t| !t.is_empty()) {
         return drop_files(&mut config, &args, target);
     }
-    if args.revert {
-        // papers takes the step back with a three-way merge of the entries
-        if config.bibtex.as_deref().is_none_or(|b| !exists(b)) {
-            return Err(Error::exit("no library: --revert takes back a step of the history of a library"));
-        }
-        return Err(Error::exit(format!("history --revert: {NOT_IMPLEMENTED}")));
+    if args.revert.is_some() {
+        return revert(&args, config);
     }
     let has_bibtex = config.bibtex.is_some();
     let history = if has_bibtex { History::open(&mut config, false, args.dry_run)? } else { None };
@@ -265,6 +288,52 @@ pub fn history(args: HistoryArgs, mut config: Config, command: &str) -> Result<(
         log::println(&line);
     }
     Ok(())
+}
+
+/// `revert`: `papers history --revert N`, take back the changes of step N alone, saved as a new
+/// step; the report of the entries, and of the pools that step N also changed.
+fn revert(args: &HistoryArgs, config: Config) -> Result<()> {
+    let n = args.revert.expect("--revert N");
+    if config.bibtex.as_deref().is_none_or(|b| !exists(b)) {
+        return Err(Error::exit("no library: --revert takes back a step of the history of a library"));
+    }
+    // `--on-duplicate`, else ask in a terminal and error without one
+    let mode = args
+        .on_duplicate
+        .as_deref()
+        .and_then(OnDuplicate::parse)
+        .unwrap_or(if std::io::stdin().is_terminal() { OnDuplicate::Ask } else { OnDuplicate::Error });
+    let mut resolver: Box<dyn Resolve> = if mode == OnDuplicate::Ask {
+        Box::new(Dialogue::new(args.color, papers_rs::command::edit::Editor::of(&config)))
+    } else {
+        Box::new(Resolver::new(mode))
+    };
+    let options = Options {
+        message: command_line(),
+        dry_run: args.dry_run,
+        assume_yes: false,
+        color: args.color,
+        prompt: Box::new(Terminal) as Box<dyn Prompt>,
+        sink: Some(Box::new(|line: &str| log::println(line))),
+    };
+    let mut session = papers_rs::command::Session::open(config, options)?;
+    let result = (|| -> Result<()> {
+        let lines = session.revert(n, &mut *resolver, true)?;
+        session.mark_reverts(&[n as u64]);
+        session.commit()?;
+        let keys: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
+        let color = session.color();
+        print_changes(&session.library, &keys, false, &Notes::new(), args.porcelain, color, &session.say);
+        for line in lines {
+            session.say.line(line);
+        }
+        for line in session.revert_pool_lines(n as u64)? {
+            session.say.line(line);
+        }
+        Ok(())
+    })();
+    finish(session);
+    result
 }
 
 /// `remove_history`: the history of this place (and of the library, when no other place uses it),

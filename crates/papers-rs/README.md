@@ -48,9 +48,13 @@ files, so that both can work on the same library. The conformance suite
 - `identity`: when two entries are the same paper (DOI, arXiv id, ISBN, authors
   and title; the title guard), `.papers/distinct.json`, the search for
   duplicates, naming an entry by key, former key, DOI, arXiv id or ISBN.
-- `merge`: the two-way merge of entries that are the same paper, and what
-  `--on-duplicate` keep, update, skip and error do (the dialogue of `ask` is for
-  the program that asks: it implements `merge::Resolve`).
+- `merge`: the merge of entries that are the same paper, and what `--on-duplicate` keep, update,
+  skip and error do (the dialogue of `ask` is for the program that asks: it implements
+  `merge::Resolve`). Two-way (`Merge::new`: `add`, `check`) and three-way (`Merge::exchange`, with a
+  base: what one side changed since the base wins, a field changed on both sides is a conflict, a
+  removal is a change): the merge of `pull` and `push` (the contexts `Pull`, `Push`; `keep` and `update`
+  name the first and the second entry, so the sides swap between the two) and of a revert (`Revert`).
+  The module documentation has the rules and the modes.
 - `library`: a bibtex with its entries and configuration, as papers' `Biblio`:
   load, insert (with the duplicate check, the key template, the files placed by
   the name template), remove, rename keys, set files and tags, save (an unchanged
@@ -60,9 +64,10 @@ files, so that both can work on the same library. The conformance suite
   history itself is not in this module.
 - `history`: the history store that papers, papers-rs and the app share (objects,
   states, heads, retention), recording a step, undo, redo, restore, the file
-  operations, `.papers/files.json`, the lines of `papers history`; not yet
-  `history --revert` (it needs the merge). `history::Step` is what the library
-  model hands over after a save.
+  operations, `.papers/files.json`, the lines of `papers history`. A pool that moved on since the
+  step that undo or redo takes back is *reverted* there (a new step of the pool, `reverts`), by the
+  revert below; `Moved::links` holds the new pool steps, for the auto-push that follows. `history::Step`
+  is what the library model hands over after a save.
 - `command`: the commands that write a library, and the write path they share
   (`command::session`: the lock, the history before the command and the head sync,
   the load, the atomic save refused when the bibtex changed meanwhile with the files put
@@ -76,6 +81,10 @@ files, so that both can work on the same library. The conformance suite
   `Session`; the other writing commands use the same `Session`. Not yet: Google Scholar
   (`add --scholar`), `--pool PATH` of `add`, `file check`, `file fix` and `list --fix-files`, a library with a pool
   (`Session::open` says so; `file clean` says what papers says of it).
+- `command::revert`: `papers history --revert N` (`Session::revert`): the changes of step N taken back
+  per entry by a three-way merge (base: the entry at N; incoming: the entry before N; target: the entry
+  now), the file links and the tags one by one, the key, `distinct.json`, and the files as undo moves
+  them, saved as a step with `reverts`. The same revert takes back a pool step in `undo` and `redo`.
 - `command::check`: `papers check` (and the `list --fetch` of the CLI): the fixes of an entry
   (names, encoding, DOI, fetch, key; `fix_entry`, with the question and the diff of papers), the
   duplicates merged, the lines of what changed. A fetch goes through the `Fetch` trait (crossref in
@@ -91,7 +100,7 @@ files, so that both can work on the same library. The conformance suite
 
 `papers-rs` (the `papers-rs-cli` crate) has the commands, options and errors of
 papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `file` (and the deprecated `filecheck`), `list`,
-`export`, `check` and `migrate` are ported; the other commands print
+`export`, `check`, `migrate`, `history` (with `--revert`), `undo`, `redo` and `restore` are ported; the other commands print
 `papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
 selection and the outputs are there, and `--export`, and the actions on the files (`--attach`,
 `--detach`, `--detach-broken`, `--rename`, `--fix-files`, `--open`); the other actions that change the
@@ -195,3 +204,25 @@ does with a file (`move`, `copy`, `link`, `ask`) is `command::files`, with the r
 are the cases `file/*`, `add/pdf-*`, `add/folder*`, `add/*doi*`, `list/file-actions` of `spec/` (those
 that need the network or a PDF say so), and `tests/command_files.rs`; `tests/interop.rs` has papers
 undo what papers-rs did and the reverse (`PAPERS_REFERENCE`).
+
+## The three-way merge and the revert
+
+`merge::Merge::exchange(target, incoming, relative_to, base)` is the merge of `pull`, `push` and a
+revert; the module documentation says what a field of it is (`Status`, `Changed`, `FieldMerge::removal`,
+`decline`) and what each `--on-duplicate` mode does in each `Context`. The dialogue of `ask` is in
+`papers-rs-cli` (`src/dialogue.rs`), which shows a three-way merge as papers does (where a field
+changed, `(removed)`, the `origin` line, the additions in `f`).
+
+- `tests/gen_merge3.py` makes `tests/expected/merge3.json` with the reference python: random sets of base,
+  target and incoming entries (a field unchanged, changed to an equivalent spelling or to another value,
+  removed, blank; the type, the keys, the former keys, the links), and for each what papers makes of it
+  (the fields, the result with each side chosen, the additions declined, the screen, the questions, the
+  answers, the resolver in each mode, a scripted dialogue). `tests/merge3.rs` replays the model,
+  `papers-rs-cli`'s `dialogue::tests` the rest; `gen_merge3.py --count 30000 --seed 11 --out FILE` makes a
+  larger set (`PAPERS_RS_MERGE3_FUZZ=FILE cargo test -p papers-rs --test merge3 fuzz_file`, and
+  `cargo test -p papers-rs-cli --bin papers-rs a_larger_file`).
+- `tests/revert.rs`: the tests of papers for `history --revert` (`test_revert.py`), on the API.
+  `spec/cases/history/revert-*` and `undo-pool-moved-on` are the cases recorded from papers, and
+  `crates/papers-rs-cli/tests/revert_interop.rs` (with `PAPERS_REFERENCE`) has papers and papers-rs
+  revert, undo and redo each other's steps, and a library with a pool (built by papers) whose pool moved
+  on: `undo` and `redo` by both leave the same libraries and history, and print the same.

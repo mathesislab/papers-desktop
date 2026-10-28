@@ -4,6 +4,12 @@
 //! the values of an entry, go field by field, edit the merged entry, say it is
 //! not the same paper, skip, quit. The questions go to the standard output and
 //! the answers come from the standard input.
+//!
+//! The same dialogue serves the three-way merges (`pull`, `push`, `history --revert`): the
+//! fields show where they changed, a removal is shown as `(removed)`, the value of the base
+//! is the `origin` line of a conflict, and `f` goes through the additions too, which can be
+//! declined. In a revert papers shows the entries by their keys, as `check` does, and offers
+//! what `check` does not (`n`, `s`).
 
 use std::io::{BufRead, Write};
 
@@ -15,7 +21,8 @@ use papers_rs::entry::{files, val};
 use papers_rs::identity::Verdict;
 use papers_rs::log;
 use papers_rs::merge::{
-    Context, Decision, DuplicateError, ENTRYTYPE, Merge, OnDuplicate, Resolve, Status,
+    Changed, Context, Decision, DuplicateError, ENTRYTYPE, FieldMerge, Merge, OnDuplicate, REMOVED,
+    Resolve, Status,
 };
 
 const WARNING: &str = "\x1b[93m";
@@ -23,19 +30,46 @@ const OK_BLUE: &str = "\x1b[94m";
 const OK_GREEN: &str = "\x1b[92m";
 const END: &str = "\x1b[0m";
 
+/// Where the answers come from: `input(prompt)`.
+type Input = Box<dyn FnMut(&str) -> Result<String, DuplicateError>>;
+
+/// Where the screens and the questions go.
+type Output = Box<dyn FnMut(&str)>;
+
 pub struct Dialogue {
     color: bool,
     editor: Editor,
     quit: bool,
+    input: Input,
+    output: Output,
+    /// the paths of the files are shown relative to it (the current directory)
+    cwd: String,
 }
 
 impl Dialogue {
+    /// The dialogue of a terminal: the questions go to the standard output, the answers come
+    /// from the standard input.
     pub fn new(color: bool, editor: Editor) -> Dialogue {
+        Dialogue::with_io(color, editor, Box::new(stdin_input), Box::new(say))
+    }
+
+    /// A dialogue with its own input and output.
+    pub fn with_io(color: bool, editor: Editor, input: Input, output: Output) -> Dialogue {
         Dialogue {
             color,
             editor,
             quit: false,
+            input,
+            output,
+            cwd: papers_rs::config::paths::getcwd(),
         }
+    }
+
+    /// The paths of the files are shown relative to this folder.
+    #[cfg(test)]
+    pub fn in_folder(mut self, cwd: &str) -> Dialogue {
+        self.cwd = cwd.to_string();
+        self
     }
 }
 
@@ -71,9 +105,9 @@ fn pad(text: &str, width: usize) -> String {
 }
 
 /// A path for the screen: relative to the current directory if absolute.
-fn shown_path(f: &str) -> String {
+fn shown_path(f: &str, cwd: &str) -> String {
     if is_abs(f) {
-        relpath(f, ".")
+        relpath(f, cwd)
     } else {
         f.to_string()
     }
@@ -85,6 +119,8 @@ struct Screen<'a> {
     context: Context,
     reason: &'a str,
     color: bool,
+    /// the paths are shown relative to it
+    cwd: &'a str,
 }
 
 impl Screen<'_> {
@@ -100,11 +136,56 @@ impl Screen<'_> {
         self.context == Context::Add
     }
 
+    /// `pull` or `push`.
+    fn exchange(&self) -> bool {
+        self.context.is_exchange()
+    }
+
+    /// The name of entry `i`: `library`/`new`, `library`/`pool`, `pool`/`library`, else its key.
     fn label(&self, i: usize) -> String {
-        if self.is_add() {
-            ["library", "new"][i].to_string()
-        } else {
-            self.merge.entries[i].key.clone()
+        match self.context.labels() {
+            Some(labels) => labels[i].to_string(),
+            None => self.merge.entries[i].key.clone(),
+        }
+    }
+
+    /// The command that the dialogue is for, in the menu.
+    fn command(&self) -> &'static str {
+        match self.context {
+            Context::Pull => "pull",
+            Context::Push => "push",
+            Context::Add => "add",
+            Context::Check => "check",
+            Context::Revert => "revert",
+        }
+    }
+
+    /// Where a field changed, in a three-way merge.
+    fn change_note(&self, f: &FieldMerge) -> String {
+        match f.changed {
+            Some(Changed::Target) => format!("changed in {}, kept", self.label(0)),
+            Some(Changed::Other) => {
+                if f.values[1].is_none() {
+                    format!("removed in {}", self.label(1))
+                } else if f.values[0].is_none() {
+                    format!("added in {}", self.label(1))
+                } else {
+                    format!("changed in {}", self.label(1))
+                }
+            }
+            Some(Changed::Both) => {
+                for i in 0..2 {
+                    if f.values[i].is_none() {
+                        return format!(
+                            "removed in {}, changed in {}",
+                            self.label(i),
+                            self.label(1 - i)
+                        );
+                    }
+                }
+                "changed on both sides".to_string()
+            }
+            None => String::new(),
         }
     }
 
@@ -115,10 +196,16 @@ impl Screen<'_> {
         } else {
             format!(" ({})", self.reason)
         };
-        let line = if self.is_add() {
-            format!("Already in library: {}{reason}", m.key())
+        let pool = if self.reason.is_empty() {
+            "pool"
         } else {
-            format!("Same paper: {} entries{reason}", m.entries.len())
+            self.reason
+        };
+        let line = match self.context {
+            Context::Add => format!("Already in library: {}{reason}", m.key()),
+            Context::Pull => format!("{}  <-  {pool} ({})", m.key(), m.others()[0].key),
+            Context::Push => format!("{}  ->  {pool} ({})", m.others()[0].key, m.key()),
+            _ => format!("Same paper: {} entries{reason}", m.entries.len()),
         };
         let mut lines = vec![self.paint(&line, OK_BLUE)];
         let rows: Vec<Vec<String>> = m
@@ -128,12 +215,12 @@ impl Screen<'_> {
             .map(|(i, e)| {
                 let fs: Vec<String> = files(e, m.relative_to.as_deref())
                     .iter()
-                    .map(|f| shown_path(f))
+                    .map(|f| shown_path(f, self.cwd))
                     .collect();
                 let doi = val(e, "doi");
                 vec![
                     (i + 1).to_string(),
-                    if self.is_add() {
+                    if self.context.labels().is_some() {
                         self.label(i)
                     } else {
                         String::new()
@@ -161,6 +248,9 @@ impl Screen<'_> {
                 .collect();
             lines.push(format!("  {}", cells.join("  ").trim_end()));
         }
+        if m.is_three_way() {
+            lines.push("     origin = the pool version at the last pull or push".to_string());
+        }
         lines.join("\n")
     }
 
@@ -185,70 +275,94 @@ impl Screen<'_> {
             .unwrap_or(0)
             .max(4);
         let mut out = vec![format!("@{}{{{},", etype.value().unwrap_or(""), m.key())];
-        let mut line = |mark: &str,
-                        name: &str,
-                        value: &str,
-                        alternatives: &[(Vec<usize>, String)]| {
-            let text = format!("{mark}  {} = {value}", pad(name, width));
-            out.push(match mark {
-                "+" => self.paint(&text, OK_GREEN),
-                "!" => self.paint(&text, WARNING),
-                _ => text,
-            });
-            for (idx, v) in alternatives {
-                let which = idx
-                    .iter()
-                    .map(|i| (i + 1).to_string())
-                    .collect::<Vec<_>>()
-                    .join(",");
-                out.push(self.paint(&format!("!  {}   {which}: {v}", " ".repeat(width)), WARNING));
+        let mut line =
+            |mark: &str, name: &str, value: &str, alternatives: &[(String, String)], note: &str| {
+                let mut text = format!("{mark}  {} = {value}", pad(name, width));
+                if !note.is_empty() {
+                    text = format!("{}   {note}", pad(&text, 50));
+                }
+                out.push(match mark {
+                    "+" => self.paint(&text, OK_GREEN),
+                    "!" => self.paint(&text, WARNING),
+                    _ => text,
+                });
+                for (which, v) in alternatives {
+                    out.push(
+                        self.paint(&format!("!  {}   {which}: {v}", " ".repeat(width)), WARNING),
+                    );
+                }
+            };
+        // the other values of a field: which entries, and the value
+        let numbered = |alts: Vec<(Vec<usize>, Option<String>)>,
+                        show: &dyn Fn(Option<&str>) -> String| {
+            alts.into_iter()
+                .map(|(idx, v)| {
+                    let which = idx
+                        .iter()
+                        .map(|i| (i + 1).to_string())
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    (which, show(v.as_deref()))
+                })
+                .collect::<Vec<_>>()
+        };
+        let braced = |v: Option<&str>, width: Option<usize>| match v {
+            None => REMOVED.to_string(),
+            Some(v) => format!("{{{}}}", oneline(v, width)),
+        };
+        // the value of the base, after the other values of a conflict
+        let origin = |f: &FieldMerge| -> Vec<(String, String)> {
+            match (&f.base, m.is_three_way()) {
+                (Some(base), true) => vec![("origin".to_string(), braced(Some(base), None))],
+                _ => Vec::new(),
             }
         };
         if etype.status == Status::Conflict {
+            let mut alts = numbered(etype.alternatives(), &|v| v.unwrap_or("").to_string());
+            alts.extend(origin(etype));
             line(
                 "!",
                 "type",
                 etype.value().unwrap_or(""),
-                &etype.alternatives(),
+                &alts,
+                &self.change_note(etype),
             );
         }
         let others: Vec<&str> = m.others().iter().map(|e| e.key.as_str()).collect();
         if self.context == Context::Check && others.iter().any(|k| *k != m.key()) {
-            let alts: Vec<(Vec<usize>, String)> = others
+            let alts: Vec<(String, String)> = others
                 .iter()
                 .enumerate()
                 .filter(|(_, k)| **k != m.key())
-                .map(|(i, k)| (vec![i + 1], format!("{k} (kept in ids)")))
+                .map(|(i, k)| ((i + 2).to_string(), format!("{k} (kept in ids)")))
                 .collect();
-            line("!", "key", m.key(), &alts);
+            line("!", "key", m.key(), &alts, "");
         }
-        let braced = |v: &str, width: Option<usize>| format!("{{{}}}", oneline(v, width));
-        type Row = (String, String, String, Vec<(Vec<usize>, String)>);
+        type Row = (String, String, String, Vec<(String, String)>, String);
         let mut rows: Vec<Row> = Vec::new();
         for f in &m.fields {
             if f.name == ENTRYTYPE || (f.value().is_none() && f.status == Status::Same) {
                 continue;
             }
-            let value = f.value().unwrap_or("");
+            let note = self.change_note(f);
             if f.status == Status::Conflict {
-                let alts = f
-                    .alternatives()
-                    .into_iter()
-                    .map(|(idx, v)| (idx, braced(&v, None)))
-                    .collect();
-                rows.push(("!".to_string(), f.name.clone(), braced(value, None), alts));
-            } else {
-                let mark = if f.status == Status::Added { "+" } else { " " };
-                let width = if f.status == Status::Added {
-                    None
-                } else {
-                    Some(70)
-                };
+                let mut alts = numbered(f.alternatives(), &|v| braced(v, None));
+                alts.extend(origin(f));
                 rows.push((
-                    mark.to_string(),
+                    "!".to_string(),
                     f.name.clone(),
-                    braced(value, width),
+                    braced(f.value(), None),
+                    alts,
+                    note,
+                ));
+            } else {
+                let added = f.status == Status::Added;
+                rows.push((
+                    if added { "+" } else { " " }.to_string(),
+                    f.name.clone(),
+                    braced(f.value(), if added { None } else { Some(70) }),
                     Vec::new(),
+                    note,
                 ));
             }
         }
@@ -256,7 +370,7 @@ impl Screen<'_> {
             let joined = m
                 .files
                 .iter()
-                .map(|f| shown_path(f))
+                .map(|f| shown_path(f, self.cwd))
                 .collect::<Vec<_>>()
                 .join(";");
             rows.push((
@@ -264,6 +378,7 @@ impl Screen<'_> {
                 "file".to_string(),
                 format!("{{{joined}}}"),
                 Vec::new(),
+                String::new(),
             ));
         }
         if !m.ids.is_empty() {
@@ -272,11 +387,12 @@ impl Screen<'_> {
                 "ids".to_string(),
                 format!("{{{}}}", m.ids.join(", ")),
                 Vec::new(),
+                String::new(),
             ));
         }
         rows.sort_by(|a, b| a.1.cmp(&b.1));
-        for (mark, name, value, alts) in &rows {
-            line(mark, name, value, alts);
+        for (mark, name, value, alts, note) in &rows {
+            line(mark, name, value, alts, note);
         }
         out.push("}".to_string());
         out
@@ -293,6 +409,15 @@ impl Screen<'_> {
         if self.is_add() {
             return format!(
                 "{conflicts}. The key {} is kept; + lines are added.",
+                m.key()
+            );
+        }
+        if self.exchange() {
+            let n = m.additions().len();
+            return format!(
+                "{conflicts}, {n} change{} from the {}. The key {} is kept.",
+                if n != 1 { "s" } else { "" },
+                self.label(1),
                 m.key()
             );
         }
@@ -315,7 +440,7 @@ impl Screen<'_> {
         let n = m.entries.len();
         let mut first: Vec<String> = Vec::new();
         if !m.conflicts().is_empty() {
-            if self.is_add() {
+            if self.context.labels().is_some() {
                 first.push(format!("1 keep {} values", self.label(0)));
                 first.push(format!("2 take {} values", self.label(1)));
             } else {
@@ -331,6 +456,9 @@ impl Screen<'_> {
             first.push("f field by field".to_string());
         } else {
             first.push("1 merge".to_string());
+            if m.is_three_way() && !m.additions().is_empty() {
+                first.push("f field by field".to_string());
+            }
         }
         first.push("e edit".to_string());
         let mut second: Vec<String> = Vec::new();
@@ -342,11 +470,15 @@ impl Screen<'_> {
                 "n not the same paper (add {} separately)",
                 m.others()[0].key
             ));
-        } else {
+        } else if !self.exchange() {
             second.push("n not the same paper".to_string());
         }
         second.extend([
-            "s skip".to_string(),
+            if self.exchange() {
+                format!("s skip ({} again later)", self.command())
+            } else {
+                "s skip".to_string()
+            },
             "q quit".to_string(),
             "? help".to_string(),
         ]);
@@ -367,7 +499,14 @@ impl Screen<'_> {
             format!(
                 "  1..{n}  resolve all remaining conflicts with the values of that entry, and merge"
             ),
-            "  f      go through the conflicts one at a time".to_string(),
+            format!(
+                "  f      go through the conflicts one at a time{}",
+                if self.merge.is_three_way() {
+                    " (and the changes from the other side)"
+                } else {
+                    ""
+                }
+            ),
             "  e      edit the merged entry in the editor (the other values are % comment lines)"
                 .to_string(),
         ];
@@ -380,7 +519,7 @@ impl Screen<'_> {
                 "  n      not the same paper: keep the entries separate, and do not ask again"
                     .to_string(),
             );
-        } else {
+        } else if !self.exchange() {
             lines.push(
                 "  n      not the same paper: add the new entry separately, and do not ask again"
                     .to_string(),
@@ -395,26 +534,40 @@ impl Screen<'_> {
         lines.join("\n")
     }
 
+    /// The fields that `f` asks about: the conflicts, and in a three-way merge the additions
+    /// (after the conflicts).
     fn conflict_indexes(&self) -> Vec<usize> {
-        self.merge
-            .fields
-            .iter()
-            .enumerate()
-            .filter(|(_, f)| f.status == Status::Conflict)
-            .map(|(i, _)| i)
-            .collect()
+        let of = |status: Status| {
+            self.merge
+                .fields
+                .iter()
+                .enumerate()
+                .filter(move |(_, f)| f.status == status)
+                .map(|(i, _)| i)
+        };
+        let mut indexes: Vec<usize> = of(Status::Conflict).collect();
+        if self.merge.is_three_way() {
+            indexes.extend(of(Status::Added));
+        }
+        indexes
     }
 
     /// The question of a conflicting field and its prompt.
     fn field_question(&self, field: usize) -> (String, String) {
         let f = &self.merge.fields[field];
+        let absent = if f.base.is_some() { REMOVED } else { "(none)" };
         let rows: Vec<(String, String, String)> = f
             .values
             .iter()
             .enumerate()
-            .filter_map(|(i, v)| {
-                v.as_ref()
-                    .map(|v| ((i + 1).to_string(), oneline(v, None), self.label(i)))
+            .filter(|(_, v)| v.is_some() || f.status == Status::Added || f.three_way)
+            .map(|(i, v)| {
+                (
+                    (i + 1).to_string(),
+                    v.as_deref()
+                        .map_or(absent.to_string(), |v| oneline(v, None)),
+                    self.label(i),
+                )
             })
             .collect();
         let width = rows.iter().map(|r| r.1.chars().count()).max().unwrap_or(0);
@@ -451,6 +604,7 @@ impl Screen<'_> {
             "f" if self.conflict_indexes().is_empty() => Answer::Invalid(s.to_string()),
             "f" => Answer::Fields,
             "e" => Answer::Edit,
+            "n" if self.exchange() => Answer::Invalid(s.to_string()),
             "n" => Answer::Distinct,
             "s" => Answer::Skip,
             "q" => Answer::Quit,
@@ -478,7 +632,7 @@ impl Screen<'_> {
             Ok(i)
                 if s.chars().all(|c| c.is_ascii_digit())
                     && (1..=f.values.len()).contains(&i)
-                    && f.values[i - 1].is_some() =>
+                    && (f.values[i - 1].is_some() || f.status == Status::Added || f.three_way) =>
             {
                 Answer::Take(i - 1)
             }
@@ -498,11 +652,11 @@ fn merge_edit_text(merge: &Merge) -> String {
                 .map(|i| (i + 1).to_string())
                 .collect::<Vec<_>>()
                 .join(", ");
-            lines.push(format!(
-                "% {} = {{{}}}   ({which})",
-                f.name,
-                oneline(&v, None)
-            ));
+            let value = match v {
+                Some(v) => format!("{{{}}}", oneline(&v, None)),
+                None => REMOVED.to_string(),
+            };
+            lines.push(format!("% {} = {value}   ({which})", f.name));
         }
     }
     if !lines.is_empty() {
@@ -561,7 +715,7 @@ fn say(text: &str) {
 }
 
 /// `input(prompt)`: the answer; an error of the duplicates when there is no more input.
-fn input(prompt: &str) -> Result<String, DuplicateError> {
+fn stdin_input(prompt: &str) -> Result<String, DuplicateError> {
     log::print(prompt);
     let _ = std::io::stdout().flush();
     let mut line = String::new();
@@ -586,7 +740,7 @@ impl Dialogue {
 
     /// Field by field; `None` when the user went back to the menu (a failed edit).
     fn ask_fields(
-        &self,
+        &mut self,
         merge: &mut Merge,
         context: Context,
         reason: &str,
@@ -596,6 +750,7 @@ impl Dialogue {
             context,
             reason,
             color: self.color,
+            cwd: &self.cwd,
         }
         .conflict_indexes();
         for field in questions {
@@ -605,17 +760,26 @@ impl Dialogue {
                     context,
                     reason,
                     color: self.color,
+                    cwd: &self.cwd,
                 };
                 let (question, prompt) = screen.field_question(field);
-                say(&question);
-                let answer = screen.parse_field(field, &input(&prompt)?);
+                (self.output)(&question);
+                let answer = screen.parse_field(field, &(self.input)(&prompt)?);
                 match answer {
                     Answer::Take(i) => {
-                        merge.fields[field].choose(i);
+                        let f = &mut merge.fields[field];
+                        if f.status == Status::Added {
+                            // an addition: entry 1 declines it
+                            if i == 0 {
+                                f.decline();
+                            }
+                        } else {
+                            f.choose(i);
+                        }
                         break;
                     }
                     Answer::Edit => return Ok(self.edit(merge)),
-                    Answer::Invalid(text) => say(&format!(
+                    Answer::Invalid(text) => (self.output)(&format!(
                         "invalid answer: {}",
                         papers_rs::config::json::py_repr_str(&text)
                     )),
@@ -656,12 +820,13 @@ impl Resolve for Dialogue {
                 context,
                 reason: &verdict.reason,
                 color: self.color,
+                cwd: &self.cwd,
             };
             if show {
-                say(&screen.screen());
+                (self.output)(&screen.screen());
             }
             show = true;
-            let answer = screen.parse(&input(">>> ")?);
+            let answer = screen.parse(&(self.input)(">>> ")?);
             match answer {
                 Answer::Take(i) => {
                     merge.choose_all(i);
@@ -686,17 +851,294 @@ impl Resolve for Dialogue {
                     return Ok(Decision::Skip);
                 }
                 Answer::Help => {
-                    say(&screen.help());
+                    (self.output)(&screen.help());
                     show = false;
                 }
                 Answer::Invalid(text) => {
-                    say(&format!(
+                    (self.output)(&format!(
                         "invalid answer: {} (? for help)",
                         papers_rs::config::json::py_repr_str(&text)
                     ));
                     show = false;
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! The dialogue as papers does it: the screens, the questions, the answers, the decisions of
+    //! the resolver and scripted dialogues, on the cases of `gen_merge3.py` (two-way and
+    //! three-way merges, in each context). `PAPERS_RS_MERGE3_FUZZ=FILE` runs a larger file.
+
+    use super::*;
+    use papers_rs::bib::{Bib, Block};
+    use papers_rs::identity::Kind;
+    use serde_json::{Value, json};
+
+    fn entry(v: &Value) -> Entry {
+        let mut e = Entry::new(v["type"].as_str().unwrap(), v["key"].as_str().unwrap());
+        for f in v["fields"].as_array().unwrap() {
+            e.set(f[0].as_str().unwrap(), f[1].as_str().unwrap());
+        }
+        e
+    }
+
+    fn formatted(e: &Entry) -> String {
+        let mut bib = Bib::default();
+        bib.blocks.push(Block::Entry(e.clone()));
+        bib.format()
+    }
+
+    fn make(case: &Value) -> Merge {
+        let target = entry(&case["target"]);
+        let other = entry(&case["other"]);
+        let rel = case["relative_to"].as_str();
+        match case["mode"].as_str().unwrap() {
+            "three" => Merge::exchange(target, other, rel, Some(&entry(&case["base"]))),
+            "exchange" => Merge::exchange(target, other, rel, None),
+            _ => Merge::new(
+                &[target, other],
+                rel,
+                case["keys_to_ids"].as_bool().unwrap(),
+            ),
+        }
+    }
+
+    fn context(name: &str) -> Context {
+        match name {
+            "add" => Context::Add,
+            "check" => Context::Check,
+            "pull" => Context::Pull,
+            "push" => Context::Push,
+            _ => Context::Revert,
+        }
+    }
+
+    fn kind(a: &Answer) -> (&'static str, Value) {
+        match a {
+            Answer::Take(i) => ("take", json!(i)),
+            Answer::Target(i) => ("target", json!(i)),
+            Answer::Fields => ("fields", Value::Null),
+            Answer::Edit => ("edit", Value::Null),
+            Answer::Distinct => ("distinct", Value::Null),
+            Answer::Skip => ("skip", Value::Null),
+            Answer::Quit => ("quit", Value::Null),
+            Answer::Help => ("help", Value::Null),
+            Answer::Invalid(_) => ("invalid", Value::Null),
+        }
+    }
+
+    fn check(case: &Value) -> Vec<String> {
+        let mut failures = Vec::new();
+        let d = &case["dialogue"];
+        let (name, reason) = (
+            d["context"].as_str().unwrap(),
+            d["reason"].as_str().unwrap(),
+        );
+        let ctx = context(name);
+        let mut expect = |what: &str, got: Value, want: &Value| {
+            if &got != want {
+                let text = |v: &Value| {
+                    v.as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| v.to_string())
+                };
+                failures.push(format!(
+                    "{name} {reason:?} {what}:\n--- papers-rs\n{}\n--- papers\n{}\n(target {} other {} base {})",
+                    text(&got),
+                    text(want),
+                    case["target"],
+                    case["other"],
+                    case["base"]
+                ));
+            }
+        };
+        let m = make(case);
+        let screen = |color: bool| Screen {
+            merge: &m,
+            context: ctx,
+            reason,
+            color,
+            cwd: "/",
+        };
+        let s = screen(false);
+        expect("screen", json!(s.screen()), &d["screen"]);
+        expect("menu", json!(s.menu()), &d["menu"]);
+        expect("summary", json!(s.summary()), &d["summary"]);
+        expect("help", json!(s.help()), &d["help"]);
+        expect("header", json!(s.header()), &d["header"]);
+        if !d["screen_color"].is_null() {
+            expect(
+                "screen_color",
+                json!(screen(true).screen()),
+                &d["screen_color"],
+            );
+        }
+        expect(
+            "edit_text",
+            json!(merge_edit_text(&m)),
+            &case["model"]["edit_text"],
+        );
+        let fields = s.conflict_indexes();
+        let questions: Vec<Value> = fields
+            .iter()
+            .map(|&i| {
+                let (q, prompt) = s.field_question(i);
+                json!([m.fields[i].name, format!("{q}\n{prompt}")])
+            })
+            .collect();
+        expect("questions", Value::Array(questions), &d["questions"]);
+        let parsed: Vec<Value> = d["parse"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| {
+                let a = p[0].as_str().unwrap();
+                let (k, i) = kind(&s.parse(a));
+                json!([a, k, i])
+            })
+            .collect();
+        expect("parse", Value::Array(parsed), &d["parse"]);
+        let parsed: Vec<Value> = fields
+            .iter()
+            .enumerate()
+            .map(|(n, &i)| {
+                let answers: Vec<Value> = d["parse_field"][n][1]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|p| {
+                        let a = p[0].as_str().unwrap();
+                        let (k, n) = kind(&s.parse_field(i, a));
+                        json!([a, k, n])
+                    })
+                    .collect();
+                json!([m.fields[i].name, answers])
+            })
+            .collect();
+        expect("parse_field", Value::Array(parsed), &d["parse_field"]);
+
+        // the resolver, in each mode
+        let verdict = Verdict {
+            kind: Kind::Same,
+            reason: reason.to_string(),
+        };
+        for (mode, word) in [
+            (OnDuplicate::Keep, "keep"),
+            (OnDuplicate::Update, "update"),
+            (OnDuplicate::Skip, "skip"),
+            (OnDuplicate::Error, "error"),
+        ] {
+            let got = match papers_rs::merge::Resolver::new(mode).decide(make(case), ctx, &verdict)
+            {
+                Ok(Decision::Merge(_, e)) => json!({"kind": "merge", "result": formatted(&e)}),
+                Ok(Decision::Skip) => json!({"kind": "skip", "result": null}),
+                Ok(Decision::Distinct) => json!({"kind": "distinct", "result": null}),
+                Err(e) => json!({"error": e.0}),
+            };
+            expect(word, got, &d["resolver"][word]);
+        }
+        expect(
+            "describe",
+            json!(papers_rs::merge::Resolver::describe(
+                &make(case),
+                ctx,
+                &verdict
+            )),
+            &d["describe"],
+        );
+
+        // a scripted dialogue
+        let script = &d["script"];
+        let strings = |v: &Value| -> Vec<String> {
+            v.as_array()
+                .unwrap()
+                .iter()
+                .map(|a| a.as_str().unwrap().to_string())
+                .collect()
+        };
+        let (mut answers, mut field_answers) = (
+            strings(&script["answers"]),
+            strings(&script["field_answers"]),
+        );
+        let printed = std::rc::Rc::new(std::cell::RefCell::new(Vec::<String>::new()));
+        let sink = std::rc::Rc::clone(&printed);
+        let input: Input = Box::new(move |prompt: &str| {
+            let main = prompt == ">>> ";
+            let queue = if main {
+                &mut answers
+            } else {
+                &mut field_answers
+            };
+            Ok(if queue.is_empty() {
+                if main { "q" } else { "1" }.to_string()
+            } else {
+                queue.remove(0)
+            })
+        });
+        let mut dialogue = Dialogue::with_io(
+            false,
+            Editor::default(),
+            input,
+            Box::new(move |text: &str| sink.borrow_mut().push(text.to_string())),
+        )
+        .in_folder("/");
+        let decision = dialogue.decide(make(case), ctx, &verdict).unwrap();
+        let (kind, result, key) = match &decision {
+            Decision::Merge(m, e) => ("merge", Some(formatted(e)), Some(m.key().to_string())),
+            Decision::Distinct => ("distinct", None, None),
+            Decision::Skip if dialogue.quit => ("quit", None, None),
+            Decision::Skip => ("skip", None, None),
+        };
+        expect(
+            "script printed",
+            json!(printed.borrow().clone()),
+            &script["printed"],
+        );
+        expect("script kind", json!(kind), &script["kind"]);
+        expect("script result", json!(result), &script["result"]);
+        if kind == "merge" {
+            expect("script key", json!(key), &script["key"]);
+        }
+        failures
+    }
+
+    fn run(cases: &[Value]) {
+        let failures: Vec<String> = cases.iter().flat_map(check).collect();
+        assert!(
+            failures.is_empty(),
+            "{} of {} cases differ; the first:\n{}",
+            failures.len(),
+            cases.len(),
+            failures
+                .iter()
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("\n\n")
+        );
+    }
+
+    fn load(path: &str) -> Vec<Value> {
+        let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        serde_json::from_str(&text).unwrap()
+    }
+
+    #[test]
+    fn the_dialogue_as_papers_does_it() {
+        let path = format!(
+            "{}/../papers-rs/tests/expected/merge3.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        run(&load(&path));
+    }
+
+    #[test]
+    fn a_larger_file() {
+        if let Ok(path) = std::env::var("PAPERS_RS_MERGE3_FUZZ") {
+            run(&load(&path));
         }
     }
 }

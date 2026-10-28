@@ -3254,6 +3254,7 @@ name = "papers-rs-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "flate2",
  "libc",
  "papers-rs",
  "serde_json",

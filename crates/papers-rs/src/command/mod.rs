@@ -10,6 +10,8 @@
 //! - [`files`]: what `add` does with the files of the entries added
 //!   (`--move`, `--copy`, `--link`, the `files` setting).
 //! - [`add_pdf`]: `add` of PDFs, folders and DOIs; [`queries`]: where their queries go.
+//! - [`revert`]: `papers history --revert N`, taking back a step of the history by a three-way
+//!   merge of the entries, per entry; also the revert of a pool step by undo.
 //! - [`file_cmd`]: `papers file` (rename, mv, attach, detach, rm, check, fix, clean, checksum) and the
 //!   file actions of `papers list`.
 
@@ -22,6 +24,7 @@ pub mod files;
 pub mod migrate;
 pub mod queries;
 pub mod report;
+pub mod revert;
 pub mod rm;
 pub mod session;
 pub mod tag;

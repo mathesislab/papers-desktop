@@ -1,5 +1,16 @@
 //! Moving in the history: undo, redo, restore, with the steps of the pool
 //! that went with the library's (spec/history.md, sections 6 and 7).
+//!
+//! A pool still where the command left it takes its step back (does it again). A pool that
+//! moved on since gets a new step that *reverts* the step of the command
+//! ([`crate::command::revert`]): conflicts, an entry changed in the pool since, are decided by
+//! the [`Resolve`] that `undo` and `redo` are given (papers asks in a terminal, else skips: the
+//! entry stays as it is). The revert of a pool step records no file operations.
+//!
+//! **Auto-push** (`papers undo` in a library with a pool and `auto-push`, spec 7.6) is for the
+//! caller: after `undo` or `redo` without `library_only`, push what differs from the origin
+//! records. The step of a pool that this command reverted is in [`Moved::links`]: papers leaves it
+//! pending for the next step of the library (the push), which records it in its `pools`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -14,12 +25,14 @@ use super::setup::read_bibtex;
 use super::store::sha256;
 use crate::bib::encoding::parse_file_relative;
 use crate::bib::{Bib, read_file};
+use crate::command::session::{Options, Session};
 use crate::config::files::write_atomic;
 use crate::config::paths::{dirname, isfile, join, normpath, realpath, relpath, short_home};
 use crate::config::{Config, config_root};
 use crate::error::{Error, Result};
 use crate::lock::{self, Lock};
 use crate::log;
+use crate::merge::Resolve;
 
 /// The files that the entries of a bibtex text link to (normalized absolute
 /// paths); the `file` fields are relative to `libdir`.
@@ -53,11 +66,23 @@ pub struct Moved {
     pub files: Option<Vec<String>>,
     /// The lines on the pools: the steps that followed, and the pools that did not.
     pub pools: Vec<String>,
+    /// The steps that the revert of a pool step added to the history of the pool, `(project id of
+    /// the pool, its step)`: the next step of the library records them in its `pools` (see the
+    /// module).
+    pub links: Links,
 }
+
+/// The steps that a command added to the histories of other libraries: `(project id, step)`.
+pub type Links = Vec<(String, PoolLink)>;
+
+/// What the revert of the steps of a pool gives: the lines of the reverts, and the new step of the pool
+/// with the link to record, when the pool changed.
+type Reverted = (Vec<String>, Option<(String, PoolLink)>);
 
 /// A pool whose steps go with those of the library.
 struct Pool {
     history: History,
+    config: Config,
     shown: String,
     head: Head,
     /// Where the pool is, once the steps taken so far are.
@@ -88,7 +113,7 @@ impl History {
     }
 
     /// The checksums of the files of a state (`files.json` of the state).
-    fn hashes(&self, state: &State) -> Result<BTreeMap<String, String>> {
+    pub(crate) fn hashes(&self, state: &State) -> Result<BTreeMap<String, String>> {
         match state.file(FILES_JSON) {
             Some(pieces) if !pieces.is_empty() => Ok(parse_files_json(
                 &self.store.text(&pieces)?,
@@ -241,7 +266,7 @@ impl History {
 
     /// How the messages name a pool: as the `pool` setting of the library
     /// writes it, else with `~`.
-    fn shown(&self, pool_config: &Config) -> String {
+    pub(crate) fn shown(&self, pool_config: &Config) -> String {
         let root = pool_config
             .file
             .as_deref()
@@ -307,6 +332,7 @@ impl History {
         Ok(Ok(Pool {
             at: head.state,
             history,
+            config: pool_config,
             shown,
             head,
             taken: vec![],
@@ -387,11 +413,19 @@ impl History {
         Ok((pools, lines))
     }
 
-    /// Bring the pools to the steps found by `pool_steps`; the lines of the
-    /// report. The pools that must revert steps (they moved on) are reported
-    /// only: papers-rs does not revert yet.
-    fn move_pools(pools: &mut [Pool], undo: bool, kind: &str) -> Result<Vec<String>> {
+    /// Bring the pools to the steps found by `pool_steps`, then revert the steps of the pools
+    /// that moved on (a new step of the pool); the lines of the report, and the links of the new
+    /// steps of the pools.
+    fn move_pools(
+        &self,
+        pools: &mut [Pool],
+        undo: bool,
+        kind: &str,
+        command: &str,
+        resolver: &mut dyn Resolve,
+    ) -> Result<(Vec<String>, Links)> {
         let mut lines = Vec::new();
+        let mut links = Vec::new();
         for pool in pools {
             if !pool.taken.is_empty() {
                 let cur = pool.head.state;
@@ -424,16 +458,76 @@ impl History {
                 lines.extend(file_lines);
             }
             if !pool.reverts.is_empty() {
-                let steps: Vec<String> = pool.reverts.iter().map(u64::to_string).collect();
-                lines.push(format!(
-                    "pool {}: changed since; step{} {} not reverted there (papers-rs does not revert yet)",
-                    pool.shown,
-                    if steps.len() > 1 { "s" } else { "" },
-                    steps.join(", ")
-                ));
+                let (revert_lines, link) = self.revert_pool(pool, command, resolver)?;
+                let steps = format!(
+                    "step{} {}",
+                    if pool.reverts.len() > 1 { "s" } else { "" },
+                    pool.reverts
+                        .iter()
+                        .map(u64::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+                match link {
+                    Some((id, link)) => {
+                        lines.push(format!(
+                            "pool {}: changed since, so {steps} reverted there: {}",
+                            pool.shown,
+                            pool.history.describe(link.state)
+                        ));
+                        links.push((id, link));
+                    }
+                    None => lines.push(format!(
+                        "pool {}: changed since; {steps} not reverted there (nothing to take back without changing what was done since)",
+                        pool.shown
+                    )),
+                }
+                lines.extend(revert_lines.into_iter().map(|l| format!("    {l}")));
             }
         }
-        Ok(lines)
+        Ok((lines, links))
+    }
+
+    /// Revert the steps of a pool that moved on, in the pool, saved as one new step (`from`: the
+    /// folder of this library; `reverts`: the steps). The new step, if the pool changed, with the
+    /// link for the next step of the library; the lines of the reverts.
+    fn revert_pool(
+        &self,
+        pool: &mut Pool,
+        command: &str,
+        resolver: &mut dyn Resolve,
+    ) -> Result<Reverted> {
+        let before = pool.history.head().map(|h| h.state);
+        let plural = if pool.reverts.len() > 1 { "s" } else { "" };
+        let steps = pool
+            .reverts
+            .iter()
+            .map(u64::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
+        let options = Options {
+            message: format!("{command}: revert of step{plural} {steps}"),
+            ..Options::default()
+        };
+        let mut session = Session::open_locked(pool.config.clone(), options, pool.lock.take())?;
+        session.mark_reverts(&pool.reverts);
+        session.mark_from(&dirname(&realpath(&self.setup.bibtex)));
+        let mut run = |session: &mut Session| -> Result<Reverted> {
+            let mut lines = Vec::new();
+            for n in &pool.reverts {
+                // a conflict (an entry changed in the pool since) is asked in a terminal, else left as it is
+                lines.extend(session.revert(*n as i64, resolver, false)?);
+            }
+            let committed = session.commit()?;
+            Ok((lines, committed.link))
+        };
+        let result = run(&mut session);
+        let (_, lock) = session.finish_keeping_lock();
+        pool.lock = lock;
+        pool.history.project.reload(); // with the state of the revert
+        let (lines, link) = result?;
+        let head = pool.history.head().map(|h| h.state);
+        Ok((lines, link.filter(|_| head != before)))
     }
 
     // undo, redo, restore
@@ -441,13 +535,16 @@ impl History {
 
     /// Go back `steps` states, the pool too for the steps that wrote it
     /// (unless `library_only`). The lock of the library is held by the
-    /// caller; `command` names the command for the locks of the pools.
+    /// caller; `command` is the command line (it names the command for the locks of the pools, and
+    /// is the message of the revert of a pool step); `resolver` decides the conflicts of such a
+    /// revert (see the module).
     pub fn undo(
         &mut self,
         steps: usize,
         library_only: bool,
         lock: Option<&Lock>,
         command: &str,
+        resolver: &mut dyn Resolve,
     ) -> Result<Moved> {
         let cur = if self.dry_run {
             self.head().map(|h| h.state)
@@ -468,6 +565,7 @@ impl History {
                 target,
                 files: None,
                 pools: vec![],
+                links: vec![],
             });
         }
         let (mut pools, missing) = if library_only {
@@ -483,7 +581,7 @@ impl History {
             .copied()
             .collect();
         // the pools first: the files the command moved to a pool are moved back, unless the pool still links them
-        let pool_lines = Self::move_pools(&mut pools, true, "undone")?;
+        let (pool_lines, links) = self.move_pools(&mut pools, true, "undone", command, resolver)?;
         let shared: BTreeSet<String> = pools
             .iter()
             .flat_map(|p| bibtex_links(&p.history.setup.bibtex, &p.history.setup.libdir))
@@ -501,6 +599,7 @@ impl History {
             target,
             files: Some(files),
             pools,
+            links,
         })
     }
 
@@ -511,6 +610,7 @@ impl History {
         library_only: bool,
         lock: Option<&Lock>,
         command: &str,
+        resolver: &mut dyn Resolve,
     ) -> Result<Moved> {
         let Some(head) = self.head().filter(|h| !h.redo.is_empty()) else {
             return Err(Error::exit("nothing to redo"));
@@ -533,6 +633,7 @@ impl History {
                 target,
                 files: None,
                 pools: vec![],
+                links: vec![],
             });
         }
         let (mut pools, missing) = if library_only {
@@ -544,11 +645,13 @@ impl History {
         let files = self.go_to(cur, target, None, &BTreeSet::new(), lock)?;
         self.project
             .set_head(&self.place, target, &head.redo[steps..])?;
-        let pool_lines = Self::move_pools(&mut pools, false, "redone")?;
+        let (pool_lines, links) =
+            self.move_pools(&mut pools, false, "redone", command, resolver)?;
         Ok(Moved {
             target,
             files: Some(files),
             pools: missing.into_iter().chain(pool_lines).collect(),
+            links,
         })
     }
 
@@ -573,6 +676,7 @@ impl History {
                 target,
                 files: None,
                 pools: vec![],
+                links: vec![],
             });
         }
         let cur = self
@@ -596,6 +700,7 @@ impl History {
             target,
             files: Some(files),
             pools: vec![],
+            links: vec![],
         })
     }
 

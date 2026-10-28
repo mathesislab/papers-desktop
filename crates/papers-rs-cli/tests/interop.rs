@@ -177,7 +177,13 @@ fn papers_rs_undoes_and_redoes_what_papers_recorded() {
     let mut config = s.config();
     let moved = History::require(&mut config, false)
         .unwrap()
-        .undo(2, false, None, "papers undo")
+        .undo(
+            2,
+            false,
+            None,
+            "papers undo",
+            &mut papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip),
+        )
         .unwrap();
     let _ = moved;
     assert_eq!(
@@ -193,7 +199,13 @@ fn papers_rs_undoes_and_redoes_what_papers_recorded() {
     let mut config = s.config();
     History::require(&mut config, false)
         .unwrap()
-        .undo(2, false, None, "papers undo")
+        .undo(
+            2,
+            false,
+            None,
+            "papers undo",
+            &mut papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip),
+        )
         .unwrap();
     assert_eq!(s.read("lib/papers.bib"), start);
     assert_eq!(
@@ -204,7 +216,13 @@ fn papers_rs_undoes_and_redoes_what_papers_recorded() {
     let mut config = s.config();
     History::require(&mut config, false)
         .unwrap()
-        .redo(4, false, None, "papers redo")
+        .redo(
+            4,
+            false,
+            None,
+            "papers redo",
+            &mut papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip),
+        )
         .unwrap();
     assert_eq!(s.read("lib/papers.bib"), edited);
     assert!(!Path::new(&s.path("lib/files/roe_2001_new.txt")).exists());

@@ -62,11 +62,12 @@
 //! (`report`, `listing`).
 //!
 //! The pool steps follow undo and redo as in papers 3.0.0b5 (`travel`); a pool
-//! that moved on since is to be *reverted* there, which needs the three-way
-//! merge: papers-rs reports it as not done (a line of `Moved::pools`).
+//! that moved on since is *reverted* there: a new step of the pool that takes
+//! back the step of the command, by the three-way merge of
+//! [`crate::command::revert`] (as `papers history --revert N` does for a
+//! library).
 //!
-//! Not here: `papers history --revert` (it needs the three-way merge), the
-//! revert of a pool step by undo, the commands.
+//! Not here: the commands (`papers undo`, `history --revert`, in `command` and the program).
 
 pub mod files_json;
 pub mod listing;

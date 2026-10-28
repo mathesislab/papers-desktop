@@ -330,7 +330,7 @@ fn files_deleted_by_rm_are_kept_in_the_history_and_undo_brings_them_back() {
     let mut config = s.config();
     History::require(&mut config, false)
         .unwrap()
-        .undo(1, false, None, "papers undo")
+        .undo(1, false, None, "papers undo", &mut skip())
         .unwrap();
     assert_eq!(s.read("lib/files/d.txt"), "deleted\n");
     assert!(s.read("lib/papers.bib").contains("doe2000"));
@@ -395,4 +395,9 @@ fn the_checksums_of_the_files_placed_go_to_files_json() {
         "a copy keeps the original"
     );
     let _: Value = serde_json::from_str(&files_json).unwrap();
+}
+
+/// What `papers undo` uses without a terminal for the conflicts of the revert of a pool step.
+fn skip() -> papers_rs::merge::Resolver {
+    papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip)
 }

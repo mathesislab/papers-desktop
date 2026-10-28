@@ -1000,7 +1000,7 @@ fn merge_branches() {
         .find(|f| f.name == "journal")
         .unwrap()
         .alternatives();
-    assert_eq!(journal, [(vec![1, 2], "J2".to_string())]);
+    assert_eq!(journal, [(vec![1, 2], Some("J2".to_string()))]);
     // an entry that has everything the other has is exact
     let (a, b) = (&entries(A)[0], entries(&A.replace("{a,", "{b,"))[0].clone());
     assert!(Merge::new(&[a.clone(), b], None, false).is_exact());

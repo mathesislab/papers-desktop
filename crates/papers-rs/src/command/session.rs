@@ -52,7 +52,7 @@ use crate::entry;
 use crate::error::{Error, Result};
 use crate::history::restore::{Deleter, file_digest, move_path, show};
 use crate::history::{FileOp as HistoryOp, Snapshot};
-use crate::history::{FilesJson, History, OpKind, Step};
+use crate::history::{FilesJson, History, OpKind, PoolLink, Step};
 use crate::library::{FileOp, Library, OpKind as LibraryOpKind, SaveError, SaveStatus};
 use crate::lock::{self, Lock};
 use crate::log;
@@ -187,6 +187,9 @@ pub struct Committed {
     pub saved: bool,
     /// The state of the library after the command in its history (none if nothing was recorded).
     pub step: Option<u64>,
+    /// For a library written by the command of another (see [`Session::mark_from`]): the link
+    /// (project id, step) that the step of the command's own library records in its `pools`.
+    pub link: Option<(String, PoolLink)>,
 }
 
 /// A command that writes a library, from the lock to the history.
@@ -206,6 +209,11 @@ pub struct Session {
     /// The operations of the command not recorded yet (files it moved or deleted itself), oldest
     /// first: those done before the save join its step, those done after are added to it.
     ops_after: Vec<HistoryOp>,
+    /// The steps that the step of the command takes back (`history --revert`, the revert of a pool step).
+    reverts: Vec<u64>,
+    /// The directory of the bibtex of the library of the command, when this library is another
+    /// one that the command writes (its pool): its step says where it came from.
+    from: Option<String>,
 }
 
 /// The error of what is not ported yet.
@@ -215,7 +223,21 @@ pub fn not_implemented(what: &str) -> Error {
 
 impl Session {
     /// Start a command on the library of `config` (its bibtex must exist).
-    pub fn open(mut config: Config, mut options: Options) -> Result<Session> {
+    pub fn open(config: Config, options: Options) -> Result<Session> {
+        Session::open_with(config, options, None)
+    }
+
+    /// Start a command on a library whose lock the caller holds already (`lock`): the lock is
+    /// not taken again (it is not re-entrant), and [`Session::finish_keeping_lock`] gives it back.
+    pub fn open_locked(config: Config, options: Options, lock: Option<Lock>) -> Result<Session> {
+        Session::open_with(config, options, Some(lock))
+    }
+
+    fn open_with(
+        mut config: Config,
+        mut options: Options,
+        held: Option<Option<Lock>>,
+    ) -> Result<Session> {
         if config.shallow() {
             return Err(not_implemented(
                 "a library with a pool (a shallow library; `papers config pool none` makes it self-contained)",
@@ -226,10 +248,10 @@ impl Session {
         } else {
             History::before_command(&mut config)
         };
-        let lock = if options.dry_run {
-            None
-        } else {
-            lock::acquire(&config, &options.message, None)?
+        let lock = match held {
+            Some(lock) => lock,
+            None if options.dry_run => None,
+            None => lock::acquire(&config, &options.message, None)?,
         };
         let mut library = Library::open(&config)?;
         library.dry_run = options.dry_run;
@@ -261,7 +283,21 @@ impl Session {
             recorded: None,
             rolled_back: false,
             ops_after: Vec::new(),
+            reverts: Vec::new(),
+            from: None,
         })
+    }
+
+    /// The step of the command takes back these steps of the history (`reverts` of the state).
+    pub fn mark_reverts(&mut self, reverts: &[u64]) {
+        self.reverts = reverts.to_vec();
+    }
+
+    /// The library is not the one of the command but another that it writes (its pool): its step
+    /// records the directory of the bibtex of the command's library (`from`), and
+    /// [`Committed::link`] is what the step of the command's library records.
+    pub fn mark_from(&mut self, dir: &str) {
+        self.from = Some(dir.to_string());
     }
 
     pub fn dry_run(&self) -> bool {
@@ -333,6 +369,7 @@ impl Session {
             return Ok(Committed {
                 saved: false,
                 step: None,
+                link: None,
             });
         }
         if !other_changes && self.library.unchanged() {
@@ -341,6 +378,7 @@ impl Session {
             return Ok(Committed {
                 saved: false,
                 step: None,
+                link: None,
             });
         }
         if let Some(lock) = &self.lock {
@@ -382,28 +420,32 @@ impl Session {
             .chain(saved.file_ops.iter().map(history_op))
             .collect();
         let message = self.options.message.clone();
+        let (reverts, from) = (self.reverts.clone(), self.from.clone());
         // the history comes last: a failure must not undo the work done above
-        let step = match self.history().and_then(|h| {
+        let (step, link) = match self.history().and_then(|h| {
             h.record(Step {
                 message,
                 ops,
+                reverts,
+                from,
                 ..Step::default()
             })
         }) {
             Ok(recorded) => {
                 self.recorded = Some(recorded.number);
-                recorded.number
+                (recorded.number, recorded.link)
             }
             Err(error) => {
                 log::error(&format!(
                     "the bibliography was saved, but its history failed: {error}"
                 ));
-                None
+                (None, None)
             }
         };
         Ok(Committed {
             saved: saved.status != SaveStatus::Unchanged,
             step,
+            link,
         })
     }
 
@@ -604,7 +646,13 @@ impl Session {
     /// The end of the command, also after an error: the file operations that
     /// the command's state does not have yet are recorded (see the module),
     /// the lock is released, and what was not sent to a sink is returned.
-    pub fn finish(mut self) -> Outcome {
+    pub fn finish(self) -> Outcome {
+        self.finish_keeping_lock().0
+    }
+
+    /// [`Session::finish`], giving back the lock of the library instead of releasing it (see
+    /// [`Session::open_locked`]).
+    pub fn finish_keeping_lock(mut self) -> (Outcome, Option<Lock>) {
         let mut ops: Vec<HistoryOp> = Vec::new();
         if self.recorded.is_none() && !self.rolled_back {
             ops.extend(self.library.file_ops().iter().map(history_op));
@@ -618,11 +666,14 @@ impl Session {
                 None => {
                     let message = self.options.message.clone();
                     let before = self.before.take();
+                    let (reverts, from) = (self.reverts.clone(), self.from.clone());
                     self.history().and_then(|h| {
                         h.sync_head(before.as_ref())?;
                         h.record(Step {
                             message,
                             ops,
+                            reverts,
+                            from,
                             ..Step::default()
                         })
                         .map(|_| ())
@@ -635,9 +686,37 @@ impl Session {
                 ));
             }
         }
-        drop(self.lock.take());
+        let lock = self.lock.take();
         let (out, porcelain) = self.say.take();
-        Outcome { out, porcelain }
+        (Outcome { out, porcelain }, lock)
+    }
+
+    // the revert of a step
+    // --------------------
+
+    /// Take back step `n` of the history in the library (`papers history --revert N`, the revert of
+    /// a pool step by undo): the entries, `distinct.json` and the files, not saved; the lines of the
+    /// report. The files that go back are part of the step of the command when `record_files`
+    /// (a revert), else they are not recorded (the revert of a pool step). See
+    /// [`revert`](super::revert).
+    pub fn revert(
+        &mut self,
+        n: i64,
+        resolver: &mut dyn crate::merge::Resolve,
+        record_files: bool,
+    ) -> Result<Vec<String>> {
+        self.history()?;
+        let history = self.history.as_mut().expect("the history");
+        let mut record = record_files.then(Vec::new);
+        let result = super::revert::revert(history, &mut self.library, n, resolver, &mut record);
+        self.ops_after.extend(record.unwrap_or_default());
+        result
+    }
+
+    /// The lines on the pools that step `n` also changed (see [`super::revert::pool_lines`]).
+    pub fn revert_pool_lines(&mut self, n: u64) -> Result<Vec<String>> {
+        let history = self.history()?;
+        Ok(super::revert::pool_lines(history, n))
     }
 }
 

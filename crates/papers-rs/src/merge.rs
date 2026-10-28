@@ -1,12 +1,79 @@
-//! The merge of entries that are the same paper (`papers.merge`, two-way):
-//! the target (the first entry, it keeps its key and its place) with the
-//! others, the fields that are the same, those that are added, and the
-//! conflicts, and what `--on-duplicate` does with them.
+//! The merge of entries that are the same paper (`papers.merge`): the target
+//! (the first entry, it keeps its key and its place) with the others, the
+//! fields that are the same, those that are added, and the conflicts, and what
+//! `--on-duplicate` does with them; two-way (`add`, `check`) or three-way with
+//! a base (`pull`, `push`, `history --revert`).
 //!
 //! The dialogue (`--on-duplicate ask`: the screen, the answers) is the business of
 //! the program that asks; it works on a [`Merge`] (choose the values of one
 //! entry for all conflicts or for one field, change the target) and gives a
-//! [`Decision`]. The three-way merge of the exchanges with a pool is not here.
+//! [`Decision`].
+//!
+//! # The three-way merge
+//!
+//! `pull`, `push` and `history --revert` (and the revert of a pool step by undo) merge
+//! two versions of an entry with the version they both come from, the **base**
+//! ([`Merge::exchange`]): what one side changed since the base wins, what both changed
+//! is a conflict, a removal counts as a change. The two sides are the **target** (entry 1,
+//! it keeps its key and its place) and the **incoming** entry (entry 2); the base is the
+//! origin record of the entry (`pull`: the target is the library entry, the incoming the pool
+//! entry; `push`: the other way round, with the base under the pool key), or, for a revert, the
+//! entry as step N left it, with the target the entry now and the incoming the entry before
+//! step N. Without a base (a first exchange) the merge is two-way, and what one side has
+//! alone is an addition.
+//!
+//! In an exchange the key, the former keys (`ids`) and the links (`file`) are not merged as
+//! fields: each side keeps its own keys, the links are the union ([`Merge::new_files`] are
+//! those that the target did not have).
+//!
+//! Each field has a [`Status`] (` ` same, `+` an addition from the incoming entry, `!` a
+//! conflict) and, in a three-way merge, where it [`Changed`]. Additions are taken in every mode
+//! (an addition may be [declined](FieldMerge::decline), field by field in the dialogue); a
+//! removal in the incoming entry is an addition whose value is none
+//! ([`FieldMerge::removal`]). A conflict is decided by whoever resolves it
+//! ([`Resolve::decide`], with the [`Context`] `Pull`, `Push` or `Revert`):
+//!
+//! | mode | conflicts |
+//! |---|---|
+//! | `keep` | the value of entry 1: the library's in `pull`, **the pool's in `push`** (entry 1 is the pool entry), the entry now in a revert |
+//! | `update` | the value of entry 2: the pool's in `pull`, **the library's in `push`**, the entry before step N in a revert |
+//! | `skip` | [`Decision::Skip`]: the caller changes nothing for this entry (`skipped`) |
+//! | `error` | [`DuplicateError`]: the command stops before saving |
+//! | `ask` | the dialogue of the program (`papers-rs-cli`'s `Dialogue`) |
+//!
+//! (`exchange.md` section 5.6 says the same in words: `keep` and `update` name entries 1 and
+//! 2, so the sides swap between `pull` and `push`.) Whoever applies the decision then calls
+//! [`apply_entry`] with the merged entry, or [`Merge::result`] when there was no conflict.
+//!
+//! ```
+//! use papers_rs::bib::Entry;
+//! use papers_rs::merge::{Changed, Merge, Status};
+//!
+//! let entry = |key: &str, fields: &[(&str, &str)]| {
+//!     let mut e = Entry::new("article", key);
+//!     for (k, v) in fields {
+//!         e.set(k, *v);
+//!     }
+//!     e
+//! };
+//! let base = entry("smith2020", &[("title", "T"), ("journal", "Nat."), ("volume", "1")]);
+//! let library = entry("smith2020", &[("title", "T"), ("journal", "Nature"), ("volume", "1")]);
+//! let pool = entry("Smith_2020", &[("title", "T"), ("journal", "Science"), ("volume", "2")]);
+//!
+//! let mut merge = Merge::exchange(library, pool, None, Some(&base));
+//! let status = |m: &Merge, n: &str| {
+//!     let f = m.fields.iter().find(|f| f.name == n).unwrap();
+//!     (f.status, f.changed)
+//! };
+//! assert_eq!(status(&merge, "volume"), (Status::Added, Some(Changed::Other)));
+//! assert_eq!(status(&merge, "journal"), (Status::Conflict, Some(Changed::Both)));
+//! assert_eq!(merge.result().get("journal"), Some("Nature")); // until decided
+//! merge.choose_all(1);
+//! let merged = merge.result();
+//! assert_eq!((merged.key.as_str(), merged.get("journal"), merged.get("volume")), ("smith2020", Some("Science"), Some("2")));
+//! ```
+//!
+//! A two-way merge (`add`, `check`):
 //!
 //! ```
 //! use papers_rs::bib::Entry;
@@ -51,6 +118,9 @@ pub enum Status {
 
 /// The fields with a rule of their own: the key, the links and the former keys.
 const SPECIAL_FIELDS: [&str; 3] = ["ID", "file", "ids"];
+
+/// How the dialogue shows a field that a side removed (three-way).
+pub const REMOVED: &str = "(removed)";
 
 /// The name that stands for the type of the entry among the fields.
 pub const ENTRYTYPE: &str = "ENTRYTYPE";
@@ -138,8 +208,22 @@ fn no_empty(v: Option<&str>) -> Option<String> {
         .map(str::to_string)
 }
 
+/// Where a field changed since the base (a three-way merge).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Changed {
+    /// in the target only (it is kept)
+    Target,
+    /// in the incoming entry only (it is offered)
+    Other,
+    /// on both sides (a conflict)
+    Both,
+}
+
 /// One field of a merge: the value of each entry (none if absent), its
 /// status, and the entry whose value is used.
+///
+/// In a three-way merge (`three_way`), `base` is the value of the base, and
+/// `changed` says on which side the field changed since.
 #[derive(Debug, Clone)]
 pub struct FieldMerge {
     pub name: String,
@@ -148,12 +232,32 @@ pub struct FieldMerge {
     pub status: Status,
     /// the entry whose value is used (for `Same` and `Added`, the value is set directly)
     pub choice: usize,
+    /// the value of the base (three-way)
+    pub base: Option<String>,
+    pub three_way: bool,
+    /// where the field changed since the base (three-way, not for what is the same)
+    pub changed: Option<Changed>,
     value: Option<String>,
 }
 
 impl FieldMerge {
     /// The field of entries that have these values (`FieldMerge(name, values)`).
     pub fn new(name: &str, original: &[Option<&str>]) -> FieldMerge {
+        FieldMerge::build(name, original, None, false)
+    }
+
+    /// The field of two entries and their base (`FieldMerge(name, values, base=, three_way=True)`):
+    /// whatever one side changed since the base wins, a field changed on both sides is a conflict.
+    pub fn three_way(name: &str, original: &[Option<&str>], base: Option<&str>) -> FieldMerge {
+        FieldMerge::build(name, original, base, true)
+    }
+
+    fn build(
+        name: &str,
+        original: &[Option<&str>],
+        base: Option<&str>,
+        three_way: bool,
+    ) -> FieldMerge {
         let values: Vec<Option<String>> = original.iter().map(|v| no_empty(*v)).collect();
         let present: Vec<&str> = values.iter().flatten().map(String::as_str).collect();
         let mut field = FieldMerge {
@@ -161,6 +265,9 @@ impl FieldMerge {
             values: values.clone(),
             status: Status::Same,
             choice: 0,
+            base: no_empty(base),
+            three_way,
+            changed: None,
             value: None,
         };
         if present.is_empty() {
@@ -173,17 +280,56 @@ impl FieldMerge {
         } else {
             values.iter().position(Option::is_some).unwrap()
         };
-        if present[1..].iter().all(|v| equivalent(name, present[0], v)) {
+        if present[1..].iter().all(|v| equivalent(name, present[0], v))
+            && !(three_way && values.iter().any(Option::is_none))
+        {
             field.value = Some(preferred(name, &present).to_string());
             field.status = if values[0].is_some() {
                 Status::Same
             } else {
                 Status::Added
             };
+        } else if three_way {
+            field.decide_three_way();
         } else {
             field.status = Status::Conflict;
         }
         field
+    }
+
+    /// Target and incoming entry differ (one of them may be absent: added, or removed since the base).
+    fn decide_three_way(&mut self) {
+        let (target, other) = (self.values[0].clone(), self.values[1].clone());
+        let base = self.base.clone();
+        let same = |a: &Option<String>, b: &Option<String>| match (a, b) {
+            (Some(a), Some(b)) => equivalent(&self.name, a, b),
+            _ => false,
+        };
+        self.choice = 0;
+        if base.is_none() && other.is_none() {
+            // added in the target: kept
+            self.status = Status::Same;
+            self.changed = Some(Changed::Target);
+        } else if base.is_none() && target.is_none() {
+            // added in the incoming entry: offered
+            self.status = Status::Added;
+            self.choice = 1;
+            self.changed = Some(Changed::Other);
+        } else if same(&other, &base) {
+            // changed or removed in the target only: kept
+            self.status = Status::Same;
+            self.changed = Some(Changed::Target);
+        } else if same(&target, &base) {
+            // changed or removed in the incoming entry only: offered
+            self.status = Status::Added;
+            self.value = other;
+            self.choice = 1;
+            self.changed = Some(Changed::Other);
+        } else {
+            // changed on both sides, or removed on one side and changed on the other
+            self.status = Status::Conflict;
+            self.changed = Some(Changed::Both);
+        }
     }
 
     /// The value used.
@@ -194,30 +340,53 @@ impl FieldMerge {
         }
     }
 
-    /// Use the value of entry `i`, for a conflict (ignored when entry `i` does not have the field).
+    /// The change offered is the removal of the field (three-way).
+    pub fn removal(&self) -> bool {
+        self.status == Status::Added && self.values[self.choice].is_none()
+    }
+
+    /// Do not take an addition: keep the value of the target (none if it has none).
+    pub fn decline(&mut self) {
+        if self.status == Status::Added {
+            self.status = Status::Same;
+            self.value = None;
+            self.choice = 0;
+        }
+    }
+
+    /// Use the value of entry `i`, for a conflict (ignored when entry `i` does not have the
+    /// field, except in a three-way merge, where entry `i` removed it).
     pub fn choose(&mut self, i: usize) {
-        if self.status == Status::Conflict && self.values.get(i).is_some_and(Option::is_some) {
+        if self.status == Status::Conflict
+            && self
+                .values
+                .get(i)
+                .is_some_and(|v| v.is_some() || self.three_way)
+        {
             self.choice = i;
         }
     }
 
     /// The values not used, grouped by value, in entry order: the entries and
-    /// the value (`alternatives`).
-    pub fn alternatives(&self) -> Vec<(Vec<usize>, String)> {
-        let mut groups: Vec<(Vec<usize>, String)> = Vec::new();
+    /// the value (`alternatives`); none for a field that the entry removed (three-way).
+    pub fn alternatives(&self) -> Vec<(Vec<usize>, Option<String>)> {
+        let mut groups: Vec<(Vec<usize>, Option<String>)> = Vec::new();
+        let used = self.value();
         for (i, v) in self.values.iter().enumerate() {
-            let Some(v) = v else { continue };
-            if i == self.choice
-                || self
-                    .value()
-                    .is_some_and(|used| equivalent(&self.name, v, used))
-            {
+            if i == self.choice {
                 continue;
             }
-            match groups
-                .iter_mut()
-                .find(|(_, g)| equivalent(&self.name, g, v))
-            {
+            match v {
+                None if !self.three_way || used.is_none() => continue,
+                Some(v) if used.is_some_and(|u| equivalent(&self.name, v, u)) => continue,
+                _ => {}
+            }
+            let same = |g: &Option<String>| match (g, v) {
+                (None, None) => true,
+                (Some(g), Some(v)) => equivalent(&self.name, g, v),
+                _ => false,
+            };
+            match groups.iter_mut().find(|(_, g)| same(g)) {
                 Some((idx, _)) => idx.push(i),
                 None => groups.push((vec![i], v.clone())),
             }
@@ -238,12 +407,19 @@ fn merge_value(e: &Entry, name: &str) -> Option<String> {
 ///
 /// `relative_to` is the directory the file links are relative to (the
 /// bibtex directory), `keys_to_ids` puts the keys of the other entries in the
-/// `ids` of the result (`check --duplicates`).
+/// `ids` of the result (`check --duplicates`). A merge of an exchange
+/// ([`Merge::exchange`]) has two entries and maybe a base.
 #[derive(Debug, Clone)]
 pub struct Merge {
     pub entries: Vec<Entry>,
     pub relative_to: Option<String>,
     pub keys_to_ids: bool,
+    /// the version the two entries come from (a three-way merge: the origin record of the entry
+    /// of a pull or push, the entry as step N left it for a revert); its key and links are not used
+    pub base: Option<Entry>,
+    /// a merge of an exchange (`pull`, `push`, a revert): the former keys of the target only,
+    /// the links of both sides
+    pub exchange: bool,
     /// the fields but the key, the links and the former keys: the type first
     pub fields: Vec<FieldMerge>,
     /// the union of the links of the entries, as absolute paths (the target's first)
@@ -257,11 +433,39 @@ pub struct Merge {
 }
 
 impl Merge {
+    /// The two-way merge of entries that are the same paper (`add`, `check`).
     pub fn new(entries: &[Entry], relative_to: Option<&str>, keys_to_ids: bool) -> Merge {
+        Merge::build(entries, relative_to, keys_to_ids, None, false)
+    }
+
+    /// The merge of an exchange: the `target` (it keeps its key) with the `incoming` entry, and
+    /// with a `base`, three-way (see the module); without, two-way with the rules of an exchange
+    /// (the former keys of the target only; what the incoming entry has alone is an addition).
+    /// `pull`: the library entry, the pool entry, the origin record; `push`: the pool entry, the
+    /// library entry, the record under the pool key; a revert: the entry now, the entry before
+    /// step N, the entry after it.
+    pub fn exchange(
+        target: Entry,
+        incoming: Entry,
+        relative_to: Option<&str>,
+        base: Option<&Entry>,
+    ) -> Merge {
+        Merge::build(&[target, incoming], relative_to, false, base.cloned(), true)
+    }
+
+    fn build(
+        entries: &[Entry],
+        relative_to: Option<&str>,
+        keys_to_ids: bool,
+        base: Option<Entry>,
+        exchange: bool,
+    ) -> Merge {
         let mut merge = Merge {
             entries: entries.to_vec(),
             relative_to: relative_to.map(str::to_string),
             keys_to_ids,
+            exchange: exchange || base.is_some(),
+            base,
             fields: Vec::new(),
             files: Vec::new(),
             new_files: Vec::new(),
@@ -280,11 +484,21 @@ impl Merge {
             let values: Vec<Option<String>> =
                 entries.iter().map(|e| merge_value(e, name)).collect();
             let refs: Vec<Option<&str>> = values.iter().map(Option::as_deref).collect();
-            merge.fields.push(FieldMerge::new(name, &refs));
+            merge.fields.push(match &merge.base {
+                Some(base) => {
+                    FieldMerge::three_way(name, &refs, merge_value(base, name).as_deref())
+                }
+                None => FieldMerge::new(name, &refs),
+            });
         }
         merge.merge_files();
         merge.merge_ids();
         merge
+    }
+
+    /// A base was given: whatever one side changed since it wins.
+    pub fn is_three_way(&self) -> bool {
+        self.base.is_some()
     }
 
     pub fn target(&self) -> &Entry {
@@ -334,8 +548,9 @@ impl Merge {
 
     fn merge_ids(&mut self) {
         let key = self.key().to_lowercase();
-        let mut sources: Vec<String> = self
-            .entries
+        // the former keys of a pool mean nothing in a library, and conversely
+        let owners = if self.exchange { 1 } else { self.entries.len() };
+        let mut sources: Vec<String> = self.entries[..owners]
             .iter()
             .map(|e| val(e, "ids").to_string())
             .collect();
@@ -406,7 +621,13 @@ impl Merge {
                 .filter(|(j, _)| *j != i)
                 .map(|(_, e)| e.clone()),
         );
-        Merge::new(&entries, self.relative_to.as_deref(), self.keys_to_ids)
+        Merge::build(
+            &entries,
+            self.relative_to.as_deref(),
+            self.keys_to_ids,
+            self.base.clone(),
+            self.exchange,
+        )
     }
 
     /// The merged entry, with the key of the target: the fields that have a
@@ -492,21 +713,54 @@ impl OnDuplicate {
     }
 }
 
-/// What a duplicate is found by: `add` (entry 1 is the library entry, entry 2
-/// the added one) or `check --duplicates` (a group of the library).
+/// What a decision is for: `add` (entry 1 is the library entry, entry 2 the added one),
+/// `check --duplicates` (a group of the library), `pull` (entry 1 is the library entry, entry 2
+/// the pool entry), `push` (entry 1 is the pool entry, entry 2 the library entry) or
+/// `history --revert` (entry 1 is the entry now, entry 2 the entry before the step).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Context {
     Add,
     Check,
+    Pull,
+    Push,
+    Revert,
 }
 
 impl Context {
+    /// The command to ask for help on, in the hint of the error.
     fn word(self) -> &'static str {
         match self {
             Context::Add => "add",
             Context::Check => "check",
+            Context::Pull => "pull",
+            Context::Push => "push",
+            Context::Revert => "history",
         }
     }
+
+    /// `pull` or `push`: the exchange of a library with its pool.
+    pub fn is_exchange(self) -> bool {
+        matches!(self, Context::Pull | Context::Push)
+    }
+
+    /// The entries have fixed names on the screen (`library`/`new`, `library`/`pool`,
+    /// `pool`/`library`); otherwise they are named by their keys.
+    pub fn labels(self) -> Option<[&'static str; 2]> {
+        match self {
+            Context::Add => Some(["library", "new"]),
+            Context::Pull => Some(["library", "pool"]),
+            Context::Push => Some(["pool", "library"]),
+            Context::Check | Context::Revert => None,
+        }
+    }
+}
+
+/// Make the entry of a library equal to `entry` (`apply_entry`): its type, its key and its
+/// fields (the merged entry of a decision).
+pub fn apply_entry(target: &mut Entry, entry: &Entry) {
+    target.entry_type = entry.entry_type.clone();
+    target.key = entry.key.clone();
+    target.fields = entry.fields.clone();
 }
 
 /// The outcome of a duplicate decision.
@@ -587,6 +841,23 @@ impl Resolver {
                     verdict.reason
                 )
             }
+            Context::Pull => format!(
+                "{}: changed in the library and in {} ({}; {what})",
+                merge.key(),
+                verdict.reason,
+                merge.others()[0].key
+            ),
+            Context::Revert => format!(
+                "{}: changed since {} too ({what})",
+                merge.key(),
+                verdict.reason
+            ),
+            Context::Push => format!(
+                "{}: changed in the library and in {} ({}; {what})",
+                merge.others()[0].key,
+                verdict.reason,
+                merge.key()
+            ),
             Context::Check => {
                 let keys: Vec<&str> = merge.entries.iter().map(|e| e.key.as_str()).collect();
                 format!(
