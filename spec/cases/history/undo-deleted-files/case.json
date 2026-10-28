@@ -1,0 +1,55 @@
+{
+  "description": "rm --delete-files keeps the files in the history (file objects, listed in the state); undo brings them back with their content, redo deletes them again",
+  "sections": [
+    "history.md#2.4",
+    "history.md#4",
+    "history.md#5.6",
+    "history.md#6.4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

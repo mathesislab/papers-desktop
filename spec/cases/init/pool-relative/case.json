@@ -1,5 +1,9 @@
 {
   "description": "init --pool creates a shallow library; the pool is relative to DIR",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/the-pool-setting",
+    "library.md#the-library-configuration/relative-paths"
+  ],
   "steps": [
     {
       "argv": [

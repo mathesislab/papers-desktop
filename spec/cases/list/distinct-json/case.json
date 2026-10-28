@@ -1,0 +1,48 @@
+{
+  "description": "a pair recorded in .papers/distinct.json is different papers, by identity (DOI, authors and title) in either order; elements that are not pairs are ignored; the file is not rewritten when nothing is added",
+  "sections": [
+    "bibtex.md#9.3",
+    "bibtex.md#9.4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "error"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "skip",
+        "--porcelain"
+      ]
+    }
+  ]
+}

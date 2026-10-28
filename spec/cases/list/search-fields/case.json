@@ -1,5 +1,8 @@
 {
   "description": "search in a field: --key, --author, --first-author, --year, --title, --doi...",
+  "sections": [
+    "formats.md#6"
+  ],
   "steps": [
     {
       "argv": [

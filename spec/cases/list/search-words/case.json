@@ -1,5 +1,8 @@
 {
   "description": "words match all the entries that have all of them (--any: one of them)",
+  "sections": [
+    "formats.md#6"
+  ],
   "steps": [
     {
       "argv": [

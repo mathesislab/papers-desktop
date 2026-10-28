@@ -1,5 +1,8 @@
 {
   "description": "tag lists the tags with the number of entries; nested tags are indented under their parent",
+  "sections": [
+    "bibtex.md#6"
+  ],
   "steps": [
     {
       "argv": [

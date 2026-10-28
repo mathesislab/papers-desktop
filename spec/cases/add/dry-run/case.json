@@ -1,5 +1,8 @@
 {
   "description": "add --dry-run changes nothing",
+  "sections": [
+    "bibtex.md#3.4"
+  ],
   "steps": [
     {
       "argv": [

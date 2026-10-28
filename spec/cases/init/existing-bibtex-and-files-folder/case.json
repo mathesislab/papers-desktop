@@ -1,5 +1,8 @@
 {
   "description": "init picks the first .bib file of the folder and an existing pdfs folder",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
   "steps": [
     {
       "argv": [

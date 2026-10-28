@@ -4,6 +4,7 @@ Python standard library only. See README.md for the format.
 """
 import difflib
 import fnmatch
+import hashlib
 import json
 import os
 import re
@@ -12,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -21,8 +23,15 @@ EMPTY_DIR = '.emptydir'          # marker file of an empty directory in a stored
 STORED = {'.gitignore': '.gitignore.spec'}   # files git would act on, stored under another name
 TIMEOUT = 120
 
+# a section of the specification: <file>.md#<number> (formats, bibtex, exchange, history: "7", "7.2")
+# or <file>.md#<slug>[/<slug>] (library.md, which has no numbers)
+SECTION_REF = re.compile(r'^(library|bibtex|formats|exchange|history)\.md#[a-z0-9][a-z0-9./-]*$')
+
 TIME_IN_TEXT = re.compile(r'\(\d{4}-\d\d-\d\d \d\d:\d\d\)')
 TIME_IN_JSON = re.compile(r'("time":\s*)[0-9.eE+-]+')
+LIBRARY_ID = re.compile(r'("id":\s*)"[0-9a-f]{32}"')
+ORIGIN_TIME = re.compile(r'papers-time = \{[^}]*\}')
+ORIGIN_PULLED = re.compile(r'papers-pulled \d+')
 PLACEHOLDERS = ('$WORK', '$HOME', '$CONFIG', '$DATA', '$CACHE')
 
 
@@ -52,14 +61,85 @@ class Case:
         with open(os.path.join(path, 'case.json'), encoding='utf-8') as f:
             spec = json.load(f)
         self.description = spec.get('description', '')
+        self.sections = spec.get('sections', [])
+        self.ignore = spec.get('ignore', [])
         self.requires = spec.get('requires', [])
         self.steps = spec['steps']
+        for ref in self.sections:
+            if not SECTION_REF.match(ref):
+                raise SystemExit(f'{self.name}: {ref}: not a section reference (see README.md, "Sections")')
+        if not self.sections:
+            raise SystemExit(f'{self.name}: case.json has no "sections"')
+        for step in self.steps:
+            bad = set(step.get('contract', [])) - {'stdout', 'stderr'}
+            if bad:
+                raise SystemExit(f'{self.name}: "contract" of a step: stdout and stderr only, not {sorted(bad)}')
         self.before = os.path.join(path, 'before')
         self.before_home = os.path.join(path, 'before-home')
         self.expected = os.path.join(path, 'expected')
 
 
-def find_cases(selectors=()):
+# Contract and Free outputs of a step
+# ====================================
+# Exit codes and every file written are Contract. What a step prints is Free (messages), except:
+#   - with --porcelain: the standard output (the porcelain lines, formats.md#7)
+#   - `list` with --format key|bibtex|ris|csl-json|bibjson, --plain, -K, --key-only, --field: the standard output
+#     (formats.md#6). The default line format (-l, -1, --format line) is human output: Free.
+# A step can say otherwise: "contract": ["stdout", "stderr"] (any subset, [] for none) replaces the default.
+
+LIST_CONTRACT_FORMATS = {'key', 'bibtex', 'ris', 'csl-json', 'bibjson'}
+LIST_CONTRACT_FLAGS = {'--plain', '-K', '--key-only', '--field', '-f'}
+
+
+def command_args(argv):
+    "the arguments after the global options (-C DIR): the command name first"
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == '-C':
+            i += 2
+        elif a.startswith('-'):
+            i += 1
+        else:
+            break
+    return argv[i:]
+
+
+def default_contract(argv):
+    "the streams of a step that are Contract by default: a subset of {'stdout', 'stderr'}"
+    args = command_args(argv)
+    if '--porcelain' in args:
+        return {'stdout'}
+    if args and args[0] == 'list':
+        fmt = None
+        for i, a in enumerate(args):
+            if a == '--format' and i + 1 < len(args):
+                fmt = args[i + 1]
+            elif a.startswith('--format='):
+                fmt = a[len('--format='):]
+        if fmt in LIST_CONTRACT_FORMATS or LIST_CONTRACT_FLAGS & set(args):
+            return {'stdout'}
+    return set()
+
+
+# Keys of JSON files that are Free (the file is Contract, the key is not).
+FREE_JSON_KEYS = [('home/data/history/projects/*/states/*.json', ('message',))]   # history.md#3.2
+
+
+def section_matches(ref, pattern):
+    "a section reference matches a pattern: a glob, or a section above it (formats.md#7 matches formats.md#7.2)"
+    return fnmatch.fnmatch(ref, pattern) or ref.startswith(pattern + '.') or ref.startswith(pattern + '/')
+
+
+def step_contract(case, n):
+    "the streams of step n that are Contract: the step's own \"contract\", else the default rules"
+    step = case.steps[n]
+    if 'contract' in step:
+        return set(step['contract'])
+    return default_contract(step['argv'])
+
+
+def find_cases(selectors=(), sections=()):
     "the cases of spec/cases whose name (group/name) matches one of the glob selectors (all by default)"
     found = []
     for root, dirs, files in os.walk(CASES):
@@ -71,6 +151,8 @@ def find_cases(selectors=()):
     if selectors:
         found = [c for c in found
                  if any(fnmatch.fnmatch(c.name, s) or c.name.startswith(s.rstrip('/') + '/') for s in selectors)]
+    if sections:
+        found = [c for c in found if any(section_matches(ref, pat) for ref in c.sections for pat in sections)]
     return found
 
 
@@ -197,7 +279,7 @@ class Sandbox:
             text = text.replace(ph, path)
         return text
 
-    def _normalize_bytes(self, data, time_json=False):
+    def _normalize_bytes(self, data, time_json=False, path='', origin=False):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError:
@@ -207,6 +289,10 @@ class Sandbox:
             text = text.replace(pid, name)
         if time_json:
             text = TIME_IN_JSON.sub(r'\1"$TIME"', text)
+        if path.endswith('.papers/config.json'):   # the id of a library no history step has named (export)
+            text = LIBRARY_ID.sub(r'\1"$ID"', text)
+        if origin or '.papers/origin/' in path:   # origin records: the times of the exchanges
+            text = ORIGIN_TIME.sub('papers-time = {$TIME}', ORIGIN_PULLED.sub('papers-pulled $MTIME', text))
         return text.encode('utf-8')
 
     def _expand_bytes(self, data):
@@ -243,6 +329,8 @@ class Sandbox:
                 'TZ': 'UTC', 'COLUMNS': '80', 'LINES': '24', 'NO_COLOR': '1', 'TERM': 'dumb'}
 
     def run_step(self, papers, step):
+        if step.get('wait'):
+            time.sleep(step['wait'])   # exchanges compare times with a resolution of one second
         cwd = os.path.normpath(os.path.join(self.work, step.get('cwd', '.')))
         argv = [self.expand(a) for a in step['argv']]
         if 'stdin_file' in step:
@@ -273,12 +361,16 @@ class Sandbox:
                 step[stream] = TIME_IN_TEXT.sub('($TIME)', text)
 
     def detect_version(self, papers):
-        "the version the implementation reports: its output is replaced by $VERSION"
+        "the version the implementation reports: its output is replaced by $VERSION (asked in an empty HOME)"
+        env = self.env()
+        env['HOME'] = tempfile.mkdtemp(prefix='papers-spec-version-')
         try:
-            p = subprocess.run(papers + ['--version'], cwd=self.work, env=self.env(), capture_output=True,
+            p = subprocess.run(papers + ['--version'], cwd=self.work, env=env, capture_output=True,
                                stdin=subprocess.DEVNULL, timeout=TIMEOUT)
         except (OSError, subprocess.SubprocessError):
             return
+        finally:
+            shutil.rmtree(env['HOME'], ignore_errors=True)
         text = p.stdout.decode('utf-8', 'replace').strip()
         if p.returncode == 0 and text:
             self.version = text
@@ -292,7 +384,7 @@ class Sandbox:
         d = self.dirs
         history = os.path.relpath(d['data'], self.home).replace(os.sep, '/') + '/history/'
         self.projects = self._project_names(raw, history)
-        work = {p: self._normalize_bytes(data) for p, data in _read_tree(self.work).items()}
+        work = {p: self._normalize_bytes(data, path=p) for p, data in _read_tree(self.work).items()}
         return {'work': work, 'home': self._snapshot_home(raw)}
 
     def _snapshot_home(self, raw):
@@ -303,6 +395,8 @@ class Sandbox:
         history = data + 'history/'
         projects = self.projects
         tree = {}
+        renamed = {}
+        texts = {}   # the objects: sha256 (of the normalized text) -> normalized text
         for path, content in raw.items():
             if path.startswith(cache):
                 continue   # the parse cache: private to each implementation
@@ -318,7 +412,17 @@ class Sandbox:
                         content = zlib.decompress(content)   # the compressor is private; the text is shared
                     except zlib.error:
                         pass
-                    content = self._normalize_bytes(content)
+                    normalized = self._normalize_bytes(content, origin=True)
+                    if normalized != content:
+                        # an object is named by the sha256 of its text: a text with a machine-specific part
+                        # (a path, the time of an origin record) is named by the sha256 of its normalized text
+                        new = hashlib.sha256(normalized).hexdigest()
+                        renamed[parts[-1]] = new
+                        parts[-1] = new
+                        parts[-2] = new[:2]
+                        rel = '/'.join(parts)
+                    content = normalized
+                    texts[parts[-1]] = normalized
                 else:
                     content = self._normalize_bytes(content)
             elif path.startswith(config):
@@ -331,7 +435,27 @@ class Sandbox:
                 rel = 'home/' + path
                 content = self._normalize_bytes(content)
             tree[rel] = content
+        if renamed:   # the states name the objects they use
+            for rel, content in tree.items():
+                if rel.startswith('data/history/projects/') and rel.endswith('.json'):
+                    text = content.decode('utf-8')
+                    for old, new in renamed.items():
+                        text = text.replace(old, new)
+                    tree[rel] = self._renew_bibtex_sha(text, renamed, texts).encode('utf-8')
         return tree
+
+    @staticmethod
+    def _renew_bibtex_sha(text, renamed, texts):
+        "a state whose bibtex has a renamed piece: its `sha` (of the whole text) follows the normalized text"
+        try:
+            bibtex = json.loads(text)['bibtex']
+            pieces, old = bibtex['pieces'], bibtex['sha']
+        except (ValueError, KeyError, TypeError):
+            return text
+        if not set(pieces) & set(renamed.values()) or any(p not in texts for p in pieces):
+            return text
+        new = hashlib.sha256(b''.join(texts[p] for p in pieces)).hexdigest()
+        return text.replace(old, new)
 
     def _project_names(self, raw, history):
         "the random identifiers of the projects of the history, numbered by the places of their libraries"
@@ -375,6 +499,9 @@ def run_case(case, papers, keep=False):
         box.detect_version(papers)
         steps = [box.run_step(papers, step) for step in case.steps]
         result = box.snapshot()
+        for tree in ('work', 'home'):   # the files the case does not compare ("ignore")
+            for path in [p for p in result[tree] if any(fnmatch.fnmatch(f'{tree}/{p}', g) for g in case.ignore)]:
+                del result[tree][path]
         box.normalize_steps(steps)
         result['steps'] = steps
         if keep:
@@ -449,27 +576,48 @@ def _text_diff(label, expected, actual, limit=40):
     return ''.join(lines)
 
 
-def differences(expected, actual, first_only=True):
-    "list of (label, unified diff) of what differs in the results, in the order of the run"
+def _without_keys(data, keys):
+    "the JSON object of the text without the given top-level keys, or None when it is not a JSON object"
+    try:
+        obj = json.loads(data.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(obj, dict):
+        return None
+    return {k: v for k, v in obj.items() if k not in keys}
+
+
+def _free_keys(tree, path):
+    for pattern, keys in FREE_JSON_KEYS:
+        if fnmatch.fnmatch(f'{tree}/{path}', pattern):
+            return keys
+    return ()
+
+
+def differences(expected, actual, case=None, first_only=True, contract_only=False):
+    """list of (label, unified diff, free) of what differs in the results, in the order of the run.
+
+    `free` is True for a difference in something that is Free (the output of a step that is not Contract,
+    a Free key of a file: see "Contract and Free" above); `case` says which. Without `case`, everything
+    is Contract. All differences are listed; first_only stops at the first one (with contract_only: at the
+    first Contract one, the Free ones before it are kept)."""
     found = []
 
-    def add(label, a, b):
-        found.append((label, _text_diff(label, a, b)))
-        return first_only
+    def add(label, text, free=False):
+        found.append((label, text, free))
 
     if len(expected['steps']) != len(actual['steps']):
-        add('steps', f'{len(expected["steps"])} steps\n', f'{len(actual["steps"])} steps\n')
+        add('steps', _text_diff('steps', f'{len(expected["steps"])} steps\n', f'{len(actual["steps"])} steps\n'))
         return found
     for n, (e, a) in enumerate(zip(expected['steps'], actual['steps'])):
+        streams = step_contract(case, n) if case else {'stdout', 'stderr'}
         for key in ('exit', 'stdout', 'stderr'):
             if e[key] != a[key]:
                 label = f'step {n + 1} {key}'
                 if key == 'exit':
-                    found.append((label, f'expected exit code {e[key]}, found {a[key]}\n'))
-                    if first_only:
-                        return found
-                elif add(label, e[key], a[key]):
-                    return found
+                    add(label, f'expected exit code {e[key]}, found {a[key]}\n')
+                else:
+                    add(label, _text_diff(label, e[key], a[key]), free=key not in streams)
     for tree in ('work', 'home'):
         for path in sorted(set(expected[tree]) | set(actual[tree])):
             e, a = expected[tree].get(path), actual[tree].get(path)
@@ -477,11 +625,18 @@ def differences(expected, actual, first_only=True):
                 continue
             label = f'{tree}/{path}'
             if e is None:
-                found.append((label, 'file not expected, but written\n'))
+                add(label, 'file not expected, but written\n')
             elif a is None:
-                found.append((label, 'file expected, but not written\n'))
+                add(label, 'file expected, but not written\n')
             else:
-                found.append((label, _text_diff(label, e, a)))
-            if first_only:
-                return found
+                keys = _free_keys(tree, path)
+                ke, ka = (_without_keys(e, keys), _without_keys(a, keys)) if keys else (None, None)
+                add(label, _text_diff(label, e, a), free=ke is not None and ke == ka)
+    if first_only:
+        shown = []
+        for item in found:
+            shown.append(item)
+            if not item[2] or not contract_only:
+                break
+        return shown
     return found

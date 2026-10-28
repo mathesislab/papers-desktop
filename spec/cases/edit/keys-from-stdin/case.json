@@ -1,5 +1,9 @@
 {
   "description": "edit - reads the keys from the standard input",
+  "sections": [
+    "bibtex.md#7.1",
+    "bibtex.md#3.3"
+  ],
   "steps": [
     {
       "argv": [

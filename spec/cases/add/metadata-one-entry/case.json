@@ -1,5 +1,9 @@
 {
   "description": "fields given on the command line replace those of the added entry",
+  "sections": [
+    "formats.md#1.2",
+    "bibtex.md#3.3"
+  ],
   "steps": [
     {
       "argv": [

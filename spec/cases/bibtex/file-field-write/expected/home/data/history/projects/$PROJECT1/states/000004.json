@@ -1,0 +1,19 @@
+{
+ "parent": 3,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach e2 extra/a.tar.gz extra/.hidden extra/README extra/UP.PDF extra/x.txt extra/x.txt --link",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "9a863182bc177b68094d2b0e04ea35c4c79e84630ee42372f9b73d1f32a10bb6"
+  ],
+  "sha": "9a863182bc177b68094d2b0e04ea35c4c79e84630ee42372f9b73d1f32a10bb6"
+ },
+ "files": {
+  ".papers/files.json": [
+   "d0e6dab4d24a7bac5d268f6338c8194a7c65c17437f1f7cb077cb34db65a98f1"
+  ]
+ }
+}

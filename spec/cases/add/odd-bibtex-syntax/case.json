@@ -1,5 +1,11 @@
 {
   "description": "bibtex with @string macros, concatenation, quoted values, bare numbers, @comment, mixed-case fields",
+  "sections": [
+    "bibtex.md#2.2",
+    "bibtex.md#2.3",
+    "bibtex.md#3.3",
+    "formats.md#3.2"
+  ],
   "steps": [
     {
       "argv": [

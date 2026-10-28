@@ -1,5 +1,8 @@
 {
   "description": "rm removes entries; --porcelain prints removed lines",
+  "sections": [
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

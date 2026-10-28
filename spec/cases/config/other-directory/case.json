@@ -1,5 +1,8 @@
 {
   "description": "config -C DIR acts on the library of DIR",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
   "steps": [
     {
       "argv": [

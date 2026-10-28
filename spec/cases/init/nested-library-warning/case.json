@@ -1,5 +1,8 @@
 {
   "description": "init inside a library warns",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
   "steps": [
     {
       "argv": [

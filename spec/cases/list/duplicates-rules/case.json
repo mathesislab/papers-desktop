@@ -1,0 +1,60 @@
+{
+  "description": "the same-paper rule: same DOI (case and url prefix ignored), different DOIs are different papers, arXiv ids with versions, ISBN-10 and ISBN-13 of books, authors and title normalized (LaTeX accents, braces, case, transliteration), the title guard; list --duplicates -K lists the entries of the groups",
+  "sections": [
+    "bibtex.md#9.1",
+    "bibtex.md#9.2",
+    "bibtex.md#9.3",
+    "bibtex.md#9.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "doi",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "title",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "key",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

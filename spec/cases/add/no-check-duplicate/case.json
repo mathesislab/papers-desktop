@@ -1,5 +1,9 @@
 {
   "description": "add --no-check-duplicate creates duplicates; list --duplicates finds them",
+  "sections": [
+    "bibtex.md#9.5",
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

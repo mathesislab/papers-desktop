@@ -1,5 +1,9 @@
 {
   "description": "edit --from - with text that is not an entry, or an unknown key",
+  "sections": [
+    "formats.md#1.2",
+    "formats.md#7.3"
+  ],
   "steps": [
     {
       "argv": [

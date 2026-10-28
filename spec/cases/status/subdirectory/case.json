@@ -1,5 +1,8 @@
 {
   "description": "a command in a subfolder acts on the library above",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
   "steps": [
     {
       "argv": [

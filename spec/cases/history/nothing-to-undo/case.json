@@ -1,5 +1,8 @@
 {
   "description": "undo and redo with nothing to do",
+  "sections": [
+    "history.md#6.2"
+  ],
   "steps": [
     {
       "argv": [

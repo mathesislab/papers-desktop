@@ -1,5 +1,9 @@
 {
   "description": "edit --from - replaces the entry by the one on stdin; key, file and keywords stay",
+  "sections": [
+    "formats.md#1.2",
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

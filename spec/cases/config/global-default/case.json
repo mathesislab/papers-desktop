@@ -1,5 +1,9 @@
 {
   "description": "config --global default sets, reads and removes the default library",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#finding-the-library-of-a-command"
+  ],
   "steps": [
     {
       "argv": [

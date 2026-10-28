@@ -1,5 +1,8 @@
 {
   "description": "renaming a tag renames the tags under it; a nested tag can be renamed alone",
+  "sections": [
+    "bibtex.md#6"
+  ],
   "steps": [
     {
       "argv": [

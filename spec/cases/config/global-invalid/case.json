@@ -1,0 +1,45 @@
+{
+  "description": "a machine configuration that cannot be parsed is ignored with a warning (the defaults apply); papers writes a good one when a setting is set; a version above 3 is an error",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#the-machine-configuration"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "editor"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "editor"
+      ]
+    }
+  ]
+}

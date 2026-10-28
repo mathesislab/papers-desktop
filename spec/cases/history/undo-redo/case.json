@@ -1,5 +1,10 @@
 {
   "description": "undo and redo bring the bibtex back and forth; history marks where the library is",
+  "sections": [
+    "history.md#2.5",
+    "history.md#6.2",
+    "history.md#3.1"
+  ],
   "steps": [
     {
       "argv": [

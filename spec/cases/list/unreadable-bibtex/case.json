@@ -1,5 +1,8 @@
 {
   "description": "a bibtex that is not valid",
+  "sections": [
+    "bibtex.md#2.5"
+  ],
   "steps": [
     {
       "argv": [

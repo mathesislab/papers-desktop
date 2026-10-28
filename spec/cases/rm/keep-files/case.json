@@ -1,5 +1,8 @@
 {
   "description": "rm --keep-files removes the entry and leaves its files",
+  "sections": [
+    "history.md#4"
+  ],
   "steps": [
     {
       "argv": [

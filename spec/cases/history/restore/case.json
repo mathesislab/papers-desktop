@@ -1,5 +1,9 @@
 {
   "description": "restore N brings the library to the step N; a new change starts a new line",
+  "sections": [
+    "history.md#6.2",
+    "history.md#6.3"
+  ],
   "steps": [
     {
       "argv": [

@@ -1,5 +1,9 @@
 {
   "description": "list of a library without entries",
+  "sections": [
+    "formats.md#6",
+    "formats.md#8"
+  ],
   "steps": [
     {
       "argv": [

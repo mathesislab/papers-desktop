@@ -1,5 +1,9 @@
 {
   "description": "entries with, without and with broken file links",
+  "sections": [
+    "bibtex.md#5.1",
+    "bibtex.md#5.2"
+  ],
   "steps": [
     {
       "argv": [

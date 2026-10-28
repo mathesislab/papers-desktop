@@ -1,5 +1,10 @@
 {
   "description": "add /dev/stdin reads the bibtex from the standard input",
+  "sections": [
+    "formats.md#1.2",
+    "formats.md#7.1",
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

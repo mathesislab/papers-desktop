@@ -1,5 +1,9 @@
 {
   "description": "accents: the search sees the bibtex as written (LaTeX or unicode), not the decoded text",
+  "sections": [
+    "bibtex.md#4.1",
+    "formats.md#6"
+  ],
   "steps": [
     {
       "argv": [

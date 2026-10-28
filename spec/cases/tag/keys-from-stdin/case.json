@@ -1,5 +1,8 @@
 {
   "description": "tag - reads the keys from the standard input",
+  "sections": [
+    "bibtex.md#6"
+  ],
   "steps": [
     {
       "argv": [

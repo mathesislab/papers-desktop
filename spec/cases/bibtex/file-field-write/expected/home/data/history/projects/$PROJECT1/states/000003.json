@@ -1,0 +1,19 @@
+{
+ "parent": 2,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach e1 extra/x.txt --link",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c4c125f89721e0c96e4010af59d2b7744b4ac6f6daa9e0394d1fb109f27a4014"
+  ],
+  "sha": "c4c125f89721e0c96e4010af59d2b7744b4ac6f6daa9e0394d1fb109f27a4014"
+ },
+ "files": {
+  ".papers/files.json": [
+   "b88a912380d096ed0571726b2856929ae11547eeb608c2e3a13d350218dc0ba7"
+  ]
+ }
+}

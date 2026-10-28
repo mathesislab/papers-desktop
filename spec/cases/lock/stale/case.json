@@ -1,0 +1,38 @@
+{
+  "description": "a lock of another computer that nobody refreshes is stale after 10 seconds and is taken over; list and --dry-run take no lock; the lock is removed when the command ends",
+  "sections": [
+    "library.md#the-lock"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

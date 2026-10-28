@@ -1,5 +1,10 @@
 {
   "description": "init, add, edit, tag, rm, then undo all: the whole history of a new library",
+  "sections": [
+    "history.md#2.2",
+    "history.md#3.2",
+    "history.md#5.4"
+  ],
   "steps": [
     {
       "argv": [

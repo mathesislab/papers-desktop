@@ -1,5 +1,9 @@
 {
   "description": "rm accepts a key (any case), a DOI or an ISBN",
+  "sections": [
+    "bibtex.md#7.1",
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

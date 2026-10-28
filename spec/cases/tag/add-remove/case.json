@@ -1,5 +1,9 @@
 {
   "description": "tag --add and --rm",
+  "sections": [
+    "bibtex.md#6",
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

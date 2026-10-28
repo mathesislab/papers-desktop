@@ -1,5 +1,11 @@
 {
   "description": "the output formats: line, bibtex, plain, key, field, csl-json, bibjson",
+  "sections": [
+    "formats.md#6",
+    "formats.md#3.4",
+    "formats.md#5.1",
+    "formats.md#8"
+  ],
   "steps": [
     {
       "argv": [

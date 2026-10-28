@@ -1,5 +1,8 @@
 {
   "description": "an option that does not exist, an argument that is missing: the usage message of argparse (exit status 2)",
+  "sections": [
+    "formats.md#7.3"
+  ],
   "steps": [
     {
       "argv": [

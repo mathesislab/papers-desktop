@@ -1,0 +1,19 @@
+{
+ "parent": 5,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers config paths absolute",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "313d5fd4b05bd257588aa83edb22710f41ba520b59c1f9692f0b8e9f8ddc450c"
+  ],
+  "sha": "313d5fd4b05bd257588aa83edb22710f41ba520b59c1f9692f0b8e9f8ddc450c"
+ },
+ "files": {
+  ".papers/files.json": [
+   "d0e6dab4d24a7bac5d268f6338c8194a7c65c17437f1f7cb077cb34db65a98f1"
+  ]
+ }
+}

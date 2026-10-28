@@ -1,5 +1,9 @@
 {
   "description": "list --bibtex FILE reads a bibtex file as it is (unsorted, not normalized)",
+  "sections": [
+    "library.md#finding-the-library-of-a-command",
+    "bibtex.md#2.2"
+  ],
   "steps": [
     {
       "argv": [

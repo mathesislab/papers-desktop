@@ -1,5 +1,8 @@
 {
   "description": "status --bibtex FILE for a bibtex outside of the library",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
   "steps": [
     {
       "argv": [

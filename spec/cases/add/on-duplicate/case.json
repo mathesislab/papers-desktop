@@ -1,5 +1,10 @@
 {
   "description": "an entry that is already there with conflicts: error, skip, keep, update",
+  "sections": [
+    "bibtex.md#9.3",
+    "bibtex.md#10",
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

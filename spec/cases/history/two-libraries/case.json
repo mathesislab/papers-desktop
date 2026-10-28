@@ -1,5 +1,9 @@
 {
   "description": "each library has its own history",
+  "sections": [
+    "history.md#2.7",
+    "history.md#5.1"
+  ],
   "steps": [
     {
       "argv": [

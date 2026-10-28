@@ -1,5 +1,9 @@
 {
   "description": "the name and key format options of init go to the library configuration",
+  "sections": [
+    "library.md#the-library-configuration/keys",
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
   "steps": [
     {
       "argv": [

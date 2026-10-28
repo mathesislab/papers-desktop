@@ -1,5 +1,9 @@
 {
   "description": "init --shallow takes the default library of the global configuration as pool",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/the-pool-setting",
+    "library.md#the-machine-configuration/format"
+  ],
   "steps": [
     {
       "argv": [

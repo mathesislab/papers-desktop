@@ -1,5 +1,9 @@
 {
   "description": "init with --bibtex, --filesdir and --paths: stored in the library configuration",
+  "sections": [
+    "library.md#the-library-configuration/relative-paths",
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
   "steps": [
     {
       "argv": [

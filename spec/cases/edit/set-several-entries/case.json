@@ -1,5 +1,9 @@
 {
   "description": "edit --set on several entries and by DOI",
+  "sections": [
+    "formats.md#7.2",
+    "bibtex.md#3.3"
+  ],
   "steps": [
     {
       "argv": [

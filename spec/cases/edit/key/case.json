@@ -1,5 +1,10 @@
 {
   "description": "edit --key renames an entry (--keep-old-key: the old key goes to ids)",
+  "sections": [
+    "bibtex.md#7.1",
+    "bibtex.md#7.2",
+    "formats.md#7.2"
+  ],
   "steps": [
     {
       "argv": [

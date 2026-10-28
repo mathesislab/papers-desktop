@@ -1,5 +1,8 @@
 {
   "description": "status of a library without pool, empty and with entries",
+  "sections": [
+    "library.md#layout"
+  ],
   "steps": [
     {
       "argv": [

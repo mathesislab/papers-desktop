@@ -1,5 +1,9 @@
 {
   "description": "config --global lists, sets and unsets the settings of the machine",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#settings/table"
+  ],
   "steps": [
     {
       "argv": [

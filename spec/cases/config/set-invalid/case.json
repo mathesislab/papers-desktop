@@ -1,5 +1,9 @@
 {
   "description": "config refuses values and settings that do not exist",
+  "sections": [
+    "library.md#the-library-configuration/reading",
+    "library.md#settings/table"
+  ],
   "steps": [
     {
       "argv": [

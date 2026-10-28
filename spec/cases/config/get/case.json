@@ -1,5 +1,8 @@
 {
   "description": "config NAME prints one setting",
+  "sections": [
+    "library.md#settings/table"
+  ],
   "steps": [
     {
       "argv": [

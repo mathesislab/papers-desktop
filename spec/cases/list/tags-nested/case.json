@@ -1,5 +1,8 @@
 {
   "description": "a tag under another tag (a/b): --tag a also finds a/b and the ones below",
+  "sections": [
+    "bibtex.md#6"
+  ],
   "steps": [
     {
       "argv": [

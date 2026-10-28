@@ -1,5 +1,8 @@
 {
   "description": "tags are the keywords: --tag matches whole tags, whatever their case, with wildcards",
+  "sections": [
+    "bibtex.md#6"
+  ],
   "steps": [
     {
       "argv": [

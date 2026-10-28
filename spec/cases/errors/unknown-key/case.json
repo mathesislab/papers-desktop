@@ -1,5 +1,9 @@
 {
   "description": "an entry that does not exist: nothing changes, exit status 1",
+  "sections": [
+    "formats.md#7.3",
+    "bibtex.md#7.1"
+  ],
   "steps": [
     {
       "argv": [

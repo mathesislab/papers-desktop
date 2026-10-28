@@ -1,5 +1,9 @@
 {
   "description": "fields given on the command line apply to one entry only",
+  "sections": [
+    "formats.md#7.3",
+    "formats.md#1.2"
+  ],
   "steps": [
     {
       "argv": [

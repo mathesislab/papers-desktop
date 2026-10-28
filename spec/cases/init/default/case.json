@@ -1,5 +1,10 @@
 {
   "description": "init in an empty folder: the library files and the message",
+  "sections": [
+    "library.md#layout",
+    "library.md#layout/papersgitignore",
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
   "steps": [
     {
       "argv": [

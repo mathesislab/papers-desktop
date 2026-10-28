@@ -1,5 +1,9 @@
 {
   "description": "add -u regenerates the keys of the new entries from the key template",
+  "sections": [
+    "library.md#name-and-key-templates/keys",
+    "bibtex.md#8"
+  ],
   "steps": [
     {
       "argv": [

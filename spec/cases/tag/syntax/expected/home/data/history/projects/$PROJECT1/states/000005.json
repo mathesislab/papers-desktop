@@ -1,0 +1,15 @@
+{
+ "parent": 4,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag e3 --rm Z climate/amoc/tipping",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6a8eff072ccd82a950d87afb90f7d225292aa625535d894a07b6cb540a077d29"
+  ],
+  "sha": "6a8eff072ccd82a950d87afb90f7d225292aa625535d894a07b6cb540a077d29"
+ },
+ "files": {}
+}

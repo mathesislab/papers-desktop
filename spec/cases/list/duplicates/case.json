@@ -1,5 +1,10 @@
 {
   "description": "list --duplicates: entries that are the same paper (same DOI, or authors and title)",
+  "sections": [
+    "bibtex.md#9.2",
+    "bibtex.md#9.3",
+    "bibtex.md#9.5"
+  ],
   "steps": [
     {
       "argv": [

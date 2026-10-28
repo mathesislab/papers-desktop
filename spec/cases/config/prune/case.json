@@ -1,5 +1,8 @@
 {
   "description": "config --prune removes the values equal to the global or default value",
+  "sections": [
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
   "steps": [
     {
       "argv": [

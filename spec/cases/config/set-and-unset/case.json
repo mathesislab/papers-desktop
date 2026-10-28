@@ -1,5 +1,10 @@
 {
   "description": "config sets settings in the library (name and key formats are nested in the file); --unset removes them",
+  "sections": [
+    "library.md#the-library-configuration/keys",
+    "library.md#the-library-configuration/which-keys-papers-writes",
+    "library.md#settings/precedence"
+  ],
   "steps": [
     {
       "argv": [

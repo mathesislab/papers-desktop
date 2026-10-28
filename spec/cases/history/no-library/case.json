@@ -1,5 +1,9 @@
 {
   "description": "history outside of a library",
+  "sections": [
+    "history.md#6.2",
+    "formats.md#7.3"
+  ],
   "steps": [
     {
       "argv": [

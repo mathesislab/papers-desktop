@@ -1,5 +1,9 @@
 {
   "description": "edit --from FILE",
+  "sections": [
+    "formats.md#1.1",
+    "formats.md#1.2"
+  ],
   "steps": [
     {
       "argv": [
