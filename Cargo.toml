@@ -7,5 +7,6 @@ members = ["src-tauri", "crates/core", "crates/papers-rs", "crates/papers-rs-cli
 codegen-units = 1
 lto = true
 opt-level = 3
-panic = "abort"
+# unwind: a panic of a library (pdf-extract on some PDFs) is caught, not the end of the app
+panic = "unwind"
 strip = true
