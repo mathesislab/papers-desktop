@@ -105,11 +105,16 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   builds it into `src-tauri/binaries/papers-rs-<triple>` (`build.rs` puts a
   placeholder there for `cargo check` and `cargo test`). Settings (General)
   and the app menu (macOS: *Install Command Line Tool…*) install it as a link
-  `papers-rs` → the binary in the bundle (`cli_tool.rs`): macOS
-  `/usr/local/bin`, with the administrator prompt (`osascript`; cancelled: the
-  command to run in a terminal is shown); Linux `~/.local/bin`, no prompt (not
-  from an AppImage, which is mounted only while it runs). Settings shows
-  whether it is installed and where it points, with *Uninstall*; a file or
+  `papers-rs` → the binary in the bundle (`cli_tool.rs`) in `~/.local/bin`
+  (macOS and Linux alike, created if missing; no password, no administrator
+  prompt; not from an AppImage, which is mounted only while it runs). If that
+  folder is not in the PATH of the user's login shell (`$SHELL -lic`),
+  Settings shows `export PATH="$HOME/.local/bin:$PATH"` and a button adding it
+  to the startup file of the shell (zsh `~/.zshrc`; bash `~/.bashrc`, on macOS
+  the profile it reads at login, `~/.bash_profile`; fish `fish_add_path` in
+  `config.fish`; another shell: only the line) as a commented block, once and
+  only on the click. The menu item says the same in an info dialog. Settings
+  shows whether it is installed and where it points, with *Uninstall*; a file or
   link at the path that is not ours (a link to the app's `papers-rs`, whichever
   copy) is never replaced or removed. papers-rs is the same program as the
   built-in writer; papers (Python) can be installed alongside.

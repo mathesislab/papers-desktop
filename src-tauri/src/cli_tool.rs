@@ -1,8 +1,9 @@
 //! The `papers-rs` command line tool that comes with the app (Tauri's sidecar,
-//! next to the executable), installed as a link in a folder of the PATH:
-//! `/usr/local/bin` on macOS, with the system's administrator prompt, as VS
-//! Code installs `code`; `~/.local/bin` on Linux. Only a link of ours is ever
-//! replaced or removed.
+//! next to the executable), installed as a link in `~/.local/bin` (macOS and
+//! Linux alike: no administrator prompt). If that folder is not in the PATH of
+//! the user's shell, the settings say so and offer to add it to the startup
+//! file of the shell, on a click. Only a link of ours is ever replaced or
+//! removed.
 
 use std::fs;
 use std::io::{self, ErrorKind, Read};
@@ -43,9 +44,7 @@ pub enum Done {
 pub enum FailureKind {
     /// a file that is not our link is at the path: left as it is
     Foreign,
-    /// the user cancelled the administrator prompt
-    Cancelled,
-    /// not allowed to write there (and no prompt to ask)
+    /// not allowed to write there
     Denied,
     Failed,
 }
@@ -55,9 +54,6 @@ pub enum FailureKind {
 pub struct Failure {
     pub kind: FailureKind,
     pub message: String,
-    /// for `Cancelled`: what to run in a terminal instead
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub command: Option<String>,
 }
 
 impl Failure {
@@ -65,7 +61,6 @@ impl Failure {
         Failure {
             kind,
             message: message.into(),
-            command: None,
         }
     }
 
@@ -147,15 +142,13 @@ fn foreign(path: &Path) -> Failure {
     )
 }
 
-/// The folder of the link: in the PATH of the system, or of the user.
-pub fn default_dir() -> Option<PathBuf> {
-    if cfg!(target_os = "macos") {
-        Some(PathBuf::from("/usr/local/bin"))
-    } else if cfg!(unix) {
-        std::env::home_dir().map(|home| home.join(".local/bin"))
-    } else {
-        None
-    }
+/// The folder of the link, in the home folder.
+pub fn local_bin(home: &Path) -> PathBuf {
+    home.join(".local/bin")
+}
+
+fn default_dir() -> Option<PathBuf> {
+    cfg!(unix).then(std::env::home_dir).flatten().map(|home| local_bin(&home))
 }
 
 /// The `papers-rs` of this app: next to its executable, once built by
@@ -244,8 +237,7 @@ pub async fn uninstall_cli() -> Result<Status, Failure> {
     run(uninstall_here).await
 }
 
-/// The change, off the thread of the page: the administrator prompt waits for
-/// the user.
+/// The change, off the thread of the page.
 async fn run(change: fn() -> Result<Done, Failure>) -> Result<Status, Failure> {
     tauri::async_runtime::spawn_blocking(change)
         .await
@@ -255,149 +247,199 @@ async fn run(change: fn() -> Result<Done, Failure>) -> Result<Status, Failure> {
 
 fn install_here() -> Result<Done, Failure> {
     let (dir, binary) = target()?;
-    match install(&dir, &binary) {
-        Err(Failure {
-            kind: FailureKind::Denied,
-            ..
-        }) if cfg!(target_os = "macos") => privileged(&dir, &binary, false),
-        done => done,
-    }
+    install(&dir, &binary)
 }
 
 fn uninstall_here() -> Result<Done, Failure> {
     let (dir, binary) = target()?;
-    match uninstall(&dir, &binary) {
-        Err(Failure {
-            kind: FailureKind::Denied,
-            ..
-        }) if cfg!(target_os = "macos") => privileged(&dir, &binary, true),
-        done => done,
+    uninstall(&dir, &binary)
+}
+
+/// The shells whose startup file we can add the folder to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Shell {
+    Zsh,
+    Bash,
+    Fish,
+    Other,
+}
+
+impl Shell {
+    /// From the `SHELL` variable: `/bin/zsh`, `/opt/homebrew/bin/fish`, …
+    pub fn of(shell: &str) -> Shell {
+        match Path::new(shell).file_name().and_then(|n| n.to_str()) {
+            Some("zsh") => Shell::Zsh,
+            Some("bash") => Shell::Bash,
+            Some("fish") => Shell::Fish,
+            _ => Shell::Other,
+        }
+    }
+
+    /// The line that puts `~/.local/bin` in the PATH.
+    pub fn line(self) -> &'static str {
+        match self {
+            Shell::Fish => "fish_add_path ~/.local/bin",
+            _ => r#"export PATH="$HOME/.local/bin:$PATH""#,
+        }
+    }
+
+    /// The startup file for a shell in a terminal: on macOS a terminal runs
+    /// a login shell, which bash starts from the first of three profiles
+    /// that exists; elsewhere bash reads `.bashrc` in an interactive shell.
+    pub fn rc_file(self, home: &Path, macos: bool) -> Option<PathBuf> {
+        match self {
+            Shell::Zsh => Some(home.join(".zshrc")),
+            Shell::Fish => Some(home.join(".config/fish/config.fish")),
+            Shell::Bash if macos => [".bash_profile", ".bash_login", ".profile"]
+                .iter()
+                .map(|name| home.join(name))
+                .find(|file| file.exists())
+                .or_else(|| Some(home.join(".bash_profile"))),
+            Shell::Bash => Some(home.join(".bashrc")),
+            Shell::Other => None,
+        }
     }
 }
 
-/// The install or the uninstall again, by the shell with the administrator
-/// prompt of the system, after the checks of ours (a file that is not our
-/// link is not touched). If the user cancels, the failure has the command to
-/// run in a terminal.
-fn privileged(dir: &Path, binary: &Path, remove: bool) -> Result<Done, Failure> {
-    let state = link_state(dir, binary);
-    match (&state, remove) {
-        (Link::Foreign, _) => return Err(foreign(&dir.join(NAME))),
-        (Link::Missing, true) => return Ok(Done::Absent),
-        (Link::Ours(target), false) if target == binary => return Ok(Done::Already),
-        _ => {}
-    }
-    let script = script(dir, binary, remove);
-    match run_as_administrator(&script, remove) {
-        Ok(()) => Ok(if remove { Done::Removed } else { Done::Installed }),
-        Err(Some(message)) => Err(Failure::new(FailureKind::Failed, message)),
-        Err(None) => Err(Failure {
-            kind: FailureKind::Cancelled,
-            message: "Cancelled: nothing was changed. In a terminal, run:".into(),
-            command: Some(terminal_command(dir, binary, remove)),
-        }),
-    }
+/// the comment that starts the block of ours in a startup file
+const MARK: &str = "# added by Papers Desktop: the papers-rs command line tool";
+
+/// What the settings show of the PATH.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PathAdvice {
+    /// `~/.local/bin` is in the PATH of the user's shell
+    pub on_path: bool,
+    /// what to add, for the shell
+    pub line: &'static str,
+    /// the startup file the button adds it to: none for a shell we do not know
+    pub file: Option<PathBuf>,
+    /// the block of ours is in that file already
+    pub added: bool,
 }
 
-/// `'text'` for a POSIX shell.
-fn quoted(text: &str) -> String {
-    format!("'{}'", text.replace('\'', r"'\''"))
+/// Whether `dir` is one of the folders of a PATH.
+pub fn path_has(path: &str, dir: &Path) -> bool {
+    std::env::split_paths(path).any(|folder| folder == dir)
 }
 
-/// The commands that make or remove the link, for `sh`; `-n` so that a
-/// link to a folder of ours is replaced, not entered.
-fn script(dir: &Path, binary: &Path, remove: bool) -> String {
-    let link = quoted(&dir.join(NAME).to_string_lossy());
-    if remove {
-        format!("rm {link}")
-    } else {
-        let dir = quoted(&dir.to_string_lossy());
-        let binary = quoted(&binary.to_string_lossy());
-        format!("mkdir -p {dir} && ln -sfn {binary} {link}")
+/// The advice for the PATH of a shell (None: it could not be asked).
+pub fn advice(home: &Path, shell: Shell, path: Option<&str>, macos: bool) -> PathAdvice {
+    let file = shell.rc_file(home, macos);
+    PathAdvice {
+        on_path: path.is_some_and(|p| path_has(p, &local_bin(home))),
+        line: shell.line(),
+        added: file
+            .as_deref()
+            .and_then(|f| fs::read_to_string(f).ok())
+            .is_some_and(|text| text.contains(MARK)),
+        file,
     }
 }
 
-/// What to run in a terminal instead: the script, with `sudo` for each command.
-fn terminal_command(dir: &Path, binary: &Path, remove: bool) -> String {
-    script(dir, binary, remove)
-        .split(" && ")
-        .map(|command| format!("sudo {command}"))
-        .collect::<Vec<_>>()
-        .join(" && ")
-}
-
-/// The string of an AppleScript for `text`.
-#[cfg(any(target_os = "macos", test))]
-fn applescript_string(text: &str) -> String {
-    format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
-}
-
-/// `do shell script … with administrator privileges`, for the script.
-#[cfg(any(target_os = "macos", test))]
-fn applescript(script: &str, remove: bool) -> String {
-    let prompt = if remove {
-        "Papers Desktop wants to remove the papers-rs command."
-    } else {
-        "Papers Desktop wants to install the papers-rs command."
+/// Append the block of ours to the startup file of the shell, once; the file
+/// and its folder are made if missing.
+pub fn add_to_rc(home: &Path, shell: Shell, macos: bool) -> Result<Done, Failure> {
+    let file = shell.rc_file(home, macos).ok_or_else(|| {
+        Failure::new(FailureKind::Failed, "Not a shell that Papers Desktop knows: add the line yourself")
+    })?;
+    let text = match fs::read_to_string(&file) {
+        Ok(text) => text,
+        Err(e) if e.kind() == ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(Failure::io(&file, &e)),
     };
-    format!(
-        "do shell script {} with prompt {} with administrator privileges",
-        applescript_string(script),
-        applescript_string(prompt)
-    )
+    if text.contains(MARK) {
+        return Ok(Done::Already);
+    }
+    let mut block = String::new();
+    if !text.is_empty() {
+        if !text.ends_with('\n') {
+            block.push('\n');
+        }
+        block.push('\n');
+    }
+    block.push_str(&format!("{MARK}\n{}\n", shell.line()));
+    let append = || -> io::Result<()> {
+        use std::io::Write;
+        if let Some(folder) = file.parent() {
+            fs::create_dir_all(folder)?;
+        }
+        fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&file)?
+            .write_all(block.as_bytes())
+    };
+    append().map_err(|e| Failure::io(&file, &e))?;
+    Ok(Done::Installed)
 }
 
-/// Run a script with the administrator prompt of macOS. Err(None): the user
-/// cancelled it.
+fn shell_of_user() -> Shell {
+    Shell::of(&std::env::var("SHELL").unwrap_or_default())
+}
+
+fn home() -> Result<PathBuf, Failure> {
+    std::env::home_dir().ok_or_else(|| Failure::new(FailureKind::Failed, "No home folder"))
+}
+
+fn current_advice() -> Result<PathAdvice, Failure> {
+    // as a terminal starts the shell: login and interactive, which reads the startup files
+    let path = crate::writer::interactive_login_path();
+    Ok(advice(&home()?, shell_of_user(), path.as_deref(), cfg!(target_os = "macos")))
+}
+
+/// Whether `~/.local/bin` is in the PATH of the user's shell: it starts the
+/// shell, so off the thread of the page.
+#[tauri::command]
+pub async fn cli_path() -> Result<PathAdvice, Failure> {
+    tauri::async_runtime::spawn_blocking(current_advice)
+        .await
+        .map_err(|e| Failure::new(FailureKind::Failed, e.to_string()))?
+}
+
+/// The button of the settings: the block into the startup file, then the
+/// advice again.
+#[tauri::command]
+pub async fn add_cli_path() -> Result<PathAdvice, Failure> {
+    tauri::async_runtime::spawn_blocking(|| {
+        add_to_rc(&home()?, shell_of_user(), cfg!(target_os = "macos"))?;
+        current_advice()
+    })
+    .await
+    .map_err(|e| Failure::new(FailureKind::Failed, e.to_string()))?
+}
+
+/// `~/…` for a path in the home folder.
 #[cfg(target_os = "macos")]
-fn run_as_administrator(script: &str, remove: bool) -> Result<(), Option<String>> {
-    let output = std::process::Command::new("osascript")
-        .arg("-e")
-        .arg(applescript(script, remove))
-        .output()
-        .map_err(|e| Some(format!("osascript: {e}")))?;
-    if output.status.success() {
-        return Ok(());
+fn tilde(path: &Path) -> String {
+    match std::env::home_dir().as_deref().and_then(|home| path.strip_prefix(home).ok()) {
+        Some(rest) => format!("~/{}", rest.display()),
+        None => path.display().to_string(),
     }
-    let error = String::from_utf8_lossy(&output.stderr);
-    // AppleScript's error -128: "User canceled."
-    if error.contains("(-128)") {
-        Err(None)
-    } else {
-        Err(Some(error.trim().to_string()))
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn run_as_administrator(_script: &str, _remove: bool) -> Result<(), Option<String>> {
-    Err(Some("no administrator prompt on this system".into()))
 }
 
 /// "Install Command Line Tool…" of the app menu (macOS): installs, then says
-/// what happened (and the command to run in a terminal if the user cancelled
-/// the prompt).
+/// so, with a note if `~/.local/bin` is not in the PATH of the shell (the
+/// settings add it).
 #[cfg(target_os = "macos")]
 pub fn install_from_menu(app: &tauri::AppHandle) {
     use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
     let app = app.clone();
     std::thread::spawn(move || {
         let (kind, text) = match install_here() {
-            Ok(Done::Already) => (
-                MessageDialogKind::Info,
-                format!("The papers-rs command is already installed at {}.", default_link()),
-            ),
-            Ok(_) => (
-                MessageDialogKind::Info,
-                format!("The papers-rs command is installed at {}.", default_link()),
-            ),
-            Err(Failure {
-                kind: FailureKind::Cancelled,
-                message,
-                command,
-            }) => (
-                MessageDialogKind::Warning,
-                format!("{message}\n\n{}", command.unwrap_or_default()),
-            ),
+            Ok(done) => {
+                let dir = tilde(&default_dir().unwrap_or_default());
+                let mut text = match done {
+                    Done::Already => format!("papers-rs is already installed in {dir}."),
+                    _ => format!("papers-rs is installed in {dir}."),
+                };
+                if current_advice().is_ok_and(|advice| !advice.on_path) {
+                    text.push_str(&format!(
+                        "\n\n{dir} is not in the PATH of your shell. Settings (General, Command line tool) add it to your startup file, or add this line:\n\n{}",
+                        shell_of_user().line()
+                    ));
+                }
+                (MessageDialogKind::Info, text)
+            }
             Err(e) => (MessageDialogKind::Error, e.message),
         };
         app.dialog()
@@ -406,11 +448,6 @@ pub fn install_from_menu(app: &tauri::AppHandle) {
             .kind(kind)
             .show(|_| {});
     });
-}
-
-#[cfg(target_os = "macos")]
-fn default_link() -> String {
-    default_dir().unwrap_or_default().join(NAME).display().to_string()
 }
 
 #[cfg(test)]
@@ -528,27 +565,97 @@ mod tests {
     }
 
     #[test]
-    fn scripts_quote_the_paths() {
-        let dir = Path::new("/usr/local/bin");
-        let binary = Path::new("/Applications/Papers Desktop.app/Contents/MacOS/papers-rs");
-        assert_eq!(
-            script(dir, binary, false),
-            "mkdir -p '/usr/local/bin' && ln -sfn '/Applications/Papers Desktop.app/Contents/MacOS/papers-rs' '/usr/local/bin/papers-rs'"
-        );
-        assert_eq!(script(dir, binary, true), "rm '/usr/local/bin/papers-rs'");
-        assert_eq!(
-            terminal_command(dir, binary, false),
-            "sudo mkdir -p '/usr/local/bin' && sudo ln -sfn '/Applications/Papers Desktop.app/Contents/MacOS/papers-rs' '/usr/local/bin/papers-rs'"
-        );
-        assert_eq!(quoted("it's"), r"'it'\''s'");
+    fn installs_in_local_bin_of_the_home() {
+        let (tmp, binary, _) = setup();
+        let home = tmp.path().join("home");
+        let dir = local_bin(&home);
+        assert_eq!(dir, home.join(".local/bin"));
+        // the home has no .local/bin yet
+        assert_eq!(install(&dir, &binary).unwrap(), Done::Installed);
+        assert_eq!(fs::read_link(dir.join(NAME)).unwrap(), binary);
+        assert_eq!(uninstall(&dir, &binary).unwrap(), Done::Removed);
+        assert!(dir.is_dir() && fs::symlink_metadata(dir.join(NAME)).is_err());
     }
 
     #[test]
-    fn applescript_escapes_its_strings() {
-        let text = applescript(r#"ln -s 'a "b"' c"#, false);
+    fn local_bin_in_a_path() {
+        let dir = Path::new("/home/me/.local/bin");
+        assert!(path_has("/usr/bin:/home/me/.local/bin:/bin", dir));
+        assert!(path_has("/home/me/.local/bin/", dir));
+        assert!(!path_has("/usr/bin:/home/me/.local/bin2:/home/me/.local", dir));
+        assert!(!path_has("", dir));
+    }
+
+    #[test]
+    fn shells_and_their_files() {
+        let home = Path::new("/h");
+        assert_eq!(Shell::of("/bin/zsh"), Shell::Zsh);
+        assert_eq!(Shell::of("/usr/local/bin/bash"), Shell::Bash);
+        assert_eq!(Shell::of("/opt/homebrew/bin/fish"), Shell::Fish);
+        assert_eq!(Shell::of("/bin/tcsh"), Shell::Other);
+        assert_eq!(Shell::of(""), Shell::Other);
+        assert_eq!(Shell::Zsh.rc_file(home, true), Some(home.join(".zshrc")));
+        assert_eq!(Shell::Bash.rc_file(home, false), Some(home.join(".bashrc")));
+        assert_eq!(Shell::Bash.rc_file(home, true), Some(home.join(".bash_profile")));
+        assert_eq!(Shell::Fish.rc_file(home, false), Some(home.join(".config/fish/config.fish")));
+        assert_eq!(Shell::Other.rc_file(home, false), None);
+        assert_eq!(Shell::Zsh.line(), r#"export PATH="$HOME/.local/bin:$PATH""#);
+        assert_eq!(Shell::Fish.line(), "fish_add_path ~/.local/bin");
+    }
+
+    #[test]
+    fn bash_on_macos_reads_the_first_profile_there_is() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path();
+        fs::write(home.join(".profile"), "").unwrap();
+        assert_eq!(Shell::Bash.rc_file(home, true), Some(home.join(".profile")));
+        fs::write(home.join(".bash_profile"), "").unwrap();
+        assert_eq!(Shell::Bash.rc_file(home, true), Some(home.join(".bash_profile")));
+    }
+
+    #[test]
+    fn the_block_is_added_once_per_shell() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path();
+        for (shell, name, line) in [
+            (Shell::Zsh, ".zshrc", Shell::Zsh.line()),
+            (Shell::Bash, ".bashrc", Shell::Bash.line()),
+            (Shell::Fish, ".config/fish/config.fish", "fish_add_path ~/.local/bin"),
+        ] {
+            let file = home.join(name);
+            assert!(!advice(home, shell, None, false).added);
+            assert_eq!(add_to_rc(home, shell, false).unwrap(), Done::Installed);
+            assert_eq!(fs::read_to_string(&file).unwrap(), format!("{MARK}\n{line}\n"));
+            assert!(advice(home, shell, None, false).added);
+            assert_eq!(add_to_rc(home, shell, false).unwrap(), Done::Already);
+            assert_eq!(fs::read_to_string(&file).unwrap(), format!("{MARK}\n{line}\n"));
+        }
+        // an unknown shell: nothing is written
+        assert!(add_to_rc(home, Shell::Other, false).is_err());
+    }
+
+    #[test]
+    fn the_block_goes_after_what_the_file_has() {
+        let tmp = tempfile::tempdir().unwrap();
+        let file = tmp.path().join(".zshrc");
+        fs::write(&file, "alias a=b").unwrap();
+        add_to_rc(tmp.path(), Shell::Zsh, false).unwrap();
         assert_eq!(
-            text,
-            r#"do shell script "ln -s 'a \"b\"' c" with prompt "Papers Desktop wants to install the papers-rs command." with administrator privileges"#
+            fs::read_to_string(&file).unwrap(),
+            format!("alias a=b\n\n{MARK}\n{}\n", Shell::Zsh.line())
         );
+    }
+
+    #[test]
+    fn advice_from_a_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path();
+        let path = format!("/usr/bin:{}", local_bin(home).display());
+        let zsh = |path: Option<&str>| advice(home, Shell::Zsh, path, true);
+        assert!(zsh(Some(&path)).on_path);
+        assert!(!zsh(Some("/usr/bin")).on_path);
+        assert!(!zsh(None).on_path);
+        assert_eq!(zsh(None).file, Some(home.join(".zshrc")));
+        assert_eq!(advice(home, Shell::Other, None, true).file, None);
     }
 }

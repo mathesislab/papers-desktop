@@ -39,8 +39,10 @@
     points_to: string | null;
     current: boolean;
   };
-  /** mirrors cli_tool::Failure; `command`: what to run in a terminal when the prompt was cancelled */
-  type CliFailure = { kind: "foreign" | "cancelled" | "denied" | "failed"; message: string; command?: string };
+  /** mirrors cli_tool::Failure */
+  type CliFailure = { kind: "foreign" | "denied" | "failed"; message: string };
+  /** mirrors cli_tool::PathAdvice: `line` to add to the startup file `file` of the shell; `added`: it is there already */
+  type CliPath = { on_path: boolean; line: string; file: string | null; added: boolean };
   /** mirrors update::Available */
   type Update = { version: string };
   /** mirrors update::Installed */
@@ -155,12 +157,37 @@
     home = view.home;
     writers = await listWriters();
     cli = await invoke<Cli>("cli_status");
+    // starts the shell of the user: not waited for
+    findCliPath();
   }
 
-  /** the papers-rs command line tool: its link, and the command to run in a terminal after a cancelled prompt */
+  /** the papers-rs command line tool: its link, and whether ~/.local/bin is in the PATH of the user's shell */
   let cli = $state<Cli | null>(null);
   let cliBusy = $state(false);
-  let cliCommand = $state<string | null>(null);
+  let cliPath = $state<CliPath | null>(null);
+
+  async function findCliPath() {
+    cliPath = null;
+    if (cli?.state !== "ours") return;
+    try {
+      cliPath = await invoke<CliPath>("cli_path");
+    } catch {
+      cliPath = null;
+    }
+  }
+
+  /** Add ~/.local/bin to the PATH in the startup file of the shell, on the click. */
+  async function addCliPath() {
+    cliBusy = true;
+    try {
+      cliPath = await invoke<CliPath>("add_cli_path");
+      show(`Added to ${tilde(cliPath.file ?? "")}`, false);
+    } catch (err) {
+      show((err as CliFailure).message ?? String(err), true);
+    } finally {
+      cliBusy = false;
+    }
+  }
 
   let cliStatus = $derived.by(() => {
     if (!cli) return "";
@@ -173,14 +200,12 @@
 
   async function changeCli(command: "install_cli" | "uninstall_cli") {
     cliBusy = true;
-    cliCommand = null;
     try {
       cli = await invoke<Cli>(command);
       show(command === "install_cli" ? "Installed" : "Removed", false);
+      findCliPath();
     } catch (err) {
-      const failure = err as CliFailure;
-      show(failure.message ?? String(err), true);
-      cliCommand = failure.command ?? null;
+      show((err as CliFailure).message ?? String(err), true);
     } finally {
       cliBusy = false;
     }
@@ -491,19 +516,25 @@
           <span class="hint"
             >papers-rs is the same program as the built-in writer; papers (Python) can be installed alongside.</span
           >
-          {#if cliCommand}
-            <span class="hint">In a terminal, run:</span>
-            <code class="cmd">{cliCommand}</code>
+          {#if cliPath && !cliPath.on_path}
+            <span class="hint">~/.local/bin is not in the PATH of your shell. Add this line to its startup file:</span>
+            <code class="cmd">{cliPath.line}</code>
+            {#if cliPath.added}
+              <span class="hint">It is in {tilde(cliPath.file ?? "")} already: open a new terminal.</span>
+            {/if}
           {/if}
         </span>
         {#if cli?.available && cli.state !== "foreign"}
           <span class="buttons">
+            {#if cliPath && !cliPath.on_path && cliPath.file && !cliPath.added}
+              <button disabled={cliBusy} onclick={addCliPath}>Add to {tilde(cliPath.file)}</button>
+            {/if}
             {#if cli.state === "ours"}
               <button disabled={cliBusy} onclick={() => changeCli("uninstall_cli")}>Uninstall</button>
             {/if}
             {#if cli.state === "missing" || !cli.current}
               <button disabled={cliBusy} onclick={() => changeCli("install_cli")}>
-                {cli.state === "missing" ? "Install…" : "Point to This App"}
+                {cli.state === "missing" ? "Install" : "Point to This App"}
               </button>
             {/if}
           </span>

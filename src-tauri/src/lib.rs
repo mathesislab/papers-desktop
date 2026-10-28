@@ -844,6 +844,8 @@ pub fn run() {
             cli_tool::cli_status,
             cli_tool::install_cli,
             cli_tool::uninstall_cli,
+            cli_tool::cli_path,
+            cli_tool::add_cli_path,
             open_settings,
             open_library,
             open_paper,

@@ -176,15 +176,28 @@ impl PapersWriter for PapersCommand {
 /// The PATH of the login shell: an app started from the desktop does not
 /// have it.
 fn login_path() -> Option<String> {
+    shell_path("-lc")
+}
+
+/// The PATH of a shell started as a terminal starts it: login and
+/// interactive, which reads the startup files of the shell.
+pub fn interactive_login_path() -> Option<String> {
+    shell_path("-lic")
+}
+
+/// The PATH that the shell of the user prints (the last line: the startup
+/// files may print too).
+fn shell_path(flags: &str) -> Option<String> {
     let shell = std::env::var_os("SHELL").unwrap_or_else(|| "/bin/sh".into());
     let output = Command::new(shell)
-        .args(["-lc", "printf '%s' \"$PATH\""])
+        .args([flags, "printf '\\n%s' \"$PATH\""])
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .output()
         .ok()?;
-    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    (output.status.success() && !path.is_empty()).then_some(path)
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let path = stdout.lines().last().unwrap_or_default().trim();
+    (output.status.success() && !path.is_empty()).then(|| path.to_string())
 }
 
 /// The papers command in the folders of a PATH.

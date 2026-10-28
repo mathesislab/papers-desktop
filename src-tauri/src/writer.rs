@@ -15,6 +15,8 @@
 mod builtin;
 mod command;
 
+pub(crate) use command::interactive_login_path;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
