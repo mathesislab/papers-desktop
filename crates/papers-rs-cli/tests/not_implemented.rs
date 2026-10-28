@@ -25,7 +25,6 @@ fn the_commands_that_are_not_ported_say_so() {
     let dir = tempfile::tempdir().unwrap();
     for args in [
         &["add", "x.pdf"][..],
-        &["list"],
         &["rm", "key"],
         &["file", "clean"],
     ] {

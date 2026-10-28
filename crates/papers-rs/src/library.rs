@@ -1306,6 +1306,11 @@ impl Library {
         Ok(out)
     }
 
+    /// Add an entry as it is, at the end (`db.add`): no search for the same paper, no key from the template.
+    pub fn add_unchecked(&mut self, entry: Entry) {
+        self.push_entry(entry);
+    }
+
     /// Take an entry out of the library (`db.remove`): the entry, if there was one. Its files are for the caller.
     pub fn remove(&mut self, key: &str) -> Option<Entry> {
         let i = self.position(key)?;

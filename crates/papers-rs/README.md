@@ -21,8 +21,21 @@ files, so that both can work on the same library. The conformance suite
   converts them: by the tables of `papers.latexenc` (`bib::latex_table`) and by
   pylatexenc (`bib::unicode`: the decoding of a library or an entry, and of the
   values for the export; the `latexenc-rs` crate); names, keywords and the `file`
-  field (`bib::encoding`). Not yet: the export formats themselves (CSL-JSON, RIS)
-  and the name parsing of `papers.formats`.
+  field (`bib::encoding`).
+- `formats`: the export formats (`papers.formats`, spec `formats.md`): CSL-JSON, RIS
+  (written as the `rispy` package writes it: no dependency), BibJSON, the JSON text
+  they are written in, the name parsing, the dates, the pages and the DOIs they
+  share, and the lines of `papers list` (colours and terminal hyperlinks included).
+  The import of CSL-JSON, RIS and BibJSON texts as bibtex entries (`formats::import::loads`:
+  what `add FILE` and `edit --from` read), with the errors and quirks of papers and of the
+  `rispy` reader; the commands that read them are not ported yet.
+- `search`: the selection of `papers list`: words and fields (substring, wildcards,
+  fuzzy by rapidfuzz's `token_set_ratio`, which the `rapidfuzz` crate's Indel distance
+  gives), tags, files, the entries to review (the DOI parser of `papers.extract`),
+  the duplicates, `--by`, `--invert`.
+- `export`: `papers export` (and `papers list --export`): the entries written as a new
+  library, with its history (the copies of the files join a step of the library of the
+  command), and in the other formats.
 - `entry`: what papers knows of the fields of an entry: the `file` links
   (relative to the bibtex directory, or absolute), the tags of `keywords`
   (nested with `/`: `tag:x` finds `x` and the tags under it, counts of a subtree,
@@ -57,8 +70,12 @@ files, so that both can work on the same library. The conformance suite
 ## The command line
 
 `papers-rs` (the `papers-rs-cli` crate) has the commands, options and errors of
-papers. `init` and `config` are ported; the other commands print
-`papers: error: not implemented in papers-rs yet` (status 1).
+papers. `init`, `config`, `list` and `export` are ported; the other commands print
+`papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
+selection and the outputs are there, and `--export`; the actions that change the
+library (`--delete`, `--edit`, `--add-tag`, `--rm-tag`, `--attach`, `--detach`,
+`--detach-broken`, `--rename`, `--fix-files`, `--fetch`, `--push`, `--pull`, `--sync`) and
+`--open` say so too.
 
 Tests: `cargo test -p papers-rs -p papers-rs-cli`. The history is checked against
 recordings of papers (`crates/papers-rs/tests/history/*.json`, made by
@@ -77,6 +94,12 @@ on a tree) and records `tests/expected/library/*.json`; `tests/names.rs`,
 `identity.rs`, `library.rs` replay them (`papers_unit.rs` has the unit tests of
 papers, ported). Python with papers installed: `python3
 tests/gen_library_expected.py`.
+
+The formats (`formats`, `search`) are tested against papers-cli too:
+`tests/gen_formats.py` records `tests/expected/formats.json` (names, dates, pages, DOIs,
+the CSL-JSON, RIS and BibJSON texts of random and hand-written entries, the scores of
+rapidfuzz, `isvaliddoi`), `tests/formats.rs` replays it. Python with papers and `rispy`
+installed: `python3 tests/gen_formats.py`.
 
 The transliteration of papers is Unidecode (Python); papers-rs uses `deunicode`
 behind `names::ascii`, until the standard pins a table. Where they differ
