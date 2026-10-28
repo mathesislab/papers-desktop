@@ -9,11 +9,14 @@
     item,
     marked,
     onopen,
+    keywords = true,
   }: {
     item: Item;
     /** for each author, whether the search matched it */
     marked: boolean[];
     onopen: () => void;
+    /** whether to list the tags: not where they are chips already */
+    keywords?: boolean;
   } = $props();
 
   const PAGE_WIDTH = 170;
@@ -128,7 +131,7 @@
       {/if}
       {#if source}<p>{source}</p>{/if}
       {#if item.doi}<p class="doi">{item.doi}</p>{/if}
-      {#if item.keywords.length}
+      {#if keywords && item.keywords.length}
         <p class="keywords">
           {#each item.keywords as keyword}<span>{keyword}</span>{/each}
         </p>

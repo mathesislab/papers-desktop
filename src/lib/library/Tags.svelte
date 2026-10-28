@@ -300,9 +300,10 @@
     outline-offset: 1px;
   }
   /* as tall as a chip: the row stays as it is when the field opens */
+  /* the rest of the row: it wraps only when less than its minimum is left */
   .field {
     box-sizing: border-box;
-    flex: 0 1 140px;
+    flex: 1 1 90px;
     min-width: 90px;
     height: 22px;
     padding: 0 9px;

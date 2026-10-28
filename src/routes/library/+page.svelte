@@ -265,7 +265,7 @@
     const count = (n: number) => `${n} ${n === 1 ? "paper" : "papers"}`;
     const lacking = ids.filter((id) => !byId.get(id)?.tags.some((t) => sameTag(t, tag)));
     if (lacking.length) {
-      if (await write(() => setTags(lacking, [tag]))) say(`Tagged ${count(lacking.length)} ${tag}`);
+      if (await write(() => setTags(lacking, [tag]))) say(`Added ${tag} to ${count(lacking.length)}`);
     } else if (await write(() => setTags(ids, [], [tag]))) {
       say(`Removed ${tag} from ${count(ids.length)}`);
     }

@@ -58,7 +58,7 @@
     <Tags {rows} {tags} {filtered} ontoggle={ontag} {onset} />
   {/if}
   {#if rows.length <= 1}
-    <Preview {item} marked={item.authors.map(() => false)} {onopen} />
+    <Preview {item} marked={item.authors.map(() => false)} {onopen} keywords={false} />
   {/if}
 </div>
 
