@@ -7,6 +7,7 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
+latexenc-rs = { version = "0.1.0", path = "../latexenc-rs" }
 libc = "0.2"
 serde_json = "1"
 unicode-normalization = "0.1"

@@ -17,12 +17,21 @@
 //! error), which is written back as it was and is not seen as an entry.
 //! What papers drops, `Bib` drops: the string references are resolved, the
 //! quotes of a value become braces, the field names are in lower case, the
-//! spacing of an entry is gone.
+//! spacing of an entry is gone. The values are as written, LaTeX included:
+//! nothing is converted at reading or writing, the conversions are those of
+//! [`latex_table`] and [`unicode`] below, called where papers calls them.
 //!
 //! - [`Bib::parse`], [`read_file`]: a text, a file.
 //! - [`Bib::unreadable`]: what could not be read, and where.
 //! - [`Bib::sort`], [`Bib::format`], and `Display` (both: the text of a save).
-//! - [`latexenc`]: the conversions of the LaTeX of the values and of the unicode.
+//! - [`latex_table`]: LaTeX and unicode by the tables of `papers.latexenc`
+//!   (`fix --encoding latex`, identity of entries and file names).
+//! - [`unicode`]: the LaTeX of the values as unicode text, by pylatexenc
+//!   with the [`latexenc`] crate: of a library or an entry
+//!   (`fix --encoding unicode`, `add`; bibtexparser's `LatexDecodingMiddleware`),
+//!   of a value or the fields of an entry (the export formats). Not ported:
+//!   bibtexparser's `LatexEncodingMiddleware` (papers does not use it: it
+//!   writes LaTeX with [`latex_table`]).
 //! - [`encoding`]: names and keywords of a value, and the `file` field.
 
 #[rustfmt::skip]
@@ -33,7 +42,8 @@ mod split;
 mod write;
 
 pub mod encoding;
-pub mod latexenc;
+pub mod latex_table;
+pub mod unicode;
 
 use std::fmt;
 use std::path::Path;
@@ -68,6 +78,19 @@ pub struct Entry {
     pub key: String,
     /// the fields in the order they have in the text; the names are in lower case
     pub fields: Vec<Field>,
+    /// where it was read, if it was
+    pub source: Option<Source>,
+}
+
+/// The text of a block as it was read, and its line: what bibtexparser keeps
+/// of a block (`raw`, `start_line`). It does not change with the block, and
+/// is what is written back if the block turns unreadable (see
+/// [`UnreadableKind::Decoding`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Source {
+    pub raw: String,
+    /// the line where it starts, counted from 0 as bibtexparser does
+    pub line: usize,
 }
 
 /// A field, its value without the braces (or quotes) around it.
@@ -88,6 +111,8 @@ pub struct StringDef {
     pub value: String,
     /// see [`Field::verbatim`]
     pub verbatim: bool,
+    /// where it was read, if it was
+    pub source: Option<Source>,
 }
 
 /// A block that bibtexparser could not read: its text is written back as it was.
@@ -109,6 +134,11 @@ pub enum UnreadableKind {
     DuplicateKey(String),
     /// a syntax error
     Syntax,
+    /// an entry or string whose values could not be decoded
+    /// ([`unicode::latex_to_unicode_library`]): papers keeps the text it had
+    /// before, and does not see it as an entry. The message of the error is
+    /// that of the Rust port, not of Python.
+    Decoding(String),
 }
 
 impl Field {
@@ -129,6 +159,7 @@ impl Entry {
             entry_type: entry_type.into(),
             key: key.into(),
             fields: Vec::new(),
+            source: None,
         }
     }
 

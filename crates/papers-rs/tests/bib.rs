@@ -2,60 +2,17 @@
 //! `tests/fixtures/` against what the reference recorded in `tests/expected/`
 //! (`tests/gen_expected.py`).
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use papers_rs::bib::encoding::{
     family_names, format_file, parse_file, parse_keywords, standard_name,
 };
-use papers_rs::bib::latexenc::{latex_to_unicode, protect_uppercase, string_to_latex};
-use papers_rs::bib::{Bib, Block, UnreadableKind, read_file};
+use papers_rs::bib::latex_table::{latex_to_unicode, protect_uppercase, string_to_latex};
+use papers_rs::bib::{Bib, read_file};
 use serde_json::{Value, json};
 
-fn dir(name: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join(name)
-}
-
-fn json_file(path: &Path) -> Value {
-    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
-}
-
-/// The blocks and the unreadable list as the generator dumps them.
-fn dump(bib: &Bib) -> Value {
-    let blocks: Vec<Value> = bib
-        .blocks
-        .iter()
-        .map(|b| match b {
-            Block::Entry(e) => json!({
-                "kind": "entry", "type": e.entry_type, "key": e.key,
-                "fields": e.fields.iter().map(|f| json!([f.key, f.value, f.verbatim])).collect::<Vec<_>>(),
-            }),
-            Block::String(s) => json!({"kind": "string", "key": s.key, "value": s.value, "verbatim": s.verbatim}),
-            Block::Preamble(v) => json!({"kind": "preamble", "value": v}),
-            Block::Comment(v) => json!({"kind": "comment", "value": v}),
-            Block::Text(v) => json!({"kind": "text", "value": v}),
-            Block::Unreadable(u) => {
-                let mut d = json!({"kind": "unreadable", "raw": u.raw, "line": u.line});
-                match &u.kind {
-                    UnreadableKind::DuplicateFields(_) => d["class"] = json!("DuplicateFieldKeyBlock"),
-                    UnreadableKind::DuplicateKey(k) => {
-                        d["class"] = json!("DuplicateBlockKeyBlock");
-                        d["key"] = json!(k);
-                    }
-                    UnreadableKind::Syntax => d["class"] = json!("ParsingFailedBlock"),
-                }
-                d
-            }
-        })
-        .collect();
-    let unreadable: Vec<Value> = bib
-        .unreadable()
-        .iter()
-        .map(|(line, why)| json!([line, why]))
-        .collect();
-    json!({"blocks": blocks, "unreadable": unreadable})
-}
+mod common;
+use common::{dir, dump, json_file};
 
 /// The edits of `edit` in the generator.
 fn edit(bib: &mut Bib) {

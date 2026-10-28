@@ -1,7 +1,7 @@
 //! The unit tests of papers (test_parsing, test_unreadable, test_sort_format,
 //! test_latexenc, test_entries) for the bibtex layer, as they are there.
 
-use papers_rs::bib::latexenc::{latex_to_unicode, protect_uppercase, string_to_latex};
+use papers_rs::bib::latex_table::{latex_to_unicode, protect_uppercase, string_to_latex};
 use papers_rs::bib::{Bib, Entry, Field};
 
 // test_parsing.py

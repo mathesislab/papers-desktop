@@ -6,7 +6,7 @@
 use std::collections::HashSet;
 
 use super::pystr::{is_space, is_word, strip};
-use super::{Block, Entry, Field, StringDef, Unreadable, UnreadableKind};
+use super::{Block, Entry, Field, Source, StringDef, Unreadable, UnreadableKind};
 
 /// A mark: a place where the splitter looks. `{ } " , = \n` (not after a
 /// backslash), the start of a block (`@type` followed by `{` or `(`), and in a
@@ -334,6 +334,7 @@ impl<'a> Splitter<'a> {
                 key,
                 value,
                 verbatim: false,
+                source: None,
             },
             line,
             raw: self.s[m.start..end + 1].to_string(),
@@ -379,6 +380,7 @@ impl<'a> Splitter<'a> {
                 entry_type,
                 key,
                 fields,
+                source: None,
             },
             line,
             raw,
@@ -430,15 +432,31 @@ pub(super) fn split(text: &str) -> Vec<Block> {
             }
         });
         match handled {
-            Ok(Piece::Entry { entry, line, raw }) => {
+            Ok(Piece::Entry {
+                mut entry,
+                line,
+                raw,
+            }) => {
                 if entry_keys.insert(entry.key.clone()) {
+                    entry.source = Some(Source {
+                        raw,
+                        line: line.max(0) as usize,
+                    });
                     blocks.push(Block::Entry(entry));
                 } else {
                     blocks.push(duplicate(entry.key, raw, line));
                 }
             }
-            Ok(Piece::Str { string, line, raw }) => {
+            Ok(Piece::Str {
+                mut string,
+                line,
+                raw,
+            }) => {
                 if string_keys.insert(string.key.clone()) {
+                    string.source = Some(Source {
+                        raw,
+                        line: line.max(0) as usize,
+                    });
                     blocks.push(Block::String(string));
                 } else {
                     blocks.push(duplicate(string.key, raw, line));

@@ -16,6 +16,13 @@ files, so that both can work on the same library. The conformance suite
   directory (`-C DIR`, upward search, the default library), and the files
   written as papers writes them (key order, indentation, no trailing newline).
   Paths are strings with Python's `os.path` semantics (`config::paths`).
+- `bib`: the bibtex of a library, read and written as papers does (bibtexparser
+  v2 with the middlewares of papers), byte for byte; LaTeX and unicode as papers
+  converts them: by the tables of `papers.latexenc` (`bib::latex_table`) and by
+  pylatexenc (`bib::unicode`: the decoding of a library or an entry, and of the
+  values for the export; the `latexenc-rs` crate); names, keywords and the `file`
+  field (`bib::encoding`). Not yet: the export formats themselves (CSL-JSON, RIS)
+  and the name parsing of `papers.formats`.
 - `install`: what `papers init` creates.
 - `lock`: the lock of a library (`.papers/lock`), a lease with a refresh thread.
 - `error`, `log`: papers' errors, and its messages (`papers: warning: ...`).
