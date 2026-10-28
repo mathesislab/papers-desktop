@@ -4,6 +4,10 @@
 use std::time::Duration;
 
 use reqwest::{StatusCode, Url, header};
+use tauri::State;
+
+use crate::AppState;
+use crate::settings::Settings;
 
 const TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -35,12 +39,31 @@ pub fn doi_of(input: &str) -> Option<String> {
     valid.then(|| rest.to_string())
 }
 
+/// How the app identifies itself to doi.org and Crossref: with the e-mail
+/// address of the settings when there is one, as they recommend.
+fn user_agent(mailto: Option<&str>) -> String {
+    let agent = format!("Papers Desktop/{}", env!("CARGO_PKG_VERSION"));
+    match mailto {
+        Some(email) => format!("{agent} (mailto:{email})"),
+        None => agent,
+    }
+}
+
+/// The BibTeX of a DOI, as the page asks for it; the e-mail address of the
+/// settings goes in the user agent.
+#[tauri::command]
+pub async fn fetch_doi(state: State<'_, AppState>, doi: String) -> Result<String, String> {
+    let mailto = Settings::load(&state.settings_path)?
+        .mailto()
+        .map(str::to_string);
+    fetch(&doi, mailto.as_deref()).await
+}
+
 /// The BibTeX of a DOI: what doi.org gives for `application/x-bibtex`,
 /// following its redirects to the registration agency. The error is a
 /// message to show.
-#[tauri::command]
-pub async fn fetch_doi(doi: String) -> Result<String, String> {
-    let doi = doi_of(&doi).ok_or_else(|| format!("{}: not a DOI", doi.trim()))?;
+async fn fetch(doi: &str, mailto: Option<&str>) -> Result<String, String> {
+    let doi = doi_of(doi).ok_or_else(|| format!("{}: not a DOI", doi.trim()))?;
     let mut url = Url::parse("https://doi.org/").expect("a URL");
     url.path_segments_mut()
         .expect("a URL with a path")
@@ -50,7 +73,7 @@ pub async fn fetch_doi(doi: String) -> Result<String, String> {
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
     let client = reqwest::Client::builder()
-        .user_agent(format!("Papers Desktop/{}", env!("CARGO_PKG_VERSION")))
+        .user_agent(user_agent(mailto))
         .timeout(TIMEOUT)
         .build()
         .map_err(|e| e.to_string())?;
@@ -93,6 +116,16 @@ fn failed(e: &reqwest::Error) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_agent_with_and_without_email() {
+        let version = env!("CARGO_PKG_VERSION");
+        assert_eq!(user_agent(None), format!("Papers Desktop/{version}"));
+        assert_eq!(
+            user_agent(Some("me@example.org")),
+            format!("Papers Desktop/{version} (mailto:me@example.org)")
+        );
+    }
 
     #[test]
     fn formatted_one_field_per_line() {
@@ -141,10 +174,10 @@ mod tests {
     #[test]
     #[ignore = "needs the network"]
     fn fetch() {
-        let bibtex = tauri::async_runtime::block_on(fetch_doi("10.1038/171737a0".into()));
+        let bibtex = tauri::async_runtime::block_on(super::fetch("10.1038/171737a0", None));
         let bibtex = bibtex.unwrap();
         assert!(bibtex.starts_with('@'), "{bibtex}");
-        let none = tauri::async_runtime::block_on(fetch_doi("10.1000/no-such-paper-xyz".into()));
+        let none = tauri::async_runtime::block_on(super::fetch("10.1000/no-such-paper-xyz", None));
         assert_eq!(
             none.unwrap_err(),
             "No paper with DOI 10.1000/no-such-paper-xyz"

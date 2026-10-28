@@ -24,6 +24,10 @@
     writer: "built-in" | "command";
     /** the papers command, for the writer "command"; empty: the one the login shell finds */
     papers: string;
+    /** sent to doi.org and OpenAlex, which answer faster to programs that give one; empty: nothing is sent */
+    email: string;
+    /** a free key of OpenAlex, for more searches a day; empty: none. Sent to OpenAlex only */
+    openalex_key: string;
     /** the tags pinned to the keys 1–9, set from the sidebar of the main window: kept as they are */
     pinned_tags: (string | null)[];
   };
@@ -341,7 +345,7 @@
             <span class="hint">Its path; empty: the one your shell finds</span>
           </span>
           <input
-            class="command"
+            class="text"
             type="text"
             placeholder="papers"
             spellcheck="false"
@@ -434,6 +438,35 @@
           <option value="library">Show the library</option>
           <option value="next">Show the next paper open</option>
         </select>
+      </label>
+      <label class="row">
+        <span>
+          <span class="label">Email</span>
+          <span class="hint">Sent to doi.org and OpenAlex, which answer faster to programs that give one (optional).</span>
+        </span>
+        <input
+          class="text"
+          type="email"
+          placeholder="you@example.org"
+          spellcheck="false"
+          autocapitalize="off"
+          value={settings.email}
+          onchange={(e) => save({ email: e.currentTarget.value.trim() })}
+        />
+      </label>
+      <label class="row">
+        <span>
+          <span class="label">OpenAlex API key</span>
+          <span class="hint">Free key from openalex.org: more searches a day than without (optional)</span>
+        </span>
+        <input
+          class="text"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          value={settings.openalex_key}
+          onchange={(e) => save({ openalex_key: e.currentTarget.value.trim() })}
+        />
       </label>
     </section>
 
@@ -579,7 +612,7 @@
   .files .path.error {
     color: var(--error);
   }
-  input.command {
+  input.text {
     width: 220px;
     padding: 4px 8px;
     border: 1px solid var(--border);

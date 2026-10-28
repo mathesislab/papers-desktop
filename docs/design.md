@@ -90,6 +90,15 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   read-only, and a dialog tells how to install it, with copyable commands
   (from git, `papers-cli @ git+https://github.com/perrette/papers@v3`,
   until a release has 3.0.0b4).
+- **An email** (setting, empty by default, never filled in by the app: not
+  the system's, not git's): used only when set. The DOI fetch gives it in
+  its User-Agent, `Papers Desktop/<version> (mailto:<email>)`, as Crossref
+  and doi.org recommend; OpenAlex takes it as `mailto` (`OpenAlex`), but no
+  command of the writers reaches OpenAlex (only `add --openalex` does, and
+  the app adds pasted BibTeX), so it is not passed yet. Empty: nothing is
+  sent. Next to it, an **OpenAlex API key** (free, empty by default, in
+  settings.json like the others, a password field): sent to OpenAlex only,
+  as `api_key` of the same `OpenAlex` (`Settings::openalex()`).
 - **Any other `.bib`** is written by the app (`crates/core/src/write.rs`):
   only the edited entries are rewritten, the rest of the file stays byte for
   byte; the file is written to a temporary file then renamed, and not at all

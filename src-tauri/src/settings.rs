@@ -6,6 +6,7 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use papers_core::Matching;
+use papers_rs::fetch::openalex::OpenAlex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -36,6 +37,13 @@ pub struct Settings {
     /// the papers command, for `writer` "command" (~ for the home
     /// directory); empty: the one the login shell finds
     pub papers: PathBuf,
+    /// an e-mail address sent to doi.org and OpenAlex, which answer faster to
+    /// programs that give one; empty (the default): nothing is sent. Never
+    /// filled in by the app
+    pub email: String,
+    /// a key of OpenAlex (free), for more searches a day than without; empty
+    /// (the default): none. Sent to OpenAlex only
+    pub openalex_key: String,
     /// the tags pinned to the keys 1–9 of the main window (index = key − 1);
     /// set from the sidebar, not in the settings window
     pub pinned_tags: Vec<Option<String>>,
@@ -79,6 +87,8 @@ impl Default for Settings {
             after_close: AfterClose::default(),
             writer: WriterChoice::default(),
             papers: PathBuf::new(),
+            email: String::new(),
+            openalex_key: String::new(),
             pinned_tags: Vec::new(),
         }
     }
@@ -117,6 +127,24 @@ impl Settings {
             .collect()
     }
 
+    /// The e-mail address to give the services, if one is set.
+    pub fn mailto(&self) -> Option<&str> {
+        Some(self.email.trim()).filter(|e| !e.is_empty())
+    }
+
+    /// How a search on OpenAlex identifies itself: the email and the key,
+    /// each when set. For the calls of papers-rs that take it; the app makes
+    /// none yet (it adds pasted BibTeX).
+    #[allow(dead_code)]
+    pub fn openalex(&self) -> OpenAlex {
+        OpenAlex {
+            mailto: self.mailto().map(str::to_string),
+            api_key: Some(self.openalex_key.trim())
+                .filter(|k| !k.is_empty())
+                .map(str::to_string),
+        }
+    }
+
     /// The papers command, ~ expanded; empty: to look for.
     pub fn papers_command(&self) -> PathBuf {
         expand(&self.papers.to_string_lossy())
@@ -153,5 +181,45 @@ fn config_dir() -> Option<PathBuf> {
         Some(
             std::env::var_os("XDG_CONFIG_HOME").map_or_else(|| home.join(".config"), PathBuf::from),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_email_by_default() {
+        assert_eq!(Settings::default().mailto(), None);
+        // a file from before the setting existed
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(settings.mailto(), None);
+    }
+
+    #[test]
+    fn email_trimmed_and_blank_is_none() {
+        let with = |email: &str| Settings {
+            email: email.into(),
+            ..Settings::default()
+        };
+        assert_eq!(with(" me@example.org ").mailto(), Some("me@example.org"));
+        assert_eq!(with("  ").mailto(), None);
+    }
+
+    #[test]
+    fn openalex_access_from_the_settings() {
+        assert_eq!(Settings::default().openalex(), OpenAlex::default());
+        let settings = Settings {
+            email: "me@example.org".into(),
+            openalex_key: " KEY ".into(),
+            ..Settings::default()
+        };
+        assert_eq!(
+            settings.openalex(),
+            OpenAlex {
+                mailto: Some("me@example.org".into()),
+                api_key: Some("KEY".into()),
+            }
+        );
     }
 }
