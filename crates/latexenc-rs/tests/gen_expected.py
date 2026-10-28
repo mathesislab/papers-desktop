@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate tests/expected/ from the reference, pylatexenc 2.11 (Python).
 
-The Rust tests (tests/differential.rs) compare pylatexenc-rs with what is recorded here:
+The Rust tests (tests/differential.rs) compare latexenc-rs with what is recorded here:
 
   expected/latex2text.json   corpus x named configurations of LatexNodes2Text
   expected/latexwalker.json  node trees (tolerant or not) and tokens of the corpus
@@ -29,7 +29,7 @@ import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-os.environ['HOME'] = tempfile.mkdtemp(prefix='pylatexenc-rs-expected-')  # papers must not touch the real one
+os.environ['HOME'] = tempfile.mkdtemp(prefix='latexenc-rs-expected-')  # papers must not touch the real one
 
 import pylatexenc  # noqa: E402
 from pylatexenc import latex2text, latexencode, latexwalker, macrospec  # noqa: E402

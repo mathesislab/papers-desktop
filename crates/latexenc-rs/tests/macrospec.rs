@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 
-use pylatexenc::latex2text::LatexNodes2Text;
-use pylatexenc::latexwalker::{
+use latexenc::latex2text::LatexNodes2Text;
+use latexenc::latexwalker::{
     self, LatexNode, LatexWalker, LatexWalkerError, LatexWalkerOptions, NodeKind, ParsingState, TokenKind,
 };
-use pylatexenc::macrospec::{
+use latexenc::macrospec::{
     ArgsParser, CategoryPosition, EnvironmentSpec, LatexContextDb, MacroSpec, MacroStandardArgsParser,
     ParseArgsResult, ParsedMacroArgs, std_environment, std_environment_argspec, std_macro, std_macro_argspec,
 };
@@ -382,7 +382,7 @@ fn no_macros() -> Vec<MacroSpec> {
     Vec::new()
 }
 
-fn no_specials() -> Vec<pylatexenc::macrospec::SpecialsSpec> {
+fn no_specials() -> Vec<latexenc::macrospec::SpecialsSpec> {
     Vec::new()
 }
 

@@ -1,7 +1,7 @@
 //! Convert LaTeX code to plain text (port of `pylatexenc.latex2text`).
 //!
 //! ```
-//! use pylatexenc::latex2text::{LatexNodes2Text, MathMode};
+//! use latexenc::latex2text::{LatexNodes2Text, MathMode};
 //!
 //! let l2t = LatexNodes2Text::new();
 //! assert_eq!(l2t.latex_to_text(r"\textbf{Caf\'e} $x\geq\alpha$").unwrap(), "Café x≥α");

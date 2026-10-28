@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the data tables of pylatexenc-rs from the reference, pylatexenc 2.11.
+"""Generate the data tables of latexenc-rs from the reference, pylatexenc 2.11.
 
 Writes (all marked `@generated`):
 

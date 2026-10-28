@@ -1,7 +1,7 @@
 //! Parse LaTeX into a tree of nodes (port of `pylatexenc.latexwalker`).
 //!
 //! ```
-//! use pylatexenc::latexwalker::{LatexWalker, NodeKind};
+//! use latexenc::latexwalker::{LatexWalker, NodeKind};
 //!
 //! let w = LatexWalker::new(r"Hi \emph{there}!");
 //! let (nodes, pos, len) = w.get_latex_nodes(0).unwrap();

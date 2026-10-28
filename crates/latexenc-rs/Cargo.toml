@@ -1,5 +1,5 @@
 [package]
-name = "pylatexenc-rs"
+name = "latexenc-rs"
 version = "0.1.0"
 description = "A Rust port of pylatexenc 2.11: parse LaTeX, convert it to text, encode unicode as LaTeX"
 authors = ["Alexander Robinson"]
@@ -9,7 +9,7 @@ keywords = ["latex", "unicode", "bibtex", "parser", "pylatexenc"]
 categories = ["text-processing", "parser-implementations"]
 
 [lib]
-name = "pylatexenc"
+name = "latexenc"
 
 [dependencies]
 fancy-regex = "0.16"

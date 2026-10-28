@@ -10,11 +10,11 @@
 
 use std::sync::Arc;
 
-use pylatexenc::latexwalker::{
+use latexenc::latexwalker::{
     GetNodesOptions, LatexNode, LatexToken, LatexWalker, LatexWalkerError, LatexWalkerOptions, NodeKind,
     ParsingState, ParsingStateChanges, TokenKind, TokenOptions, get_default_latex_context_db,
 };
-use pylatexenc::macrospec::{
+use latexenc::macrospec::{
     ArgsParser, CategoryPosition, EnvironmentSpec, MacroSpec, MacroStandardArgsParser, ParseArgsResult,
     ParsedMacroArgs, SpecialsSpec, std_macro, std_macro_argspec,
 };

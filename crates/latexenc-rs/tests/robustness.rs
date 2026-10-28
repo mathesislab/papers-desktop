@@ -1,9 +1,9 @@
 //! Deeply nested input must give an error, as pylatexenc raises a `RecursionError`, not
 //! overflow the stack (these run on the 2 MiB stack of a test thread).
 
-use pylatexenc::latex2text::{Latex2TextError, LatexNodes2Text, MathMode};
-use pylatexenc::latexencode::PartialLatexToLatexEncoder;
-use pylatexenc::latexwalker::{LatexWalker, LatexWalkerError, MAX_NESTING_DEPTH};
+use latexenc::latex2text::{Latex2TextError, LatexNodes2Text, MathMode};
+use latexenc::latexencode::PartialLatexToLatexEncoder;
+use latexenc::latexwalker::{LatexWalker, LatexWalkerError, MAX_NESTING_DEPTH};
 
 fn is_recursion_error(e: &Latex2TextError) -> bool {
     matches!(e, Latex2TextError::Walker(LatexWalkerError::Other(m)) if m.starts_with("RecursionError"))

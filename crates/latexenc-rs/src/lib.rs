@@ -12,8 +12,8 @@
 //! the results are the same as pylatexenc's; see the README for the differences.
 //!
 //! ```
-//! use pylatexenc::latex2text::LatexNodes2Text;
-//! use pylatexenc::latexencode::unicode_to_latex;
+//! use latexenc::latex2text::LatexNodes2Text;
+//! use latexenc::latexencode::unicode_to_latex;
 //!
 //! let text = LatexNodes2Text::new().latex_to_text(r#"Fran\c{c}ois M{\"u}ller \textendash{} $\alpha$"#).unwrap();
 //! assert_eq!(text, "François Müller – α");
@@ -27,8 +27,8 @@
 //! `LatexNodes2Text(math_mode='verbatim')`:
 //!
 //! ```
-//! use pylatexenc::latex2text::{self, LatexNodes2Text, MacroTextSpec, MathMode};
-//! use pylatexenc::macrospec::CategoryPosition;
+//! use latexenc::latex2text::{self, LatexNodes2Text, MacroTextSpec, MathMode};
+//! use latexenc::macrospec::CategoryPosition;
 //!
 //! let mut db = latex2text::get_default_latex_context_db();
 //! db.add_macro_category(

@@ -5,7 +5,7 @@
 
 use std::collections::BTreeSet;
 
-use pylatexenc::latexencode::{
+use latexenc::latexencode::{
     ConversionRuleSpec, DictRule, PartialLatexToLatexEncoder, RegexRule, ReplacementLatexProtection,
     UnicodeToLatexConversionRule, UnicodeToLatexEncoder, UnknownCharPolicy, get_builtin_conversion_rules, utf8tolatex,
 };
@@ -15,11 +15,11 @@ fn input() -> &'static str {
     "\"\u{c0} votre sant\u{e9}!\" s'exclama le ma\u{ee}tre de maison \u{e0} 100%."
 }
 
-fn enc(b: pylatexenc::latexencode::UnicodeToLatexEncoderBuilder) -> UnicodeToLatexEncoder {
+fn enc(b: latexenc::latexencode::UnicodeToLatexEncoderBuilder) -> UnicodeToLatexEncoder {
     b.build().unwrap()
 }
 
-fn eb() -> pylatexenc::latexencode::UnicodeToLatexEncoderBuilder {
+fn eb() -> latexenc::latexencode::UnicodeToLatexEncoderBuilder {
     UnicodeToLatexEncoder::builder()
 }
 

@@ -1,13 +1,13 @@
-# pylatexenc-rs
+# latexenc-rs
 
 A Rust port of [pylatexenc](https://github.com/phfaist/pylatexenc) **2.11** by Philippe Faist
 (MIT): parse LaTeX into a tree of nodes, convert LaTeX to plain unicode text, encode unicode text
-as LaTeX. The crate is `pylatexenc-rs`, the library `pylatexenc`; the modules mirror those of the
+as LaTeX. The crate is `latexenc-rs`, the library `latexenc`; the modules mirror those of the
 Python package, with the same names and options.
 
 ```rust
-use pylatexenc::latex2text::{LatexNodes2Text, MathMode};
-use pylatexenc::latexencode::unicode_to_latex;
+use latexenc::latex2text::{LatexNodes2Text, MathMode};
+use latexenc::latexencode::unicode_to_latex;
 
 let l2t = LatexNodes2Text::builder().math_mode(MathMode::Verbatim).build()?;
 assert_eq!(l2t.latex_to_text(r#"{M\"u}ller and $\alpha$"#)?, "Müller and $\\alpha$");
@@ -40,7 +40,7 @@ from latexcodec by Peter Troeger and Matthias C. M. Troffaes, through pylatexenc
 
 - `tests/latexwalker.rs`, `macrospec.rs`, `latex2text.rs`, `latexencode.rs`: the test suite of
   pylatexenc 2.11 (`test/*.py`) in Rust, test for test.
-- `tests/differential.rs`: pylatexenc-rs against what pylatexenc 2.11 gave
+- `tests/differential.rs`: latexenc-rs against what pylatexenc 2.11 gave
   (`tests/gen_expected.py` records it in `tests/expected/`, run with the python that has
   pylatexenc, bibtexparser and papers): a corpus of 635 texts (bibtex values, LaTeX with every
   construct, malformed LaTeX) through 49 named configurations of latex2text (every option,

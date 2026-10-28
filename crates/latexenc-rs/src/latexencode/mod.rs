@@ -1,9 +1,9 @@
 //! Encode unicode text as LaTeX (port of `pylatexenc.latexencode`).
 //!
 //! ```
-//! use pylatexenc::latexencode::{UnicodeToLatexEncoder, UnicodeToLatexConversionRule, ConversionRuleSpec};
+//! use latexenc::latexencode::{UnicodeToLatexEncoder, UnicodeToLatexConversionRule, ConversionRuleSpec};
 //!
-//! assert_eq!(pylatexenc::latexencode::unicode_to_latex("é–α"), r"\'e{\textendash}\ensuremath{\alpha}");
+//! assert_eq!(latexenc::latexencode::unicode_to_latex("é–α"), r"\'e{\textendash}\ensuremath{\alpha}");
 //!
 //! // use the 'unicode-xml' table
 //! let enc = UnicodeToLatexEncoder::builder()

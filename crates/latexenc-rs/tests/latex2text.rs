@@ -1,8 +1,8 @@
 //! pylatexenc's own `test_latex2text.py` (v2.11), in Rust.
 
-use pylatexenc::latex2text::{LatexNodes2Text, LatexNodes2TextBuilder, MathMode, StrictLatexSpaces};
-use pylatexenc::latexwalker::LatexWalker;
-use pylatexenc::pystr::is_space;
+use latexenc::latex2text::{LatexNodes2Text, LatexNodes2TextBuilder, MathMode, StrictLatexSpaces};
+use latexenc::latexwalker::LatexWalker;
+use latexenc::pystr::is_space;
 
 fn nodes_to_text(l2t: &LatexNodes2Text, latex: &str) -> String {
     let (nodes, _, _) = LatexWalker::new(latex).get_latex_nodes(0).unwrap();

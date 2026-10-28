@@ -1,15 +1,15 @@
-//! pylatexenc-rs against what pylatexenc 2.11 gave (`tests/gen_expected.py`): the corpus
+//! latexenc-rs against what pylatexenc 2.11 gave (`tests/gen_expected.py`): the corpus
 //! through every named configuration of latex2text and latexencode, the node trees and tokens of
 //! the walker, every code point through the encoders, and random texts.
 
 mod common;
 
 use common::*;
-use pylatexenc::latexwalker::{
+use latexenc::latexwalker::{
     LatexNode, LatexWalker, LatexWalkerError, LatexWalkerOptions, NodeKind, TokenKind, TokenOptions,
     nodelist_to_latex,
 };
-use pylatexenc::macrospec::ParsedMacroArgs;
+use latexenc::macrospec::ParsedMacroArgs;
 use serde_json::{Value, json};
 
 fn strs(v: &Value) -> Vec<String> {
@@ -262,7 +262,7 @@ fn latexwalker_json() {
     for (input, exp) in inputs.iter().zip(&expected) {
         let lw = LatexWalker::new(input);
         let (nodes, _, _) = lw.get_latex_nodes(0).unwrap();
-        assert_eq!(&pylatexenc::latexwalker::nodelist_to_json(&nodes, &lw), exp, "{input:?}");
+        assert_eq!(&latexenc::latexwalker::nodelist_to_json(&nodes, &lw), exp, "{input:?}");
     }
 }
 

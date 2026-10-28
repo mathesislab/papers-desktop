@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["src-tauri", "crates/core", "crates/papers-rs", "crates/papers-rs-cli", "crates/pylatexenc-rs"]
+members = ["src-tauri", "crates/core", "crates/papers-rs", "crates/papers-rs-cli", "crates/latexenc-rs"]
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

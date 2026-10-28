@@ -5,17 +5,17 @@
 
 use std::sync::Arc;
 
-use pylatexenc::latex2text::{
+use latexenc::latex2text::{
     self, EnvironmentTextSpec, Latex2TextError, LatexNodes2Text, MacroTextSpec, MathMode, Repl, SpecialsTextSpec,
     StrictLatexSpaces, StrictLatexSpacesDict, TextContextDb,
 };
-use pylatexenc::latexencode::{
+use latexenc::latexencode::{
     ConversionRuleSpec, DictRule, LatexEncodeError, PartialLatexToLatexEncoder, RegexRepl, RegexRule,
     ReplacementLatexProtection, Rule, UnicodeToLatexConversionRule, UnicodeToLatexEncoder,
     UnicodeToLatexEncoderBuilder, UnicodeToLatexOptions, UnknownCharPolicy,
 };
-use pylatexenc::latexwalker::{LatexWalkerError, LatexWalkerOptions};
-use pylatexenc::macrospec::{
+use latexenc::latexwalker::{LatexWalkerError, LatexWalkerOptions};
+use latexenc::macrospec::{
     CategoryPosition, EnvironmentSpec, LatexContextDb, MacroSpec, SpecialsSpec,
 };
 use serde_json::Value;
@@ -103,7 +103,7 @@ pub fn custom_text_db() -> TextContextDb {
 }
 
 pub fn walker_db() -> LatexContextDb {
-    let mut db = pylatexenc::latexwalker::get_default_latex_context_db();
+    let mut db = latexenc::latexwalker::get_default_latex_context_db();
     let macros = vec![
         MacroSpec::new("mymacro", "{"),
         MacroSpec::new("two", "{{"),
@@ -147,10 +147,10 @@ pub fn papers_latex_to_unicode(l2t: &LatexNodes2Text, value: &str) -> String {
         return String::new();
     }
     if !value.chars().any(|c| "\\{}$~%&".contains(c)) {
-        return pylatexenc::pystr::strip(value).to_string();
+        return latexenc::pystr::strip(value).to_string();
     }
     match l2t.latex_to_text(value) {
-        Ok(s) => pylatexenc::pystr::strip(&s).to_string(),
+        Ok(s) => latexenc::pystr::strip(&s).to_string(),
         Err(_) => value.replace(['{', '}'], ""),
     }
 }
@@ -333,15 +333,15 @@ pub fn enc_config(name: &str) -> Result<EncFn, LatexEncodeError> {
     }
     match name {
         "defaults" => enc(eb()),
-        "function" => Ok(Box::new(|s| Ok(pylatexenc::latexencode::unicode_to_latex(s)))),
+        "function" => Ok(Box::new(|s| Ok(latexenc::latexencode::unicode_to_latex(s)))),
         "function_non_ascii_only" => Ok(Box::new(|s| {
-            pylatexenc::latexencode::unicode_to_latex_with(
+            latexenc::latexencode::unicode_to_latex_with(
                 s,
                 &UnicodeToLatexOptions { non_ascii_only: true, ..Default::default() },
             )
         })),
         "function_options" => Ok(Box::new(|s| {
-            pylatexenc::latexencode::unicode_to_latex_with(
+            latexenc::latexencode::unicode_to_latex_with(
                 s,
                 &UnicodeToLatexOptions {
                     replacement_latex_protection: ReplacementLatexProtection::BracesAll,
@@ -490,17 +490,17 @@ pub fn enc_config(name: &str) -> Result<EncFn, LatexEncodeError> {
             )?;
             Ok(Box::new(move |s| e.unicode_to_latex(s)))
         }
-        "utf8tolatex" => Ok(Box::new(|s| pylatexenc::latexencode::utf8tolatex(s, false, true, false, false))),
+        "utf8tolatex" => Ok(Box::new(|s| latexenc::latexencode::utf8tolatex(s, false, true, false, false))),
         "utf8tolatex_non_ascii_only" => {
-            Ok(Box::new(|s| pylatexenc::latexencode::utf8tolatex(s, true, true, false, false)))
+            Ok(Box::new(|s| latexenc::latexencode::utf8tolatex(s, true, true, false, false)))
         }
         "utf8tolatex_nobrackets" => {
-            Ok(Box::new(|s| pylatexenc::latexencode::utf8tolatex(s, false, false, false, false)))
+            Ok(Box::new(|s| latexenc::latexencode::utf8tolatex(s, false, false, false, false)))
         }
         "utf8tolatex_substitute" => {
-            Ok(Box::new(|s| pylatexenc::latexencode::utf8tolatex(s, false, true, true, false)))
+            Ok(Box::new(|s| latexenc::latexencode::utf8tolatex(s, false, true, true, false)))
         }
-        "utf8tolatex_fail" => Ok(Box::new(|s| pylatexenc::latexencode::utf8tolatex(s, false, true, false, true))),
+        "utf8tolatex_fail" => Ok(Box::new(|s| latexenc::latexencode::utf8tolatex(s, false, true, false, true))),
         other => panic!("no Rust version of the latexencode configuration {other}"),
     }
 }
