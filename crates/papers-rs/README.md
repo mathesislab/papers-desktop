@@ -8,6 +8,9 @@ files, so that both can work on the same library. The conformance suite
 - `papers-rs`: the library.
 - `papers-rs-cli`: the command line, `papers-rs`.
 
+papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
+[PERFORMANCE.md](PERFORMANCE.md).
+
 ## Modules
 
 - `config`: the library configuration (`.papers/config.json`), the global
