@@ -4,7 +4,7 @@
   import { startDrag } from "@crabnebula/tauri-plugin-drag";
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
-  import { label, mac, matches, type Shortcut } from "$lib/keys";
+  import { label, mac, matches, zoomStep, type Shortcut } from "$lib/keys";
   import { citation, resetStyle, toCopy } from "$lib/cite";
   import { copy as copyRich } from "$lib/clipboard";
   import { dragIcon } from "$lib/pdf";
@@ -238,8 +238,12 @@
   }
 
   function onkeydown(e: KeyboardEvent) {
+    const zoom = zoomStep(e);
     if (move(e)) {
       e.preventDefault();
+    } else if (zoom !== null) {
+      e.preventDefault();
+      invoke("text_size_step", { steps: zoom });
     } else if (e.key === "Escape") {
       e.preventDefault();
       if (menu) menu = false;

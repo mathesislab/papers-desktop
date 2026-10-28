@@ -394,7 +394,7 @@
     border-radius: 6px;
     background: var(--line);
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 10.5px;
+    font-size: 12px;
     line-height: 1.45;
     white-space: pre-wrap;
     word-break: break-all;

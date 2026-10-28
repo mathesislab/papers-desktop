@@ -32,6 +32,8 @@ pub struct Settings {
     pub check_updates: bool,
     /// what the main window shows after a paper is closed
     pub after_close: AfterClose,
+    /// the size of the text, as a zoom of every window (see `text_size.rs`)
+    pub text_size: TextSize,
     /// what writes the papers libraries: papers-rs, built in, or a papers command
     pub writer: WriterChoice,
     /// the papers command, for `writer` "command" (~ for the home
@@ -69,6 +71,46 @@ pub enum AfterClose {
     Next,
 }
 
+/// The size of the text, as a level of the zoom of the windows; the default
+/// is one step above what the app used before the setting (now "smaller").
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TextSize {
+    Smallest,
+    Smaller,
+    #[default]
+    Default,
+    Larger,
+    Largest,
+}
+
+impl TextSize {
+    const LEVELS: [TextSize; 5] = [
+        TextSize::Smallest,
+        TextSize::Smaller,
+        TextSize::Default,
+        TextSize::Larger,
+        TextSize::Largest,
+    ];
+
+    /// The zoom of the web views.
+    pub fn factor(self) -> f64 {
+        match self {
+            TextSize::Smallest => 0.9,
+            TextSize::Smaller => 1.0,
+            TextSize::Default => 1.1,
+            TextSize::Larger => 1.25,
+            TextSize::Largest => 1.4,
+        }
+    }
+
+    /// The level `steps` above (below if negative), the first or last at the ends.
+    pub fn step(self, steps: i32) -> TextSize {
+        let at = Self::LEVELS.iter().position(|&l| l == self).unwrap() as i32;
+        Self::LEVELS[(at + steps).clamp(0, 4) as usize]
+    }
+}
+
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
@@ -85,6 +127,7 @@ impl Default for Settings {
             citation_style: crate::styles::DEFAULT.into(),
             check_updates: true,
             after_close: AfterClose::default(),
+            text_size: TextSize::default(),
             writer: WriterChoice::default(),
             papers: PathBuf::new(),
             email: String::new(),
@@ -187,6 +230,19 @@ fn config_dir() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_size_steps_stop_at_the_ends() {
+        assert_eq!(TextSize::default(), TextSize::Default);
+        assert_eq!(TextSize::Default.step(1), TextSize::Larger);
+        assert_eq!(TextSize::Default.step(-2), TextSize::Smallest);
+        assert_eq!(TextSize::Largest.step(1), TextSize::Largest);
+        assert_eq!(TextSize::Smallest.step(-1), TextSize::Smallest);
+        let json = serde_json::to_string(&TextSize::Smallest).unwrap();
+        assert_eq!(json, "\"smallest\"");
+        // the sizes grow
+        assert!(TextSize::LEVELS.windows(2).all(|w| w[0].factor() < w[1].factor()));
+    }
 
     #[test]
     fn no_email_by_default() {

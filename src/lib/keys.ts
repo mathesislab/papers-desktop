@@ -14,6 +14,15 @@ export function matches(e: KeyboardEvent, s: Shortcut): boolean {
   return key && mod === !!s.mod && e.shiftKey === !!s.shift && e.altKey === !!s.alt;
 }
 
+/** The step of the text size a key asks, ⌘+ or ⌘= (1), ⌘- (-1), ⌘0 (0: the default); none for another key. */
+export function zoomStep(e: KeyboardEvent): number | null {
+  const mod = mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
+  if (!mod || e.altKey) return null;
+  if (e.key === "=" || e.key === "+") return 1;
+  if (e.key === "-" || e.key === "_") return -1;
+  return e.key === "0" ? 0 : null;
+}
+
 const names: Record<string, string> = mac ? { Enter: "↵" } : {};
 
 export function label(s: Shortcut): string {

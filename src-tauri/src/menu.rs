@@ -1,7 +1,9 @@
 //! The menu bar of the app (macOS), shown while the main window is open. Its
 //! items are the commands of the main window, which reach its page also
 //! while the PDF view has the keys; ⌘W closes the paper in front, as the page
-//! decides, not the window.
+//! decides, not the window. The zoom items are the text size of the other
+//! windows; in the main window, the page decides: the PDF in front zooms,
+//! else the text size.
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, Webview, Wry};
@@ -77,7 +79,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                     &separator()?,
                     &item("zoom-in", "Zoom In", "CmdOrCtrl+=")?,
                     &item("zoom-out", "Zoom Out", "CmdOrCtrl+-")?,
-                    &item("zoom-fit", "Fit Width", "CmdOrCtrl+0")?,
+                    &item("zoom-fit", "Actual Size", "CmdOrCtrl+0")?,
                 ],
             )?,
             &Submenu::with_items(
@@ -133,5 +135,12 @@ fn command(app: &AppHandle, name: &str) {
             let _ = webview.set_focus();
         }
         let _ = window.emit("command", name);
+    } else if let Some(steps) = match name {
+        "zoom-in" => Some(1),
+        "zoom-out" => Some(-1),
+        "zoom-fit" => Some(0),
+        _ => None,
+    } {
+        let _ = crate::text_size::step(app, steps);
     }
 }

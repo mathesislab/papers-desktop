@@ -77,9 +77,12 @@ fn make(app: &AppHandle, url: &str) {
         .center()
         .visible(false)
         .build();
-    if let Err(e) = window {
-        eprintln!("papers-desktop: cannot open the main window: {e}");
-        return;
+    match window {
+        Ok(window) => crate::text_size::prepare(app, &window),
+        Err(e) => {
+            eprintln!("papers-desktop: cannot open the main window: {e}");
+            return;
+        }
     }
     if let Some(note) = note(app) {
         let written =

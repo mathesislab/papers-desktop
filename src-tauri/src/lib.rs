@@ -12,11 +12,12 @@ mod recent;
 mod selection;
 mod settings;
 mod styles;
+mod text_size;
 mod update;
 mod writer;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
 use main_window::{Layout, MAIN};
@@ -24,14 +25,14 @@ use papers_core::{BibWatch, Cite, Found, Incoming, Item, Library, Matching, Row,
 use recent::Recent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use settings::Settings;
+use settings::{Settings, TextSize};
 use styles::Style;
 use tauri::image::Image;
 use tauri::ipc::Response;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{
-    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WebviewUrl,
+    AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewUrl,
     WebviewWindowBuilder, WindowEvent, Wry,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
@@ -48,6 +49,9 @@ const MAX_RESULTS: usize = 200;
 const PANEL_WIDTH: f64 = 720.0;
 const PANEL_HEIGHT: f64 = 460.0;
 const PREVIEW_WIDTH: f64 = 500.0;
+/// settings window size in logical pixels, before the zoom of the text size
+const SETTINGS_WIDTH: f64 = 560.0;
+const SETTINGS_HEIGHT: f64 = 760.0;
 const REPO: &str = "https://github.com/mathesislab/papers-desktop";
 
 /// The library as the panel sees it, sent with the "status" event.
@@ -86,6 +90,10 @@ struct AppState {
     recent: Recent,
     layout: Layout,
     writers: Writers,
+    /// the text size, the zoom of every window
+    text_size: RwLock<TextSize>,
+    /// whether the panel shows the preview, which widens it
+    preview: AtomicBool,
 }
 
 impl AppState {
@@ -301,6 +309,9 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
     };
     hotkey::apply(&app, &old, &settings)?;
     settings.save(&state.settings_path)?;
+    if settings.text_size != old.text_size {
+        text_size::apply(&app, settings.text_size);
+    }
     reload(&app);
     Ok(())
 }
@@ -466,15 +477,28 @@ async fn pdf(app: AppHandle, id: String) -> Result<Response, String> {
 /// Widen the panel for the preview, or narrow it back, around its centre.
 #[tauri::command]
 fn set_preview(app: AppHandle, on: bool) -> Result<(), String> {
+    app.state::<AppState>().preview.store(on, Ordering::SeqCst);
+    resize_panel(&app)
+}
+
+/// The panel at its size: with or without the preview, at the zoom of the
+/// text size; kept around its centre.
+fn resize_panel(app: &AppHandle) -> Result<(), String> {
     let panel = app.get_webview_window(PANEL).ok_or("no panel")?;
-    let width = if on {
+    let width = if app.state::<AppState>().preview.load(Ordering::SeqCst) {
         PANEL_WIDTH + PREVIEW_WIDTH
     } else {
         PANEL_WIDTH
     };
+    let size = text_size::scaled(
+        text_size::monitor(&panel),
+        width,
+        PANEL_HEIGHT,
+        text_size::factor(app),
+    );
     let resize = || -> tauri::Result<()> {
         let (position, old) = (panel.outer_position()?, panel.outer_size()?);
-        panel.set_size(LogicalSize::new(width, PANEL_HEIGHT))?;
+        panel.set_size(size)?;
         let new = panel.outer_size()?;
         let x = position.x + (old.width as i32 - new.width as i32) / 2;
         panel.set_position(PhysicalPosition::new(x, position.y))
@@ -587,14 +611,25 @@ fn settings_window(app: &AppHandle, section: Option<&str>) {
     };
     let window = WebviewWindowBuilder::new(app, SETTINGS, WebviewUrl::App(url.into()))
         .title("Papers Desktop Settings")
-        .inner_size(560.0, 760.0)
+        .inner_size(SETTINGS_WIDTH, SETTINGS_HEIGHT)
         .resizable(false)
         .minimizable(false)
         .center()
         .visible(false)
         .build();
-    if let Err(e) = window {
-        eprintln!("papers-desktop: cannot open the settings: {e}");
+    match window {
+        Ok(window) => {
+            text_size::prepare(app, &window);
+            let size = text_size::scaled(
+                text_size::monitor(&window),
+                SETTINGS_WIDTH,
+                SETTINGS_HEIGHT,
+                text_size::factor(app),
+            );
+            let _ = window.set_size(size);
+            let _ = window.center();
+        }
+        Err(e) => eprintln!("papers-desktop: cannot open the settings: {e}"),
     }
 }
 
@@ -776,8 +811,11 @@ pub fn run() {
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
                 layout: Layout::new(app.path().app_data_dir()?.join("window.json")),
                 writers: Writers::default(),
+                text_size: RwLock::new(settings.text_size),
+                preview: AtomicBool::new(false),
             });
             app.manage(Updates::new(app.handle()));
+            text_size::apply(app.handle(), settings.text_size);
             hotkey::setup(app.handle(), &settings);
             tray(app.handle(), &settings.hotkey)?;
             #[cfg(target_os = "macos")]
@@ -835,6 +873,7 @@ pub fn run() {
             bibtex,
             pdf,
             set_preview,
+            text_size::text_size_step,
             csl,
             citation_style,
             get_settings,

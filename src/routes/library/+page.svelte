@@ -5,7 +5,7 @@
   import { ask, save } from "@tauri-apps/plugin-dialog";
   import { onMount, tick, untrack } from "svelte";
   import "$lib/theme.css";
-  import { label, mac, matches, type Shortcut } from "$lib/keys";
+  import { label, mac, matches, zoomStep, type Shortcut } from "$lib/keys";
   import { hasTag, renameTagFilter, toggleTag } from "$lib/query";
   import { foldTag, movedTag, sameTag } from "$lib/tags";
   import Details from "$lib/library/Details.svelte";
@@ -533,12 +533,13 @@
         return;
       case "find":
         return reader ? reader.focusFind() : input?.select();
+      // the PDF in front has the keys; else they set the text size
       case "zoom-in":
-        return reader?.zoom(1);
+        return reader ? reader.zoom(1) : invoke("text_size_step", { steps: 1 });
       case "zoom-out":
-        return reader?.zoom(-1);
+        return reader ? reader.zoom(-1) : invoke("text_size_step", { steps: -1 });
       case "zoom-fit":
-        return reader?.zoom(0);
+        return reader ? reader.zoom(0) : invoke("text_size_step", { steps: 0 });
       case "sidebar":
         layout.showSidebar = !layout.showSidebar;
         return;
@@ -564,6 +565,13 @@
     if (e.ctrlKey && e.key === "Tab") {
       e.preventDefault();
       command(e.shiftKey ? "previous-tab" : "next-tab");
+      return;
+    }
+    // ⌘+ also on a keyboard where it is ⌘⇧=
+    const zoom = zoomStep(e);
+    if (!mac && zoom !== null) {
+      e.preventDefault();
+      command(zoom > 0 ? "zoom-in" : zoom < 0 ? "zoom-out" : "zoom-fit");
       return;
     }
     // the commands: from the menu on macOS

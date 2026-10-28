@@ -802,6 +802,8 @@ mod tests {
             recent: Recent::load(dir.join("recent.json")),
             layout: Layout::new(dir.join("window.json")),
             writers,
+            text_size: Default::default(),
+            preview: Default::default(),
         }
     }
 

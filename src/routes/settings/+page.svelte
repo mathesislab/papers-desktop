@@ -6,7 +6,7 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
-  import { mac, matches } from "$lib/keys";
+  import { mac, matches, zoomStep } from "$lib/keys";
   import { writers as listWriters } from "$lib/library/writes";
   import type { Writer } from "$lib/types";
 
@@ -20,6 +20,8 @@
     citation_style: string;
     check_updates: boolean;
     after_close: "library" | "next";
+    /** the zoom of the windows: the text size */
+    text_size: "smallest" | "smaller" | "default" | "larger" | "largest";
     /** what writes the papers libraries: papers-rs, built in, or a papers command */
     writer: "built-in" | "command";
     /** the papers command, for the writer "command"; empty: the one the login shell finds */
@@ -101,6 +103,10 @@
         progress = { done: e.payload[0], total: e.payload[1] };
       }),
       listen<string>("section", (e) => showSection(e.payload)),
+      // ⌘+ and ⌘- in another window
+      listen<Settings["text_size"]>("text-size", (e) => {
+        if (settings) settings.text_size = e.payload;
+      }),
     ];
     return () => unlisten.forEach((u) => u.then((f) => f()));
   });
@@ -301,6 +307,11 @@
   function onkeydown(e: KeyboardEvent) {
     if (!recording) {
       if (matches(e, { key: "w", mod: true })) getCurrentWindow().close();
+      const zoom = zoomStep(e);
+      if (zoom !== null) {
+        e.preventDefault();
+        invoke("text_size_step", { steps: zoom });
+      }
       return;
     }
     e.preventDefault();
@@ -488,6 +499,22 @@
       <label class="row">
         <span class="label">Start at login</span>
         <input type="checkbox" class="switch" checked={startAtLogin} onchange={toggleStartAtLogin} />
+      </label>
+      <label class="row">
+        <span>
+          <span class="label">Text size</span>
+          <span class="hint">Zooms every window ({mac ? "⌘+ ⌘- ⌘0" : "Ctrl+ + - 0"})</span>
+        </span>
+        <select
+          value={settings.text_size}
+          onchange={(e) => save({ text_size: e.currentTarget.value as Settings["text_size"] })}
+        >
+          <option value="smallest">Smallest</option>
+          <option value="smaller">Smaller</option>
+          <option value="default">Default</option>
+          <option value="larger">Larger</option>
+          <option value="largest">Largest</option>
+        </select>
       </label>
       <div class="row">
         <span>
