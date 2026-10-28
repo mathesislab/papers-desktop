@@ -54,8 +54,7 @@ pub struct Writer {
     pub kind: Kind,
     /// of the papers command found, for a papers library
     pub version: Option<String>,
-    /// why the library cannot be written, when it is known (e.g. a pool, which
-    /// papers-rs does not support yet)
+    /// why the library cannot be written, when it is known (e.g. it is not a papers library)
     pub problem: Option<String>,
 }
 
@@ -1164,18 +1163,18 @@ mod tests {
     }
 
     #[test]
-    fn built_in_says_a_library_with_a_pool_is_not_supported() {
+    fn built_in_writes_a_library_with_a_pool_and_pushes_to_it() {
         let dir = tempfile::tempdir().unwrap();
         let pool = dir.path().join("pool");
         fs::create_dir(&pool).unwrap();
-        init_library(&pool);
+        let pool_bib = init_library(&pool);
         let library = dir.path().join("library");
         fs::create_dir(&library).unwrap();
         let bib = init_library(&library);
-        fs::write(&bib, ENTRIES).unwrap();
         let config = library.join(".papers/config.json");
         let mut js: Value = serde_json::from_str(&fs::read_to_string(&config).unwrap()).unwrap();
         js["pool"] = json!("../pool");
+        js["auto-push"] = json!(true);
         fs::write(&config, js.to_string()).unwrap();
 
         let state = state(
@@ -1184,21 +1183,21 @@ mod tests {
             WriterChoice::BuiltIn,
             "",
         );
+        // no problem is announced: a shallow library is written as the others
         let writers = state.writers.writers(std::slice::from_ref(&bib));
         assert_eq!(writers[0].kind, Kind::PapersRs);
-        let problem = writers[0].problem.as_deref().unwrap();
-        assert!(
-            problem.contains("pool") && problem.contains("Settings"),
-            "{problem}"
-        );
-        let error = tag(&state, &strings(&["a"]), &strings(&["x"]), &[]).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Failed);
-        assert!(
-            error.message.contains("papers command in Settings"),
-            "{}",
-            error.message
-        );
-        assert_eq!(fs::read_to_string(&bib).unwrap(), ENTRIES);
+        assert_eq!(writers[0].problem, None);
+        // an entry added to the library goes to the pool too (its new entries always do)
+        let text = "@article{c,\n author = {Doe, Jane},\n title = {C},\n year = {2024}\n}\n";
+        let added = add(&state, &bib, text, AddOptions::default()).unwrap();
+        assert_eq!(added.added, vec!["c".to_string()]);
+        assert!(fs::read_to_string(&bib).unwrap().contains("@article{c,"));
+        // (under the key that the key template of the pool gives)
+        assert!(fs::read_to_string(&pool_bib).unwrap().contains("@article{doe2024,"));
+        // the step of the pool goes with the library's: one undo takes both back
+        step(&state, &bib, true).unwrap();
+        assert!(!fs::read_to_string(&bib).unwrap().contains("@article{c,"));
+        assert!(!fs::read_to_string(&pool_bib).unwrap().contains("@article{doe2024,"));
     }
 
     /// The papers command of `PAPERS` (else the login shell's), as a script

@@ -78,7 +78,7 @@ export type Writer = {
   kind: "papers-rs" | "papers" | "native" | "papers-missing";
   /** of the papers command found, for a papers library: too old when missing */
   version: string | null;
-  /** why the library cannot be written, when known beforehand (a pool, which papers-rs does not support yet) */
+  /** why the library cannot be written, when known beforehand (e.g. it is not a papers library) */
   problem: string | null;
 };
 

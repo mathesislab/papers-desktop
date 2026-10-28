@@ -84,8 +84,9 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   the other. In `writer.rs` each is an implementation of `PapersWriter`
   (`writer/builtin.rs`, `writer/command.rs`); the commands of the app group
   the changes by library and hand them to it. Built in, a library with a pool
-  is refused (papers-rs has no pools yet), the error saying to choose a
-  papers command in Settings; with a command not found, a papers library is
+  is written as the others: the entries it adds go to the pool, and those it
+  changes too with `auto-push`, as papers does (a conflict with the pool is
+  left to `papers sync`); with a command not found, a papers library is
   read-only, and a dialog tells how to install it, with copyable commands
   (from git, `papers-cli @ git+https://github.com/perrette/papers@v3`,
   until a release has 3.0.0b4).

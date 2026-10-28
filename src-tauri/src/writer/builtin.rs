@@ -8,6 +8,7 @@ use std::path::Path;
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::edit::replace_from_text;
 use papers_rs::command::files::files_mode;
+use papers_rs::command::pool::push_after_travel;
 use papers_rs::command::report::Changes;
 use papers_rs::command::rm::{Files, remove_entries};
 use papers_rs::command::tag::{add_remove, rename};
@@ -21,10 +22,6 @@ use papers_rs::lock;
 use papers_rs::merge::{OnDuplicate as Merging, Resolver};
 
 use super::{AddOptions, Kind, OnDuplicate, PapersWriter, Pasted, WriteError};
-
-/// What papers-rs does not do yet: the libraries it refuses, and what to do.
-const POOL: &str = "This library has a pool, which the built-in writer (papers-rs) does not support yet: \
-                    choose a papers command in Settings to write it";
 
 impl From<Error> for WriteError {
     fn from(e: Error) -> WriteError {
@@ -60,9 +57,6 @@ impl Builtin {
         };
         if !exists(bibtex) {
             return Err(WriteError::failed(format!("{bibtex}: not found")));
-        }
-        if config.shallow() {
-            return Err(WriteError::failed(POOL));
         }
         Ok(config)
     }
@@ -208,11 +202,17 @@ impl PapersWriter for Builtin {
         // a pool's step reverted with conflicts: skipped, as papers does
         // without a terminal (the app asks nothing)
         let mut skip = Resolver::new(Merging::Skip);
-        if back {
-            history.undo(1, false, lock.as_ref(), &command, &mut skip)?;
+        let moved = if back {
+            history.undo(1, false, lock.as_ref(), &command, &mut skip)?
         } else {
-            history.redo(1, false, lock.as_ref(), &command, &mut skip)?;
-        }
+            history.redo(1, false, lock.as_ref(), &command, &mut skip)?
+        };
+        // a shallow library with auto-push: what differs from its pool is pushed, as papers does
+        let options = Options {
+            message: command,
+            ..Options::default()
+        };
+        push_after_travel(config, options, lock, moved.links)?;
         Ok(())
     }
 }
