@@ -11,8 +11,10 @@
 //!   (`--move`, `--copy`, `--link`, the `files` setting).
 
 pub mod add;
+pub mod check;
 pub mod edit;
 pub mod files;
+pub mod migrate;
 pub mod report;
 pub mod rm;
 pub mod session;

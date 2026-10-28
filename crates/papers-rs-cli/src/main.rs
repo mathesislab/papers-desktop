@@ -4,6 +4,7 @@
 //! files. The commands that are not ported yet say so (status 1).
 
 mod cmd_add;
+mod cmd_check;
 mod cmd_config;
 mod cmd_edit;
 mod cmd_export;
@@ -12,14 +13,13 @@ mod cmd_history;
 mod cmd_init;
 mod cmd_list;
 mod cmd_list_actions;
+mod cmd_migrate;
 mod cmd_rm;
 mod cmd_status;
 mod cmd_tag;
 mod cmd_write;
 mod commands;
 mod dialogue;
-mod difflib;
-mod fix_entry;
 mod help;
 mod help_text;
 mod parse;
@@ -231,6 +231,8 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
         "edit" => written(&command, cmd_edit::edit_cmd(leaf, config))?,
         "rm" => written(&command, cmd_rm::rm_cmd(leaf, config))?,
         "tag" => written(&command, cmd_tag::tag_cmd(leaf, config))?,
+        "check" => written(&command, cmd_check::check_cmd(leaf, config))?,
+        "migrate" => written(&command, cmd_migrate::migrate_cmd(leaf, config))?,
         "status" => cmd_status::status(cmd_status::StatusArgs::from_leaf(leaf), config)?,
         "undo" => cmd_history::undo(leaf, config)?,
         "redo" => cmd_history::redo(leaf, config)?,

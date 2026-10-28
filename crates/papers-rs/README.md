@@ -72,6 +72,13 @@ files, so that both can work on the same library. The conformance suite
   `--key` with `--attach`), `edit`, `rm`, `tag` are operations on a `Session`; the other
   writing commands use the same `Session`. Not yet: PDFs, folders, `--doi`, URLs as
   attachments, a library with a pool (`Session::open` says so).
+- `command::check`: `papers check` (and the `list --fetch` of the CLI): the fixes of an entry
+  (names, encoding, DOI, fetch, key; `fix_entry`, with the question and the diff of papers), the
+  duplicates merged, the lines of what changed. A fetch goes through the `Fetch` trait (crossref in
+  the program, what was recorded in the tests). `command::migrate`: `papers migrate` (the global
+  configuration of v2 as a library, the `.papersconfig.json` moved, `--folders`).
+- `difflib`: Python's `difflib.ndiff` (`SequenceMatcher` with junk and popular elements), for the
+  diff that `check` shows.
 - `install`: what `papers init` creates.
 - `lock`: the lock of a library (`.papers/lock`), a lease with a refresh thread.
 - `error`, `log`: papers' errors, and its messages (`papers: warning: ...`).
@@ -79,7 +86,7 @@ files, so that both can work on the same library. The conformance suite
 ## The command line
 
 `papers-rs` (the `papers-rs-cli` crate) has the commands, options and errors of
-papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `list` and `export` are ported; the other commands print
+papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `list`, `export`, `check` and `migrate` are ported; the other commands print
 `papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
 selection and the outputs are there, and `--export`; the actions that change the
 library (`--delete`, `--edit`, `--add-tag`, `--rm-tag`, `--attach`, `--detach`,

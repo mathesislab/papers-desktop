@@ -1450,6 +1450,16 @@ impl Library {
         &mut self,
         resolver: &mut dyn Resolve,
     ) -> Result<Vec<(String, Vec<String>)>> {
+        self.check_duplicates_with(resolver, &mut |_, _| {})
+    }
+
+    /// [`Library::check_duplicates`], telling `merged(key of the target now, keys removed)` as
+    /// each group is merged (`papers check` prints a line then, between the questions of `ask`).
+    pub fn check_duplicates_with(
+        &mut self,
+        resolver: &mut dyn Resolve,
+        merged_group: &mut dyn FnMut(&str, &[String]),
+    ) -> Result<Vec<(String, Vec<String>)>> {
         if resolver.mode() == OnDuplicate::Update {
             return Err(Error::other(
                 "--on-duplicate update is not available for check (no side is new)",
@@ -1530,6 +1540,7 @@ impl Library {
                         }
                     }
                     self.index = None;
+                    merged_group(&result.key, &others);
                     merged.push((target_key, others));
                 }
                 Decision::Distinct => {

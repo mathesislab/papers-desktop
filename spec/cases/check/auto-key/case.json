@@ -1,0 +1,55 @@
+{
+  "description": "check --auto-key makes the key of every entry from the key template; the keys compared include the entry's own, so an entry whose key is already the template key gets a letter (open question: library.md 4)",
+  "sections": [
+    "bibtex.md#8",
+    "library.md#settings"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--auto-key",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--auto-key",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--auto-key",
+        "--key-template",
+        "{author}_{year}",
+        "--key-author-num",
+        "1",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

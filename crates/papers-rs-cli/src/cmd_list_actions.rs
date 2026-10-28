@@ -3,16 +3,18 @@
 //! for, run on the selection of the search, through the write path (`papers.cli.entry_cmds.listcmd`):
 //! the same lines and the same step of the history, whose message is the command line.
 
+use papers_rs::command::check::{Fetch, FixOptions, fix_entries};
 use papers_rs::command::edit::{Editor, edit_selected};
 use papers_rs::command::report::{Notes, print_changes};
 use papers_rs::command::rm::{Files, remove_entries};
 use papers_rs::command::tag::add_remove;
 use papers_rs::config::Config;
+use papers_rs::config::dirs::cache_dir;
+use papers_rs::fetch::Fetcher;
 use papers_rs::search::Search;
 
 use crate::cmd_config;
 use crate::cmd_write::{Failure, open_session, run_session};
-use crate::fix_entry;
 use crate::parse::Leaf;
 
 /// What `papers list` does with the entries it lists, instead of printing them.
@@ -90,7 +92,16 @@ pub fn run(
                 touched = session.library.entries().map(|e| e.key.clone()).collect();
             }
             Action::Fetch => {
-                touched = fix_entry::fetch_entries(session, &keys)?;
+                // `Biblio.fix_entry(fix_doi=True, fix_key=True, fetch_all=True, interactive=True)`
+                let options = FixOptions {
+                    fix_doi: true,
+                    fix_key: true,
+                    fetch_all: true,
+                    interactive: true,
+                    ..FixOptions::default()
+                };
+                let fetcher = Fetcher::new(&cache_dir()).ok();
+                touched = fix_entries(session, &keys, &options, fetcher.as_ref().map(|f| f as &dyn Fetch))?;
             }
             Action::Delete => {
                 if delete_files && keep_files {

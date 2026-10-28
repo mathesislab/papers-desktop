@@ -8,6 +8,7 @@
 pub mod bib;
 pub mod command;
 pub mod config;
+pub mod difflib;
 pub mod entry;
 pub mod error;
 pub mod export;

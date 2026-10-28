@@ -1,0 +1,42 @@
+{
+  "description": "check --encoding unicode converts the LaTeX of the values to text, --encoding latex writes the characters as LaTeX, but for the abstract, the file links and the identifiers (doi, url)",
+  "sections": [
+    "bibtex.md#4.2",
+    "bibtex.md#4.3",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--encoding",
+        "latex",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--encoding",
+        "unicode",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}
