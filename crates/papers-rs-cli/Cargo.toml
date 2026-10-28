@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 papers-rs = { version = "0.1.0", path = "../papers-rs" }
 serde_json = "1"
+rapidfuzz = "0.5"
 clap = { version = "4", default-features = false, features = ["std", "error-context", "string"] }
 
 [dev-dependencies]

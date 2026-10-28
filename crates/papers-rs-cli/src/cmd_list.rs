@@ -1,7 +1,7 @@
 //! `papers list`: the entries of the library that a search selects, listed as a line, as bibtex, RIS,
 //! CSL-JSON, BibJSON, as keys or as fields; or `--export` to a directory.
 //!
-//! The actions that change the library (`--delete`, `--edit`, `--add-tag`...) are not ported yet.
+//! Its actions that change the library (`--delete`, `--edit`, `--add-tag`...) are in `cmd_list_actions`.
 
 use std::io::{IsTerminal, Read};
 
@@ -19,6 +19,7 @@ use papers_rs::search::{By, Search};
 
 use crate::cmd_config::{Failure, no_library_message};
 use crate::cmd_export::{export_entries, formats_of};
+use crate::cmd_list_actions::{self, Action};
 use crate::parse::Leaf;
 use crate::util::file_uri_to_path;
 
@@ -222,6 +223,15 @@ fn search_of(leaf: &Leaf) -> Search {
     }
 }
 
+/// The warning of the deprecated `--similarity`, once the library is read.
+pub fn warn_similarity(leaf: &Leaf) {
+    if leaf.string("similarity").is_some() {
+        log::warning(
+            "--similarity is deprecated and ignored: entries are the same paper by identifier, or by authors and title (see the documentation of papers add)",
+        );
+    }
+}
+
 pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
     deprecated_warnings(leaf);
     let config = check_install(leaf, config, true)?;
@@ -340,6 +350,9 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
     {
         return Err(usage(format!("--{exchange} takes one --pool")));
     }
+    if let Some(action) = Action::of(leaf) {
+        return cmd_list_actions::run(leaf, config, &search_of(leaf), action);
+    }
     for (name, id) in WRITING_ACTIONS {
         let on = match id {
             "attach" => attach,
@@ -368,11 +381,7 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
 
     let library = Library::open(&config)?;
     let all: Vec<&Entry> = library.entries().collect();
-    if leaf.string("similarity").is_some() {
-        log::warning(
-            "--similarity is deprecated and ignored: entries are the same paper by identifier, or by authors and title (see the documentation of papers add)",
-        );
-    }
+    warn_similarity(leaf);
     let search = search_of(leaf);
     let entries = search
         .select(&all, Some(&library.distinct), &library.relative_to)

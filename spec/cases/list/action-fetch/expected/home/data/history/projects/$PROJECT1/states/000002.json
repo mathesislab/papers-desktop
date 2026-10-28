@@ -1,0 +1,15 @@
+{
+ "parent": 1,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --fetch --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "bb1516a54c1e80bf5c2f014a1de7969178cf82cd429a37616f4f48b48e934ce6"
+  ],
+  "sha": "bb1516a54c1e80bf5c2f014a1de7969178cf82cd429a37616f4f48b48e934ce6"
+ },
+ "files": {}
+}

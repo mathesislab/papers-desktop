@@ -1,0 +1,58 @@
+{
+  "description": "list --fetch (deprecated) refreshes the entries listed: the names of the authors formatted, a key made for a key that starts with a digit, shown as a diff with the question \"update? [Y/n]\" (n keeps the entry as it was); an entry that has no DOI nor title is left as it is (offline)",
+  "sections": [
+    "bibtex.md#3.3",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--fetch"
+      ],
+      "stdin": "n\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--fetch",
+        "--porcelain"
+      ],
+      "stdin": "y\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--fetch"
+      ],
+      "stdin": "y\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "plain2020",
+        "--fetch"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

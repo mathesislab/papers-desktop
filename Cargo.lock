@@ -3256,6 +3256,7 @@ dependencies = [
  "clap",
  "libc",
  "papers-rs",
+ "rapidfuzz",
  "serde_json",
  "tempfile",
 ]
