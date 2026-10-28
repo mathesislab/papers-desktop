@@ -1,0 +1,21 @@
+[package]
+name = "pylatexenc-rs"
+version = "0.1.0"
+description = "A Rust port of pylatexenc 2.11: parse LaTeX, convert it to text, encode unicode as LaTeX"
+authors = ["Alexander Robinson"]
+edition = "2024"
+license = "MIT"
+keywords = ["latex", "unicode", "bibtex", "parser", "pylatexenc"]
+categories = ["text-processing", "parser-implementations"]
+
+[lib]
+name = "pylatexenc"
+
+[dependencies]
+fancy-regex = "0.16"
+log = "0.4"
+stacker = "0.1"
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+serde_json = "1"
