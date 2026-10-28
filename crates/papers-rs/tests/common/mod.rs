@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+pub mod translit;
+
 use std::path::{Path, PathBuf};
 
 use papers_rs::bib::{Bib, Block, UnreadableKind};
@@ -52,4 +54,30 @@ pub fn dump(bib: &Bib) -> Value {
         .map(|(line, why)| json!([line, why]))
         .collect();
     json!({"blocks": blocks, "unreadable": unreadable})
+}
+
+/// The expected results of the library model (`expected/library/<name>.json`).
+pub fn library_json(name: &str) -> Value {
+    json_file(&dir("expected").join("library").join(name))
+}
+
+/// An entry as the generator dumps it (`{type, key, fields: [[name, value]]}`).
+pub fn entry_of(d: &Value) -> papers_rs::bib::Entry {
+    let mut e = papers_rs::bib::Entry::new(d["type"].as_str().unwrap(), d["key"].as_str().unwrap());
+    for f in d["fields"].as_array().unwrap() {
+        e.fields.push(papers_rs::bib::Field::new(
+            f[0].as_str().unwrap(),
+            f[1].as_str().unwrap(),
+        ));
+    }
+    e
+}
+
+/// The strings of a JSON array.
+pub fn strings(v: &Value) -> Vec<String> {
+    v.as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s.as_str().unwrap().to_string())
+        .collect()
 }

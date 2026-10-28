@@ -406,6 +406,14 @@ pub fn dumps_pretty(value: &Value) -> String {
     out
 }
 
+/// `json.dumps(value, sort_keys=True, indent=indent)` (with the separators of
+/// an indent: `,` and `: `), no trailing newline.
+pub fn dumps_sorted(value: &Value, indent: usize) -> String {
+    let mut out = String::new();
+    write_value(&mut out, value, Some(indent), 0, true);
+    out
+}
+
 /// `json.dumps(value)`, keys in the order of the map as given (sorted if the
 /// map is).
 pub fn dumps_compact(value: &Value) -> String {

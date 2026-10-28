@@ -60,14 +60,22 @@ fn parse_one(file: &str) -> &str {
     }
 }
 
-/// The paths of a `file` field, as written (`parse_file`). The paths that
-/// are empty are left out.
+/// The paths of a `file` field, as written (`parse_file`). The links that are
+/// empty are left out, those with an empty path too, with a warning.
 pub fn parse_file(file: &str) -> Vec<String> {
     file.split(';')
         .filter(|f| !strip(f).is_empty())
-        .map(parse_one)
-        .filter(|p| !p.is_empty())
-        .map(str::to_string)
+        .filter_map(|f| {
+            let path = parse_one(f);
+            if path.is_empty() {
+                crate::log::warning(&format!(
+                    "empty file path in file field (ignored): {}",
+                    crate::config::json::py_repr_str(f)
+                ));
+                return None;
+            }
+            Some(path.to_string())
+        })
         .collect()
 }
 

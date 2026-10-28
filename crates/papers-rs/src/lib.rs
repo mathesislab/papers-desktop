@@ -7,7 +7,14 @@
 
 pub mod bib;
 pub mod config;
+pub mod entry;
 pub mod error;
+pub mod identity;
 pub mod install;
+pub mod library;
 pub mod lock;
 pub mod log;
+pub mod merge;
+pub mod names;
+#[rustfmt::skip]
+mod pytables;

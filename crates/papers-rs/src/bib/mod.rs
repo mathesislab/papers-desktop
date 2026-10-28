@@ -36,7 +36,7 @@
 
 #[rustfmt::skip]
 mod latexenc_tables;
-mod pystr;
+pub mod pystr;
 mod read;
 mod split;
 mod write;
@@ -265,6 +265,11 @@ impl Bib {
     pub fn sort(&mut self) {
         let blocks = std::mem::take(&mut self.blocks);
         self.blocks = write::sort_blocks(blocks);
+    }
+
+    /// The order that [`Bib::sort`] gives the blocks: their indexes, sorted.
+    pub fn sort_order(&self) -> Vec<usize> {
+        write::sort_order(&self.blocks)
     }
 
     /// The text of the blocks in the order they have (`Biblio.format`): the

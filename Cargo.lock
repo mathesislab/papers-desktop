@@ -3065,9 +3065,11 @@ dependencies = [
 name = "papers-rs"
 version = "0.1.0"
 dependencies = [
+ "deunicode",
  "latexenc-rs",
  "libc",
  "serde_json",
+ "sha2",
  "tempfile",
  "unicode-normalization",
 ]

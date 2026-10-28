@@ -31,14 +31,15 @@ fn sort_key(block: &Block) -> (usize, &str) {
     (type_index(block), key)
 }
 
-/// Order blocks by type and key, the comments above a block staying with
-/// it (`papers.entries.sort_blocks`): the comments at the end are sorted by the last of them.
-pub(super) fn sort_blocks(blocks: Vec<Block>) -> Vec<Block> {
-    let mut chunks: Vec<Vec<Block>> = Vec::new();
-    let mut chunk: Vec<Block> = Vec::new();
-    for block in blocks {
+/// The order of the blocks of a saved bibtex (`papers.entries.sort_blocks`):
+/// by type and key, the comments above a block staying with it, the comments
+/// at the end sorted by the last of them. The indexes of the blocks, in that order.
+pub(super) fn sort_order(blocks: &[Block]) -> Vec<usize> {
+    let mut chunks: Vec<Vec<usize>> = Vec::new();
+    let mut chunk: Vec<usize> = Vec::new();
+    for (i, block) in blocks.iter().enumerate() {
         let is_comment = matches!(block, Block::Text(_) | Block::Comment(_));
-        chunk.push(block);
+        chunk.push(i);
         if !is_comment {
             chunks.push(std::mem::take(&mut chunk));
         }
@@ -46,8 +47,20 @@ pub(super) fn sort_blocks(blocks: Vec<Block>) -> Vec<Block> {
     if !chunk.is_empty() {
         chunks.push(chunk);
     }
-    chunks.sort_by(|a, b| sort_key(a.last().unwrap()).cmp(&sort_key(b.last().unwrap())));
+    chunks.sort_by(|a, b| {
+        sort_key(&blocks[*a.last().unwrap()]).cmp(&sort_key(&blocks[*b.last().unwrap()]))
+    });
     chunks.into_iter().flatten().collect()
+}
+
+/// Order blocks by type and key, the comments above a block staying with it.
+pub(super) fn sort_blocks(blocks: Vec<Block>) -> Vec<Block> {
+    let order = sort_order(&blocks);
+    let mut blocks: Vec<Option<Block>> = blocks.into_iter().map(Some).collect();
+    order
+        .into_iter()
+        .map(|i| blocks[i].take().unwrap())
+        .collect()
 }
 
 const PARSING_FAILED: &str = "% WARNING Parsing failed for the following ";
