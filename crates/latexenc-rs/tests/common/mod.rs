@@ -324,12 +324,30 @@ fn dict_rule(pairs: &[(char, &str)], protection: Option<ReplacementLatexProtecti
     }
 }
 
+/// The regex rules of `tests/regex_class_rules.json` (shared with `gen_expected.py`) that have that
+/// name, then the defaults.
+fn class_rule_config(name: &str) -> Result<EncFn, LatexEncodeError> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("regex_class_rules.json");
+    let all: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let entry = all.as_array().unwrap().iter().find(|r| r["name"] == name).expect("a regex class rule of that name");
+    let items = entry["rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|pair| RegexRule::new(pair[0].as_str().unwrap(), pair[1].as_str().unwrap()))
+        .collect::<Result<Vec<_>, _>>()?;
+    enc(rules(vec![UnicodeToLatexConversionRule::regex(items).into(), builtin("defaults")]))
+}
+
 /// The encoder configuration of that name (as in `gen_expected.py`).
 pub fn enc_config(name: &str) -> Result<EncFn, LatexEncodeError> {
     let xml = || builtin("unicode-xml");
     let defaults = || builtin("defaults");
     if let Some(p) = name.strip_prefix("protection_xml_") {
         return enc(rules(vec![xml()]).replacement_latex_protection(protection(p)?));
+    }
+    if let Some(n) = name.strip_prefix("rule_regex_class_") {
+        return class_rule_config(n);
     }
     match name {
         "defaults" => enc(eb()),
@@ -407,9 +425,9 @@ pub fn enc_config(name: &str) -> Result<EncFn, LatexEncodeError> {
         ])),
         "rule_regex_template" => enc(rules(vec![
             UnicodeToLatexConversionRule::regex(vec![
-                RegexRule::new(r"(?P<word>(?<![A-Za-z0-9_])[A-Z]{2,}(?![A-Za-z0-9_]))", r"\\textsc{\g<word>}")?,
+                RegexRule::new(r"(?P<word>\b[A-Z]{2,}\b)", r"\\textsc{\g<word>}")?,
                 RegexRule::new(r"(\d+)-(\d+)", r"\1\\textendash{}\2")?,
-                RegexRule::new(r"\\([A-Za-z0-9_]+)", r"<\1>")?,
+                RegexRule::new(r"\\(\w+)", r"<\1>")?,
                 RegexRule::new(r"\u00e9+", r"e\\n\\\\x")?,
             ])
             .into(),

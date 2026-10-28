@@ -3,7 +3,7 @@
 
 Writes (all marked `@generated`):
 
-  src/pystr_tables.rs                    Python's str.isspace/isalpha/isalnum/isdecimal and the regex \\w class
+  src/pystr_tables.rs                    Python's str.isspace/isalpha/isalnum/isdecimal, equal to the regex classes \\s \\w \\d
   src/latexwalker/defaultspecs.rs        latexwalker.get_default_latex_context_db()
   src/latex2text/defaultspecs.rs         latex2text.get_default_latex_context_db()
   src/latexencode/uni2latexmap.rs        latexencode's 'defaults' rule table
@@ -14,6 +14,7 @@ Run with the python that has pylatexenc 2.11 installed, from anywhere:
     /path/to/python3 tools/gen_tables.py
 """
 import os
+import re
 import sys
 import unicodedata
 
@@ -83,6 +84,14 @@ def gen_pystr():
         ('WORD', lambda c: c.isalnum() or c == '_'),
         ('DECIMAL', lambda c: c.isdecimal()),
     ]
+    # the tables are what `re` itself matches (`\\s`, `\\w`, `\\d` of str patterns): checked here,
+    # code point by code point, so that the regex translation (src/pyregex.rs) is exact
+    for name, rx in (('SPACE', r'\s'), ('WORD', r'\w'), ('DECIMAL', r'\d')):
+        pred = dict(tables)[name]
+        compiled = re.compile(rx)
+        for i in range(0x110000):
+            c = chr(i)
+            assert pred(c) == bool(compiled.fullmatch(c)), (name, hex(i))
     for name, pred in tables:
         rs = ranges(pred)
         out.append('pub(crate) static %s: &[(u32, u32)] = &[\n' % name)

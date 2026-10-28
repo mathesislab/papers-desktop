@@ -51,6 +51,7 @@ pub mod latex2text;
 pub mod latexencode;
 pub mod latexwalker;
 pub mod macrospec;
+pub mod pyregex;
 pub mod pystr;
 mod pystr_tables;
 mod textwrap;

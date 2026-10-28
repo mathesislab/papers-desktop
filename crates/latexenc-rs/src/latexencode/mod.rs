@@ -103,9 +103,9 @@ impl fmt::Debug for RegexRepl {
 /// One `(compiled_regular_expression, replacement)` of a regex rule (`RULE_REGEX`).
 ///
 /// The regex is matched at the current position (as Python's `regex.match(s, pos)`); lookbehind
-/// sees the text before it. Regexes are those of the [`fancy_regex`] crate, close to Python's
-/// `re` (lookaround, backreferences); the classes like `\w` follow Unicode properties, which
-/// differ a little from Python's.
+/// sees the text before it. The pattern is a Python `re` pattern (`str`, with the inline flags
+/// `a`, `i`, `m`, `s`, `x`, `u`), translated by [`crate::pyregex`] for the [`fancy_regex`] engine:
+/// `\w`, `\d`, `\s`, `\b` (and their negations) match as in Python.
 #[derive(Debug, Clone)]
 pub struct RegexRule {
     pub regex: fancy_regex::Regex,
@@ -115,7 +115,7 @@ pub struct RegexRule {
 impl RegexRule {
     /// A rule with a template replacement. Fails if the pattern does not compile.
     pub fn new(pattern: &str, template: &str) -> Res<Self> {
-        let regex = fancy_regex::Regex::new(pattern).map_err(|e| LatexEncodeError::Value(e.to_string()))?;
+        let regex = crate::pyregex::compile(pattern).map_err(LatexEncodeError::Value)?;
         Ok(RegexRule { regex, repl: RegexRepl::Template(template.to_string()) })
     }
 
@@ -124,7 +124,7 @@ impl RegexRule {
     where
         F: Fn(&fancy_regex::Captures<'_>) -> String + Send + Sync + 'static,
     {
-        let regex = fancy_regex::Regex::new(pattern).map_err(|e| LatexEncodeError::Value(e.to_string()))?;
+        let regex = crate::pyregex::compile(pattern).map_err(LatexEncodeError::Value)?;
         Ok(RegexRule { regex, repl: RegexRepl::Func(Arc::new(f)) })
     }
 }

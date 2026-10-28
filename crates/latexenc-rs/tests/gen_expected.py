@@ -7,7 +7,12 @@ The Rust tests (tests/differential.rs) compare latexenc-rs with what is recorded
   expected/latexwalker.json  node trees (tolerant or not) and tokens of the corpus
   expected/latexencode.json  corpus x named configurations of UnicodeToLatexEncoder
   expected/codepoints.json   every code point through the 'defaults' and 'unicode-xml' encoders
-  expected/fuzz.json         random texts through the main configurations
+  expected/regex_classes.json  where each regex class (\w \d \s \b ...) matches, over every code point
+  expected/fuzz.json         random texts through the main configurations, random regex patterns
+
+The regex rules with each class are in regex_class_rules.json (read by both sides); the code points
+where the Rust engine's own classes differ from Python's, which the strings of those rules cover, are
+in regex_class_diff.json (`cargo test --test differential -- --ignored regenerate_class_diff`).
 
 The configurations have the same names in tests/differential.rs. `bibtexparser` is the
 configuration of bibtexparser's LatexDecodingMiddleware and LatexEncodingMiddleware (made by the
@@ -23,6 +28,7 @@ import json
 import logging
 import os
 import random
+import re
 import sys
 import tempfile
 import unicodedata
@@ -378,9 +384,9 @@ def encode_configs():
                                      replacement_latex_protection='none'),
         'defaults'])
     c['rule_regex_template'] = lambda: enc(conversion_rules=[
-        UnicodeToLatexConversionRule(RULE_REGEX, [(re.compile(r'(?P<word>(?<![A-Za-z0-9_])[A-Z]{2,}(?![A-Za-z0-9_]))'), r'\\textsc{\g<word>}'),
+        UnicodeToLatexConversionRule(RULE_REGEX, [(re.compile(r'(?P<word>\b[A-Z]{2,}\b)'), r'\\textsc{\g<word>}'),
                                                   (re.compile(r'(\d+)-(\d+)'), r'\1\\textendash{}\2'),
-                                                  (re.compile(r'\\([A-Za-z0-9_]+)'), r'<\1>'),
+                                                  (re.compile(r'\\(\w+)'), r'<\1>'),
                                                   (re.compile(r'\u00e9+'), r'e\\n\\\\x')]),
         'defaults'])
     c['rule_regex_callable'] = lambda: enc(conversion_rules=[
@@ -423,7 +429,20 @@ def encode_configs():
     c['utf8tolatex_nobrackets'] = lambda: lambda s: utf8tolatex(s, brackets=False)
     c['utf8tolatex_substitute'] = lambda: lambda s: utf8tolatex(s, substitute_bad_chars=True)
     c['utf8tolatex_fail'] = lambda: lambda s: utf8tolatex(s, fail_bad_chars=True)
+    # regex rules with each class (tests/regex_class_rules.json, also read by tests/common/mod.rs)
+    for r in class_rules():
+        c['rule_regex_class_' + r['name']] = (lambda r=r: enc(conversion_rules=[
+            UnicodeToLatexConversionRule(RULE_REGEX, [(re.compile(p), t) for p, t in r['rules']]), 'defaults']))
     return c
+
+
+def class_rules():
+    with open(os.path.join(HERE, 'regex_class_rules.json'), encoding='utf-8') as f:
+        return json.load(f)
+
+
+def class_config_names():
+    return {'rule_regex_class_' + r['name'] for r in class_rules()}
 
 
 def encode_cases(inputs, names=None):
@@ -452,6 +471,54 @@ def codepoints():
                 d[str(cp)] = out
         res[name] = d
     return res
+
+
+# --------------------------------------------------------------------------- regex classes
+
+# the texts of the sweeps: every code point (but the surrogates, which a Rust string cannot hold)
+# in order, each followed by nothing, by 'a', by a space
+SWEEP_TEXTS = {'seq': '', 'a': 'a', 'sp': ' '}
+CLASS_LETTERS = 'wWdDsS'
+
+
+def sweep_patterns():
+    "(pattern, text) pairs: each class alone, in a set, in a negated set; with (?a), (?i); \\b and \\B"
+    res = []
+    for flags in ('', '(?a)', '(?i)', '(?ai)'):
+        for L in CLASS_LETTERS:
+            for form in ('\\%s', '[\\%s]', '[^\\%s]'):
+                res.append((flags + form % L, 'seq'))
+        for L in 'bB':
+            # (a boundary is a lookaround pair: the slow patterns, on the other texts only without flags)
+            for t in (SWEEP_TEXTS if not flags and L == 'b' else ['seq']):
+                res.append((flags + '\\' + L, t))
+    for p in (r'[\w-]', r'[^\W\d_]', r'[\s\S]', r'[\W\D]', r'[\w\d\s]', r'[^\w\d\s]', r'(?<=\w)[\W\d]',
+              r'(?s).(?=\s)', r'(?s)\B.', r'(?s)(?<!\w)\S', r'(?a)(?s)\b.', r'(?s)\b.'):
+        res.append((p, 'seq'))
+    return res
+
+
+def ranges_of(values):
+    res = []
+    for v in values:
+        if res and res[-1][1] == v - 1:
+            res[-1][1] = v
+        else:
+            res.append([v, v])
+    return res
+
+
+def regex_classes():
+    """where each class matches, over every code point: the starts of the matches of `finditer`
+    over the text of all code points, as ranges of positions"""
+    chars = [chr(i) for i in range(0x110000) if not 0xD800 <= i < 0xE000]
+    texts = {name: ''.join(c + tail for c in chars) for name, tail in SWEEP_TEXTS.items()}
+    cases = []
+    for pattern, t in sweep_patterns():
+        rx = re.compile(pattern)
+        cases.append({'pattern': pattern, 'text': t,
+                      'matches': ranges_of(m.start() for m in rx.finditer(texts[t]))})
+    return {'texts': SWEEP_TEXTS, 'cases': cases}
 
 
 # --------------------------------------------------------------------------- fuzz
@@ -527,6 +594,114 @@ def fuzz_unicode(n, seed):
     return res
 
 
+# the code points where the classes of the Rust engine (Unicode properties) are not those of
+# Python, written by `cargo test --test differential -- --ignored regenerate_class_diff`
+def class_diff_cps():
+    with open(os.path.join(HERE, 'regex_class_diff.json'), encoding='utf-8') as f:
+        diff = json.load(f)
+    return sorted({c for ranges in diff.values() for lo, hi in ranges for c in range(lo, hi + 1)})
+
+
+CLASS_WORDS = [
+    '', 'abc def_12 x-y', 'a₂b', 'x² + y²', '٣٤ 12 १', 'a‍b', '\u001c\u001d x\u001e',
+    'é èê', 'Ǆ ǅ ǆ', 'ªº', 'aͅ ᾳ', 'café́s', 'KK k',
+    'ſ s', 'a b c​d', 'line\nline\r\nend\n', 'trailing \n', ' \t\x0b\x0c ', '  \u0085',
+    '½ Ⅰ ⓪', 'अः का', '_ _a a_ __', '\U0001d7d8\U0001d7d9 x', '　 ', 'a‿b',
+    'ⅠⅡ', 'x̀y', '(a) [b] {c}', 'é', '\U0001f600 a', '中文 abc', 'ABÉÈ cd',
+]
+
+
+def class_inputs():
+    "strings for the regex rules: handwritten, and every code point where the engine's classes differ"
+    res = list(CLASS_WORDS)
+    cps = class_diff_cps()
+    for i in range(0, len(cps), 12):
+        chunk = cps[i:i + 12]
+        res.append(' '.join('a' + chr(c) + '1' for c in chunk))
+        res.append(''.join(chr(c) + 'x' for c in chunk))
+    return dedupe(res)
+
+
+def fuzz_class_strings(n, seed):
+    rng = random.Random(seed)
+    diff = class_diff_cps()
+    alphabet = ['a', 'Z', 'k', 'K', 's', '_', '1', '9', ' ', ' ', '\n', '\t', '-', '.', '$', 'é', 'É', 'ß',
+                '٣', '१', '²', '₂', '½', ' ', ' ', '​', '\u001c', '\u0085',
+                ' ', '‍', 'ͅ', '́', 'ः', 'ǅ', 'ſ', 'K', '中', '\U0001d7d8',
+                '\U0001f600', 'α', 'Α', 'Ⅰ', '‿']
+    res, seen = [], set()
+    for _ in range(n):
+        s = ''.join(rng.choice(alphabet) if rng.random() < 0.8 else chr(rng.choice(diff))
+                    for _ in range(rng.randint(0, 12)))
+        if s not in seen:
+            seen.add(s)
+            res.append(s)
+    return res
+
+
+PATTERN_CONSUMING = [r'\w', r'\W', r'\d', r'\D', r'\s', r'\S', '.', 'a', 'b', 'A', '1', ' ', '_', '-', r'\.', 'k', 'é',
+                     '₂', r'[\w-]', r'[^\W\d]', r'[\s\d]', r'[a-c\W]', r'[^\S]', r'[\D\s]', r'[^a\w]', r'[\w\W]',
+                     r'[0-9\s_]', r'[^\n]', r'[\b]', r'[a\w]', r'[^\W\d_]', r'[\d\s\w]', r'[^\d\s\w]', r'[x-z\w]',
+                     r'(?:\w|\d)', r'(?:\s\w)', r'[]a]', r'[^]a]', r'[a^]', r'[\^\w]', r'[a&&b]', r'[[]', r'[~~\w]', r'[\w~]']
+PATTERN_ZERO_WIDTH = [r'\b', r'\B', '^', '$', r'\A', r'\Z', r'(?=\w)', r'(?!\w)', r'(?<=\w)', r'(?<!\s)', r'(?<=\W)',
+                      r'(?=\d)', r'(?!\b)', r'(?<!\w)', r'(?=\s)', r'(?<=\d)', r'(?<![\w-])', r'(?=[^\W\d])']
+PATTERN_QUANT = ['', '', '', '', '+', '*', '?', '{2}', '{1,2}', '+?', '*?', '??']
+PATTERN_FLAGS = ['', '', '', '', '(?a)', '(?i)', '(?s)', '(?m)', '(?ai)', '(?im)', '(?a)(?m)', '(?ia)(?s)']
+PATTERN_ALPHABET = ['a', 'b', 'A', 'k', 'K', '1', '_', ' ', ' ', '\n', '-', '.', '$', 'é', 'É', '٣',
+                    '²', '₂', ' ', ' ', '\u001c', '‍', 'ͅ', '́', 'ǅ', '中',
+                    '\U0001d7d8', 'α', 'Α']
+
+
+def fuzz_patterns(n, seed):
+    """random patterns made of the classes, sets, lookarounds, anchors, groups and flags, with where
+    each matches at each position of some random texts (`re.match(text, pos)`): the spans of its groups"""
+    rng = random.Random(seed)
+    diff = class_diff_cps()
+    pool = [''.join(rng.choice(PATTERN_ALPHABET) if rng.random() < 0.85 else chr(rng.choice(diff))
+                    for _ in range(rng.randint(0, 9))) for _ in range(120)]
+
+    def atom(depth=0):
+        r = rng.random()
+        if r < 0.55:
+            a = rng.choice(PATTERN_CONSUMING) + rng.choice(PATTERN_QUANT)
+        elif r < 0.75:
+            a = rng.choice(PATTERN_ZERO_WIDTH)
+        elif depth < 2:
+            inner = ''.join(atom(depth + 1) for _ in range(rng.randint(1, 3)))
+            if rng.random() < 0.3:
+                inner += '|' + ''.join(atom(depth + 1) for _ in range(rng.randint(1, 2)))
+            a = rng.choice(['(%s)', '(?:%s)']) % inner  # (not quantified: the engines differ on empty iterations)
+        else:
+            a = rng.choice(PATTERN_CONSUMING)
+        return a
+
+    out, seen = [], set()
+    while len(out) < n:
+        body = ''.join(atom() for _ in range(rng.randint(1, 5)))
+        if rng.random() < 0.1:
+            body = rng.choice(['(?-i:%s)', '(?i:%s)', '(?a:%s)', '(?u:%s)', '(?s-i:%s)']) % body
+        pattern = rng.choice(PATTERN_FLAGS) + body
+        if pattern in seen:
+            continue
+        seen.add(pattern)
+        try:
+            rx = re.compile(pattern)
+        except Exception:  # noqa: BLE001
+            out.append({'pattern': pattern, 'error': True})
+            continue
+        texts = rng.sample(range(len(pool)), 8)
+        results = []
+        for t in texts:
+            text = pool[t]
+            per_pos = []
+            for i in range(len(text) + 1):
+                m = rx.match(text, i)
+                per_pos.append(None if m is None else [list(m.span(k)) for k in range(rx.groups + 1)])
+            results.append(per_pos)
+        out.append({'pattern': pattern, 'texts': texts, 'results': results})
+    return {'pool': pool, 'patterns': out}
+
+
 # --------------------------------------------------------------------------- main
 
 
@@ -555,11 +730,15 @@ def main():
 
     write('latex2text.json', {'inputs': texts, 'configs': l2t_cases(texts)})
     write('latexwalker.json', walker_cases(texts))
-    write('latexencode.json', {'inputs': unis, 'configs': encode_cases(unis)})
+    cinputs = class_inputs()
+    write('latexencode.json', {'inputs': unis, 'configs': encode_cases(unis), 'class_inputs': cinputs,
+                               'class_configs': encode_cases(cinputs, class_config_names())})
     write('codepoints.json', codepoints())
+    write('regex_classes.json', regex_classes())
 
     ftexts = fuzz_strings(int(os.environ.get('FUZZ_N', 1500)), int(os.environ.get('FUZZ_SEED', 20260101)))
     funis = fuzz_unicode(int(os.environ.get('FUZZ_N', 1500)), 20260102)
+    fclass = fuzz_class_strings(int(os.environ.get('FUZZ_N', 1500)), 20260104)
     l2t_names = {'default', 'papers', 'bibtexparser', 'bibtexparser_text_math', 'math_with_delimiters',
                  'strict_true', 'keep_comments', 'braced_groups', 'fill_40', 'custom_context', 'all_options',
                  'default_strict_parse'}
@@ -570,7 +749,9 @@ def main():
     walk = {'inputs': ftexts, 'tolerant': [walk_(s) for s in ftexts], 'strict': [walk_(s, tolerant_parsing=False)
                                                                               for s in ftexts]}
     write('fuzz.json', {'latex': ftexts, 'l2t': l2t_cases(ftexts, l2t_names), 'walk': walk,
-                        'unicode': funis, 'encode': encode_cases(funis, enc_names)})
+                        'unicode': funis, 'encode': encode_cases(funis, enc_names),
+                        'regex_unicode': fclass, 'regex_encode': encode_cases(fclass, class_config_names()),
+                        'regex_patterns': fuzz_patterns(int(os.environ.get('FUZZ_PATTERNS', 3000)), 20260103)})
 
 
 walk_ = walk

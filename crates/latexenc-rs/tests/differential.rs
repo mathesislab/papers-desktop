@@ -233,7 +233,11 @@ fn latex2text_corpus() {
 
 #[test]
 fn latexencode_corpus() {
-    check_encode(&read_json("latexencode.json"), "inputs", "configs", "latexencode");
+    let data = read_json("latexencode.json");
+    check_encode(&data, "inputs", "configs", "latexencode");
+    // the regex rules with each class, over the code points where Rust's classes (Unicode
+    // properties) are not Python's
+    check_encode(&data, "class_inputs", "class_configs", "latexencode regex classes");
 }
 
 #[test]
@@ -322,6 +326,8 @@ fn fuzz() {
     let data = read_json("fuzz.json");
     check_l2t(&data, "latex", "l2t", "fuzz latex2text");
     check_encode(&data, "unicode", "encode", "fuzz latexencode");
+    check_encode(&data, "regex_unicode", "regex_encode", "fuzz latexencode regex classes");
+    check_regex_patterns(&data["regex_patterns"]);
     let inputs = strs(&data["walk"]["inputs"]);
     let mut failures = Vec::new();
     let mut total = 0;
@@ -332,4 +338,198 @@ fn fuzz() {
         }
     }
     report("fuzz latexwalker", total, &failures);
+}
+
+// ---------------------------------------------------------------------------------- regex classes
+
+/// Random patterns (classes, sets, lookarounds, anchors, groups, flags): the spans of the groups of
+/// the match at each position of some texts, as Python's `re.match(text, pos)` gave them.
+fn check_regex_patterns(data: &Value) {
+    let pool = strs(&data["pool"]);
+    let mut failures = Vec::new();
+    let mut total = 0;
+    for case in data["patterns"].as_array().unwrap() {
+        let pattern = case["pattern"].as_str().unwrap();
+        let compiled = latexenc::pyregex::compile(pattern);
+        if case.get("error").is_some() {
+            total += 1;
+            if compiled.is_ok() {
+                failures.push(format!("{pattern:?}: Python rejects it, Rust compiles it"));
+            }
+            continue;
+        }
+        let re = match compiled {
+            Ok(re) => re,
+            Err(e) => {
+                total += 1;
+                failures.push(format!("{pattern:?}: Python compiles it, Rust: {e}"));
+                continue;
+            }
+        };
+        for (t, results) in case["texts"].as_array().unwrap().iter().zip(case["results"].as_array().unwrap()) {
+            let text = &pool[t.as_u64().unwrap() as usize];
+            // char index of each byte offset
+            let mut char_of = vec![0u64; text.len() + 1];
+            let mut idx = 0;
+            for (b, ch) in text.char_indices() {
+                char_of[b..b + ch.len_utf8()].fill(idx);
+                idx += 1;
+            }
+            char_of[text.len()] = idx;
+            let starts: Vec<usize> = text.char_indices().map(|(b, _)| b).chain([text.len()]).collect();
+            for (pos, want) in results.as_array().unwrap().iter().enumerate() {
+                total += 1;
+                let got = match re.captures_from_pos(text, starts[pos]) {
+                    Ok(Some(c)) if c.get(0).unwrap().start() == starts[pos] => Some(
+                        (0..c.len())
+                            .map(|k| match c.get(k) {
+                                Some(m) => json!([char_of[m.start()], char_of[m.end()]]),
+                                None => json!([-1, -1]),
+                            })
+                            .collect::<Vec<Value>>(),
+                    ),
+                    Ok(_) => None,
+                    Err(e) => {
+                        failures.push(format!("{pattern:?} on {text:?} at {pos}: {e}"));
+                        continue;
+                    }
+                };
+                let want = want.as_array().map(|a| a.to_vec());
+                if got != want {
+                    failures.push(format!("{pattern:?} on {text:?} at {pos}: expected {want:?}, got {got:?}"));
+                }
+            }
+        }
+    }
+    report("fuzz regex patterns", total, &failures);
+}
+
+
+/// The text of all the code points (but the surrogates, which a Rust string cannot hold), each
+/// followed by `tail`.
+fn sweep_text(tail: &str) -> String {
+    let mut s = String::new();
+    for ch in (0..0x110000u32).filter_map(char::from_u32) {
+        s.push(ch);
+        s.push_str(tail);
+    }
+    s
+}
+
+/// The code point at a position of the sweep text of a tail of `tail_len` chars.
+fn sweep_cp(pos: u64, tail_len: u64) -> u32 {
+    let cp = (pos / (1 + tail_len)) as u32;
+    if cp >= 0xD800 { cp + 0x800 } else { cp }
+}
+
+/// The starts of the matches of the pattern in the text, as ranges of positions (in chars).
+fn match_ranges(pattern: &str, text: &str) -> Vec<(u64, u64)> {
+    let re = latexenc::pyregex::compile(pattern).unwrap_or_else(|e| panic!("{pattern:?}: {e}"));
+    let mut ranges: Vec<(u64, u64)> = Vec::new();
+    let (mut byte, mut chars) = (0usize, 0u64);
+    for m in re.find_iter(text) {
+        let start = m.unwrap().start();
+        chars += text[byte..start].chars().count() as u64;
+        byte = start;
+        match ranges.last_mut() {
+            Some(r) if r.1 + 1 == chars => r.1 = chars,
+            _ => ranges.push((chars, chars)),
+        }
+    }
+    ranges
+}
+
+/// Every code point through every class (`\w \W \d \D \s \S`, `\b`, `\B`: alone, in a set, in a
+/// negated set, with the flags a and i, ...): where the regex matches, compared with Python's `re`.
+#[test]
+fn regex_classes_every_code_point() {
+    let data = read_json("regex_classes.json");
+    let texts: Vec<(String, u64, String)> = data["texts"]
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(name, tail)| {
+            let tail = tail.as_str().unwrap();
+            (name.clone(), tail.chars().count() as u64, sweep_text(tail))
+        })
+        .collect();
+    let cases = data["cases"].as_array().unwrap();
+    // the sweeps are long: the cases on several threads
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let failures = std::sync::Mutex::new(Vec::new());
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get()).min(cases.len());
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                while let Some(case) = cases.get(next.fetch_add(1, std::sync::atomic::Ordering::SeqCst)) {
+                    let pattern = case["pattern"].as_str().unwrap();
+                    let (_, tail_len, text) =
+                        texts.iter().find(|(n, _, _)| n == case["text"].as_str().unwrap()).unwrap();
+                    let want: Vec<(u64, u64)> = case["matches"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|r| (r[0].as_u64().unwrap(), r[1].as_u64().unwrap()))
+                        .collect();
+                    let got = match_ranges(pattern, text);
+                    if got != want {
+                        let pos = got.iter().zip(&want).find(|(g, w)| g != w).map_or(0, |(g, w)| g.0.min(w.0));
+                        failures.lock().unwrap().push(format!(
+                            "{pattern:?} on {}: {} ranges, expected {}; they differ at U+{:04X} (got {:?}, expected {:?})",
+                            case["text"],
+                            got.len(),
+                            want.len(),
+                            sweep_cp(pos, *tail_len),
+                            got.iter().find(|r| r.1 >= pos),
+                            want.iter().find(|r| r.1 >= pos),
+                        ));
+                    }
+                }
+            });
+        }
+    });
+    let mut failures = failures.into_inner().unwrap();
+    failures.sort();
+    report(
+        &format!("regex classes, {} patterns over every code point", cases.len()),
+        cases.len() * (0x110000 - 0x800),
+        &failures,
+    );
+}
+
+/// The code points where the classes of the engine (`fancy_regex` without translation: Unicode
+/// properties) are not those of Python: written to `tests/regex_class_diff.json`, which
+/// `gen_expected.py` reads to make the strings of the regex rules. Run it when the dependency or
+/// the tables change:
+///
+///     cargo test -p latexenc-rs --test differential -- --ignored regenerate_class_diff
+#[test]
+#[ignore = "regenerates tests/regex_class_diff.json"]
+fn regenerate_class_diff() {
+    use latexenc::pystr::{is_decimal, is_space, is_word};
+    type Class = (&'static str, &'static str, fn(char) -> bool);
+    let classes: [Class; 3] =
+        [("w", r"^\w$", is_word), ("d", r"^\d$", is_decimal), ("s", r"^\s$", is_space)];
+    let mut out = serde_json::Map::new();
+    for (name, pattern, python) in classes {
+        let engine = fancy_regex::Regex::new(pattern).unwrap();
+        let mut ranges: Vec<(u32, u32)> = Vec::new();
+        let mut buf = String::new();
+        for ch in (0..0x110000u32).filter_map(char::from_u32) {
+            buf.clear();
+            buf.push(ch);
+            if engine.is_match(&buf).unwrap() != python(ch) {
+                let cp = ch as u32;
+                match ranges.last_mut() {
+                    Some(r) if r.1 + 1 == cp => r.1 = cp,
+                    _ => ranges.push((cp, cp)),
+                }
+            }
+        }
+        let n: u32 = ranges.iter().map(|r| r.1 - r.0 + 1).sum();
+        println!("\\{name}: {n} code points differ ({} ranges)", ranges.len());
+        out.insert(name.to_string(), json!(ranges));
+    }
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("regex_class_diff.json");
+    std::fs::write(path, serde_json::to_string(&Value::Object(out)).unwrap() + "\n").unwrap();
 }

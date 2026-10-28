@@ -45,22 +45,34 @@ from latexcodec by Peter Troeger and Matthias C. M. Troffaes, through pylatexenc
   pylatexenc, bibtexparser and papers): a corpus of 635 texts (bibtex values, LaTeX with every
   construct, malformed LaTeX) through 49 named configurations of latex2text (every option,
   custom contexts, the configurations of bibtexparser's `LatexDecodingMiddleware` and of papers),
-  the same for latexencode (208 strings, 58 configurations: every option, custom dict/regex/callable rules, bibtexparser's
-  `LatexEncodingMiddleware`), the node trees, errors and tokens of the walker, every code point
-  through the encoders, and random texts. The outputs (or the exception raised, and its message
+  the same for latexencode (208 strings, 89 configurations: every option, custom dict/regex/callable rules, bibtexparser's
+  `LatexEncodingMiddleware`, regex rules with each class), the node trees, errors and tokens of the walker,
+  every code point through the encoders, and random texts. The outputs (or the exception raised, and its message
   for parse errors) are equal.
+- Regex classes: 94 patterns (`\w \W \d \D \s \S \b \B`, alone, in sets and negated sets, with `(?a)`,
+  `(?i)`, `(?ai)`) over every code point (1.1 million) against Python's `re`; the 3561 code points
+  where the engine's own classes differ (`tests/regex_class_diff.json`) through regex rules; 3000
+  random patterns, each matched at every position of 8 random texts (the spans of all groups).
 - `tools/gen_tables.py` generates the data (`src/*/defaultspecs.rs`, `uni2latexmap*.rs`,
-  `pystr_tables.rs`) from the installed pylatexenc and CPython.
+  `pystr_tables.rs`, checked against `re`'s `\w \d \s` for every code point) from the installed
+  pylatexenc and CPython.
 
 ## Differences from pylatexenc
 
 - Python callables become Rust closures. A replacement function (`simplify_repl`) gets the node
   and the converter (Python's gets the arguments it names: `l2tobj`, `macroname`, ...); a custom
   conversion rule gets the encoder and an `EncodeInput` (text, chars, position).
-- Regex rules of latexencode use the `fancy-regex` crate: lookaround and backreferences as in
-  `re`, but `\w`, `\d`, `\s`, `\b` follow Unicode properties, which differ at the edges from
-  Python's (`'₂'` is `\w` in Python, not in Rust). Use explicit classes where it matters.
-  An empty match would loop forever in Python; here it is not a match.
+- Regex rules of latexencode take Python `re` patterns (`str`, with the inline flags) and run them
+  on the `fancy-regex` crate (lookaround and backreferences as in `re`) after `pyregex::translate`:
+  `\w \W \d \D \s \S \b \B`, inside and outside sets, become explicit classes from CPython's own
+  tables (`'₂'` is `\w`, `'\x1c'` is `\s`), the ASCII ones with `(?a)`; `(?i)` does not fold them;
+  `$`, `\Z`, the set syntax (`[[]`, `[a&&b]`) and the placement and errors of the flags (global
+  flags at the start, `a`, `u`, `L`) are those of `re`. What still differs: case-insensitive
+  matching of literals and ranges follows the engine's Unicode folding, not Python's (`(?i)[a-z]`
+  matches `'ı'` in Python only; `(?ai)k` still matches the Kelvin sign); a quantifier on a group
+  that holds only a lookaround is an error here (not in Python); the
+  captures of a quantified group that matched empty can differ; an empty match is not a match
+  (Python would loop forever); no backtracking limit (as in Python).
 - `\verb` at the very end of the text raises an `IndexError` in Python 2.11; so does the Rust
   (`LatexWalkerError::Other`). A macro read as the argument of another macro has `nodeargs` `None`
   (as in Python, where `nodelist_to_text` of two of them raises a `TypeError`; here an error).
