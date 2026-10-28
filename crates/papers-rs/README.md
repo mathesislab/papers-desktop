@@ -45,6 +45,11 @@ files, so that both can work on the same library. The conformance suite
   another program wrote is refused). `Library::save` returns what the history
   records (the text before and after, the file operations, the renamed keys); the
   history itself is not in this module.
+- `history`: the history store that papers, papers-rs and the app share (objects,
+  states, heads, retention), recording a step, undo, redo, restore, the file
+  operations, `.papers/files.json`, the lines of `papers history`; not yet
+  `history --revert` (it needs the merge). `history::Step` is what the library
+  model hands over after a save.
 - `install`: what `papers init` creates.
 - `lock`: the lock of a library (`.papers/lock`), a lease with a refresh thread.
 - `error`, `log`: papers' errors, and its messages (`papers: warning: ...`).
@@ -55,7 +60,11 @@ files, so that both can work on the same library. The conformance suite
 papers. `init` and `config` are ported; the other commands print
 `papers: error: not implemented in papers-rs yet` (status 1).
 
-Tests: `cargo test -p papers-rs -p papers-rs-cli`. The cases in
+Tests: `cargo test -p papers-rs -p papers-rs-cli`. The history is checked against
+recordings of papers (`crates/papers-rs/tests/history/*.json`, made by
+`tests/gen_history.py` with the reference python), and, with
+`PAPERS_REFERENCE=papers cargo test -p papers-rs --test history -- --ignored`, by
+running papers on the store that papers-rs wrote. The cases in
 `crates/papers-rs-cli/tests/fixtures/cases` were recorded by running papers-cli
 (`tests/record/record_cases.py`), and the help of the commands by
 `tests/record/record_help.py` (both run with a `papers` executable; they use

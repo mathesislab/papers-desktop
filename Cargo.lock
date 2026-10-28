@@ -3065,7 +3065,9 @@ dependencies = [
 name = "papers-rs"
 version = "0.1.0"
 dependencies = [
+ "crc32fast",
  "deunicode",
+ "flate2",
  "latexenc-rs",
  "libc",
  "serde_json",

@@ -1,0 +1,219 @@
+{
+ "machine": {},
+ "name": "fresh",
+ "place_ids": {},
+ "steps": [
+  {
+   "argv": [
+    "init",
+    "lib"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/lib\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "lib/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "lib/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "lib/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "undo"
+   ],
+   "cwd": "lib",
+   "exit": 1,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "papers: error: nothing to undo\n",
+   "stdout": "",
+   "store": {
+    "del": [],
+    "set": {
+     "projects/8c3d4b5831c34326b73e40692ecfcb42/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 1,\n  \"redo\": [],\n  \"time\": 1793195493.447644\n }\n}"
+     },
+     "projects/8c3d4b5831c34326b73e40692ecfcb42/states/000001.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793195493.44721,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "lib/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"8c3d4b5831c34326b73e40692ecfcb42\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "redo"
+   ],
+   "cwd": "lib",
+   "exit": 1,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "papers: error: nothing to redo\n",
+   "stdout": "",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "restore"
+   ],
+   "cwd": "lib",
+   "exit": 1,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "papers: error: nothing to restore: papers.bib is step 1\n",
+   "stdout": "",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "restore",
+    "1"
+   ],
+   "cwd": "lib",
+   "exit": 1,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "papers: error: nothing to restore: papers.bib is step 1\n",
+   "stdout": "",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "history"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdout": "> 1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "/dev/stdin"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdin": "@article{doe2000,\n title = {Ice sheets and sea level},\n author = {Doe, Jane and Roe, Richard},\n year = {2000},\n journal = {Nature},\n doi = {10.1000/doe.2000},\n}\n\n@article{roe2001,\n title = {Sea level rise in the next century},\n author = {Roe, Richard},\n year = {2001},\n journal = {Science},\n doi = {10.1000/roe.2001},\n}\n\n@book{smith2002,\n title = {Glaciers},\n author = {Smith, John},\n year = {2002},\n publisher = {Ice Press},\n}\n",
+   "stdout": "Added -> doe2000: Ice sheets and sea level (doi:10.1000/doe.2000)\nAdded -> roe2001: Sea level rise in the next century (doi:10.1000/roe.2001)\nAdded -> smith2002: Glaciers \n",
+   "store": {
+    "del": [],
+    "set": {
+     "objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
+      "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
+     },
+     "projects/8c3d4b5831c34326b73e40692ecfcb42/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [],\n  \"time\": 1793195493.801964\n }\n}"
+     },
+     "projects/8c3d4b5831c34326b73e40692ecfcb42/states/000002.json": {
+      "text": "{\n \"parent\": 1,\n \"time\": 1793195493.801827,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "lib/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "undo",
+    "-n",
+    "2"
+   ],
+   "cwd": "lib",
+   "exit": 1,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "papers: error: only 1 step(s) to undo\n",
+   "stdout": "",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "redo"
+   ],
+   "cwd": "lib",
+   "exit": 1,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "papers: error: nothing to redo\n",
+   "stdout": "",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  }
+ ]
+}
