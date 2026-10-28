@@ -497,7 +497,9 @@ fn load(app: &AppHandle) {
     let loaded = Settings::load(&state.settings_path).and_then(|settings| {
         *state.matching.write().unwrap() = settings.matching;
         *state.citation_style.write().unwrap() = settings.citation_style.clone();
-        state.writers.set_papers(settings.papers_command());
+        state
+            .writers
+            .configure(settings.writer, settings.papers_command());
         let bibs = settings.bibs();
         if bibs.is_empty() {
             return Err("No library: choose its .bib files (menu-bar icon → Settings…)".into());

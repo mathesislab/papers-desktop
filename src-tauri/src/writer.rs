@@ -1,39 +1,48 @@
 //! The writer of each .bib file of the library. A papers library is written
-//! by the papers command, so that a change from the app or a terminal has
-//! the same format, naming and history; any other .bib by the app's own
-//! writer, which rewrites only the entries changed. A papers library without
-//! papers (3.0.0b4 or later) is read-only.
+//! by papers, so that a change from the app or a terminal has the same
+//! format, naming and history: by papers-rs, built in (the default), or by a
+//! papers command, as the settings say; they share the files, the history
+//! and the lock, so either can undo a step of the other. Any other .bib is
+//! written by the app's own writer, which rewrites only the entries changed.
+//! With a papers command that is not found (3.0.0b4 or later), a papers
+//! library is read-only.
+//!
+//! The two ways of writing a papers library are the two implementations of
+//! [`PapersWriter`]: [`builtin::Builtin`] and [`command::PapersCommand`]. The
+//! commands of this module group the changes by library and hand them to the
+//! writer of the library.
+
+mod builtin;
+mod command;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
-use std::io::{ErrorKind as IoErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use papers_core::{Added, Change, Item, same_tag, under};
+use papers_rs::config::MachineConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
 use crate::AppState;
-use crate::settings::expand;
-
-/// The first version of papers with the options used here (`edit --from`,
-/// `--porcelain`), as `release` orders it.
-const PAPERS_MIN: [u32; 5] = [3, 0, 0, BETA, 4];
-const PAPERS_MIN_NAME: &str = "3.0.0b4";
+use crate::settings::{WriterChoice, expand};
+use builtin::Builtin;
+use command::{Found, PAPERS_MIN_NAME, PapersCommand};
 
 /// How a .bib file is written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Kind {
-    /// by the papers command
+    /// a papers library, by papers-rs, built in
+    PapersRs,
+    /// a papers library, by a papers command
     Papers,
     /// by the app
     Native,
-    /// a papers library, read-only: papers is not found, or too old
+    /// a papers library, read-only: the papers command is not found, or too old
     PapersMissing,
 }
 
@@ -44,6 +53,9 @@ pub struct Writer {
     pub kind: Kind,
     /// of the papers command found, for a papers library
     pub version: Option<String>,
+    /// why the library cannot be written, when it is known (e.g. a pool, which
+    /// papers-rs does not support yet)
+    pub problem: Option<String>,
 }
 
 /// An error of a write, of a kind the page tells apart.
@@ -59,7 +71,7 @@ pub struct WriteError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ErrorKind {
-    /// a papers library, and papers is not found or too old
+    /// a papers library, and the papers command is not found or too old
     PapersMissing,
     /// the .bib changed since it was read: the library is read again
     Changed,
@@ -109,26 +121,49 @@ impl From<papers_core::Error> for WriteError {
     }
 }
 
-/// The papers command, its version, and the PATH of the login shell to run
-/// it with: papers runs git (and git-lfs) from it.
-#[derive(Debug, Clone)]
-struct Papers {
-    path: PathBuf,
-    version: String,
-    shell_path: Option<String>,
+/// What writes the papers libraries: the commands of papers, one backend or
+/// the other, which must leave the same files and history. Each takes the
+/// folder of the library; the reports tell the entries changed.
+trait PapersWriter: Send + Sync {
+    fn kind(&self) -> Kind;
+
+    /// of the papers command
+    fn version(&self) -> Option<String>;
+
+    /// Why this library cannot be written, if it is known without trying.
+    fn refuses(&self, _folder: &Path) -> Option<String> {
+        None
+    }
+
+    /// `papers tag KEY... --add TAG... --rm TAG...`
+    fn tag(
+        &self,
+        folder: &Path,
+        keys: &[String],
+        add: &[String],
+        remove: &[String],
+    ) -> Result<Report, WriteError>;
+
+    /// `papers tag --rename OLD NEW`: a tag as written, and the tags under it
+    fn rename_tag(&self, folder: &Path, old: &str, new: &str) -> Result<Report, WriteError>;
+
+    /// `papers edit KEY --from -`: the BibTeX of an entry replaced
+    fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Report, WriteError>;
+
+    /// `papers add FILE --on-duplicate ...`: the entries of BibTeX added
+    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Report, WriteError>;
+
+    /// `papers rm KEY... --keep-files`
+    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Report, WriteError>;
+
+    /// `papers undo`, or with `back` false `papers redo`
+    fn step(&self, folder: &Path, back: bool) -> Result<(), WriteError>;
 }
 
-/// The papers command looked for.
-enum Found {
-    Usable(Papers),
-    /// not found, or too old: its version
-    Missing(Option<String>),
-}
-
-/// A papers library: its folder, and the papers command that writes it.
+/// A papers library: its folder, and what writes it.
 struct PapersLibrary {
     folder: PathBuf,
-    papers: Papers,
+    writer: Arc<dyn PapersWriter>,
 }
 
 /// The papers library of each .bib file of a write that has one.
@@ -149,13 +184,25 @@ struct History {
     redo: Vec<Change>,
 }
 
+/// What writes the papers libraries, as the settings say.
+enum Backend {
+    Ready(Arc<dyn PapersWriter>),
+    /// a papers command, not found or too old: its version
+    Missing(Option<String>),
+}
+
 /// The writers of the .bib files.
 #[derive(Default)]
 pub struct Writers {
+    /// what writes the papers libraries
+    choice: Mutex<WriterChoice>,
     /// the papers command of the settings; empty: the one the login shell finds
     setting: Mutex<PathBuf>,
     /// the papers command found, with the setting it was found for
-    found: Mutex<Option<(PathBuf, Papers)>>,
+    found: Mutex<Option<(PathBuf, PapersCommand)>>,
+    /// the global configuration of papers for the built-in writer; none: the
+    /// user's (the tests give the history a folder of its own)
+    machine: Mutex<Option<MachineConfig>>,
     /// what to undo and redo of the files the app writes, this session
     history: Mutex<HashMap<PathBuf, History>>,
     /// one write at a time: each starts from the library read after the last
@@ -163,142 +210,92 @@ pub struct Writers {
 }
 
 impl Writers {
-    /// The papers command of the settings.
-    pub fn set_papers(&self, command: PathBuf) {
+    /// What writes the papers libraries, and the papers command of the
+    /// settings, which a command is.
+    pub fn configure(&self, choice: WriterChoice, command: PathBuf) {
+        *self.choice.lock().unwrap() = choice;
         *self.setting.lock().unwrap() = command;
     }
 
     /// The papers command of the settings, else the one the login shell
     /// finds; kept once found. One not found is looked for again the next
     /// time: it may have been installed since.
-    fn papers(&self) -> Found {
+    fn command(&self) -> Found {
         let setting = self.setting.lock().unwrap().clone();
         if let Some((found_for, papers)) = &*self.found.lock().unwrap()
             && *found_for == setting
         {
             return Found::Usable(papers.clone());
         }
-        let shell_path = login_path();
-        let path = if setting.as_os_str().is_empty() {
-            shell_path.as_deref().and_then(in_path)
-        } else {
-            Some(setting.clone())
-        };
-        let Some(path) = path else {
-            return Found::Missing(None);
-        };
-        let Some(version) = version(&path) else {
-            return Found::Missing(None);
-        };
-        if release(&version).is_none_or(|release| release < PAPERS_MIN) {
-            return Found::Missing(Some(version));
+        let found = PapersCommand::find(&setting);
+        if let Found::Usable(papers) = &found {
+            *self.found.lock().unwrap() = Some((setting, papers.clone()));
         }
-        let papers = Papers {
-            path,
-            version,
-            shell_path,
-        };
-        *self.found.lock().unwrap() = Some((setting, papers.clone()));
-        Found::Usable(papers)
+        found
+    }
+
+    /// Forget the papers command found: it is gone, or changed.
+    fn forget_command(&self) {
+        *self.found.lock().unwrap() = None;
+    }
+
+    /// What writes the papers libraries.
+    fn backend(&self) -> Backend {
+        match *self.choice.lock().unwrap() {
+            WriterChoice::BuiltIn => {
+                let machine = self.machine.lock().unwrap().clone();
+                Backend::Ready(Arc::new(Builtin::new(machine)))
+            }
+            WriterChoice::Command => match self.command() {
+                Found::Usable(papers) => Backend::Ready(Arc::new(papers)),
+                Found::Missing(version) => Backend::Missing(version),
+            },
+        }
     }
 
     /// The writer of each .bib file, papers looked for once.
     fn writers(&self, bibs: &[PathBuf]) -> Vec<Writer> {
-        let mut found = None;
+        let mut backend = None;
         bibs.iter()
             .map(|bib| {
-                let (kind, version) = match papers_folder(bib) {
-                    None => (Kind::Native, None),
-                    Some(_) => match found.get_or_insert_with(|| self.papers()) {
-                        Found::Usable(p) => (Kind::Papers, Some(p.version.clone())),
-                        Found::Missing(v) => (Kind::PapersMissing, v.clone()),
-                    },
-                };
-                Writer {
+                let writer = |kind, version, problem| Writer {
                     bib: bib.clone(),
                     kind,
                     version,
+                    problem,
+                };
+                let Some(folder) = papers_folder(bib) else {
+                    return writer(Kind::Native, None, None);
+                };
+                match backend.get_or_insert_with(|| self.backend()) {
+                    Backend::Ready(papers) => {
+                        writer(papers.kind(), papers.version(), papers.refuses(&folder))
+                    }
+                    Backend::Missing(version) => writer(Kind::PapersMissing, version.clone(), None),
                 }
             })
             .collect()
     }
 
     /// The papers libraries of the .bib files of a write, which a papers
-    /// library without papers refuses.
+    /// library without its writer refuses.
     fn targets<'a>(&self, bibs: impl IntoIterator<Item = &'a Path>) -> Result<Targets, WriteError> {
         let bibs: BTreeSet<&Path> = bibs.into_iter().collect();
-        let mut found = None;
+        let mut backend = None;
         let mut libraries = HashMap::new();
         for bib in bibs {
             let Some(folder) = papers_folder(bib) else {
                 continue;
             };
-            match found.get_or_insert_with(|| self.papers()) {
-                Found::Usable(papers) => {
-                    let papers = papers.clone();
-                    libraries.insert(bib.to_path_buf(), PapersLibrary { folder, papers });
+            match backend.get_or_insert_with(|| self.backend()) {
+                Backend::Ready(writer) => {
+                    let writer = Arc::clone(writer);
+                    libraries.insert(bib.to_path_buf(), PapersLibrary { folder, writer });
                 }
-                Found::Missing(version) => return Err(WriteError::missing(version.as_deref())),
+                Backend::Missing(version) => return Err(WriteError::missing(version.as_deref())),
             }
         }
         Ok(Targets { libraries })
-    }
-
-    /// Run a papers command in the folder of its library, with `input` on
-    /// its stdin; its report of the entries changed. A failure tells what
-    /// papers wrote to stderr, without the prefix of its log.
-    fn run(
-        &self,
-        library: &PapersLibrary,
-        command: &str,
-        args: &[String],
-        input: Option<&str>,
-    ) -> Result<Report, WriteError> {
-        let mut papers = Command::new(&library.papers.path);
-        papers
-            .arg("-C")
-            .arg(&library.folder)
-            .args([command, "--porcelain"])
-            .args(args)
-            .env("NO_COLOR", "1")
-            .stdin(if input.is_some() {
-                Stdio::piped()
-            } else {
-                Stdio::null()
-            })
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        if let Some(path) = &library.papers.shell_path {
-            papers.env("PATH", path);
-        }
-        let output = papers.spawn().and_then(|mut child| {
-            if let (Some(input), Some(mut stdin)) = (input, child.stdin.take()) {
-                stdin.write_all(input.as_bytes())?;
-            }
-            child.wait_with_output()
-        });
-        let output = match output {
-            Ok(output) => output,
-            Err(e) if e.kind() == IoErrorKind::NotFound => {
-                *self.found.lock().unwrap() = None;
-                return Err(WriteError::missing(None));
-            }
-            Err(e) => return Err(WriteError::failed(format!("papers: {e}"))),
-        };
-        if output.status.success() {
-            return Ok(Report::of(&String::from_utf8_lossy(&output.stdout)));
-        }
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let lines: Vec<&str> = stderr
-            .lines()
-            .map(|l| l.strip_prefix("ERROR:papers:").unwrap_or(l))
-            .collect();
-        let message = lines.join("\n").trim().to_string();
-        Err(WriteError::failed(if message.is_empty() {
-            format!("papers {command} {}: {}", args.join(" "), output.status)
-        } else {
-            message
-        }))
     }
 
     /// Keep the changes the app wrote, to undo them.
@@ -363,81 +360,46 @@ fn papers_folder(bib: &Path) -> Option<PathBuf> {
     same.then(|| folder.to_path_buf())
 }
 
-/// The PATH of the login shell: an app started from the desktop does not
-/// have it.
-fn login_path() -> Option<String> {
-    let shell = std::env::var_os("SHELL").unwrap_or_else(|| "/bin/sh".into());
-    let output = Command::new(shell)
-        .args(["-lc", "printf '%s' \"$PATH\""])
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    (output.status.success() && !path.is_empty()).then_some(path)
-}
+/// BibTeX pasted, in a temporary .bib file for `papers add`; removed when dropped.
+struct Pasted(PathBuf);
 
-/// The papers command in the folders of a PATH.
-fn in_path(path: &str) -> Option<PathBuf> {
-    std::env::split_paths(path)
-        .map(|folder| folder.join("papers"))
-        .find(|papers| papers.is_file())
-}
-
-/// The version of a papers command, e.g. "3.0.0b1".
-fn version(papers: &Path) -> Option<String> {
-    let output = Command::new(papers)
-        .arg("--version")
-        .env("NO_COLOR", "1")
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
+impl Pasted {
+    fn new(text: &str) -> Result<Pasted, WriteError> {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let name = format!("papers-desktop-{}-{nanos}.bib", std::process::id());
+        let path = std::env::temp_dir().join(name);
+        fs::write(&path, text)
+            .map_err(|e| WriteError::failed(format!("{}: {e}", path.display())))?;
+        Ok(Pasted(path))
     }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let version = stdout
-        .split_whitespace()
-        .find(|w| w.starts_with(|c: char| c.is_ascii_digit()))?;
-    Some(version.to_string())
+
+    fn path(&self) -> &Path {
+        &self.0
+    }
 }
 
-const BETA: u32 = 1;
-
-/// A version of papers as ordered: its three release numbers, its stage
-/// (alpha 0, beta 1, release candidate 2, final 3) and the number of the
-/// stage. A development build is the version it leads to: 3.0.0b4.dev18 is
-/// 3.0.0b4.
-fn release(version: &str) -> Option<[u32; 5]> {
-    let end = version
-        .find(|c: char| !c.is_ascii_digit() && c != '.')
-        .unwrap_or(version.len());
-    let (numbers, rest) = version.split_at(end);
-    let mut numbers = numbers.trim_end_matches('.').split('.');
-    let mut number = || numbers.next().map_or(Some(0), |n| n.parse().ok());
-    let (major, minor, patch) = (number()?, number()?, number()?);
-    let (stage, rest) = [("rc", 2), ("a", 0), ("b", BETA)]
-        .into_iter()
-        .find_map(|(name, stage)| Some((stage, rest.strip_prefix(name)?)))
-        .unwrap_or((3, ""));
-    let digits = rest
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(rest.len());
-    let n = rest[..digits].parse().unwrap_or(0);
-    Some([major, minor, patch, stage, n])
+impl Drop for Pasted {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
+    }
 }
 
 /// What a papers command reports with `--porcelain`: a line per entry,
 /// `added KEY`, `modified KEY`, `removed KEY` or `existing KEY`.
-struct Report {
+pub struct Report {
     lines: Vec<(String, String)>,
 }
 
 impl Report {
     fn of(stdout: &str) -> Report {
-        let lines = stdout
-            .lines()
+        Report::from_lines(stdout.lines())
+    }
+
+    fn from_lines<'a>(lines: impl IntoIterator<Item = &'a str>) -> Report {
+        let lines = lines
+            .into_iter()
             .filter_map(|line| line.split_once(' '))
             .map(|(what, key)| (what.to_string(), key.trim().to_string()))
             .collect();
@@ -515,6 +477,11 @@ async fn write<T: Send + 'static>(
         let state = app.state::<AppState>();
         let _writing = state.writers.writing.lock().unwrap();
         let result = op(&state);
+        if let Err(e) = &result
+            && e.kind == ErrorKind::PapersMissing
+        {
+            state.writers.forget_command();
+        }
         let reload = match &result {
             Ok(_) => true,
             Err(e) => e.kind == ErrorKind::Changed,
@@ -640,7 +607,7 @@ fn tag(
         .writers
         .targets(items.iter().map(|it| it.bib.as_path()))?;
     let mut native = Vec::new();
-    // a papers command for the keys of a library that change alike
+    // one papers command for the keys of a library that change alike
     let mut commands: BTreeMap<_, (&PapersLibrary, Vec<String>)> = BTreeMap::new();
     for item in &items {
         let new = retag(&item.keywords, add, remove);
@@ -659,14 +626,9 @@ fn tag(
     let changes = state.library.read().unwrap().set_tags(&native)?;
     state.writers.done(changes);
     for ((_, added, removed), (library, keys)) in commands {
-        let mut args = keys;
-        for (option, tags) in [("--add", added), ("--rm", removed)] {
-            if !tags.is_empty() {
-                args.push(option.to_string());
-                args.extend(tags);
-            }
-        }
-        state.writers.run(library, "tag", &args, None)?;
+        library
+            .writer
+            .tag(&library.folder, &keys, &added, &removed)?;
     }
     Ok(())
 }
@@ -731,8 +693,7 @@ fn rename(state: &AppState, old: &str, new: &str) -> Result<(), WriteError> {
         // the tags under a tag first, so that a name made by one rename is not
         // renamed again by the next (`a` to `a/b` makes the `a/b` of before)
         for (spelling, to) in spellings.into_iter().rev() {
-            let args = ["--rename", spelling, &to].map(String::from);
-            state.writers.run(library, "tag", &args, None)?;
+            library.writer.rename_tag(&library.folder, spelling, &to)?;
         }
     }
     Ok(())
@@ -744,8 +705,7 @@ fn replace(state: &AppState, id: &str, text: &str) -> Result<(), WriteError> {
     match targets.papers(&item.bib) {
         Some(library) => {
             state.library.read().unwrap().check_edit(id, text)?;
-            let args = [item.key, "--from".to_string(), "-".to_string()];
-            state.writers.run(library, "edit", &args, Some(text))?;
+            library.writer.edit(&library.folder, &item.key, text)?;
         }
         None => {
             let changes = state.library.read().unwrap().replace_entry(id, text)?;
@@ -760,26 +720,8 @@ fn add(state: &AppState, bib: &Path, text: &str, options: AddOptions) -> Result<
     papers_core::entry_keys(text)?;
     let targets = state.writers.targets([bib])?;
     match targets.papers(bib) {
-        // papers adds a .bib file: the text in a temporary one
         Some(library) => {
-            let nanos = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_or(0, |d| d.as_nanos());
-            let name = format!("papers-desktop-{}-{nanos}.bib", std::process::id());
-            let pasted = std::env::temp_dir().join(name);
-            fs::write(&pasted, text)
-                .map_err(|e| WriteError::failed(format!("{}: {e}", pasted.display())))?;
-            let mut args = vec![
-                pasted.to_string_lossy().into(),
-                "--on-duplicate".into(),
-                options.on_duplicate.arg().into(),
-            ];
-            if options.update_key {
-                args.push("--update-key".into());
-            }
-            let report = state.writers.run(library, "add", &args, None);
-            let _ = fs::remove_file(&pasted);
-            let report = report?;
+            let report = library.writer.add(&library.folder, text, options)?;
             // a paper of the library: as it was, or merged with the entry
             let mut existing = report.keys("existing");
             existing.extend(report.keys("modified"));
@@ -816,9 +758,7 @@ fn remove(state: &AppState, ids: &[String]) -> Result<(), WriteError> {
     let changes = state.library.read().unwrap().remove_entries(&native)?;
     state.writers.done(changes);
     for (library, keys) in keys.into_values() {
-        let mut args = keys;
-        args.push("--keep-files".to_string());
-        state.writers.run(library, "rm", &args, None)?;
+        library.writer.remove(&library.folder, &keys)?;
     }
     Ok(())
 }
@@ -827,10 +767,7 @@ fn step(state: &AppState, bib: &Path, back: bool) -> Result<(), WriteError> {
     in_library(state, bib)?;
     let targets = state.writers.targets([bib])?;
     match targets.papers(bib) {
-        Some(library) => {
-            let command = if back { "undo" } else { "redo" };
-            state.writers.run(library, command, &[], None).map(|_| ())
-        }
+        Some(library) => library.writer.step(&library.folder, back),
         None => state.writers.step(bib, back),
     }
 }
@@ -841,7 +778,10 @@ mod tests {
     use std::sync::atomic::AtomicU64;
 
     use papers_core::{Library, Matching};
+    use papers_rs::config::{Config, MachineConfig};
+    use serde_json::json;
 
+    use super::command::{PAPERS_MIN, release};
     use super::*;
     use crate::Status;
     use crate::main_window::Layout;
@@ -850,10 +790,30 @@ mod tests {
     const ENTRIES: &str =
         "@article{a,\n title = {A},\n keywords = {AMOC, ice}\n}\n\n@article{b,\n title = {B}\n}\n";
 
-    /// The state of the app over a library of .bib files in `dir`.
-    fn state(dir: &Path, bibs: &[PathBuf], papers: &str) -> AppState {
+    /// The global configuration of papers for the tests: the history in a folder of its own.
+    fn machine(history: &Path) -> MachineConfig {
+        let mut machine = MachineConfig::empty();
+        machine.set("history-dir", Some(json!(history.to_str().unwrap())));
+        machine
+    }
+
+    /// The state of the app over a library of .bib files in `dir`, whose
+    /// papers libraries are written by `choice`, with the papers command
+    /// `papers` if that is a command.
+    fn state(dir: &Path, bibs: &[PathBuf], choice: WriterChoice, papers: &str) -> AppState {
+        state_with(dir, bibs, choice, papers, machine(&dir.join("history")))
+    }
+
+    fn state_with(
+        dir: &Path,
+        bibs: &[PathBuf],
+        choice: WriterChoice,
+        papers: &str,
+        machine: MachineConfig,
+    ) -> AppState {
         let writers = Writers::default();
-        writers.set_papers(PathBuf::from(papers));
+        writers.configure(choice, PathBuf::from(papers));
+        *writers.machine.lock().unwrap() = Some(machine);
         AppState {
             settings_path: dir.join("settings.json"),
             matching: RwLock::new(Matching::default()),
@@ -880,7 +840,29 @@ mod tests {
         s.iter().map(|s| s.to_string()).collect()
     }
 
-    /// A papers library in `dir`: its .bib and its configuration.
+    /// A new papers library in `dir`, as `papers init` makes it: an empty .bib
+    /// (`papers.bib`) and the configuration. Its .bib file.
+    fn init_library(dir: &Path) -> PathBuf {
+        let bib = dir.join("papers.bib");
+        let mut config = Config::new(MachineConfig::empty());
+        config.file = Some(
+            dir.join(".papers/config.json")
+                .to_str()
+                .unwrap()
+                .to_string(),
+        );
+        config.is_library = true;
+        config.bibtex = Some(bib.to_str().unwrap().to_string());
+        config.filesdir = Some(dir.join("files").to_str().unwrap().to_string());
+        config.set("paths", json!("relative")).unwrap();
+        config.set("pool", json!("none")).unwrap();
+        fs::create_dir(dir.join("files")).unwrap();
+        fs::write(&bib, "").unwrap();
+        config.save().unwrap();
+        bib
+    }
+
+    /// A papers library in `dir`: its .bib with `ENTRIES`, and its configuration.
     fn papers_library(dir: &Path) -> PathBuf {
         let bib = dir.join("papers.bib");
         fs::write(&bib, ENTRIES).unwrap();
@@ -908,10 +890,7 @@ mod tests {
     #[test]
     fn versions() {
         let new_enough = |v| release(v).is_some_and(|r| r >= PAPERS_MIN);
-        assert_eq!(
-            release("3.0.0b4.dev18+g6d8b3f390"),
-            Some([3, 0, 0, BETA, 4])
-        );
+        assert_eq!(release("3.0.0b4.dev18+g6d8b3f390"), Some([3, 0, 0, 1, 4]));
         assert_eq!(release(PAPERS_MIN_NAME), Some(PAPERS_MIN));
         assert_eq!(release("2.5"), Some([2, 5, 0, 3, 0]));
         assert_eq!(release("dev"), None);
@@ -958,7 +937,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let bib = dir.path().join("refs.bib");
         fs::write(&bib, ENTRIES).unwrap();
-        let state = state(dir.path(), std::slice::from_ref(&bib), "");
+        let state = state(
+            dir.path(),
+            std::slice::from_ref(&bib),
+            WriterChoice::BuiltIn,
+            "",
+        );
         let writers = state.writers.writers(std::slice::from_ref(&bib));
         assert_eq!(writers[0].kind, Kind::Native);
 
@@ -1008,7 +992,12 @@ mod tests {
             entry("c", "climate-review"),
         ];
         fs::write(&bib, entries.join("\n\n") + "\n").unwrap();
-        let state = state(dir.path(), std::slice::from_ref(&bib), "");
+        let state = state(
+            dir.path(),
+            std::slice::from_ref(&bib),
+            WriterChoice::BuiltIn,
+            "",
+        );
         let keywords = |key: &str| {
             let text = fs::read_to_string(&bib).unwrap();
             let start = text.find(&format!("@article{{{key},")).unwrap();
@@ -1039,6 +1028,7 @@ mod tests {
         let state = state(
             dir.path(),
             std::slice::from_ref(&bib),
+            WriterChoice::Command,
             "/nonexistent/papers",
         );
         let writers = state.writers.writers(std::slice::from_ref(&bib));
@@ -1060,38 +1050,27 @@ mod tests {
         assert_eq!(missing["kind"], "papers-missing");
     }
 
-    /// With the papers of the setting `PAPERS`, else the login shell's:
-    /// `cargo test -- --ignored`.
-    #[test]
-    #[ignore = "runs papers 3.0.0b4 or later"]
-    fn papers_library_written_by_papers() {
-        let dir = tempfile::tempdir().unwrap();
-        let papers = std::env::var("PAPERS").unwrap_or_default();
-        let state = state(dir.path(), &[], &papers);
-        let Found::Usable(found) = state.writers.papers() else {
-            panic!("papers {PAPERS_MIN_NAME} or later not found");
-        };
-        let installed = Command::new(&found.path)
-            .current_dir(dir.path())
-            .args(["install", "--bibtex", "papers.bib", "--files", "files"])
-            .args(["--no-prompt", "--no-git"])
-            .status()
-            .unwrap();
-        assert!(installed.success());
-        let bib = dir.path().join("papers.bib");
-        *state.library.write().unwrap() = Library::load(std::slice::from_ref(&bib)).unwrap();
+    /// Every command on the papers library of `bib`, which starts empty, and
+    /// what each leaves in the .bib file.
+    fn every_command(state: &AppState, bib: &Path) {
         let text = |bib: &Path| fs::read_to_string(bib).unwrap();
-
-        let added = add(&state, &bib, ENTRIES, AddOptions::default()).unwrap();
+        let added = add(state, bib, ENTRIES, AddOptions::default()).unwrap();
         assert_eq!(added.added, ["a", "b"]);
-        reload(&state);
+        reload(state);
         // the same paper (by papers' rule: its DOI), or another with a key taken
         let c = "@article{c,\n doi = {10.1/c},\n title = {C}\n}";
-        assert_eq!(add(&state, &bib, c, AddOptions::default()).unwrap().added, ["c"]);
-        reload(&state);
-        assert_eq!(add(&state, &bib, c, AddOptions::default()).unwrap().existing, ["c"]);
-        reload(&state);
-        let error = add(&state, &bib, "@article{b,\n title = {Other}\n}", AddOptions::default()).unwrap_err();
+        assert_eq!(
+            add(state, bib, c, AddOptions::default()).unwrap().added,
+            ["c"]
+        );
+        reload(state);
+        assert_eq!(
+            add(state, bib, c, AddOptions::default()).unwrap().existing,
+            ["c"]
+        );
+        reload(state);
+        let other = "@article{b,\n title = {Other}\n}";
+        let error = add(state, bib, other, AddOptions::default()).unwrap_err();
         assert!(
             error.message.contains("already in the library"),
             "{}",
@@ -1099,54 +1078,265 @@ mod tests {
         );
         // the same paper with other values: left as it is, filled in, updated
         let c2 = "@article{c,\n doi = {10.1/c},\n journal = {J},\n title = {C2}\n}";
-        let merged = |on_duplicate| AddOptions { on_duplicate, update_key: false };
+        let merged = |on_duplicate| AddOptions {
+            on_duplicate,
+            update_key: false,
+        };
         // (papers 3.0.0b5 reports no line for a skipped entry)
-        add(&state, &bib, c2, merged(OnDuplicate::Skip)).unwrap();
-        reload(&state);
-        assert!(!text(&bib).contains("{J}"), "{}", text(&bib));
-        assert_eq!(add(&state, &bib, c2, merged(OnDuplicate::Keep)).unwrap().existing, ["c"]);
-        reload(&state);
-        assert!(text(&bib).contains("journal = {J}") && text(&bib).contains("title = {C}"), "{}", text(&bib));
-        add(&state, &bib, c2, merged(OnDuplicate::Update)).unwrap();
-        reload(&state);
-        assert!(text(&bib).contains("title = {C2}"), "{}", text(&bib));
+        add(state, bib, c2, merged(OnDuplicate::Skip)).unwrap();
+        reload(state);
+        assert!(!text(bib).contains("{J}"), "{}", text(bib));
+        assert_eq!(
+            add(state, bib, c2, merged(OnDuplicate::Keep))
+                .unwrap()
+                .existing,
+            ["c"]
+        );
+        reload(state);
+        assert!(
+            text(bib).contains("journal = {J}") && text(bib).contains("title = {C}"),
+            "{}",
+            text(bib)
+        );
+        add(state, bib, c2, merged(OnDuplicate::Update)).unwrap();
+        reload(state);
+        assert!(text(bib).contains("title = {C2}"), "{}", text(bib));
         // a new entry keyed by the library's template
         let fetched = "@article{FETCHED_2020,\n author = {Smith, Jane},\n doi = {10.1/d},\n title = {D},\n year = {2020}\n}";
-        let keyed = AddOptions { update_key: true, ..AddOptions::default() };
-        assert_eq!(add(&state, &bib, fetched, keyed).unwrap().added, ["smith2020"]);
-        reload(&state);
+        let keyed = AddOptions {
+            update_key: true,
+            ..AddOptions::default()
+        };
+        assert_eq!(
+            add(state, bib, fetched, keyed).unwrap().added,
+            ["smith2020"]
+        );
+        reload(state);
 
-        tag(&state, &strings(&["a", "b"]), &strings(&["new"]), &[]).unwrap();
-        reload(&state);
-        assert!(text(&bib).contains("keywords = {new}"), "{}", text(&bib));
+        tag(state, &strings(&["a", "b"]), &strings(&["new"]), &[]).unwrap();
+        reload(state);
+        assert!(text(bib).contains("keywords = {new}"), "{}", text(bib));
         // a tag renamed with the tags under it, one papers rename of each
-        tag(&state, &strings(&["a"]), &strings(&["climate/amoc"]), &[]).unwrap();
-        reload(&state);
+        tag(state, &strings(&["a"]), &strings(&["climate/amoc"]), &[]).unwrap();
+        reload(state);
         let deep = strings(&["climate/amoc/tipping"]);
-        tag(&state, &strings(&["b"]), &deep, &[]).unwrap();
-        reload(&state);
-        rename(&state, "Climate", "ocean").unwrap();
-        reload(&state);
-        let renamed = text(&bib);
+        tag(state, &strings(&["b"]), &deep, &[]).unwrap();
+        reload(state);
+        rename(state, "Climate", "ocean").unwrap();
+        reload(state);
+        let renamed = text(bib);
         assert!(renamed.contains("ocean/amoc"), "{renamed}");
         assert!(renamed.contains("ocean/amoc/tipping"), "{renamed}");
         assert!(!renamed.contains("climate"), "{renamed}");
         let a = state.library.read().unwrap().raw("a").unwrap().to_string();
-        replace(&state, "a", &a.replace("{A}", "{A2}")).unwrap();
-        reload(&state);
-        assert!(text(&bib).contains("title = {A2}"), "{}", text(&bib));
-        let error = replace(&state, "a", &a.replace("{a,", "{a2,")).unwrap_err();
+        replace(state, "a", &a.replace("{A}", "{A2}")).unwrap();
+        reload(state);
+        assert!(text(bib).contains("title = {A2}"), "{}", text(bib));
+        let error = replace(state, "a", &a.replace("{a,", "{a2,")).unwrap_err();
         assert!(error.message.contains("key"), "{}", error.message);
         assert_eq!(error.kind, ErrorKind::Kept);
         assert_eq!(serde_json::to_value(&error).unwrap()["what"], "key");
-        let tags = replace(&state, "a", &a.replace("ocean/amoc", "x")).unwrap_err();
+        let tags = replace(state, "a", &a.replace("ocean/amoc", "x")).unwrap_err();
         assert_eq!(tags.what, Some("tags"));
         // a text that does not parse
-        let error = replace(&state, "a", "@article{a, title = {A3}").unwrap_err();
+        let error = replace(state, "a", "@article{a, title = {A3}").unwrap_err();
         assert_eq!(error.kind, ErrorKind::Failed);
 
-        remove(&state, &strings(&["b"])).unwrap();
-        reload(&state);
-        assert!(!text(&bib).contains("@article{b"), "{}", text(&bib));
+        let before = text(bib);
+        remove(state, &strings(&["b"])).unwrap();
+        reload(state);
+        let removed = text(bib);
+        assert!(!removed.contains("@article{b"), "{removed}");
+        step(state, bib, true).unwrap();
+        assert_eq!(text(bib), before);
+        reload(state);
+        step(state, bib, false).unwrap();
+        assert_eq!(text(bib), removed);
+        reload(state);
+    }
+
+    #[test]
+    fn built_in_writes_every_command() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = init_library(dir.path());
+        let state = state(
+            dir.path(),
+            std::slice::from_ref(&bib),
+            WriterChoice::BuiltIn,
+            "",
+        );
+        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        assert_eq!(writers[0].kind, Kind::PapersRs);
+        assert_eq!(writers[0].version, None);
+        assert_eq!(writers[0].problem, None);
+        every_command(&state, &bib);
+        // the history is papers': its folder has the steps
+        assert!(dir.path().join("history/projects").is_dir());
+    }
+
+    #[test]
+    fn built_in_does_not_need_a_papers_command() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = papers_library(dir.path());
+        // the setting is of the other choice, and gone
+        let state = state(
+            dir.path(),
+            std::slice::from_ref(&bib),
+            WriterChoice::BuiltIn,
+            "/nonexistent/papers",
+        );
+        tag(&state, &strings(&["a"]), &strings(&["x"]), &[]).unwrap();
+        assert!(fs::read_to_string(&bib).unwrap().contains("AMOC, ice, x"));
+    }
+
+    #[test]
+    fn built_in_says_a_library_with_a_pool_is_not_supported() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = dir.path().join("pool");
+        fs::create_dir(&pool).unwrap();
+        init_library(&pool);
+        let library = dir.path().join("library");
+        fs::create_dir(&library).unwrap();
+        let bib = init_library(&library);
+        fs::write(&bib, ENTRIES).unwrap();
+        let config = library.join(".papers/config.json");
+        let mut js: Value = serde_json::from_str(&fs::read_to_string(&config).unwrap()).unwrap();
+        js["pool"] = json!("../pool");
+        fs::write(&config, js.to_string()).unwrap();
+
+        let state = state(
+            dir.path(),
+            std::slice::from_ref(&bib),
+            WriterChoice::BuiltIn,
+            "",
+        );
+        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        assert_eq!(writers[0].kind, Kind::PapersRs);
+        let problem = writers[0].problem.as_deref().unwrap();
+        assert!(
+            problem.contains("pool") && problem.contains("Settings"),
+            "{problem}"
+        );
+        let error = tag(&state, &strings(&["a"]), &strings(&["x"]), &[]).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Failed);
+        assert!(
+            error.message.contains("papers command in Settings"),
+            "{}",
+            error.message
+        );
+        assert_eq!(fs::read_to_string(&bib).unwrap(), ENTRIES);
+    }
+
+    /// The papers command of `PAPERS` (else the login shell's), as a script
+    /// with a home of its own, whose global configuration puts the history in
+    /// `dir/history`; the same global configuration, for papers-rs.
+    fn papers_command(dir: &Path) -> (String, MachineConfig) {
+        use std::os::unix::fs::PermissionsExt;
+
+        let papers = std::env::var("PAPERS").unwrap_or_else(|_| "papers".into());
+        let home = dir.join("home");
+        let config = if cfg!(target_os = "macos") {
+            home.join("Library/Application Support/papers/config.json")
+        } else {
+            home.join(".config/papers/config.json")
+        };
+        let mut machine = MachineConfig::load(Some(config.to_str().unwrap())).unwrap();
+        machine.set(
+            "history-dir",
+            Some(json!(dir.join("history").to_str().unwrap())),
+        );
+        machine.save().unwrap();
+        let script = dir.join("papers");
+        let text = format!(
+            "#!/bin/sh\nexport HOME='{}'\nunset XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME\nexec '{papers}' \"$@\"\n",
+            home.display()
+        );
+        fs::write(&script, text).unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        (script.to_str().unwrap().to_string(), machine)
+    }
+
+    /// With the papers of the setting `PAPERS`, else the login shell's:
+    /// `cargo test -- --ignored`.
+    #[test]
+    #[ignore = "runs papers 3.0.0b4 or later"]
+    fn command_writes_every_command() {
+        let dir = tempfile::tempdir().unwrap();
+        let (papers, _) = papers_command(dir.path());
+        let library = dir.path().join("library");
+        fs::create_dir(&library).unwrap();
+        let bib = init_library(&library);
+        let state = state(
+            dir.path(),
+            std::slice::from_ref(&bib),
+            WriterChoice::Command,
+            &papers,
+        );
+        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        assert_eq!(writers[0].kind, Kind::Papers);
+        assert!(writers[0].version.is_some());
+        every_command(&state, &bib);
+    }
+
+    /// The .bib file and the configuration of a library, the history identifier apart.
+    fn files_of(library: &Path) -> (String, Value) {
+        let bib = fs::read_to_string(library.join("papers.bib")).unwrap();
+        let config = fs::read_to_string(library.join(".papers/config.json")).unwrap();
+        let mut config: Value = serde_json::from_str(&config).unwrap();
+        config.as_object_mut().unwrap().remove("id");
+        (bib, config)
+    }
+
+    /// The two writers do the same on two copies of a library: the same files,
+    /// and a step of one is undone and redone by the other.
+    #[test]
+    #[ignore = "runs papers 3.0.0b4 or later"]
+    fn built_in_and_command_write_the_same() {
+        let dir = tempfile::tempdir().unwrap();
+        let (papers, machine) = papers_command(dir.path());
+        let [built, command] = ["built-in", "command"].map(|name| {
+            let library = dir.path().join(name);
+            fs::create_dir(&library).unwrap();
+            let bib = init_library(&library);
+            (library, bib)
+        });
+        let one = |bib: &PathBuf, choice, papers: &str| {
+            state_with(
+                dir.path(),
+                std::slice::from_ref(bib),
+                choice,
+                papers,
+                machine.clone(),
+            )
+        };
+        let in_process = one(&built.1, WriterChoice::BuiltIn, "");
+        let by_command = one(&command.1, WriterChoice::Command, &papers);
+        every_command(&in_process, &built.1);
+        every_command(&by_command, &command.1);
+        let (built_bib, built_config) = files_of(&built.0);
+        let (command_bib, command_config) = files_of(&command.0);
+        assert_eq!(built_bib, command_bib);
+        assert_eq!(built_config, command_config);
+
+        // a step written by one, undone and redone by the other, both ways
+        let bib = &built.1;
+        let by_papers = one(bib, WriterChoice::Command, &papers);
+        let text = || fs::read_to_string(bib).unwrap();
+        for (writes, undoes) in [(&in_process, &by_papers), (&by_papers, &in_process)] {
+            reload(writes);
+            let before = text();
+            tag(writes, &strings(&["a"]), &strings(&["crossed"]), &[]).unwrap();
+            let after = text();
+            assert_ne!(after, before);
+            reload(undoes);
+            step(undoes, bib, true).unwrap();
+            assert_eq!(text(), before);
+            reload(writes);
+            step(writes, bib, false).unwrap();
+            assert_eq!(text(), after);
+            reload(undoes);
+            step(undoes, bib, true).unwrap();
+            assert_eq!(text(), before);
+        }
     }
 }

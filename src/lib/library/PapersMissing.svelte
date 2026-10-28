@@ -35,7 +35,7 @@
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="papers-missing-title">
     <h2 id="papers-missing-title">This library is written by papers</h2>
     <p>
-      The app writes a papers library with the papers command, so that a change made here or in a terminal has
+      The app is set to write a papers library with a papers command, so that a change made here or in a terminal has
       the same format and history. {#if version}papers {version} is installed: 3.0.0b4 or later is needed.{:else}papers is not found.{/if}
     </p>
     <p>{version ? "Upgrade it" : "Install it"} with one of:</p>
@@ -47,7 +47,7 @@
         </li>
       {/each}
     </ul>
-    <p class="note">The app finds it at the next write. Or give its path in Settings.</p>
+    <p class="note">The app finds it at the next write. Or give its path in Settings, or choose the built-in writer there (papers-rs).</p>
     <div class="actions">
       <button class="primary" bind:this={close} onclick={onclose}>Close</button>
     </div>

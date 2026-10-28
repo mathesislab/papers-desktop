@@ -72,11 +72,14 @@ export type TagCount = {
 /** mirrors writer::Writer of src-tauri: how a .bib file is written */
 export type Writer = {
   bib: string;
-  /** "papers": by the papers command; "native": by the app; "papers-missing":
-   *  a papers library, read-only while papers 3.0.0b4 or later is not found */
-  kind: "papers" | "native" | "papers-missing";
+  /** "papers-rs": a papers library, written by papers-rs, built in; "papers": a
+   *  papers library, by a papers command; "native": by the app; "papers-missing":
+   *  a papers library, read-only while the papers command (3.0.0b4 or later) is not found */
+  kind: "papers-rs" | "papers" | "native" | "papers-missing";
   /** of the papers command found, for a papers library: too old when missing */
   version: string | null;
+  /** why the library cannot be written, when known beforehand (a pool, which papers-rs does not support yet) */
+  problem: string | null;
 };
 
 /** mirrors papers_core::Added: the keys of the entries given to add */
@@ -106,7 +109,7 @@ export type Incoming = {
 
 /** mirrors writer::WriteError: what a write is rejected with */
 export type WriteError = {
-  /** "papers-missing": a papers library without papers 3.0.0b4 or later; "changed": the .bib
+  /** "papers-missing": a papers library, written by a papers command not found or older than 3.0.0b4; "changed": the .bib
    *  changed since it was read, and is read again: try again; "kept": an edit of the BibTeX of an
    *  entry changed what it keeps (`what`) */
   kind: "papers-missing" | "changed" | "kept" | "failed";

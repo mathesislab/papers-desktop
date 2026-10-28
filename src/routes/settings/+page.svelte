@@ -20,7 +20,9 @@
     citation_style: string;
     check_updates: boolean;
     after_close: "library" | "next";
-    /** the papers command; empty: the one the login shell finds */
+    /** what writes the papers libraries: papers-rs, built in, or a papers command */
+    writer: "built-in" | "command";
+    /** the papers command, for the writer "command"; empty: the one the login shell finds */
     papers: string;
     /** the tags pinned to the keys 1–9, set from the sidebar of the main window: kept as they are */
     pinned_tags: (string | null)[];
@@ -140,7 +142,7 @@
     writers = await listWriters();
   }
 
-  /** how each .bib file is written: by papers, or by the app */
+  /** how each .bib file is written: by papers-rs, by a papers command, or by the app */
   let writers = $state<Writer[]>([]);
 
   function writtenBy(file: string): Writer | undefined {
@@ -295,12 +297,15 @@
               <span class="path">{folder(file)}</span>
               {#if writtenBy(file)}
                 {@const writer = writtenBy(file)!}
-                <span class="path" class:error={writer.kind === "papers-missing"}>
-                  {writer.kind === "papers"
-                    ? `A papers library, written by papers ${writer.version}`
-                    : writer.kind === "native"
-                      ? "Written by the app"
-                      : "A papers library: read-only until papers 3.0.0b4 or later is installed"}
+                <span class="path" class:error={writer.kind === "papers-missing" || writer.problem !== null}>
+                  {writer.problem ??
+                    (writer.kind === "papers-rs"
+                      ? "A papers library, written by papers-rs (built in)"
+                      : writer.kind === "papers"
+                        ? `A papers library, written by papers ${writer.version}`
+                        : writer.kind === "native"
+                          ? "Written by the app"
+                          : "A papers library: read-only until the papers command (3.0.0b4 or later) is found")}
                 </span>
               {/if}
             </span>
@@ -318,18 +323,33 @@
       <p class="hint">The panel searches them all, and reloads one when it changes.</p>
       <label class="row">
         <span>
-          <span class="label">papers command</span>
-          <span class="hint">Writes the papers libraries; empty: the one your shell finds</span>
+          <span class="label">Writes papers libraries</span>
+          <span class="hint">Built in, or a command of the papers standard; the files and the history are the same</span>
         </span>
-        <input
-          class="command"
-          type="text"
-          placeholder="papers"
-          spellcheck="false"
-          value={settings.papers}
-          onchange={(e) => save({ papers: e.currentTarget.value.trim() })}
-        />
+        <select
+          value={settings.writer}
+          onchange={(e) => save({ writer: e.currentTarget.value as Settings["writer"] })}
+        >
+          <option value="built-in">Built in (papers-rs)</option>
+          <option value="command">A papers command</option>
+        </select>
       </label>
+      {#if settings.writer === "command"}
+        <label class="row">
+          <span>
+            <span class="label">papers command</span>
+            <span class="hint">Its path; empty: the one your shell finds</span>
+          </span>
+          <input
+            class="command"
+            type="text"
+            placeholder="papers"
+            spellcheck="false"
+            value={settings.papers}
+            onchange={(e) => save({ papers: e.currentTarget.value.trim() })}
+          />
+        </label>
+      {/if}
     </section>
 
     <section>

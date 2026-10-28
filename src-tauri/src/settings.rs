@@ -31,12 +31,24 @@ pub struct Settings {
     pub check_updates: bool,
     /// what the main window shows after a paper is closed
     pub after_close: AfterClose,
-    /// the papers command, which writes a papers library (~ for the home
+    /// what writes the papers libraries: papers-rs, built in, or a papers command
+    pub writer: WriterChoice,
+    /// the papers command, for `writer` "command" (~ for the home
     /// directory); empty: the one the login shell finds
     pub papers: PathBuf,
     /// the tags pinned to the keys 1–9 of the main window (index = key − 1);
     /// set from the sidebar, not in the settings window
     pub pinned_tags: Vec<Option<String>>,
+}
+
+/// What writes a papers library: papers-rs, which the app has built in, or a
+/// command of the papers standard (papers-cli, the `papers-rs` program, ...).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WriterChoice {
+    #[default]
+    BuiltIn,
+    Command,
 }
 
 /// After a paper is closed in the main window: the library, or the next
@@ -65,6 +77,7 @@ impl Default for Settings {
             citation_style: crate::styles::DEFAULT.into(),
             check_updates: true,
             after_close: AfterClose::default(),
+            writer: WriterChoice::default(),
             papers: PathBuf::new(),
             pinned_tags: Vec::new(),
         }

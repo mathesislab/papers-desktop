@@ -54,8 +54,11 @@
     return ids.map((id) => rows.get(id)).filter((r): r is Row => r !== undefined);
   });
   let canAdd = $derived(kind === "bibtex" && entries.length > 0 && !adding && target !== "");
-  /** whether papers writes the .bib file: it merges the papers already there, and makes keys */
-  let papers = $derived(bibs.find((w) => w.bib === target)?.kind === "papers");
+  /** whether papers writes the .bib file (papers-rs or a papers command): it merges the papers already there, and makes keys */
+  let papers = $derived.by(() => {
+    const kind = bibs.find((w) => w.bib === target)?.kind;
+    return kind === "papers-rs" || kind === "papers";
+  });
 
   /** the line under the field: what it is taken for */
   let said = $derived.by((): { text: string; error?: boolean } => {

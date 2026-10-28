@@ -70,16 +70,25 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 ## Writing (P1)
 
 - **A papers library** (a `.papers/config.json` next to its `.bib`, naming
-  it) is written by papers (3.0.0b4 or later, with `edit --from` and
-  `--porcelain`), as a command, so that a change from the app or from a
-  terminal has the same format, naming and history. The command: the
-  `papers` setting, else the one the login shell finds; it runs with the
-  PATH of the login shell (its git), with `--porcelain`: its output tells
-  the keys added and the papers already in the library. Without it, a
-  papers library is read-only, and a dialog tells how to install it, with
-  copyable commands (from git, `papers-cli @
-  git+https://github.com/perrette/papers@v3`, until a release has
-  3.0.0b4).
+  it) is written by papers, so that a change from the app or from a
+  terminal has the same format, naming and history. A setting says what
+  writes it (*Writes papers libraries*): **papers-rs, built in (the
+  default)**: the commands run in the process (`papers_rs::command` and
+  `history`), no subprocess, no Python; or **a papers command** (3.0.0b4 or
+  later, with `edit --from` and `--porcelain`): any command line of the
+  papers standard (papers-cli, the `papers-rs` program, another): the
+  `papers` setting, else the one the login shell finds, run with the PATH of
+  the login shell (its git) and `--porcelain`, whose output tells the keys
+  added and the papers already in the library. They are interchangeable: the
+  same files, the same history store and lock, so a step of one is undone by
+  the other. In `writer.rs` each is an implementation of `PapersWriter`
+  (`writer/builtin.rs`, `writer/command.rs`); the commands of the app group
+  the changes by library and hand them to it. Built in, a library with a pool
+  is refused (papers-rs has no pools yet), the error saying to choose a
+  papers command in Settings; with a command not found, a papers library is
+  read-only, and a dialog tells how to install it, with copyable commands
+  (from git, `papers-cli @ git+https://github.com/perrette/papers@v3`,
+  until a release has 3.0.0b4).
 - **Any other `.bib`** is written by the app (`crates/core/src/write.rs`):
   only the edited entries are rewritten, the rest of the file stays byte for
   byte; the file is written to a temporary file then renamed, and not at all
@@ -109,9 +118,11 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 `rename_tag`, `replace_entry`, `add_bibtex`, `remove_entries`, `undo`,
 `redo`; errors `{ kind: "papers-missing" | "changed" | "failed", message }`;
 `src/lib/library/writes.ts`); in the window, `write()` runs a write, says
-its error or shows `PapersMissing.svelte`; Settings has the papers command
-and tells how each `.bib` is written. A papers library is edited with
-`papers edit KEY --from -`. Tags in the window: chips in the details (on
+its error or shows `PapersMissing.svelte`; Settings has the choice of the
+writer of the papers libraries (built in, or a papers command with its path)
+and tells how each `.bib` is written (`kind`: `papers-rs`, `papers`,
+`native`, `papers-missing`). A papers library is edited as `papers edit KEY
+--from -` does. Tags in the window: chips in the details (on
 the paper, or the papers selected), the menu of a tag in the sidebar
 (*Rename…* in place, *Pin to Key*), `1`–`9` toggle a pinned tag; nested
 tags (the search, the tree, the rename of a parent, the chips). Tried in
