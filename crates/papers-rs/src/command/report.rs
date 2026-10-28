@@ -168,11 +168,117 @@ fn placed_lines(library: &Library, e: &Entry) -> Vec<String> {
 /// line of an entry, in brackets, by lower-case key (where else it went, or where it came from).
 pub type Notes = HashMap<String, String>;
 
-/// Say what a command did to the library since it was loaded: the entries
-/// removed, renamed, added, and, of `touched` (the keys of the entries the
-/// command considered), those modified; with `show_existing`, also those that
-/// are as they were (`Existing`). With `--porcelain` the lines are the
-/// keys only, by kind and sorted by key (`_print_biblio_diff`).
+/// What a command changed in the library since it was loaded, by key
+/// (`_print_biblio_diff`): the entries removed, renamed, added, and of those
+/// the command considered (`touched`), the ones modified and the ones as
+/// they were. Each list is sorted by key (`renamed` by the new key).
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Changes {
+    pub removed: Vec<String>,
+    /// (old key, new key)
+    pub renamed: Vec<(String, String)>,
+    pub added: Vec<String>,
+    pub modified: Vec<String>,
+    pub existing: Vec<String>,
+}
+
+impl Changes {
+    /// The changes of `library` since it was loaded; none if it was not
+    /// loaded (a new library).
+    pub fn of(library: &Library, touched: &[String]) -> Option<Changes> {
+        let loaded = library.loaded_entries()?;
+        let old: BTreeMap<&str, &Entry> = loaded.iter().map(|e| (e.key.as_str(), *e)).collect();
+        let new: BTreeMap<&str, &Entry> = library.entries().map(|e| (e.key.as_str(), e)).collect();
+        let renamed_pairs = library.renamed_keys();
+        let renamed: BTreeMap<&str, &str> = renamed_pairs
+            .iter()
+            .map(|(old, new)| (new.as_str(), old.as_str()))
+            .collect();
+        let renamed_old: BTreeSet<&str> = renamed.values().copied().collect();
+        let touched: BTreeSet<&str> = touched.iter().map(String::as_str).collect();
+        let mut changes = Changes {
+            removed: old
+                .keys()
+                .filter(|k| !new.contains_key(*k) && !renamed_old.contains(*k))
+                .map(|k| k.to_string())
+                .collect(),
+            renamed: renamed
+                .iter()
+                .map(|(new, old)| (old.to_string(), new.to_string()))
+                .collect(),
+            added: new
+                .keys()
+                .filter(|k| !old.contains_key(*k) && !renamed.contains_key(*k))
+                .map(|k| k.to_string())
+                .collect(),
+            ..Changes::default()
+        };
+        for (k, entry) in &new {
+            if !touched.contains(k) {
+                continue;
+            }
+            let Some(before) = old.get(k) else { continue };
+            if content_equal(before, entry) {
+                changes.existing.push(k.to_string());
+            } else {
+                changes.modified.push(k.to_string());
+            }
+        }
+        Some(changes)
+    }
+
+    /// The lines of `--porcelain`, by kind (`existing` with `show_existing`).
+    pub fn porcelain(&self, show_existing: bool) -> Vec<String> {
+        let mut lines: Vec<String> = self
+            .removed
+            .iter()
+            .map(|k| format!("removed {k}"))
+            .collect();
+        lines.extend(
+            self.renamed
+                .iter()
+                .map(|(old, new)| format!("renamed {old} {new}")),
+        );
+        lines.extend(self.added.iter().map(|k| format!("added {k}")));
+        // modified and existing in the order of their keys, as papers prints them
+        let mut touched: Vec<(&str, &str)> = self
+            .modified
+            .iter()
+            .map(|k| (k.as_str(), "modified"))
+            .collect();
+        if show_existing {
+            touched.extend(self.existing.iter().map(|k| (k.as_str(), "existing")));
+        }
+        touched.sort();
+        lines.extend(touched.into_iter().map(|(k, what)| format!("{what} {k}")));
+        lines
+    }
+
+    /// The changes of the `--porcelain` lines of a papers command (formats.md
+    /// 7.2); lines of another kind are left out.
+    pub fn from_porcelain(text: &str) -> Changes {
+        let mut changes = Changes::default();
+        for line in text.lines() {
+            let mut words = line.split_whitespace();
+            match (words.next(), words.next(), words.next()) {
+                (Some("removed"), Some(k), None) => changes.removed.push(k.to_string()),
+                (Some("renamed"), Some(old), Some(new)) => {
+                    changes.renamed.push((old.to_string(), new.to_string()))
+                }
+                (Some("added"), Some(k), None) => changes.added.push(k.to_string()),
+                (Some("modified"), Some(k), None) => changes.modified.push(k.to_string()),
+                (Some("existing"), Some(k), None) => changes.existing.push(k.to_string()),
+                _ => {}
+            }
+        }
+        changes
+    }
+}
+
+/// Say what a command did to the library since it was loaded ([`Changes`]);
+/// with `show_existing`, also the entries that are as they were
+/// (`Existing`). With `--porcelain` the lines are the keys only, by kind and
+/// sorted by key (`_print_biblio_diff`).
 pub fn print_changes(
     library: &Library,
     touched: &[String],
@@ -182,107 +288,84 @@ pub fn print_changes(
     color: bool,
     say: &Say,
 ) {
-    let Some(loaded) = library.loaded_entries() else {
+    let Some(changes) = Changes::of(library, touched) else {
         return;
     };
+    if porcelain {
+        for line in changes.porcelain(show_existing) {
+            say.porcelain(line);
+        }
+        return;
+    }
+    let loaded = library.loaded_entries().unwrap_or_default();
+    let old: BTreeMap<&str, &Entry> = loaded.iter().map(|e| (e.key.as_str(), *e)).collect();
+    let new: BTreeMap<&str, &Entry> = library.entries().map(|e| (e.key.as_str(), e)).collect();
     let note = |key: &str| {
         notes
             .get(&key.to_lowercase())
             .map(|n| format!(" [{n}]"))
             .unwrap_or_default()
     };
-    let old: BTreeMap<&str, &Entry> = loaded.iter().map(|e| (e.key.as_str(), *e)).collect();
-    let new: BTreeMap<&str, &Entry> = library.entries().map(|e| (e.key.as_str(), e)).collect();
-    let renamed_pairs = library.renamed_keys();
-    let renamed: BTreeMap<&str, &str> = renamed_pairs
-        .iter()
-        .map(|(old, new)| (new.as_str(), old.as_str()))
-        .collect();
-    let renamed_old: BTreeSet<&str> = renamed.values().copied().collect();
-    let removed: Vec<&str> = old
-        .keys()
-        .copied()
-        .filter(|k| !new.contains_key(k) && !renamed_old.contains(k))
-        .collect();
-    let added: Vec<&str> = new
-        .keys()
-        .copied()
-        .filter(|k| !old.contains_key(k) && !renamed.contains_key(k))
-        .collect();
-    let touched: BTreeSet<&str> = touched.iter().map(String::as_str).collect();
-    let modified: Vec<&str> = new
-        .keys()
-        .copied()
-        .filter(|k| touched.contains(k) && old.contains_key(k))
-        .collect();
-
-    if porcelain {
-        for k in &removed {
-            say.porcelain(format!("removed {k}"));
-        }
-        for (new_key, old_key) in &renamed {
-            say.porcelain(format!("renamed {old_key} {new_key}"));
-        }
-        for k in &added {
-            say.porcelain(format!("added {k}"));
-        }
-        for k in &modified {
-            if !content_equal(old[k], new[k]) {
-                say.porcelain(format!("modified {k}"));
-            } else if show_existing {
-                say.porcelain(format!("existing {k}"));
-            }
-        }
-        return;
-    }
-
     let loaded_relative_to = library
         .loaded_relative_to()
         .unwrap_or(&library.relative_to)
         .to_string();
-    for k in &removed {
+    for k in &changes.removed {
         say.line(format_entry(
             &loaded_relative_to,
-            old[k],
+            old[k.as_str()],
             false,
             "Removed",
             color,
         ));
     }
-    for (new_key, old_key) in &renamed {
-        let line = format_entry(&library.relative_to, new[new_key], false, "Renamed", color);
+    for (old_key, new_key) in &changes.renamed {
+        let line = format_entry(
+            &library.relative_to,
+            new[new_key.as_str()],
+            false,
+            "Renamed",
+            color,
+        );
         say.line(format!(
             "{} (was {old_key}){}",
             line.trim_end(),
             note(new_key)
         ));
     }
-    for k in &added {
+    for k in &changes.added {
+        let entry = new[k.as_str()];
         say.line(format!(
             "{}{}",
-            format_entry(&library.relative_to, new[k], false, "Added", color),
+            format_entry(&library.relative_to, entry, false, "Added", color),
             note(k)
         ));
-        for line in placed_lines(library, new[k]) {
+        for line in placed_lines(library, entry) {
             say.line(line);
         }
     }
-    for k in &modified {
-        if !content_equal(old[k], new[k]) {
-            say.line(format!(
-                "{}{}",
-                format_entry(&library.relative_to, new[k], false, "Modified", color),
-                note(k)
-            ));
-            for line in placed_lines(library, new[k]) {
+    // modified and existing in the order of their keys
+    let mut touched: Vec<(&str, bool)> = changes
+        .modified
+        .iter()
+        .map(|k| (k.as_str(), true))
+        .collect();
+    if show_existing {
+        touched.extend(changes.existing.iter().map(|k| (k.as_str(), false)));
+    }
+    touched.sort();
+    for (k, modified) in touched {
+        let entry = new[k];
+        let what = if modified { "Modified" } else { "Existing" };
+        say.line(format!(
+            "{}{}",
+            format_entry(&library.relative_to, entry, false, what, color),
+            note(k)
+        ));
+        if modified {
+            for line in placed_lines(library, entry) {
                 say.line(line);
             }
-        } else if show_existing {
-            say.line(format!(
-                "{}{}",
-                format_entry(&library.relative_to, new[k], false, "Existing", color),
-                note(k)
-            ));
         }
     }
 }

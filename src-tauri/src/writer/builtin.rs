@@ -8,7 +8,7 @@ use std::path::Path;
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::edit::replace_from_text;
 use papers_rs::command::files::files_mode;
-use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::report::Changes;
 use papers_rs::command::rm::{Files, remove_entries};
 use papers_rs::command::tag::{add_remove, rename};
 use papers_rs::command::{Options, Session};
@@ -20,7 +20,7 @@ use papers_rs::history::History;
 use papers_rs::lock;
 use papers_rs::merge::{OnDuplicate as Merging, Resolver};
 
-use super::{AddOptions, Kind, OnDuplicate, PapersWriter, Pasted, Report, WriteError};
+use super::{AddOptions, Kind, OnDuplicate, PapersWriter, Pasted, WriteError};
 
 /// What papers-rs does not do yet: the libraries it refuses, and what to do.
 const POOL: &str = "This library has a pool, which the built-in writer (papers-rs) does not support yet: \
@@ -70,15 +70,15 @@ impl Builtin {
     /// A command of papers on the library of a folder: `change` makes it on
     /// the session, which is then saved and recorded in the history, and
     /// the lock released whatever the result. `change` returns the keys of
-    /// the entries to report on. `command` and `args` are what the command
-    /// line would be, for the history.
+    /// the entries it considered: what changed of them (and what was added,
+    /// removed, renamed) is the result. `command` and `args` are what the
+    /// command line would be, for the history.
     fn transact(
         &self,
         folder: &Path,
         (command, args): (&str, &[String]),
-        existing: bool,
         change: impl FnOnce(&mut Session) -> Result<Vec<String>, Error>,
-    ) -> Result<Report, WriteError> {
+    ) -> Result<Changes, WriteError> {
         let config = self.config(folder)?;
         let options = Options {
             message: command_line(folder, command, args),
@@ -87,23 +87,10 @@ impl Builtin {
         let mut session = Session::open(config, options)?;
         let done = change(&mut session).and_then(|touched| {
             session.commit()?;
-            let say = session.say.clone();
-            print_changes(
-                &session.library,
-                &touched,
-                existing,
-                &Notes::new(),
-                true,
-                false,
-                &say,
-            );
-            Ok(())
+            Ok(Changes::of(&session.library, &touched).unwrap_or_default())
         });
-        let outcome = session.finish();
-        done?;
-        Ok(Report::from_lines(
-            outcome.porcelain.iter().map(String::as_str),
-        ))
+        session.finish();
+        Ok(done?)
     }
 }
 
@@ -138,7 +125,7 @@ impl PapersWriter for Builtin {
         keys: &[String],
         add: &[String],
         remove: &[String],
-    ) -> Result<Report, WriteError> {
+    ) -> Result<Changes, WriteError> {
         let mut args = keys.to_vec();
         for (option, tags) in [("--add", add), ("--rm", remove)] {
             if !tags.is_empty() {
@@ -146,24 +133,24 @@ impl PapersWriter for Builtin {
                 args.extend(tags.iter().cloned());
             }
         }
-        self.transact(folder, ("tag", &args), false, |session| {
+        self.transact(folder, ("tag", &args), |session| {
             let keys = session.library.select(keys)?;
             add_remove(&mut session.library, &keys, add, remove);
             Ok(keys)
         })
     }
 
-    fn rename_tag(&self, folder: &Path, old: &str, new: &str) -> Result<Report, WriteError> {
+    fn rename_tag(&self, folder: &Path, old: &str, new: &str) -> Result<Changes, WriteError> {
         let args = ["--rename", old, new].map(String::from);
-        self.transact(folder, ("tag", &args), false, |session| {
+        self.transact(folder, ("tag", &args), |session| {
             rename(&mut session.library, old, new);
             Ok(Vec::new())
         })
     }
 
-    fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Report, WriteError> {
+    fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Changes, WriteError> {
         let args = [key, "--from", "-"].map(String::from);
-        self.transact(folder, ("edit", &args), false, |session| {
+        self.transact(folder, ("edit", &args), |session| {
             let keys = session.library.select(&[key.to_string()])?;
             replace_from_text(
                 &mut session.library,
@@ -176,7 +163,7 @@ impl PapersWriter for Builtin {
         })
     }
 
-    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Report, WriteError> {
+    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Changes, WriteError> {
         let pasted = Pasted::new(text)?;
         let file = pasted.path().to_string_lossy().into_owned();
         let mut args = vec![
@@ -187,7 +174,7 @@ impl PapersWriter for Builtin {
         if options.update_key {
             args.push("--update-key".into());
         }
-        self.transact(folder, ("add", &args), true, |session| {
+        self.transact(folder, ("add", &args), |session| {
             let request = AddRequest {
                 files: vec![file],
                 update_key: options.update_key,
@@ -203,10 +190,10 @@ impl PapersWriter for Builtin {
         })
     }
 
-    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Report, WriteError> {
+    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Changes, WriteError> {
         let mut args = keys.to_vec();
         args.push("--keep-files".to_string());
-        self.transact(folder, ("rm", &args), false, |session| {
+        self.transact(folder, ("rm", &args), |session| {
             let keys = session.library.select(keys)?;
             remove_entries(session, &keys, Files::Keep, false)?;
             Ok(keys)

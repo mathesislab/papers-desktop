@@ -6,7 +6,7 @@ use std::io::{ErrorKind as IoErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use super::{AddOptions, Kind, PapersWriter, Pasted, Report, WriteError};
+use super::{AddOptions, Changes, Kind, PapersWriter, Pasted, WriteError};
 
 /// The first version of papers with the options used here (`edit --from`,
 /// `--porcelain`), as `release` orders it.
@@ -63,7 +63,7 @@ impl PapersCommand {
         command: &str,
         args: &[String],
         input: Option<&str>,
-    ) -> Result<Report, WriteError> {
+    ) -> Result<Changes, WriteError> {
         let mut papers = Command::new(&self.path);
         papers
             .arg("-C")
@@ -93,7 +93,9 @@ impl PapersCommand {
             Err(e) => return Err(WriteError::failed(format!("papers: {e}"))),
         };
         if output.status.success() {
-            return Ok(Report::of(&String::from_utf8_lossy(&output.stdout)));
+            return Ok(Changes::from_porcelain(&String::from_utf8_lossy(
+                &output.stdout,
+            )));
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
         let lines: Vec<&str> = stderr
@@ -124,7 +126,7 @@ impl PapersWriter for PapersCommand {
         keys: &[String],
         add: &[String],
         remove: &[String],
-    ) -> Result<Report, WriteError> {
+    ) -> Result<Changes, WriteError> {
         let mut args = keys.to_vec();
         for (option, tags) in [("--add", add), ("--rm", remove)] {
             if !tags.is_empty() {
@@ -135,18 +137,18 @@ impl PapersWriter for PapersCommand {
         self.run(folder, "tag", &args, None)
     }
 
-    fn rename_tag(&self, folder: &Path, old: &str, new: &str) -> Result<Report, WriteError> {
+    fn rename_tag(&self, folder: &Path, old: &str, new: &str) -> Result<Changes, WriteError> {
         let args = ["--rename", old, new].map(String::from);
         self.run(folder, "tag", &args, None)
     }
 
-    fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Report, WriteError> {
+    fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Changes, WriteError> {
         let args = [key, "--from", "-"].map(String::from);
         self.run(folder, "edit", &args, Some(text))
     }
 
     /// papers adds a .bib file: the text in a temporary one
-    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Report, WriteError> {
+    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Changes, WriteError> {
         let pasted = Pasted::new(text)?;
         let mut args = vec![
             pasted.path().to_string_lossy().into(),
@@ -159,7 +161,7 @@ impl PapersWriter for PapersCommand {
         self.run(folder, "add", &args, None)
     }
 
-    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Report, WriteError> {
+    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Changes, WriteError> {
         let mut args = keys.to_vec();
         args.push("--keep-files".to_string());
         self.run(folder, "rm", &args, None)

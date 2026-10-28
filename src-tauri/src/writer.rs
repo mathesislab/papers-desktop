@@ -22,6 +22,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use papers_core::{Added, Change, Item, same_tag, under};
+use papers_rs::command::report::Changes;
 use papers_rs::config::MachineConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -142,19 +143,19 @@ trait PapersWriter: Send + Sync {
         keys: &[String],
         add: &[String],
         remove: &[String],
-    ) -> Result<Report, WriteError>;
+    ) -> Result<Changes, WriteError>;
 
     /// `papers tag --rename OLD NEW`: a tag as written, and the tags under it
-    fn rename_tag(&self, folder: &Path, old: &str, new: &str) -> Result<Report, WriteError>;
+    fn rename_tag(&self, folder: &Path, old: &str, new: &str) -> Result<Changes, WriteError>;
 
     /// `papers edit KEY --from -`: the BibTeX of an entry replaced
-    fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Report, WriteError>;
+    fn edit(&self, folder: &Path, key: &str, text: &str) -> Result<Changes, WriteError>;
 
     /// `papers add FILE --on-duplicate ...`: the entries of BibTeX added
-    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Report, WriteError>;
+    fn add(&self, folder: &Path, text: &str, options: AddOptions) -> Result<Changes, WriteError>;
 
     /// `papers rm KEY... --keep-files`
-    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Report, WriteError>;
+    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Changes, WriteError>;
 
     /// `papers undo`, or with `back` false `papers redo`
     fn step(&self, folder: &Path, back: bool) -> Result<(), WriteError>;
@@ -383,33 +384,6 @@ impl Pasted {
 impl Drop for Pasted {
     fn drop(&mut self) {
         let _ = fs::remove_file(&self.0);
-    }
-}
-
-/// What a papers command reports with `--porcelain`: a line per entry,
-/// `added KEY`, `modified KEY`, `removed KEY` or `existing KEY`.
-pub struct Report {
-    lines: Vec<(String, String)>,
-}
-
-impl Report {
-    fn of(stdout: &str) -> Report {
-        Report::from_lines(stdout.lines())
-    }
-
-    fn from_lines<'a>(lines: impl IntoIterator<Item = &'a str>) -> Report {
-        let lines = lines
-            .into_iter()
-            .filter_map(|line| line.split_once(' '))
-            .map(|(what, key)| (what.to_string(), key.trim().to_string()))
-            .collect();
-        Report { lines }
-    }
-
-    /// The keys reported as `what`.
-    fn keys(&self, what: &str) -> Vec<String> {
-        let keys = self.lines.iter().filter(|(w, _)| w == what);
-        keys.map(|(_, key)| key.clone()).collect()
     }
 }
 
@@ -723,10 +697,10 @@ fn add(state: &AppState, bib: &Path, text: &str, options: AddOptions) -> Result<
         Some(library) => {
             let report = library.writer.add(&library.folder, text, options)?;
             // a paper of the library: as it was, or merged with the entry
-            let mut existing = report.keys("existing");
-            existing.extend(report.keys("modified"));
+            let mut existing = report.existing;
+            existing.extend(report.modified);
             Ok(Added {
-                added: report.keys("added"),
+                added: report.added,
                 existing,
             })
         }
@@ -910,10 +884,10 @@ mod tests {
 
     #[test]
     fn porcelain_reports() {
-        let report = Report::of("added c\nexisting a\nmodified b\n\n");
-        assert_eq!(report.keys("added"), ["c"]);
-        assert_eq!(report.keys("existing"), ["a"]);
-        assert!(report.keys("removed").is_empty());
+        let report = Changes::from_porcelain("added c\nexisting a\nmodified b\n\n");
+        assert_eq!(report.added, ["c"]);
+        assert_eq!(report.existing, ["a"]);
+        assert!(report.removed.is_empty());
     }
 
     #[test]
