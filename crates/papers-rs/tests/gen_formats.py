@@ -47,17 +47,18 @@ NAMES = [
     '{}', 'Doe,', ', Jane', 'Doe, , Jane', 'Doe, Jr,', 'van Beethoven', 'Beethoven, van', 'ludwig', 'von Neumann, John',
     'John von Neumann', 'John von', 'Jean-Paul Sartre', 'J. R. R. Tolkien', 'Tolkien, J. R. R.', '{\\"O}zil, Mesut',
     'Mesut {\\"O}zil', 'Q. Public, Jr, John', '{A} and {B}', 'x and y', 'Nobody and', 'and Nobody', 'a  and  b', 'a AND b',
-    'A, B, C, D, E', '  Padded , Name  ', '{Unbalanced', 'Unbalanced}', 'a}b, c', 'émile Zola', 'zola, émile',
+    'A, B, C, D, E', 'Doe, Jr, , X', 'Doe, , Jane, X', 'Doe, Jr, Jane,', 'Roe, Sr,  ', '  Padded , Name  ', '{Unbalanced', 'Unbalanced}', 'a}b, c', 'émile Zola', 'zola, émile',
     'ΑΒΓ Delta', 'a\tb', '{a} {b}', '{a}{b}', 'Van Dyke', 'van Dyke, Dick', 'Dick van Dyke', 'x y z w', 'X de Y de Z',
 ]
 NAME_FIELDS = NAMES + [' and '.join(NAMES[i:i + 3]) for i in range(0, len(NAMES), 3)] + [
     '', ' ', 'A and', 'A and  and B', ' and B', 'A and B and', '{A and B} and C', 'A {and} B', 'A\nand\nB', 'A\tand\tB']
 
 RIS_NAMES = ['Smith, John', 'Smith, John, Jr', 'Smith,', 'Smith', 'John Smith', 'World Health', 'Smith, , Jr', 'Smith, John, ',
-             ' Smith , John ', 'a,b,c,d', '', ' ']
+             ' Smith , John ', 'a,b,c,d', '', ' ', 'Smith, ,Jr', 'Smith,  , Jr, X', ', , Jr']
 
 DATES = ['2013', '2013-05', '2013/05/02/', '2013-05-02T00:00', '13-05', '2013-00-05', ' 2013', '20130', '2013-', '2013-5-2',
-         '2013-123', '0000-01', '2013/5', '', '٢٠١٣', 'x2013', '2013 may', '2013-05-00']
+         '2013-123', '0000-01', '2013/5', '', '٢٠١٣', 'x2013', '2013 may', '2013-05-00', '2013-00', '2013-0-5', '2013/00/00',
+         '0000', '2013-00-00T00:00']
 MONTHS = ['jan', 'January', '5', '05', '13', '0', '{jan}', ' {Dec} ', 'sept', 'ma', '', 'xyz', '12', '{12}', 'Mai', 'MAY']
 PAGES = ['11-29', '11--29', '11 - 29', '11–29', '11—29', '1-2-3', '5', '', ' ', 'e1--e9', '1---2', '--1', '1--', '-', 'a - - b',
          '1 -- 2 -- 3', '12 – 34', 'S1-S2', '11-29 ', '  7  ', '1–2—3', '1 - 2']
@@ -150,6 +151,16 @@ HAND_ENTRIES = [
     '@article{k, doi = {doi:}, url = {}, title = {}}',
     '@article{l, keywords = {,}, note = {}}',
     '@article{m, title = {a \\title{T} b}}',
+    '@techreport{wp, id = {X1}, cid = {c}, collection = {col}, identifier = {i}, link = {l}, license = {MIT}, type = {Working paper},'
+    ' title = {T}, school = {S}, institution = {I}}',
+    '@phdthesis{p1, school = {ETH}, pages = {1--2}, address = {Zurich}, title = {T}}',
+    '@report{p2, organization = {Org}, year = {2020}}',
+    '@mastersthesis{m1, title = {T}, school = {ETH}, year = {2020}, urldate = {2024-03-01}}',
+    '@mastersthesis{m2, title = {T}, type = {Diplomarbeit}, school = {ETH}}',
+    '@thesis{m3, title = {T}, type = {Master of Science}}',
+    '@book{tr, title = {T}, translator = {Doe, Jr,}, author = {Doe, Jr,}, editor = {Roe, Sr, , X}, urldate = {2024-03-01}, url = {http://x.org}}',
+    '@book{tr2, title = {T}, translator = {Doe, Jane and Roe, R. and {Some Org}}, urldate = {2024/03}}',
+    '@article{sp, title = {R\\&D 50\\% of \\#1 in a\\_b & c % d # e _ f}, journal = {Science \\& Policy}, keywords = {sea_level, a&b}, url = {http://x/a_b?x=1&y=2}}',
     '@article{n,\n author = {A, B and C, D},\n journal = {{J}ournal of {\\"U}ber},\n x-field = {raw {braces}},\n id = {nope}, type = {Report}\n}\n',
 ]
 
@@ -201,6 +212,27 @@ HAND_IMPORTS = {
         'TY  - JOUR\nAB  - abs\nN2  - n2\nER  - \n', 'TY  - JOUR\nN2  - n2 only\nER  - \n',
         'TY  - JOUR\nTI  - a\nER  - \n\nTY  - BOOK\nTI  - b\nER  - \n\nTY  - JOUR\nTI  - c\nER  - \n',
         'TY  - JOUR\nTI  -no space\nER  -\n', 'TY  - JOUR\nTI  -  padded value  \nER  - \n',
+        # 3.0.0b6: stray lines, a last record without ER, mastersthesis, A4 and Y2, the DOI next to another URL
+        'TY  - JOUR\nKW  - a\nTI  - First\nER  - \n\nTY  - JOUR\n\nTI  - Second\nKW  - b\n\nAU  - Smith, J\nER  - \n\n'
+        'TY  - JOUR\nstray text\nTI  - Third\nER  - \n',
+        'TY  - JOUR\nTI  - First\nER  - \n\nTY  - JOUR\nTI  - Second\n\n', 'TY  - JOUR\nTI  - Only', 'TY  - JOUR\nTI  - a\n\nb\nER  -',
+        'TY  - JOUR\n  \n\nstray\nTI  - x\nER  - \n', 'TY  - JOUR\nTI  - a\n  \n b\nER  - \n', 'TY  - JOUR\nER  - \nTY  - BOOK',
+        'TY  - JOUR\nTI  - x\nER  - \njunk\n\nTY  - BOOK\nTI  - y\nER  - \n', 'TY  - JOUR\nTI  - x\nTY  - BOOK\nTI  - y\nER  - \n',
+        'TY  - JOUR\nTI  -xA title\nAU  - Smith, J\nER  - \n', 'TY  - JOUR\nxx  - not a tag\nTI  - x\nER  - \n',
+        'TY  - JOUR\n1A  - not a tag\nTI  - x\nER  - \n', 'TY  - JOUR\nA1  - Doe, Jane\nTI  - x\nER  - \n',
+        'TY  - THES\nTI  - T\nPB  - ETH\nM3  - Master\'s thesis\nPY  - 2020\nER  - \n', 'TY  - THES\nTI  - T\nPB  - ETH\nM3  - MASTER of Science\nER  - \n',
+        'TY  - THES\nTI  - T\nPB  - ETH\nM3  - PhD\nER  - \n', 'TY  - THES\nTI  - T\nPB  - ETH\nER  - \n', 'TY  - BOOK\nPB  - P\nM3  - Master\nER  - \n',
+        'TY  - THES\nM3  - \nM3  - Master\nER  - \n', 'TY  - THES\nM3  - PhD\nM3  - Master\nER  - \n',
+        'TY  - BOOK\nA4  - Doe, Jane\nA4  - Roe, , Jr\nA4  - Org Name\nY2  - 2024-03-01\nER  - \n',
+        'TY  - JOUR\nUR  - https://example.org/paper\nUR  - https://doi.org/10.1000/xyz\nER  - \n',
+        'TY  - JOUR\nUR  - https://doi.org/10.1000/xyz;https://example.org/paper;doi:10.2/q\nER  - \n',
+        'TY  - JOUR\nDO  - 10.1/a\nUR  - https://doi.org/10.1000/xyz\nUR  - https://example.org/paper\nER  - \n',
+        'TY  - JOUR\nUR  - doi:10.1/x\nUR  - doi:10.2/y\nER  - \n',
+        'TY  - JOUR\nTI  - R&D 50% of #1 in a_b\nAU  - AT&T\nAU  - Smith_Jones, A\nT2  - Science & Policy\nUR  - http://x/a_b?x=1&y=2\n'
+        'KW  - sea_level\nKW  - a&b\nY2  - 2020_1\nAB  - a_b \\\\& c\\_d\nPB  - R&D\nCY  - A&B\nER  - \n',
+        'TY  - JOUR\nTI  - R\\&D\\\\&\nER  - \n', 'TY  - JOUR\nTI  - &&__%%##\nER  - \n',
+        'TY  - RPRT\nT2  - S\nER  - \n', 'TY  - CHAP\nT2  - S\nER  - \n', 'TY  - CPAPER\nT2  - S\nER  - \n', 'TY  - BOOK\nT2  - S\nER  - \n',
+        'TY  - CONF\nT2  - S\nER  - \n', 'TY  - ENCYC\nT2  - S\nER  - \n', 'TY  - THES\nT2  - S\nER  - \n', 'TY  - DATA\nT2  - S\nER  - \n',
     ],
     'csl-json': [
         '[]', '{}', '[{}]', '{"items": []}', '{"items": [{"id": "a", "type": "book", "title": "T"}]}',
@@ -225,6 +257,19 @@ HAND_IMPORTS = {
         '{"items": [{"id": "a"}], "other": 1}', '[{"genre": ["Master"], "type": "thesis"}]',
         '[{"author": {"family": "Doe"}}, {"editor": 5}]', '[{"translator": [{"family": "T"}]}]',
         '[{"title": {"a": [1, 2.5, true, null]}}]',
+        # 3.0.0b6
+        '[{"issued": {"date-parts": [[2013, 0, 5]]}}, {"issued": {"date-parts": [["2013", "", "5"]]}}, {"issued": {"date-parts": [[2013, null, 5]]}}]',
+        '[{"issued": {"date-parts": [[2013, 5, 0]]}}, {"issued": {"date-parts": [[0, 5, 2]]}}, {"issued": {"date-parts": [[2013, "x", 5]]}, "accessed": {"raw": "2020-00-04"}}]',
+        '[{"issued": {"date-parts": [[2013, [], 5]], "raw": "1999-02"}}, {"issued": {"date-parts": [[2013.0, 5.0]]}}, {"issued": {"raw": "2013-00-05"}}]',
+        '[{"accessed": {"date-parts": [[2020, 3, 0]]}}, {"accessed": {"date-parts": [[2020, 0, 4]]}}]',
+    ] + [json.dumps([{'type': t, 'title': 'T', 'container-title': 'C'}]) for t in (
+        'chapter', 'paper-conference', 'entry-encyclopedia', 'entry-dictionary', 'article-journal', 'article-magazine', 'book', 'dataset',
+        'report', 'manuscript', 'webpage', 'document', 'thesis', 'software', 'patent', 'pamphlet', 'article', 'post')] + [
+        '[{"id": "x", "type": "article-journal", "title": "R&D: 5% of #1 in a_b", "container-title": "Science & Policy", "URL": "https://example.org/a_b?x=1&y=2",'
+        ' "DOI": "10.1000/a_b", "keyword": "sea_level", "author": [{"family": "AT&T", "given": "A_B"}, "Org & Co", {"literal": "R_D"}], "note": "a#b",'
+        ' "accessed": {"raw": "2020_01"}, "publisher": "P&Q", "publisher-place": "A%B", "abstract": "x_y"}]',
+        '[{"id": "x", "type": "book", "title": "R\\\\&D \\\\\\\\& \\\\_ \\\\\\\\_"}, {"title": "&&__"}]',
+        '[{"type": "thesis", "genre": "Master\'s thesis", "publisher": "Univ_X", "container-title": "C"}]',
     ],
     'bibjson': [
         '{"metadata": {"records": 0}, "records": []}', '[]', '{}', '[{}]', '{"records": {"id": "a"}}', '{"id": "a", "title": "one"}', '"x"', '',
@@ -238,6 +283,15 @@ HAND_IMPORTS = {
         '[{"file": ["a.pdf", "file:///b.pdf", "http://x"], "id": "f"}, {"file": "p.pdf;q.pdf"}]',
         '[{"title": {"name": "T"}, "journal": "plain", "booktitle": {"x": 1}}]', '[{"title": {"x": 1}}]', '[{"title": []}, {"title": [[]]}]',
         '[{"Title": "Upper", "title": "lower"}]', '[{"type": "BOOK", "id": "a b"}]',
+        # 3.0.0b6: namespaced keys, null, numbers as written, booleans
+        '[{"type": "techreport", "id": "wp", "bibtex:type": "Working paper", "bibtex:id": "X1", "bibtex:cid": "c", "bibtex:file": "f", "bibtex:author": ["A, B", null]}]',
+        '[{"bibtex:": "empty", "bibtex:x": 1, "bibtex:bibtex:y": 2, "bibtex": "plain", "Bibtex:z": 3, "_u": 4, "bibtex:_u": 5}]',
+        '[{"type": "misc", "id": "x", "year": 2000, "number": 0.0000001, "volume": 1E3, "keywords": ["a", null, "b"], "author": [null, {"name": "Doe, J"}]}]',
+        '[{"type": "misc", "id": "x", "year": 2000.0, "note": null, "peer-reviewed": true, "x": false, "n": -0, "m": 1e22, "k": -1.5E-3, "z": 0}]',
+        '[{"year": 9007199254740993, "pages": 12345678901234567890123, "title": {"name": null}, "t2": {"name": 5}, "t3": [null, null], "t4": [[null], 1]}]',
+        '[{"id": 0}, {"id": 12}, {"cid": 5}, {"type": 5, "id": "a"}, {"type": 0}, {"type": false}, {"type": "x", "id": true}]',
+        '{"records": [{"type": "x", "a": null}], "metadata": {"namespace": {"bibtex": "http://x"}}}', '[{"a": 01}]', '[{"a": 1.}]', '[{"a": .5}]', '[{"a": -}]',
+        '[{"a": NaN, "b": Infinity, "c": -Infinity}]',
     ],
 }
 

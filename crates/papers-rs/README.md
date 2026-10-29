@@ -41,8 +41,10 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   they are written in, the name parsing, the dates, the pages and the DOIs they
   share, and the lines of `papers list` (colours and terminal hyperlinks included).
   The import of CSL-JSON, RIS and BibJSON texts as bibtex entries (`formats::import::loads`:
-  what `add FILE` and `edit --from` read), with the errors and quirks of papers and of the
-  `rispy` reader; the commands that read them are not ported yet.
+  what `add FILE` and `edit --from` read), with the errors and quirks of papers (of papers 3.0.0b6:
+  `&` `%` `#` `_` escaped for LaTeX in RIS and CSL-JSON, the stray lines of RIS and a last record
+  without `ER`, numbers of BibJSON as written, `bibtex:type` for a bibtex field named as a BibJSON key)
+  and of the `rispy` reader.
 - `search`: the selection of `papers list`: words and fields (substring, wildcards,
   fuzzy by rapidfuzz's `token_set_ratio`, which the `rapidfuzz` crate's Indel distance
   gives), tags, files, the entries to review (the DOI parser of `papers.extract`),

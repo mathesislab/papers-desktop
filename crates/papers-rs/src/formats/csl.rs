@@ -120,9 +120,20 @@ pub fn entry_to_csl(entry: &Entry, files: &[String]) -> J {
             );
         }
     }
+    // the publisher of a thesis, a report... is at the position of `publisher`
+    let publisher = ["publisher", "school", "institution", "organization"]
+        .into_iter()
+        .map(|name| f.get(name))
+        .find(|v| !v.is_empty())
+        .unwrap_or("");
     for (bib, key) in SIMPLE {
-        if !f.get(bib).is_empty() {
-            put(&mut item, key, J::str(f.get(bib)));
+        let value = if bib == "publisher" {
+            publisher
+        } else {
+            f.get(bib)
+        };
+        if !value.is_empty() {
+            put(&mut item, key, J::str(value));
         }
     }
     if f.has("doi") {
@@ -151,14 +162,6 @@ pub fn entry_to_csl(entry: &Entry, files: &[String]) -> J {
             "page",
             J::str(pages_to_bibtex(f.get("pages")).replace("--", "-")),
         );
-    }
-    if f.get("publisher").is_empty() {
-        for name in ["school", "institution", "organization"] {
-            if !f.get(name).is_empty() {
-                put(&mut item, "publisher", J::str(f.get(name)));
-                break;
-            }
-        }
     }
     if entry_type == "phdthesis" {
         put(&mut item, "genre", J::str("PhD thesis"));

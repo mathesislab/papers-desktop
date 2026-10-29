@@ -2,6 +2,7 @@
 //! CSL-JSON, RIS or BibJSON file as bibtex entries, with the quirks of papers' code (and of the
 //! `rispy` reader for RIS).
 
+use super::bibjson::{NAMESPACE, SKIPPED};
 use super::common::{clean_doi, date_parts, has_doi_prefix, pages_to_bibtex, usable_key};
 use super::names::{Name, bibtex_name_of_ris, format_bibtex_names};
 use crate::bib::encoding::format_file;
@@ -59,8 +60,13 @@ fn truthy(value: Option<&J>) -> bool {
 }
 
 /// The text of a JSON text, or the message of the error: `not a CSL-JSON file: Expecting value: ...`.
-fn parse(text: &str, label: &str) -> Result<J, String> {
-    match J::parse(text) {
+fn parse(text: &str, label: &str, numbers_as_text: bool) -> Result<J, String> {
+    let parsed = if numbers_as_text {
+        J::parse_numbers_as_text(text)
+    } else {
+        J::parse(text)
+    };
+    match parsed {
         Some(value) => Ok(value),
         None => {
             let why = match json_loads(text) {
@@ -100,14 +106,48 @@ impl Fields {
     }
 }
 
-/// `_entry`: the fields that are not empty, and the file links.
-fn make_entry(entry_type: &str, key: &str, fields: Fields, files: &[String]) -> Entry {
+/// The fields where `&`, `%`, `#` and `_` are not escaped (`_RAW_FIELDS`, the keywords and the date of
+/// the access).
+const NOT_ESCAPED: [&str; 8] = [
+    "url", "doi", "file", "eprint", "isbn", "issn", "keywords", "urldate",
+];
+
+/// A text with the `&`, `%`, `#` and `_` that no backslash precedes escaped for LaTeX (`_LATEX_SPECIAL`).
+fn latex_escaped(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut previous = None;
+    for c in value.chars() {
+        if matches!(c, '&' | '%' | '#' | '_') && previous != Some('\\') {
+            out.push('\\');
+        }
+        out.push(c);
+        previous = Some(c);
+    }
+    out
+}
+
+/// `_entry`: the fields that are not empty (with `escape`, `&` `%` `#` `_` escaped for LaTeX: RIS
+/// and CSL-JSON hold plain text), and the file links.
+fn make_entry(
+    entry_type: &str,
+    key: &str,
+    fields: Fields,
+    files: &[String],
+    escape: bool,
+) -> Entry {
     let mut entry = Entry::new(entry_type, key);
     entry.fields = fields
         .0
         .into_iter()
         .filter(|(_, v)| !v.is_empty())
-        .map(|(k, v)| Field::new(k, v))
+        .map(|(k, v)| {
+            let v = if escape && !NOT_ESCAPED.contains(&k.as_str()) {
+                latex_escaped(&v)
+            } else {
+                v
+            };
+            Field::new(k, v)
+        })
         .collect();
     if !files.is_empty() {
         entry.fields.retain(|f| f.key != "file");
@@ -238,6 +278,29 @@ fn csl_text(v: &J) -> String {
     }
 }
 
+/// The numbers of date parts up to the first missing or zero one (`_leading_parts`: `[2013, 0, 5]`
+/// is the year 2013 only); `None` for a part that is not a number (the date is then read as text).
+fn leading_parts(parts: &[J]) -> Option<Vec<i128>> {
+    let mut numbers = Vec::new();
+    for x in parts {
+        if matches!(x, J::Null) || strip(&py_str(x)).is_empty() {
+            break;
+        }
+        let n = match x {
+            J::Int(n) => *n as i128,
+            J::Str(s) => s.trim().parse::<i128>().ok()?,
+            J::Float(f) if f.is_finite() => *f as i128,
+            J::Bool(b) => *b as i128,
+            _ => return None,
+        };
+        if n <= 0 {
+            break;
+        }
+        numbers.push(n);
+    }
+    Some(numbers)
+}
+
 /// The date numbers of a CSL date (`_csl_date`): `date-parts`, else `raw`, else `literal`, or a date text.
 fn csl_date(value: Option<&J>) -> Vec<i128> {
     match value {
@@ -246,21 +309,9 @@ fn csl_date(value: Option<&J>) -> Vec<i128> {
             if let Some(J::Arr(parts)) = object.get("date-parts")
                 && let Some(J::Arr(first)) = parts.first()
                 && !first.is_empty()
+                && let Some(numbers) = leading_parts(first)
             {
-                let numbers: Option<Vec<i128>> = first
-                    .iter()
-                    .filter(|x| !strip(&py_str(x)).is_empty())
-                    .map(|x| match x {
-                        J::Int(n) => Some(*n as i128),
-                        J::Str(s) => s.trim().parse::<i128>().ok(),
-                        J::Float(f) => Some(*f as i128),
-                        J::Bool(b) => Some(*b as i128),
-                        _ => None,
-                    })
-                    .collect();
-                if let Some(numbers) = numbers {
-                    return numbers;
-                }
+                return numbers;
             }
             let text = ["raw", "literal"]
                 .iter()
@@ -319,6 +370,16 @@ fn csl_name(n: &J, part: &dyn Fn(&J, &str) -> Option<String>) -> Name {
     }
 }
 
+/// The field of the container title (`container-title`, `T2`): the `booktitle` of the parts of a book
+/// or of proceedings, the `journal` of any other type.
+fn container_field(entry_type: &str) -> &'static str {
+    if matches!(entry_type, "incollection" | "inproceedings") {
+        "booktitle"
+    } else {
+        "journal"
+    }
+}
+
 /// A bibtex entry of a CSL-JSON item (`csl_to_entry`); its key is empty if the item has none usable.
 pub fn csl_to_entry(item: &J) -> Entry {
     let get = |k: &str| item.get(k);
@@ -368,14 +429,7 @@ pub fn csl_to_entry(item: &J) -> Entry {
     }
     let container = get("container-title").map(csl_text).unwrap_or_default();
     if !container.is_empty() {
-        fields.set(
-            if matches!(entry_type, "article" | "misc" | "online") {
-                "journal"
-            } else {
-                "booktitle"
-            },
-            container,
-        );
+        fields.set(container_field(entry_type), container);
     }
     let number = if truthy(get("issue")) {
         get("issue")
@@ -449,11 +503,11 @@ pub fn csl_to_entry(item: &J) -> Entry {
             k
         }
     };
-    make_entry(entry_type, &key, fields, &files)
+    make_entry(entry_type, &key, fields, &files, true)
 }
 
 fn loads_csl(text: &str) -> Result<Vec<Entry>, String> {
-    let data = parse(text, "CSL-JSON")?;
+    let data = parse(text, "CSL-JSON", false)?;
     let items: Vec<J> = match data {
         J::Obj(_) => match data.get("items") {
             Some(J::Arr(items)) => items.clone(),
@@ -477,37 +531,37 @@ fn bibjson_text(value: &J) -> String {
         J::Obj(_) => bibjson_text(value.get("name").unwrap_or(&J::Str(String::new()))),
         J::Arr(items) => items
             .iter()
+            .filter(|v| !matches!(v, J::Null))
             .map(bibjson_text)
             .collect::<Vec<_>>()
             .join(", "),
+        J::Bool(b) => if *b { "true" } else { "false" }.into(),
         v => py_str(v),
     }
 }
 
 /// A bibtex entry of a BibJSON record (`bibjson_to_entry`).
 pub fn bibjson_to_entry(record: &J) -> Entry {
-    const SKIPPED: [&str; 8] = [
-        "type",
-        "id",
-        "cid",
-        "collection",
-        "file",
-        "identifier",
-        "link",
-        "license",
-    ];
     let J::Obj(items) = record else {
         return Entry::new("misc", "");
     };
     let mut fields = Fields::default();
+    let prefix = format!("{NAMESPACE}:");
     for (name, value) in items {
-        if name.starts_with('_') || SKIPPED.contains(&name.as_str()) {
+        let name = match name.strip_prefix(&prefix) {
+            // a bibtex field named as a key of BibJSON
+            Some(field) => field,
+            None if name.starts_with('_') || SKIPPED.contains(&name.as_str()) => continue,
+            None => name,
+        };
+        if matches!(value, J::Null) {
             continue;
         }
         match value {
             J::Arr(list) if name == "author" || name == "editor" => fields.set(
                 name,
                 list.iter()
+                    .filter(|v| !matches!(v, J::Null))
                     .map(bibjson_text)
                     .collect::<Vec<_>>()
                     .join(" and "),
@@ -554,11 +608,18 @@ pub fn bibjson_to_entry(record: &J) -> Entry {
         Some(v) if truthy(Some(v)) => py_str(v).to_lowercase(),
         _ => "misc".to_string(),
     };
-    make_entry(&entry_type, &key, fields, &file_paths(record.get("file")))
+    make_entry(
+        &entry_type,
+        &key,
+        fields,
+        &file_paths(record.get("file")),
+        false,
+    )
 }
 
 fn loads_bibjson(text: &str) -> Result<Vec<Entry>, String> {
-    let data = parse(text, "BibJSON")?;
+    // the numbers as written
+    let data = parse(text, "BibJSON", true)?;
     let records: Vec<J> = match data {
         J::Obj(_) => match data.get("records") {
             Some(J::Arr(items)) => items.clone(),
@@ -844,7 +905,15 @@ fn ris_to_entry(record: &Record) -> Entry {
             .unwrap_or_else(|| "GEN".to_string());
         strip(&t).to_uppercase()
     };
-    let entry_type = ris_to_bibtex_type(&ris_type);
+    let mut entry_type = ris_to_bibtex_type(&ris_type);
+    if ris_type == "THES"
+        && record
+            .first(&["type_of_work"])
+            .to_lowercase()
+            .contains("master")
+    {
+        entry_type = "mastersthesis";
+    }
     let mut fields = Fields::default();
     let mut authors = record.list("authors");
     authors.extend(record.list("first_authors"));
@@ -873,6 +942,15 @@ fn ris_to_entry(record: &Record) -> Entry {
             .collect();
         fields.set("editor", names.join(" and "));
     }
+    let translators = record.list("subsidiary_authors");
+    if !translators.is_empty() {
+        let names: Vec<String> = translators
+            .iter()
+            .filter(|a| !strip(a).is_empty())
+            .map(|a| bibtex_name_of_ris(a))
+            .collect();
+        fields.set("translator", names.join(" and "));
+    }
     fields.set("title", record.first(&["title", "primary_title"]));
     let container = record.first(&[
         "secondary_title",
@@ -882,14 +960,7 @@ fn ris_to_entry(record: &Record) -> Entry {
         "alternate_title1",
     ]);
     if !container.is_empty() {
-        fields.set(
-            if matches!(entry_type, "article" | "misc" | "online") {
-                "journal"
-            } else {
-                "booktitle"
-            },
-            container,
-        );
+        fields.set(container_field(entry_type), container);
     }
     if record.truthy("tertiary_title") {
         fields.set("series", record.first(&["tertiary_title"]));
@@ -916,9 +987,18 @@ fn ris_to_entry(record: &Record) -> Entry {
         .collect();
     if let Some(url) = urls.first() {
         fields.set("url", strip(url).to_string());
-    } else if fields.get("doi").is_empty() && !all_urls.is_empty() {
-        fields.set("doi", clean_doi(&all_urls[0]));
     }
+    // no DO line: the DOI of a doi.org link, also next to another URL
+    let doi_urls: Vec<&String> = all_urls
+        .iter()
+        .filter(|u| has_doi_prefix(strip(u)))
+        .collect();
+    if fields.get("doi").is_empty()
+        && let Some(url) = doi_urls.first()
+    {
+        fields.set("doi", clean_doi(url));
+    }
+    fields.set("urldate", record.first(&["access_date"]));
     for sn in record.list("issn") {
         let first_word = sn.split(is_space).find(|w| !w.is_empty()).unwrap_or("");
         let digits = first_word
@@ -934,7 +1014,7 @@ fn ris_to_entry(record: &Record) -> Entry {
     if !publisher.is_empty() {
         fields.set(
             match entry_type {
-                "phdthesis" => "school",
+                "phdthesis" | "mastersthesis" => "school",
                 "techreport" => "institution",
                 _ => "publisher",
             },
@@ -976,11 +1056,50 @@ fn ris_to_entry(record: &Record) -> Entry {
         &usable_key(&record.first(&["id"])),
         fields,
         &files,
+        true,
     )
 }
 
+/// A line of a RIS tag as `_RIS_TAG` takes it: two characters (a capital, then a capital or a digit),
+/// two spaces and a dash.
+fn is_tag_line(line: &str) -> bool {
+    let b = line.as_bytes();
+    b.len() >= 5
+        && b[0].is_ascii_uppercase()
+        && (b[1].is_ascii_uppercase() || b[1].is_ascii_digit())
+        && b[2..5] == *b"  -"
+}
+
+/// The RIS text without the blank lines inside a record and the lines without tag between `TY` and
+/// the first tag (`_ris_without_stray_lines`: `rispy` reads them as the continuation of the last tag
+/// of the previous record, an error for a single tag such as `TI`, an empty keyword for `KW`); a last
+/// record without `ER` gets one (rispy drops it otherwise).
+fn without_stray_lines(text: &str) -> String {
+    let mut lines: Vec<&str> = Vec::new();
+    let (mut inside, mut tagged) = (false, false);
+    for line in text.split('\n') {
+        if is_tag_line(line) {
+            if line.starts_with("TY  -") {
+                (inside, tagged) = (true, false);
+            } else {
+                tagged = true;
+                if line.starts_with("ER  -") {
+                    inside = false;
+                }
+            }
+        } else if inside && (strip(line).is_empty() || !tagged) {
+            continue;
+        }
+        lines.push(line);
+    }
+    if inside {
+        lines.push("ER  - ");
+    }
+    lines.join("\n")
+}
+
 fn loads_ris(text: &str) -> Result<Vec<Entry>, String> {
-    let text = text.trim_start_matches('\u{feff}').replace("\r\n", "\n");
+    let text = without_stray_lines(&text.trim_start_matches('\u{feff}').replace("\r\n", "\n"));
     let records = read_ris(&text)?;
     if records.is_empty() && !strip(&text).is_empty() {
         return Err("not a RIS file: no record found (a record starts with TY  - )".into());

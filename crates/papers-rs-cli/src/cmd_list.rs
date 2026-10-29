@@ -396,28 +396,34 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
     } else {
         leaf.string("format").unwrap_or_else(|| "line".to_string())
     };
+    // the listing is the data of the command: on the standard output, with --porcelain too
     if !fields.is_empty() {
         for e in &entries {
-            let mut parts = vec![format_key(e, no_key, style)];
+            // without the key, the values only
+            let mut parts = if no_key {
+                Vec::new()
+            } else {
+                vec![format_key(e, false, style)]
+            };
             parts.extend(fields.iter().map(|k| field_value(e, k).to_string()));
-            log::println(&parts.join(" "));
+            log::println_data(&parts.join(" "));
         }
     } else if format == "key" {
         for e in &entries {
-            log::println(&e.key);
+            log::println_data(&e.key);
         }
     } else if format == "bibtex" {
         let bib = Bib {
             blocks: entries.iter().map(|e| Block::Entry((*e).clone())).collect(),
         };
-        log::println(&bib.format());
+        log::println_data(&bib.format());
     } else if let Some(f) = Format::from_id(&format) {
-        log::print(&dumps(&entries, f, &|e| {
+        log::print_data(&dumps(&entries, f, &|e| {
             papers_rs::entry::files(e, Some(&library.relative_to))
         }));
     } else {
         for e in &entries {
-            log::println(&format_entry(e, &library.relative_to, no_key, "", style));
+            log::println_data(&format_entry(e, &library.relative_to, no_key, "", style));
         }
     }
     Ok(())

@@ -35,7 +35,8 @@ pub fn parse_month(value: &str) -> Option<i128> {
 }
 
 /// The year, month, day numbers of a date text (`_date_parts`): `2013`,
-/// `2013-05`, `2013/05/02/`, `2013-05-02T00:00`; the numbers that are 0 are left out.
+/// `2013-05`, `2013/05/02/`, `2013-05-02T00:00`; the numbers up to the first one that is 0 or
+/// missing (`2013-00-05` is the year 2013 only).
 pub fn date_parts(text: &str) -> Vec<i128> {
     let chars: Vec<char> = text.chars().collect();
     let mut i = 0;
@@ -65,7 +66,11 @@ pub fn date_parts(text: &str) -> Vec<i128> {
         }
         break;
     }
-    groups.iter().map(|g| int(g)).filter(|&n| n > 0).collect()
+    groups
+        .iter()
+        .map(|g| int(g))
+        .take_while(|&n| n > 0)
+        .collect()
 }
 
 /// The year, month, day of an entry: its `year` and `month` fields, else its
@@ -199,7 +204,8 @@ mod tests {
         assert_eq!(date_parts("2013"), [2013]);
         assert_eq!(date_parts(" 2013/05/02/"), [2013, 5, 2]);
         assert_eq!(date_parts("2013-05-02T00:00"), [2013, 5, 2]);
-        assert_eq!(date_parts("2013-00-05"), [2013, 5]);
+        assert_eq!(date_parts("2013-00-05"), [2013]);
+        assert_eq!(date_parts("2013-05-00"), [2013, 5]);
         assert_eq!(date_parts("13-05"), Vec::<i128>::new());
         assert_eq!(parse_month("{Jan}"), Some(1));
         assert_eq!(parse_month("13"), None);

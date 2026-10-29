@@ -58,12 +58,11 @@ pub fn error(message: &str) {
     log(ERROR, "error", message);
 }
 
-/// Text on the standard output as it is (the standard error with `--porcelain`).
-pub fn print(text: &str) {
-    let result = if porcelain() {
-        write!(std::io::stderr().lock(), "{text}")
+fn write_out(text: &str, to_stderr: bool) {
+    let result = if to_stderr {
+        std::io::stderr().lock().write_all(text.as_bytes())
     } else {
-        write!(std::io::stdout().lock(), "{text}")
+        std::io::stdout().lock().write_all(text.as_bytes())
     };
     if let Err(error) = result
         && error.kind() == std::io::ErrorKind::BrokenPipe
@@ -72,18 +71,25 @@ pub fn print(text: &str) {
     }
 }
 
+/// Text on the standard output as it is (the standard error with `--porcelain`).
+pub fn print(text: &str) {
+    write_out(text, porcelain());
+}
+
 /// `print()`: a line on the standard output (the standard error with
 /// `--porcelain`). A closed pipe ends the process with status 1, as papers
 /// does.
 pub fn println(message: &str) {
-    let result = if porcelain() {
-        writeln!(std::io::stderr().lock(), "{message}")
-    } else {
-        writeln!(std::io::stdout().lock(), "{message}")
-    };
-    if let Err(error) = result
-        && error.kind() == std::io::ErrorKind::BrokenPipe
-    {
-        std::process::exit(1);
-    }
+    write_out(&format!("{message}\n"), porcelain());
+}
+
+/// Text that is the data of the command (the listing of `papers list`): on the standard output,
+/// also with `--porcelain`.
+pub fn print_data(text: &str) {
+    write_out(text, false);
+}
+
+/// A line of the data of the command, as [`print_data`].
+pub fn println_data(message: &str) {
+    write_out(&format!("{message}\n"), false);
 }

@@ -6,9 +6,26 @@ use super::names::{Sep, split_depth0};
 use crate::bib::Entry;
 use crate::history::ojson::J;
 
+/// The keys that BibJSON gives a meaning: a bibtex field of that name is written as `bibtex:NAME`.
+pub(crate) const SKIPPED: [&str; 8] = [
+    "type",
+    "id",
+    "cid",
+    "collection",
+    "file",
+    "identifier",
+    "link",
+    "license",
+];
+
+/// The namespace of the keys of bibtex fields that BibJSON gives a meaning, and its URL (in the
+/// metadata of the collection).
+pub(crate) const NAMESPACE: &str = "bibtex";
+const NAMESPACE_URL: &str = "https://www.bibtex.org/Format/";
+
 /// The BibJSON record of an entry: `type` and `id`, the fields in the order
 /// of the entry (`author` and `editor` as lists of `{"name": ...}`, `journal` as
-/// `{"name": ...}`), then the file links.
+/// `{"name": ...}`, a field named as a key of BibJSON as `bibtex:NAME`), then the file links.
 pub fn entry_to_bibjson(entry: &Entry, files: &[String]) -> J {
     let mut record: Vec<(String, J)> = vec![
         ("type".into(), J::str(&entry.entry_type)),
@@ -24,6 +41,14 @@ pub fn entry_to_bibjson(entry: &Entry, files: &[String]) -> J {
                     .collect(),
             ),
             "journal" => J::Obj(vec![("name".into(), J::str(&field.value))]),
+            name if SKIPPED.contains(&name) => {
+                put(
+                    &mut record,
+                    &format!("{NAMESPACE}:{name}"),
+                    J::str(&field.value),
+                );
+                continue;
+            }
             _ => J::str(&field.value),
         };
         put(&mut record, &field.key, value);
@@ -40,11 +65,20 @@ pub fn dumps_bibjson(entries: &[&Entry], files: &dyn Fn(&Entry) -> Vec<String>) 
         .iter()
         .map(|e| entry_to_bibjson(e, &files(e)))
         .collect();
+    let mut metadata = vec![("records".to_string(), J::Int(records.len() as i64))];
+    let prefix = format!("{NAMESPACE}:");
+    let namespaced = records.iter().any(|record| match record {
+        J::Obj(items) => items.iter().any(|(name, _)| name.starts_with(&prefix)),
+        _ => false,
+    });
+    if namespaced {
+        metadata.push((
+            "namespace".into(),
+            J::Obj(vec![(NAMESPACE.into(), J::str(NAMESPACE_URL))]),
+        ));
+    }
     dumps(&J::Obj(vec![
-        (
-            "metadata".into(),
-            J::Obj(vec![("records".into(), J::Int(records.len() as i64))]),
-        ),
+        ("metadata".into(), J::Obj(metadata)),
         ("records".into(), J::Arr(records)),
     ]))
 }

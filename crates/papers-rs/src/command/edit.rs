@@ -7,7 +7,7 @@
 
 use crate::bib::{Bib, Block, Entry};
 use crate::config::json::py_repr_str;
-use crate::entry::val;
+use crate::entry::{files, set_files, val};
 use crate::error::{Error, Result};
 use crate::library::Library;
 use crate::log;
@@ -236,6 +236,12 @@ pub fn replace_from_text_in(
         )));
     }
     let mut new = new.remove(0);
+    if let Some(base) = links_from
+        && new.get("file").is_some()
+    {
+        let links = files(&new, Some(base));
+        set_files(&mut new, &links, &library.relative_to);
+    }
     let old = library
         .get(key)
         .cloned()

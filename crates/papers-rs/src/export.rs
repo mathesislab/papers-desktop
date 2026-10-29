@@ -124,6 +124,16 @@ fn history_ops(ops: &[library::FileOp]) -> Vec<FileOp> {
         .collect()
 }
 
+/// The name of the bibtex of an exported library: that of the library (`export_bibtex_name`).
+pub fn export_bibtex_name(config: &Config) -> String {
+    config
+        .bibtex
+        .as_deref()
+        .filter(|b| !b.is_empty())
+        .map(basename)
+        .unwrap_or_else(|| Format::Bibtex.filename().to_string())
+}
+
 /// The new library in `dest` (`create_library`): self-contained, with its files directory.
 fn create_library(dest: &str, config: &Config, bibtex: &str) -> Result<Config> {
     let options = InstallOptions {
@@ -180,12 +190,7 @@ pub fn export(
     let mut new: Option<Config> = None;
     let mut target;
     if make_library {
-        let name = config
-            .bibtex
-            .as_deref()
-            .map(basename)
-            .unwrap_or_else(|| Format::Bibtex.filename().to_string());
-        let mut created = create_library(&dest, config, &name)?;
+        let mut created = create_library(&dest, config, &export_bibtex_name(config))?;
         for (setting, _) in SETTINGS.iter() {
             if (setting.starts_with("name.") || setting.starts_with("key."))
                 && config.source(setting) == "library"
@@ -319,7 +324,7 @@ pub fn export(
     if !make_library {
         log::println(&format!(
             "{dest} is not a papers library (no {}): --format bib or all makes one",
-            Format::Bibtex.filename()
+            export_bibtex_name(config)
         ));
     }
     Ok(())

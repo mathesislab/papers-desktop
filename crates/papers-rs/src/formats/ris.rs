@@ -39,7 +39,8 @@ pub fn entry_to_ris(entry: &Entry, files: &[String]) -> Vec<(&'static str, Strin
         ("TY", ris_type(&entry_type).to_string()),
         ("ID", entry.key.clone()),
     ];
-    for (tag, field) in [("AU", "author"), ("ED", "editor")] {
+    // A4: the translators, as in Zotero
+    for (tag, field) in [("AU", "author"), ("ED", "editor"), ("A4", "translator")] {
         for name in parse_bibtex_names(val(entry, field)) {
             lines.push((tag, ris_name(&name)));
         }
@@ -95,6 +96,9 @@ pub fn entry_to_ris(entry: &Entry, files: &[String]) -> Vec<(&'static str, Strin
     if let Some(url) = first(&["url"]) {
         lines.push(("UR", url.to_string()));
     }
+    if let Some(urldate) = first(&["urldate"]) {
+        lines.push(("Y2", urldate.to_string()));
+    }
     for name in ["isbn", "issn"] {
         if let Some(number) = first(&[name]) {
             lines.push(("SN", number.to_string()));
@@ -135,6 +139,9 @@ pub fn entry_to_ris(entry: &Entry, files: &[String]) -> Vec<(&'static str, Strin
         )
     {
         lines.push(("M3", f.get("type").to_string()));
+    } else if entry_type == "mastersthesis" {
+        // read back as a mastersthesis
+        lines.push(("M3", "Master's thesis".to_string()));
     }
     for file in files {
         lines.push(("L1", file.clone()));

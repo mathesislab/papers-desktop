@@ -158,13 +158,18 @@ pub fn parse_bibtex_name(name: &str) -> Name {
         particle = p.join(" ");
         suffix = String::new();
     } else {
+        // Last, First or Last, Jr, First; further commas belong to First
         let last = &parts[0];
-        suffix = if parts.len() == 3 {
+        suffix = if parts.len() >= 3 {
             parts[1].clone()
         } else {
             String::new()
         };
-        given = parts[parts.len() - 1].clone();
+        given = if parts.len() >= 3 {
+            parts[2..].join(", ")
+        } else {
+            parts[1].clone()
+        };
         let mut tokens = split_depth0(last, Sep::Space);
         let mut particles: Vec<String> = Vec::new();
         while tokens.len() > 1 && is_particle(&tokens[0]) {
@@ -213,7 +218,12 @@ pub fn format_bibtex_name(name: &Name) -> String {
     let given = given.join(" ");
     let suffix = truthy(&name.suffix);
     if !suffix.is_empty() {
-        return format!("{family}, {suffix}, {given}");
+        // the last comma stays without given name: it marks the suffix as one
+        return if given.is_empty() {
+            format!("{family}, {suffix},")
+        } else {
+            format!("{family}, {suffix}, {given}")
+        };
     }
     if given.is_empty() {
         family
@@ -243,18 +253,14 @@ pub(crate) fn ris_name(name: &Name) -> String {
     let family = family.join(" ");
     let given = truthy(&name.given);
     let suffix = truthy(&name.suffix);
-    let mut parts = vec![family.as_str(), given];
     if !suffix.is_empty() {
-        parts.push(suffix);
+        // an empty given name keeps its place
+        return format!("{family}, {given}, {suffix}");
     }
-    if !given.is_empty() || parts.len() > 2 {
-        parts
-            .into_iter()
-            .filter(|p| !p.is_empty())
-            .collect::<Vec<_>>()
-            .join(", ")
-    } else {
+    if given.is_empty() {
         family
+    } else {
+        format!("{family}, {given}")
     }
 }
 
@@ -271,7 +277,11 @@ pub fn bibtex_name_of_ris(name: &str) -> String {
     }
     let parts: Vec<&str> = name.split(',').map(strip).collect();
     if parts.len() >= 3 && !parts[2].is_empty() {
-        return format!("{}, {}, {}", parts[0], parts[2], parts[1]);
+        return if parts[1].is_empty() {
+            format!("{}, {},", parts[0], parts[2])
+        } else {
+            format!("{}, {}, {}", parts[0], parts[2], parts[1])
+        };
     }
     if parts[1].is_empty() {
         parts[0].to_string()
@@ -324,7 +334,11 @@ mod tests {
             parts("jean de la fontaine"),
             "family=fontaine,particle=jean de la"
         );
-        assert_eq!(parts("Doe, Jr, Jane, X"), "family=Doe,given=X");
+        assert_eq!(
+            parts("Doe, Jr, Jane, X"),
+            "family=Doe,given=Jane, X,suffix=Jr"
+        );
+        assert_eq!(parts("Doe, Jr,"), "family=Doe,suffix=Jr");
         assert_eq!(parts("A AND B"), "family=B,given=A AND");
     }
 

@@ -120,9 +120,20 @@ impl J {
 
     /// `json.loads`, or `None` when the text is not JSON.
     pub fn parse(text: &str) -> Option<J> {
+        Self::parse_with(text, false)
+    }
+
+    /// `json.loads(text, parse_int=str, parse_float=str)`: the numbers are strings, as written in
+    /// the text (`1E3`, `2000.0`), or `None` when the text is not JSON.
+    pub fn parse_numbers_as_text(text: &str) -> Option<J> {
+        Self::parse_with(text, true)
+    }
+
+    fn parse_with(text: &str, numbers_as_text: bool) -> Option<J> {
         let mut parser = Parser {
             s: text.as_bytes(),
             i: 0,
+            numbers_as_text,
         };
         parser.ws();
         let value = parser.value(0)?;
@@ -184,6 +195,7 @@ impl J {
 struct Parser<'a> {
     s: &'a [u8],
     i: usize,
+    numbers_as_text: bool,
 }
 
 const MAX_DEPTH: usize = 200;
@@ -289,7 +301,10 @@ impl Parser<'_> {
             }
             p.i - from
         };
-        if digits(self) == 0 {
+        // no leading zero: `01` is the number 0 and then a stray 1, as json reads it
+        if self.s.get(self.i) == Some(&b'0') {
+            self.i += 1;
+        } else if digits(self) == 0 {
             return None;
         }
         let mut float = false;
@@ -311,6 +326,9 @@ impl Parser<'_> {
             float = true;
         }
         let text = std::str::from_utf8(&self.s[start..self.i]).ok()?;
+        if self.numbers_as_text {
+            return Some(J::Str(text.to_string()));
+        }
         if float {
             text.parse().ok().map(J::Float)
         } else {
@@ -406,6 +424,14 @@ mod tests {
             J::parse("[1, 2.0, \"a\\ud83d\\ude00\"]").unwrap().dumps(),
             "[\n 1,\n 2.0,\n \"a\\ud83d\\ude00\"\n]"
         );
+    }
+
+    #[test]
+    fn numbers_as_text_are_as_written() {
+        let j = J::parse_numbers_as_text("[2000, 2000.0, 1E3, 0.0000001, -0, 1e22]").unwrap();
+        let expected = ["2000", "2000.0", "1E3", "0.0000001", "-0", "1e22"];
+        assert_eq!(j, J::Arr(expected.iter().map(|n| J::str(*n)).collect()));
+        assert!(J::parse("[01]").is_none());
     }
 
     #[test]
