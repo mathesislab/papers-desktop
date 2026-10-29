@@ -102,8 +102,9 @@ impl OpenAlex {
     }
 }
 
-fn other(message: impl Into<String>) -> FetchError {
-    FetchError::new(ErrorKind::Other, message)
+/// An answer that is an error (an HTTP error status: an `OSError` in papers).
+fn failed(message: impl Into<String>) -> FetchError {
+    FetchError::new(ErrorKind::Network, message)
 }
 
 // the work as a record
@@ -481,7 +482,7 @@ impl Fetcher {
                     .iter()
                     .find_map(|k| b.get(k).and_then(Value::as_str))
             });
-            return Err(other(match said {
+            return Err(failed(match said {
                 Some(said) => format!("OpenAlex: HTTP {}: {said}", response.status),
                 None => format!(
                     "OpenAlex: HTTP {} {}",
@@ -495,7 +496,7 @@ impl Fetcher {
         let works: Vec<Value> = body
             .get("results")
             .and_then(Value::as_array)
-            .ok_or_else(|| other("OpenAlex: no 'results' in the answer"))?
+            .ok_or_else(|| failed("OpenAlex: no 'results' in the answer"))?
             .iter()
             .map(trim)
             .collect();
@@ -525,7 +526,7 @@ impl Fetcher {
             return Ok(None);
         }
         if response.status >= 400 {
-            return Err(other(format!(
+            return Err(failed(format!(
                 "OpenAlex: HTTP {} {}",
                 response.status,
                 py_repr_str(&response.reason)

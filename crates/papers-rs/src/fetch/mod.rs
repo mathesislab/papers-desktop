@@ -7,7 +7,9 @@
 //!
 //! Where papers raises an exception, a [`FetchError`] has its message and what papers
 //! does with it: `NotFound` and `Request` are its `DOINotFoundError` and `DOIRequestError`,
-//! `Value` a `ValueError`, `Other` what papers does not catch (a traceback there).
+//! `Value` a `ValueError`, `Network` an `OSError` (a request that got no answer, an HTTP error
+//! status: `fetch`, `add --doi` and `extract` report it as an error of the DOI or the file),
+//! `Other` what papers does not catch (a traceback there).
 
 pub mod cache;
 pub mod crossref;
@@ -37,6 +39,8 @@ pub enum ErrorKind {
     Request,
     /// another `ValueError`
     Value,
+    /// an `OSError`: no answer from the network, or an HTTP error status
+    Network,
     /// any other exception
     Other,
 }
@@ -62,7 +66,15 @@ impl FetchError {
 
     /// a `ValueError`: what the commands report as an error of the file or the query
     pub fn is_value_error(&self) -> bool {
-        self.kind != ErrorKind::Other
+        matches!(
+            self.kind,
+            ErrorKind::NotFound | ErrorKind::Request | ErrorKind::Value
+        )
+    }
+
+    /// an `OSError`: the network failed (`fetch` and `add --doi` name the DOI in the error)
+    pub fn is_os_error(&self) -> bool {
+        self.kind == ErrorKind::Network
     }
 }
 
@@ -120,7 +132,7 @@ impl Fetcher {
     fn get(&self, url: &str, accept: Option<&str>) -> Result<Response> {
         self.transport
             .get(url, accept)
-            .map_err(|e| FetchError::new(ErrorKind::Other, e))
+            .map_err(|e| FetchError::new(ErrorKind::Network, e))
     }
 
     /// `fetch_crossref_by_doi`: the record of a DOI (the "message" of the API response).
@@ -171,8 +183,13 @@ impl Fetcher {
                 response.status
             )));
         }
-        let mut message =
-            loads(&response.text()).map_err(|e| FetchError::new(ErrorKind::Value, e.message))?;
+        // a JSON error is a DOI without metadata, as crossref's: the website may have a bibtex
+        let mut message = loads(&response.text()).map_err(|e| {
+            request_error(format!(
+                "{doi}: invalid metadata on doi.org ({})",
+                e.message
+            ))
+        })?;
         let Value::Object(map) = &mut message else {
             // `message.get(...)` of what is not a dict
             return Err(FetchError::new(
@@ -308,7 +325,7 @@ impl Fetcher {
             .collect();
         let response = self.get(&with_params("https://api.crossref.org/works", &query), None)?;
         if let Some(message) = response.status_error() {
-            return Err(FetchError::new(ErrorKind::Other, message));
+            return Err(FetchError::new(ErrorKind::Network, message));
         }
         let body =
             loads(&response.text()).map_err(|e| FetchError::new(ErrorKind::Value, e.message))?;
@@ -396,12 +413,12 @@ impl Fetcher {
     /// journal prints DOIs before crossref has them), a link to a `.bib` file on the page the DOI
     /// resolves to, and the entry with that DOI in it.
     pub fn fetch_bibtex_on_journal_website(&self, doi: &str) -> Result<String> {
-        let base_url = format!("https://doi.org/{doi}");
-        let page = self.get(&base_url, None)?;
+        let page = self.get(&format!("https://doi.org/{doi}"), None)?;
         if let Some(message) = page.status_error() {
-            return Err(FetchError::new(ErrorKind::Other, message));
+            return Err(FetchError::new(ErrorKind::Network, message));
         }
-        let base = reqwest::Url::parse(&base_url).ok();
+        // the links are relative to the page that doi.org led to, not to doi.org
+        let base = reqwest::Url::parse(&page.url).ok();
         for href in html::anchor_links(&page.text()) {
             if !href.ends_with(".bib") {
                 continue;
@@ -412,7 +429,7 @@ impl Fetcher {
             };
             let file = self.get(&url, None)?;
             if let Some(message) = file.status_error() {
-                return Err(FetchError::new(ErrorKind::Other, message));
+                return Err(FetchError::new(ErrorKind::Network, message));
             }
             let content = file.text();
             let bib = Bib::parse(&content);

@@ -189,7 +189,8 @@ modules:
 - `extract::doi`: the DOIs of a text, papers' parser character by character (`parse_dois`: the
   normalization of the text, the DOI regexps with Python's `\w`, `\d`, `\s` and the lookbehind
   written out, the choice of the article's DOI among the citations, the cleaning of what follows
-  a DOI), the arXiv fallback, the DOI of the XMP and of the document information of a PDF, the
+  a DOI), the arXiv fallback, the DOI of the XMP (as it is) and of the document information of a PDF
+  (cleaned as a DOI of the text), the
   check of a title in a text, `query_text`.
 - `extract::pdf`, `extract::text`: the text of a PDF. papers uses PyMuPDF (AGPL, not usable);
   papers-rs reads the characters with `pdf-extract` (MIT, on `lopdf`) and makes the lines
@@ -212,7 +213,16 @@ modules:
   transport (`http`: reqwest with rustls and ring, as the app does; a `Transport` trait, so
   that the tests replay recorded answers). The requests and their user agent are papers'
   (`Network::with_user_agent` says another one: a program that uses the library gives its own, with
-  the address of its user). Not ported: Google Scholar (`--scholar` says so).
+  the address of its user). Not ported: Google Scholar (`--scholar` says so). As of papers 3.0.0b7.dev49
+  (ed8b4dc, issue 189): a [`FetchError`](src/fetch/mod.rs) of kind `Network` is papers' `OSError`
+  (no answer, an HTTP error status); `fetch` and `add --doi` report it as `<doi>: <reason>`, a DOI that
+  crossref and doi.org do not know and the other `DOIRequestError`s with their own message, a single file of
+  `extract` that fails (not a PDF, the network) as `<file>: <reason>`, all as `papers: error: ...`, status 1
+  (the reason of a network error is that of the HTTP client, not of Python's requests). A record without
+  title, container title or ISBN, an `institution` that is a list and a date without year (the next of the
+  published-print, published-online and issued dates is used, `0000` if none) are read as papers reads them;
+  invalid JSON from doi.org is a DOI without metadata (the website is tried); the relative `.bib` links of a
+  journal page are relative to the page that doi.org led to.
 - `fetch::openalex`: **an extension of papers-rs, not in papers** (see "Extensions" below).
 - `fetch::html::meta_content` and `page_doi`: **extensions too**: the `<meta>` tags that journals put
   in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and the DOI they give; and
@@ -230,12 +240,15 @@ The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
   `tests/fetch.rs` replay them. A larger fuzz run:
   `gen_extract_expected.py --count 100000 --seed 7 --out DIR`, then
   `PAPERS_RS_EXTRACT_FUZZ=DIR/doi_text.json cargo test -p papers-rs --test extract fuzz_file`.
+- `tests/fetch_unit.rs`: the unit tests of papers for these answers (`test_extract_unit.py`,
+  `test_fetch_cmds.py`: the info fields of a PDF, empty titles, the institution, dates, invalid JSON, links
+  of the website, the errors of `add --doi`), with answers made in the test.
 - `tests/record_network.py` recorded eight real answers (crossref, doi.org, arXiv) once, into
   `tests/fixtures/network.json` (the list of references of the crossref record removed).
 - `spec/cases/fetch`, `spec/cases/extract`: cases for the conformance suite; those that need the
   network are marked `requires: network` (`spec/run.py --with network`).
-- `crates/papers-rs-cli/tests/fetch_extract.rs`: the command where it needs no network;
-  `cargo test -- --ignored` has one that asks crossref.
+- `crates/papers-rs-cli/tests/fetch_extract.rs`: the command where it needs no network (a network error is
+  made with a proxy that refuses the connection); `cargo test -- --ignored` has two that ask crossref.
 
 ### Extensions
 

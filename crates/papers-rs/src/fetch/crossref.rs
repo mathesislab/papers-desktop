@@ -2,8 +2,10 @@
 //! `papers.fetch.crossref_to_bibtex` and what it uses; the score of a result of a search.
 //!
 //! A record is a JSON value; what papers does on it is Python code on a dict, with its
-//! exceptions where the record is not what is expected (an empty title list, an
-//! `institution` that is a list): they are the `Other` errors, which papers does not catch.
+//! exceptions where the record is not what is expected (an `institution` that is a string, a
+//! name that is not a dict): they are the `Other` errors, which papers does not catch. An empty
+//! title or container title list, an `institution` that is a list (as in the crossref schema) and
+//! a date without year are all records that papers reads (`_first`, `_institution`).
 
 use serde_json::Value;
 
@@ -56,11 +58,13 @@ fn index0(value: &Value) -> Result<Value, FetchError> {
     }
 }
 
-/// `message.get(key, [''])[0]`
-fn first(message: &Value, key: &str) -> Result<Value, FetchError> {
+/// `_first`: the first element of a list field (title, container title, ISBN), which may be
+/// empty: `values = message.get(field) or ['']`, then `values[0]` of a list, else the value as it is.
+fn first(message: &Value, key: &str) -> Value {
     match get(message, key) {
-        None => Ok(Value::String(String::new())),
-        Some(v) => index0(v),
+        Some(Value::Array(a)) if !a.is_empty() => a[0].clone(),
+        Some(v) if py_truthy(v) => v.clone(),
+        _ => Value::String(String::new()),
     }
 }
 
@@ -121,19 +125,60 @@ pub fn format_authors(authors: &Value) -> Result<String, FetchError> {
     Ok(out.join(" and "))
 }
 
-/// `message.get('institution', {}).get('name', '')`
+/// `_institution`: the name of the institution, a list of `{name, place...}` in the crossref
+/// schema (the first one is taken), a dict in older records.
 fn institution_name(message: &Value) -> Result<Value, FetchError> {
-    match get(message, "institution") {
+    let not_a_dict = |v: &Value| other(format!("'{}' object has no attribute 'get'", type_name(v)));
+    let institution = match get(message, "institution") {
+        Some(Value::Array(a)) => a.first(),
+        Some(v) if py_truthy(v) => Some(v),
+        _ => None,
+    };
+    match institution {
         None => Ok(Value::String(String::new())),
         Some(Value::Object(o)) => Ok(o
             .get("name")
             .cloned()
             .unwrap_or_else(|| Value::String(String::new()))),
-        Some(v) => Err(other(format!(
-            "'{}' object has no attribute 'get'",
-            type_name(v)
-        ))),
+        Some(v) => Err(not_a_dict(v)),
     }
+}
+
+/// The year of a record: that of the first of the publication dates that has one (a date
+/// without year is `[[null]]`, and a field may be null); `0000` if none.
+fn year_of(message: &Value) -> Result<String, FetchError> {
+    for field in ["published-print", "published-online", "issued"] {
+        let date = match get(message, field) {
+            Some(v) if py_truthy(v) => v,
+            _ => &Value::Null,
+        };
+        let date_parts = match date {
+            Value::Null => None,
+            Value::Object(o) => o.get("date-parts").filter(|p| py_truthy(p)),
+            v => {
+                return Err(other(format!(
+                    "'{}' object has no attribute 'get'",
+                    type_name(v)
+                )));
+            }
+        };
+        // `date_parts[0] or [None]`, then its first element
+        let year = match date_parts {
+            None => Value::Null,
+            Some(parts) => {
+                let part = index0(parts)?;
+                if py_truthy(&part) {
+                    index0(&part)?
+                } else {
+                    Value::Null
+                }
+            }
+        };
+        if !year.is_null() {
+            return Ok(py_str(&year));
+        }
+    }
+    Ok("0000".to_string())
 }
 
 /// `crossref_to_bibtex`: the bibtex of a crossref record, as papers writes a library (the
@@ -164,7 +209,7 @@ pub fn crossref_to_entry(message: &Value) -> Result<Entry, FetchError> {
     let mapped = map_crossref_to_bibtex_type(type_str);
     let doi = text(message, "DOI");
     let mut fields: Vec<(&str, Value)> = vec![
-        ("title", first(message, "title")?),
+        ("title", first(message, "title")),
         (
             "author",
             Value::String(format_authors(
@@ -177,23 +222,11 @@ pub fn crossref_to_entry(message: &Value) -> Result<Entry, FetchError> {
         ("url", text(message, "URL")),
     ];
     // the year: the publication date, in the first of the fields that has one
-    let mut date_parts: Option<Value> = None;
-    for field in ["published-print", "published-online", "issued"] {
-        if let Some(date) = get(message, field)
-            && let Some(parts) = date.get("date-parts")
-        {
-            date_parts = Some(index0(parts)?);
-            break;
-        }
-    }
-    let year = match &date_parts {
-        Some(parts) if py_truthy(parts) => py_str(&index0(parts)?),
-        _ => "0000".to_string(),
-    };
+    let year = year_of(message)?;
     fields.push(("year", Value::String(year)));
     match type_str {
         "journal-article" => {
-            fields.push(("journal", first(message, "container-title")?));
+            fields.push(("journal", first(message, "container-title")));
             fields.push(("volume", text(message, "volume")));
             fields.push(("number", text(message, "issue")));
             fields.push(("pages", text(message, "page")));
@@ -209,16 +242,10 @@ pub fn crossref_to_entry(message: &Value) -> Result<Entry, FetchError> {
                         .unwrap_or(Value::Array(vec![])),
                 )?),
             ));
-            fields.push((
-                "isbn",
-                match get(message, "ISBN") {
-                    None => Value::String(String::new()),
-                    Some(v) => index0(v)?,
-                },
-            ));
+            fields.push(("isbn", first(message, "ISBN")));
         }
         "proceedings-article" => {
-            fields.push(("booktitle", first(message, "container-title")?));
+            fields.push(("booktitle", first(message, "container-title")));
             fields.push(("publisher", text(message, "publisher")));
             fields.push((
                 "editor",
@@ -272,7 +299,7 @@ pub fn crossref_score(txt: &str, record: &Value) -> Result<(f64, bool), FetchErr
         score += token_set_ratio(&families.join(" "), txt);
         float = true;
     }
-    if let Some(title) = record.get("title") {
+    if let Some(title) = record.get("title").filter(|t| py_truthy(t)) {
         score += token_set_ratio(&py_str(&index0(title)?), txt);
         float = true;
     }

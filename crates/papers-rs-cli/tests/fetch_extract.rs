@@ -13,6 +13,10 @@ fn pdfs() -> PathBuf {
 }
 
 fn papers(args: &[&str], dir: &Path) -> Output {
+    papers_with(args, dir, &[])
+}
+
+fn papers_with(args: &[&str], dir: &Path, env: &[(&str, &str)]) -> Output {
     let home = dir.join("home");
     fs::create_dir_all(&home).unwrap();
     Command::new(env!("CARGO_BIN_EXE_papers-rs"))
@@ -20,9 +24,16 @@ fn papers(args: &[&str], dir: &Path) -> Output {
         .current_dir(dir)
         .env_clear()
         .env("HOME", home)
+        .envs(env.iter().copied())
         .output()
         .unwrap()
 }
+
+/// A proxy that refuses the connection (on this machine): a request fails without leaving it.
+const NO_NETWORK: [(&str, &str); 2] = [
+    ("HTTPS_PROXY", "http://127.0.0.1:9"),
+    ("https_proxy", "http://127.0.0.1:9"),
+];
 
 fn text(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
@@ -110,10 +121,14 @@ fn the_errors_of_the_files() {
             &["extract", "--doi-only", "no-doi.pdf"],
             "papers: error: no-doi.pdf: no DOI found in the text\n",
         ),
-        // papers does not catch that one: a traceback (that ends with this message)
+        // a file that is not a PDF: the error of the file, not a traceback (papers 3, issue 189)
         (
             &["extract", "--doi-only", "not-a-pdf.pdf"],
-            "papers: error: Failed to open file 'not-a-pdf.pdf'.\n",
+            "papers: error: not-a-pdf.pdf: Failed to open file 'not-a-pdf.pdf'.\n",
+        ),
+        (
+            &["extract", "not-a-pdf.pdf"],
+            "papers: error: not-a-pdf.pdf: Failed to open file 'not-a-pdf.pdf'.\n",
         ),
     ] {
         let output = papers(args, dir.path());
@@ -143,6 +158,62 @@ fn the_errors_of_the_files() {
     assert_eq!(
         text(&output.stderr),
         "papers: error: missing.pdf: no such file\npapers: error: no-doi.pdf: no DOI found in the text\npapers: error: 2 of 3 files failed\n"
+    );
+}
+
+/// A network error is an error of the DOI or the file, not a traceback (papers 3, issue 189): the
+/// DOI, then the reason. (The reason is that of the program's HTTP client, not of Python's requests.)
+#[test]
+fn a_network_error_is_an_error_of_the_doi() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = papers_with(&["fetch", "10.1000/nw"], dir.path(), &NO_NETWORK);
+    assert_eq!(
+        (output.status.code(), text(&output.stdout)),
+        (Some(1), String::new())
+    );
+    assert!(
+        text(&output.stderr).starts_with("papers: error: 10.1000/nw: ")
+            && text(&output.stderr).lines().count() == 1,
+        "{}",
+        text(&output.stderr)
+    );
+    // a full-text search has no DOI to name
+    let output = papers_with(
+        &["fetch", "Climate", "sensitivity"],
+        dir.path(),
+        &NO_NETWORK,
+    );
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = text(&output.stderr);
+    assert!(
+        stderr.starts_with("papers: error: ")
+            && stderr.lines().count() == 1
+            && !stderr.contains("Climate: "),
+        "{stderr}"
+    );
+    // add --doi, in a library
+    let output = papers_with(&["init"], dir.path(), &NO_NETWORK);
+    assert_eq!(output.status.code(), Some(0), "{}", text(&output.stderr));
+    let output = papers_with(&["add", "--doi", "10.1000/nw"], dir.path(), &NO_NETWORK);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        text(&output.stderr).starts_with("papers: error: 10.1000/nw: ")
+            && text(&output.stderr).lines().count() == 1,
+        "{}",
+        text(&output.stderr)
+    );
+    // the file whose metadata cannot be had says it, with the file
+    let dir = folder(&["no-doi.pdf"]);
+    let output = papers_with(
+        &["extract", "--fulltext", "no-doi.pdf"],
+        dir.path(),
+        &NO_NETWORK,
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        text(&output.stderr).contains("papers: error: no-doi.pdf: "),
+        "{}",
+        text(&output.stderr)
     );
 }
 
@@ -222,6 +293,25 @@ fn scholar_is_still_not_ported_with_openalex() {
 }
 
 /// The network: `cargo test -- --ignored`
+#[test]
+#[ignore]
+fn fetch_an_unknown_doi_is_a_clean_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = papers(&["fetch", "10.1000/does-not-exist-zzz"], dir.path());
+    assert_eq!(
+        (
+            output.status.code(),
+            text(&output.stdout),
+            text(&output.stderr)
+        ),
+        (
+            Some(1),
+            String::new(),
+            "papers: error: 10.1000/does-not-exist-zzz: unknown to doi.org\n".into()
+        )
+    );
+}
+
 #[test]
 #[ignore]
 fn fetch_a_doi_from_crossref() {

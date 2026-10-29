@@ -37,6 +37,29 @@ fn uncaught(error: FetchError) -> Failure {
     Failure::Error(Error::other(error.message))
 }
 
+/// What `fetchcmd` does with the error of a DOI: that of papers' `DOIRequestError` (its message
+/// names the DOI) and of an `OSError` (the DOI, then the error) is the error of the command, any
+/// other is not caught.
+fn doi_failure(doi: &str, error: FetchError) -> Failure {
+    if error.is_request_error() {
+        Error::exit(error.message).into()
+    } else if error.is_os_error() {
+        Error::exit(format!("{doi}: {error}")).into()
+    } else {
+        uncaught(error)
+    }
+}
+
+/// What `fetchcmd` does with the error of a full-text search: a `ValueError` (no result) or an
+/// `OSError` (network error) is the error of the command, any other is not caught.
+fn search_failure(error: FetchError) -> Failure {
+    if error.is_value_error() || error.is_os_error() {
+        Error::exit(error.message).into()
+    } else {
+        uncaught(error)
+    }
+}
+
 fn fetcher() -> Result<Fetcher, Failure> {
     Fetcher::new(&cache_dir()).map_err(uncaught)
 }
@@ -61,7 +84,11 @@ pub fn fetch(leaf: &Leaf) -> Outcome {
         }
         let fetcher = fetcher()?;
         for doi in dois.into_iter().flatten() {
-            log::println(&fetcher.fetch_bibtex_by_doi(&doi).map_err(uncaught)?);
+            log::println(
+                &fetcher
+                    .fetch_bibtex_by_doi(&doi)
+                    .map_err(|e| doi_failure(&doi, e))?,
+            );
         }
         return Ok(());
     }
@@ -77,7 +104,7 @@ pub fn fetch(leaf: &Leaf) -> Outcome {
     } else {
         fetcher()?.fetch_bibtex_by_fulltext_crossref(&text, None, None, 5)
     }
-    .map_err(uncaught)?;
+    .map_err(search_failure)?;
     log::println(&bibtex);
     Ok(())
 }
@@ -164,16 +191,12 @@ fn collect_pdf_files(paths: &[String], recursive: bool) -> Result<Vec<String>, S
     Ok(files)
 }
 
-/// The failure of one file: papers' `ValueError`s are the errors of the file (a single file:
-/// the error of the command), the other exceptions end the command or, among several files, are
-/// reported as the others.
+/// The failure of one file: any exception is the error of the file (a single file: the error of
+/// the command, `<file>: <reason>`; among several, it is reported and the others go on). A file
+/// that is not a PDF and a network error are among them, as the errors of papers' `ValueError`s.
 fn file_failure(file: &str, error: &FetchError, single: bool) -> Result<(), Failure> {
     if single {
-        return Err(if error.is_value_error() {
-            Error::exit(format!("{file}: {error}")).into()
-        } else {
-            uncaught(error.clone())
-        });
+        return Err(Error::exit(format!("{file}: {error}")).into());
     }
     log::error(&format!("{file}: {error}"));
     Ok(())
@@ -269,5 +292,73 @@ pub fn doi(leaf: &Leaf) -> Outcome {
         }
         Err(error) if error.is_value_error() => Err(Error::exit(format!("{pdf}: {error}")).into()),
         Err(error) => Err(uncaught(error)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Whether papers reports the error that ends the command as an error of the command
+    /// (`PapersExit`) rather than a traceback, and its message.
+    fn ended(failure: Failure) -> (bool, String) {
+        match failure {
+            Failure::Error(Error::Exit(m)) => (true, m),
+            Failure::Error(Error::Other(m)) => (false, m),
+            Failure::Usage(m) => (false, m),
+        }
+    }
+
+    fn error(kind: ErrorKind, message: &str) -> FetchError {
+        FetchError::new(kind, message)
+    }
+
+    /// `fetchcmd`, test_fetch_cmds.py: a DOI unknown to doi.org and a network error are the error of
+    /// the command, `<doi>: <reason>`.
+    #[test]
+    fn the_errors_of_a_doi() {
+        let doi = "10.1000/zz";
+        for kind in [ErrorKind::NotFound, ErrorKind::Request] {
+            // the message of a `DOIRequestError` names the DOI
+            let failure = doi_failure(doi, error(kind, "10.1000/zz: unknown to doi.org"));
+            assert_eq!(
+                ended(failure),
+                (true, "10.1000/zz: unknown to doi.org".into())
+            );
+        }
+        // an `OSError` does not: the DOI is put before it
+        let failure = doi_failure(doi, error(ErrorKind::Network, "no proxy"));
+        assert_eq!(ended(failure), (true, "10.1000/zz: no proxy".into()));
+        // any other exception is not caught
+        let failure = doi_failure(doi, error(ErrorKind::Other, "list index out of range"));
+        assert_eq!(ended(failure), (false, "list index out of range".into()));
+    }
+
+    /// A full-text search: `(ValueError, OSError)` is the error of the command, as it is.
+    #[test]
+    fn the_errors_of_a_search() {
+        for kind in [ErrorKind::Value, ErrorKind::Request, ErrorKind::Network] {
+            let failure = search_failure(error(kind, "no proxy"));
+            assert_eq!(ended(failure), (true, "no proxy".into()));
+        }
+        let failure = search_failure(error(ErrorKind::Other, "'items'"));
+        assert_eq!(ended(failure), (false, "'items'".into()));
+    }
+
+    /// A single file: any exception is the error of the file, `<file>: <reason>` (a file that is
+    /// not a PDF, a network error); among several it is reported and the others go on.
+    #[test]
+    fn the_errors_of_a_file() {
+        for kind in [ErrorKind::Value, ErrorKind::Network, ErrorKind::Other] {
+            let result = file_failure("a.pdf", &error(kind, "Failed to open file 'a.pdf'."), true);
+            let Err(failure) = result else {
+                panic!("a single file that failed is the error of the command");
+            };
+            assert_eq!(
+                ended(failure),
+                (true, "a.pdf: Failed to open file 'a.pdf'.".into())
+            );
+        }
+        assert!(file_failure("a.pdf", &error(ErrorKind::Other, "x"), false).is_ok());
     }
 }

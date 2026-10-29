@@ -86,7 +86,7 @@ impl Access {
 fn failed(error: &FetchError, doi: &str) -> String {
     match error.kind {
         ErrorKind::NotFound => format!("No paper with DOI {doi}"),
-        ErrorKind::Other => format!("Not reachable: {}", error.message),
+        ErrorKind::Network | ErrorKind::Other => format!("Not reachable: {}", error.message),
         _ => error.message.clone(),
     }
 }

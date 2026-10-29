@@ -116,6 +116,8 @@ fn the_links_of_a_page_as_beautifulsoup() {
 // the flows
 // ---------
 
+/// The answers by URL: a list is the answers to the successive requests of that URL (the last one
+/// goes on), `url` the URL that answered, after the redirects.
 struct Replay {
     fixtures: HashMap<String, Value>,
     requests: Mutex<Vec<(String, Option<String>)>>,
@@ -125,22 +127,26 @@ struct Shared(Arc<Replay>);
 
 impl Transport for Shared {
     fn get(&self, url: &str, accept: Option<&str>) -> Result<Response, String> {
-        self.0
-            .requests
-            .lock()
-            .unwrap()
-            .push((url.to_string(), accept.map(str::to_string)));
+        let n = {
+            let mut requests = self.0.requests.lock().unwrap();
+            requests.push((url.to_string(), accept.map(str::to_string)));
+            requests.iter().filter(|(u, _)| u == url).count() - 1
+        };
         let f = self
             .0
             .fixtures
             .get(url)
             .ok_or_else(|| format!("no fixture: {url}"))?;
+        let f = match f.as_array() {
+            Some(answers) => &answers[n.min(answers.len() - 1)],
+            None => f,
+        };
         Ok(Response {
             status: f["status"].as_u64().unwrap() as u16,
             reason: f["reason"].as_str().unwrap().to_string(),
             content_type: f["content_type"].as_str().unwrap().to_string(),
             body: f["body"].as_str().unwrap().as_bytes().to_vec(),
-            url: url.to_string(),
+            url: f["url"].as_str().unwrap_or(url).to_string(),
         })
     }
 }
@@ -150,6 +156,7 @@ fn kind_name(k: ErrorKind) -> &'static str {
         ErrorKind::NotFound => "not_found",
         ErrorKind::Request => "request",
         ErrorKind::Value => "value",
+        ErrorKind::Network => "network",
         ErrorKind::Other => "other",
     }
 }
@@ -348,7 +355,7 @@ fn the_cache_is_shared_with_papers() {
     )
     .unwrap();
     let error = fetcher.fetch_bibtex_by_doi("10.1234/gone").unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Other); // no fixture: the request was made
+    assert_eq!(error.kind, ErrorKind::Network); // no fixture: the request was made
     assert_eq!(replay.requests.lock().unwrap().len(), 1);
 }
 

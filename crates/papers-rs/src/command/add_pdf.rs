@@ -29,6 +29,16 @@ fn fetch_error(error: crate::fetch::FetchError) -> Error {
     Error::exit(error.message)
 }
 
+/// The error of `add --doi DOI`: that of papers' `DOIRequestError` (its message names the DOI)
+/// or of an `OSError` (the DOI, then the error): `<doi>: <reason>`.
+fn doi_error(doi: &str, error: crate::fetch::FetchError) -> Error {
+    if error.is_os_error() {
+        Error::exit(format!("{doi}: {}", error.message))
+    } else {
+        fetch_error(error)
+    }
+}
+
 /// What is the same in all the files of one `add`.
 #[derive(Clone, Copy)]
 pub(super) struct Job<'a> {
@@ -236,7 +246,9 @@ pub(super) fn add_doi(
         return insert_taken(session, taken, &options, resolver);
     }
     let fetcher = job.queries.fetcher().map_err(fetch_error)?;
-    let bibtex = fetcher.fetch_bibtex_by_doi(doi).map_err(fetch_error)?;
+    let bibtex = fetcher
+        .fetch_bibtex_by_doi(doi)
+        .map_err(|e| doi_error(doi, e))?;
     // the key of a fetched entry is always updated
     let options = InsertOptions {
         update_key: true,

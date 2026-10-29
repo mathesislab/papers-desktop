@@ -599,14 +599,19 @@ pub fn doi_from_xmp(xmp: &str) -> Option<String> {
 }
 
 /// `_parse_doi_from_info_fields`: the DOI in the subject, the keywords or the title of the
-/// document information (`re.search`, ignoring the case).
+/// document information, which are free text: the first DOI of the normalized text (lower case,
+/// the invisible characters removed, the DOIs that a line end cuts joined), cleaned as the DOIs of
+/// the text are (`clean_doi`: no trailing period, no `.pdf`...). A DOI that is cleaned to nothing
+/// is passed over for the next field. (The DOI of the XMP is kept as it is: `doi_from_xmp`.)
 pub fn doi_from_info_fields(subject: &str, keywords: &str, title: &str) -> Option<String> {
     for value in [subject, keywords, title] {
-        let t = chars(value);
-        for i in 0..t.len() {
-            if let Some(end) = doi_at(&t, i, in_class_ci) {
-                return Some(string(&t[i..end]));
-            }
+        let t = normalize_chars(value);
+        let found =
+            (0..t.len()).find_map(|i| doi_at(&t, i, in_class).map(|end| string(&t[i..end])));
+        if let Some(found) = found
+            && let Ok(doi) = clean_doi(&found)
+        {
+            return Some(doi);
         }
     }
     None

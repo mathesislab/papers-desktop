@@ -90,6 +90,8 @@ def outcome(fun, *args):
         return {'err': ['request', str(error)]}
     except ValueError as error:
         return {'err': ['value', str(error)]}
+    except OSError as error:  # a request that got no answer, an HTTP error status
+        return {'err': ['network', str(error)]}
     except Exception as error:
         return {'err': ['other', str(error)]}
 
@@ -168,7 +170,9 @@ def misc_cases():
             '<pdfx:doi>10.2000/y</pdfx:doi><prism:doi>10.1000/x</prism:doi>', '<prism:doi>10.\n1000/x</prism:doi>',
             '<prism:doi>10.1000/xKſİı</prism:doi>', '<PRIſM:DOI>10.1000/x</prism:doi>', '', 'no tags 10.1000/x']
     out['xmp'] = [[x, ex._parse_doi_from_metadata_string(x)] for x in xmp]
-    info = [('', '', ''), ('doi 10.1000/Abc.Def', '', ''), ('', 'k 10.1000/x, y', 't 10.2000/z'), ('', '', 'Title 10.1038/NGEO1797 end'),
+    info = [('Journal X. doi:10.1000/ABC.123.', '', ''), ('doi:10.1000/.', '', 'doi:10.1000/Title-1'), ('doi:10.1000/.', '', ''),
+            ('', 'see 10.1000/abc.pdf here', ''), ('10.\n1000/x', '', ''), ('', '', '10.1000/(abc))'), ('x', '10.1000/q:', ''),
+            ('', '', ''), ('doi 10.1000/Abc.Def', '', ''), ('', 'k 10.1000/x, y', 't 10.2000/z'), ('', '', 'Title 10.1038/NGEO1797 end'),
             ('no', 'doi:10.1234/foo(bar)).', ''), ('10.12/x', '10.123/x', '10.12345/x'), ('a10.1000/xyz', '', ''),
             ('10.1000/xKſİıé', '', ''), ('10.١٢٣٤/x', '', '')]
     out['info'] = [[s, k, t, ex._parse_doi_from_info_fields({'subject': s, 'keywords': k, 'title': t})] for s, k, t in info]
@@ -256,7 +260,7 @@ def random_record():
     for field in ['published-print', 'published-online', 'issued']:
         if rng.random() < 0.4:
             m[field] = rng.choice([{'date-parts': [[rng.randint(1990, 2026), 3]]}, {'date-parts': [[None]]}, {'date-parts': [[]]},
-                                   {'date-parts': []}, {'other': 1}, {'date-parts': [[2020]]}])
+                                   {'date-parts': []}, {'other': 1}, {'date-parts': [[2020]]}, None, {'date-parts': None}, {'date-parts': [None]}])
     if rng.random() < 0.6:
         m['container-title'] = rng.choice([['Journal of Things'], [], ['A', 'B'], 'J', ['']])
     for field, values in [('volume', ['12', 3, '', None]), ('issue', ['4', 4, '']), ('page', ['1-10', 'e123', 7, 3.5, '']),
@@ -264,7 +268,7 @@ def random_record():
         if rng.random() < 0.5:
             m[field] = rng.choice(values)
     if rng.random() < 0.3:
-        m['institution'] = rng.choice([{'name': 'University of X'}, {'name': ''}, {}, [{'name': 'Y'}], []])
+        m['institution'] = rng.choice([{'name': 'University of X'}, {'name': ''}, {}, [{'name': 'Y'}], [], None, [{}], ['Y'], 'Y'])
     if rng.random() < 0.2:
         m['abstract'] = '<jats:p>An abstract about ice.</jats:p>'
     return m
@@ -287,6 +291,39 @@ INVENTED = [
     {'DOI': '10.1/x', 'title': ['T'], 'published-print': {'date-parts': [[]]}, 'issued': {'date-parts': [[1999]]}},
     {'DOI': '10.1/x', 'title': ['T'], 'published-print': {'other': 1}, 'issued': {'date-parts': [[1999]]}},
     {'DOI': 'a b', 'title': ['é ü']},
+    # an empty title, container title or ISBN list, an institution that is a list (the crossref schema), a date without year
+    # (papers 3, ed8b4dc: the first of the dates that has a year, `0000` if none)
+    {'type': 'journal-article', 'DOI': '10.1/x', 'title': [], 'author': [{'family': 'S', 'given': 'J'}], 'issued': {'date-parts': [[2000]]}, 'container-title': []},
+    {'type': 'journal-article', 'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': [[2000]]}, 'container-title': ['J']},
+    {'type': 'journal-article', 'DOI': '10.1/x', 'title': None, 'issued': {'date-parts': [[2000]]}, 'container-title': None},
+    {'type': 'journal-article', 'DOI': '10.1/x', 'title': [None], 'issued': {'date-parts': [[2000]]}, 'container-title': ''},
+    {'type': 'journal-article', 'DOI': '10.1/x', 'title': {'a': 1}, 'issued': {'date-parts': [[2000]]}, 'container-title': 'Journal as a string'},
+    {'type': 'book', 'DOI': '10.1/x', 'title': ['T'], 'ISBN': []},
+    {'type': 'book', 'DOI': '10.1/x', 'title': ['T'], 'ISBN': None},
+    {'type': 'book', 'DOI': '10.1/x', 'title': ['T'], 'ISBN': '978-0'},
+    {'type': 'proceedings-article', 'DOI': '10.1/x', 'title': ['T'], 'container-title': []},
+    {'type': 'report', 'DOI': '10.1/x', 'title': ['T'], 'institution': [{'name': 'A'}, {'name': 'B'}]},
+    {'type': 'report', 'DOI': '10.1/x', 'title': ['T'], 'institution': []},
+    {'type': 'report', 'DOI': '10.1/x', 'title': ['T'], 'institution': None},
+    {'type': 'report', 'DOI': '10.1/x', 'title': ['T'], 'institution': [{}]},
+    {'type': 'report', 'DOI': '10.1/x', 'title': ['T'], 'institution': ['A']},
+    {'type': 'report', 'DOI': '10.1/x', 'title': ['T'], 'institution': 'A'},
+    {'type': 'thesis', 'DOI': '10.1/x', 'title': ['T'], 'institution': [{'name': 'A'}]},
+    {'type': 'thesis', 'DOI': '10.1/x', 'title': ['T'], 'institution': []},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': [[None]]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': None},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': None}},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': []}},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': [None]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': [[0]]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': [['2001']]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': [[None, 2001]]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': 'x'},
+    {'DOI': '10.1/x', 'title': ['T'], 'issued': {'date-parts': 5}},
+    {'DOI': '10.1/x', 'title': ['T'], 'published-print': {'date-parts': [[None]]}, 'issued': {'date-parts': [[2000]]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'published-print': None, 'published-online': {'date-parts': [[None]]}, 'issued': {'date-parts': [[2001, 5]]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'published-print': {'date-parts': [[2002]]}, 'published-online': {'date-parts': [[2001]]}, 'issued': {'date-parts': [[2000]]}},
+    {'DOI': '10.1/x', 'title': ['T'], 'published-print': {'date-parts': [[None]]}, 'published-online': {'date-parts': [[None]]}, 'issued': {'date-parts': [[None]]}},
 ]
 
 
@@ -357,11 +394,13 @@ def html_cases():
 # ======================================
 
 class Replay:
-    "papers.fetch.http_get with answers from a table"
+    """papers.fetch.http_get with answers from a table: by URL; a list is the answers to the successive
+    requests of that URL (the last one goes on), `url` the URL that answered, after the redirects"""
 
     def __init__(self, fixtures):
         self.fixtures = fixtures
         self.requests = []
+        self.counts = {}
 
     def __call__(self, url, **kw):
         full = requests.Request('GET', url, params=kw.get('params')).prepare().url
@@ -370,12 +409,16 @@ class Replay:
         f = self.fixtures.get(full)
         if f is None:
             raise requests.exceptions.ConnectionError(f'no fixture: {full}')
+        if isinstance(f, list):
+            n = self.counts.get(full, 0)
+            self.counts[full] = n + 1
+            f = f[min(n, len(f) - 1)]
         response = requests.Response()
         response.status_code = f['status']
         response.reason = f.get('reason', '')
         response._content = f['body'].encode('utf-8')
         response.headers['content-type'] = f.get('content_type', '')
-        response.url = full
+        response.url = f.get('url', full)
         response.encoding = get_encoding_from_headers(response.headers)
         return response
 
@@ -417,8 +460,11 @@ def run_scenario(scenario):
     return {'name': scenario['name'], 'fixtures': scenario['fixtures'], 'calls': results}
 
 
-def fixture(body, status=200, content_type='application/json', reason='OK'):
-    return {'status': status, 'reason': reason, 'content_type': content_type, 'body': body if isinstance(body, str) else json.dumps(body)}
+def fixture(body, status=200, content_type='application/json', reason='OK', url=None):
+    f = {'status': status, 'reason': reason, 'content_type': content_type, 'body': body if isinstance(body, str) else json.dumps(body)}
+    if url:
+        f['url'] = url
+    return f
 
 
 CROSSREF = 'https://api.crossref.org/works/'
@@ -534,6 +580,37 @@ def scenarios(extra):
     out[-1]['fixtures']['https://doi.org/10.7777/missing'] = fixture('<a href="https://pub.example.org/cite/other.bib">o</a>', content_type='text/html')
     out[-1]['calls'].append({'fn': 'fetch_bibtex_on_journal_website', 'args': ['10.7777/gone']})
     out[-1]['fixtures']['https://doi.org/10.7777/gone'] = fixture('', 410, 'text/html', 'Gone')
+    # the page that doi.org leads to is not doi.org: its relative links are relative to it (papers 3, ed8b4dc)
+    page_x = '<html><body><a href="cite/x.bib">BibTeX</a><a href="/abs/y.bib">y</a><a href="../up/z.bib">z</a></body></html>'
+    out.append({'name': 'journal_website_relative_links', 'fixtures': {
+        CROSSREF + '10.7777/rel': fixture('x', 404, 'text/plain', 'Not Found'),
+        DOIORG + '10.7777/rel': [fixture('', 200, 'text/html'),
+                                 fixture(page_x, content_type='text/html', url='https://journal.example.org/articles/x')],
+        'https://journal.example.org/articles/cite/x.bib': fixture('@article{x, doi = {10.7777/Rel}, title = {From Website}}', content_type='text/plain'),
+        'https://journal.example.org/abs/y.bib': fixture('@article{y, doi = {10.7777/other}}', content_type='text/plain')},
+        'calls': [{'fn': 'fetch_bibtex_by_doi', 'args': ['10.7777/rel']}, {'fn': 'fetch_bibtex_on_journal_website', 'args': ['10.7777/rel']},
+                  {'fn': 'fetch_bibtex_on_journal_website', 'args': ['10.7777/gone']}]})
+    # invalid JSON that doi.org claims is JSON: a DOI without metadata (as crossref's), the website is tried
+    out.append({'name': 'invalid_json_on_doi_org', 'fixtures': {
+        CROSSREF + '10.7777/bj': fixture('x', 404, 'text/plain', 'Not Found'),
+        DOIORG + '10.7777/bj': [fixture('<html>', 200, 'application/vnd.citationstyles.csl+json'),
+                                fixture('<a href="cite/bj.bib">b</a>', content_type='text/html', url='https://journal.example.org/a/bj')],
+        'https://journal.example.org/a/cite/bj.bib': fixture('@article{bj, doi = {10.7777/bj}, title = {From Website}}', content_type='text/plain'),
+        CROSSREF + '10.7777/bj2': fixture('x', 404, 'text/plain', 'Not Found'),
+        DOIORG + '10.7777/bj2': fixture('', 200, 'application/json'),
+        CROSSREF + '10.7777/bj3': fixture('x', 404, 'text/plain', 'Not Found'),
+        DOIORG + '10.7777/bj3': fixture('{"title": ', 200, 'application/json')},
+        'calls': [{'fn': 'fetch_bibtex_by_doi', 'args': ['10.7777/bj']}, {'fn': 'fetch_doi_metadata', 'args': ['10.7777/bj2']},
+                  {'fn': 'fetch_bibtex_by_doi', 'args': ['10.7777/bj3']}, {'fn': 'fetch_doi_metadata', 'args': ['10.7777/bj3']}]})
+    # a cited DOI whose crossref record has no title does not stop the extraction (papers 3: crossref_to_bibtex no longer raises)
+    untitled, titled = '10.1000/untitled', '10.1000/titled'
+    text4 = f'cites https://doi.org/{untitled} then https://doi.org/{titled}\nThe Titled Paper'
+    empties = {CROSSREF + untitled: fixture({'message': {'DOI': untitled, 'type': 'journal-article', 'title': []}}),
+               CROSSREF + titled: fixture({'message': {'DOI': titled, 'type': 'journal-article', 'title': ['The Titled Paper'],
+                                                       'container-title': [], 'issued': {'date-parts': [[None]]}, 'institution': [{'name': 'I'}]}})}
+    out.append({'name': 'record_without_title', 'fixtures': empties, 'calls': [
+        {'fn': 'extract_txt_metadata', 'args': [text4, '', options]}, {'fn': 'confirm_doi', 'args': [[untitled, titled], text4]},
+        {'fn': 'confirm_doi', 'args': [[untitled], text4]}, {'fn': 'fetch_bibtex_by_doi', 'args': [untitled]}]})
     out.extend(extra)
     return out
 
