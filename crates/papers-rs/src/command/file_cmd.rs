@@ -106,13 +106,14 @@ fn policy_for(
 /// `papers file rename` (also `papers list --rename`): place the files of the entries in the
 /// files directory under their template name. The files already there are renamed; the others
 /// are moved, copied or left where they are as the files mode says (`mode`, else the `files`
-/// setting; `keep_source`: copy). A file that belongs to another library is copied.
+/// setting; `keep_source`: copy). A file that belongs to another library is copied. Returns the
+/// number of entries whose files could not be placed (an error is logged for each).
 pub fn rename_entries(
     session: &mut Session,
     keys: &[String],
     keep_source: bool,
     mode: Option<Mode>,
-) -> Result<()> {
+) -> Result<usize> {
     if session.config.filesdir.is_none() {
         return Err(Error::exit(
             "the library has no files directory: pass --filesdir, or set it with `papers config filesdir DIR`",
@@ -124,15 +125,22 @@ pub fn rename_entries(
         mode.unwrap_or_else(|| setting_mode(session))
     };
     let (policy, placement) = policy_for(session, mode, &[], &[], &[]);
+    let mut failed = 0;
     for key in keys {
-        if let Err(error) = session
+        match session
             .library
             .rename_entry_files(key, &policy, None, None, true)
         {
-            log::error(&format!("{key}: {}", error.message()));
+            Ok(true) => {}
+            Ok(false) => failed += 1,
+            Err(error) => {
+                log::error(&format!("{key}: {}", error.message()));
+                failed += 1;
+            }
         }
     }
-    placement.check()
+    placement.check()?;
+    Ok(failed)
 }
 
 // attach
@@ -174,13 +182,14 @@ fn resolve_file(file: &str) -> Result<String> {
 }
 
 /// `papers file attach` (also `papers list --attach`): add files to the links of an entry, and
-/// place them as the files mode says (the files the entry had stay where they are).
+/// place them as the files mode says (the files the entry had stay where they are). False when
+/// the name points outside the files directory (the links are kept, the files left where they are).
 pub fn attach_files(
     session: &mut Session,
     key: &str,
     files: &[String],
     options: &Attach,
-) -> Result<()> {
+) -> Result<bool> {
     let old = session.library.files(key);
     let mut replace: Vec<(String, Vec<String>)> = Vec::new();
     for (link, files) in &options.replace {
@@ -218,12 +227,13 @@ pub fn attach_files(
             &options.copied,
             &options.pool_files,
         );
-        session
+        let placed = session
             .library
             .rename_entry_files(key, &policy, None, None, true)?;
         placement.check()?;
+        return Ok(placed);
     }
-    Ok(())
+    Ok(true)
 }
 
 // detach
@@ -1528,7 +1538,8 @@ pub fn check_entries_files(
 
     // last, the history: a file that a command deleted from the place of the link comes back there
     // (a copy: the history keeps the file, and the step of the fix keeps it too, see `deleted`)
-    let mut found_links: HashSet<String> = unclear.iter().map(|(_, link, _)| link.clone()).collect();
+    let mut found_links: HashSet<String> =
+        unclear.iter().map(|(_, link, _)| link.clone()).collect();
     found_links.extend(
         loaded
             .iter()
@@ -1581,8 +1592,12 @@ pub fn check_entries_files(
         }
     }
 
-    let relinked: usize =
-        loaded.iter().chain(&plans).map(|p| p.found.len()).sum::<usize>() + restored;
+    let relinked: usize = loaded
+        .iter()
+        .chain(&plans)
+        .map(|p| p.found.len())
+        .sum::<usize>()
+        + restored;
     let mut issues: Vec<String> = lines.clone();
     let mut repairs: Vec<String> = Vec::new();
     let mut skip: HashSet<String> = unclear.iter().map(|(_, link, _)| link.clone()).collect();

@@ -24,7 +24,7 @@ use crate::bib::encoding::{family_names, parse_keywords};
 use crate::bib::pystr::{is_space, is_word, strip};
 use crate::config::paths::exists;
 use crate::entry::{files, fnmatch, tag_matches, val};
-use crate::identity::{Distinct, Identifiers, duplicate_groups, normalize_doi};
+use crate::identity::{Distinct, Identifiers, duplicate_groups, normalize_doi, normalize_text};
 use crate::names::{is_decimal, is_valid_key};
 
 /// The ratio of `--duplicates --fuzzy` when `--fuzzy-ratio` does not say.
@@ -513,9 +513,12 @@ impl Search {
     }
 
     /// `_longmatch`: all the patterns (any of them with `--any`) match the word, as substrings,
-    /// or fuzzily with `--fuzzy`.
+    /// or fuzzily with `--fuzzy`. Both sides are compared as the same-paper rule compares text
+    /// (`normalize_text`: LaTeX decoded, ASCII, no braces, lower case, single spaces): `Muller`
+    /// finds `M{\"u}ller` and `Müller`.
     fn long_match(&self, word: &str, targets: &[String], strict: bool) -> bool {
-        let one = |t: &String| self.match_one(word, t, self.fuzzy, !strict);
+        let word = normalize_text(word);
+        let one = |t: &String| self.match_one(&word, &normalize_text(t), self.fuzzy, !strict);
         if self.any {
             targets.iter().any(one)
         } else {

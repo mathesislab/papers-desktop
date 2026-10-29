@@ -120,10 +120,14 @@ fn run(argv: Vec<String>) -> Result<(), Exit> {
         std::env::set_current_dir(directory).map_err(|e| Error::other(format!("{directory}: {e}")))?;
     }
 
-    // before the library is loaded: a dry run moves nothing
-    papers_rs::config::set_dry_run(argv.iter().any(|a| a == "--dry-run"));
+    // the library is loaded before the arguments are parsed, as in a dry run: its files are moved
+    // once the arguments say it is not one (`run_command`; `--dry-run` has other spellings: `--dry`,
+    // `file mv -n`)
+    papers_rs::config::set_dry_run(true);
     check_legacy_global_config();
-    let config = find_config(".", MachineConfig::load(None)?)?;
+    let config = MachineConfig::load(None).and_then(|machine| find_config(".", machine));
+    papers_rs::config::set_dry_run(false);
+    let config = config?;
     let values = HelpValues::from_config(&config);
 
     // the viewer passthrough of papers: files given instead of a command
@@ -144,7 +148,8 @@ fn run(argv: Vec<String>) -> Result<(), Exit> {
         return Ok(());
     }
     if let Some(leaf) = &parsed.leaf {
-        if leaf.flag("dry_run") {
+        if leaf.flag("dry_run") || leaf.flag("n") {
+            // (`n`: `file mv -n`)
             papers_rs::config::set_dry_run(true);
         }
         handle_logging(leaf);
@@ -223,6 +228,7 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
             ));
         }
     }
+    config.move_papers_files();
     let Some(leaf) = &parsed.leaf else {
         // papers without command, or `papers file` without subcommand: its help
         log::print(&help::help(&command, values));
@@ -244,7 +250,15 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
         "migrate" => written(&command, cmd_migrate::migrate_cmd(leaf, config))?,
         "filecheck" => written(&command, cmd_file::filecheck(leaf, config))?,
         file if file.starts_with("file ") => written(&command, cmd_file::file_cmd(file, leaf, config))?,
-        "status" => cmd_status::status(cmd_status::StatusArgs::from_leaf(leaf), config)?,
+        "status" => {
+            // the library of --bibtex FILE, as for the other commands
+            let config = if leaf.string("bibtex").is_some() || leaf.string("filesdir").is_some() {
+                cmd_list::check_install(leaf, config, true)?
+            } else {
+                config
+            };
+            cmd_status::status(cmd_status::StatusArgs::from_leaf(leaf), config)?
+        }
         "undo" => cmd_history::undo(leaf, config)?,
         "redo" => cmd_history::redo(leaf, config)?,
         "restore" | "restore-backup" => cmd_history::restore(leaf, config, &command)?,

@@ -27,7 +27,21 @@ pub fn tag_cmd(leaf: &Leaf, config: Config) -> Done {
             }
             let (old, new) = (&renaming[0], &renaming[1]);
             let count = rename(&mut session.library, old, new);
-            session.commit()?;
+            let committed = session.commit()?;
+            if porcelain {
+                // the entries that changed, as the other commands say them
+                let keys: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
+                let color = session.color();
+                print_changes(
+                    &session.library,
+                    &keys,
+                    false,
+                    &committed.notes,
+                    true,
+                    color,
+                    &session.say,
+                );
+            }
             session.say.line(renamed_line(old, new, count));
             return Ok(());
         }

@@ -55,7 +55,8 @@ pub fn edit_cmd(leaf: &Leaf, config: Config) -> Done {
     let from_file = leaf.string("from_file").filter(|f| !f.is_empty());
     let set = field_values(&leaf.strings("set"));
     let unset = leaf.strings("unset");
-    let new_key = leaf.string("new_key").filter(|k| !k.is_empty());
+    // (`--key ''` is given: set_key refuses it)
+    let new_key = leaf.string("new_key");
     let keep_old_key = leaf.flag("keep_old_key");
     let entries = leaf.strings("entries");
     let format = leaf.string("format");

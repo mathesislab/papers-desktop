@@ -655,7 +655,8 @@
 "in": "a}b, c",
 "names": [
 {
-"family": "ab, c"
+"family": "ab",
+"given": "c"
 }
 ],
 "bibtex": "ab, c",
@@ -1197,12 +1198,22 @@
 "in": "Unbalanced} and a}b, c and émile Zola",
 "names": [
 {
-"family": "Unbalanced and ab, c and émile Zola"
+"family": "Unbalanced"
+},
+{
+"family": "ab",
+"given": "c"
+},
+{
+"family": "Zola",
+"non-dropping-particle": "émile"
 }
 ],
 "bibtex": "Unbalanced and ab, c and émile Zola",
 "ris": [
-"Unbalanced and ab, c and émile Zola"
+"Unbalanced",
+"ab, c",
+"émile Zola"
 ]
 },
 {
@@ -83877,7 +83888,7 @@
 "fields": [
 [
 "author",
-"{D} and {o} and {e} and {,} and { } and {J} and {a} and {n} and {e}"
+"{Doe, Jane}"
 ]
 ]
 }

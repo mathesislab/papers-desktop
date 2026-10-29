@@ -198,9 +198,15 @@ fn run(
         let touched = add(&mut session, &request, resolver.as_mut())?;
         let notes = session.commit()?.notes;
         let color = session.color();
+        // with the entries that the duplicates skipped were of: `existing`
+        let considered: Vec<String> = touched
+            .iter()
+            .chain(&session.library.skipped)
+            .cloned()
+            .collect();
         print_changes(
             &session.library,
-            &touched,
+            &considered,
             true,
             &notes,
             porcelain,

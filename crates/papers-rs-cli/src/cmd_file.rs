@@ -158,6 +158,16 @@ fn directory_option() -> Option<String> {
     directory
 }
 
+/// A refused placement of files (a name outside the files directory, a template that cannot be
+/// formatted): the errors are reported, the command still saved the library: exit 1.
+pub fn refused(placed: bool) -> Done {
+    if placed {
+        Ok(())
+    } else {
+        Err(Error::exit("").into())
+    }
+}
+
 fn usage(message: &str) -> Failure {
     Failure::Usage(message.to_string())
 }
@@ -185,10 +195,10 @@ fn rename(leaf: &Leaf, config: Config) -> Done {
         // in a shallow library, the files go to the pool
         session.use_pool_files()?;
         let keys = entries_or_all(session, &leaf.strings("entries"))?;
-        rename_entries(session, &keys, leaf.flag("keep_source"), mode)?;
+        let failed = rename_entries(session, &keys, leaf.flag("keep_source"), mode)?;
         let committed = session.commit()?;
         report(session, leaf, &keys, &committed.notes);
-        Ok(())
+        refused(failed == 0)
     })
 }
 
@@ -227,10 +237,10 @@ fn attach(leaf: &Leaf, config: Config) -> Done {
                 Error::exit(format!("{key}: give one entry ({} given)", keys.len())).into(),
             );
         }
-        attach_files(session, &keys[0], &files, &Attach::new(mode))?;
+        let placed = attach_files(session, &keys[0], &files, &Attach::new(mode))?;
         let committed = session.commit()?;
         report(session, leaf, &keys, &committed.notes);
-        Ok(())
+        refused(placed)
     })
 }
 

@@ -339,6 +339,9 @@ pub struct Library {
     loaded: Option<Loaded>,
     ops: Vec<FileOp>,
     placed: HashMap<String, (String, &'static str)>,
+    /// The keys of the library entries that duplicates skipped by `insert` were of: the command
+    /// considered them (`existing` in its report).
+    pub skipped: Vec<String>,
 }
 
 impl fmt::Debug for Library {
@@ -425,6 +428,7 @@ impl Library {
             loaded: None,
             ops: Vec::new(),
             placed: HashMap::new(),
+            skipped: Vec::new(),
         }
     }
 
@@ -1008,7 +1012,8 @@ impl Library {
     /// `<filesdir>/<name>.<ext>`, the others `<name>--<label>.<ext>`. The name must stay in
     /// the files directory: if it does not, the files are left where they are (and an error is logged).
     /// `formatter` is another name template; `relative_to` how to write the links (the library's).
-    /// Moves and copies are recorded in [`Library::file_ops`].
+    /// Moves and copies are recorded in [`Library::file_ops`]. False when the name points outside
+    /// the files directory (the files are left where they are), true otherwise.
     pub fn rename_entry_files(
         &mut self,
         key: &str,
@@ -1016,7 +1021,7 @@ impl Library {
         formatter: Option<&Format>,
         relative_to: Option<&str>,
         hardlink: bool,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         let Some(filesdir) = self.filesdir.clone() else {
             return Err(Error::other("filesdir is None, cannot rename entries"));
         };
@@ -1026,7 +1031,7 @@ impl Library {
         let files = entry_files(&entry, Some(&self.relative_to));
         if files.is_empty() {
             log::info("no files to rename");
-            return Ok(());
+            return Ok(true);
         }
         let newname = formatter.unwrap_or(&self.nameformat).render(&entry)?;
         let Some(target) = target_in(&filesdir, &newname) else {
@@ -1035,7 +1040,7 @@ impl Library {
                 entry.key,
                 crate::config::json::py_repr_str(&newname)
             ));
-            return Ok(());
+            return Ok(false);
         };
         let actions: Vec<Action> = files.iter().map(|f| policy.action(f)).collect();
         let mut count = 0;
@@ -1080,7 +1085,7 @@ impl Library {
         if count > 0 {
             log::info(&format!("renamed file(s): {count}"));
         }
-        Ok(())
+        Ok(true)
     }
 
     /// `rename_entry_files` for all the entries; an error of one is logged and does not stop the others.
@@ -1455,11 +1460,14 @@ impl Library {
                 }
                 Ok(inserted)
             }
-            Decision::Skip => Ok(Inserted {
-                key: entry.key,
-                existing: Some(existing.key),
-                what: What::Skipped,
-            }),
+            Decision::Skip => {
+                self.skipped.push(existing.key.clone());
+                Ok(Inserted {
+                    key: entry.key,
+                    existing: Some(existing.key),
+                    what: What::Skipped,
+                })
+            }
         }
     }
 

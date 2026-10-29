@@ -52,7 +52,7 @@ pub(crate) fn split_depth0(value: &str, sep: Sep) -> Vec<String> {
     while i < chars.len() {
         match chars[i] {
             '{' => depth += 1,
-            '}' => depth -= 1,
+            '}' => depth = (depth - 1).max(0), // a stray } does not stop the split
             _ if depth == 0 => {
                 if let Some(end) = sep.at(&chars, i) {
                     parts.push(chars[start..i].iter().collect());

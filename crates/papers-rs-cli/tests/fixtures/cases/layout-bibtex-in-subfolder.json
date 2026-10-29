@@ -48,7 +48,7 @@
    "env": {},
    "rc": 0,
    "stdout": "# <TMP>/cwd/a/.papers/config.json\nbibtex                = <TMP>/cwd/a/bib/papers.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
-   "stderr": "",
+   "stderr": "papers: info: moved distinct.json, origin, origin.bib from <TMP>/cwd/a/bib/.papers to <TMP>/cwd/a/.papers\n",
    "tree": {
     "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
     "cwd/a/.papers/distinct.json": "{\"distinct\": []}\n",
@@ -273,7 +273,7 @@
    "env": {},
    "rc": 0,
    "stdout": "# <TMP>/cwd/e/lib/.papers/config.json\nbibtex                = <TMP>/cwd/e/papers.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
-   "stderr": "",
+   "stderr": "papers: info: moved distinct.json, origin from <TMP>/cwd/e/.papers to <TMP>/cwd/e/lib/.papers\n",
    "tree": {
     "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
     "cwd/a/.papers/distinct.json": "{\"distinct\": []}\n",
@@ -319,7 +319,7 @@
    "env": {},
    "rc": 0,
    "stdout": "# <TMP>/cwd/f/.papersconfig.json\nbibtex                = <TMP>/cwd/f/sub/x.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
-   "stderr": "",
+   "stderr": "papers: info: moved distinct.json from <TMP>/cwd/f/sub/.papers to <TMP>/cwd/f/.papers\n",
    "tree": {
     "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
     "cwd/a/.papers/distinct.json": "{\"distinct\": []}\n",
@@ -461,7 +461,7 @@
    "env": {},
    "rc": 0,
    "stdout": "# <TMP>/cwd/h/.papers/config.json\nbibtex                = <TMP>/cwd/h/hb/x.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
-   "stderr": "",
+   "stderr": "papers: info: moved distinct.json, origin.bib from <TMP>/cwd/h/hb/.papers to <TMP>/cwd/h/.papers\n",
    "tree": {
     "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
     "cwd/a/.papers/distinct.json": "{\"distinct\": []}\n",
@@ -509,7 +509,7 @@
    "env": {},
    "rc": 0,
    "stdout": "# <TMP>/cwd/i/.papers/config.json\nbibtex                = <TMP>/home/ib/x.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
-   "stderr": "",
+   "stderr": "papers: info: moved origin from ~/ib/.papers to <TMP>/cwd/i/.papers\n",
    "tree": {
     "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
     "cwd/a/.papers/distinct.json": "{\"distinct\": []}\n",

@@ -465,19 +465,6 @@ impl Identity {
     }
 }
 
-/// The name of the Python type of a JSON value.
-fn py_type_name(value: &Value) -> &'static str {
-    match value {
-        Value::Null => "NoneType",
-        Value::Bool(_) => "bool",
-        Value::Number(n) if n.is_f64() => "float",
-        Value::Number(_) => "int",
-        Value::String(_) => "str",
-        Value::Array(_) => "list",
-        Value::Object(_) => "dict",
-    }
-}
-
 // the rule
 // --------
 
@@ -643,21 +630,22 @@ impl Distinct {
                 let text = String::from_utf8(bytes).map_err(|e| e.to_string())?;
                 // read as UTF-8, a byte order mark dropped
                 let value = loads(crate::bib::without_bom(&text)).map_err(|e| e.message)?;
+                let not_list = || "not an object with a list \"distinct\"".to_string();
                 let Value::Object(map) = value else {
-                    return Err(format!(
-                        "'{}' object has no attribute 'get'",
-                        py_type_name(&value)
-                    ));
+                    return Err(not_list());
                 };
                 Ok(match map.get("distinct") {
+                    None => Vec::new(),
                     Some(Value::Array(items)) => items
                         .iter()
                         .filter_map(|p| match p.as_array().map(Vec::as_slice) {
-                            Some([a, b]) => Some([a.clone(), b.clone()]),
+                            Some([a, b]) if a.is_object() && b.is_object() => {
+                                Some([a.clone(), b.clone()])
+                            }
                             _ => None,
                         })
                         .collect(),
-                    _ => Vec::new(),
+                    Some(_) => return Err(not_list()),
                 })
             };
             match read() {
@@ -1250,5 +1238,56 @@ mod tests {
         assert_eq!(normalize_arxiv("21011.01234"), None);
         assert_eq!(normalize_doi("DOI: 10.1/X").as_deref(), Some("10.1/x"));
         assert_eq!(normalize_doi("10.1"), None);
+    }
+
+    /// The words of a name may be on several lines (`parse_name` matches with DOTALL).
+    #[test]
+    fn a_name_on_several_lines() {
+        assert_eq!(parse_name("A\nB C"), ("C".into(), "A\nB".into()));
+        assert_eq!(parse_name("Jane\n Doe"), ("Doe".into(), "Jane".into()));
+        assert_eq!(
+            parse_name("Jane {van\nder Berg}"),
+            ("{van\nder Berg}".into(), "Jane".into())
+        );
+        assert_eq!(family_name_ids("A\nB C"), ["c"]);
+    }
+
+    /// The brace depth never goes below 0: a stray `}` does not stop the split (`a} and b`).
+    #[test]
+    fn a_stray_closing_brace() {
+        assert_eq!(split_names("a} and b"), ["a}", "b"]);
+        assert_eq!(family_name_ids("a} and b"), ["a", "b"]);
+    }
+
+    /// `distinct.json`: a `distinct` that is not an array makes the file unreadable (one warning, no
+    /// pairs); the pairs that are not pairs of objects are ignored (bibtex.md 9.4).
+    #[test]
+    fn a_distinct_file_with_bad_values() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir
+            .path()
+            .join("distinct.json")
+            .to_string_lossy()
+            .into_owned();
+        for text in [
+            "{\"distinct\": 5}",
+            "{\"distinct\": null}",
+            "{\"distinct\": {}}",
+            "[1, 2]",
+        ] {
+            std::fs::write(&path, text).unwrap();
+            assert!(Distinct::load(&path).pairs.is_empty(), "{text}");
+        }
+        std::fs::write(
+            &path,
+            "{\"distinct\": [[\"a\", \"b\"], [{\"title\": \"t\"}, 3], [{\"title\": \"t\"}, {\"title\": \"u\"}]]}",
+        )
+        .unwrap();
+        let pairs = Distinct::load(&path).pairs;
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0][1]["title"], "u");
+        // an object without `distinct`: no pairs, no warning
+        std::fs::write(&path, "{}").unwrap();
+        assert!(Distinct::load(&path).pairs.is_empty());
     }
 }

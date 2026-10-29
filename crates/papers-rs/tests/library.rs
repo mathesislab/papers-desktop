@@ -353,9 +353,10 @@ fn files_placed_as_papers() {
                         .collect();
                     lib.set_files(key, &files).unwrap();
                 }
-                _ => lib
-                    .rename_entry_files(key, &policy, None, None, true)
-                    .unwrap(),
+                _ => {
+                    lib.rename_entry_files(key, &policy, None, None, true)
+                        .unwrap();
+                }
             }
         }
         let ops = lib.file_ops().len();

@@ -145,9 +145,10 @@ pub fn run(
                     .into());
                 }
                 let attach = Attach::new(mode.unwrap_or(Mode::Move));
-                attach_files(&mut session, &keys[0], &files, &attach)?;
+                let placed = attach_files(&mut session, &keys[0], &files, &attach)?;
                 let committed = session.commit()?;
                 report(&session, leaf, &keys, &committed.notes);
+                crate::cmd_file::refused(placed)?;
             }
             FileAction::Detach { files, broken } => {
                 detach_entries(&mut session, Some(&keys), &files, broken, false)?;
@@ -162,7 +163,7 @@ pub fn run(
                 check_entries_files(&mut session, &options, true, &keys, &Queries::default())?;
             }
             FileAction::Rename { keep_source, move_ } => {
-                rename_entries(
+                let failed = rename_entries(
                     &mut session,
                     &keys,
                     keep_source,
@@ -170,6 +171,7 @@ pub fn run(
                 )?;
                 let committed = session.commit()?;
                 report(&session, leaf, &keys, &committed.notes);
+                crate::cmd_file::refused(failed == 0)?;
             }
             FileAction::Open => {}
         }

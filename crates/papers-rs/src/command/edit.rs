@@ -44,6 +44,16 @@ pub fn set_fields(
                 "{name}: changed by {by}, not --set or --unset"
             )));
         }
+    }
+    // papers checks the form of the names of --set only (not of --unset)
+    for (name, _) in values {
+        // a field named `key` would be read as the key: --set key=... is --key
+        if name.to_lowercase() == "key" {
+            return Err(Error::exit(format!(
+                "{name}: the key is changed by {}, not --set",
+                not_set("id").unwrap_or_default()
+            )));
+        }
         if !is_field_name(name) {
             return Err(Error::exit(format!(
                 "{} is not a field name",

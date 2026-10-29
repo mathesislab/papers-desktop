@@ -271,6 +271,17 @@ mod tests {
         );
     }
 
+    /// The brace depth never goes below 0: a stray `}` does not stop the split.
+    #[test]
+    fn a_stray_closing_brace() {
+        assert_eq!(split_depth0("a} and b", Sep::And), ["a}", "b"]);
+        assert_eq!(
+            split_depth0("a} and {b and c} and d", Sep::And),
+            ["a}", "{b and c}", "d"]
+        );
+        assert_eq!(standard_name("x} and y z"), "x} and z, y");
+    }
+
     #[test]
     fn keywords() {
         assert_eq!(

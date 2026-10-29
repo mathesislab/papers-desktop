@@ -45,7 +45,8 @@ papers-rs is 3 to 7 times faster than papers on a library of 2,346 entries: see
   what `add FILE` and `edit --from` read), with the errors and quirks of papers (of papers 3.0.0b6:
   `&` `%` `#` `_` escaped for LaTeX in RIS and CSL-JSON, the stray lines of RIS and a last record
   without `ER`, numbers of BibJSON as written, `bibtex:type` for a bibtex field named as a BibJSON key)
-  and of the `rispy` reader.
+  and of the `rispy` reader. A CSL-JSON `author` that is a string or an object is one name (papers
+  3.0.0b7.dev49).
 - `search`: the selection of `papers list`: words and fields (substring, wildcards,
   fuzzy by rapidfuzz's `token_set_ratio`, which the `rapidfuzz` crate's Indel distance
   gives), tags, files, the entries to review (the DOI parser of `papers.extract`),
@@ -66,7 +67,8 @@ papers-rs is 3 to 7 times faster than papers on a library of 2,346 entries: see
   by the `any_ascii` crate (below).
 - `identity`: when two entries are the same paper (DOI, arXiv id, ISBN, authors
   and title; the title guard), `.papers/distinct.json`, the search for
-  duplicates, naming an entry by key, former key, DOI, arXiv id or ISBN.
+  duplicates, naming an entry by key, former key, DOI, arXiv id or ISBN. A `distinct.json` whose
+  `distinct` is not an array is unreadable (one warning); a pair that is not two objects is ignored.
 - `merge`: the merge of entries that are the same paper, and what `--on-duplicate` keep, update,
   skip and error do (the dialogue of `ask` is for the program that asks: it implements
   `merge::Resolve`). Two-way (`Merge::new`: `add`, `check`) and three-way (`Merge::exchange`, with a
@@ -146,6 +148,19 @@ papers. `init`, `config`, `add`, `edit`, `rm`, `tag`, `file` (and the deprecated
 `open` and the viewer passthrough print `papers: error: not implemented in papers-rs yet` (status 1). Of `list`, the
 selection and the outputs are there, and `--export`, and all the actions (on the files, `--delete`, `--edit`,
 `--add-tag`, `--rm-tag`, `--fetch`, `--push`, `--pull`, `--sync`).
+
+Following papers 3.0.0b7.dev49 (perrette/papers#188, #191), as to the commands: a refused
+`file rename`, `file attach`, `list --rename` and `list --attach` (a name outside the files directory,
+an unknown or invalid placeholder: the other entries are still placed and saved) and `status --bibtex FILE`
+for a FILE that is missing exit with status 1; `tag --rename` prints `modified KEY` with `--porcelain`, a key
+changed in case only is `renamed OLD NEW` (and `crossref` follows), a duplicate skipped by
+`add --on-duplicate skip` is `existing KEY`; `edit --key ''` and `edit --set key=...` (in any case) are
+refused; `papers tag` lists by count, then lower case, then the tag; the words of `list` compare the
+`norm` of both sides (`Muller` finds `M{\"u}ller`); the files of `.papers/` next to the bibtex are moved
+once the arguments say the command is not a dry run (`--dry`, `file mv -n`). `tests/fixes_cmds.rs` has
+the tests ported from papers, and runs papers on the same cases with `PAPERS_REFERENCE`. Not done: the
+warnings of bibtexparser's splitter (`bibtexparser.splitter: warning: ...`, once since this version)
+are not printed.
 
 Tests: `cargo test -p papers-rs -p papers-rs-cli`. The history is checked against
 recordings of papers (`crates/papers-rs/tests/history/*.json`, made by

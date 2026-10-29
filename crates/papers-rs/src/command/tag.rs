@@ -26,7 +26,7 @@ pub fn renamed_line(old: &str, new: &str, count: usize) -> String {
 }
 
 /// The tags with their number of entries, the nested tags indented under their
-/// parent, the most used first, then by name (`print_tag_tree`).
+/// parent, the most used first, then by name without case, then by name (`print_tag_tree`).
 pub fn tag_tree<'a>(entries: impl IntoIterator<Item = &'a Entry>) -> Vec<String> {
     let counts = tag_counts(entries);
     let count: HashMap<&str, usize> = counts.iter().map(|(t, n)| (t.as_str(), *n)).collect();
@@ -47,7 +47,7 @@ pub fn tag_tree<'a>(entries: impl IntoIterator<Item = &'a Entry>) -> Vec<String>
             .get(&parent.map(str::to_string))
             .cloned()
             .unwrap_or_default();
-        tags.sort_by_key(|t| (Reverse(count[t]), t.to_lowercase()));
+        tags.sort_by_key(|t| (Reverse(count[t]), t.to_lowercase(), *t));
         for tag in tags {
             let name = match parent {
                 Some(p) => tag.chars().skip(p.chars().count() + 1).collect::<String>(),
@@ -59,4 +59,26 @@ pub fn tag_tree<'a>(entries: impl IntoIterator<Item = &'a Entry>) -> Vec<String>
     }
     show(None, 0, &children, &count, &mut lines);
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bib::Bib;
+
+    fn tree(entries: &str) -> String {
+        let bib = Bib::parse(entries);
+        tag_tree(bib.entries()).join("\n")
+    }
+
+    /// The tags by decreasing count, then lower case, then the tag itself: not the order they came in.
+    #[test]
+    fn the_counting_order() {
+        let expected = "b (2)\nClimate (1)\nclimate (1)\nx (1)";
+        for keywords in ["x, climate, Climate, b", "b, Climate, climate, x"] {
+            let text =
+                format!("@book{{a, keywords = {{{keywords}}}}}\n@book{{c, keywords = {{b}}}}\n");
+            assert_eq!(tree(&text), expected, "{keywords}");
+        }
+    }
 }

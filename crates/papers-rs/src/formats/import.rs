@@ -325,7 +325,8 @@ fn csl_date(value: Option<&J>) -> Vec<i128> {
     }
 }
 
-/// The names of a CSL `author` (`format_bibtex_names` of the list): a name is a dict of parts, or a text.
+/// The names of a CSL `author` (`format_bibtex_names`): an array of names, or one name (a text or
+/// an object); a name is a dict of parts, or a text.
 fn csl_names(value: &J) -> String {
     let part = |o: &J, k: &str| -> Option<String> { o.get(k).map(py_str) };
     let names: Vec<Name> = match value {
@@ -334,19 +335,10 @@ fn csl_names(value: &J) -> String {
             .filter(|n| truthy(Some(n)))
             .map(|n| csl_name(n, &part))
             .collect(),
-        J::Str(s) => s
-            .chars()
-            .map(|c| Name {
-                literal: Some(c.to_string()),
-                ..Name::default()
-            })
-            .collect(),
-        J::Obj(items) => items
-            .iter()
-            .map(|(k, _)| Name {
-                literal: Some(k.clone()),
-                ..Name::default()
-            })
+        J::Str(_) | J::Obj(_) => [value]
+            .into_iter()
+            .filter(|n| truthy(Some(n)))
+            .map(|n| csl_name(n, &part))
             .collect(),
         _ => Vec::new(),
     };
@@ -1115,5 +1107,44 @@ pub fn loads(text: &str, format: Format) -> Result<Vec<Entry>, String> {
         Format::BibJson => loads_bibjson(text),
         Format::Ris => loads_ris(text),
         Format::Bibtex => Err("unknown format: bibtex".into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn author_of(csl: &str, field: &str) -> Option<String> {
+        let entries = loads(csl, Format::CslJson).unwrap();
+        entries[0].get(field).map(str::to_string)
+    }
+
+    /// An `author` that is a string or an object is one name (formats.md 2.3, 3.3), not a list of
+    /// its characters or keys.
+    #[test]
+    fn one_name_not_in_an_array() {
+        let csl = |author: &str| format!("[{{\"type\": \"book\", \"title\": \"T\", {author}}}]");
+        assert_eq!(
+            author_of(&csl("\"author\": \"Smith, John\""), "author").as_deref(),
+            Some("{Smith, John}")
+        );
+        assert_eq!(
+            author_of(
+                &csl("\"editor\": {\"family\": \"Doe\", \"given\": \"Jane\"}"),
+                "editor"
+            )
+            .as_deref(),
+            Some("Doe, Jane")
+        );
+        assert_eq!(
+            author_of(
+                &csl("\"author\": [\"X Y\", {\"family\": \"Z\"}, \"\"]"),
+                "author"
+            )
+            .as_deref(),
+            Some("{X Y} and Z")
+        );
+        assert_eq!(author_of(&csl("\"author\": \"\""), "author"), None);
+        assert_eq!(author_of(&csl("\"author\": {}"), "author"), None);
     }
 }

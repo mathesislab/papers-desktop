@@ -447,8 +447,9 @@ impl Config {
     /// Move `distinct.json` and `origin/` (`origin.bib`) from the `.papers/` next to the bibtex,
     /// where earlier v3 builds wrote them, to the `.papers/` of the library folder: when the two
     /// folders differ, for a file the library folder has not, and unless the folder of the bibtex
-    /// is another library. Not with a dry run.
-    fn move_papers_files(&self) {
+    /// is another library. Not with a dry run. Done when the configuration is loaded, and again by the
+    /// command line once it knows whether the command is a dry run.
+    pub fn move_papers_files(&self) {
         let Some(bibtex) = self.bibtex.as_deref().filter(|_| self.file.is_some() && self.is_library) else { return };
         if dry_run() {
             return;
