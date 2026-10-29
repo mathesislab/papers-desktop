@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run an implementation of papers on the cases and compare it with the recorded results.
 
-    spec/run.py --papers CMD [--contract-only] [--section PATTERN] [CASE ...]
+    spec/run.py --papers CMD [--contract-only] [--section PATTERN] [--test PATTERN] [CASE ...]
 
 CMD is the implementation: `papers`, `target/debug/papers-rs`... (a program name, or a path, with
 optional arguments). CASE is a glob on the name of the case (group/name), all cases by default.
@@ -12,6 +12,8 @@ makes Contract is: the exit codes, the files after, and the outputs of the steps
 (see README.md, "Contract and Free"); a difference in a Free output is reported as a note, not a failure.
 --section PATTERN keeps the cases that exercise a section of the specification (a glob on its
 reference, or a section above it: `formats.md#7` finds the cases of `formats.md#7.2`); it can be repeated.
+--test PATTERN keeps the cases that list a test of the specification (design/tests.md, `tests/test_undo.py::...`:
+a glob, or a part of the test id).
 """
 import argparse
 import sys
@@ -27,18 +29,21 @@ def main():
                     help='compare the Contract parts only; differences in Free outputs are notes')
     ap.add_argument('--section', action='append', default=[], metavar='PATTERN',
                     help='only the cases of this section of the specification (e.g. formats.md#7)')
+    ap.add_argument('--test', action='append', default=[], metavar='PATTERN',
+                    help='only the cases that list this test of design/tests.md (a glob or a part of its id)')
     ap.add_argument('-a', '--all', action='store_true', help='show every difference, not only the first')
     ap.add_argument('-q', '--quiet', action='store_true', help='only the failures and the summary')
     ap.add_argument('--keep', action='store_true', help='keep the sandboxes (their paths are printed)')
     ap.add_argument('--list', action='store_true', help='list the cases (with their sections) and stop')
     ap.add_argument('--sections', action='store_true', help='list the sections and their cases and stop')
+    ap.add_argument('--tests', action='store_true', help='list the tests of design/tests.md and their cases and stop')
     ap.add_argument('cases', nargs='*', help='glob(s) of case names (default: all)')
     o = ap.parse_args()
-    cases = c.find_cases(o.cases, o.section)
+    cases = c.find_cases(o.cases, o.section, o.test)
     if o.list:
         for case in cases:
             print(case.name + (f'  (needs {", ".join(case.requires)})' if case.requires else '')
-                  + '  [' + ', '.join(case.sections) + ']')
+                  + '  [' + ', '.join(case.sections) + ']' + (f'  <{len(case.tests)} tests>' if case.tests else ''))
         return
     if o.sections:
         by_section = {}
@@ -47,6 +52,14 @@ def main():
                 by_section.setdefault(ref, []).append(case.name)
         for ref in sorted(by_section):
             print(f'{ref}: {", ".join(by_section[ref])}')
+        return
+    if o.tests:
+        by_test = {}
+        for case in cases:
+            for t in case.tests:
+                by_test.setdefault(t, []).append(case.name)
+        for t in sorted(by_test):
+            print(f'{t}: {", ".join(by_test[t])}')
         return
     if not cases:
         sys.exit('no case found')

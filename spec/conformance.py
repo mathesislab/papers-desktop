@@ -26,6 +26,8 @@ TIMEOUT = 120
 # a section of the specification: <file>.md#<number> (formats, bibtex, exchange, history: "7", "7.2")
 # or <file>.md#<slug>[/<slug>] (library.md, which has no numbers)
 SECTION_REF = re.compile(r'^(library|bibtex|formats|exchange|history)\.md#[a-z0-9][a-z0-9./-]*$')
+# a test of papers-cli, as design/tests.md lists it
+TEST_REF = re.compile(r'^tests/[A-Za-z0-9_]+\.py(::[A-Za-z0-9_]+)*$')
 
 # a time in brackets, alone or before more (`(2026-10-28 16:49, from $WORK/lib)`)
 TIME_IN_TEXT = re.compile(r'\(\d{4}-\d\d-\d\d \d\d:\d\d(?=[),])')
@@ -34,6 +36,12 @@ LIBRARY_ID = re.compile(r'("id":\s*)"[0-9a-f]{32}"')
 ORIGIN_TIME = re.compile(r'papers-time = \{[^}]*\}')
 ORIGIN_PULLED = re.compile(r'papers-pulled \d+')
 PLACEHOLDERS = ('$WORK', '$HOME', '$CONFIG', '$DATA', '$CACHE')
+
+# the identifier of a state of the history is a sha256 that depends on its time (history.md#2.5)
+STATE_ID = re.compile(r'(?<![0-9a-zA-Z])[0-9a-f]{64}(?![0-9a-zA-Z])')
+STATE_SHORT = re.compile(r'(?<![0-9a-zA-Z])[0-9a-f]{8}(?![0-9a-zA-Z])')   # what papers history shows
+STATE_FILE = re.compile(r'(?:^|/)projects/[^/]+/states/([0-9a-f]{64})\.json$')
+STATE_PLACEHOLDER = re.compile(r'\$STATE(\d+)(?::(\d+))?')            # $STATE2, $STATE2:4 (4 characters)
 
 
 # platform directories (what platformdirs gives papers-cli)
@@ -63,6 +71,7 @@ class Case:
             spec = json.load(f)
         self.description = spec.get('description', '')
         self.sections = spec.get('sections', [])
+        self.tests = spec.get('tests', [])
         self.ignore = spec.get('ignore', [])
         self.requires = spec.get('requires', [])
         self.steps = spec['steps']
@@ -71,6 +80,9 @@ class Case:
                 raise SystemExit(f'{self.name}: {ref}: not a section reference (see README.md, "Sections")')
         if not self.sections:
             raise SystemExit(f'{self.name}: case.json has no "sections"')
+        for ref in self.tests:
+            if not TEST_REF.match(ref):
+                raise SystemExit(f'{self.name}: {ref}: not a test of design/tests.md (tests/FILE.py::Class::test)')
         for step in self.steps:
             bad = set(step.get('contract', [])) - {'stdout', 'stderr'}
             if bad:
@@ -140,8 +152,8 @@ def step_contract(case, n):
     return default_contract(step['argv'])
 
 
-def find_cases(selectors=(), sections=()):
-    "the cases of spec/cases whose name (group/name) matches one of the glob selectors (all by default)"
+def find_cases(selectors=(), sections=(), tests=()):
+    "the cases of spec/cases whose name (group/name) matches one of the glob selectors (all by default), that exercise\n    a section or list a test of the specification (a glob, or a part of the test id)"
     found = []
     for root, dirs, files in os.walk(CASES):
         dirs.sort()
@@ -154,6 +166,8 @@ def find_cases(selectors=(), sections=()):
                  if any(fnmatch.fnmatch(c.name, s) or c.name.startswith(s.rstrip('/') + '/') for s in selectors)]
     if sections:
         found = [c for c in found if any(section_matches(ref, pat) for ref in c.sections for pat in sections)]
+    if tests:
+        found = [c for c in found if any(fnmatch.fnmatch(t, pat) or pat in t for t in c.tests for pat in tests)]
     return found
 
 
@@ -236,6 +250,11 @@ class Sandbox:
         os.makedirs(self.home)
         self._subs = self._build_subs()
         self.projects = {}
+        self.t0 = time.time()      # the states of the run are younger than this; those of before-home are not
+        self.seen = {}             # id -> time of the states the run has written, also those the history dropped since
+        self.states = {}           # id of a state of the run -> $STATEn (after the run)
+        self.named = {}            # text given for a $STATEn in an argument -> that placeholder as written
+        self.hashes = {}           # first 6 digits of the sha1 of a library identifier -> $PROJECTn
 
     def close(self):
         if not self.keep:
@@ -278,6 +297,51 @@ class Sandbox:
         for ph, path in (('$WORK', self.work), ('$HOME', self.home), ('$CONFIG', d['config']),
                          ('$DATA', d['data']), ('$CACHE', d['cache'])):
             text = text.replace(ph, path)
+        return STATE_PLACEHOLDER.sub(self._state_text, text)
+
+    def see_states(self):
+        "note the states the run has written so far (not those of before-home): one the history drops is kept in `seen`"
+        for dirpath, dirnames, filenames in os.walk(self.home):
+            if os.path.basename(dirpath) != 'states':
+                continue
+            for name in filenames:
+                m = STATE_FILE.search(os.path.relpath(os.path.join(dirpath, name), self.home).replace(os.sep, '/'))
+                if not m or m.group(1) in self.seen:
+                    continue
+                try:
+                    with open(os.path.join(dirpath, name), encoding='utf-8') as f:
+                        when = json.load(f)['time']
+                except (OSError, ValueError, KeyError, TypeError):
+                    continue
+                if isinstance(when, (int, float)) and when >= self.t0:
+                    self.seen[m.group(1)] = when
+
+    def _recent_states(self):
+        "[(time, id)] of the states the run has written, oldest first: the number of a state is its place here"
+        self.see_states()
+        return sorted((when, i) for i, when in self.seen.items())
+
+    def _state_text(self, m):
+        "$STATEn of a step: the identifier (8 characters, or $STATEn:K: K) of the n-th state the run has written so far"
+        n, size = int(m.group(1)), int(m.group(2) or 8)
+        states = self._recent_states()
+        if not 1 <= n <= len(states):
+            return m.group(0)
+        text = states[n - 1][1][:size]
+        self.named[text] = m.group(0)
+        return text
+
+    def _rename(self, text):
+        "the machine-specific names of the library identifiers and states of the run replaced by placeholders"
+        for pid, name in self.projects.items():
+            text = text.replace(pid, name)
+        for h, name in self.hashes.items():
+            text = text.replace(f'-{h}.bib', f'-{name}.bib')
+        text = STATE_ID.sub(lambda m: self.states.get(m.group(0), m.group(0)), text)
+        short = {i[:8]: ph for i, ph in self.states.items()}
+        text = STATE_SHORT.sub(lambda m: short.get(m.group(0), m.group(0)), text)
+        for given, ph in self.named.items():
+            text = re.sub(rf'(?<![0-9a-zA-Z]){given}(?![0-9a-zA-Z])', lambda m, ph=ph: ph, text)
         return text
 
     def _normalize_bytes(self, data, time_json=False, path='', origin=False):
@@ -285,9 +349,7 @@ class Sandbox:
             text = data.decode('utf-8')
         except UnicodeDecodeError:
             return data
-        text = self.normalize(text)
-        for pid, name in self.projects.items():
-            text = text.replace(pid, name)
+        text = self._rename(self.normalize(text))
         if time_json:
             text = TIME_IN_JSON.sub(r'\1"$TIME"', text)
         if path.endswith('.papers/config.json'):   # the id of a library no history step has named (export)
@@ -356,9 +418,7 @@ class Sandbox:
         "the outputs of the steps, normalized (after snapshot(): it knows the identifiers of the projects)"
         for step in steps:
             for stream in ('stdout', 'stderr'):
-                text = self.normalize(step[stream])
-                for pid, name in self.projects.items():
-                    text = text.replace(pid, name)
+                text = self._rename(self.normalize(step[stream]))
                 step[stream] = TIME_IN_TEXT.sub('($TIME', text)
 
     def detect_version(self, papers):
@@ -385,7 +445,9 @@ class Sandbox:
         d = self.dirs
         history = os.path.relpath(d['data'], self.home).replace(os.sep, '/') + '/history/'
         self.projects = self._project_names(raw, history)
-        work = {p: self._normalize_bytes(data, path=p) for p, data in _read_tree(self.work).items()}
+        self.hashes = {hashlib.sha1(pid.encode()).hexdigest()[:6]: name for pid, name in self.projects.items()}
+        self.states = {i: f'$STATE{n + 1}' for n, (_, i) in enumerate(self._recent_states())}
+        work = {self._rename(p): self._normalize_bytes(data, path=p) for p, data in _read_tree(self.work).items()}
         return {'work': work, 'home': self._snapshot_home(raw)}
 
     def _snapshot_home(self, raw):
@@ -406,8 +468,17 @@ class Sandbox:
                 parts = rel.split('/')
                 if len(parts) > 3 and parts[2] == 'projects':
                     parts[3] = projects.get(parts[3], parts[3])
+                    time_json = True
+                    if len(parts) == 6 and parts[4] == 'states' and parts[5].endswith('.json'):
+                        # a state of the run is named by a hash of its time: $STATEn. A state of before-home
+                        # (a history converted from papers 3.0.0b5) keeps its name and its time.
+                        stem = parts[5][:-len('.json')]
+                        if stem in self.states:
+                            parts[5] = self.states[stem] + '.json'
+                        else:
+                            time_json = False
                     rel = '/'.join(parts)
-                    content = self._normalize_bytes(content, time_json=True)
+                    content = self._normalize_bytes(content, time_json=time_json)
                 elif len(parts) > 3 and parts[2] == 'objects':
                     try:
                         content = zlib.decompress(content)   # the compressor is private; the text is shared
@@ -498,7 +569,10 @@ def run_case(case, papers, keep=False):
     try:
         box.populate()
         box.detect_version(papers)
-        steps = [box.run_step(papers, step) for step in case.steps]
+        steps = []
+        for step in case.steps:
+            steps.append(box.run_step(papers, step))
+            box.see_states()   # a later step can drop the history of this one: its identifiers are still named
         result = box.snapshot()
         for tree in ('work', 'home'):   # the files the case does not compare ("ignore")
             for path in [p for p in result[tree] if any(fnmatch.fnmatch(f'{tree}/{p}', g) for g in case.ignore)]:
