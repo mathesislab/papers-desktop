@@ -1,72 +1,19 @@
 //! The names papers gives (keys, file names), tags: papers-rs against what papers-cli gave
-//! (`tests/gen_library_expected.py`, `expected/library/names.json`). Where the transliteration
-//! of papers (Unidecode) and of papers-rs (deunicode) differ, the difference is counted, not
-//! failed (`expected/library/translit.json`).
+//! (`tests/gen_library_expected.py`, `expected/library/names.json`). The transliteration is
+//! that of papers (AnyAscii): `tests/tables.rs`.
 
 use papers_rs::entry::{
     add_tags, fnmatch, remove_tags, rename_tag, tag_counts, tag_matches, tag_parents, tags,
 };
 use papers_rs::names::{
-    Format, FormatKind, append_abc, ascii, attachment_names, check_key, fit_name, list_tag,
+    Format, FormatKind, append_abc, attachment_names, check_key, fallback_key, fit_name, list_tag,
     path_safe, safe_file_name, slugify, target_in,
 };
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 
 mod common;
-use common::translit::{Tally, translit};
+use common::tally::Tally;
 use common::{entry_of, library_json, strings};
-
-#[test]
-fn the_transliteration_differences_are_the_recorded_ones() {
-    let j = library_json("translit.json");
-    let mut differing = 0;
-    for d in j["differences_below_3000"].as_array().unwrap() {
-        let c = char::from_u32(d[0].as_u64().unwrap() as u32).unwrap();
-        let (unidecode, ours) = (d[1].as_str().unwrap(), d[2].as_str().unwrap());
-        assert_eq!(
-            ascii(&c.to_string()),
-            ours,
-            "{c:?}: the table of deunicode changed"
-        );
-        assert_ne!(ours, unidecode);
-        differing += 1;
-    }
-    let mut digest = Sha256::new();
-    let mut agree = 0;
-    for cp in 0x80u32..0x110000 {
-        let Some(c) = char::from_u32(cp) else {
-            continue;
-        };
-        if translit().differs(c) {
-            if cp >= 0x3000 {
-                differing += 1;
-            }
-            continue;
-        }
-        let out = ascii(&c.to_string());
-        if !out.is_empty() {
-            digest.update(format!("{cp:x}:{out}\n"));
-            agree += 1;
-        }
-    }
-    assert_eq!(agree, j["agree_count"].as_u64().unwrap());
-    assert_eq!(differing as u64, j["difference_count"].as_u64().unwrap());
-    let hex: String = digest
-        .finalize()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    assert_eq!(
-        hex,
-        j["agree_digest"].as_str().unwrap(),
-        "the transliteration changed where it agreed with Unidecode"
-    );
-    // the letters of the Latin scripts that names are made of agree
-    for c in "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćČčĎďĐđĒēĘęĚěĞğĪīİıŁłŃńŇňŌōŐőŒœŘřŚśŞşŠšŢţŤťŪūŮůŰűŹźŻżŽž".chars() {
-        assert!(!translit().differs(c), "{c}");
-    }
-}
 
 #[test]
 fn slugify_as_papers() {
@@ -76,7 +23,7 @@ fn slugify_as_papers() {
         tally.check("slugify", text, slugify(text), expected.to_string());
     }
     tally.report("slugify");
-    assert!(tally.cases > 1000 && tally.known < tally.cases / 4);
+    assert!(tally.cases > 1000);
 }
 
 #[test]
@@ -127,6 +74,14 @@ fn small_functions_as_papers() {
             check_key(key).is_none(),
             case[1].as_bool().unwrap(),
             "{key:?}"
+        );
+    }
+    for case in j["fallback_key"].as_array().unwrap() {
+        let (title, year) = (case[0].as_str().unwrap(), case[1].as_str().unwrap());
+        assert_eq!(
+            fallback_key(title, year),
+            case[2].as_str().unwrap(),
+            "{case}"
         );
     }
     for case in j["attachment_names"].as_array().unwrap() {

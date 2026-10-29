@@ -38,7 +38,7 @@ impl Sep {
 
 /// A value split on a separator that is outside braces, each part stripped
 /// (`split_depth0`): a `{...}` group is one word whatever it contains. The
-/// depth is counted as papers counts it, an unmatched `}` included.
+/// depth never goes below 0: an unmatched `}` does not stop the split.
 ///
 /// ```
 /// use papers_rs::bib::encoding::{Sep, split_depth0};
@@ -54,7 +54,7 @@ pub fn split_depth0(value: &str, sep: Sep) -> Vec<String> {
         let c = value[i..].chars().next().unwrap();
         match c {
             '{' => depth += 1,
-            '}' => depth -= 1,
+            '}' => depth = (depth - 1).max(0), // a stray } does not stop the split
             _ if depth == 0 => {
                 if let Some(n) = sep.matches(value, i) {
                     parts.push(&value[start..i]);

@@ -1215,10 +1215,71 @@ fn file_names_are_at_most_250_bytes() {
 }
 
 #[test]
-fn slugs_are_always_transliterated_with_the_table_of_unidecode() {
-    // test_filename_unit.py TestSlugTable: the slug of python-slugify with Unidecode, apostrophes included
-    let slug = papers_rs::names::slugify("l'objet Объект Хрущёв µm");
-    assert_eq!(slug, "l-objet-obekt-khrushchev-mm");
+fn an_extension_that_leaves_no_room_for_the_name_is_cut_too() {
+    // test_filename_unit.py TestSafeFileNames::test_long_extension
+    use papers_rs::names::{MAX_NAME_BYTES, fit_name};
+    let long = |c: &str, n: usize| c.repeat(n);
+    assert_eq!(
+        fit_name(&format!("/lib/{}.{}", long("a", 300), long("b", 300))),
+        format!("/lib/a.{}", long("b", 248))
+    );
+    assert_eq!(
+        fit_name(&format!("/lib/{}.{}", long("a", 10), long("é", 200))),
+        format!("/lib/a.{}", long("é", 124))
+    );
+    let fitted = fit_name(&format!("x.{}", long("é", 200)));
+    assert!(fitted.len() <= MAX_NAME_BYTES);
+}
+
+#[test]
+fn the_key_of_a_new_entry_without_a_key_from_the_template_is_made_of_its_title() {
+    // test_spec_bibtex.py TestKeySuffix::test_empty_template_key
+    use papers_rs::names::fallback_key;
+    assert_eq!(fallback_key("Only a title", "2000"), "only2000");
+    assert_eq!(fallback_key("Only a title", ""), "only");
+    assert_eq!(fallback_key("A b", ""), "a");
+    assert_eq!(fallback_key("100 years", "2000"), "years2000");
+    assert_eq!(fallback_key("", "2000"), "entry");
+    assert_eq!(fallback_key("100", ""), "entry");
+}
+
+#[test]
+fn only_the_ascii_digits_are_digits_of_keys_and_identifiers() {
+    // bibtex.md 7.2, 9.2
+    use papers_rs::identity::{normalize_arxiv, normalize_isbn, parse_identifier};
+    use papers_rs::names::{append_abc, check_key};
+    assert!(check_key("٣abc").is_none() && check_key("３abc").is_none());
+    assert!(check_key("0abc").is_some() && check_key("9abc").is_some());
+    assert_eq!(append_abc("x٣b", &[]).unwrap(), "x٣bb");
+    assert_eq!(append_abc("x3b", &[]).unwrap(), "x3c");
+    assert_eq!(normalize_arxiv("٢١٠١.٠١٢٣٤"), None);
+    assert_eq!(normalize_isbn("９７８０３０６４０６１５７"), None);
+    assert_eq!(parse_identifier("٣abc").unwrap().1, "٣abc");
+    assert!(parse_identifier("3abc").is_err());
+}
+
+#[test]
+fn doi_or_id_takes_the_key_without_a_doi() {
+    // an empty doi, or one of spaces, is no doi
+    use papers_rs::names::Format;
+    let mut f = Format::name();
+    f.template = "{doi_or_id}".into();
+    f.unknown_template = None;
+    let none = entry("Smith.2020", "article", &[("doi", "  ")]);
+    assert_eq!(f.render(&none).unwrap(), "smith-2020");
+    let doi = entry("k", "article", &[("doi", "10.1000/ABC")]);
+    assert_eq!(f.render(&doi).unwrap(), "10-1000-abc");
+}
+
+#[test]
+fn slugs_are_made_of_the_own_table() {
+    // test_filename_unit.py TestSlugTable: papers' own table (AnyAscii), apostrophes included
+    use papers_rs::names::slugify;
+    assert_eq!(slugify("x˯x"), "xvx");
+    assert_eq!(
+        slugify("l'objet Объект Хрущёв µm"),
+        "l-objet-obekt-khrushchev-mm"
+    );
 }
 
 #[test]

@@ -12,13 +12,18 @@ import json
 import os
 import random
 import sys
+import tempfile
 from contextlib import redirect_stdout
 from unittest import mock
 
-import papers.utils
-from papers.bib import Biblio, entry_diff
-from papers.entries import parse_string
-from papers.filename import KEYFORMAT
+os.environ['HOME'] = tempfile.mkdtemp(prefix='papers-rs-expected-')  # before papers is imported
+os.environ['XDG_CONFIG_HOME'] = os.path.join(os.environ['HOME'], 'config')
+os.environ['XDG_CACHE_HOME'] = os.path.join(os.environ['HOME'], 'cache')
+
+import papers.utils  # noqa: E402
+from papers.bib import Biblio, entry_diff  # noqa: E402
+from papers.entries import parse_string  # noqa: E402
+from papers.filename import KEYFORMAT  # noqa: E402
 
 papers.utils.use_color(False)
 random.seed(20261028)
@@ -196,6 +201,15 @@ if __name__ == '__main__':
         c = case()
         c['expected'] = run(c)
         cases.append(c)
+    # the key template gives an empty key (no author, year or DOI): the entry keeps its key
+    for text in ['@article{2019doe,\n journal = {Nature}\n}\n', '@misc{x,\n title = {Only a title}\n}\n',
+                 '@misc{2000a,\n title = {Only a title},\n year = {2000}\n}\n', '@misc{٣a,\n title = {Title}\n}\n']:
+        for name in ('fix_key', 'auto_key'):
+            o = {k: False for k in ['fix_doi', 'fix_key', 'auto_key', 'key_ascii', 'format_name', 'fetch', 'fetch_all', 'interactive']}
+            o.update({name: True, 'encoding': None})
+            c = {'bibtex': text, 'index': 0, 'options': o, 'fetched': None, 'answer': False}
+            c['expected'] = run(c)
+            cases.append(c)
     here = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(here, 'expected', 'check.json'), 'w') as f:
         json.dump({'fix': cases, 'diffs': diffs()}, f, ensure_ascii=False, indent=0)

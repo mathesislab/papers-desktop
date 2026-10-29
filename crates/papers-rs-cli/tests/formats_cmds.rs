@@ -249,8 +249,9 @@ fn add_ris_with_stray_lines(reference: bool) {
     let (code, _, err) = s.run(&p, &["add", "../in/a.ris", "--no-pool", "--porcelain"]);
     assert_eq!((code, err.as_str()), (0, ""));
     let (_, out, _) = s.run(&p, &["list", "--field", "title", "--no-key"]);
-    // in the order of the keys, which come from the authors and the years
-    assert_eq!(out, "First \\& more\nThird\nSecond\nLast\nOne\nTwo\n");
+    // in the order of the keys: from the DOI (Third), else from the title (first, last, second), as
+    // an entry gets a key of its title when the key template gives none (bibtex.md 8)
+    assert_eq!(out, "Third\nFirst \\& more\nLast\nOne\nSecond\nTwo\n");
     let (_, out, _) = s.run(&p, &["list", "--field", "doi", "url", "--no-key"]);
     assert!(out.contains("10.1000/xyz https://example.org/p"), "{out:?}");
     let (_, out, _) = s.run(&p, &["list", "--format", "ris"]);

@@ -33,7 +33,7 @@ use std::sync::OnceLock;
 use unicode_normalization::UnicodeNormalization;
 use unicode_normalization::char::canonical_combining_class;
 
-use super::latexenc_tables::{UNICODE_TO_CRAPPY_LATEX1, UNICODE_TO_LATEX};
+use super::latexenc_tables::{ACCENTED_LATEX, UNICODE_TO_LATEX};
 
 /// The accent commands: the combining character each puts on its argument.
 fn accent(name: &str) -> Option<char> {
@@ -104,13 +104,13 @@ const FORMATTING: &[&str] = &[
 ];
 
 /// Character names that the table lacks.
-const MORE_CHARACTERS: &[(&str, &str)] = &[
-    ("dh", "ð"),
-    ("j", "ȷ"),
-    ("times", "×"),
-    ("ell", "ℓ"),
-    ("copyright", "©"),
-    ("textregistered", "®"),
+const MORE_CHARACTERS: &[(&str, char)] = &[
+    ("dh", 'ð'),
+    ("j", 'ȷ'),
+    ("times", '×'),
+    ("ell", 'ℓ'),
+    ("copyright", '©'),
+    ("textregistered", '®'),
 ];
 
 /// The name of a command in a LaTeX text of the table written as one command
@@ -149,19 +149,19 @@ fn named_command(text: &str) -> Option<&str> {
 
 /// The commands that name a character, and the character (`characters`): those of the
 /// character table written as one command, the first one of each name.
-fn characters() -> &'static HashMap<&'static str, &'static str> {
-    static MAP: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+fn characters() -> &'static HashMap<&'static str, char> {
+    static MAP: OnceLock<HashMap<&'static str, char>> = OnceLock::new();
     MAP.get_or_init(|| {
-        let mut names: HashMap<&str, &str> = HashMap::new();
-        for (c, latex) in UNICODE_TO_LATEX.iter().chain(UNICODE_TO_CRAPPY_LATEX1) {
+        let mut names: HashMap<&str, char> = HashMap::new();
+        for (c, latex) in UNICODE_TO_LATEX.iter().chain(ACCENTED_LATEX) {
             if let Some(name) = named(latex)
                 && accent(name).is_none()
             {
-                names.entry(name).or_insert(c);
+                names.entry(name).or_insert(*c);
             }
         }
         for (name, c) in MORE_CHARACTERS {
-            names.entry(name).or_insert(c);
+            names.entry(name).or_insert(*c);
         }
         names
     })
@@ -270,7 +270,7 @@ fn decode(s: &[char], text: bool) -> String {
                 if FORMATTING.contains(&name.as_str()) {
                     i = after;
                 } else if let Some(c) = characters().get(name.as_str()) {
-                    out.push_str(c);
+                    out.push(*c);
                     i = after;
                 } else {
                     out.extend(&s[i..j]);

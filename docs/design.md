@@ -515,8 +515,9 @@ full comparison differs only in Free output: bibtexparser's warnings, the
 usage lines of `--openalex`). Interop both ways: each reads, undoes and
 pulls what the other recorded. 3 to 8 times faster than papers
 (`crates/papers-rs/PERFORMANCE.md`). The app writes with it, built in
-(*Writing*). Decided: transliteration with `deunicode` (Unidecode is GPL;
-to settle with Mahé), PDF text with `pdf-extract` (PyMuPDF has no
+(*Writing*). Decided: transliteration with AnyAscii (ISC; the `any_ascii` crate, papers'
+own table since v3, perrette/papers#192: the output matches papers for every
+code point), PDF text with `pdf-extract` (PyMuPDF has no
 permissive Rust binding), the release profile unwinds (a panic of
 pdf-extract is caught).
 

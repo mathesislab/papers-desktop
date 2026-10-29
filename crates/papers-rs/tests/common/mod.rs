@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-pub mod translit;
+pub mod tally;
 
 use std::path::{Path, PathBuf};
 

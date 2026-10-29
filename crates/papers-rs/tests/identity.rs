@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 
 mod common;
 use common::library_json;
-use common::translit::Tally;
+use common::tally::Tally;
 
 fn entries_of(text: &str) -> Vec<Entry> {
     Bib::parse(text).entries().cloned().collect()

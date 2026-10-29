@@ -14,11 +14,11 @@
 //! assert_eq!(Format::name().render(&entry).unwrap(), "muller_and_doe_2020_sea-level-rise-a-review");
 //! ```
 //!
-//! - [`ascii`]: the transliteration to ASCII, in one place. papers uses the
-//!   Unidecode table (Python); this crate uses the `deunicode` crate, which
-//!   differs for some characters (see `tests/expected/translit.json`). Whoever
-//!   changes the table changes it here, and only here.
-//! - [`slugify`], [`path_safe`], [`title_words`]: what the placeholders are made of.
+//! - [`ascii`]: the transliteration to ASCII, in one place: the table of papers
+//!   (AnyAscii 0.3.3), by the `any_ascii` crate. Whoever changes the table
+//!   changes it here, and only here.
+//! - [`slugify`], [`path_safe`], [`title_words`]: what the placeholders are made of;
+//!   [`fallback_key`]: the key of a new entry for which the key template gives none.
 //! - [`Format`]: a name or key template with its options ([`Format::render`]);
 //!   the template syntax is Python's `str.format` ([`template`]).
 //! - [`append_abc`], [`is_valid_key`], [`check_key`]: the keys.
@@ -76,53 +76,22 @@ pub fn is_digit(c: char) -> bool {
     c.is_ascii_digit() || (c as u32 >= 0xb2 && in_ranges(DIGIT, c))
 }
 
-/// A text as ASCII: the transliteration of papers (`unidecode.unidecode`).
+/// A text as ASCII: the transliteration of papers (`papers.ascii.to_ascii`, AnyAscii).
 ///
-/// The ASCII characters are kept, the others go through the table. papers uses the
-/// Unidecode table; this uses `deunicode`. They agree on the letters of the Latin
-/// scripts and most others, not on all characters (`tests/expected/library/translit.json`
-/// lists the differences). A character that the table does not know is dropped, as
-/// Unidecode does.
+/// The ASCII characters are kept, the others are replaced by their text in the table of
+/// papers (`design/data/ascii-transliteration.tsv`, from AnyAscii 0.3.3; the `any_ascii`
+/// crate has the same data, `tests/names.rs` checks every code point against the table).
+/// A character that the table does not know is dropped.
 ///
 /// ```
 /// assert_eq!(papers_rs::names::ascii("Müller, Åsa, Straße"), "Muller, Asa, Strasse");
 /// ```
 pub fn ascii(text: &str) -> String {
-    if text.is_ascii() {
-        return text.to_string();
-    }
-    let mut out = String::with_capacity(text.len());
-    for c in text.chars() {
-        if c.is_ascii() {
-            out.push(c);
-        } else if let Some(t) = deunicode::deunicode_char(c) {
-            out.push_str(t);
-        }
-    }
-    out
+    any_ascii::any_ascii(text)
 }
 
 // slugify
 // -------
-
-/// The replacement of the `'` of a text by `-` (`QUOTE_PATTERN.sub`): a run
-/// of them becomes one.
-fn quotes_to_dash(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut in_run = false;
-    for c in text.chars() {
-        if c == '\'' {
-            if !in_run {
-                out.push('-');
-            }
-            in_run = true;
-        } else {
-            in_run = false;
-            out.push(c);
-        }
-    }
-    out
-}
 
 /// The text of `&name;` of the HTML 4 entities, else none.
 fn entity_char(name: &str) -> Option<char> {
@@ -130,71 +99,51 @@ fn entity_char(name: &str) -> Option<char> {
     char::from_u32(ENTITIES[i].1)
 }
 
-/// Replace the references `&...;` that `read` turns into a code point (the
-/// replacement of a regular expression): all of them, or none if one is not
-/// a character (`chr()` fails, the error is caught by slugify).
-///
-/// `prefix` is what the reference starts with after the `&`, `digit` what
-/// its digits are.
-fn replace_references(
-    text: &str,
-    prefix: &str,
-    digit: impl Fn(char) -> Option<u32>,
-    base: u32,
-) -> String {
-    let chars: Vec<char> = text.chars().collect();
-    let mut out = String::with_capacity(text.len());
-    let prefix: Vec<char> = prefix.chars().collect();
-    let mut i = 0;
-    let mut failed = false;
-    while i < chars.len() {
-        if chars[i] == '&' && chars[i + 1..].starts_with(&prefix) {
-            let mut j = i + 1 + prefix.len();
-            let first = j;
-            let mut value: u64 = 0;
-            while j < chars.len() {
-                match digit(chars[j]) {
-                    Some(d) => {
-                        value = (value * base as u64 + d as u64).min(u64::MAX >> 8);
-                        j += 1;
-                    }
-                    None => break,
-                }
-            }
-            if j > first && j < chars.len() && chars[j] == ';' {
-                if value > 0x10ffff {
-                    failed = true;
-                } else {
-                    // a surrogate is a character in Python; it is no letter or digit here either
-                    out.push(char::from_u32(value as u32).unwrap_or('\u{fffd}'));
-                }
-                i = j + 1;
-                continue;
-            }
-        }
-        out.push(chars[i]);
-        i += 1;
+/// The character of the digits of a numeric reference (`&#38;`, `&#x26;`): none when
+/// the number is no character (above U+10FFFF, or a surrogate).
+fn numeric_char(digits: &str, radix: u32) -> Option<char> {
+    if digits.is_empty() {
+        return None;
     }
-    if failed { text.to_string() } else { out }
+    let value = digits.chars().try_fold(0u32, |n, c| {
+        // ASCII digits only; a number that is too large stays too large
+        Some(n.saturating_mul(radix).saturating_add(c.to_digit(radix)?))
+    })?;
+    char::from_u32(value) // fails for a surrogate and above U+10FFFF
 }
 
-fn replace_named_entities(text: &str) -> String {
+/// The text with its HTML references decoded, in one pass from left to right: a decoded `&`
+/// starts no reference (`decode_html`). The references are the named entities of HTML 4
+/// (case sensitive), `&#38;` and `&#x26;` or `&#X26;` (any number of digits); a number that is
+/// no character stays as written.
+fn decode_html(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::with_capacity(text.len());
     let mut i = 0;
     while i < chars.len() {
         if chars[i] == '&' {
-            let mut j = i + 1;
-            while j < chars.len() && chars[j].is_ascii_alphanumeric() {
-                j += 1;
-            }
-            if j > i + 1 && j < chars.len() && chars[j] == ';' {
-                let name: String = chars[i + 1..j].iter().collect();
-                if let Some(c) = entity_char(&name) {
-                    out.push(c);
-                    i = j + 1;
-                    continue;
-                }
+            // the reference after the `&`, up to its `;`
+            let end = chars[i + 1..]
+                .iter()
+                .position(|&c| !c.is_ascii_alphanumeric() && c != '#');
+            let body: String = end
+                .map_or(&chars[i + 1..], |e| &chars[i + 1..i + 1 + e])
+                .iter()
+                .collect();
+            let closed = end.is_some_and(|e| chars[i + 1 + e] == ';');
+            let decoded = if !closed {
+                None
+            } else if let Some(hex) = body.strip_prefix("#x").or_else(|| body.strip_prefix("#X")) {
+                numeric_char(hex, 16)
+            } else if let Some(decimal) = body.strip_prefix('#') {
+                numeric_char(decimal, 10)
+            } else {
+                entity_char(&body)
+            };
+            if let Some(c) = decoded {
+                out.push(c);
+                i += body.chars().count() + 2;
+                continue;
             }
         }
         out.push(chars[i]);
@@ -203,63 +152,42 @@ fn replace_named_entities(text: &str) -> String {
     out
 }
 
-/// A text as a slug of `a-z`, `0-9` and `-` (python-slugify's `slugify` with
-/// its defaults, as papers uses it, always with the transliteration table of
-/// Unidecode).
+/// A text as a slug of `a-z`, `0-9` and `-` (`papers.filename.slugify`, library.md Slugify).
 ///
-/// In order: the `'` become `-`; NFKD and the transliteration to ASCII
-/// ([`ascii`]), the `'` of the table dropped; the HTML entities, decimal and hexadecimal references are
-/// decoded; NFKD again and lower case; the `'` that are left are removed, and
-/// a comma between two digits; each run of other characters becomes `-`, runs
-/// of `-` become one, and the `-` at the ends are removed.
+/// In order: the HTML references are decoded ([`decode_html`]: `&eacute;t&eacute;` is `été`);
+/// each `'` becomes `-`; NFKD and the transliteration to ASCII ([`ascii`]), the `'` of the
+/// table dropped; lower case; a comma between two digits is removed; each run of other
+/// characters becomes `-`, runs of `-` become one, and the `-` at the ends are removed.
 ///
 /// ```
 /// use papers_rs::names::slugify;
 /// assert_eq!(slugify("Müller"), "muller");
 /// assert_eq!(slugify("l'eau"), "l-eau");
+/// assert_eq!(slugify("l&#39;eau, &eacute;t&eacute;"), "l-eau-ete");
 /// assert_eq!(slugify("10.1000/xyz(1)"), "10-1000-xyz-1");
 /// assert_eq!(slugify("1,000 &amp; more"), "1000-more");
 /// ```
 pub fn slugify(text: &str) -> String {
-    let text = quotes_to_dash(text);
+    let text = decode_html(text).replace('\'', "-");
     let text: String = text.nfkd().collect();
     // an apostrophe that the table gives (as for Ь) is dropped, one of the text separated words
     let text: String = ascii(&text).chars().filter(|&c| c != '\'').collect();
-    let text = replace_named_entities(&text);
-    let text = replace_references(&text, "#", |c| is_decimal(c).then(|| decimal_value(c)), 10);
-    let text = replace_references(
-        &text,
-        "#x",
-        |c| match c {
-            'a'..='f' => Some(c as u32 - 'a' as u32 + 10),
-            'A'..='F' => Some(c as u32 - 'A' as u32 + 10),
-            c => is_decimal(c).then(|| decimal_value(c)),
-        },
-        16,
-    );
-    let text: String = text.nfkd().collect();
-    let text = text.to_lowercase();
-    let text: String = text.chars().filter(|&c| c != '\'').collect();
-    // a comma between two digits is removed (the digits are those of the text before)
-    let chars: Vec<char> = text.chars().collect();
-    let mut cleaned = String::with_capacity(text.len());
-    for (i, &c) in chars.iter().enumerate() {
-        if c == ','
+    let text = text.to_ascii_lowercase();
+    // each run of other characters (and of `-`) becomes one `-`; a comma between two digits
+    // is removed (the ASCII text has the ASCII digits only)
+    let bytes = text.as_bytes();
+    let mut out = String::with_capacity(text.len());
+    let mut last_dash = false;
+    for (i, &c) in bytes.iter().enumerate() {
+        if c == b','
             && i > 0
-            && i + 1 < chars.len()
-            && is_decimal(chars[i - 1])
-            && is_decimal(chars[i + 1])
+            && bytes[i - 1].is_ascii_digit()
+            && bytes.get(i + 1).is_some_and(u8::is_ascii_digit)
         {
             continue;
         }
-        cleaned.push(c);
-    }
-    // each run of other characters (and of `-`) becomes one `-`
-    let mut out = String::with_capacity(cleaned.len());
-    let mut last_dash = false;
-    for c in cleaned.chars() {
         if c.is_ascii_lowercase() || c.is_ascii_digit() {
-            out.push(c);
+            out.push(c as char);
             last_dash = false;
         } else {
             if !last_dash {
@@ -269,6 +197,30 @@ pub fn slugify(text: &str) -> String {
         }
     }
     out.trim_matches('-').to_string()
+}
+
+/// The key of a new entry for which the key template gives an empty key (`fallback_key`):
+/// the first word of the slug of the `title` of at least 3 characters (else the first word),
+/// the words that start with a digit left out (a key does not start with one), followed by
+/// the slug of the `year` if there is one; `entry` without such a word (bibtex.md 8).
+///
+/// ```
+/// use papers_rs::names::fallback_key;
+/// assert_eq!(fallback_key("Only a title", "2000"), "only2000");
+/// assert_eq!(fallback_key("A b", ""), "a");
+/// assert_eq!(fallback_key("100 years", "2000"), "years2000");
+/// assert_eq!(fallback_key("100", "2000"), "entry");
+/// ```
+pub fn fallback_key(title: &str, year: &str) -> String {
+    let slug = slugify(title);
+    let words: Vec<&str> = slug
+        .split('-')
+        .filter(|w| !w.is_empty() && !w.starts_with(|c: char| c.is_ascii_digit()))
+        .collect();
+    let Some(word) = words.iter().find(|w| w.len() >= 3).or(words.first()) else {
+        return "entry".to_string();
+    };
+    format!("{word}{}", slugify(year))
 }
 
 /// A value of a field for a path: without separators (`/`, `\` and NUL
@@ -372,14 +324,9 @@ pub fn fit_name(path: &str) -> String {
         return path.to_string();
     }
     let (stem, ext) = splitext(&name);
-    // (an extension of more than MAX_NAME_BYTES leaves a negative size, which cuts from the end, as Python's slice does)
-    let room = MAX_NAME_BYTES as i64 - ext.len() as i64;
-    let size = if room >= 0 {
-        room as usize
-    } else {
-        stem.len().saturating_sub(room.unsigned_abs() as usize)
-    };
-    let stem = cut_bytes(stem, size).trim_end_matches(['.', ' ']);
+    // an extension that leaves no room for the name is cut too
+    let ext = cut_bytes(ext, MAX_NAME_BYTES - 1);
+    let stem = cut_bytes(stem, MAX_NAME_BYTES - ext.len()).trim_end_matches(['.', ' ']);
     let stem = if stem.is_empty() { "-" } else { stem };
     join(&head, &format!("{stem}{ext}"))
 }
@@ -473,7 +420,7 @@ pub(crate) fn append_abc_in(key: &str, taken: impl Fn(&str) -> bool) -> Result<S
     let alphabet: Vec<char> = ('a'..='z').collect();
     // a letter after a digit is a suffix of this function, in either case
     let suffix = match chars.as_slice() {
-        [.., prev, last] if is_digit(*prev) => {
+        [.., prev, last] if prev.is_ascii_digit() => {
             let lower: Vec<char> = last.to_lowercase().collect();
             match lower.as_slice() {
                 [l] if l.is_ascii_lowercase() => Some((last, *l)),
@@ -507,10 +454,10 @@ pub(crate) fn append_abc_in(key: &str, taken: impl Fn(&str) -> bool) -> Result<S
     Err(format!("{key}: no free key with a letter suffix"))
 }
 
-/// A key is valid if it is not empty and does not start with a digit
-/// (`papers.bib.isvalidkey`).
+/// A key is valid if it is not empty and does not start with an ASCII digit (`0`-`9`: another
+/// Unicode digit is allowed; `papers.bib.isvalidkey`).
 pub fn is_valid_key(key: &str) -> bool {
-    key.chars().next().is_some_and(|c| !is_digit(c))
+    key.chars().next().is_some_and(|c| !c.is_ascii_digit())
 }
 
 /// The characters that a key cannot have (`_KEY_FORBIDDEN`).

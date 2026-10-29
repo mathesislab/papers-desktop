@@ -189,9 +189,10 @@
 },
 {
 "in": "x} and y z",
-"standard": "x} and y z",
+"standard": "x} and z, y",
 "family": [
-"x} and y z"
+"x}",
+"z"
 ]
 },
 {

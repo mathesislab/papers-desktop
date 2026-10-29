@@ -32,7 +32,8 @@ papers-rs is 3 to 7 times faster than papers on a library of 2,346 entries: see
   without a byte order mark (field names and keys ignore case: a second one is a
   block that cannot be read); LaTeX and unicode as papers converts them: LaTeX as
   LaTeX reads it, for the same-paper rule and the Mendeley links (`bib::latex`),
-  unicode as LaTeX by the table of `papers.latexenc` (`bib::latex_table`), and
+  unicode as LaTeX by the character table of papers (`data/latex-characters.tsv`, generated
+  into Rust by `tools/gen_latexenc.py`; `bib::latex_table`), and
   LaTeX as unicode by pylatexenc (`bib::unicode`: the decoding of a library or an
   entry, and of the values for the export; the `latexenc-rs` crate); names (split at
   brace depth 0), keywords and the `file` field (`bib::encoding`).
@@ -57,11 +58,12 @@ papers-rs is 3 to 7 times faster than papers on a library of 2,346 entries: see
   (nested with `/`: `tag:x` finds `x` and the tags under it, counts of a subtree,
   rename of a subtree), the former keys of `ids`.
 - `names`: the keys and the names of the files: the key and name templates
-  (Python's `str.format`), slugify, path safety, file names valid on every system and
-  of at most 250 bytes, the suffix rule of the keys (a suffix in either case, a second
-  letter after `z`), the names of the other files of an entry. The transliteration to
-  ASCII is one function, `names::ascii`: papers uses Unidecode (for the slugs too, since
-  3.0.0b6), papers-rs the `deunicode` crate, which differs for some characters (below).
+  (Python's `str.format`), slugify (HTML references decoded first), path safety, file names
+  valid on every system and of at most 250 bytes, the suffix rule of the keys (a suffix in
+  either case, a second letter after `z`), the key of a new entry that the template gives
+  none for (`names::fallback_key`), the names of the other files of an entry. The
+  transliteration to ASCII is one function, `names::ascii`: papers' own table (AnyAscii),
+  by the `any_ascii` crate (below).
 - `identity`: when two entries are the same paper (DOI, arXiv id, ISBN, authors
   and title; the title guard), `.papers/distinct.json`, the search for
   duplicates, naming an entry by key, former key, DOI, arXiv id or ISBN.
@@ -173,13 +175,14 @@ the CSL-JSON, RIS and BibJSON texts of random and hand-written entries, the scor
 rapidfuzz, `isvaliddoi`), `tests/formats.rs` replays it. Python with papers and `rispy`
 installed: `python3 tests/gen_formats.py`.
 
-The transliteration of papers is Unidecode (Python); papers-rs uses `deunicode`
-behind `names::ascii`, until the standard pins a table. Where they differ
-(`tests/expected/library/translit.json`: below U+3000 one by one, above in ranges,
-mostly CJK and the other large scripts; the Latin letters that names are made of
-agree) a differing result is counted as a known difference by the tests
-(`tests/common/translit.rs`), not a failure, and a change of the table of
-`deunicode` fails `the_transliteration_differences_are_the_recorded_ones`.
+The transliteration of papers is AnyAscii 0.3.3 (ISC), published as a table of the
+specification (`design/data/ascii-transliteration.tsv`, with the LaTeX character table
+`latex-characters.tsv`): papers-rs uses the `any_ascii` crate (the same version, ISC) behind
+`names::ascii`, and matches papers for every code point. `tests/tables.rs` checks it against
+the copies of the two tables in `data/` (`names::ascii` for all of Unicode, `string_to_latex`
+and the decoding of the accented spellings for the LaTeX table); a newer version of the crate
+whose data differs fails it. To follow a newer papers, copy the two tables again (see
+`tools/gen_latexenc.py`).
 
 ## Fetching and extracting
 

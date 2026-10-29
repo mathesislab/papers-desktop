@@ -9,7 +9,8 @@ license = "MIT"
 [dependencies]
 crc32fast = "1"
 flate2 = "1"
-deunicode = "1"
+# ISC; the data of 0.3.3 is AnyAscii 0.3.3, the table of papers (data/ascii-transliteration.tsv)
+any_ascii = "=0.3.3"
 latexenc-rs = { version = "0.1.0", path = "../latexenc-rs" }
 libc = "0.2"
 # the text of a PDF (MIT; on lopdf)

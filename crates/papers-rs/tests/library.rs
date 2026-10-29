@@ -16,7 +16,7 @@ use sha2::Digest;
 
 mod common;
 use common::library_json;
-use common::translit::Tally;
+use common::tally::Tally;
 
 fn format_of(j: &Value, kind: FormatKind, default: Format) -> Format {
     if j.is_null() {
@@ -138,6 +138,14 @@ fn apply(lib: &mut Library, root: &str, op: &Value) -> Value {
                     ));
                 }
                 Value::Null
+            }
+            "regenerate_key" => {
+                // `check --fix-key`: an entry of the library; empty when the template gives none
+                let entry = lib
+                    .get(&key())
+                    .cloned()
+                    .ok_or_else(|| papers_rs::error::Error::exit("no entry"))?;
+                json!(lib.regenerate_key(&entry)?)
             }
             "generate_key" => {
                 let entries: Vec<_> = Bib::parse(op["bibtex"].as_str().unwrap())

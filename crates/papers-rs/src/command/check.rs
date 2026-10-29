@@ -292,7 +292,13 @@ pub fn fix_entry_fields(
 
     if (options.fix_key || options.auto_key) && (options.auto_key || !is_valid_key(&e.key)) {
         let key = library.regenerate_key(e)?;
-        if e.key != key {
+        if key.is_empty() {
+            // never renamed to an empty key
+            log::warning(&format!(
+                "{}: the key template gives an empty key: the key stays",
+                e.key
+            ));
+        } else if e.key != key {
             log::info(&format!("update key {} => {key}", e.key));
             e.key = key;
         }

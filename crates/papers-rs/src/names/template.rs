@@ -14,6 +14,7 @@ use serde_json::Value;
 use super::{capitalize, head, head_chars, path_safe, safe_file_name, slugify, title_words};
 use crate::bib::Entry;
 use crate::bib::encoding::family_names;
+use crate::bib::pystr::strip;
 use crate::config::json::py_repr_str;
 use crate::config::library::Config;
 
@@ -222,7 +223,8 @@ fn cite_author(names: &[String]) -> String {
 /// - `title`: the words of the slug of the title ([`title_words`]), joined with `title_sep`; `Title`: capitalized;
 /// - `journal`, `year`, `key`, `ID`, `doi`: the field as it is, without path separators
 ///   ([`path_safe`]), empty for a journal that is missing, `0000` for a year;
-/// - `doi_`: the slug of the DOI; `doi_or_id`: that of the DOI, or of the key.
+/// - `doi_`: the slug of the DOI; `doi_or_id`: that of the DOI, or of the key
+///   when there is no DOI (none, empty, or whitespace only).
 pub fn make_template_fields(entry: &Entry, format: &Format) -> Fields {
     let author = entry.get("author").unwrap_or(UNKNOWN_AUTHOR).to_lowercase();
     let names: Vec<String> = family_names(&author).iter().map(|n| slugify(n)).collect();
@@ -273,7 +275,11 @@ pub fn make_template_fields(entry: &Entry, format: &Format) -> Fields {
         ("ID", key),
         ("doi", path_safe(doi.unwrap_or(""))),
         ("doi_", slugify(doi.unwrap_or(""))),
-        ("doi_or_id", slugify(doi.unwrap_or(&entry.key))),
+        // an empty doi, or one of whitespace, is no doi
+        (
+            "doi_or_id",
+            slugify(doi.filter(|d| !strip(d).is_empty()).unwrap_or(&entry.key)),
+        ),
     ])
 }
 

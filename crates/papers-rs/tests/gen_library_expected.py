@@ -12,32 +12,28 @@ what papers-rs does with what is recorded here:
   library.json    sequences of operations on a library (insert, remove, rename a key, tags,
                   files, check duplicates), the text saved, distinct.json
   files.json      the files of an entry placed by the name template, on a tree of files
-  translit.json   where the transliteration of papers (Unidecode, for the slugs too since
-                  papers 3.0.0b6) and of papers-rs (the deunicode crate) differ
+
+The transliteration is the published table of papers (AnyAscii), tested in tests/tables.rs.
 
 Run with the python that has papers installed (the reference), from anywhere:
 
     /path/to/python3 tests/gen_library_expected.py
 
-It runs `cargo run --example dump_ascii` (the table of papers-rs) for translit.json. It never
-touches the configuration or the libraries of the user: HOME and the cache are a temporary
-folder.
+It never touches the configuration or the libraries of the user: HOME and the cache are a
+temporary folder.
 """
 import contextlib
-import hashlib
 import io
 import json
 import logging
 import os
 import random
 import shutil
-import subprocess
 import sys
 import tempfile
 import warnings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REAL_ENV = dict(os.environ)  # for cargo
 TMP = tempfile.mkdtemp(prefix='papers-rs-expected-')
 os.environ['HOME'] = TMP  # before papers is imported
 os.environ['XDG_CACHE_HOME'] = os.path.join(TMP, 'cache')
@@ -48,9 +44,6 @@ warnings.simplefilter('ignore')
 import fnmatch  # noqa: E402
 import unicodedata  # noqa: E402
 
-import unidecode  # noqa: E402
-from slugify import slugify  # noqa: E402
-
 import papers  # noqa: E402
 from papers import duplicate as dup  # noqa: E402
 from papers import identifiers as ident  # noqa: E402
@@ -58,7 +51,8 @@ from papers.bib import Biblio, _KEY_FORBIDDEN, append_abc, isvalidkey  # noqa: E
 from papers.cli import entry_cmds  # noqa: E402
 from papers.entries import entry_from_dict, format_library, library_from_entries, parse_string  # noqa: E402
 from papers.files import attachment_names  # noqa: E402
-from papers.filename import Format, TemplateError, fit_name, listtag, path_safe, safe_file_name  # noqa: E402
+from papers.filename import (Format, TemplateError, fallback_key, fit_name, listtag, path_safe, safe_file_name,  # noqa: E402
+                             slugify)
 from papers.merge import Merge, Resolver  # noqa: E402
 
 logging.disable(logging.CRITICAL)
@@ -89,49 +83,6 @@ def dump_entry(e):
 def formatted(entries):
     "the text of entries as papers writes them (fields sorted)"
     return format_library(library_from_entries(entries))
-
-
-# the transliteration
-# ===================
-
-def translit():
-    """where Unidecode (papers) and deunicode (papers-rs) differ: the differences below U+3000 one
-    by one, above in ranges (CJK and other scripts: almost all of them differ), and a digest of
-    the rest"""
-    out = subprocess.run(['cargo', 'run', '--offline', '-q', '-p', 'papers-rs', '--example', 'dump_ascii'],
-                         cwd=HERE, env=REAL_ENV, capture_output=True, text=True, check=True).stdout
-    rust = {}
-    for line in out.splitlines():
-        cp, text = line.split('\t')
-        rust[int(cp, 16)] = json.loads(text)
-    below, above, agree = [], [], []
-    for cp in range(0x80, 0x110000):
-        if 0xD800 <= cp <= 0xDFFF:
-            continue
-        u = unidecode.unidecode(chr(cp))
-        r = rust.get(cp, '')
-        if u == r:
-            if u:
-                agree.append(f'{cp:x}:{u}\n')
-        elif cp < 0x3000:
-            below.append([cp, u, r])
-        else:
-            above.append(cp)
-    ranges = []
-    for cp in above:
-        if ranges and ranges[-1][1] == cp - 1:
-            ranges[-1][1] = cp
-        else:
-            ranges.append([cp, cp])
-    write_json('translit.json', {
-        'unidecode': unidecode.__version__ if hasattr(unidecode, '__version__') else 'Unidecode 1.4.0',
-        'differences_below_3000': below,
-        'difference_ranges_from_3000': ranges,
-        'agree_digest': hashlib.sha256(''.join(agree).encode()).hexdigest(),
-        'agree_count': len(agree),
-        'difference_count': len(below) + len(above),
-    })
-    print(f'translit: {len(below) + len(above)} differences, {len(agree)} agree')
 
 
 # names
@@ -195,7 +146,7 @@ def make_entry_fields(rng):
     if rng.random() < 0.5:
         fields.append(('doi', rng.choice(['10.1000/abc', '10.1000/ABC', 'https://doi.org/10.1000/abc', 'doi: 10.1000/abc',
                                           '10.5194/tc-14-1-2020', '10.1000/x(1)', 'dx', '', '10.48550/arXiv.2101.01234',
-                                          'http://dx.doi.org/10.1000/def', '10.1/a/b'])))
+                                          'http://dx.doi.org/10.1000/def', '10.1/a/b', '  ', ' ', '\t'])))
     return fields
 
 
@@ -206,7 +157,13 @@ def names_cases():
     strings = ['', 'Müller', "l'eau", '10.1000/xyz(1)', '1,000', 'Hello World', '  a  b  ', '&amp; &#233; &#x41;',
                '--a--b--', "a''b", "'a'", 'ÅÄÖ åäö', 'ΑΒΓ αβγ', 'Привет', '日本語', '한국어', 'ﬃ ﬀ', 'x²+y³', '①②',
                '1,2,3', '1, 2', ',1,', '&#233;', '&eacute;', '&#999999999999;', '&#x110000;', '&#0;', '&#xD800;',
-               '&&amp;', '&amp;amp;', '&#38;amp;', 'a&b', '&#65', '&#;', "O'Brien", 'D’Arcy', 'İstanbul', 'Straße']
+               '&&amp;', '&amp;amp;', '&#38;amp;', 'a&b', '&#65', '&#;', "O'Brien", 'D’Arcy', 'İstanbul', 'Straße',
+               # html references (library.md, Slugify)
+               '&eacute;t&eacute;', 'l&#39;eau', "l&#39;&#39;eau", '&#X41;&#x41;&#65;', '&#1114112;', '&#x10FFFF;', '&#x110000;',
+               'a&#65;b &#1114112; &#66;c', '&amp;#38;', '&#38;#38;', '&apos;', '&Eacute;&eacute;&EACUTE;', '&#00000000065;',
+               '&#4294967361;', '&#xD7FF;&#xD800;&#xDFFF;&#xE000;', '&#1633;', '&#x٣;', '&#٣;', '&#;&#x;&#X;', '&nbsp;x&nbsp;',
+               '&#9;', '&#x20;a', '&lt;b&gt;', '&hearts;&euro;&frac12;', '&sup2;', '&AMP;', '&amp', '& amp;', '&#x41', '&#X',
+               'x˯x', 'Ь', 'ЬЬ', 'D’e', '日本語&amp;中文', '１,２', '１２,３４', '٣,٤', '1،2']
     for _ in range(1500):
         strings.append(fuzz_text(rng))
     seen, items = set(), []
@@ -215,6 +172,16 @@ def names_cases():
             seen.add(s)
             items.append([s, slugify(s)])
     out['slugify'] = items
+
+    # the key of a new entry that the key template gives an empty key (bibtex.md 8)
+    fb = []
+    for title, year in [('Only a title', '2000'), ('Only a title', ''), ('A b', ''), ('A b', '2000'), ('100 years', '2000'),
+                        ('100', '2000'), ('', '2000'), ('', ''), ('The {CO2} problem', '1999'), ('3 ab 4 cde', '2000'),
+                        ('a bb ccc dddd', '2000'), ('ab cd', 'n.d.'), ('ab cd', '2000a'), ('Über München', '2020'),
+                        ("O'Brien's", ''), ('&eacute;t&eacute; &amp; x', '2000'), ('x', '/../x'), ('٣ ab', '2000'), ('²b ab', ''),
+                        ('日本語', '2000'), ('--', '2000'), ('12ab abc', ''), ('a1 b2c', '٢٠٢٠')]:
+        fb.append([title, year, fallback_key(parse_string('@misc{x, title = {%s}, year = {%s}}' % (title, year)).entries[0])])
+    out['fallback_key'] = fb
 
     sfn = ['', 'a', 'a:b', 'a/b', '/a', '//a', 'a//b', './a', '../a', 'a/./b', 'a?b*c|d<e>f"g', 'a\x01\x1fb', 'a.', 'a ', 'a. .', '...', '. ', '.hidden',
            'CON', 'con', 'Con.txt', 'a/NUL/b', 'nul.tar.gz', 'COM1', 'com9.x', 'COM0', 'LPT3', 'lpt3.', 'AUX ', 'CONX', 'x.con',
@@ -247,7 +214,9 @@ def names_cases():
                       ('Author2000z', ['author2000za']), ('Author2000Z', ['author2000za', 'author2000zb']),
                       ('Author2000', ['author2000'] + ['author2000' + c for c in 'bcdefghijklmnopqrstuvwxyz']),
                       ('Author2000z', ['author2000z'] + ['author2000z' + c for c in 'abcdefghijklmnopqrstuvwxyz']),
-                      ('1Z', []), ('x.B', []), ('K2000K', []), ('smith2000e', ['smith2000e', 'smith2000f'])]:
+                      ('1Z', []), ('x.B', []), ('K2000K', []), ('smith2000e', ['smith2000e', 'smith2000f']),
+                      # only the ASCII digits make a letter a suffix
+                      ('٣b', []), ('x٣z', []), ('x²b', []), ('x３B', []), ('x9b', []), ('x٣z', ['x٣zb'])]:
         try:
             r = append_abc(key, keys)
         except ValueError as e:
@@ -265,7 +234,7 @@ def names_cases():
     out['append_abc'] = abc
 
     keys = ['', 'a', 'Author2020', '2020Author', '10.5194/bg', 'a b', 'a,b', 'a{b', 'a}b', 'a"b', 'a#b', 'a%b', 'a~b',
-            'a=b', 'a(b', 'a)b', 'a\\b', 'a\tb', 'a b', '²a', '٣a', 'é', 'a-b_c:d', 'a/b']
+            'a=b', 'a(b', 'a)b', 'a\\b', 'a\tb', 'a b', '²a', '٣a', 'é', 'a-b_c:d', 'a/b', '0a', '9a', '３a', '٣', '²', '१a']
     out['valid_key'] = [[k, bool(isvalidkey(k)) and not _KEY_FORBIDDEN.search(k)] for k in keys]
 
     # the name and key templates
@@ -520,13 +489,16 @@ def identity_cases():
     arx = ARXIVS + ['2101.0123', '2101.012345', '2101.01234v', '2101.01234v1v2', '0000.00000', 'hep-th/9901001v1', 'hep-th/99010011',
                     'hep-th/990100', 'math.AGx/0601001', 'math.AG/0601001', 'a/1234567', 'A/1234567', '-a/1234567', 'a-b/1234567v12',
                     'arxiv:  hep-th/9901001', 'https://arxiv.org/abs/hep-th/9901001v2', 'https://arxiv.org/pdf/2101.01234v2.PDF',
-                    '2101.01234.pdf', ' 2101.01234 ', '2101.01234\n', 'ARXIV:2101.01234', 'http://arxiv.org/x/2101.01234', '٢١٠١.٠١٢٣٤']
+                    '2101.01234.pdf', ' 2101.01234 ', '2101.01234\n', 'ARXIV:2101.01234', 'http://arxiv.org/x/2101.01234', '٢١٠١.٠١٢٣٤',
+                    '２１０１.０１２３４', '2101.0123４', '2101.01234v٢', 'hep-th/٩٩٠١٠٠١', 'hep-th/9901001v１', 'hep-th/９９０１００１']
     out['arxiv'] = [[a, ident.normalize_arxiv(a)] for a in arx]
     isbns = ISBNS + ['0-8044-2957-X', '080442957X', '080442957x', '0-8044-2957-x', 'ISBN0306406152', 'ISBN::0306406152', '123456789X',
-                     '1234567890123', '978030640615', '97803064061577', 'abc', ' 978-0-306-40615-7 ', '٠٣٠٦٤٠٦١٥٢', '9780306406157\n']
+                     '1234567890123', '978030640615', '97803064061577', 'abc', ' 978-0-306-40615-7 ', '٠٣٠٦٤٠٦١٥٢', '9780306406157\n',
+                     '９７８０３０６４０６１５７', '٩٧٨٠٣٠٦٤٠٦١٥٧', '030640615２', '978030640615７', '0-8044-2957-Ｘ', 'ISBN 978-0-306-40615-7']
     out['isbn'] = [[i, ident.normalize_isbn(i)] for i in isbns]
     args = ['smith2020', 'Smith2020', '10.1000/abc', 'doi:10.1000/ABC', '2101.01234', 'arXiv:2101.01234', '9780306406157',
-            '0-306-40615-2', '2020smith', '  Key  ', '', '10.5', 'hep-th/9901001']
+            '0-306-40615-2', '2020smith', '  Key  ', '', '10.5', 'hep-th/9901001', '٣abc', '²abc', '３abc', '९ab', '0abc', '9abc', ' 5abc',
+            '٢١٠١.٠١٢٣٤', '９７８０３０６４０６１٥٧']
     parsed = []
     for a in args:
         try:
@@ -766,7 +738,11 @@ class Scenario:
             return None
         if kind == 'generate_key':
             es = parse_string(op['bibtex']).entries
-            return [b.generate_key(e) for e in es]
+            return [b.generate_key(e, new=True) for e in es]
+        if kind == 'regenerate_key':
+            # of an entry of the library (`check --fix-key`): its own key is not taken; empty when the template gives none
+            e = next(e for e in b.entries if e.key == op['key'])
+            return b.generate_key(e)
         if kind == 'relative_to':
             new = '/' if op['to'] == 'absolute' else os.path.dirname(self.bibtex)
             return [list(map(lambda t: [t[0].replace(self.dir, '$'), t[1].replace(self.dir, '$')], x)) for x in [b.update_file_path(new)]][0]
@@ -909,6 +885,23 @@ def library_cases():
     scenario('unknown key template', LIB_TEXT, [add('@article{,\n doi = {10.5194/tc-14-1-2020}\n}\n', update_key=True),
                                                 add('@article{,\n doi = {10.5194/tc-14-1-2020}\n}\n', update_key=True)], keyformat=uf)
 
+    # a key template that gives an empty key: a new entry gets a key of its title (bibtex.md 8), a rekeyed one keeps its own
+    scenario('empty key: add', LIB_TEXT, [
+        add('@misc{,\n title = {Only a title},\n year = {2000}\n}\n', update_key=True),
+        add('@misc{,\n title = {Only a title},\n year = {2000}\n}\n', update_key=True),
+        add('@misc{,\n title = {Only another},\n}\n', update_key=True),
+        add('@misc{,\n title = {100 years},\n year = {2000}\n}\n'),
+        add('@misc{a,\n title = {A b}\n}\n@misc{b,\n year = {1999}\n}\n@misc{c,\n title = {100}\n}\n@misc{d,\n title = {The {CO2} of 3 seas},\n year = {1999}\n}\n', update_key=True),
+        add('@misc{given,\n title = {Titled}\n}\n', update_key=True),
+        add('@misc{,\n}\n')])
+    scenario('empty key: with a duplicate check', LIB_TEXT, [
+        add('@misc{,\n title = {Only a title},\n year = {2000}\n}\n', check_duplicate=True, on_duplicate='keep'),
+        add('@misc{,\n title = {Only a title},\n year = {2000}\n}\n', check_duplicate=True, on_duplicate='keep')])
+    scenario('empty key: generate', LIB_TEXT.replace('smith2020climate', 'only2000') + '\n@misc{blank,\n title = {Blank}\n}\n', [
+        {'op': 'generate_key', 'bibtex': '@misc{x,\n title = {Only a title},\n year = {2000}\n}\n@misc{y,\n title = {Only a title}\n}\n'},
+        {'op': 'generate_key', 'bibtex': '@misc{x,\n title = {x},\n year = {2000}\n}\n@misc{y,\n}\n'},
+        {'op': 'regenerate_key', 'key': 'blank'}, {'op': 'regenerate_key', 'key': 'child'}])
+
     # a library with odd things: unreadable blocks, bare values, comments, strings
     odd = open(os.path.join(HERE, 'fixtures', 'varied.bib')).read()
     scenario('varied: nothing changed', odd, [])
@@ -1037,7 +1030,6 @@ def file_cases():
 
 
 def main():
-    translit()
     write_json('names.json', names_cases())
     write_json('identity.json', identity_cases())
     write_json('merge.json', merge_cases())

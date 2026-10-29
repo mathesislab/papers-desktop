@@ -411,7 +411,7 @@
 },
 "after": {
 "type": "book",
-"key": "wei_li-ming1996",
+"key": "wei_liming1996",
 "fields": [
 [
 "author",
@@ -771,7 +771,7 @@
 },
 "after": {
 "type": "book",
-"key": "world-health-organization2019",
+"key": "²x2",
 "fields": [
 [
 "author",
@@ -795,7 +795,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @book{²x2,\n+ @book{world-health-organization2019,\n   author = {{World Health Organization}},\n-  doi = {10.1000/xyz.received},\n?                    ---------\n+  doi = {10.1000/xyz},\n   file = {:files/a_b.pdf:pdf},\n   title = {{\\o}ster {\\AA}ngstr{\\\"o}m},\n   year = {2019}\n  }\n"
+"printed": "*** UPDATE ***\n  @book{²x2,\n   author = {{World Health Organization}},\n-  doi = {10.1000/xyz.received},\n?                    ---------\n+  doi = {10.1000/xyz},\n   file = {:files/a_b.pdf:pdf},\n   title = {{\\o}ster {\\AA}ngstr{\\\"o}m},\n   year = {2019}\n  }\n"
 }
 },
 {
@@ -1006,16 +1006,16 @@
 "Dr. J. R. R. Tolkien"
 ],
 [
-"journal",
-"Nature"
-],
-[
 "year",
 "2014"
+],
+[
+"journal",
+"Nature"
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{Key-With-Dash0,\n+ @article{,\n   author = {Dr. J. R. R. Tolkien},\n   journal = {Nature},\n   year = {2014}\n  }\n"
+"printed": ""
 }
 },
 {
@@ -2049,7 +2049,7 @@
 },
 "after": {
 "type": "book",
-"key": "",
+"key": "a20000",
 "fields": [
 [
 "author",
@@ -3643,7 +3643,7 @@
 },
 "after": {
 "type": "misc",
-"key": "",
+"key": "a:b1",
 "fields": [
 [
 "author",
@@ -4453,7 +4453,7 @@
 }
 },
 {
-"bibtex": "@article{Key-With-Dash0,\n author = {Zhang Wei and 李明},\n title = {ünïcödé tïtle},\n year = {2000},\n doi = {not a doi},\n journal = {Nature},\n url = {https://example.org/a_b?x=~y},\n file = {:files/a_b.pdf:pdf}\n}\n\n",
+"bibtex": "@article{wei_liming2000,\n author = {Zhang Wei and 李明},\n title = {ünïcödé tïtle},\n year = {2000},\n doi = {not a doi},\n journal = {Nature},\n url = {https://example.org/a_b?x=~y},\n file = {:files/a_b.pdf:pdf}\n}\n\n",
 "index": 0,
 "options": {
 "fix_doi": true,
@@ -4471,7 +4471,7 @@
 "expected": {
 "before": {
 "type": "article",
-"key": "Key-With-Dash0",
+"key": "wei_liming2000",
 "fields": [
 [
 "author",
@@ -4505,7 +4505,7 @@
 },
 "after": {
 "type": "article",
-"key": "Key-With-Dash0",
+"key": "wei_liming2000",
 "fields": [
 [
 "author",
@@ -5867,7 +5867,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{2000bad0,\n+ @article{,\n   author = {M. Perrette and A. Yool},\n   editor = {Ludwig van Beethoven},\n   file = {:files/a_b.pdf:pdf},\n   journal = {J. Geophys. Res.},\n-  title = {M\\\"uller's 100\\% result}\n+  title = {M\\textbackslash \"uller\\textquotesingle s 100\\textbackslash \\% result}\n  }\n"
+"printed": "*** UPDATE ***\n  @article{2000bad0,\n   author = {M. Perrette and A. Yool},\n   editor = {Ludwig van Beethoven},\n   file = {:files/a_b.pdf:pdf},\n   journal = {J. Geophys. Res.},\n-  title = {M\\\"uller's 100\\% result}\n+  title = {M\\textbackslash \"uller\\textquotesingle s 100\\textbackslash \\% result}\n  }\n"
 }
 },
 {
@@ -6043,7 +6043,7 @@
 },
 "after": {
 "type": "misc",
-"key": "",
+"key": "²x1",
 "fields": [
 [
 "author",
@@ -6123,7 +6123,7 @@
 },
 "after": {
 "type": "article",
-"key": "sartre_beauvoir2019",
+"key": "²x2",
 "fields": [
 [
 "author",
@@ -6301,7 +6301,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{2000bad0,\n+ @article{,\n-  author = {John Smith},\n?            -----\n+  author = {Smith, John},\n?                 ++++++\n-  editor = {M. Perrette and A. Yool},\n?            ---            ---\n+  editor = {Perrette, M. and Yool, A.},\n?                    ++++         ++++\n   isbn = {978-3-16-148410-0},\n   title = {Ocean heat uptake: \\emph{new} results},\n   url = {https://example.org/a_b?x=~y}\n  }\n"
+"printed": "*** UPDATE ***\n  @article{2000bad0,\n-  author = {John Smith},\n?            -----\n+  author = {Smith, John},\n?                 ++++++\n-  editor = {M. Perrette and A. Yool},\n?            ---            ---\n+  editor = {Perrette, M. and Yool, A.},\n?                    ++++         ++++\n   isbn = {978-3-16-148410-0},\n   title = {Ocean heat uptake: \\emph{new} results},\n   url = {https://example.org/a_b?x=~y}\n  }\n"
 }
 },
 {
@@ -6923,7 +6923,7 @@
 }
 },
 {
-"bibtex": "@article{zolc1991,\n author = {Łukasz Żółć},\n title = {ünïcödé tïtle},\n year = {1991},\n journal = {J. Geophys. Res.}\n}\n\n@book{Key-With-Dash1,\n author = {Zhang Wei and 李明},\n title = {Ocean heat uptake: \\emph{new} results},\n year = {1992},\n doi = {10.1000/(abc)},\n journal = {\\emph{Science}},\n abstract = {An abstract with \\'e and _under_ and Ä},\n isbn = {978-3-16-148410-0}\n}\n\n@article{Müller20002,\n author = {Łukasz Żółć},\n title = {Über die {Natur} von $\\alpha$},\n year = {2004},\n doi = {10.1000/(abc)},\n journal = {Tellus A},\n abstract = {An abstract with \\'e and _under_ and Ä},\n url = {https://example.org/a_b?x=~y},\n file = {:files/a_b.pdf:pdf}\n}\n\n",
+"bibtex": "@article{zolc1991,\n author = {Łukasz Żółć},\n title = {ünïcödé tïtle},\n year = {1991},\n journal = {J. Geophys. Res.}\n}\n\n@book{wei_liming1992,\n author = {Zhang Wei and 李明},\n title = {Ocean heat uptake: \\emph{new} results},\n year = {1992},\n doi = {10.1000/(abc)},\n journal = {\\emph{Science}},\n abstract = {An abstract with \\'e and _under_ and Ä},\n isbn = {978-3-16-148410-0}\n}\n\n@article{Müller20002,\n author = {Łukasz Żółć},\n title = {Über die {Natur} von $\\alpha$},\n year = {2004},\n doi = {10.1000/(abc)},\n journal = {Tellus A},\n abstract = {An abstract with \\'e and _under_ and Ä},\n url = {https://example.org/a_b?x=~y},\n file = {:files/a_b.pdf:pdf}\n}\n\n",
 "index": 0,
 "options": {
 "fix_doi": false,
@@ -7821,7 +7821,7 @@
 },
 "after": {
 "type": "inproceedings",
-"key": "",
+"key": "1230",
 "fields": [
 [
 "author",
@@ -8467,7 +8467,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{a:b0,\n?          ----\n+ @article{,\n   abstract = {An abstract with \\'e and _under_ and Ä},\n   author = {Ludwig van Beethoven},\n   editor = {Author, A.},\n-  title = {{\\ss}tra{\\ss}e},\n+  title = {{\\textbackslash ss}tra{\\textbackslash ss}e},\n   url = {https://example.org/a_b?x=~y}\n  }\n"
+"printed": "*** UPDATE ***\n  @article{a:b0,\n   abstract = {An abstract with \\'e and _under_ and Ä},\n   author = {Ludwig van Beethoven},\n   editor = {Author, A.},\n-  title = {{\\ss}tra{\\ss}e},\n+  title = {{\\textbackslash ss}tra{\\textbackslash ss}e},\n   url = {https://example.org/a_b?x=~y}\n  }\n"
 }
 },
 {
@@ -8881,7 +8881,7 @@
 },
 "after": {
 "type": "book",
-"key": "",
+"key": "1230",
 "fields": [
 [
 "author",
@@ -8947,7 +8947,7 @@
 },
 "after": {
 "type": "book",
-"key": "",
+"key": "x0",
 "fields": [
 [
 "editor",
@@ -9173,7 +9173,7 @@
 },
 "after": {
 "type": "inproceedings",
-"key": "",
+"key": "Key-With-Dash0",
 "fields": [
 [
 "file",
@@ -9197,7 +9197,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @inproceedings{Key-With-Dash0,\n+ @inproceedings{,\n   file = {:files/a_b.pdf:pdf},\n   isbn = {978-3-16-148410-0},\n   journal = {Tellus A},\n-  title = {x \\textbf{y} z},\n?             -------- -\n+  title = {x y z},\n   year = {2013}\n  }\n"
+"printed": "*** UPDATE ***\n  @inproceedings{Key-With-Dash0,\n   file = {:files/a_b.pdf:pdf},\n   isbn = {978-3-16-148410-0},\n   journal = {Tellus A},\n-  title = {x \\textbf{y} z},\n?             -------- -\n+  title = {x y z},\n   year = {2013}\n  }\n"
 }
 },
 {
@@ -9591,7 +9591,7 @@
 },
 "after": {
 "type": "book",
-"key": "",
+"key": "a20001",
 "fields": [
 [
 "title",
@@ -9603,7 +9603,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @book{a20001,\n+ @book{,\n   title = {Plain title},\n   year = {2022}\n  }\n"
+"printed": ""
 }
 },
 {
@@ -9677,7 +9677,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @book{²x1,\n?       ---\n+ @book{,\n-  author = {John Smith},\n?            -----\n+  author = {Smith, John},\n?                 ++++++\n   isbn = {978-3-16-148410-0},\n   journal = {Tellus A},\n   title = {The {Role} of Ocean Heat Uptake in Climate Change},\n   url = {https://example.org/a_b?x=~y}\n  }\n"
+"printed": "*** UPDATE ***\n  @book{²x1,\n-  author = {John Smith},\n?            -----\n+  author = {Smith, John},\n?                 ++++++\n   isbn = {978-3-16-148410-0},\n   journal = {Tellus A},\n   title = {The {Role} of Ocean Heat Uptake in Climate Change},\n   url = {https://example.org/a_b?x=~y}\n  }\n"
 }
 },
 {
@@ -10147,7 +10147,7 @@
 },
 "after": {
 "type": "inproceedings",
-"key": "",
+"key": "a20000",
 "fields": [
 [
 "author",
@@ -12587,7 +12587,7 @@
 },
 "after": {
 "type": "misc",
-"key": "",
+"key": "Muller20000",
 "fields": [
 [
 "title",
@@ -12941,7 +12941,7 @@
 },
 "after": {
 "type": "article",
-"key": "",
+"key": "smith20200",
 "fields": [
 [
 "author",
@@ -12961,7 +12961,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{smith20200,\n+ @article{,\n-  author = {Jane {Q.} Public and {Smith, Jones}, Ltd},\n?            ----------\n+  author = {Public, Jane {Q.} and {Smith, Jones}, Ltd},\n?                  +++++++++++\n   month = {jan},\n   url = {https://example.org/a_b?x=~y},\n   year = {1990}\n  }\n"
+"printed": "*** UPDATE ***\n  @article{smith20200,\n-  author = {Jane {Q.} Public and {Smith, Jones}, Ltd},\n?            ----------\n+  author = {Public, Jane {Q.} and {Smith, Jones}, Ltd},\n?                  +++++++++++\n   month = {jan},\n   url = {https://example.org/a_b?x=~y},\n   year = {1990}\n  }\n"
 }
 },
 {
@@ -13397,7 +13397,7 @@
 },
 "after": {
 "type": "misc",
-"key": "",
+"key": "²x0",
 "fields": [
 [
 "author",
@@ -15073,7 +15073,7 @@
 },
 "after": {
 "type": "article",
-"key": "",
+"key": "10.1000/a1",
 "fields": [
 [
 "author",
@@ -15685,7 +15685,7 @@
 },
 "after": {
 "type": "article",
-"key": "wei_li-ming2021",
+"key": "wei_liming2021",
 "fields": [
 [
 "author",
@@ -15759,7 +15759,7 @@
 },
 "after": {
 "type": "misc",
-"key": "barnes-and-noble_doe2021",
+"key": "²x0",
 "fields": [
 [
 "author",
@@ -16669,7 +16669,7 @@
 }
 },
 {
-"bibtex": "@article{ünï20200,\n author = {Zhang Wei and 李明},\n title = {Über die {Natur} von $\\alpha$},\n year = {1995},\n doi = {10.1000/a_b},\n file = {:files/a_b.pdf:pdf}\n}\n\n@inproceedings{a20001,\n author = {{Barnes and Noble} and Doe, J.},\n title = {ünïcödé tïtle},\n year = {1998},\n doi = {10.5194/bg-8-515-2011},\n journal = {Tellus A},\n file = {:files/a_b.pdf:pdf}\n}\n\n@inproceedings{x2,\n author = {{Barnes and Noble} and Doe, J.},\n doi = {not a doi},\n abstract = {An abstract with \\'e and _under_ and Ä},\n file = {:files/a_b.pdf:pdf},\n month = {jan}\n}\n\n",
+"bibtex": "@article{wei_liming1995,\n author = {Zhang Wei and 李明},\n title = {Über die {Natur} von $\\alpha$},\n year = {1995},\n doi = {10.1000/a_b},\n file = {:files/a_b.pdf:pdf}\n}\n\n@inproceedings{a20001,\n author = {{Barnes and Noble} and Doe, J.},\n title = {ünïcödé tïtle},\n year = {1998},\n doi = {10.5194/bg-8-515-2011},\n journal = {Tellus A},\n file = {:files/a_b.pdf:pdf}\n}\n\n@inproceedings{x2,\n author = {{Barnes and Noble} and Doe, J.},\n doi = {not a doi},\n abstract = {An abstract with \\'e and _under_ and Ä},\n file = {:files/a_b.pdf:pdf},\n month = {jan}\n}\n\n",
 "index": 0,
 "options": {
 "fix_doi": true,
@@ -16689,7 +16689,7 @@
 "expected": {
 "before": {
 "type": "article",
-"key": "ünï20200",
+"key": "wei_liming1995",
 "fields": [
 [
 "author",
@@ -16715,7 +16715,7 @@
 },
 "after": {
 "type": "article",
-"key": "ünï20200",
+"key": "wei_liming1995",
 "fields": [
 [
 "author",
@@ -16739,7 +16739,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{ünï20200,\n?          ^ ^\n+ @article{uni20200,\n?          ^ ^\n-  author = {Zhang Wei and 李明},\n?                  ----\n+  author = {Wei, Zhang and 李明},\n?            +++++\n   doi = {10.1000/a_b},\n   file = {:files/a_b.pdf:pdf},\n-  title = {Über die {Natur} von $\\alpha$},\n+  title = {{\\\"U}ber die {Natur} von \\textdollar \\textbackslash alpha\\textdollar },\n   year = {1995}\n  }\n"
+"printed": "*** UPDATE ***\n  @article{wei_liming1995,\n-  author = {Zhang Wei and 李明},\n?                  ----\n+  author = {Wei, Zhang and 李明},\n?            +++++\n   doi = {10.1000/a_b},\n   file = {:files/a_b.pdf:pdf},\n-  title = {Über die {Natur} von $\\alpha$},\n+  title = {{\\\"U}ber die {Natur} von \\textdollar \\textbackslash alpha\\textdollar },\n   year = {1995}\n  }\n"
 }
 },
 {
@@ -17669,7 +17669,7 @@
 },
 "after": {
 "type": "book",
-"key": "",
+"key": "a:b0",
 "fields": [
 [
 "author",
@@ -17945,7 +17945,7 @@
 },
 "after": {
 "type": "article",
-"key": "10-48550-arxiv-1234-5678",
+"key": "²x0",
 "fields": [
 [
 "author",
@@ -18087,7 +18087,7 @@
 },
 "after": {
 "type": "misc",
-"key": "wei_li-ming2004",
+"key": "wei_liming2004",
 "fields": [
 [
 "author",
@@ -18107,7 +18107,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @misc{1230,\n+ @misc{wei_li-ming2004,\n   author = {Zhang Wei and 李明},\n   doi = {10.48550/arXiv.2101.00001},\n   title = {Über die {Natur} von $\\alpha$},\n   year = {2004}\n  }\n"
+"printed": "*** UPDATE ***\n- @misc{1230,\n+ @misc{wei_liming2004,\n   author = {Zhang Wei and 李明},\n   doi = {10.48550/arXiv.2101.00001},\n   title = {Über die {Natur} von $\\alpha$},\n   year = {2004}\n  }\n"
 }
 },
 {
@@ -18519,7 +18519,7 @@
 },
 "after": {
 "type": "book",
-"key": "m-e-nard2019",
+"key": "²x0",
 "fields": [
 [
 "author",
@@ -18547,7 +18547,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @book{²x0,\n+ @book{m-e-nard2019,\n+  author = {M{\\'e}nard, Fran{\\c{c}}ois},\n   doi = {not a doi},\n   file = {:files/a_b.pdf:pdf},\n-  title = {Caf\\'e au lait \\& more}\n+  month = {jan},\n+  title = {One},\n+  year = {2019}\n  }\n"
+"printed": "*** UPDATE ***\n  @book{²x0,\n+  author = {M{\\'e}nard, Fran{\\c{c}}ois},\n   doi = {not a doi},\n   file = {:files/a_b.pdf:pdf},\n-  title = {Caf\\'e au lait \\& more}\n+  month = {jan},\n+  title = {One},\n+  year = {2019}\n  }\n"
 }
 },
 {
@@ -19092,20 +19092,20 @@
 "key": "Zhang20190",
 "fields": [
 [
-"abstract",
-"An abstract with \\'e and _under_ and Ä"
-],
-[
 "author",
 "Søren Kierkegaard"
 ],
 [
 "year",
 "2018"
+],
+[
+"abstract",
+"An abstract with \\'e and _under_ and Ä"
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @book{Zhang20190,\n+ @book{,\n   abstract = {An abstract with \\'e and _under_ and Ä},\n   author = {Søren Kierkegaard},\n   year = {2018}\n  }\n"
+"printed": ""
 }
 },
 {
@@ -20151,7 +20151,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @misc{10.1000/a0,\n+ @misc{,\n   author = {Author, A.},\n   journal = {J. Geophys. Res.},\n-  title = {Test Article {\\'e}}\n?                        ^^^^^\n+  title = {Test Article é}\n?                        ^\n  }\n"
+"printed": "*** UPDATE ***\n  @misc{10.1000/a0,\n   author = {Author, A.},\n   journal = {J. Geophys. Res.},\n-  title = {Test Article {\\'e}}\n?                        ^^^^^\n+  title = {Test Article é}\n?                        ^\n  }\n"
 }
 },
 {
@@ -20497,27 +20497,11 @@
 },
 "after": {
 "type": "article",
-"key": "",
+"key": "10.1000/a0",
 "fields": [
-[
-"abstract",
-"An abstract with \\'e and _under_ and Ä"
-],
 [
 "editor",
 "Søren Kierkegaard"
-],
-[
-"file",
-":files/a_b.pdf:pdf"
-],
-[
-"isbn",
-"978-3-16-148410-0"
-],
-[
-"journal",
-"J. Geophys. Res."
 ],
 [
 "title",
@@ -20526,10 +20510,26 @@
 [
 "year",
 "2014"
+],
+[
+"journal",
+"J. Geophys. Res."
+],
+[
+"abstract",
+"An abstract with \\'e and _under_ and Ä"
+],
+[
+"file",
+":files/a_b.pdf:pdf"
+],
+[
+"isbn",
+"978-3-16-148410-0"
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{10.1000/a0,\n+ @article{,\n   abstract = {An abstract with \\'e and _under_ and Ä},\n   editor = {Søren Kierkegaard},\n   file = {:files/a_b.pdf:pdf},\n   isbn = {978-3-16-148410-0},\n   journal = {J. Geophys. Res.},\n   title = {The role of ocean heat uptake in climate change},\n   year = {2014}\n  }\n"
+"printed": ""
 }
 },
 {
@@ -20963,7 +20963,7 @@
 },
 "after": {
 "type": "misc",
-"key": "smith2000",
+"key": "2x0",
 "fields": [
 [
 "author",
@@ -20999,7 +20999,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @misc{²x0,\n+ @misc{smith2000,\n   author = {John Smith},\n   doi = {http://dx.doi.org/10.1038/nature12345},\n   editor = {Author, A.},\n   file = {:files/a_b.pdf:pdf},\n   journal = {Tellus A},\n   month = {jan},\n   title = {Ma\\v{r}ák},\n   year = {2000}\n  }\n"
+"printed": "*** UPDATE ***\n- @misc{²x0,\n?       ^\n+ @misc{2x0,\n?       ^\n   author = {John Smith},\n   doi = {http://dx.doi.org/10.1038/nature12345},\n   editor = {Author, A.},\n   file = {:files/a_b.pdf:pdf},\n   journal = {Tellus A},\n   month = {jan},\n   title = {Ma\\v{r}ák},\n   year = {2000}\n  }\n"
 }
 },
 {
@@ -22389,7 +22389,7 @@
 }
 },
 {
-"bibtex": "@book{name2003,\n author = {  padded name  },\n title = {Über die {Natur} von $\\alpha$},\n year = {2003},\n month = {jan}\n}\n\n@book{Zhang20191,\n author = {Zhang Wei and 李明},\n editor = {Ludwig van Beethoven},\n title = {Ma\\v{r}ák},\n year = {2014},\n doi = { 10.1002/abc }\n}\n\n@misc{smith20202,\n author = {Author, Anne},\n title = {One},\n year = {2011},\n doi = {http://dx.doi.org/10.1038/nature12345},\n journal = {J. Geophys. Res.},\n file = {:files/a_b.pdf:pdf},\n isbn = {978-3-16-148410-0}\n}\n\n",
+"bibtex": "@book{name2003,\n author = {  padded name  },\n title = {Über die {Natur} von $\\alpha$},\n year = {2003},\n month = {jan}\n}\n\n@book{wei_liming2014,\n author = {Zhang Wei and 李明},\n editor = {Ludwig van Beethoven},\n title = {Ma\\v{r}ák},\n year = {2014},\n doi = { 10.1002/abc }\n}\n\n@misc{smith20202,\n author = {Author, Anne},\n title = {One},\n year = {2011},\n doi = {http://dx.doi.org/10.1038/nature12345},\n journal = {J. Geophys. Res.},\n file = {:files/a_b.pdf:pdf},\n isbn = {978-3-16-148410-0}\n}\n\n",
 "index": 1,
 "options": {
 "fix_doi": false,
@@ -22407,7 +22407,7 @@
 "expected": {
 "before": {
 "type": "book",
-"key": "Zhang20191",
+"key": "wei_liming2014",
 "fields": [
 [
 "author",
@@ -22433,7 +22433,7 @@
 },
 "after": {
 "type": "book",
-"key": "Zhang20191",
+"key": "wei_liming2014",
 "fields": [
 [
 "author",
@@ -22663,7 +22663,7 @@
 }
 },
 {
-"bibtex": "@article{a20000,\n author = {Zhang Wei and 李明},\n editor = {  padded name  },\n title = {Über die {Natur} von $\\alpha$},\n year = {2005},\n doi = {10.1000/a},\n journal = {Ann{\\'e}e}\n}\n\n@article{2000bad1,\n author = {{Barnes and Noble} and Doe, J.},\n editor = {  padded name  },\n title = {Ma\\v{r}ák},\n year = {1993},\n doi = {10.5194/bg-8-515-2011}\n}\n\n",
+"bibtex": "@article{wei_liming2005,\n author = {Zhang Wei and 李明},\n editor = {  padded name  },\n title = {Über die {Natur} von $\\alpha$},\n year = {2005},\n doi = {10.1000/a},\n journal = {Ann{\\'e}e}\n}\n\n@article{2000bad1,\n author = {{Barnes and Noble} and Doe, J.},\n editor = {  padded name  },\n title = {Ma\\v{r}ák},\n year = {1993},\n doi = {10.5194/bg-8-515-2011}\n}\n\n",
 "index": 0,
 "options": {
 "fix_doi": true,
@@ -22683,7 +22683,7 @@
 "expected": {
 "before": {
 "type": "article",
-"key": "a20000",
+"key": "wei_liming2005",
 "fields": [
 [
 "author",
@@ -22713,7 +22713,7 @@
 },
 "after": {
 "type": "inproceedings",
-"key": "a20000",
+"key": "wei_liming2005",
 "fields": [
 [
 "author",
@@ -23669,7 +23669,7 @@
 },
 "after": {
 "type": "misc",
-"key": "o-brien2020",
+"key": "²x0",
 "fields": [
 [
 "author",
@@ -25205,7 +25205,7 @@
 },
 "after": {
 "type": "misc",
-"key": "doi-10-5194-bg-8-515-2011",
+"key": "2x0",
 "fields": [
 [
 "title",
@@ -25335,7 +25335,7 @@
 },
 "after": {
 "type": "book",
-"key": "",
+"key": "1230",
 "fields": [
 [
 "author",
@@ -25359,7 +25359,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @book{1230,\n?       ----\n+ @book{,\n-  author = {Søren Kierkegaard},\n?            ------\n+  author = {Kierkegaard, Søren},\n?                       +++++++\n   editor = {Smith},\n   isbn = {978-3-16-148410-0},\n   month = {jan},\n   title = {Ma\\v{r}ák}\n  }\n"
+"printed": "*** UPDATE ***\n  @book{1230,\n-  author = {Søren Kierkegaard},\n?            ------\n+  author = {Kierkegaard, Søren},\n?                       +++++++\n   editor = {Smith},\n   isbn = {978-3-16-148410-0},\n   month = {jan},\n   title = {Ma\\v{r}ák}\n  }\n"
 }
 },
 {
@@ -25463,7 +25463,7 @@
 },
 "after": {
 "type": "article",
-"key": "",
+"key": "Key-With-Dash1",
 "fields": [
 [
 "editor",
@@ -26657,7 +26657,7 @@
 },
 "after": {
 "type": "misc",
-"key": "",
+"key": "ok_key2",
 "fields": [
 [
 "abstract",
@@ -26677,7 +26677,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @misc{ok_key2,\n+ @misc{,\n-  abstract = {An abstract with \\'e and _under_ and Ä},\n?                               ^^^\n+  abstract = {An abstract with é and _under_ and Ä},\n?                               ^\n   author = {Søren Kierkegaard},\n   title = {Something Else Entirely},\n-  url = {https://example.org/a_b?x=~y}\n?                                   ^\n+  url = {https://example.org/a_b?x= y}\n?                                   ^\n  }\n"
+"printed": "*** UPDATE ***\n  @misc{ok_key2,\n-  abstract = {An abstract with \\'e and _under_ and Ä},\n?                               ^^^\n+  abstract = {An abstract with é and _under_ and Ä},\n?                               ^\n   author = {Søren Kierkegaard},\n   title = {Something Else Entirely},\n-  url = {https://example.org/a_b?x=~y}\n?                                   ^\n+  url = {https://example.org/a_b?x= y}\n?                                   ^\n  }\n"
 }
 },
 {
@@ -27245,7 +27245,7 @@
 },
 "after": {
 "type": "article",
-"key": "wei_li-ming1992",
+"key": "wei_liming1992",
 "fields": [
 [
 "author",
@@ -27269,7 +27269,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @article{Zhang20192,\n+ @article{wei_li-ming1992,\n   author = {Zhang Wei and 李明},\n-  doi = {10.1016/j.foo.2020.01.001.},\n?                                  -\n+  doi = {10.1016/j.foo.2020.01.001},\n   journal = {Tellus A},\n   title = {The \\\"u{ }ber thing},\n   year = {1992}\n  }\n"
+"printed": "*** UPDATE ***\n- @article{Zhang20192,\n+ @article{wei_liming1992,\n   author = {Zhang Wei and 李明},\n-  doi = {10.1016/j.foo.2020.01.001.},\n?                                  -\n+  doi = {10.1016/j.foo.2020.01.001},\n   journal = {Tellus A},\n   title = {The \\\"u{ }ber thing},\n   year = {1992}\n  }\n"
 }
 },
 {
@@ -28313,7 +28313,7 @@
 }
 },
 {
-"bibtex": "@article{x0,\n author = {Author, Anne},\n year = {1992},\n doi = {http://dx.doi.org/10.1038/nature12345}\n}\n\n@misc{ünï20201,\n author = {Zhang Wei and 李明},\n editor = {Tom  Jones},\n title = {Über die {Natur} von $\\alpha$},\n year = {1998},\n doi = {10.5194/bg-8-515-2011},\n file = {:files/a_b.pdf:pdf}\n}\n\n",
+"bibtex": "@article{x0,\n author = {Author, Anne},\n year = {1992},\n doi = {http://dx.doi.org/10.1038/nature12345}\n}\n\n@misc{wei_liming1998,\n author = {Zhang Wei and 李明},\n editor = {Tom  Jones},\n title = {Über die {Natur} von $\\alpha$},\n year = {1998},\n doi = {10.5194/bg-8-515-2011},\n file = {:files/a_b.pdf:pdf}\n}\n\n",
 "index": 1,
 "options": {
 "fix_doi": true,
@@ -28333,7 +28333,7 @@
 "expected": {
 "before": {
 "type": "misc",
-"key": "ünï20201",
+"key": "wei_liming1998",
 "fields": [
 [
 "author",
@@ -28363,7 +28363,7 @@
 },
 "after": {
 "type": "inproceedings",
-"key": "ünï20201",
+"key": "wei_liming1998",
 "fields": [
 [
 "author",
@@ -28391,7 +28391,7 @@
 ]
 ]
 },
-"printed": "*** UPDATE ***\n- @misc{ünï20201,\n-  author = {Zhang Wei and 李明},\n-  doi = {10.5194/bg-8-515-2011},\n+ @inproceedings{ünï20201,\n+  author = {Author, Anne},\n+  doi = {10.1016/j.foo.2020.01.001},\n   editor = {Tom  Jones},\n   file = {:files/a_b.pdf:pdf},\n-  title = {Über die {Natur} von $\\alpha$},\n-  year = {1998}\n+  title = {{\\textbackslash ss}tra{\\textbackslash ss}e},\n+  year = {2020}\n  }\n"
+"printed": "*** UPDATE ***\n- @misc{wei_liming1998,\n?  -  -\n+ @inproceedings{wei_liming1998,\n?   +++++++++++\n-  author = {Zhang Wei and 李明},\n-  doi = {10.5194/bg-8-515-2011},\n+  author = {Author, Anne},\n+  doi = {10.1016/j.foo.2020.01.001},\n   editor = {Tom  Jones},\n   file = {:files/a_b.pdf:pdf},\n-  title = {Über die {Natur} von $\\alpha$},\n-  year = {1998}\n+  title = {{\\textbackslash ss}tra{\\textbackslash ss}e},\n+  year = {2020}\n  }\n"
 }
 },
 {
@@ -28816,6 +28816,342 @@
 [
 "url",
 "https://example.org/a_b?x=~y"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@article{2019doe,\n journal = {Nature}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": true,
+"auto_key": false,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "article",
+"key": "2019doe",
+"fields": [
+[
+"journal",
+"Nature"
+]
+]
+},
+"after": {
+"type": "article",
+"key": "2019doe",
+"fields": [
+[
+"journal",
+"Nature"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@article{2019doe,\n journal = {Nature}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": false,
+"auto_key": true,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "article",
+"key": "2019doe",
+"fields": [
+[
+"journal",
+"Nature"
+]
+]
+},
+"after": {
+"type": "article",
+"key": "2019doe",
+"fields": [
+[
+"journal",
+"Nature"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@misc{x,\n title = {Only a title}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": true,
+"auto_key": false,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "misc",
+"key": "x",
+"fields": [
+[
+"title",
+"Only a title"
+]
+]
+},
+"after": {
+"type": "misc",
+"key": "x",
+"fields": [
+[
+"title",
+"Only a title"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@misc{x,\n title = {Only a title}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": false,
+"auto_key": true,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "misc",
+"key": "x",
+"fields": [
+[
+"title",
+"Only a title"
+]
+]
+},
+"after": {
+"type": "misc",
+"key": "x",
+"fields": [
+[
+"title",
+"Only a title"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@misc{2000a,\n title = {Only a title},\n year = {2000}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": true,
+"auto_key": false,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "misc",
+"key": "2000a",
+"fields": [
+[
+"title",
+"Only a title"
+],
+[
+"year",
+"2000"
+]
+]
+},
+"after": {
+"type": "misc",
+"key": "2000a",
+"fields": [
+[
+"title",
+"Only a title"
+],
+[
+"year",
+"2000"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@misc{2000a,\n title = {Only a title},\n year = {2000}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": false,
+"auto_key": true,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "misc",
+"key": "2000a",
+"fields": [
+[
+"title",
+"Only a title"
+],
+[
+"year",
+"2000"
+]
+]
+},
+"after": {
+"type": "misc",
+"key": "2000a",
+"fields": [
+[
+"title",
+"Only a title"
+],
+[
+"year",
+"2000"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@misc{٣a,\n title = {Title}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": true,
+"auto_key": false,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "misc",
+"key": "٣a",
+"fields": [
+[
+"title",
+"Title"
+]
+]
+},
+"after": {
+"type": "misc",
+"key": "٣a",
+"fields": [
+[
+"title",
+"Title"
+]
+]
+},
+"printed": ""
+}
+},
+{
+"bibtex": "@misc{٣a,\n title = {Title}\n}\n",
+"index": 0,
+"options": {
+"fix_doi": false,
+"fix_key": false,
+"auto_key": true,
+"key_ascii": false,
+"format_name": false,
+"fetch": false,
+"fetch_all": false,
+"interactive": false,
+"encoding": null
+},
+"fetched": null,
+"answer": false,
+"expected": {
+"before": {
+"type": "misc",
+"key": "٣a",
+"fields": [
+[
+"title",
+"Title"
+]
+]
+},
+"after": {
+"type": "misc",
+"key": "٣a",
+"fields": [
+[
+"title",
+"Title"
 ]
 ]
 },

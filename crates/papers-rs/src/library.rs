@@ -54,7 +54,9 @@ use crate::identity::{
 };
 use crate::log;
 use crate::merge::{Context, Decision, DuplicateError, Merge, OnDuplicate, Resolve, Resolver};
-use crate::names::{Format, FormatKind, append_abc_in, attachment_names, check_key, target_in};
+use crate::names::{
+    Format, FormatKind, append_abc_in, attachment_names, check_key, fallback_key, target_in,
+};
 
 // files
 // -----
@@ -797,15 +799,17 @@ impl Library {
         self.entries().map(|e| e.key.to_lowercase()).collect()
     }
 
-    /// A key for an entry from the key template, not yet in the library (`generate_key`):
-    /// a key that is taken gets a letter suffix.
+    /// A key for an entry from the key template, not yet in the library (`generate_key` of a
+    /// new entry): a key that is taken gets a letter suffix. Never empty: when the template gives
+    /// an empty key, it is made from the title and the year ([`fallback_key`]).
     pub fn generate_key(&self, entry: &Entry) -> Result<String> {
         self.template_key(entry, false)
     }
 
     /// The key from the key template of an entry that is in the library already (a copy of
     /// it: `check --auto-key`): its own key is not taken, so that an entry whose key is the
-    /// template key keeps it (`smith2000` stays `smith2000`).
+    /// template key keeps it (`smith2000` stays `smith2000`). Empty when the template gives an
+    /// empty key (the entry keeps its key).
     pub fn regenerate_key(&self, entry: &Entry) -> Result<String> {
         self.template_key(entry, true)
     }
@@ -817,7 +821,16 @@ impl Library {
             .map(|e| e.key.to_lowercase())
             .filter(|k| !(in_library && *k == own))
             .collect();
-        let key = self.keyformat.render(entry)?;
+        let mut key = self.keyformat.render(entry)?;
+        if key.is_empty() {
+            if in_library {
+                return Ok(key);
+            }
+            key = fallback_key(
+                entry.get("title").unwrap_or(""),
+                entry.get("year").unwrap_or(""),
+            );
+        }
         if keys.contains(&key.to_lowercase()) {
             return append_abc_in(&key, |k| keys.contains(k)).map_err(Error::exit);
         }
@@ -855,26 +868,42 @@ impl Library {
 
     /// The keys that changed since [`Library::mark_loaded`], `(old, new)`: the same entry, its
     /// old key no longer in the library, its new key not in it when loaded (a merge is not a
-    /// rename). None without `mark_loaded`.
+    /// rename); or a change of case only, the key being that of no other entry. None without
+    /// `mark_loaded`.
     pub fn renamed_keys(&self) -> Vec<(String, String)> {
         let Some(loaded) = &self.loaded else {
             return Vec::new();
         };
-        let now = self.lower_keys();
-        let before: HashSet<String> = loaded
-            .entries
-            .iter()
-            .map(|(_, e)| e.key.to_lowercase())
-            .collect();
+        let count = |keys: Vec<String>| {
+            let mut counts: HashMap<String, usize> = HashMap::new();
+            for key in keys {
+                *counts.entry(key).or_default() += 1;
+            }
+            counts
+        };
+        let now = count(self.entries().map(|e| e.key.to_lowercase()).collect());
+        let before = count(
+            loaded
+                .entries
+                .iter()
+                .map(|(_, e)| e.key.to_lowercase())
+                .collect(),
+        );
         let current: HashMap<u64, &Entry> = self.uid_entries().collect();
         loaded
             .entries
             .iter()
             .filter_map(|(uid, old)| {
                 let e = current.get(uid)?;
-                let changed = e.key.to_lowercase() != old.key.to_lowercase()
-                    && !now.contains(&old.key.to_lowercase())
-                    && !before.contains(&e.key.to_lowercase());
+                let (new_lower, old_lower) = (e.key.to_lowercase(), old.key.to_lowercase());
+                let changed = if new_lower == old_lower {
+                    // a change of case only, the key being that of no other entry
+                    e.key != old.key
+                        && now.get(&old_lower) == Some(&1)
+                        && before.get(&old_lower) == Some(&1)
+                } else {
+                    !now.contains_key(&old_lower) && !before.contains_key(&new_lower)
+                };
                 changed.then(|| (old.key.clone(), e.key.clone()))
             })
             .collect()
@@ -1276,7 +1305,7 @@ impl Library {
         options: &InsertOptions,
         free_key: bool,
     ) -> Result<Inserted> {
-        if update_key {
+        if update_key || entry.key.is_empty() {
             entry.key = self.generate_key(&entry)?;
         }
         let key_lower = entry.key.to_lowercase();

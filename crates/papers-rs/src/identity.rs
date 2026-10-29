@@ -24,7 +24,8 @@
 //! ```
 //!
 //! The normalization depends on the table of [`crate::names::ascii`] (papers:
-//! Unidecode): see there.
+//! AnyAscii, the same table). The digits of the identifiers (ISBN, arXiv, a key that
+//! starts with one) are the ASCII ones, `0`-`9`.
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -38,7 +39,7 @@ use crate::config::json::{dumps_sorted, loads};
 use crate::config::paths::{dirname, exists, join};
 use crate::entry::val;
 use crate::log;
-use crate::names::{ascii, decimal_value, is_decimal};
+use crate::names::ascii;
 
 // normalization
 // -------------
@@ -103,13 +104,10 @@ pub fn parse_name(name: &str) -> (String, String) {
             _ => {}
         }
     }
-    // `^(.*?)\s*(\{[^{}]*\}|\S+)$`: the last word, a braced group kept together
+    // `^(.*?)\s*(\{[^{}]*\}|\S+)$` (DOTALL: the words may be on several lines): the last word, a braced group kept together
     let mut ends: Vec<usize> = name.char_indices().map(|(i, _)| i).collect();
     ends.push(name.len());
     for &l in &ends {
-        if name[..l].contains('\n') {
-            break; // `.` does not match a newline
-        }
         let rest = name[l..].trim_start_matches(is_space);
         if rest.is_empty() {
             continue;
@@ -171,9 +169,9 @@ pub fn normalize_doi(text: &str) -> Option<String> {
     strip_doi(text).map(|d| d.to_lowercase())
 }
 
-/// The digits of a run of decimal digits (`\d`) at the start, as a count.
+/// The length of the run of ASCII digits (`[0-9]`) at the start (`\d` is any Unicode digit: not here).
 fn digit_run(s: &str) -> usize {
-    s.chars().take_while(|&c| is_decimal(c)).count()
+    s.chars().take_while(char::is_ascii_digit).count()
 }
 
 fn skip_chars(s: &str, n: usize) -> &str {
@@ -183,10 +181,10 @@ fn skip_chars(s: &str, n: usize) -> &str {
     }
 }
 
-/// `(v\d+)?$`
+/// `(v[0-9]+)?$`
 fn version_to_end(s: &str) -> bool {
     match s.strip_prefix(['v', 'V']) {
-        Some(digits) => !digits.is_empty() && digits.chars().all(is_decimal),
+        Some(digits) => !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()),
         None => s.is_empty(),
     }
 }
@@ -282,20 +280,21 @@ pub fn normalize_isbn(text: &str) -> Option<String> {
     };
     let s = s.to_uppercase();
     let chars: Vec<char> = s.chars().collect();
+    let digit = |c: char| c.to_digit(10).unwrap_or(0);
     let weigh13 = |chars: &[char]| -> u32 {
         chars
             .iter()
             .enumerate()
-            .map(|(i, &c)| decimal_value(c) * if i % 2 == 0 { 1 } else { 3 })
+            .map(|(i, &c)| digit(c) * if i % 2 == 0 { 1 } else { 3 })
             .sum()
     };
     if chars.len() == 10
-        && chars[..9].iter().all(|&c| is_decimal(c))
-        && (is_decimal(chars[9]) || chars[9] == 'X')
+        && chars[..9].iter().all(char::is_ascii_digit)
+        && (chars[9].is_ascii_digit() || chars[9] == 'X')
     {
         let digits: Vec<u32> = chars
             .iter()
-            .map(|&c| if c == 'X' { 10 } else { decimal_value(c) })
+            .map(|&c| if c == 'X' { 10 } else { digit(c) })
             .collect();
         let sum: u32 = digits
             .iter()
@@ -312,7 +311,7 @@ pub fn normalize_isbn(text: &str) -> Option<String> {
         out.push_str(&check.to_string());
         return Some(out);
     }
-    if chars.len() == 13 && chars.iter().all(|&c| is_decimal(c)) {
+    if chars.len() == 13 && chars.iter().all(char::is_ascii_digit) {
         if !weigh13(&chars).is_multiple_of(10) {
             return None;
         }
@@ -990,13 +989,13 @@ pub fn parse_identifier(arg: &str) -> Result<(IdKind, String), String> {
     if let Some(isbn) = normalize_isbn(arg) {
         return Ok((IdKind::Isbn, isbn));
     }
-    let arg = strip(arg);
-    if arg.chars().next().is_some_and(crate::names::is_digit) {
+    let key = strip(arg);
+    if key.starts_with(|c: char| c.is_ascii_digit()) {
         return Err(format!(
             "{arg}: not a {ACCEPTED} (a key cannot start with a digit)"
         ));
     }
-    Ok((IdKind::Key, arg.to_lowercase()))
+    Ok((IdKind::Key, key.to_lowercase()))
 }
 
 /// The identifiers an entry answers to (`entry_identifiers`): its key, its
