@@ -146,6 +146,26 @@ export type Incoming = {
   item: Item;
 };
 
+/** mirrors compare::Difference: a field whose value in the entry to add differs from the paper of the library */
+export type Difference = {
+  /** the name of the field; the type of the entry is "ENTRYTYPE", as in papers' dialogue */
+  field: string;
+  /** the value in the library; none: the paper lacks the field */
+  library: string | null;
+  new: string;
+  /** whose value is kept unless the user chooses: the library's, but a field it lacks is filled in */
+  default: "library" | "new";
+};
+
+/** mirrors compare::Comparison: the entry to add against the paper of the library that is the same */
+export type Comparison = {
+  /** the key of the paper */
+  key: string;
+  differences: Difference[];
+  /** whether the paper has a file */
+  files: boolean;
+};
+
 /** mirrors writer::WriteError: what a write is rejected with */
 export type WriteError = {
   /** "papers-missing": a papers library, written by a papers command not found or older than 3.0.0b4; "changed": the .bib

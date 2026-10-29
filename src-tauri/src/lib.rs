@@ -1,4 +1,5 @@
 mod cli_tool;
+mod compare;
 mod fetch;
 #[cfg(target_os = "macos")]
 mod focus;
@@ -857,6 +858,8 @@ pub fn run() {
             tags,
             duplicates,
             incoming,
+            compare::compare_entry,
+            compare::merge_entry,
             ids_of,
             fetch::fetch_doi,
             fetch::read_pdf_doi,
@@ -922,6 +925,7 @@ pub fn run() {
             writer::add_bibtex,
             writer::attach_pdf,
             writer::default_files_mode,
+            writer::library_key,
             writer::remove_entries,
             writer::undo,
             writer::redo

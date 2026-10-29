@@ -495,20 +495,28 @@
     return true;
   }
 
-  /** A PDF added to a paper, whose entry takes the changes of `text` first. Then the sheet closes and the paper is shown. */
-  async function attachPapers(
+  /** A paper changed: its entry takes `text` (the values chosen of an entry that is the same paper, or the changes
+   *  of the edit), then the PDF is added to it, if there is one. Then the sheet closes and the paper is shown. */
+  async function changePaper(
     id: string,
     text: string | null,
-    pdf: string,
+    pdf: string | null,
     files: FilesMode | null,
     fail: (message: string) => void,
   ): Promise<boolean> {
-    if (!(await write(() => attachPdf(id, text, pdf, files), (error) => fail(errorText(error))))) return false;
+    const done = () => (pdf ? attachPdf(id, text, pdf, files) : replaceEntry(id, text ?? ""));
+    if (!(await write(done, (error) => fail(errorText(error))))) return false;
     adding = null;
     const key = byId.get(id)?.key ?? id;
     await show(id);
-    say(`Added the PDF to ${key}`);
+    say(pdf ? `Added the PDF to ${key}` : `Merged into ${key}`);
     return true;
+  }
+
+  /** A paper of the library, from the link of the sheet that says an entry is the same paper. */
+  async function showPaper(id: string) {
+    adding = null;
+    await show(id);
   }
 
   function say(text: string) {
@@ -620,9 +628,9 @@
       command(e.shiftKey ? "previous-tab" : "next-tab");
       return;
     }
-    // ⌘+ also on a keyboard where it is ⌘⇧=
+    // ⌘+ also on a keyboard where it is ⌘⇧=; on macOS ⌘+ is of the menu (which shows it), and ⌘= comes here
     const zoom = zoomStep(e);
-    if (!mac && zoom !== null) {
+    if ((!mac || (e.key === "=" && !e.shiftKey)) && zoom !== null) {
       e.preventDefault();
       command(zoom > 0 ? "zoom-in" : zoom < 0 ? "zoom-out" : "zoom-fit");
       return;
@@ -710,7 +718,8 @@
     pdf={adding.pdf}
     choose={adding.choose}
     onadd={addPapers}
-    onattach={attachPapers}
+    onchange={changePaper}
+    onshow={showPaper}
     onclose={() => (adding = null)}
   />
 {/if}

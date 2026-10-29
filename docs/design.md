@@ -74,7 +74,12 @@ fixed size, grow with it (within the screen). `⌘+` `⌘-` `⌘0` (Ctrl elsewhe
 step through the levels and reset to Default, in every window; in the main
 window, with a PDF in front they are the zoom of the PDF (and `⌘0` its fit to
 the width) instead. The native PDF view is placed in points, so its frame is
-the page's multiplied by the zoom.
+the page's multiplied by the zoom. The View menu (macOS) shows *Zoom In* as
+`⌘+`, as Safari does: a menu accelerator of muda is a key, `=`, which would
+show `⌘=`, so `menu.rs` sets the key equivalent of the item to `+` once the
+menu is made; AppKit does not match `⌘=` to it, so the page takes that key
+(`zoomStep`; with the native PDF view in focus `⌘=` does nothing). Elsewhere
+there is no menu: the page takes `+` and `=` alike.
 
 A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 `references.bib` (for texmark).
@@ -130,8 +135,51 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
     field says where the DOI came from (*from the PDF*, *found by a search of
     the PDF's text*, *typed*, *from the page*, *none found*). *Read PDF again*
     goes back to what the PDF gives; another DOI typed and fetched replaces the
-    entry. The BibTeX is a text to fix (folded when the entry has a DOI), above
-    the papers already in the library (as before: *Skip*, *Fill in*, *Update*).
+    entry. The BibTeX is a text to fix (folded when the entry has a DOI).
+  - *The key shown is the library's*: an entry fetched (Crossref's key is its
+    DOI) is shown with the key the library will give it, its key template as
+    `--update-key` makes it, a letter after it when the .bib has the key
+    (`library_key`, `writer.rs`: the template of the library's configuration
+    through the built-in writer's `Config`, papers' default `{author}{year}` for
+    a plain .bib; the keys taken are those of the .bib in the app's library).
+    That key is in the text, so that what is written is what is shown, and no
+    `--update-key` goes with the add; a key the user edits stays. Another
+    *To* .bib makes the key again, while it is the one the sheet made.
+  - *The same paper as one of the .bib*: when every entry is a paper of the
+    .bib to add to already (`Incoming.same`, in that .bib; another .bib has its
+    own copies, which are only noted), the sheet becomes *Same paper as KEY*
+    (the key is a link: the sheet closes and the paper is selected) and
+    compares instead of adding: a table of the fields that differ, *in the
+    library | new*, a radio in each cell for the value to keep
+    (`compare_entry`, `compare.rs`: papers-rs' two-way `Merge` and `FieldMerge`
+    give the rows, so equal values by papers' normal form are not shown, and
+    the type is a row, `ENTRYTYPE`). By default the library's value is kept and
+    a field it lacks is filled in (papers' `keep`); *Keep library* and *Take
+    all new* set every row. The tags (`keywords`), key and files of the paper
+    are the library's and not compared (an edit keeps them). With a PDF: a
+    paper without one has *Attach this PDF* (on), one with has *Also attach* /
+    *Don't attach* (default); hidden without a PDF. There is no *Skip* / *Fill
+    in* / *Update* here: the table and its two shortcuts replace them. With
+    several entries, all of them papers of the .bib, the table is of the first
+    and a note says that the others are kept as they are. A plain .bib has a
+    link *Add it as a new paper* for a paper that only looks the same.
+  - *The main button says what happens*, with a line next to it: *Add paper* (the
+    PDF: moved, copied or linked); *Merge into KEY* (*2 fields, attach PDF*);
+    *Attach PDF to KEY*; *Nothing to change*, disabled, when no row takes the new
+    value and no PDF is attached. Writing, through the writer: the library's
+    entry with the values taken (`merge_entry`; its key, tags, files and the other
+    fields stay) is an edit (`replace_entry`: `papers edit KEY --from -`); with a
+    PDF, `attach_pdf` (the edit, then `papers add --key KEY --attach PDF
+    --move|--copy|--link`), as *A PDF for a paper that has none* below: a step
+    of the history for each papers command, in the built-in writer and a papers
+    command alike. Entries some of which are new are added by `add_bibtex` with
+    `--on-duplicate skip`: the papers already there are kept as they are, and
+    listed.
+  - *Position and errors*: the sheet opens near the top of the window and grows
+    downwards (it scrolls when taller than the window); the text of an error is
+    selectable (it holds the link), and after a failed download *Open in
+    browser* is the highlighted button (the app does not pretend to be a
+    browser: no browser User-Agent).
   - *A journal article's link*: `journal_page` reads the DOI from the
     `citation_doi`, `prism.doi` and `dc.identifier` tags of the page
     (`papers_rs::fetch::html::page_doi`); with a DOI (typed or from the page)
@@ -151,8 +199,8 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
     refused there.
   - *Adding*: `add_bibtex` with the entry and `options.pdf`, `options.files`:
     `papers add ENTRY.bib --attach PDF --move|--copy|--link --on-duplicate …`
-    (the same entry that is a paper of the library already is merged and gets the
-    file, in one step). The paper is then selected, with its details.
+    (an entry that is a paper of the library is not added this way: see *The
+    same paper* above). The paper is then selected, with its details.
   - *A PDF for a paper that has none*: the details have *Add PDF…* (and a click
     on the empty page, or a PDF dropped on it): the sheet opens on that paper's
     entry, its DOI in the field and the chooser of the PDF open. *Fetch* merges

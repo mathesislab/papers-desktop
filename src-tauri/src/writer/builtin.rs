@@ -19,6 +19,7 @@ use papers_rs::error::Error;
 use papers_rs::formats::Format;
 use papers_rs::history::History;
 use papers_rs::lock;
+use papers_rs::names::{Format as KeyFormat, FormatKind};
 use papers_rs::merge::{OnDuplicate as Merging, Resolver};
 
 use super::{AddOptions, FilesMode, Kind, OnDuplicate, PapersWriter, Pasted, WriteError};
@@ -99,6 +100,11 @@ fn mode(chosen: Option<FilesMode>, config: &Config) -> Result<Mode, Error> {
 }
 
 impl Builtin {
+    /// The key template of the library of a folder (`--update-key` makes a new entry's key by it).
+    pub fn key_format(&self, folder: &Path) -> Result<KeyFormat, WriteError> {
+        Ok(KeyFormat::from_config(&self.config(folder)?, FormatKind::Key))
+    }
+
     /// What a file added to the library of a folder is done with when the user does not say:
     /// its `files` setting (`ask`, which needs a terminal, as move), else move; link when the
     /// library has no files directory.

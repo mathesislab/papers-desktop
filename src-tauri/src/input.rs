@@ -132,7 +132,7 @@ pub fn classify_input(text: String) -> Input {
 }
 
 /// The first entry of a text of BibTeX.
-fn entry_of(text: &str, what: &str) -> Result<papers_rs::bib::Entry, String> {
+pub(crate) fn entry_of(text: &str, what: &str) -> Result<papers_rs::bib::Entry, String> {
     Bib::parse(text)
         .entries()
         .next()

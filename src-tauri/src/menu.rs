@@ -5,6 +5,9 @@
 //! windows; in the main window, the page decides: the PDF in front zooms,
 //! else the text size.
 
+use objc2::MainThreadMarker;
+use objc2_app_kit::{NSApplication, NSEventModifierFlags};
+use objc2_foundation::NSString;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, Webview, Wry};
 
@@ -13,6 +16,7 @@ use crate::main_window::MAIN;
 
 /// the commands that lead to the fields and lists of the page, which take
 /// the keys back from the PDF view
+const ZOOM_IN: &str = "Zoom In";
 const TO_PAGE: &[&str] = &["add", "find", "library", "next-tab", "previous-tab"];
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -77,7 +81,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                     &item("sidebar", "Show or Hide the Sidebar", "CmdOrCtrl+Alt+S")?,
                     &item("details", "Show or Hide the Details", "CmdOrCtrl+Alt+I")?,
                     &separator()?,
-                    &item("zoom-in", "Zoom In", "CmdOrCtrl+=")?,
+                    &item("zoom-in", ZOOM_IN, "CmdOrCtrl+=")?,
                     &item("zoom-out", "Zoom Out", "CmdOrCtrl+-")?,
                     &item("zoom-fit", "Actual Size", "CmdOrCtrl+0")?,
                 ],
@@ -98,6 +102,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         ],
     )?;
     app.set_menu(menu)?;
+    show_plus(app);
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
         "settings" => crate::settings_window(app, None),
@@ -105,6 +110,32 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         id => command(app, id),
     });
     Ok(())
+}
+
+/// View → Zoom In shows ⌘+, as Safari's does. The accelerator of a menu item here is a key, which
+/// cannot be `+` (it is `=`: the item shows ⌘=), so the key equivalent of the item is set to `+`
+/// once the menu is made. AppKit does not match ⌘= to it: that key reaches the page, which zooms
+/// in as well (`onkeydown` of the library, `zoomStep`).
+fn show_plus(app: &AppHandle) {
+    let _ = app.run_on_main_thread(|| {
+        let Some(mtm) = MainThreadMarker::new() else {
+            return;
+        };
+        let Some(menu) = NSApplication::sharedApplication(mtm).mainMenu() else {
+            return;
+        };
+        for top in menu.itemArray() {
+            let Some(submenu) = top.submenu() else {
+                continue;
+            };
+            for item in submenu.itemArray() {
+                if item.title().to_string() == ZOOM_IN {
+                    item.setKeyEquivalent(&NSString::from_str("+"));
+                    item.setKeyEquivalentModifierMask(NSEventModifierFlags::Command);
+                }
+            }
+        }
+    });
 }
 
 /// ⌘W: the paper in front of the main window, else the window in front;

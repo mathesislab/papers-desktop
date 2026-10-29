@@ -25,8 +25,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use papers_core::{Added, Change, Item, same_tag, under};
 use papers_rs::command::report::Changes;
+use papers_rs::bib::Entry;
 use papers_rs::config::MachineConfig;
 use papers_rs::fetch::download::is_download;
+use papers_rs::names::{Format as KeyFormat, append_abc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
@@ -553,6 +555,18 @@ pub async fn default_files_mode(app: AppHandle, bib: PathBuf) -> Result<Option<F
     .map_err(|e| WriteError::failed(e.to_string()))?
 }
 
+/// The key the library gives a new entry (what `--update-key` makes of it when adding): its key
+/// template, papers' default for a plain .bib; a key that the .bib has already gets a letter.
+#[tauri::command]
+pub async fn library_key(app: AppHandle, bib: PathBuf, text: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        library_key_of(&state, &bib, &text)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// How entries are added to a papers library; a plain .bib has no merge and
 /// no key template: its entries are added as they are.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -866,6 +880,34 @@ fn default_files(state: &AppState, bib: &Path) -> Result<Option<FilesMode>, Writ
     Builtin::new(machine).files_mode(&folder).map(Some)
 }
 
+/// The key of an entry by a key template, with a letter after it when `taken` has it (without case).
+fn made_key(format: &KeyFormat, entry: &Entry, taken: &[String]) -> Result<String, String> {
+    let key = format.render(entry).map_err(|e| e.0)?;
+    let lower: Vec<&str> = taken.iter().map(String::as_str).collect();
+    if lower.iter().any(|k| k.to_lowercase() == key.to_lowercase()) {
+        return append_abc(&key, &lower);
+    }
+    Ok(key)
+}
+
+/// The key the library of `bib` gives the first entry of `text`.
+fn library_key_of(state: &AppState, bib: &Path, text: &str) -> Result<String, String> {
+    in_library(state, bib).map_err(|e| e.message)?;
+    let entry = crate::input::entry_of(text, "The BibTeX")?;
+    let format = match papers_folder(bib) {
+        Some(folder) => {
+            let machine = state.writers.machine.lock().unwrap().clone();
+            Builtin::new(machine).key_format(&folder).map_err(|e| e.message)?
+        }
+        None => KeyFormat::key(),
+    };
+    let taken: Vec<String> = {
+        let library = state.library.read().unwrap();
+        library.items().iter().filter(|it| it.bib == bib).map(|it| it.key.clone()).collect()
+    };
+    made_key(&format, &entry, &taken)
+}
+
 fn remove(state: &AppState, ids: &[String]) -> Result<(), WriteError> {
     let items = items(state, ids)?;
     let targets = state
@@ -1163,6 +1205,32 @@ mod tests {
     }
 
     #[test]
+    fn a_plain_bib_has_papers_default_key_template() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = dir.path().join("refs.bib");
+        fs::write(&bib, "@article{smith2020,\n title = {S}\n}\n").unwrap();
+        let state = state(dir.path(), std::slice::from_ref(&bib), WriterChoice::BuiltIn, "");
+        let entry = |author: &str| format!("@article{{10.1/x,\n author = {{{author}}},\n title = {{T}},\n year = {{2020}}\n}}");
+        assert_eq!(library_key_of(&state, &bib, &entry("Brown, Ann")).unwrap(), "brown2020");
+        assert_eq!(library_key_of(&state, &bib, &entry("Smith, Jane")).unwrap(), "smith2020b");
+        // not a .bib of the library
+        assert!(library_key_of(&state, &dir.path().join("other.bib"), &entry("Brown, Ann")).is_err());
+    }
+
+    #[test]
+    fn a_papers_library_has_its_own_key_template() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = init_library(dir.path());
+        let config = dir.path().join(".papers/config.json");
+        let mut js: Value = serde_json::from_str(&fs::read_to_string(&config).unwrap()).unwrap();
+        js["keyformat"] = json!({"template": "{author}_{year}"});
+        fs::write(&config, js.to_string()).unwrap();
+        let state = state(dir.path(), std::slice::from_ref(&bib), WriterChoice::BuiltIn, "");
+        let entry = "@article{10.1/x,\n author = {Grusdt, Fabian and Perrette, Mahe},\n title = {T},\n year = {2026}\n}";
+        assert_eq!(library_key_of(&state, &bib, entry).unwrap(), "grusdt_perrette_2026");
+    }
+
+    #[test]
     fn the_default_files_mode_is_the_setting_of_the_library() {
         let dir = tempfile::tempdir().unwrap();
         let bib = init_library(dir.path());
@@ -1395,6 +1463,34 @@ mod tests {
         assert!(third.is_file());
         let error = attach(state, &id("b"), None, Path::new("relative.pdf"), None).unwrap_err();
         assert!(error.message.contains("absolute"), "{}", error.message);
+
+        // the key the library gives a new entry: its template, a letter after it when it is taken
+        let fetched = "@article{10.1/e,\n author = {Smith, Jane},\n title = {E},\n year = {2020}\n}";
+        assert_eq!(library_key_of(state, bib, fetched).unwrap(), "smith2020b");
+        let lee = fetched.replace("Smith, Jane", "Lee, Ann").replace("2020", "2025");
+        assert_eq!(library_key_of(state, bib, &lee).unwrap(), "lee2025");
+        assert!(library_key_of(state, bib, "x").is_err());
+
+        // the same paper as "c": the fields that differ, the ones chosen written, as one edit
+        // (with the PDF, as one edit and one attach)
+        let same = "@article{c_new,\n doi = {10.1/c},\n title = {C2},\n journal = {Other},\n pages = {1--2}\n}";
+        let library_entry = |key: &str| {
+            let raw = state.library.read().unwrap().raw(&id(key)).unwrap().to_string();
+            crate::input::entry_of(&raw, "c").unwrap()
+        };
+        let new = crate::input::entry_of(same, "new").unwrap();
+        let found = crate::compare::differences(&library_entry("c"), &new);
+        assert_eq!(found.iter().map(|d| d.field.as_str()).collect::<Vec<_>>(), ["journal", "pages"]);
+        let merged = crate::compare::merged(&library_entry("c"), &new, &strings(&["pages"]));
+        replace(state, &id("c"), &merged).unwrap();
+        reload(state);
+        assert!(text(bib).contains("pages = {1--2}") && text(bib).contains("journal = {J}"), "{}", text(bib));
+        let merged = crate::compare::merged(&library_entry("c"), &new, &strings(&["journal"]));
+        let more = pdf("merged.pdf", "real-text-doi.pdf");
+        attach(state, &id("c"), Some(&merged), &more, Some(FilesMode::Copy)).unwrap();
+        reload(state);
+        assert!(text(bib).contains("journal = {Other}"), "{}", text(bib));
+        assert_eq!(files("c").len(), 2, "{}", text(bib));
 
         tag(state, &strings(&["a", "b"]), &strings(&["new"]), &[]).unwrap();
         reload(state);
