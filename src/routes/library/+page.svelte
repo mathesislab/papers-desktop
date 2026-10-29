@@ -55,7 +55,7 @@
     renameTags,
     restored,
     searchOf,
-    tabLabel,
+    tabFilters,
     tagCounts,
     toggleTag,
     viewCounts,
@@ -142,7 +142,7 @@
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
   /** papers to delete, being asked about: the question of the sheet */
-  let deleting = $state<{ ids: string[]; title: string | null; files: boolean; note: string } | null>(null);
+  let deleting = $state<{ papers: { id: string; key: string; files: string[] }[]; note: string } | null>(null);
   /** the .bib file last written by a delete, copy or move, which Undo takes back until another paper is chosen */
   let lastWrite: string | null = null;
   /** a click on one of several selected papers leaves them selected, for a drag or a double-click; this one gets
@@ -150,8 +150,8 @@
   let collapse: string | null = null;
   /** the BibTeX of the paper in the details, being edited */
   const editor = new Editor();
-  /** after a paper is closed: the library, or the next paper open (a setting) */
-  let afterClose: "library" | "next" = "library";
+  /** after a paper is closed: the next paper open, or the library (a setting) */
+  let afterClose: "library" | "next" = "next";
 
   /** The commands of the window, and their keys: in the menu of the app on
    *  macOS, where they also work while the PDF view has the keys; caught by
@@ -588,7 +588,7 @@
     }
   }
 
-  /** Delete… of the menu, ⌘⌫: the question first, whether to delete the PDFs too. */
+  /** Delete… of the menu, ⌘⌫: the question first, which of their files to delete too. */
   async function askDelete(ids: string[]) {
     if (!ids.length) return;
     if (editor.id && ids.includes(editor.id) && !(await leave(null))) return;
@@ -598,27 +598,23 @@
     const papers = [...bibs].some((b) => kinds.get(b) !== "native");
     const note =
       papers && plain
-        ? "In a papers library papers keeps the PDFs in its history, so that Undo brings them back; those of a plain .bib go to the Trash."
+        ? "In a papers library papers keeps the files in its history, so that Undo brings them back; those of a plain .bib go to the Trash."
         : papers
           ? "papers keeps them in its history, so that Undo brings them back."
           : "They go to the Trash.";
-    deleting = {
-      ids,
-      title: ids.length === 1 ? (byId.get(ids[0])?.title ?? null) : null,
-      files: ids.some((id) => byId.get(id)?.file !== "none"),
-      note,
-    };
+    const items = await Promise.all(ids.map((id) => invoke<Item>("item", { id })));
+    deleting = { papers: items.map((it) => ({ id: it.id, key: it.key, files: it.files })), note };
   }
 
-  /** The papers of the question deleted, then the next row selected. */
-  async function doDelete(deleteFiles: boolean) {
+  /** The papers of the question deleted with the files chosen, then the next row selected. */
+  async function doDelete(files: string[]) {
     if (!deleting) return;
-    const { ids, files } = deleting;
+    const ids = deleting.papers.map((p) => p.id);
     deleting = null;
     const next = nextAfter(shown, new Set(ids));
     const bibs = new Set(ids.map((id) => byId.get(id)?.bib));
-    if (!(await write(() => removeEntries(ids, deleteFiles)))) return;
-    say(deletedMessage(ids.length, deleteFiles && files));
+    if (!(await write(() => removeEntries(ids, files)))) return;
+    say(deletedMessage(ids.length, files.length));
     lastWrite = bibs.size === 1 ? ([...bibs][0] ?? null) : null;
     selected = new Set(next ? [next] : []);
     anchor = focus = next;
@@ -1044,9 +1040,7 @@
 {/if}
 {#if deleting}
   <DeleteSheet
-    papers={deleting.ids.length}
-    title={deleting.title}
-    files={deleting.files}
+    papers={deleting.papers}
     note={deleting.note}
     ondelete={doDelete}
     oncancel={() => (deleting = null)}
@@ -1076,7 +1070,7 @@
         filtered={(tag) => hasTag(layout.library.tags, tag)}
         {pinned}
         open={layout.openTags}
-        tab={{ label: tabLabel(layout.library), count: shown.length }}
+        tab={{ filters: tabFilters(layout.library), count: shown.length }}
         {papers}
         active={layout.active}
         onlibrary={(bib) => {

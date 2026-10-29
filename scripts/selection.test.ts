@@ -60,9 +60,9 @@ test("what is said", () => {
   assert.equal(openedMessage({ opened: 3, skipped: 2 }), "Opened 3 PDFs, 2 papers without a PDF skipped");
   assert.equal(openedMessage({ opened: 1, skipped: 0 }), "Opened 1 PDF");
   assert.equal(openedMessage({ opened: 0, skipped: 2 }), "No PDF to open (2 papers without one)");
-  assert.equal(deletedMessage(3, false), "Deleted 3 papers");
-  assert.equal(deletedMessage(1, true), "Deleted 1 paper and its PDF");
-  assert.equal(deletedMessage(2, true), "Deleted 2 papers and their PDFs");
+  assert.equal(deletedMessage(3, 0), "Deleted 3 papers");
+  assert.equal(deletedMessage(1, 1), "Deleted 1 paper and 1 file");
+  assert.equal(deletedMessage(2, 3), "Deleted 2 papers and 3 files");
 });
 
 test("the tags of the context menu: pinned first, then the most used", () => {

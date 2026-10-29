@@ -69,8 +69,8 @@ export function openedMessage({ opened, skipped }: Opened): string {
 }
 
 /** What is said after papers are deleted. */
-export function deletedMessage(n: number, files: boolean): string {
-  return `Deleted ${count(n)}` + (files ? (n === 1 ? " and its PDF" : " and their PDFs") : "");
+export function deletedMessage(n: number, files: number): string {
+  return `Deleted ${count(n)}` + (files ? ` and ${count(files, "file")}` : "");
 }
 
 /** the tags in the context menu besides the ones pinned to the keys: the most used */

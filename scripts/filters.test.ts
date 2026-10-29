@@ -10,7 +10,7 @@ import {
   renameTags,
   restored,
   searchOf,
-  tabLabel,
+  tabFilters,
   tagCounts,
   toggleTag,
   viewCounts,
@@ -98,14 +98,14 @@ test("tag filters toggle and follow a rename", () => {
 
 test("chips, the label of the tab, and taking a filter off", () => {
   assert.deepEqual(chips(NO_FILTERS), []);
-  assert.equal(tabLabel(NO_FILTERS), "Library — All papers");
+  assert.equal(tabFilters(NO_FILTERS), "");
   const f: Filters = { bib: "/x/papers.bib", view: "nopdf", tags: ["amoc"], query: " ice " };
   assert.deepEqual(
     chips(f).map((c) => c.text),
     ["papers.bib", "No PDF", "amoc", '"ice"'],
   );
-  assert.equal(tabLabel(f), 'Library — papers.bib · No PDF · amoc · "ice"');
-  assert.equal(tabLabel({ ...NO_FILTERS, query: "amoc" }), 'Library — All papers · "amoc"');
+  assert.equal(tabFilters(f), 'papers.bib · No PDF · amoc · "ice"');
+  assert.equal(tabFilters({ ...NO_FILTERS, query: "amoc" }), '"amoc"');
   const [bib, view, tag, search] = chips(f);
   assert.deepEqual(without(f, bib), { ...f, bib: null });
   assert.deepEqual(without(f, view), { ...f, view: "all" });

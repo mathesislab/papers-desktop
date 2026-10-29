@@ -3,17 +3,18 @@
 //! the lock, the history and the files with any other papers (a command, a
 //! terminal), so that either can undo a step the other wrote.
 
-use std::path::Path;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::edit::replace_from_text;
 use papers_rs::command::files::{Mode, files_mode};
 use papers_rs::command::pool::push_after_travel;
 use papers_rs::command::report::Changes;
-use papers_rs::command::rm::{Files, remove_entries};
+use papers_rs::command::rm::take_out;
 use papers_rs::command::tag::{add_remove, rename};
 use papers_rs::command::{Options, Session};
-use papers_rs::config::paths::exists;
+use papers_rs::config::paths::{exists, realpath};
 use papers_rs::config::{Config, MachineConfig, find_config};
 use papers_rs::error::Error;
 use papers_rs::formats::Format;
@@ -268,21 +269,27 @@ impl PapersWriter for Builtin {
         })
     }
 
-    fn remove(&self, folder: &Path, keys: &[String], delete_files: bool) -> Result<Changes, WriteError> {
+    fn remove(&self, folder: &Path, keys: &[String], files: &[PathBuf]) -> Result<Changes, WriteError> {
         let mut args = keys.to_vec();
-        args.push(if delete_files { "--delete-files" } else { "--keep-files" }.to_string());
-        if delete_files {
-            args.push("-y".to_string());
-        }
-        self.transact_deleting(folder, ("rm", &args), delete_files, |session| {
-            if delete_files && session.config.shallow() {
+        args.push("--keep-files".to_string());
+        // (what papers would record for the entries removed, and the files deleted in the same step)
+        args.extend(files.iter().flat_map(|f| ["--delete-file".to_string(), f.display().to_string()]));
+        let wanted: HashSet<String> = files.iter().map(|f| realpath(&f.to_string_lossy())).collect();
+        self.transact_deleting(folder, ("rm", &args), !files.is_empty(), |session| {
+            if !wanted.is_empty() && session.config.shallow() {
                 return Err(Error::exit(
                     "The files of a shallow library are the pool's: remove them with `papers file rm FILE`",
                 ));
             }
             let keys = session.library.select(keys)?;
-            let files = if delete_files { Files::Delete } else { Files::Keep };
-            let delete = remove_entries(session, &keys, files, false)?;
+            // the files that only these entries link to, of those wanted
+            let found = take_out(session, &keys);
+            let delete = found
+                .inside
+                .into_iter()
+                .chain(found.outside)
+                .filter(|f| wanted.contains(&realpath(f)))
+                .collect();
             Ok((keys, delete))
         })
     }

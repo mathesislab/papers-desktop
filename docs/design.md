@@ -57,15 +57,18 @@ Three panes, each resized by dragging, the right one hidden on demand:
 **Tabs.** The window works as a browser does: the first tab is always the
 library, then one tab per open paper, listed in the sidebar (*Open*): author,
 year and title in full, as a tab bar cannot. Enter or a double-click opens a
-paper; `⌘W` closes it, which goes back to the library (a setting: or to the
-next open paper). `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and
+paper; `⌘W` closes it, which shows the next open paper, the library after
+the last (a setting: or the library at once; `after_close`, "next" by default,
+so a settings file that does not have it gets that). With the library in front
+`⌘W` closes the window. `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and
 *Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
 Library → paper 1 → … → Library; `⌘1` shows the library.
 
 **The library tab is the current set**, and keeps it while papers are opened
 and closed: going back shows the same list, the selection and where it was
-scrolled to. Its sidebar row is labelled by what it shows, with its count
-(`Library — papers.bib · No PDF · amoc · "ice"   (23)`). The set is the
+scrolled to. Its sidebar row is `Library` with its count, and under it, in
+a second line (indented, smaller, muted, ellipsized), the filters it shows
+(`papers.bib · No PDF · amoc · "ice"`; no second line with no filter on). The set is the
 product of four filters (`src/lib/library/filters.ts`, a pure function of the
 rows, tested by `scripts/filters.test.ts`, `npm test`):
 
@@ -120,9 +123,12 @@ they would hide it.
   of the details); *Add PDF…* (one paper without a file); *Copy to ▸* and *Move
   to ▸* (the other .bib files, when there are several); *Export selection…*;
   *Delete…*. What does not apply is disabled (no PDF, no DOI).
-- *Delete…* (the menu, `⌘⌫` on the selection): *Delete 3 papers?* with a
-  checkbox *Also delete their PDFs* (off; shown when a paper has a file) and a
-  line on where the PDFs go. Then the next row is selected.
+- *Delete…* (the menu, `⌘⌫` on the selection): *Delete 3 papers?* with a block
+  per paper (scrolls): its key, its citation in the style of the settings (as
+  the preview shows it), and each file it links on a line of its own with a
+  checkbox (off; *(no PDF)* when it has none), and a line on where the ticked
+  files go. The button says *Delete 3 papers, 2 files*. Only the ticked files
+  are deleted. Then the next row is selected.
 
 A paper tab shows its PDF in the app, with the details beside it: on macOS
 in a native view of PDFKit, as Preview shows it (smooth scrolling and zoom;
@@ -312,16 +318,22 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   added to an entry is linked in its `file` field where it is (JabRef's
   `:path:PDF`, the real path), not moved or renamed.
 - **Delete, copy, move** (`remove_entries`, `transfer_entries`; both writers):
-  - *Delete* removes the entries (`papers rm`) and, if asked, their PDFs.
-    A papers library: `--keep-files` (the PDFs stay), or `--delete-files -y`:
-    the files no other entry links to are deleted and kept in papers' history, so
-    that undo brings them back (more than the history keeps, `history-size`, goes
-    to the system trash, which `-y` accepts: the app has asked already); built in,
-    the same through `Session::delete_files`; a shallow library refuses
-    `--delete-files` (its files are the pool's). A plain .bib: the entries are
-    removed by the app's writer and, if asked, the PDFs that no other entry links
-    to are moved to the system Trash (recoverable by hand; never deleted for good:
-    without a trash the PDFs stay and the error says so).
+  - *Delete* removes the entries (`papers rm --keep-files`) and the files the
+    user ticked (`remove_entries(ids, files)`), those that no other entry links
+    to; they are deleted and kept in papers' history, so that undo brings them
+    back (more than the history keeps, `history-size`, goes to the system
+    trash). Built in, in one step of the history: `take_out` lists the files of
+    the removed entries, those ticked are deleted through `Session::delete_files`
+    (`assume_yes`: the app has asked already). A papers command has no command
+    for some of the files of removed entries, so it is two steps, the files
+    first (`papers file rm FILE... --key KEY...`, which removes the links of
+    these entries and deletes the files nothing else links to), then the entries
+    (`papers rm --keep-files`): undo twice brings both back. A move to another
+    papers library deletes all the files of the moved entries the same way. A
+    shallow library refuses to delete files (they are the pool's). A plain .bib:
+    the entries are removed by the app's writer and the ticked files that no
+    other entry links to are moved to the system Trash (recoverable by hand;
+    never deleted for good: without a trash the files stay and the error says so).
   - *Copy to* / *Move to* another .bib: the entries are added by the writer of
     the target, as the entry is (tags and fields kept) without its `file`
     links, which are replaced by links to the files that are there (a link

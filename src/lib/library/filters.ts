@@ -159,10 +159,11 @@ export function chips(f: Filters): Chip[] {
   return list;
 }
 
-/** What the library tab shows, in a few words: `Library — papers.bib · No PDF · amoc · "ice"`. */
-export function tabLabel(f: Filters): string {
-  const parts = [f.bib !== null ? fileName(f.bib) : null, viewName(f.view), ...f.tags, f.query.trim() ? `"${f.query.trim()}"` : null];
-  return `Library — ${parts.filter(Boolean).join(" · ")}`;
+/** The filters the library tab shows, in a few words: `papers.bib · No PDF · amoc · "ice"`; empty with no filter on. */
+export function tabFilters(f: Filters): string {
+  return chips(f)
+    .map((c) => c.text)
+    .join(" · ");
 }
 
 /** A filter taken off: its chip's ×. */

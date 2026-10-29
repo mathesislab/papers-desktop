@@ -45,8 +45,8 @@
     pinned: (string | null)[];
     /** the parent tags unfolded, folded as `foldTag` does */
     open: string[];
-    /** the library tab, the first of the open ones: what it shows, and how many papers */
-    tab: { label: string; count: number };
+    /** the library tab, the first of the open ones: the filters it shows (none: empty), and how many papers */
+    tab: { filters: string; count: number };
     /** the papers open, as tabs after it */
     papers: Row[];
     /** the paper in front; none: the library tab */
@@ -255,8 +255,9 @@
   <h4>Open</h4>
   {#if rowDrag.ids.length}<div class="hint">Drop to open {rowDrag.ids.length === 1 ? "the paper" : `${rowDrag.ids.length} papers`}</div>{/if}
   <div class="paper" class:selected={active === null}>
-    <button class="tab home" title={tab.label} onclick={onlibrarytab}>
-      <span class="name">{tab.label}</span><span class="count">{tab.count}</span>
+    <button class="tab home" title={tab.filters ? `Library — ${tab.filters}` : "Library"} onclick={onlibrarytab}>
+      <span class="line"><span class="name">Library</span><span class="count">{tab.count}</span></span>
+      {#if tab.filters}<span class="filters">{tab.filters}</span>{/if}
     </button>
   </div>
   {#each papers as paper (paper.id)}
@@ -434,12 +435,22 @@
     text-align: left;
     cursor: default;
   }
-  /* the library tab: what it shows, and its count, in one line */
+  /* the library tab: its count in the first line, the filters it shows in a second, indented and muted */
   .tab.home {
-    flex-direction: row;
+    padding: 4px 10px;
+  }
+  .tab.home .line {
+    display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 10px;
+  }
+  .tab.home .filters {
+    overflow: hidden;
+    padding-left: 10px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--muted);
+    font-size: 11.5px;
   }
   .tab .title {
     overflow: hidden;

@@ -76,11 +76,11 @@ export function defaultFiles(bib: string): Promise<FilesMode | null> {
   return invoke("default_files_mode", { bib });
 }
 
-/** Remove entries. Their files stay, or with `deleteFiles` those no other entry links to are deleted: in a
- *  papers library papers keeps them in its history (undo brings them back), from a plain .bib they go to the
- *  trash of the system. */
-export function removeEntries(ids: string[], deleteFiles = false): Promise<void> {
-  return write("remove_entries", { ids, deleteFiles });
+/** Remove entries. Their files stay, except the `files` to delete (those of the entries that no other entry
+ *  links to): in a papers library papers keeps them in its history (undo brings them back), from a plain .bib
+ *  they go to the trash of the system. */
+export function removeEntries(ids: string[], files: string[] = []): Promise<void> {
+  return write("remove_entries", { ids, files });
 }
 
 /** Copy entries to another .bib file of the library, or with `move` move them: added by the writer of that

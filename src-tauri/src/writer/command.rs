@@ -60,6 +60,7 @@ impl PapersCommand {
     fn run(
         &self,
         folder: &Path,
+        // (its words: `file rm`)
         command: &str,
         args: &[String],
         input: Option<&str>,
@@ -68,7 +69,8 @@ impl PapersCommand {
         papers
             .arg("-C")
             .arg(folder)
-            .args([command, "--porcelain"])
+            .args(command.split(' '))
+            .arg("--porcelain")
             .args(args)
             .env("NO_COLOR", "1")
             .stdin(if input.is_some() {
@@ -183,14 +185,20 @@ impl PapersWriter for PapersCommand {
         self.run(folder, "add", &args, None)
     }
 
-    fn remove(&self, folder: &Path, keys: &[String], delete_files: bool) -> Result<Changes, WriteError> {
-        let mut args = keys.to_vec();
-        if delete_files {
-            // (-y: the user has been asked; more than the history keeps goes to the trash)
-            args.extend(["--delete-files".to_string(), "-y".to_string()]);
-        } else {
-            args.push("--keep-files".to_string());
+    fn remove(&self, folder: &Path, keys: &[String], files: &[PathBuf]) -> Result<Changes, WriteError> {
+        // the files first, `papers file rm FILE... --key KEY...` (the links of these entries, and the
+        // files that no other entry links to): once the entries are gone papers has no entry to delete
+        // a file for. Two steps of the history, the entries the last: no papers command does both
+        // for some of the files
+        let files: Vec<String> = files.iter().filter(|f| f.is_file()).map(|f| f.display().to_string()).collect();
+        if !files.is_empty() {
+            let mut args = files;
+            args.push("--key".to_string());
+            args.extend(keys.iter().cloned());
+            self.run(folder, "file rm", &args, None)?;
         }
+        let mut args = keys.to_vec();
+        args.push("--keep-files".to_string());
         self.run(folder, "rm", &args, None)
     }
 

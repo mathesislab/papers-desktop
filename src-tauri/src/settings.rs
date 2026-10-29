@@ -61,13 +61,13 @@ pub enum WriterChoice {
     Command,
 }
 
-/// After a paper is closed in the main window: the library, or the next
-/// paper open.
+/// After a paper is closed in the main window: the next paper open (the
+/// library after the last), or the library at once.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AfterClose {
-    #[default]
     Library,
+    #[default]
     Next,
 }
 
@@ -241,6 +241,15 @@ mod tests {
         assert_eq!(json, "\"smallest\"");
         // the sizes grow
         assert!(TextSize::LEVELS.windows(2).all(|w| w[0].factor() < w[1].factor()));
+    }
+
+    #[test]
+    fn after_close_goes_to_the_next_paper_unless_set() {
+        assert_eq!(Settings::default().after_close, AfterClose::Next);
+        let unset: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(unset.after_close, AfterClose::Next);
+        let set: Settings = serde_json::from_str(r#"{"after_close": "library"}"#).unwrap();
+        assert_eq!(set.after_close, AfterClose::Library);
     }
 
     #[test]

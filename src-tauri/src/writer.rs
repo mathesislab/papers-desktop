@@ -175,9 +175,11 @@ trait PapersWriter: Send + Sync {
         files: Option<FilesMode>,
     ) -> Result<Changes, WriteError>;
 
-    /// `papers rm KEY... --keep-files`, or with `delete_files` `--delete-files`: the files that
-    /// no other entry links to are deleted, and kept in the history, which undo brings back
-    fn remove(&self, folder: &Path, keys: &[String], delete_files: bool) -> Result<Changes, WriteError>;
+    /// `papers rm KEY... --keep-files`, and the `files` of these entries deleted, those that no
+    /// other entry links to: kept in the history, which undo brings back. Built in, in the same
+    /// step as the entries; a papers command deletes them first (`papers file rm`), a step of
+    /// their own
+    fn remove(&self, folder: &Path, keys: &[String], files: &[PathBuf]) -> Result<Changes, WriteError>;
 
     /// `papers undo`, or with `back` false `papers redo`
     fn step(&self, folder: &Path, back: bool) -> Result<(), WriteError>;
@@ -653,12 +655,12 @@ impl OnDuplicate {
     }
 }
 
-/// Remove entries from the library. Their files stay, or with `delete_files` those that no other
-/// entry links to are deleted: in a papers library papers keeps them in its history (undo brings
-/// them back), in a plain .bib they go to the trash of the system.
+/// Remove entries from the library. Their files stay, except the `files` to delete (of the
+/// entries; a file another entry links to stays too): in a papers library papers keeps them in
+/// its history (undo brings them back), in a plain .bib they go to the trash of the system.
 #[tauri::command]
-pub async fn remove_entries(app: AppHandle, ids: Vec<String>, delete_files: bool) -> Result<(), WriteError> {
-    write(app, move |state| remove(state, &ids, delete_files)).await
+pub async fn remove_entries(app: AppHandle, ids: Vec<String>, files: Vec<PathBuf>) -> Result<(), WriteError> {
+    write(app, move |state| remove(state, &ids, &files)).await
 }
 
 /// Copy entries to another .bib file of the library, or with `remove` move them: the entries
@@ -946,38 +948,45 @@ fn library_key_of(state: &AppState, bib: &Path, text: &str) -> Result<String, St
     made_key(&format, &entry, &taken)
 }
 
-fn remove(state: &AppState, ids: &[String], delete_files: bool) -> Result<(), WriteError> {
+/// The real path of a file, which two links to it share.
+fn real(file: &Path) -> PathBuf {
+    fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf())
+}
+
+/// Remove the entries `ids`, and delete the `files` of them (see `remove_entries`).
+fn remove(state: &AppState, ids: &[String], files: &[PathBuf]) -> Result<(), WriteError> {
     let items = items(state, ids)?;
     let targets = state
         .writers
         .targets(items.iter().map(|it| it.bib.as_path()))?;
+    let wanted: BTreeSet<PathBuf> = files.iter().map(|f| real(f)).collect();
     let mut native = Vec::new();
-    let mut keys: BTreeMap<&Path, (&PapersLibrary, Vec<String>)> = BTreeMap::new();
+    // by library: the keys of the entries, and the files to delete that they link to
+    let mut keys: BTreeMap<&Path, (&PapersLibrary, Vec<String>, Vec<PathBuf>)> = BTreeMap::new();
     for item in &items {
         match targets.papers(&item.bib) {
             None => native.push(item.id.clone()),
-            Some(library) => keys
-                .entry(item.bib.as_path())
-                .or_insert((library, Vec::new()))
-                .1
-                .push(item.key.clone()),
+            Some(library) => {
+                let (_, keys, delete) = keys
+                    .entry(item.bib.as_path())
+                    .or_insert((library, Vec::new(), Vec::new()));
+                keys.push(item.key.clone());
+                delete.extend(item.files.iter().filter(|f| wanted.contains(&real(f))).cloned());
+            }
         }
     }
     let changes = state.library.read().unwrap().remove_entries(&native)?;
     state.writers.done(changes);
-    for (library, keys) in keys.into_values() {
-        library.writer.remove(&library.folder, &keys, delete_files)?;
+    for (library, keys, delete) in keys.into_values() {
+        library.writer.remove(&library.folder, &keys, &delete)?;
     }
-    if delete_files {
-        trash_files(state, &items, &native)?;
-    }
+    trash_files(state, &items, &native, &wanted)?;
     Ok(())
 }
 
-/// The files of the entries of a plain .bib removed (`native`: their ids) that no other entry
-/// links to, moved to the trash. A file that is not there is left out.
-fn trash_files(state: &AppState, items: &[Item], native: &[String]) -> Result<(), WriteError> {
-    let real = |f: &Path| fs::canonicalize(f).unwrap_or_else(|_| f.to_path_buf());
+/// The `wanted` files (real paths) of the entries of a plain .bib removed (`native`: their ids)
+/// that no other entry links to, moved to the trash. A file that is not there is left out.
+fn trash_files(state: &AppState, items: &[Item], native: &[String], wanted: &BTreeSet<PathBuf>) -> Result<(), WriteError> {
     let removed: BTreeSet<&str> = native.iter().map(String::as_str).collect();
     let kept: BTreeSet<PathBuf> = {
         let library = state.library.read().unwrap();
@@ -987,7 +996,7 @@ fn trash_files(state: &AppState, items: &[Item], native: &[String]) -> Result<()
     let mut done = BTreeSet::new();
     for file in items.iter().filter(|it| removed.contains(it.id.as_str())).flat_map(|it| &it.files) {
         let file = real(file);
-        if file.is_file() && !kept.contains(&file) && done.insert(file.clone()) {
+        if wanted.contains(&file) && file.is_file() && !kept.contains(&file) && done.insert(file.clone()) {
             state.writers.trash(&file)?;
         }
     }
@@ -1083,7 +1092,8 @@ fn transfer(state: &AppState, ids: &[String], bib: &Path, remove_source: bool) -
                 continue;
             }
             let ids: Vec<String> = group.iter().map(|it| it.id.clone()).collect();
-            if let Err(mut e) = remove(state, &ids, delete_files) {
+            let files: Vec<PathBuf> = if delete_files { group.iter().flat_map(|it| it.files.clone()).collect() } else { Vec::new() };
+            if let Err(mut e) = remove(state, &ids, &files) {
                 e.message = format!("Added to {}, but not removed from the library it came from: {}", bib.display(), e.message);
                 e.reload = true;
                 return Err(e);
@@ -1490,7 +1500,7 @@ mod tests {
 
         let error = tag(&state, &strings(&["a"]), &strings(&["x"]), &[]).unwrap_err();
         assert_eq!(error.kind, ErrorKind::PapersMissing);
-        let error = remove(&state, &strings(&["a"]), false).unwrap_err();
+        let error = remove(&state, &strings(&["a"]), &[]).unwrap_err();
         assert_eq!(error.kind, ErrorKind::PapersMissing);
         let error = step(&state, &bib, true).unwrap_err();
         assert_eq!(error.kind, ErrorKind::PapersMissing);
@@ -1703,7 +1713,7 @@ mod tests {
         assert_eq!(error.kind, ErrorKind::Failed);
 
         let before = text(bib);
-        remove(state, &strings(&["b"]), false).unwrap();
+        remove(state, &strings(&["b"]), &[]).unwrap();
         reload(state);
         let removed = text(bib);
         assert!(!removed.contains("@article{b,"), "{removed}");
@@ -1716,8 +1726,14 @@ mod tests {
         deleting(state, bib);
     }
 
-    /// An entry with a PDF in the files folder, removed with its file kept, then deleted: papers
-    /// keeps the file in its history, and undo brings it back.
+    /// The steps of the history that a removal with files is: one built in, two by a papers command.
+    fn undo_steps(state: &AppState) -> usize {
+        if *state.writers.choice.lock().unwrap() == WriterChoice::Command { 2 } else { 1 }
+    }
+
+    /// An entry with two PDFs in the files folder, removed with its files kept, then with one
+    /// deleted: papers keeps the file in its history, and undo brings it back. The built-in writer
+    /// deletes it in the step of the entry; a papers command in a step before it.
     fn deleting(state: &AppState, bib: &Path) {
         let dir = bib.parent().unwrap();
         let text = || fs::read_to_string(bib).unwrap();
@@ -1730,25 +1746,44 @@ mod tests {
         let entry = "@article{reed,\n author = {Reed, Sue},\n title = {Gone},\n year = {2030}\n}";
         add(state, bib, entry, options).unwrap();
         reload(state);
-        let placed = dir.join("files/reed_2030_gone.pdf");
-        assert!(placed.is_file(), "{}", text());
         let id = state.library.read().unwrap().find(bib, "reed").unwrap().id.clone();
+        let second = fixture_pdf(&dir.join("dl/reed2.pdf"), "two-pages.pdf");
+        attach(state, &id, None, &second, Some(FilesMode::Copy)).unwrap();
+        reload(state);
+        let files = state.library.read().unwrap().find(bib, "reed").unwrap().files.clone();
+        assert!(files.len() == 2 && files.iter().all(|f| f.is_file()), "{}", text());
+        let [first, second] = [files[0].clone(), files[1].clone()];
         let with = text();
+        let steps = undo_steps(state);
 
-        remove(state, std::slice::from_ref(&id), false).unwrap();
+        remove(state, std::slice::from_ref(&id), &[]).unwrap();
         reload(state);
-        assert!(!text().contains("@article{reed,") && placed.is_file());
+        assert!(!text().contains("@article{reed,") && first.is_file() && second.is_file());
         step(state, bib, true).unwrap();
         reload(state);
         assert_eq!(text(), with);
 
-        remove(state, std::slice::from_ref(&id), true).unwrap();
+        // only the second is deleted: the first stays
+        remove(state, std::slice::from_ref(&id), std::slice::from_ref(&second)).unwrap();
         reload(state);
-        assert!(!text().contains("@article{reed,") && !placed.exists(), "{}", text());
-        step(state, bib, true).unwrap();
-        reload(state);
+        assert!(!text().contains("@article{reed,") && first.is_file() && !second.exists(), "{}", text());
+        for _ in 0..steps {
+            step(state, bib, true).unwrap();
+            reload(state);
+        }
         assert_eq!(text(), with);
-        assert!(placed.is_file(), "undo brings the file back");
+        assert!(first.is_file() && second.is_file(), "undo brings the file back");
+
+        // both
+        remove(state, std::slice::from_ref(&id), &files).unwrap();
+        reload(state);
+        assert!(!text().contains("@article{reed,") && !first.exists() && !second.exists(), "{}", text());
+        for _ in 0..steps {
+            step(state, bib, true).unwrap();
+            reload(state);
+        }
+        assert_eq!(text(), with);
+        assert!(first.is_file() && second.is_file());
     }
 
     #[test]
@@ -1768,15 +1803,15 @@ mod tests {
         *state.writers.trash.lock().unwrap() = Some(trash.clone());
 
         // a file another entry links to stays, with the entry deleted with its files
-        remove(&state, &strings(&["a"]), true).unwrap();
+        remove(&state, &strings(&["a"]), std::slice::from_ref(&one)).unwrap();
         reload(&state);
         assert!(one.is_file() && !fs::read_to_string(&bib).unwrap().contains("@article{a,"));
         // the files kept: nothing is trashed
-        remove(&state, &strings(&["c"]), false).unwrap();
+        remove(&state, &strings(&["c"]), &[]).unwrap();
         reload(&state);
         assert!(two.is_file() && fs::read_dir(&trash).unwrap().count() == 0);
         // the last entry that links a file: it goes to the trash, and the entry comes back with undo
-        remove(&state, &strings(&["b"]), true).unwrap();
+        remove(&state, &strings(&["b"]), std::slice::from_ref(&one)).unwrap();
         reload(&state);
         assert!(!one.exists() && trash.join("a.pdf").is_file());
         step(&state, &bib, true).unwrap();
@@ -1864,9 +1899,12 @@ mod tests {
         assert!(!old.exists() && !text(a).contains("@article{z,"), "{}", text(a));
         let moved = files(b, "z");
         assert!(moved.len() == 1 && moved[0].starts_with(folder(b).join("files")) && moved[0].is_file());
-        // undone in the source: the entry and its file are back
-        step(state, a, true).unwrap();
-        reload(state);
+        // undone in the source: the entry and its file are back (a papers command: two steps, the files'
+        // and the entry's)
+        for _ in 0..undo_steps(state) {
+            step(state, a, true).unwrap();
+            reload(state);
+        }
         assert!(old.is_file() && text(a).contains("@article{z,"), "{}", text(a));
 
         // a move of papers the target has: they stay in the source
