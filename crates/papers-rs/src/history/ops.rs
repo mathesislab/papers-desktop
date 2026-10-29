@@ -3,7 +3,7 @@
 //! files back.
 
 use super::ojson::J;
-use crate::config::paths::{abspath, is_abs, join, normpath, relpath};
+use crate::config::paths::{abspath, basename, dirname, is_abs, join, normpath, relpath};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpKind {
@@ -128,12 +128,23 @@ pub fn absolute_ops(ops: &[FileOp], libdir: &str) -> Vec<FileOp> {
     ops.iter().map(|op| op.map_paths(&ab)).collect()
 }
 
-/// The sorted checksums, without repeats, of the `trashed` operations: the
-/// file objects that a state keeps (`deleted`).
+/// A file of the files deleted by the commands (`file-objects/ab/ab12….pdf`), in any store: the
+/// name of the folder above the folder of the path is `file-objects`, and the file name starts
+/// with the name of its folder.
+pub fn is_file_object(path: &str) -> bool {
+    let folder = dirname(path);
+    basename(&dirname(&folder)) == "file-objects" && basename(path).starts_with(&basename(&folder))
+}
+
+/// The sorted checksums, without repeats, of the file objects that a state needs (`deleted`): those
+/// of the `trashed` operations, and those of the `copied` operations whose `src` is a file object
+/// (a file brought back from the history, spec 3.4).
 pub fn deleted_refs(ops: &[FileOp]) -> Vec<String> {
     let mut found: Vec<String> = ops
         .iter()
-        .filter(|op| op.kind == OpKind::Trashed)
+        .filter(|op| {
+            op.kind == OpKind::Trashed || op.kind == OpKind::Copied && is_file_object(&op.src)
+        })
         .filter_map(|op| op.checksum.clone())
         .collect();
     found.sort();
@@ -171,5 +182,22 @@ mod tests {
         assert_eq!(relative_ops(&ops, "/lib", true), ops);
         assert_eq!(absolute_ops(&rel, "/lib")[0], ops[0]);
         assert_eq!(deleted_refs(&ops), vec!["d".to_string()]);
+        // a file brought back from the history is kept by the step that copied it
+        assert!(is_file_object("/h/file-objects/ab/ab12cd.pdf"));
+        assert!(!is_file_object("/h/file-objects/ab/cd12ab.pdf"));
+        assert!(!is_file_object("/h/objects/ab/ab12cd"));
+        let back = FileOp::new(
+            OpKind::Copied,
+            "/h/file-objects/ab/ab12cd.pdf",
+            Some("/lib/a.pdf"),
+            Some("ab12cd".into()),
+        );
+        let plain = FileOp::new(
+            OpKind::Copied,
+            "/x/a.pdf",
+            Some("/lib/b.pdf"),
+            Some("ee".into()),
+        );
+        assert_eq!(deleted_refs(&[back, plain]), vec!["ab12cd".to_string()]);
     }
 }

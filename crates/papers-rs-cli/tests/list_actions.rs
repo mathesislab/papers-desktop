@@ -137,7 +137,7 @@ fn the_actions_are_steps_of_the_history_with_the_command_line_as_message() {
     let states = history.project.states();
     assert_eq!(states.len(), 4, "the library before, and three commands");
     assert_eq!(
-        states.values().last().unwrap().message(),
+        states[&history.head().unwrap().state].message(),
         "papers list --key one2000 --delete --delete-files"
     );
     // papers-rs undoes them as well

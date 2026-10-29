@@ -13,6 +13,11 @@
 //!   without their times);
 //! - `papers history`, `papers history --all`: the same lines.
 //!
+//! A step is named by the hash of its state, which depends on the time: the states of the store and
+//! the identifiers in the output are compared as `S1`, `S2`, ... in the order of their times (a state
+//! that papers-rs records has another identifier than the one papers recorded). The arguments that
+//! name a step (`$STEP:k`, see `gen_history.py`) are made from the store they run on.
+//!
 //! The retention is checked on a store of its own (`retention.json`).
 
 use std::cell::RefCell;
@@ -26,6 +31,7 @@ use papers_rs::config::paths::realpath;
 use papers_rs::config::{Config, MachineConfig};
 use papers_rs::history::listing::{Removal, all_lines, drop_files_plan, history_lines};
 use papers_rs::history::ojson::J;
+use papers_rs::history::project::is_state_id;
 use papers_rs::history::report::{linked_files, unlinked_notice};
 use papers_rs::history::restore::Deleter;
 use papers_rs::history::setup::{Setup, library_id, path_id};
@@ -112,10 +118,14 @@ struct Universe {
     /// the identifier of their project in the fixture (it comes from the path of
     /// the sandbox that made it: here it is made from the path of this one).
     bibs: Vec<(String, String)>,
+    /// The folder of the sandbox that made the fixture. The origin records have the path of the
+    /// pool, and a piece of text ends where the checksum of an entry says: the records are written
+    /// with this path, so that they are cut as papers cut them.
+    generator: String,
 }
 
 impl Universe {
-    fn new(bibs: &[(String, String)]) -> Universe {
+    fn new(bibs: &[(String, String)], generator: &str) -> Universe {
         let tmp = tempfile::tempdir().unwrap();
         let root = fs::canonicalize(tmp.path())
             .unwrap()
@@ -127,6 +137,7 @@ impl Universe {
             _tmp: tmp,
             root,
             bibs: bibs.to_vec(),
+            generator: generator.to_string(),
         }
     }
 
@@ -153,7 +164,7 @@ impl Universe {
     }
 
     fn copy(&self) -> Universe {
-        let other = Universe::new(&self.bibs);
+        let other = Universe::new(&self.bibs, &self.generator);
         copy_tree(Path::new(&self.work()), Path::new(&other.work()));
         copy_tree(Path::new(&self.store()), Path::new(&other.store()));
         for (bib, _) in &self.bibs {
@@ -174,6 +185,18 @@ impl Universe {
                 if Path::new(&from).exists() {
                     fs::rename(from, to).unwrap();
                 }
+            }
+        }
+        // the files of the library that name paths of the sandbox (the origin records name the pool)
+        for (rel, bytes) in files_of(Path::new(&other.work())) {
+            if let Ok(text) = String::from_utf8(bytes)
+                && text.contains(&self.root)
+            {
+                fs::write(
+                    format!("{}/{rel}", other.work()),
+                    text.replace(&self.root, &other.root),
+                )
+                .unwrap();
             }
         }
         // the states and the heads name paths of the sandbox
@@ -201,7 +224,18 @@ impl Universe {
         let path = format!("{base}/{rel}");
         fs::create_dir_all(Path::new(&path).parent().unwrap()).unwrap();
         let bytes = match (entry.get("text"), entry.get("b64")) {
-            (Some(t), _) => t.as_str().unwrap().replace("$TMP", &self.root).into_bytes(),
+            (Some(t), _) => t
+                .as_str()
+                .unwrap()
+                .replace(
+                    "$TMP",
+                    if rel.contains(".papers/origin/") {
+                        &self.generator
+                    } else {
+                        &self.root
+                    },
+                )
+                .into_bytes(),
             (_, Some(b)) => b64_decode(b.as_str().unwrap()),
             _ => panic!("a file without content: {rel}"),
         };
@@ -285,19 +319,131 @@ fn without_times(text: &str) -> String {
     out
 }
 
+/// The states of every project of every store of a universe, by time: `{identifier: S1, S2, ...}`.
+fn state_labels(u: &Universe) -> BTreeMap<String, String> {
+    let mut found: Vec<(f64, String)> = Vec::new();
+    for (rel, bytes) in files_of(Path::new(&u.store())) {
+        let parts: Vec<&str> = rel.split('/').collect();
+        if let [.., "projects", _, "states", name] = parts.as_slice()
+            && let Some(id) = name.strip_suffix(".json")
+            && is_state_id(id)
+        {
+            let time = J::parse(&String::from_utf8_lossy(&bytes))
+                .and_then(|j| j.get("time").and_then(J::as_f64))
+                .unwrap_or(0.0);
+            found.push((time, id.to_string()));
+        }
+    }
+    found.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+    found
+        .into_iter()
+        .enumerate()
+        .map(|(i, (_, id))| (id, format!("S{}", i + 1)))
+        .collect()
+}
+
+/// A text with the identifiers of the states (all of it, or the first 8 characters that the
+/// messages show) as their labels.
+fn with_labels(text: &str, labels: &BTreeMap<String, String>) -> String {
+    let mut out = text.to_string();
+    for (id, label) in labels {
+        out = out.replace(id.as_str(), label);
+    }
+    for (id, label) in labels {
+        out = out.replace(&id[..8], label);
+    }
+    // a step named by a shorter start, as the user typed it (`by step 4f1c`)
+    for marker in ["by step ", "no step "] {
+        let mut from = 0;
+        while let Some(at) = out[from..].find(marker) {
+            let start = from + at + marker.len();
+            let end = out[start..]
+                .find(|c: char| !c.is_ascii_hexdigit())
+                .map_or(out.len(), |n| start + n);
+            let typed = out[start..end].to_lowercase();
+            if typed.len() >= 4
+                && let Some((_, label)) = labels.iter().find(|(id, _)| id.starts_with(&typed))
+            {
+                out.replace_range(start..end, label);
+            }
+            from = start;
+        }
+    }
+    out
+}
+
+/// A text with the folder of the sandbox as `$TMP`: this universe's, and the one of the generator
+/// (`.../papers-rs-history-XXXX`) in the objects that it made, which name the pool of a library.
+fn with_tmp(text: &str, u: &Universe) -> String {
+    let mut out = text.replace(&u.root, "$TMP");
+    const SANDBOX: &str = "papers-rs-history-";
+    while let Some(at) = out.find(SANDBOX) {
+        let end = at
+            + SANDBOX.len()
+            + out[at + SANDBOX.len()..]
+                .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .unwrap_or(out.len() - at - SANDBOX.len());
+        let start = out[..at]
+            .rfind(|c: char| c.is_whitespace() || matches!(c, '{' | '}' | '"' | '=' | ','))
+            .map_or(0, |i| i + 1);
+        out.replace_range(start..end, "$TMP");
+    }
+    out
+}
+
+fn is_object(rel: &str) -> bool {
+    rel.contains("/objects/") || rel.starts_with("objects/")
+}
+
+/// The pieces that name the folder of the sandbox (the origin records have the path of the pool):
+/// `{checksum: the checksum of the piece with $TMP for the folder}`.
+fn piece_names(u: &Universe) -> BTreeMap<String, String> {
+    let mut names = BTreeMap::new();
+    for (rel, bytes) in files_of(Path::new(&u.store())) {
+        if !is_object(&rel) {
+            continue;
+        }
+        let mut data = Vec::new();
+        flate2::read::ZlibDecoder::new(bytes.as_slice())
+            .read_to_end(&mut data)
+            .expect("an object is zlib");
+        let text = String::from_utf8_lossy(&data);
+        let normal = with_tmp(&text, u);
+        if normal != text {
+            let name = rel.rsplit('/').next().unwrap().to_string();
+            names.insert(name, papers_rs::history::store::sha256(normal.as_bytes()));
+        }
+    }
+    names
+}
+
 /// The store as comparable text: the objects decompressed, the states and the
-/// heads without their times and with `$TMP` for the folder of the sandbox.
+/// heads without their times and with `$TMP` for the folder of the sandbox, the
+/// states named by their labels.
 fn store_snapshot(u: &Universe) -> BTreeMap<String, Vec<u8>> {
+    let labels = state_labels(u);
+    let names = piece_names(u);
+    let renamed = |text: &str| -> String {
+        names
+            .iter()
+            .fold(text.to_string(), |t, (from, to)| t.replace(from, to))
+    };
     let mut out = BTreeMap::new();
     for (rel, bytes) in files_of(Path::new(&u.store())) {
-        let value = if rel.contains("/objects/") || rel.starts_with("objects/") {
+        let value = if is_object(&rel) {
             let mut data = Vec::new();
             flate2::read::ZlibDecoder::new(bytes.as_slice())
                 .read_to_end(&mut data)
                 .expect("an object is zlib");
-            data
+            with_tmp(&String::from_utf8_lossy(&data), u).into_bytes()
         } else if rel.ends_with(".json") {
-            without_times(&String::from_utf8(bytes).unwrap().replace(&u.root, "$TMP")).into_bytes()
+            with_labels(
+                &renamed(&without_times(
+                    &String::from_utf8(bytes).unwrap().replace(&u.root, "$TMP"),
+                )),
+                &labels,
+            )
+            .into_bytes()
         } else {
             bytes
         };
@@ -305,6 +451,15 @@ fn store_snapshot(u: &Universe) -> BTreeMap<String, Vec<u8>> {
             .bibs
             .iter()
             .fold(rel, |k, (bib, _)| k.replace(&u.own_id(bib), "$ID"));
+        let key = if is_object(&key) {
+            // the folder of an object is the start of its name
+            let prefix = key.rsplit_once("objects/").map_or("", |(p, _)| p);
+            let name = key.rsplit('/').next().unwrap_or("");
+            let name = names.get(name).map_or(name, String::as_str);
+            format!("{prefix}objects/{}/{name}", &name[..2])
+        } else {
+            with_labels(&renamed(&key), &labels)
+        };
         out.insert(key, value);
     }
     out
@@ -314,9 +469,18 @@ fn assert_same_store(got: &Universe, want: &Universe, ctx: &str) {
     let (a, b) = (store_snapshot(got), store_snapshot(want));
     let only_got: Vec<&String> = a.keys().filter(|k| !b.contains_key(*k)).collect();
     let only_want: Vec<&String> = b.keys().filter(|k| !a.contains_key(*k)).collect();
+    let shown = |files: &[&String], from: &BTreeMap<String, Vec<u8>>| -> String {
+        files
+            .iter()
+            .map(|f| format!("{f}:\n{}", String::from_utf8_lossy(&from[*f])))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     assert!(
         only_got.is_empty() && only_want.is_empty(),
-        "{ctx}: files of the store only in papers-rs {only_got:?}, only in papers {only_want:?}"
+        "{ctx}: files of the store only in papers-rs {only_got:?}, only in papers {only_want:?}\npapers-rs:\n{}\npapers:\n{}",
+        shown(&only_got, &a),
+        shown(&only_want, &b)
     );
     for (k, v) in &a {
         assert!(
@@ -328,11 +492,19 @@ fn assert_same_store(got: &Universe, want: &Universe, ctx: &str) {
     }
 }
 
+/// The files of a working folder, texts with the folder of the sandbox as `$TMP`.
+fn work_files(u: &Universe) -> BTreeMap<String, Vec<u8>> {
+    files_of(Path::new(&u.work()))
+        .into_iter()
+        .map(|(k, v)| match String::from_utf8(v) {
+            Ok(text) => (k, with_tmp(&text, u).into_bytes()),
+            Err(error) => (k, error.into_bytes()),
+        })
+        .collect()
+}
+
 fn assert_same_work(got: &Universe, want: &Universe, ctx: &str) {
-    let (a, b) = (
-        files_of(Path::new(&got.work())),
-        files_of(Path::new(&want.work())),
-    );
+    let (a, b) = (work_files(got), work_files(want));
     let only_got: Vec<&String> = a.keys().filter(|k| !b.contains_key(*k)).collect();
     let only_want: Vec<&String> = b.keys().filter(|k| !a.contains_key(*k)).collect();
     assert!(
@@ -353,7 +525,7 @@ fn assert_same_work(got: &Universe, want: &Universe, ctx: &str) {
 // ==========
 
 /// `(2026-10-28 13:33` -> `($TIME`, the paths of the sandbox as `$TMP`, the store line
-/// without the folder of the store.
+/// without the folder of the store, the steps by their labels (those of the store `u`).
 fn norm_lines(text: &str, u: &Universe) -> Vec<String> {
     let text = u
         .bibs
@@ -362,6 +534,7 @@ fn norm_lines(text: &str, u: &Universe) -> Vec<String> {
             t.replace(fixture.as_str(), "$ID")
                 .replace(&u.own_id(bib), "$ID")
         });
+    let text = with_labels(&text, &state_labels(u));
     text.lines()
         .filter(|line| !line.starts_with("stale: "))
         .map(|line| {
@@ -441,14 +614,56 @@ fn argv(step: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The arguments with the identifier of a library where the generator wrote `$ID:folder`.
-fn argv_in(u: &Universe, step: &Value) -> Vec<String> {
+/// `$STEP:k`, `$STEP4:k`, `$STEPU:k` (see `gen_history.py`): the identifier of the k-th state, by
+/// time, of the library of the step in `u` (the first 8 characters, the shortest start of 4 or
+/// more that no other state has, the first 8 in upper case); k beyond the history stays k.
+fn step_argument(u: &Universe, fx: &Value, step: &Value, arg: &str) -> String {
+    let Some(rest) = arg.strip_prefix("$STEP") else {
+        return arg.to_string();
+    };
+    let (kind, k) = rest.split_once(':').expect("$STEP:k");
+    let k: usize = k.parse().expect("a number");
+    let mut config = config_for(u, fx, step);
+    let mut states: Vec<(f64, String)> = History::open(&mut config, false, false)
+        .unwrap()
+        .map(|h| {
+            h.project
+                .states()
+                .iter()
+                .map(|(id, s)| (s.time(), id.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    states.sort_by(|a, b| a.0.total_cmp(&b.0));
+    if k == 0 || k > states.len() {
+        return k.to_string();
+    }
+    let id = states[k - 1].1.clone();
+    match kind {
+        "4" => {
+            let mut n = 4;
+            while states
+                .iter()
+                .any(|(_, o)| *o != id && o.starts_with(&id[..n]))
+            {
+                n += 1;
+            }
+            id[..n].to_string()
+        }
+        "U" => id[..8].to_uppercase(),
+        _ => id[..8].to_string(),
+    }
+}
+
+/// The arguments with the identifier of a library where the generator wrote `$ID:folder` (read in
+/// `ids`) and the steps named by `$STEP:k` (made from the store `u`).
+fn argv_in(u: &Universe, ids: &Universe, fx: &Value, step: &Value) -> Vec<String> {
     argv(step)
         .into_iter()
         .map(|a| match a.strip_prefix("$ID:") {
             Some(dir) => {
-                let text =
-                    fs::read_to_string(format!("{}/{dir}/.papers/config.json", u.work())).unwrap();
+                let text = fs::read_to_string(format!("{}/{dir}/.papers/config.json", ids.work()))
+                    .unwrap();
                 J::parse(&text)
                     .unwrap()
                     .get("id")
@@ -456,7 +671,7 @@ fn argv_in(u: &Universe, step: &Value) -> Vec<String> {
                     .unwrap()
                     .to_string()
             }
-            None => a,
+            None => step_argument(u, fx, step, &a),
         })
         .collect()
 }
@@ -519,10 +734,10 @@ fn time_travel(
     ctx: &str,
     live: Option<(&str, &Universe)>,
 ) {
-    let args = argv(step);
     if let Some(lib) = step["lib"].as_str() {
         align_library_id(e, want, fx, lib, ctx);
     }
+    let args = argv_in(e, want, fx, step);
     let mut config = config_for(e, fx, step);
     let before = config
         .bibtex
@@ -535,15 +750,12 @@ fn time_travel(
     let kind = args[0].as_str();
     let steps = option_n(&args, 1);
     let library_only = args.iter().any(|a| a == "--library-only");
-    let n: Option<u64> = args
-        .iter()
-        .skip(1)
-        .find(|a| a.parse::<u64>().is_ok())
-        .and_then(|a| a.parse().ok());
+    let reference = args.get(1).map(String::as_str);
+    let command = format!("papers {}", args.join(" "));
     let result = match kind {
-        "undo" => history.undo(steps, library_only, None, "papers undo", &mut skip()),
-        "redo" => history.redo(steps, library_only, None, "papers redo", &mut skip()),
-        _ => history.restore(n, None),
+        "undo" => history.undo(steps, library_only, None, &command, &mut skip()),
+        "redo" => history.redo(steps, library_only, None, &command, &mut skip()),
+        _ => history.restore(reference, None),
     };
     let stdout = step["stdout"].as_str().unwrap();
     let stderr = step["stderr"].as_str().unwrap();
@@ -561,16 +773,22 @@ fn time_travel(
                 .unwrap_or_default();
             lines.extend(unlinked_notice(&before, &after, config.filesdir.as_deref()));
             let got = norm_lines(&lines.join("\n"), e);
-            assert_eq!(got, norm_lines(stdout, e), "{ctx}: what it says");
+            assert_eq!(got, norm_lines(stdout, want), "{ctx}: what it says");
         }
         Err(error) => {
             assert_eq!(
                 step["exit"], 1,
                 "{ctx}: papers-rs failed ({error}), papers did not"
             );
-            let want_text = stderr.trim_end().replace("$TMP", &e.root);
+            let want_text = with_labels(
+                &stderr.trim_end().replace("$TMP", &e.root),
+                &state_labels(want),
+            );
             assert_eq!(
-                format!("papers: error: {}", error.message()),
+                with_labels(
+                    &format!("papers: error: {}", error.message()),
+                    &state_labels(e)
+                ),
                 want_text,
                 "{ctx}: the error"
             );
@@ -590,7 +808,7 @@ fn time_travel(
         if code == 0 {
             assert_eq!(
                 norm_lines(&out, &r),
-                norm_lines(stdout, e),
+                norm_lines(stdout, want),
                 "{ctx}: the reference papers on the store of papers-rs"
             );
         }
@@ -642,7 +860,7 @@ fn reference_run(reference: &str, u: &Universe, fx: &Value, step: &Value) -> (i3
                     .unwrap()
                     .to_string()
             }
-            None => a,
+            None => step_argument(u, fx, step, &a),
         })
         .collect();
     command.args(words).args(args);
@@ -676,7 +894,7 @@ fn history_edit(
     ctx: &str,
     live: Option<(&str, &Universe)>,
 ) {
-    let args = argv_in(want, step);
+    let args = argv_in(e, want, fx, step);
     let delete: fn(&str) = |p| drop(fs::remove_file(p));
     let mut config = config_for(e, fx, step);
     let setup = Setup::from_config(&config);
@@ -720,17 +938,14 @@ fn history_edit(
             };
             history.trash = delete;
             history.setup.cwd = cwd_of(e, step);
-            let (number, path) = match target.parse::<u64>() {
-                Ok(n) => (Some(n), None),
-                Err(_) => (None, Some(target.as_str())),
-            };
             let found = history
-                .files_to_drop(number, path)
+                .files_to_drop(target)
                 .map_err(|e| e.message().to_string())?;
             if found.is_empty() {
-                out.push(match number {
-                    Some(n) => format!("the history keeps no file deleted by step {n}"),
-                    None => format!("the history keeps no file deleted from {target}"),
+                out.push(if History::is_path(target) {
+                    format!("the history keeps no file deleted from {target}")
+                } else {
+                    format!("the history keeps no file deleted by step {target}")
                 });
             } else {
                 let plan = drop_files_plan(&found);
@@ -748,7 +963,7 @@ fn history_edit(
             assert_eq!(step["exit"], 0, "{ctx}: papers failed, papers-rs did not");
             assert_eq!(
                 norm_lines(&out.join("\n"), e),
-                norm_lines(step["stdout"].as_str().unwrap(), e),
+                norm_lines(step["stdout"].as_str().unwrap(), want),
                 "{ctx}: what it says"
             );
         }
@@ -758,8 +973,11 @@ fn history_edit(
                 "{ctx}: papers-rs failed ({message}), papers did not"
             );
             assert_eq!(
-                format!("papers: error: {message}"),
-                step["stderr"].as_str().unwrap().trim_end(),
+                with_labels(&format!("papers: error: {message}"), &state_labels(e)),
+                with_labels(
+                    step["stderr"].as_str().unwrap().trim_end(),
+                    &state_labels(want)
+                ),
                 "{ctx}: the error"
             );
         }
@@ -787,8 +1005,8 @@ fn history_edit(
     }
 }
 
-fn listing(e: &Universe, fx: &Value, step: &Value, ctx: &str) {
-    let args = argv(step);
+fn listing(e: &Universe, want: &Universe, fx: &Value, step: &Value, ctx: &str) {
+    let args = argv_in(e, e, fx, step);
     let mut config = if step.get("bibtex").is_some() || step["lib"].is_string() {
         config_for(e, fx, step)
     } else {
@@ -810,28 +1028,28 @@ fn listing(e: &Universe, fx: &Value, step: &Value, ctx: &str) {
     let got = norm_lines(&lines.join("\n"), e);
     assert_eq!(
         got,
-        norm_lines(step["stdout"].as_str().unwrap(), e),
+        norm_lines(step["stdout"].as_str().unwrap(), want),
         "{ctx}: the lines of papers history"
     );
 }
 
-/// The new states of the store delta of a step: (project id, number, state).
-fn new_states(e: &Universe, step: &Value) -> Vec<(String, u64, J)> {
+/// The new states of the store delta of a step, by time: (project id, identifier, state).
+fn new_states(e: &Universe, step: &Value) -> Vec<(String, String, J)> {
     let mut found = Vec::new();
     for (rel, entry) in step["store"]["set"].as_object().unwrap() {
         let parts: Vec<&str> = rel.split('/').collect();
         if let [.., "projects", id, "states", name] = parts.as_slice()
-            && let Some(number) = name.strip_suffix(".json")
+            && let Some(state) = name.strip_suffix(".json")
+            && is_state_id(state)
         {
             let text = entry["text"].as_str().unwrap().replace("$TMP", &e.root);
-            found.push((
-                e.map_rel(id),
-                number.parse::<u64>().unwrap(),
-                J::parse(&text).unwrap(),
-            ));
+            found.push((e.map_rel(id), state.to_string(), J::parse(&text).unwrap()));
         }
     }
-    found.sort_by_key(|f| f.1);
+    found.sort_by(|a, b| {
+        let time = |s: &J| s.get("time").and_then(J::as_f64).unwrap_or(0.0);
+        time(&a.2).total_cmp(&time(&b.2))
+    });
     found
 }
 
@@ -934,7 +1152,7 @@ fn record_command(e: &Universe, want: &Universe, fx: &Value, step: &Value, ctx: 
         history
             .sync_head(before_texts.get(pid).and_then(Option::as_ref))
             .unwrap();
-        let (_, number, state) = states
+        let (_, _, state) = states
             .iter()
             .rev()
             .find(|(p, _, s)| p == pid && s.get("kind").and_then(J::as_str) == Some("command"))
@@ -971,14 +1189,9 @@ fn record_command(e: &Universe, want: &Universe, fx: &Value, step: &Value, ctx: 
                 snapshot: None,
                 pools: if *from { vec![] } else { links.clone() },
                 from: state.get("from").and_then(J::as_str).map(str::to_string),
-                reverts: state.get("reverts").map(J::numbers).unwrap_or_default(),
+                reverts: state.get("reverts").map(J::strings).unwrap_or_default(),
             })
             .unwrap();
-        assert_eq!(
-            recorded.number,
-            Some(*number),
-            "{ctx}: the number of the state"
-        );
         links.extend(recorded.link);
     }
     e.apply(&e.work(), &step["work"], &|rel| {
@@ -1002,8 +1215,9 @@ fn run(name: &str, reference: Option<&str>) -> Counts {
         .iter()
         .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string()))
         .collect();
-    let want = Universe::new(&bibs);
-    let mut chain = Universe::new(&bibs);
+    let generator = fx["sandbox"].as_str().unwrap_or("");
+    let want = Universe::new(&bibs, generator);
+    let mut chain = Universe::new(&bibs, generator);
     let mut counts = Counts::default();
     for (i, step) in fx["steps"].as_array().unwrap().iter().enumerate() {
         let kind = step["kind"].as_str().unwrap();
@@ -1037,8 +1251,13 @@ fn run(name: &str, reference: Option<&str>) -> Counts {
                 history_edit(&e, &want, &fx, step, &ctx, reference.map(|r| (r, &chain)));
                 counts.edited += 1;
             }
+            "history" if args.iter().any(|a| a == "--revert") => {
+                if record_command(&e, &want, &fx, step, &ctx) {
+                    counts.recorded += 1;
+                }
+            }
             "history" => {
-                listing(&e, &fx, step, &ctx);
+                listing(&e, &want, &fx, step, &ctx);
                 counts.listed += 1;
             }
             _ => {
@@ -1054,8 +1273,8 @@ fn run(name: &str, reference: Option<&str>) -> Counts {
     counts
 }
 
-/// The reference papers (`PAPERS_REFERENCE`, a command; `PAPERS_REFERENCE_B5` for the scenarios of papers
-/// 3.0.0b5): the scenarios again, on the store that papers-rs writes.
+/// The reference papers (`PAPERS_REFERENCE`, a command): the scenarios again, on the store that
+/// papers-rs writes.
 fn live(name: &str, variable: &str) {
     let Ok(reference) = std::env::var(variable) else {
         eprintln!("{name}: skipped, {variable} is not set");
@@ -1078,10 +1297,12 @@ fn the_reference_papers_undoes_what_papers_rs_recorded() {
         "bibtex",
         "bibtex-separate",
         "remove",
+        "pools",
+        "pools-moved",
     ] {
         live(name, "PAPERS_REFERENCE");
     }
-    live("pools", "PAPERS_REFERENCE_B5");
+    // not "numbered" and "numbered-pools": papers-rs writes no numbered state
 }
 
 #[test]
@@ -1150,6 +1371,24 @@ fn a_shallow_library_and_its_pool() {
     assert!(c.undone >= 5 && c.recorded >= 3, "{c:?}");
 }
 
+#[test]
+fn a_pool_that_moved_on_is_reverted_and_a_step_is_done_again() {
+    let c = run_fixture("pools-moved");
+    assert!(c.undone >= 5 && c.recorded >= 5, "{c:?}");
+}
+
+#[test]
+fn numbered_states_are_named_by_their_hash_at_the_first_command() {
+    let c = run_fixture("numbered");
+    assert!(c.undone >= 3 && c.listed >= 2, "{c:?}");
+}
+
+#[test]
+fn numbered_states_of_a_library_and_its_pool_in_two_stores() {
+    let c = run_fixture("numbered-pools");
+    assert!(c.undone >= 2 && c.recorded >= 1, "{c:?}");
+}
+
 // the retention
 // =============
 
@@ -1193,15 +1432,20 @@ fn the_retention_drops_what_papers_drops() {
             &discard,
             case["now"].as_f64().unwrap(),
         );
-        let got: Vec<(String, u64)> = dropped
+        let got: Vec<(String, String)> = dropped
             .iter()
-            .map(|d| (d.project.clone(), d.number))
+            .map(|d| (d.project.clone(), d.id.clone()))
             .collect();
-        let want: Vec<(String, u64)> = case["dropped"]
+        let want: Vec<(String, String)> = case["dropped"]
             .as_array()
             .unwrap()
             .iter()
-            .map(|d| (d[0].as_str().unwrap().to_string(), d[1].as_u64().unwrap()))
+            .map(|d| {
+                (
+                    d[0].as_str().unwrap().to_string(),
+                    d[1].as_str().unwrap().to_string(),
+                )
+            })
             .collect();
         assert_eq!(got, want, "{ctx}: the states dropped");
         let mut gone = gone.into_inner();

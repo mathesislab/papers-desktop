@@ -69,11 +69,58 @@ impl Sandbox {
         fs::read_to_string(self.path(rel)).unwrap_or_default()
     }
 
+    /// The states of the history store, by time: `(project id, identifier)`. A step is named by the
+    /// hash of its state, which depends on the time: the tests name it by its place, `#3` for the
+    /// third state of the library of the command, and compare the runs with `$S3` for the third
+    /// state of the store.
+    fn states(&self) -> Vec<(String, String)> {
+        let mut found: Vec<(f64, String, String)> = Vec::new();
+        let projects = self.path("history/projects");
+        for project in fs::read_dir(&projects).into_iter().flatten().flatten() {
+            let id = project.file_name().to_string_lossy().into_owned();
+            for state in fs::read_dir(project.path().join("states")).into_iter().flatten().flatten() {
+                let name = state.file_name().to_string_lossy().into_owned();
+                let Some(n) = name.strip_suffix(".json").filter(|n| n.len() == 64) else {
+                    continue;
+                };
+                let text = fs::read_to_string(state.path()).unwrap_or_default();
+                let value: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+                found.push((value["time"].as_f64().unwrap_or(0.0), id.clone(), n.to_string()));
+            }
+        }
+        found.sort_by(|a, b| a.0.total_cmp(&b.0));
+        found.into_iter().map(|(_, p, n)| (p, n)).collect()
+    }
+
+    /// The first 8 characters of the identifier of the n-th state (from 1) of the library in `cwd`.
+    fn step_id(&self, cwd: &str, n: usize) -> String {
+        let text = self.read(&format!("{cwd}/.papers/config.json"));
+        let id: String = text
+            .split("\"id\": \"")
+            .nth(1)
+            .map(|t| t.chars().take_while(|c| c.is_ascii_hexdigit()).collect())
+            .unwrap_or_default();
+        let states: Vec<String> = self
+            .states()
+            .into_iter()
+            .filter(|(p, _)| *p == id)
+            .map(|(_, n)| n)
+            .collect();
+        states[n - 1][..8].to_string()
+    }
+
     fn output(&self, program: &str, cwd: &str, args: &[&str]) -> Output {
         let mut words = program.split_whitespace();
+        let args: Vec<String> = args
+            .iter()
+            .map(|a| match a.strip_prefix('#').and_then(|n| n.parse().ok()) {
+                Some(n) => self.step_id(cwd, n),
+                None => a.to_string(),
+            })
+            .collect();
         Command::new(words.next().unwrap())
             .args(words)
-            .args(args)
+            .args(&args)
             .current_dir(self.path(cwd))
             .env_clear()
             .env("PATH", std::env::var("PATH").unwrap_or_default())
@@ -134,6 +181,14 @@ impl Sandbox {
         let mut text = text.replace(&self.root, "$ROOT");
         for (id, name) in self.ids() {
             text = text.replace(&id, name);
+        }
+        // the states: all the characters of an identifier, or the first 8 that the messages show
+        let states = self.states();
+        for (i, (_, id)) in states.iter().enumerate() {
+            text = text.replace(id.as_str(), &format!("$S{}", i + 1));
+        }
+        for (i, (_, id)) in states.iter().enumerate() {
+            text = text.replace(&id[..8], &format!("$S{}", i + 1));
         }
         let chars: Vec<char> = text.chars().collect();
         let starts = |i: usize, word: &str| {
@@ -357,8 +412,8 @@ fn what_one_program_reverts_the_other_undoes_and_redoes() {
         library(&s, &papers);
         // the steps: 1 start, 2 add, 3 tag x, 4 attach, 5 edit, 6 tag y
         let before = s.snapshot();
-        s.run(&reverting, "lib", &["history", "--revert", "3"]);
-        s.run(&reverting, "lib", &["history", "--revert", "4"]);
+        s.run(&reverting, "lib", &["history", "--revert", "#3"]);
+        s.run(&reverting, "lib", &["history", "--revert", "#4"]);
         let reverted = s.read("lib/papers.bib");
         assert!(!reverted.contains("keywords = {x"), "{reverted}");
         assert!(
@@ -396,14 +451,14 @@ fn the_same_revert_by_both_programs() {
             let s = Sandbox::new();
             library(&s, &papers);
             let said: Vec<String> = [
-                vec!["history", "--revert", "3"],
-                vec!["history", "--revert", "4"],
-                vec!["history", "--revert", "5", "--on-duplicate", "keep"],
-                vec!["history", "--revert", "6", "--dry-run"],
+                vec!["history", "--revert", "#3"],
+                vec!["history", "--revert", "#4"],
+                vec!["history", "--revert", "#5", "--on-duplicate", "keep"],
+                vec!["history", "--revert", "#6", "--dry-run"],
                 vec!["history"],
                 vec!["undo", "-n", "3"],
                 vec!["redo", "-n", "3"],
-                vec!["history", "--revert", "2"],
+                vec!["history", "--revert", "#2"],
                 vec!["history"],
             ]
             .iter()

@@ -8,6 +8,7 @@ use std::io::{BufRead, IsTerminal, Write};
 use papers_rs::command::Options;
 use papers_rs::command::pool::push_after_travel;
 use papers_rs::command::report::print_changes;
+use papers_rs::command::revert::Revert;
 use papers_rs::command::session::Prompt;
 use papers_rs::config::json::py_repr_str;
 use papers_rs::config::paths::{abspath, dirname, exists, realpath};
@@ -217,15 +218,9 @@ pub fn restore(leaf: &Leaf, config: Config, command: &str) -> Result<()> {
     if command == "restore-backup" {
         log::warning("`papers restore-backup` is deprecated: use `papers restore`");
     }
-    let state = int_option(leaf, "state").or_else(|| int_option(leaf, "reference"));
-    time_travel("restore", leaf, config, false, false, |h, lock, _, _| match state {
-        Some(n) if n < 0 => Err(no_step(&n.to_string())),
-        n => h.restore(n.map(|n| n as u64), lock),
-    })
-}
-
-fn no_step(step: &str) -> Error {
-    Error::exit(format!("no step {step} in the history of the library (see `papers history`)"))
+    // the step: its identifier in `papers history`, or the start of it (4 characters or more)
+    let state = leaf.string("state").or_else(|| leaf.string("reference"));
+    time_travel("restore", leaf, config, false, false, |h, lock, _, _| h.restore(state.as_deref(), lock))
 }
 
 // history
@@ -235,7 +230,7 @@ pub struct HistoryArgs {
     remove: Option<String>,
     all: bool,
     drop_files: Option<String>,
-    revert: Option<i64>,
+    revert: Option<String>,
     on_duplicate: Option<String>,
     n: i64,
     yes: bool,
@@ -250,7 +245,7 @@ impl HistoryArgs {
             remove: leaf.matches.contains_id("remove").then(|| leaf.string("remove").unwrap_or_default()),
             all: leaf.flag("all"),
             drop_files: leaf.string("drop_files"),
-            revert: int_option(leaf, "revert"),
+            revert: leaf.string("revert"),
             on_duplicate: leaf.string("on_duplicate"),
             n: int_option(leaf, "n").unwrap_or(20),
             yes: leaf.flag("yes"),
@@ -261,9 +256,14 @@ impl HistoryArgs {
     }
 }
 
-pub fn history(args: HistoryArgs, mut config: Config, command: &str) -> Result<()> {
+pub fn history(leaf: &Leaf, mut config: Config, command: &str) -> Result<()> {
+    let args = HistoryArgs::from_leaf(leaf);
     if command == "backup" {
         log::warning("`papers backup` is deprecated: use `papers history`");
+    }
+    // a bibtex given (also without library), as for undo
+    if leaf.string("bibtex").is_some() {
+        config = check_install(leaf, config, false)?;
     }
     if let Some(id) = &args.remove {
         return remove_history(&mut config, &args, id);
@@ -277,8 +277,8 @@ pub fn history(args: HistoryArgs, mut config: Config, command: &str) -> Result<(
     if let Some(target) = args.drop_files.as_deref().filter(|t| !t.is_empty()) {
         return drop_files(&mut config, &args, target);
     }
-    if args.revert.is_some() {
-        return revert(&args, config);
+    if let Some(step) = args.revert.as_deref() {
+        return revert(&args, step, config);
     }
     let has_bibtex = config.bibtex.is_some();
     let history = if has_bibtex { History::open(&mut config, false, args.dry_run)? } else { None };
@@ -291,8 +291,7 @@ pub fn history(args: HistoryArgs, mut config: Config, command: &str) -> Result<(
 
 /// `revert`: `papers history --revert N`, take back the changes of step N alone, saved as a new
 /// step; the report of the entries, and of the pools that step N also changed.
-fn revert(args: &HistoryArgs, config: Config) -> Result<()> {
-    let n = args.revert.expect("--revert N");
+fn revert(args: &HistoryArgs, reference: &str, config: Config) -> Result<()> {
     if config.bibtex.as_deref().is_none_or(|b| !exists(b)) {
         return Err(Error::exit("no library: --revert takes back a step of the history of a library"));
     }
@@ -317,8 +316,8 @@ fn revert(args: &HistoryArgs, config: Config) -> Result<()> {
     };
     let mut session = papers_rs::command::Session::open(config, options)?;
     let result = (|| -> Result<()> {
-        let lines = session.revert(n, &mut *resolver, true)?;
-        session.mark_reverts(&[n as u64]);
+        let (step, lines) = session.revert(reference, &mut *resolver, &Revert::default())?;
+        session.mark_reverts(std::slice::from_ref(&step));
         let committed = session.commit()?;
         let keys: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
         let color = session.color();
@@ -326,7 +325,7 @@ fn revert(args: &HistoryArgs, config: Config) -> Result<()> {
         for line in lines {
             session.say.line(line);
         }
-        for line in session.revert_pool_lines(n as u64)? {
+        for line in session.revert_pool_lines(&step)? {
             session.say.line(line);
         }
         Ok(())
@@ -377,17 +376,9 @@ fn drop_files(config: &mut Config, args: &HistoryArgs, target: &str) -> Result<(
     let Some(mut history) = history.filter(|h| h.project.exists()) else {
         return Err(Error::exit("the library has no history"));
     };
-    let is_step = target.chars().all(|c| c.is_ascii_digit());
-    let found = if is_step {
-        match target.parse::<u64>().ok().filter(|n| history.project.state(*n).is_some()) {
-            Some(n) => history.files_to_drop(Some(n), None)?,
-            None => return Err(no_step(target)),
-        }
-    } else {
-        history.files_to_drop(None, Some(target))?
-    };
+    let found = history.files_to_drop(target)?;
     if found.is_empty() {
-        let from = if is_step { format!("by step {target}") } else { format!("from {target}") };
+        let from = if History::is_path(target) { format!("from {target}") } else { format!("by step {target}") };
         log::println(&format!("the history keeps no file deleted {from}"));
         return Ok(());
     }

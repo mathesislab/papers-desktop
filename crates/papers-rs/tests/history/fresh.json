@@ -2,6 +2,7 @@
  "machine": {},
  "name": "fresh",
  "place_ids": {},
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-cnjuoq89",
  "steps": [
   {
    "argv": [
@@ -25,7 +26,7 @@
       "text": "*\n"
      },
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib/papers.bib": {
       "text": ""
@@ -46,11 +47,11 @@
    "store": {
     "del": [],
     "set": {
-     "projects/8c3d4b5831c34326b73e40692ecfcb42/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 1,\n  \"redo\": [],\n  \"time\": 1793195493.447644\n }\n}"
+     "projects/3c74ae8d55af4c99a02243ee561d168f/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"e23e815c826d2b83e7bd4eb09ed87d7721fc9ae7f2f0b9ecf29257659f820491\",\n  \"redo\": [],\n  \"time\": 1793270796.421598\n }\n}"
      },
-     "projects/8c3d4b5831c34326b73e40692ecfcb42/states/000001.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793195493.44721,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "projects/3c74ae8d55af4c99a02243ee561d168f/states/e23e815c826d2b83e7bd4eb09ed87d7721fc9ae7f2f0b9ecf29257659f820491.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270796.421219,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -58,7 +59,7 @@
     "del": [],
     "set": {
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"8c3d4b5831c34326b73e40692ecfcb42\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"3c74ae8d55af4c99a02243ee561d168f\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      }
     }
    }
@@ -90,7 +91,7 @@
    "exit": 1,
    "kind": "papers",
    "lib": "lib",
-   "stderr": "papers: error: nothing to restore: papers.bib is step 1\n",
+   "stderr": "papers: error: nothing to restore: papers.bib is step e23e815c\n",
    "stdout": "",
    "store": {
     "del": [],
@@ -110,7 +111,7 @@
    "exit": 1,
    "kind": "papers",
    "lib": "lib",
-   "stderr": "papers: error: nothing to restore: papers.bib is step 1\n",
+   "stderr": "papers: error: no step 1 in the history of the library (see `papers history`)\n",
    "stdout": "",
    "store": {
     "del": [],
@@ -130,7 +131,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "> 1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "> e23e815c the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -158,11 +159,11 @@
      "objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
      },
-     "projects/8c3d4b5831c34326b73e40692ecfcb42/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [],\n  \"time\": 1793195493.801964\n }\n}"
+     "projects/3c74ae8d55af4c99a02243ee561d168f/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"734fa1b177ec3f708949a0a7d3bed611cbf94fc3b589496553198f78bab62408\",\n  \"redo\": [],\n  \"time\": 1793270796.733506\n }\n}"
      },
-     "projects/8c3d4b5831c34326b73e40692ecfcb42/states/000002.json": {
-      "text": "{\n \"parent\": 1,\n \"time\": 1793195493.801827,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "projects/3c74ae8d55af4c99a02243ee561d168f/states/734fa1b177ec3f708949a0a7d3bed611cbf94fc3b589496553198f78bab62408.json": {
+      "text": "{\n \"parent\": \"e23e815c826d2b83e7bd4eb09ed87d7721fc9ae7f2f0b9ecf29257659f820491\",\n \"time\": 1793270796.733377,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      }
     }
    },

@@ -21,6 +21,13 @@
 //! only). The pairs of `distinct.json` that N added are removed, those it removed come back. The
 //! origin records of the exchanges are left as they are: the next pull or push compares with them.
 //!
+//! A step is named by its identifier or a start of it (4 characters or more). With
+//! [`Revert::forward`] the step is done *again* instead (redo in a pool whose step the undo took
+//! back, and that changed since): the same rules from the state of the step to its parent, with
+//! `added` and `removed` swapped in the lines. [`Revert::parent`] is the state the step is
+//! compared with, instead of its parent (a pool that a command saved several times: its state
+//! before the first save).
+//!
 //! [`revert`] changes a [`Library`] in memory and the files, and does not save;
 //! [`Session::revert`](super::Session::revert) is the command (the caller then marks the step:
 //! [`Session::mark_reverts`](super::Session::mark_reverts), and commits).
@@ -37,8 +44,9 @@ use crate::config::paths::{normpath, realpath};
 use crate::entry::{self, val};
 use crate::error::{Error, Result};
 use crate::history::ops::absolute_ops;
+use crate::history::project::{LinkedState, short};
 use crate::history::restore::{Deleter, Restore};
-use crate::history::{FileOp, History, State};
+use crate::history::{FileOp, History, State, StateId};
 use crate::identity::{DISTINCT_FILE, Kind, Verdict};
 use crate::library::Library;
 use crate::merge::{Context, Decision, Merge, Resolve, apply_entry};
@@ -209,54 +217,71 @@ fn without_tags(e: &Entry) -> Entry {
     e
 }
 
-fn no_step(n: i64) -> Error {
-    Error::exit(format!(
-        "no step {n} in the history of the library (see `papers history`)"
-    ))
+/// How a step is taken back (see the module).
+#[derive(Debug, Clone, Default)]
+pub struct Revert {
+    /// Do the step again instead (the same rules, `before` and `after` swapped).
+    pub forward: bool,
+    /// The step need not be in the current history of the library (a pool, whose step was undone
+    /// or done again by a step of another library).
+    pub anywhere: bool,
+    /// The state that the step is compared with, instead of its parent.
+    pub parent: Option<StateId>,
 }
 
-/// Take back step `n` in `library` (loaded): the entries, the files and `distinct.json`; not saved.
-/// The lines of the report: the entries left as they are and why, the files. With `--dry-run`
-/// (`history.dry_run`) no file is touched. The operations on the files go to `record` when it is
-/// given (a revert records them in its step, the revert of a pool step does not).
+/// Take back step `n` (an identifier) in `library` (loaded): the entries, the files and
+/// `distinct.json`; not saved. The lines of the report: the entries left as they are and why, the
+/// files. With `--dry-run` (`history.dry_run`) no file is touched. The operations on the files go
+/// to `record` when it is given (a revert records them in its step).
 pub fn revert(
     history: &mut History,
     library: &mut Library,
-    n: i64,
+    n: &str,
     resolver: &mut dyn Resolve,
     record: &mut Option<Vec<FileOp>>,
+    how: &Revert,
 ) -> Result<Vec<String>> {
     let head = if history.dry_run {
         history.head().map(|h| h.state)
     } else {
         history.sync_head(None)?
     };
-    let number = u64::try_from(n).ok();
-    let state = number
-        .and_then(|n| history.project.state(n).cloned())
-        .ok_or_else(|| no_step(n))?;
-    if !head.is_some_and(|h| {
-        history
-            .project
-            .line(h)
-            .contains(&number.unwrap_or_default())
-    }) {
+    let n = history.step(n)?;
+    let n = n.as_str();
+    let state = history
+        .project
+        .state(n)
+        .cloned()
+        .ok_or_else(|| crate::history::travel::no_step(n))?;
+    if !how.anywhere && !head.is_some_and(|h| history.project.line(&h).iter().any(|l| l == n)) {
         return Err(Error::exit(format!(
-            "step {n} is not in the current history of the library: `papers restore {n}` goes there"
+            "step {} is not in the current history of the library: `papers restore {}` goes there",
+            short(n),
+            short(n)
         )));
     }
-    let parent_state = state
-        .parent()
-        .and_then(|p| history.project.state(p).cloned());
+    let parent = how.parent.clone().or_else(|| state.parent());
+    let parent_state = parent.and_then(|p| history.project.state(&p).cloned());
     let Some(parent_state) = parent_state else {
         return Err(Error::exit(format!(
-            "step {n} is the first step of the history: nothing before it to go back to"
+            "step {} is the first step of the history: nothing before it to go back to",
+            short(n)
         )));
     };
-    let (before, after) = (
+    let n_short = short(n);
+    let (mut before, mut after) = (
         state_entries(history, &parent_state)?,
         state_entries(history, &state)?,
     );
+    // what step n did, as the lines say it (done again: an entry added by n is taken as removed, and so on)
+    let (added, removed) = if how.forward {
+        ("removed", "added")
+    } else {
+        ("added", "removed")
+    };
+    if how.forward {
+        std::mem::swap(&mut before, &mut after);
+    }
     let libdir = history.setup.libdir.clone();
     let links = |library: &Library| -> BTreeSet<String> {
         library
@@ -269,7 +294,7 @@ pub fn revert(
     let mut lines = Vec::new();
     let verdict = Verdict {
         kind: Kind::Same,
-        reason: format!("step {n}"),
+        reason: format!("step {n_short}"),
     };
     for (p, e) in changes(&before, &after) {
         match (p, e) {
@@ -283,14 +308,20 @@ pub fn revert(
                     library.remove(&key);
                 } else {
                     lines.push(format!(
-                        "{key}: added by step {n} and changed since: kept (`papers rm {key}` removes it)"
+                        "{key}: {added} by step {n_short} and changed since: kept (`papers rm {key}` removes it)"
                     ));
                 }
             }
             (Some(p), None) => {
-                // removed by N (papers checks that another entry has its key now: it cannot,
-                // `current` finds that entry first)
-                if current(library, &p).is_some() {
+                // removed by N: an entry now for it (back already, or another entry has its key)
+                if let Some(key) = current(library, &p) {
+                    let now = library.get(&key).cloned().expect("an entry of the library");
+                    if !content_equal(&now, &p, &["file"]) {
+                        lines.push(format!(
+                            "{}: {removed} by step {n_short}; the entry {} has its key now: not added",
+                            p.key, now.key
+                        ));
+                    }
                     continue;
                 }
                 let files = entry::files(&p, Some(&libdir));
@@ -301,7 +332,7 @@ pub fn revert(
             (Some(p), Some(e)) => {
                 let Some(key) = current(library, &e) else {
                     lines.push(format!(
-                        "{}: changed by step {n} and removed since: not added back",
+                        "{}: changed by step {n_short} and removed since: not added",
                         e.key
                     ));
                     continue;
@@ -319,7 +350,9 @@ pub fn revert(
                     match resolver.decide(merge, Context::Revert, &verdict)? {
                         Decision::Merge(_, merged) => merged,
                         _ => {
-                            lines.push(format!("{key}: changed since step {n} too: left as it is"));
+                            lines.push(format!(
+                                "{key}: changed since step {n_short} too: left as it is"
+                            ));
                             continue;
                         }
                     }
@@ -344,7 +377,7 @@ pub fn revert(
                         .any(|x| x.key != new.key && x.key.to_lowercase() == p.key.to_lowercase());
                     if taken {
                         lines.push(format!(
-                            "{}: renamed by step {n} from {}, now another entry's key: the key stays",
+                            "{}: renamed by step {n_short} (key {} before), now another entry's key: the key stays",
                             new.key, p.key
                         ));
                     } else {
@@ -366,16 +399,20 @@ pub fn revert(
             (None, None) => {}
         }
     }
-    revert_distinct(
-        library,
-        &distinct_pairs(history, &parent_state),
-        &distinct_pairs(history, &state),
+    let (parent_pairs, pairs) = (
+        distinct_pairs(history, &parent_state),
+        distinct_pairs(history, &state),
     );
+    if how.forward {
+        revert_distinct(library, &pairs, &parent_pairs);
+    } else {
+        revert_distinct(library, &parent_pairs, &pairs);
+    }
     if history.dry_run {
         return Ok(lines);
     }
     let ops = absolute_ops(&state.ops(), &libdir);
-    let hashes = history.hashes(&parent_state)?;
+    let hashes = history.hashes(if how.forward { &state } else { &parent_state })?;
     let goal = links(library);
     let pool_dirs: Vec<String> = history.setup.pool_files_dir.iter().cloned().collect();
     let trash = history.trash;
@@ -389,7 +426,7 @@ pub fn revert(
             current: &current_links,
             target: &goal,
             ops: &ops,
-            undo: true,
+            undo: !how.forward,
             hashes: &hashes,
             pool_dirs: &pool_dirs,
             shared: &BTreeSet::new(),
@@ -434,7 +471,7 @@ fn revert_distinct(library: &mut Library, before: &[[Value; 2]], after: &[[Value
 
 /// The lines of the pools that step `n` also changed: the command that takes back their step
 /// (`pool_lines`). A pool whose configuration file is gone is left out.
-pub fn pool_lines(history: &History, n: u64) -> Vec<String> {
+pub fn pool_lines(history: &History, n: &str) -> Vec<String> {
     let Some(state) = history.project.state(n) else {
         return Vec::new();
     };
@@ -448,9 +485,21 @@ pub fn pool_lines(history: &History, n: u64) -> Vec<String> {
             continue;
         };
         let shown = history.shown(&pool_config);
+        // a number: a link of an earlier version to a pool in another store (see `Store::upgrade`)
+        let step = match &link.state {
+            LinkedState::Number(number) => {
+                let mut pool_config = pool_config;
+                History::open(&mut pool_config, false, false)
+                    .ok()
+                    .flatten()
+                    .and_then(|h| h.project.upgraded(&link.state))
+                    .map_or(number.to_string(), |id| short(&id).to_string())
+            }
+            id => id.shown(),
+        };
         lines.push(format!(
-            "step {n} also changed pool {shown} (its step {}): `papers -C {shown} history --revert {}` takes it back there",
-            link.state, link.state
+            "step {} also changed pool {shown} (its step {step}): `papers -C {shown} history --revert {step}` takes it back there",
+            short(n)
         ));
     }
     lines

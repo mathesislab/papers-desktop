@@ -11,7 +11,7 @@ use crate::config::files::{is_v2_config_name, move_v2_config, write_atomic};
 use crate::config::json::dumps_pretty;
 use crate::config::machine::read_json_object;
 use crate::config::paths::{abspath, dirname, isfile, join, realpath};
-use crate::config::{Config, MachineConfig, dirs, library_without_pool};
+use crate::config::{Config, MachineConfig, config_root, dirs, library_without_pool};
 use crate::error::{Error, Result};
 
 /// The settings and paths of a library that the history uses, taken from its
@@ -20,9 +20,11 @@ use crate::error::{Error, Result};
 pub struct Setup {
     /// The bibtex of the library.
     pub bibtex: String,
-    /// The directory of the bibtex: the kept `.papers/` files and the
-    /// relative paths of the operations refer to it.
+    /// The directory of the bibtex: the relative paths of the operations refer to it.
     pub libdir: String,
+    /// The library directory: the kept `.papers/` files are in its `.papers/` (the folder of the
+    /// library configuration; for a bibtex without library, the directory of the bibtex).
+    pub library_dir: String,
     /// The library configuration file, for a bibtex of a library (none: a bibtex
     /// without library, whose project is named by its path).
     pub file: Option<String>,
@@ -60,10 +62,12 @@ impl Setup {
             (Some(path), Some(label)) => Some((path, label)),
             _ => None,
         };
+        let file = config.file.clone().filter(|_| config.is_library);
         Setup {
             libdir: dirname(&abspath(&bibtex)),
+            library_dir: library_dir(&bibtex, file.as_deref()),
             bibtex,
-            file: config.file.clone().filter(|_| config.is_library),
+            file,
             absolute_paths: config.absolute_paths,
             root,
             separate: config.get("history-separate") == Value::Bool(true),
@@ -108,11 +112,17 @@ impl Setup {
         stores
     }
 
+    /// A store is separate when it is not the shared store: its real path is not that of the
+    /// root of the history (not told by the name of its folder).
+    pub fn is_separate(&self, store: &Store) -> bool {
+        realpath(&store.root) != realpath(&self.root)
+    }
+
     /// `history-size` in megabytes (0: no limit) of a store: that of the
     /// library for a store of its own, that of the machine for the shared
     /// store.
     pub fn history_size(&self, store: &Store) -> u64 {
-        let value = if store.is_separate() {
+        let value = if self.is_separate(store) {
             self.library_size.as_ref()
         } else {
             self.machine_size.as_ref()
@@ -138,6 +148,15 @@ impl Setup {
     /// The real path of the bibtex: the place of the library.
     pub fn place(&self) -> String {
         realpath(&self.bibtex)
+    }
+}
+
+/// The library directory of a bibtex: the folder of its library configuration `file`, else the
+/// directory of the bibtex (`papers.config.library_dir`).
+pub fn library_dir(bibtex: &str, file: Option<&str>) -> String {
+    match file {
+        Some(file) => abspath(&config_root(file)),
+        None => dirname(&abspath(bibtex)),
     }
 }
 
@@ -315,6 +334,7 @@ mod tests {
     #[test]
     fn history_size_defaults_and_scope() {
         let mut setup = Setup::from_config(&Config::new(MachineConfig::empty()));
+        setup.root = "/h".to_string();
         let shared = Store::new("/h");
         let separate = Store::new("/h/separate/abc");
         assert_eq!(setup.history_size(&shared), 500);
@@ -326,5 +346,14 @@ mod tests {
         );
         setup.machine_size = Some(Value::from(-4));
         assert_eq!(setup.limit(&shared), 0);
+        // a store is told by its place, not by the name of its folder
+        setup.root = "/data/separate/h".to_string();
+        let shared = Store::new("/data/separate/h");
+        setup.machine_size = Some(Value::from(10));
+        assert_eq!(setup.history_size(&shared), 10);
+        assert_eq!(
+            setup.history_size(&Store::new("/data/separate/h/separate/x")),
+            3
+        );
     }
 }

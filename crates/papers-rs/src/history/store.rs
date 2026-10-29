@@ -6,6 +6,7 @@
 //! objects/ab/ab12…          a piece of text, compressed (zlib), named by the sha256 of its bytes
 //! file-objects/ab/ab12….pdf a file deleted by a command, named by its sha256 and its extension
 //! projects/<id>/            the states and the heads of a library (see `project`)
+//! numbers.json              the identifiers of the numbered states of earlier versions ([`Store::upgrade`])
 //! ```
 
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -18,7 +19,8 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use sha2::{Digest, Sha256};
 
-use super::project::{Project, State};
+use super::ojson::J;
+use super::project::{Project, State, StateId, read_json, state_id, state_number};
 use crate::config::paths::{basename, dirname, expanduser, home, isdir, join};
 use crate::error::{Error, Result};
 
@@ -147,6 +149,18 @@ pub fn piece_digests(text: &str) -> Vec<(String, &str)> {
         .collect()
 }
 
+fn is_empty(j: &J) -> bool {
+    match j {
+        J::Null => true,
+        J::Arr(a) => a.is_empty(),
+        J::Obj(o) => o.is_empty(),
+        J::Str(s) => s.is_empty(),
+        J::Bool(b) => !b,
+        J::Int(n) => *n == 0,
+        J::Float(f) => *f == 0.0,
+    }
+}
+
 /// A missing or unreadable piece of text: the history is damaged.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingPiece(pub String);
@@ -187,7 +201,7 @@ pub struct Item {
 #[derive(Debug, Clone)]
 pub struct Dropped {
     pub project: String,
-    pub number: u64,
+    pub id: StateId,
     pub state: State,
 }
 
@@ -211,12 +225,6 @@ impl Store {
 
     pub fn projects(&self) -> String {
         join(&self.root, "projects")
-    }
-
-    /// Whether a store lives in a folder `separate/<id>` (its retention is
-    /// counted alone, see `size_limit`).
-    pub fn is_separate(&self) -> bool {
-        basename(&dirname(&self.root)) == "separate"
     }
 
     // pieces of text
@@ -321,6 +329,159 @@ impl Store {
         ids
     }
 
+    /// The states of papers up to 3.0.0b5, numbered (`000001.json`, …): named by their identifier
+    /// ([`state_id`]), and the references to them rewritten (the parent, the current state and the
+    /// redo list of each place, `reverts`, and the steps of the pools that a step links to, in other
+    /// projects). All projects at once (a step names the steps of its pools); the result does not
+    /// depend on who does it, so two commands (or implementations) doing it at the same time agree.
+    /// The numbers and their identifiers are kept in `numbers.json`: a link from another store
+    /// (`history-separate`) names the state of a pool by its number (see [`Project::upgraded`]).
+    pub fn upgrade(&self) -> Result<()> {
+        type Numbered = BTreeMap<u64, (String, Option<J>)>;
+        let mut numbered: Vec<(String, Numbered)> = Vec::new();
+        for id in self.project_ids() {
+            let folder = join(&join(&self.projects(), &id), "states");
+            let mut states = Numbered::new();
+            if let Ok(names) = fs::read_dir(&folder) {
+                for name in names.flatten() {
+                    let name = name.file_name().to_string_lossy().into_owned();
+                    if let Some(n) = state_number(&name) {
+                        let state = read_json(&join(&folder, &name)).filter(J::is_object);
+                        states.insert(n, (name, state));
+                    }
+                }
+            }
+            if !states.is_empty() {
+                numbered.push((id, states));
+            }
+        }
+        if numbered.is_empty() {
+            return Ok(());
+        }
+        // the identifiers: a parent has a smaller number than its states
+        let mut maps: BTreeMap<String, BTreeMap<u64, StateId>> = BTreeMap::new();
+        let mut upgraded: BTreeMap<(String, u64), State> = BTreeMap::new();
+        for (id, states) in &numbered {
+            let map = maps.entry(id.clone()).or_default();
+            for (n, (_, state)) in states {
+                let Some(mut state) = state.clone() else {
+                    continue;
+                };
+                let parent = state
+                    .get("parent")
+                    .and_then(J::as_u64)
+                    .and_then(|p| map.get(&p))
+                    .map_or(J::Null, J::str);
+                state.set("parent", parent);
+                if state.get("reverts").is_some_and(|r| !is_empty(r)) {
+                    let reverts: Vec<StateId> = state
+                        .get("reverts")
+                        .map(J::numbers)
+                        .unwrap_or_default()
+                        .iter()
+                        .filter_map(|r| map.get(r).cloned())
+                        .collect();
+                    state.set("reverts", J::strs(&reverts));
+                }
+                let state = State(state);
+                map.insert(*n, state_id(&state));
+                upgraded.insert((id.clone(), *n), state);
+            }
+        }
+        // numbers.json: what it has, and these
+        let mut known = match read_json(&join(&self.root, "numbers.json")) {
+            Some(J::Obj(items)) => J::Obj(items),
+            _ => J::Obj(Vec::new()),
+        };
+        for (id, ids) in &maps {
+            let mut mine = match known.get(id) {
+                Some(J::Obj(items)) => J::Obj(items.clone()),
+                _ => J::Obj(Vec::new()),
+            };
+            for (n, identifier) in ids {
+                mine.set(&n.to_string(), J::str(identifier));
+            }
+            known.set(id, mine);
+        }
+        write_bytes(&join(&self.root, "numbers.json"), known.dumps().as_bytes())?;
+        // the states, under their identifiers; the links to the states of other projects
+        for ((id, n), mut state) in upgraded {
+            let mut links: Vec<(String, J)> = Vec::new();
+            if let Some(J::Obj(pools)) = state.0.get("pools") {
+                for (pool, link) in pools {
+                    let mut link = link.clone();
+                    let number = link.get("state").and_then(J::as_u64);
+                    if let Some(target) = number.and_then(|n| maps.get(pool)?.get(&n)) {
+                        link.set("state", J::str(target));
+                    }
+                    links.push((pool.clone(), link));
+                }
+            }
+            if !links.is_empty() {
+                state.0.set("pools", J::Obj(links));
+            }
+            let folder = join(&join(&self.projects(), &id), "states");
+            write_bytes(
+                &join(&folder, &format!("{}.json", maps[&id][&n])),
+                state.0.dumps().as_bytes(),
+            )?;
+        }
+        // the heads, then the numbered files are removed
+        for (id, states) in &numbered {
+            let dir = join(&self.projects(), id);
+            let heads_file = join(&dir, "heads.json");
+            let mut heads = match read_json(&heads_file) {
+                Some(J::Obj(items)) => items,
+                _ => Vec::new(),
+            };
+            let map = &maps[id];
+            let mapped = |j: Option<&J>| -> J {
+                match j {
+                    Some(j) => match j.as_u64().and_then(|n| map.get(&n)) {
+                        Some(identifier) => J::str(identifier),
+                        None => j.clone(),
+                    },
+                    None => J::Null,
+                }
+            };
+            for (_, head) in &mut heads {
+                if !head.is_object() {
+                    continue;
+                }
+                let state = mapped(head.get("state"));
+                head.set("state", state);
+                let redo: Vec<J> = head
+                    .get("redo")
+                    .and_then(J::as_array)
+                    .map(|a| a.iter().map(|r| mapped(Some(r))).collect())
+                    .unwrap_or_default();
+                head.set("redo", J::Arr(redo));
+            }
+            write_bytes(&heads_file, J::Obj(heads).dumps().as_bytes())?;
+            for (name, _) in states.values() {
+                let _ = fs::remove_file(join(&join(&dir, "states"), name));
+            }
+        }
+        Ok(())
+    }
+
+    /// `{project id: {number: identifier}}` of the numbered states upgraded (see [`Store::upgrade`]).
+    pub fn numbers(&self) -> BTreeMap<String, BTreeMap<String, StateId>> {
+        let mut found = BTreeMap::new();
+        if let Some(J::Obj(projects)) = read_json(&join(&self.root, "numbers.json")) {
+            for (id, ids) in projects {
+                if let J::Obj(ids) = ids {
+                    let ids: BTreeMap<String, StateId> = ids
+                        .into_iter()
+                        .filter_map(|(n, i)| Some((n, i.as_str()?.to_string())))
+                        .collect();
+                    found.insert(id, ids);
+                }
+            }
+        }
+        found
+    }
+
     // size and retention
     // ------------------
 
@@ -372,11 +533,12 @@ impl Store {
     }
 
     /// Drop the oldest states of all projects until the store holds no more
-    /// than `limit` bytes (counting `extra` bytes about to be stored), then
-    /// remove the pieces and files that no state refers to (not those
-    /// younger than `GRACE`). The current states of the places are kept. A
-    /// removed file object goes through `discard` (the system trash).
-    /// `dry`: change nothing. The states dropped.
+    /// than `limit` bytes (counting `extra` bytes about to be stored; no limit
+    /// when it is 0: no state is dropped), then remove the pieces and files
+    /// that no state refers to (not those younger than `GRACE`, unless they
+    /// belonged to a dropped state and were not used again since). The current
+    /// states of the places are kept. A removed file object goes through
+    /// `discard` (the system trash). `dry`: change nothing. The states dropped.
     pub fn prune(&self, limit: u64, extra: u64, dry: bool, discard: &dyn Fn(&str)) -> Vec<Dropped> {
         self.prune_at(limit, extra, dry, discard, now())
     }
@@ -391,31 +553,43 @@ impl Store {
     ) -> Vec<Dropped> {
         let sizes = self.sizes();
         let mut refs: HashMap<Ref, i64> = HashMap::new();
-        let mut candidates: Vec<(f64, u64, String, State)> = Vec::new();
+        // when the latest state that refers to an object was written
+        let mut latest: HashMap<Ref, f64> = HashMap::new();
+        let mut candidates: Vec<(f64, StateId, String, State)> = Vec::new();
         for id in self.project_ids() {
             let Ok(project) = self.project(&id) else {
                 continue;
             };
-            let heads: HashSet<u64> = project
+            let heads: HashSet<StateId> = project
                 .heads()
                 .into_iter()
                 .filter_map(|h| h.state)
                 .collect();
             for (n, state) in project.states() {
+                // the state is written (and its deleted files added) after its objects
+                let written = fs::metadata(project.state_path(n))
+                    .map(|m| mtime(&m))
+                    .unwrap_or_else(|_| state.time());
                 for r in state.refs() {
-                    *refs.entry(r).or_insert(0) += 1;
+                    *refs.entry(r.clone()).or_insert(0) += 1;
+                    let at = latest.entry(r).or_insert(0.0);
+                    *at = at.max(written);
                 }
                 if !heads.contains(n) {
-                    candidates.push((state.time(), *n, id.clone(), state.clone()));
+                    candidates.push((state.time(), n.clone(), id.clone(), state.clone()));
                 }
             }
         }
-        // oldest first, then by number (stable: the projects stay in order)
+        // oldest first, then by identifier (stable: the projects stay in order)
         candidates.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
 
+        // a recent object may be one that a command is storing (or uses again) before it writes
+        // its state: kept, unless no command touched it since the states that referred to it
         let removable = |r: &Ref, refs: &HashMap<Ref, i64>| {
             sizes.get(r).is_some_and(|item| {
-                refs.get(r).copied().unwrap_or(0) == 0 && now - item.mtime >= GRACE
+                refs.get(r).copied().unwrap_or(0) == 0
+                    && (now - item.mtime >= GRACE
+                        || item.mtime <= latest.get(r).copied().unwrap_or(0.0))
             })
         };
         let mut total = sizes.values().map(|i| i.size).sum::<u64>() as i64 + extra as i64;
@@ -424,7 +598,13 @@ impl Store {
             .filter(|r| removable(r, &refs))
             .cloned()
             .collect();
-        total -= freed.iter().map(|r| sizes[r].size as i64).sum::<i64>();
+        // the recent objects that no state refers to yet are not counted: dropping old states
+        // would not make room for them
+        total -= sizes
+            .iter()
+            .filter(|(r, _)| freed.contains(*r) || refs.get(*r).copied().unwrap_or(0) == 0)
+            .map(|(_, i)| i.size as i64)
+            .sum::<i64>();
         let mut dropped = Vec::new();
         for (_, n, id, state) in candidates {
             if limit == 0 || total <= limit as i64 {
@@ -439,20 +619,20 @@ impl Store {
             }
             dropped.push(Dropped {
                 project: id,
-                number: n,
+                id: n,
                 state,
             });
         }
         if dry {
             return dropped;
         }
-        let mut by_project: BTreeMap<&str, Vec<u64>> = BTreeMap::new();
+        let mut by_project: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
         for d in &dropped {
-            by_project.entry(&d.project).or_default().push(d.number);
+            by_project.entry(&d.project).or_default().push(&d.id);
         }
-        for (id, numbers) in by_project {
+        for (id, states) in by_project {
             if let Ok(mut project) = self.project(id) {
-                for n in numbers {
+                for n in states {
                     project.drop_state(n);
                 }
             }

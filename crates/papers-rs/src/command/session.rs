@@ -34,8 +34,9 @@
 //!
 //! **Finishing** ([`Session::finish`], also after an error). The file
 //! operations that the state of the command does not have yet join it (the
-//! files deleted by `rm`), or, when the command did not save, make a state of
-//! their own, so that undo brings the files back. The lock is released.
+//! files deleted by `rm`), or, when the command did not save, or its save added no
+//! state, make a state of their own (never joining the state of an earlier
+//! command), so that undo brings the files back. The lock is released.
 //!
 //! **Output.** Nothing is printed here. What a command prints is given to a
 //! [`Say`]: lines of the standard output, and the `--porcelain` lines. With a
@@ -47,6 +48,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex};
 
+use super::revert::Revert;
 use crate::bib::Entry;
 use crate::config::Config;
 use crate::config::paths::{abspath, basename, dirname, getcwd, isfile, normpath};
@@ -54,7 +56,7 @@ use crate::entry;
 use crate::error::{Error, Result};
 use crate::history::restore::{Deleter, file_digest, move_path, show};
 use crate::history::{FileOp as HistoryOp, Snapshot};
-use crate::history::{FilesJson, History, OpKind, PoolLink, Step};
+use crate::history::{FilesJson, History, OpKind, PoolLink, StateId, Step};
 use crate::library::{FileOp, Library, OpKind as LibraryOpKind, SaveError, SaveStatus};
 use crate::lock::{self, Lock};
 use crate::log;
@@ -189,7 +191,7 @@ pub struct Committed {
     /// The bibtex is as the command made it (written, or already so); false for a library that did not change, and a dry run.
     pub saved: bool,
     /// The state of the library after the command in its history (none if nothing was recorded).
-    pub step: Option<u64>,
+    pub step: Option<StateId>,
     /// For a library written by the command of another (see [`Session::mark_from`]): the link
     /// (project id, step) that the step of the command's own library records in its `pools`.
     pub link: Option<(String, PoolLink)>,
@@ -211,15 +213,17 @@ pub struct Session {
     lock: Option<Lock>,
     before: Option<Snapshot>,
     history: Option<History>,
-    /// The step of the history that has the command's save: `Some(number)` after `record`.
-    recorded: Option<Option<u64>>,
+    /// The state that the command's save added to the history, for the operations that follow it
+    /// (`Some(None)`: a dry run); none when the save added no state (the operations then make a
+    /// state of their own).
+    recorded: Option<Option<StateId>>,
     /// The library's file operations were put back after a refused save.
     rolled_back: bool,
     /// The operations of the command not recorded yet (files it moved or deleted itself), oldest
     /// first: those done before the save join its step, those done after are added to it.
     ops_after: Vec<HistoryOp>,
     /// The steps that the step of the command takes back (`history --revert`, the revert of a pool step).
-    reverts: Vec<u64>,
+    reverts: Vec<StateId>,
     /// The directory of the bibtex of the library of the command, when this library is another
     /// one that the command writes (its pool): its step says where it came from.
     from: Option<String>,
@@ -328,7 +332,12 @@ impl Session {
 
     /// A session on a library that is already loaded (a pool that an exchange changed): the
     /// lock, if the caller holds it, is given back by [`Session::finish_keeping_lock`].
-    pub fn adopt(config: Config, library: Library, options: Options, lock: Option<Lock>) -> Session {
+    pub fn adopt(
+        config: Config,
+        library: Library,
+        options: Options,
+        lock: Option<Lock>,
+    ) -> Session {
         let mut options = options;
         let prompt: SharedPrompt = Arc::new(Mutex::new(std::mem::replace(
             &mut options.prompt,
@@ -373,7 +382,7 @@ impl Session {
     }
 
     /// The step of the command takes back these steps of the history (`reverts` of the state).
-    pub fn mark_reverts(&mut self, reverts: &[u64]) {
+    pub fn mark_reverts(&mut self, reverts: &[StateId]) {
         self.reverts = reverts.to_vec();
     }
 
@@ -423,6 +432,12 @@ impl Session {
             .expect("the prompt")
             .input(prompt)
             .ok_or_else(no_input_error)
+    }
+
+    /// The operations that the command did and that are not recorded yet are dropped (the
+    /// revert of a pool step that changed nothing there: its files are in no state).
+    pub fn forget_operations(&mut self) {
+        self.ops_after.clear();
     }
 
     /// Whether the files that a command deletes are kept in the history (the `keep-deleted-files` setting).
@@ -545,7 +560,11 @@ impl Session {
             })
         }) {
             Ok(recorded) => {
-                self.recorded = Some(recorded.number);
+                // the operations done after the save join the state it added; after a save that
+                // added none, they make a state of their own at the end of the command
+                if recorded.added || recorded.number.is_none() {
+                    self.recorded = Some(recorded.number.clone());
+                }
                 if own && recorded.number.is_some() {
                     self.pending_links.clear();
                 }
@@ -831,8 +850,8 @@ impl Session {
         ops.extend(std::mem::take(&mut self.ops_after));
         if !ops.is_empty() && !self.options.dry_run {
             let count = ops.len();
-            let result = match self.recorded {
-                Some(Some(n)) => self.history().and_then(|h| h.add_operations(n, &ops)),
+            let result = match self.recorded.clone() {
+                Some(Some(n)) => self.history().and_then(|h| h.add_operations(&n, &ops)),
                 Some(None) => Ok(()),
                 None => {
                     let message = self.options.message.clone();
@@ -865,27 +884,34 @@ impl Session {
     // the revert of a step
     // --------------------
 
-    /// Take back step `n` of the history in the library (`papers history --revert N`, the revert of
-    /// a pool step by undo): the entries, `distinct.json` and the files, not saved; the lines of the
-    /// report. The files that go back are part of the step of the command when `record_files`
-    /// (a revert), else they are not recorded (the revert of a pool step). See
+    /// Take back the step that `reference` names (its identifier, or a start of it) in the library
+    /// (`papers history --revert STEP`, the revert of a pool step by undo, `how`): the entries,
+    /// `distinct.json` and the files, not saved; the identifier of the step and the lines of the
+    /// report. The files that go back are part of the step of the command. See
     /// [`revert`](super::revert).
     pub fn revert(
         &mut self,
-        n: i64,
+        reference: &str,
         resolver: &mut dyn crate::merge::Resolve,
-        record_files: bool,
-    ) -> Result<Vec<String>> {
-        self.history()?;
+        how: &Revert,
+    ) -> Result<(StateId, Vec<String>)> {
+        let step = self.history()?.step(reference)?;
         let history = self.history.as_mut().expect("the history");
-        let mut record = record_files.then(Vec::new);
-        let result = super::revert::revert(history, &mut self.library, n, resolver, &mut record);
+        let mut record = Some(Vec::new());
+        let result = super::revert::revert(
+            history,
+            &mut self.library,
+            &step,
+            resolver,
+            &mut record,
+            how,
+        );
         self.ops_after.extend(record.unwrap_or_default());
-        result
+        result.map(|lines| (step, lines))
     }
 
     /// The lines on the pools that step `n` also changed (see [`super::revert::pool_lines`]).
-    pub fn revert_pool_lines(&mut self, n: u64) -> Result<Vec<String>> {
+    pub fn revert_pool_lines(&mut self, n: &str) -> Result<Vec<String>> {
         let history = self.history()?;
         Ok(super::revert::pool_lines(history, n))
     }

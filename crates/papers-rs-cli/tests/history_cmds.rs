@@ -12,6 +12,7 @@ use std::process::{Command, Stdio};
 
 use papers_rs::config::{Config, MachineConfig};
 use papers_rs::history::{History, Step};
+use papers_rs::history::store::Store;
 
 const MC: &str = if cfg!(target_os = "macos") {
     "Library/Application Support/papers/config.json"
@@ -82,10 +83,33 @@ impl Sandbox {
         self.run_with(env!("CARGO_BIN_EXE_papers-rs"), args, cwd)
     }
 
+    /// The states of the store by time (a step is named by the hash of its state, which depends
+    /// on the time): their identifiers.
+    fn states(&self) -> Vec<String> {
+        let store = Store::new(format!("{}/store", self.root));
+        let mut found: Vec<(f64, String)> = Vec::new();
+        for id in store.project_ids() {
+            for (n, state) in store.project(&id).unwrap().states() {
+                found.push((state.time(), n.clone()));
+            }
+        }
+        found.sort_by(|a, b| a.0.total_cmp(&b.0));
+        found.into_iter().map(|(_, n)| n).collect()
+    }
+
+    /// The identifier that names the n-th state (from 1) in a command: the first 8 characters.
+    fn step_id(&self, n: usize) -> String {
+        self.states()[n - 1][..8].to_string()
+    }
+
     /// Text as the tests compare it: the temporary directory is `$ROOT`, the times `$TIME`, the
-    /// identifiers `$ID`.
+    /// identifiers `$ID`, the steps `#1`, `#2`, ... in the order of their times.
     fn show(&self, text: &str) -> String {
-        normalise(&text.replace(&self.root, "$ROOT"))
+        let mut text = normalise(&text.replace(&self.root, "$ROOT"));
+        for (i, id) in self.states().iter().enumerate() {
+            text = text.replace(&id[..8], &format!("#{}", i + 1));
+        }
+        text
     }
 
     fn machine(&self) -> MachineConfig {
@@ -197,25 +221,25 @@ fn history_lists_the_line_the_redo_list_and_the_store() {
     assert_eq!(
         ok(b.run_in("lib", &["history"])),
         format!(
-            "> 4 papers add ../three2000.bib ($TIME)\n  3 papers add ../two2000.bib ($TIME)\n  2 papers add ../one2000.bib ($TIME)\n  1 the library before its first recorded command ($TIME)\n{STORE_LINE}\n"
+            "> #4 papers add ../three2000.bib ($TIME)\n  #3 papers add ../two2000.bib ($TIME)\n  #2 papers add ../one2000.bib ($TIME)\n  #1 the library before its first recorded command ($TIME)\n{STORE_LINE}\n"
         )
     );
     assert_eq!(
         ok(b.run_in("lib", &["history", "-n", "2"])),
         format!(
-            "> 4 papers add ../three2000.bib ($TIME)\n  3 papers add ../two2000.bib ($TIME)\n  ... 2 older step(s) (-n 0 shows them all)\n{STORE_LINE}\n"
+            "> #4 papers add ../three2000.bib ($TIME)\n  #3 papers add ../two2000.bib ($TIME)\n  ... 2 older step(s) (-n 0 shows them all)\n{STORE_LINE}\n"
         )
     );
     // a negative number leaves out the oldest, as Python's slice does
     assert_eq!(
         ok(b.run_in("lib", &["history", "-n", "-3"])),
-        format!("> 4 papers add ../three2000.bib ($TIME)\n  ... 3 older step(s) (-n 0 shows them all)\n{STORE_LINE}\n")
+        format!("> #4 papers add ../three2000.bib ($TIME)\n  ... 3 older step(s) (-n 0 shows them all)\n{STORE_LINE}\n")
     );
     ok(b.run_in("lib", &["undo", "-n", "2"]));
     assert_eq!(
         ok(b.run_in("lib", &["history", "-n", "0"])),
         format!(
-            "  4 papers add ../three2000.bib ($TIME)  (undone: `papers redo`)\n  3 papers add ../two2000.bib ($TIME)  (undone: `papers redo`)\n> 2 papers add ../one2000.bib ($TIME)\n  1 the library before its first recorded command ($TIME)\n{STORE_LINE}\n"
+            "  #4 papers add ../three2000.bib ($TIME)  (undone: `papers redo`)\n  #3 papers add ../two2000.bib ($TIME)  (undone: `papers redo`)\n> #2 papers add ../one2000.bib ($TIME)\n  #1 the library before its first recorded command ($TIME)\n{STORE_LINE}\n"
         )
     );
 }
@@ -264,34 +288,34 @@ fn undo_redo_and_restore_move_the_bibtex() {
     for key in ["one2000", "two2000", "three2000"] {
         b.add("lib", key);
     }
-    assert_eq!(ok(b.run_in("lib", &["undo"])), "undo: papers.bib restored to 3 papers add ../two2000.bib ($TIME)\n");
+    assert_eq!(ok(b.run_in("lib", &["undo"])), "undo: papers.bib restored to #3 papers add ../two2000.bib ($TIME)\n");
     assert_eq!(b.keys("lib"), ["one2000", "two2000"]);
     assert_eq!(
         ok(b.run_in("lib", &["undo", "--steps", "2"])),
-        "undo: papers.bib restored to 1 the library before its first recorded command ($TIME)\n"
+        "undo: papers.bib restored to #1 the library before its first recorded command ($TIME)\n"
     );
     assert!(b.keys("lib").is_empty());
     assert_eq!(
         ok(b.run_in("lib", &["redo", "-n", "2"])),
-        "redo: papers.bib restored to 3 papers add ../two2000.bib ($TIME)\n"
+        "redo: papers.bib restored to #3 papers add ../two2000.bib ($TIME)\n"
     );
     assert_eq!(b.keys("lib"), ["one2000", "two2000"]);
     assert_eq!(
-        ok(b.run_in("lib", &["restore", "4"])),
-        "restore: papers.bib restored to 4 papers add ../three2000.bib ($TIME)\n"
+        ok(b.run_in("lib", &["restore", &b.step_id(4)])),
+        "restore: papers.bib restored to #4 papers add ../three2000.bib ($TIME)\n"
     );
     assert_eq!(b.keys("lib").len(), 3);
     assert_eq!(
-        ok(b.run_in("lib", &["restore", "--ref", "2"])),
-        "restore: papers.bib restored to 2 papers add ../one2000.bib ($TIME)\n"
+        ok(b.run_in("lib", &["restore", "--ref", &b.step_id(2)])),
+        "restore: papers.bib restored to #2 papers add ../one2000.bib ($TIME)\n"
     );
     assert_eq!(b.keys("lib"), ["one2000"]);
     // the lock of the library is released
     assert!(!Path::new(&b.path("lib/.papers/lock")).exists());
     // `restore` without a number is the current state: nothing changed since
-    assert_eq!(error(b.run_in("lib", &["restore"])), "papers: error: nothing to restore: papers.bib is step 2\n");
+    assert_eq!(error(b.run_in("lib", &["restore"])), "papers: error: nothing to restore: papers.bib is step #2\n");
     // the deprecated name
-    let out = b.run_in("lib", &["restore-backup", "3"]);
+    let out = b.run_in("lib", &["restore-backup", &b.step_id(3)]);
     assert_eq!(out.code, 0, "{}", out.stderr);
     assert_eq!(out.stderr, "papers: warning: `papers restore-backup` is deprecated: use `papers restore`\n");
     assert_eq!(b.keys("lib"), ["one2000", "two2000"]);
@@ -315,6 +339,16 @@ fn what_cannot_be_undone() {
     assert_eq!(
         error(b.run_in("lib", &["restore", "-1"])),
         "papers: error: no step -1 in the history of the library (see `papers history`)\n"
+    );
+    // a step is named by 4 characters or more of its identifier, in either case
+    let step = b.step_id(1);
+    assert_eq!(
+        error(b.run_in("lib", &["restore", &step[..3]])),
+        format!("papers: error: no step {} in the history of the library (see `papers history`)\n", &step[..3])
+    );
+    assert_eq!(
+        error(b.run_in("lib", &["restore", &step[..4].to_uppercase()])),
+        "papers: error: nothing to restore: papers.bib is step #1\n"
     );
     // a number of steps that Python's indexing turns into something else: not followed
     assert!(error(b.run_in("lib", &["redo", "-n", "0"])).ends_with("not implemented in papers-rs yet\n"));
@@ -356,11 +390,11 @@ fn a_dry_run_changes_nothing() {
     let before = tree(&b);
     assert_eq!(
         ok(b.run_in("lib", &["undo", "--dry-run"])),
-        "DRYRUN: undo: $ROOT/work/lib/papers.bib not restored to 2 papers add ../one2000.bib ($TIME)\n"
+        "DRYRUN: undo: $ROOT/work/lib/papers.bib not restored to #2 papers add ../one2000.bib ($TIME)\n"
     );
     assert_eq!(
-        ok(b.run_in("lib", &["restore", "1", "--dry-run"])),
-        "DRYRUN: restore: $ROOT/work/lib/papers.bib not restored to 1 the library before its first recorded command ($TIME)\n"
+        ok(b.run_in("lib", &["restore", &b.step_id(1), "--dry-run"])),
+        "DRYRUN: restore: $ROOT/work/lib/papers.bib not restored to #1 the library before its first recorded command ($TIME)\n"
     );
     assert_eq!(error(b.run_in("lib", &["redo", "--dry-run"])), "papers: error: nothing to redo\n");
     assert_eq!(tree(&b), before);
@@ -396,7 +430,7 @@ fn without_a_terminal_a_removal_asks_for_the_option() {
         "papers: error: remove the history of the library (2 steps)? no terminal to confirm: -y/--yes removes without asking\n"
     );
     // nothing was removed
-    assert!(ok(b.run_in("lib", &["history"])).starts_with("> 2 papers add"));
+    assert!(ok(b.run_in("lib", &["history"])).starts_with("> #2 papers add"));
     assert_eq!(
         ok(b.run_in("lib", &["history", "--remove", "--yes"])),
         "removed the history of the library (2 steps)\n"
@@ -432,7 +466,7 @@ fn drop_files_needs_a_history_and_a_step() {
     let b = Sandbox::new();
     b.init("lib");
     assert_eq!(
-        error(b.run_in("lib", &["history", "--drop-files", "1"])),
+        error(b.run_in("lib", &["history", "--drop-files", "0123"])),
         "papers: error: the library has no history\n"
     );
     b.add("lib", "one2000");
@@ -440,13 +474,17 @@ fn drop_files_needs_a_history_and_a_step() {
         error(b.run_in("lib", &["history", "--drop-files", "9"])),
         "papers: error: no step 9 in the history of the library (see `papers history`)\n"
     );
-    assert_eq!(ok(b.run_in("lib", &["history", "--drop-files", "2"])), "the history keeps no file deleted by step 2\n");
+    let two = b.step_id(2);
+    assert_eq!(
+        ok(b.run_in("lib", &["history", "--drop-files", &two])),
+        "the history keeps no file deleted by step #2\n"
+    );
     assert_eq!(
         ok(b.run_in("lib", &["history", "--drop-files", "files/x.pdf", "-y"])),
         "the history keeps no file deleted from files/x.pdf\n"
     );
     // an empty value is no option, as in papers: the history is listed
-    assert!(ok(b.run_in("lib", &["history", "--drop-files", ""])).starts_with("> 2 papers add"));
+    assert!(ok(b.run_in("lib", &["history", "--drop-files", ""])).starts_with("> #2 papers add"));
 }
 
 #[test]
@@ -456,17 +494,18 @@ fn revert_takes_back_a_step_alone() {
     b.add("lib", "one2000");
     b.add("lib", "two2000");
     // step 3 added two2000: reverted, as a step of its own (undo takes it back); the first step has nothing before it
+    let (first, three) = (b.step_id(1), b.step_id(3));
     assert_eq!(
-        ok(b.run_in("lib", &["history", "--revert", "3"])).lines().next().unwrap(),
+        ok(b.run_in("lib", &["history", "--revert", &three])).lines().next().unwrap(),
         "Removed -> two2000: Title of two2000 "
     );
     assert!(!fs::read_to_string(b.path("lib/papers.bib")).unwrap().contains("two2000"));
-    assert!(ok(b.run_in("lib", &["history"])).starts_with("> 4 papers history --revert 3 ($TIME)\n"));
-    assert!(ok(b.run_in("lib", &["undo"])).starts_with("undo: papers.bib restored to 3 papers add "));
+    assert!(ok(b.run_in("lib", &["history"])).starts_with("> #4 papers history --revert #3 ($TIME)\n"));
+    assert!(ok(b.run_in("lib", &["undo"])).starts_with("undo: papers.bib restored to #3 papers add "));
     assert!(fs::read_to_string(b.path("lib/papers.bib")).unwrap().contains("two2000"));
     assert_eq!(
-        error(b.run_in("lib", &["history", "--revert", "1"])),
-        "papers: error: step 1 is the first step of the history: nothing before it to go back to\n"
+        error(b.run_in("lib", &["history", "--revert", &first])),
+        "papers: error: step #1 is the first step of the history: nothing before it to go back to\n"
     );
     assert_eq!(
         error(b.run_in("lib", &["history", "--revert", "9"])),
@@ -474,7 +513,7 @@ fn revert_takes_back_a_step_alone() {
     );
     // nothing is written with --dry-run
     let before = fs::read_to_string(b.path("lib/papers.bib")).unwrap();
-    let out = ok(b.run_in("lib", &["history", "--revert", "3", "--dry-run"]));
+    let out = ok(b.run_in("lib", &["history", "--revert", &three, "--dry-run"]));
     assert!(out.starts_with("DRYRUN: "), "{out}");
     assert_eq!(fs::read_to_string(b.path("lib/papers.bib")).unwrap(), before);
     // without a library
@@ -546,9 +585,10 @@ fn a_revert_asks_about_a_conflict_on_a_terminal() {
     for (message, year) in [("papers edit one2000 --set year=2001", "2001"), ("papers edit one2000 --set year=2002", "2002")] {
         b.step("lib", message, |old| old.replace("year = {2000}", &format!("year = {{{year}}}")).replace("year = {2001}", &format!("year = {{{year}}}")));
     }
-    let (code, transcript) = on_terminal_at(&b, &["history", "--revert", "3"], "lib", b"2\n", b">>> ");
+    let three = b.step_id(3);
+    let (code, transcript) = on_terminal_at(&b, &["history", "--revert", &three], "lib", b"2\n", b">>> ");
     assert_eq!(code, 0, "{transcript}");
-    assert!(transcript.starts_with("Same paper: 2 entries (step 3)\n"), "{transcript}");
+    assert!(transcript.starts_with("Same paper: 2 entries (step #3)\n"), "{transcript}");
     assert!(transcript.contains("!  year   = {2002}"), "{transcript}");
     assert!(transcript.contains("  2 take values of 2"), "{transcript}");
     assert!(transcript.ends_with("Modified -> one2000: Title of one2000 \n"), "{transcript}");
@@ -588,7 +628,7 @@ fn a_question_without_an_answer_is_an_error() {
         ),
         "{transcript}"
     );
-    assert!(ok(b.run_in("lib", &["history"])).starts_with("> 2 papers add"));
+    assert!(ok(b.run_in("lib", &["history"])).starts_with("> #2 papers add"));
 }
 
 // status
@@ -716,7 +756,14 @@ mod reference {
         fs::write(b.path("Downloads/b.pdf"), "%PDF b").unwrap();
         let mut steps = Vec::new();
         for (kind, line) in script {
-            let args: Vec<String> = line.split_whitespace().map(|a| a.replace("$WORK", &b.path(""))).collect();
+            // `#N`: the identifier of the N-th state (by time) in the store of this run
+            let args: Vec<String> = line
+                .split_whitespace()
+                .map(|a| match a.strip_prefix('#').and_then(|n| n.parse::<usize>().ok()) {
+                    Some(n) if n <= b.states().len() => b.step_id(n),
+                    _ => a.replace("$WORK", &b.path("")),
+                })
+                .collect();
             let args: Vec<&str> = args.iter().map(String::as_str).collect();
             let binary = if *kind == ">" && mine { env!("CARGO_BIN_EXE_papers-rs") } else { reference };
             let out = b.run_with(binary, &args, ".");
@@ -759,12 +806,12 @@ fn papers_writes_and_papers_rs_undoes() {
         (">", "-C lib undo -n 3"),
         (">", "-C lib redo"),
         (">", "-C lib redo -n 2"),
-        (">", "-C lib restore 2"),
+        (">", "-C lib restore #2"),
         (">", "-C lib restore 99"),
         (">", "-C lib undo --dry-run"),
         (">", "-C lib history -n 0"),
         (">", "-C lib history --all"),
-        (">", "-C lib history --drop-files 6 -y"),
+        (">", "-C lib history --drop-files #6 -y"),
         (">", "-C lib undo"),
         (">", "-C lib history"),
         (">", "-C lib history --remove -y"),
@@ -822,10 +869,10 @@ fn papers_rs_writes_and_papers_undoes() {
     assert_eq!(b.run_with(&reference, &["undo"], "lib").code, 0);
     assert_eq!(b.keys("lib"), ["one2000"]);
     b.add("lib", "three2000");
-    assert_eq!(b.run_with(&reference, &["restore", "2"], "lib").code, 0);
+    assert_eq!(b.run_with(&reference, &["restore", &b.step_id(2)], "lib").code, 0);
     assert_eq!(b.keys("lib"), ["one2000"]);
     both(&["history", "-n", "0"]);
-    assert_eq!(b.run_in("lib", &["restore", "5"]).code, 0);
+    assert_eq!(b.run_in("lib", &["restore", &b.step_id(5)]).code, 0);
     assert_eq!(b.keys("lib"), ["one2000", "three2000"]);
     both(&["history"]);
 }

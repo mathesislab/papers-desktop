@@ -17,13 +17,13 @@ impl Moved {
             return vec![format!(
                 "DRYRUN: {kind}: {} not restored to {}",
                 history.setup.bibtex,
-                history.describe(self.target)
+                history.describe(&self.target)
             )];
         };
         let mut lines = vec![format!(
             "{kind}: {} restored to {}",
             basename(&history.setup.bibtex),
-            history.describe(self.target)
+            history.describe(&self.target)
         )];
         lines.extend(files.iter().cloned());
         lines.extend(self.pools.iter().cloned());

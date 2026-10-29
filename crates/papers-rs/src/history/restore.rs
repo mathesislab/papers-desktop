@@ -13,7 +13,7 @@ use std::io::Read;
 
 use sha2::{Digest, Sha256};
 
-use super::ops::{FileOp, OpKind};
+use super::ops::{FileOp, OpKind, is_file_object};
 use super::store::Store;
 use crate::config::paths::{basename, dirname, isfile, realpath, relpath, short_home};
 use crate::error::{Error, Result};
@@ -224,6 +224,32 @@ fn place_file(src: &str, dst: &str, copy: bool) -> Result<()> {
 }
 
 impl Restore<'_> {
+    /// The line of a file deleted again by redo: kept in the history, or sent to the trash of
+    /// the system (`keep-deleted-files` false).
+    fn deleted_again(&self, path: &str) -> String {
+        let where_ = if self.deleter.keep {
+            "kept in the history"
+        } else {
+            "to the trash of the system"
+        };
+        format!("    {}: deleted again ({where_})", show(path, self.cwd))
+    }
+
+    /// The source of a copy; a copy from the history (`src` is a file object of a store) is found
+    /// by its checksum when the file is not there any more (the history may have moved).
+    fn copied_from(&self, op: &FileOp) -> String {
+        if is_file_object(&op.src)
+            && !isfile(&op.src)
+            && let Some(found) = op
+                .checksum
+                .as_deref()
+                .and_then(|c| self.store.file_object(c))
+        {
+            return found;
+        }
+        op.src.clone()
+    }
+
     /// Bring the files; the lines of the report. The operations done are
     /// added to `record` when it is given (a revert records them, undo, redo
     /// and restore do not).
@@ -423,18 +449,18 @@ impl Restore<'_> {
             }
         }
 
-        // the files that no entry links to, deleted by the commands (e.g. papers file clean):
-        // brought back by undo, deleted again by redo
+        // the files deleted by the commands whose link did not change (no entry links to them, e.g.
+        // papers file clean, or the same entry before and after): brought back by undo, deleted
+        // again by redo
         let ordered: Vec<&FileOp> = if undo {
             ops.iter().rev().collect()
         } else {
             ops.iter().collect()
         };
-        for op in ordered {
+        for op in &ordered {
             let path = &op.src;
             if op.kind != OpKind::Trashed
-                || current.contains(path)
-                || target.contains(path)
+                || current.contains(path) != target.contains(path)
                 || reported.contains(path)
             {
                 continue;
@@ -458,10 +484,44 @@ impl Restore<'_> {
                 }
             } else if !undo && isfile(path) && digest(&mut digests, path) == op.checksum {
                 self.deleter.remove(path, record)?;
+                lines.push(self.deleted_again(path));
+            }
+        }
+
+        // the files that the commands copied to a place linked before and after (papers file fix
+        // from the history): removed by undo, copied again by redo
+        for op in &ordered {
+            let Some(path) = op.dst.as_deref().filter(|d| !d.is_empty()) else {
+                continue;
+            };
+            if op.kind != OpKind::Copied
+                || !current.contains(path)
+                || !target.contains(path)
+                || reported.contains(path)
+            {
+                continue;
+            }
+            reported.insert(path.to_string());
+            let src = self.copied_from(op);
+            if undo && isfile(path) && digest(&mut digests, path) == op.checksum && isfile(&src) {
+                let own = digest(&mut digests, path);
+                push(record, OpKind::Removed, path, Some(&src), own);
+                io(path, fs::remove_file(path))?;
                 lines.push(format!(
-                    "    {}: deleted again (kept in the history)",
-                    show(path)
+                    "    {}: removed (a copy of {})",
+                    show(path),
+                    show(&src)
                 ));
+            } else if !undo && !lexists(path) && isfile(&src) {
+                place(
+                    path,
+                    &src,
+                    true,
+                    "copied to",
+                    &mut digests,
+                    &mut lines,
+                    record,
+                )?;
             }
         }
 
@@ -502,15 +562,16 @@ impl Restore<'_> {
                         o.kind == OpKind::Copied && o.dst.as_deref() == Some(path.as_str())
                     });
                     if let Some(copied) = copied {
-                        let original = digest(&mut digests, &copied.src);
-                        if isfile(&copied.src) && original == digest(&mut digests, &path) {
+                        let src = self.copied_from(copied);
+                        let original = digest(&mut digests, &src);
+                        if isfile(&src) && original == digest(&mut digests, &path) {
                             let own = digest(&mut digests, &path);
-                            push(record, OpKind::Removed, &path, Some(&copied.src), own);
+                            push(record, OpKind::Removed, &path, Some(&src), own);
                             io(&path, fs::remove_file(&path))?;
                             lines.push(format!(
                                 "    {}: removed (a copy of {})",
                                 show(&path),
-                                show(&copied.src)
+                                show(&src)
                             ));
                         }
                     }
@@ -539,10 +600,7 @@ impl Restore<'_> {
                     }
                     OpKind::Trashed => {
                         self.deleter.remove(&path, record)?;
-                        lines.push(format!(
-                            "    {}: deleted again (kept in the history)",
-                            show(&path)
-                        ));
+                        lines.push(self.deleted_again(&path));
                     }
                     _ => {
                         let own = digest(&mut digests, &path);

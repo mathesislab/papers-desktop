@@ -305,7 +305,12 @@ impl Session {
     /// The steps that another command (an undo) added to the histories of other libraries: the next
     /// step of this library records them in its `pools`.
     pub fn link_pools(&mut self, links: Vec<(String, PoolLink)>) {
-        for (id, link) in links {
+        for (id, mut link) in links {
+            // a pool saved several times by the command: its last state, and its state before the
+            // first save
+            if let Some((_, first)) = self.pending_links.iter().find(|(i, _)| *i == id) {
+                link.base = first.base.clone();
+            }
             self.pending_links.retain(|(i, _)| *i != id);
             self.pending_links.push((id, link));
         }
@@ -508,7 +513,8 @@ impl Session {
 /// `--library-only`; `history.md` 7.6): the entries shared with the pool that differ from their origin
 /// record are pushed (a conflict is left to `papers sync`; no new entry). Nothing to push in general: undo
 /// and redo restore the origin records with the bibtex. If an entry was updated, the exchange is saved (a
-/// pool step, then a library step) and the redo list from before the push is put back on the new head.
+/// pool step, then a library step): the push is a new step, so nothing is left to redo, as after
+/// any command (the line says so, and how to go back to the steps undone).
 /// `links` are the steps that the undo or redo added to the histories of the pools (they go to the library's
 /// next step). The lines of the notes go to the sink of the options, or are in the outcome; the lock is
 /// given back.
@@ -549,14 +555,13 @@ impl Session {
         let report = exchange.push(&mut self.library, &shared, pool, &mut resolver, false)?;
         let mut notes = std::collections::HashMap::new();
         if report.iter().any(|o| o.what == What::Updated) {
-            let redo = self.history()?.head().map(|h| h.redo).unwrap_or_default();
+            let undone = self.history()?.head().map(|h| h.redo).unwrap_or_default();
             self.commit()?;
-            let history = self.history()?;
-            history.project.reload();
-            if let Some(head) = history.head() {
-                history
-                    .project
-                    .set_head(&history.place, head.state, &redo)?;
+            if let Some(first) = undone.first() {
+                self.say.line(format!(
+                    "the push is a new step: nothing to redo now (`papers restore {}` goes back to the steps undone)",
+                    crate::history::project::short(first)
+                ));
             }
         }
         push_notes(

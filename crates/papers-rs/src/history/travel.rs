@@ -2,10 +2,13 @@
 //! that went with the library's (spec/history.md, sections 6 and 7).
 //!
 //! A pool still where the command left it takes its step back (does it again). A pool that
-//! moved on since gets a new step that *reverts* the step of the command
-//! ([`crate::command::revert`]): conflicts, an entry changed in the pool since, are decided by
+//! moved on since gets a new step that *reverts* the step of the command (for redo, when the
+//! undo took the step back there and the pool moved on since: that step is done *again*;
+//! [`crate::command::revert`]): conflicts, an entry changed in the pool since, are decided by
 //! the [`Resolve`] that `undo` and `redo` are given (papers asks in a terminal, else skips: the
-//! entry stays as it is). The revert of a pool step records no file operations.
+//! entry stays as it is). The files that the revert places are part of the new step of the pool.
+//! A command that saved the pool several times is undone in full: the link of the library step
+//! has the pool's state before the first save (`base`).
 //!
 //! **Auto-push** (`papers undo` in a library with a pool and `auto-push`, spec 7.6) is for the
 //! caller: after `undo` or `redo` without `library_only`, push what differs from the origin
@@ -18,16 +21,19 @@ use std::path::Path;
 
 use super::files_json::{FILES_JSON, parse as parse_files_json};
 use super::ops::absolute_ops;
-use super::project::{Head, PoolLink, Project, State};
+use super::project::{Base, Head, LinkedState, PoolLink, Project, State, StateId, short};
 use super::recorder::History;
 use super::restore::{Deleter, Restore};
 use super::setup::read_bibtex;
 use super::store::sha256;
 use crate::bib::encoding::parse_file_relative;
 use crate::bib::{Bib, read_file};
+use crate::command::revert::Revert;
 use crate::command::session::{Options, Session};
 use crate::config::files::write_atomic;
-use crate::config::paths::{dirname, isfile, join, normpath, realpath, relpath, short_home};
+use crate::config::paths::{
+    abspath, dirname, isfile, join, normpath, realpath, relpath, short_home,
+};
 use crate::config::{Config, config_root};
 use crate::error::{Error, Result};
 use crate::lock::{self, Lock};
@@ -61,7 +67,7 @@ pub fn bibtex_links(bibtex: &str, libdir: &str) -> BTreeSet<String> {
 #[derive(Debug, Clone)]
 pub struct Moved {
     /// The state of the library now (with `dry_run`: where it would go).
-    pub target: u64,
+    pub target: StateId,
     /// The report on the files; `None` with `dry_run`.
     pub files: Option<Vec<String>>,
     /// The lines on the pools: the steps that followed, and the pools that did not.
@@ -86,11 +92,15 @@ struct Pool {
     shown: String,
     head: Head,
     /// Where the pool is, once the steps taken so far are.
-    at: u64,
+    at: StateId,
     /// The steps undone (redone) in the pool.
-    taken: Vec<u64>,
+    taken: Vec<StateId>,
     /// The steps to revert in the pool (it moved on since).
-    reverts: Vec<u64>,
+    reverts: Vec<StateId>,
+    /// The steps to do again in the pool (redo: it moved on since the undo of the step).
+    again: Vec<StateId>,
+    /// For a step of `reverts` or `again`: the state it is compared with (its `base`).
+    bases: BTreeMap<StateId, StateId>,
     lock: Option<Lock>,
 }
 
@@ -102,10 +112,20 @@ impl History {
             .ok_or_else(|| Error::exit("no history: the library has no bibtex"))
     }
 
-    /// The line of a state: number, command, time, and the library that made
+    /// The line of a state: identifier (short), command, time, and the library that made
     /// it (a step of a pool).
-    pub fn describe(&self, n: u64) -> String {
+    pub fn describe(&self, n: &str) -> String {
         describe(&self.project, n)
+    }
+
+    /// The identifier of the step that `reference` names: the identifier, or a unique start of
+    /// it of 4 characters or more. An error if there is none, or if several have it.
+    pub fn step(&self, reference: &str) -> Result<StateId> {
+        match self.project.resolve(reference) {
+            Err(message) => Err(Error::exit(message)),
+            Ok(None) => Err(no_step(reference)),
+            Ok(Some(n)) => Ok(n),
+        }
     }
 
     fn text(&self, state: &State) -> Result<String> {
@@ -132,8 +152,8 @@ impl History {
     /// checked here. The lines of the report on the files.
     pub fn go_to(
         &self,
-        cur: u64,
-        target: u64,
+        cur: &str,
+        target: &str,
         pool_dirs: Option<&[String]>,
         shared: &BTreeSet<String>,
         lock: Option<&Lock>,
@@ -143,13 +163,7 @@ impl History {
         }
         let libdir = self.setup.libdir.clone();
         let project = &self.project;
-        let state = |n: u64| -> Result<&State> {
-            project.state(n).ok_or_else(|| {
-                Error::exit(format!(
-                    "no step {n} in the history of the library (see `papers history`)"
-                ))
-            })
-        };
+        let state = |n: &str| -> Result<&State> { project.state(n).ok_or_else(|| no_step(n)) };
         let default_dirs: Vec<String> = self.setup.pool_files_dir.iter().cloned().collect();
         let pool_dirs = pool_dirs.unwrap_or(&default_dirs);
         let deleter = Deleter {
@@ -182,29 +196,29 @@ impl History {
             .run(&mut None)
         };
         for n in &back {
-            let s = state(*n)?;
-            let Some(parent) = s.parent().and_then(|p| project.state(p)) else {
+            let s = state(n)?;
+            let Some(parent) = s.parent().and_then(|p| project.state(&p).cloned()) else {
                 break;
             };
             let ops = absolute_ops(&s.ops(), &libdir);
             if !ops.is_empty() {
                 lines.extend(run(
                     &links(s)?,
-                    &links(parent)?,
+                    &links(&parent)?,
                     &ops,
                     true,
-                    &self.hashes(parent)?,
+                    &self.hashes(&parent)?,
                 )?);
             }
         }
         for n in &forward {
-            let s = state(*n)?;
+            let s = state(n)?;
             let ops = absolute_ops(&s.ops(), &libdir);
-            if let Some(parent) = s.parent().and_then(|p| project.state(p))
+            if let Some(parent) = s.parent().and_then(|p| project.state(&p).cloned())
                 && !ops.is_empty()
             {
                 lines.extend(run(
-                    &links(parent)?,
+                    &links(&parent)?,
                     &links(s)?,
                     &ops,
                     false,
@@ -230,15 +244,16 @@ impl History {
     /// The files of `.papers/` of the state `target`; those of the state
     /// `cur` that `target` has not are removed (a file no state had is left
     /// alone).
-    fn write_library_files(&self, cur: u64, target: u64) -> Result<()> {
-        let libdir = &self.setup.libdir;
-        // the name stays inside the directory of the bibtex (as papers tests it: by its start)
+    fn write_library_files(&self, cur: &str, target: &str) -> Result<()> {
+        let libdir = &self.setup.library_dir;
+        // the name stays inside the library directory (as papers tests it: by its start)
         let inside = |name: &str| !relpath(&join(libdir, name), libdir).starts_with("..");
         let files = self
             .project
             .state(target)
             .and_then(State::files)
             .unwrap_or_default();
+        // the names are stored with `/`, and read back with the separator of the system
         for (name, pieces) in &files {
             if inside(name) {
                 let path = join(libdir, name);
@@ -306,7 +321,7 @@ impl History {
         let missing = || {
             format!(
                 "the pool of step {} is not found (at {})",
-                link.state,
+                link.state.shown(),
                 short_home(&file)
             )
         };
@@ -321,7 +336,7 @@ impl History {
         let current = sha256(read_bibtex(&history.setup.bibtex)?.as_bytes());
         if history
             .project
-            .state(head.state)
+            .state(&head.state)
             .and_then(State::bibtex_sha)
             != Some(current.as_str())
         {
@@ -330,13 +345,15 @@ impl History {
             )));
         }
         Ok(Ok(Pool {
-            at: head.state,
+            at: head.state.clone(),
             history,
             config: pool_config,
             shown,
             head,
             taken: vec![],
             reverts: vec![],
+            again: vec![],
+            bases: BTreeMap::new(),
             lock,
         }))
     }
@@ -345,11 +362,13 @@ impl History {
     /// (undo) or redone, `steps` in the order they are taken. A pool still at
     /// the step linked to a library step (for redo: where the undo left it)
     /// takes it back (does it again); once it moved on, the linked steps are
-    /// to be reverted (for redo: the reverts made by the undo). The pools
-    /// that have steps, and the lines of the pools not found.
+    /// to be reverted (for redo: the reverts made by the undo are reverted, and the steps that
+    /// the undo took back are done again). The pool step of a link is compared with its `base`
+    /// (the state before the first save of the command). The pools that have steps, and the
+    /// lines of the pools not found.
     fn pool_steps(
         &self,
-        steps: &[u64],
+        steps: &[StateId],
         undo: bool,
         command: &str,
     ) -> Result<(Vec<Pool>, Vec<String>)> {
@@ -357,7 +376,7 @@ impl History {
         let mut lines = Vec::new();
         let mut gone: BTreeSet<String> = BTreeSet::new();
         for s in steps {
-            let Some(state) = self.project.state(*s) else {
+            let Some(state) = self.project.state(s) else {
                 continue;
             };
             for (id, link) in state.pools() {
@@ -377,14 +396,27 @@ impl History {
                 let Some((_, pool)) = pools.iter_mut().find(|(i, _)| *i == id) else {
                     continue;
                 };
-                let n = link.state;
-                let Some(pool_state) = pool.history.project.state(n) else {
+                // a number: a link of an earlier version to a pool in another store
+                let Some(n) = pool.history.project.upgraded(&link.state) else {
                     continue;
                 };
-                let Some(parent) = pool_state.parent() else {
-                    continue;
-                }; // no longer in the history of the pool
-                let (before, after) = if undo { (n, parent) } else { (parent, n) };
+                // the pool's state before the command (several saves of the pool: before the first one)
+                let parent = match &link.base {
+                    Base::Id(base) => Some(base.clone()),
+                    Base::Null => None,
+                    Base::Absent => pool.history.project.state(&n).and_then(State::parent),
+                };
+                let project = &pool.history.project;
+                let Some(parent) =
+                    parent.filter(|p| project.state(&n).is_some() && project.state(p).is_some())
+                else {
+                    continue; // no longer in the history of the pool
+                };
+                let (before, after) = if undo {
+                    (n.clone(), parent.clone())
+                } else {
+                    (parent.clone(), n.clone())
+                };
                 if pool.at == after {
                     continue; // there already
                 }
@@ -392,15 +424,20 @@ impl History {
                     pool.taken.push(n);
                     pool.at = after;
                 } else if undo {
+                    pool.bases.insert(n.clone(), parent);
                     pool.reverts.push(n);
                 } else {
-                    let project = &pool.history.project;
                     let revert = project
-                        .line(pool.at)
+                        .line(&pool.at)
                         .into_iter()
-                        .find(|r| project.state(*r).is_some_and(|s| s.reverts().contains(&n)));
-                    if let Some(r) = revert {
-                        pool.reverts.push(r);
+                        .find(|r| project.state(r).is_some_and(|s| s.reverts().contains(&n)));
+                    match revert {
+                        Some(r) => pool.reverts.push(r),
+                        None => {
+                            // the undo took step n back there, and the pool moved on since: done again
+                            pool.bases.insert(n.clone(), parent);
+                            pool.again.push(n);
+                        }
                     }
                 }
             }
@@ -408,7 +445,7 @@ impl History {
         let pools = pools
             .into_iter()
             .map(|(_, p)| p)
-            .filter(|p| !p.taken.is_empty() || !p.reverts.is_empty())
+            .filter(|p| !p.taken.is_empty() || !p.reverts.is_empty() || !p.again.is_empty())
             .collect();
         Ok((pools, lines))
     }
@@ -428,58 +465,79 @@ impl History {
         let mut links = Vec::new();
         for pool in pools {
             if !pool.taken.is_empty() {
-                let cur = pool.head.state;
-                let file_lines =
-                    pool.history
-                        .go_to(cur, pool.at, None, &BTreeSet::new(), pool.lock.as_ref())?;
-                let redo: Vec<u64> = if undo {
+                let cur = pool.head.state.clone();
+                let file_lines = pool.history.go_to(
+                    &cur,
+                    &pool.at,
+                    None,
+                    &BTreeSet::new(),
+                    pool.lock.as_ref(),
+                )?;
+                let redo: Vec<StateId> = if undo {
                     pool.taken
                         .iter()
                         .rev()
                         .chain(pool.head.redo.iter())
-                        .copied()
+                        .cloned()
                         .collect()
                 } else {
                     pool.head
                         .redo
                         .iter()
                         .filter(|n| !pool.taken.contains(n))
-                        .copied()
+                        .cloned()
                         .collect()
                 };
                 pool.history
                     .project
-                    .set_head(&pool.history.place, pool.at, &redo)?;
+                    .set_head(&pool.history.place, &pool.at, &redo)?;
                 lines.push(format!(
                     "pool {}: also {kind}, restored to {}",
                     pool.shown,
-                    pool.history.describe(pool.at)
+                    pool.history.describe(&pool.at)
                 ));
                 lines.extend(file_lines);
             }
-            if !pool.reverts.is_empty() {
+            if !pool.reverts.is_empty() || !pool.again.is_empty() {
                 let (revert_lines, link) = self.revert_pool(pool, command, resolver)?;
-                let steps = format!(
-                    "step{} {}",
-                    if pool.reverts.len() > 1 { "s" } else { "" },
-                    pool.reverts
-                        .iter()
-                        .map(u64::to_string)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
+                let plural = |steps: &[StateId]| {
+                    format!(
+                        "step{} {}",
+                        if steps.len() > 1 { "s" } else { "" },
+                        steps
+                            .iter()
+                            .map(|n| short(n))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                };
+                let mut what = Vec::new();
+                let mut done = Vec::new();
+                if !pool.reverts.is_empty() {
+                    what.push(format!("revert of {}", plural(&pool.reverts)));
+                    done.push(format!("{} reverted", plural(&pool.reverts)));
+                }
+                if !pool.again.is_empty() {
+                    what.push(format!("{} again", plural(&pool.again)));
+                    done.push(format!("{} done again", plural(&pool.again)));
+                }
                 match link {
                     Some((id, link)) => {
+                        let LinkedState::Id(state) = &link.state else {
+                            unreachable!("a link written now has an identifier")
+                        };
                         lines.push(format!(
-                            "pool {}: changed since, so {steps} reverted there: {}",
+                            "pool {}: changed since, so {} there: {}",
                             pool.shown,
-                            pool.history.describe(link.state)
+                            done.join(" and "),
+                            pool.history.describe(state)
                         ));
                         links.push((id, link));
                     }
                     None => lines.push(format!(
-                        "pool {}: changed since; {steps} not reverted there (nothing to take back without changing what was done since)",
-                        pool.shown
+                        "pool {}: changed since; nothing changed there for {} (the entries changed since are left as they are)",
+                        pool.shown,
+                        what.join(", ")
                     )),
                 }
                 lines.extend(revert_lines.into_iter().map(|l| format!("    {l}")));
@@ -488,9 +546,11 @@ impl History {
         Ok((lines, links))
     }
 
-    /// Revert the steps of a pool that moved on, in the pool, saved as one new step (`from`: the
-    /// folder of this library; `reverts`: the steps). The new step, if the pool changed, with the
-    /// link for the next step of the library; the lines of the reverts.
+    /// Revert the steps of a pool that moved on, and do again those that the undo took back, in
+    /// the pool, saved as one new step (`from`: the folder of this library; `reverts`: the steps
+    /// reverted). The new step, if the pool changed, with the link for the next step of the
+    /// library; the lines of the reverts. The files that the reverts place are in the new step of
+    /// the pool, not in a step of the library; when the pool did not change they are not recorded.
     fn revert_pool(
         &self,
         pool: &mut Pool,
@@ -498,35 +558,60 @@ impl History {
         resolver: &mut dyn Resolve,
     ) -> Result<Reverted> {
         let before = pool.history.head().map(|h| h.state);
-        let plural = if pool.reverts.len() > 1 { "s" } else { "" };
-        let steps = pool
-            .reverts
-            .iter()
-            .map(u64::to_string)
-            .collect::<Vec<_>>()
-            .join(", ");
+        let plural = |steps: &[StateId]| {
+            format!(
+                "step{} {}",
+                if steps.len() > 1 { "s" } else { "" },
+                steps
+                    .iter()
+                    .map(|n| short(n))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        };
+        let mut what = Vec::new();
+        if !pool.reverts.is_empty() {
+            what.push(format!("revert of {}", plural(&pool.reverts)));
+        }
+        if !pool.again.is_empty() {
+            what.push(format!("{} again", plural(&pool.again)));
+        }
         let options = Options {
-            message: format!("{command}: revert of step{plural} {steps}"),
+            message: format!("{command}: {}", what.join(", ")),
             ..Options::default()
         };
         let mut session = Session::open_locked(pool.config.clone(), options, pool.lock.take())?;
         session.mark_reverts(&pool.reverts);
         session.mark_from(&dirname(&realpath(&self.setup.bibtex)));
-        let mut run = |session: &mut Session| -> Result<Reverted> {
+        let mut run = |session: &mut Session| -> Result<(Reverted, Vec<super::ops::FileOp>)> {
             let mut lines = Vec::new();
-            for n in &pool.reverts {
-                // a conflict (an entry changed in the pool since) is asked in a terminal, else left as it is
-                lines.extend(session.revert(*n as i64, resolver, false)?);
+            // a conflict (an entry changed in the pool since) is asked in a terminal, else left as it is
+            for (steps, forward) in [(&pool.reverts, false), (&pool.again, true)] {
+                for n in steps {
+                    let how = Revert {
+                        forward,
+                        anywhere: true,
+                        parent: pool.bases.get(n).cloned(),
+                    };
+                    lines.extend(session.revert(n, resolver, &how)?.1);
+                }
             }
             let committed = session.commit()?;
-            Ok((lines, committed.link))
+            // the files of the reverts go to the new state of the pool, not to a step of the library
+            session.forget_operations();
+            Ok(((lines, committed.link), committed.ops))
         };
         let result = run(&mut session);
         let (_, lock) = session.finish_keeping_lock();
         pool.lock = lock;
         pool.history.project.reload(); // with the state of the revert
-        let (lines, link) = result?;
+        let ((lines, link), ops) = result?;
         let head = pool.history.head().map(|h| h.state);
+        if let Some(state) = head.as_ref().filter(|h| Some(*h) != before.as_ref())
+            && !ops.is_empty()
+        {
+            pool.history.add_operations(state, &ops)?;
+        }
         Ok((lines, link.filter(|_| head != before)))
     }
 
@@ -551,7 +636,7 @@ impl History {
         } else {
             self.sync_head(None)?
         };
-        let line = cur.map(|c| self.project.line(c)).unwrap_or_default();
+        let line = cur.map(|c| self.project.line(&c)).unwrap_or_default();
         if line.len() <= steps {
             return Err(Error::exit(if line.len() <= 1 {
                 "nothing to undo".to_string()
@@ -559,7 +644,7 @@ impl History {
                 format!("only {} step(s) to undo", line.len() - 1)
             }));
         }
-        let (cur, target) = (line[0], line[steps]);
+        let (cur, target) = (line[0].clone(), line[steps].clone());
         if self.dry_run {
             return Ok(Moved {
                 target,
@@ -574,11 +659,11 @@ impl History {
             self.pool_steps(&line[..steps], true, command)?
         };
         let previous = self.head().map(|h| h.redo).unwrap_or_default();
-        let redo: Vec<u64> = line[..steps]
+        let redo: Vec<StateId> = line[..steps]
             .iter()
             .rev()
             .chain(previous.iter())
-            .copied()
+            .cloned()
             .collect();
         // the pools first: the files the command moved to a pool are moved back, unless the pool still links them
         let (pool_lines, links) = self.move_pools(&mut pools, true, "undone", command, resolver)?;
@@ -592,8 +677,8 @@ impl History {
         } else {
             None
         };
-        let files = self.go_to(cur, target, pool_dirs, &shared, lock)?;
-        self.project.set_head(&self.place, target, &redo)?;
+        let files = self.go_to(&cur, &target, pool_dirs, &shared, lock)?;
+        self.project.set_head(&self.place, &target, &redo)?;
         let pools = missing.into_iter().chain(pool_lines).collect();
         Ok(Moved {
             target,
@@ -615,8 +700,8 @@ impl History {
         let Some(head) = self.head().filter(|h| !h.redo.is_empty()) else {
             return Err(Error::exit("nothing to redo"));
         };
-        let cur = head.state;
-        if !self.dry_run && self.sync_head(None)? != Some(cur) {
+        let cur = head.state.clone();
+        if !self.dry_run && self.sync_head(None)?.as_deref() != Some(cur.as_str()) {
             return Err(Error::exit(
                 "nothing to redo: the library changed outside papers since the undo (recorded: `papers undo` goes back before that change)",
             ));
@@ -627,7 +712,7 @@ impl History {
                 head.redo.len()
             )));
         }
-        let target = head.redo[steps - 1];
+        let target = head.redo[steps - 1].clone();
         if self.dry_run {
             return Ok(Moved {
                 target,
@@ -642,9 +727,9 @@ impl History {
             self.pool_steps(&head.redo[..steps], false, command)?
         };
         // the library first: the files the command moved to the pool are there when the pool comes back
-        let files = self.go_to(cur, target, None, &BTreeSet::new(), lock)?;
+        let files = self.go_to(&cur, &target, None, &BTreeSet::new(), lock)?;
         self.project
-            .set_head(&self.place, target, &head.redo[steps..])?;
+            .set_head(&self.place, &target, &head.redo[steps..])?;
         let (pool_lines, links) =
             self.move_pools(&mut pools, false, "redone", command, resolver)?;
         Ok(Moved {
@@ -655,21 +740,16 @@ impl History {
         })
     }
 
-    /// Go to the state `n` of the project of the library; without `n`, to the
-    /// current state (the changes made outside papers since are undone, and
+    /// Go to the state that `reference` names (see `step`) in the project of the library; without
+    /// it, to the current state (the changes made outside papers since are undone, and
     /// recorded: redo brings them back). The pools are not touched.
-    pub fn restore(&mut self, n: Option<u64>, lock: Option<&Lock>) -> Result<Moved> {
+    pub fn restore(&mut self, reference: Option<&str>, lock: Option<&Lock>) -> Result<Moved> {
         let head = self.head();
-        let target = match n {
+        let target = match reference {
             None => head
                 .map(|h| h.state)
                 .ok_or_else(|| Error::exit("no history: nothing to restore"))?,
-            Some(n) if self.project.state(n).is_none() => {
-                return Err(Error::exit(format!(
-                    "no step {n} in the history of the library (see `papers history`)"
-                )));
-            }
-            Some(n) => n,
+            Some(reference) => self.step(reference)?,
         };
         if self.dry_run {
             return Ok(Moved {
@@ -684,18 +764,19 @@ impl History {
             .ok_or_else(|| Error::exit("no history: nothing to restore"))?;
         if cur == target {
             return Err(Error::exit(format!(
-                "nothing to restore: {} is step {target}",
-                crate::config::paths::basename(&self.setup.bibtex)
+                "nothing to restore: {} is step {}",
+                crate::config::paths::basename(&self.setup.bibtex),
+                short(&target)
             )));
         }
-        let files = self.go_to(cur, target, None, &BTreeSet::new(), lock)?;
-        let (back, forward) = self.project.path_between(cur, target);
-        let redo: Vec<u64> = if forward.is_empty() {
+        let files = self.go_to(&cur, &target, None, &BTreeSet::new(), lock)?;
+        let (back, forward) = self.project.path_between(&cur, &target);
+        let redo: Vec<StateId> = if forward.is_empty() {
             back.into_iter().rev().collect()
         } else {
             vec![]
         };
-        self.project.set_head(&self.place, target, &redo)?;
+        self.project.set_head(&self.place, &target, &redo)?;
         Ok(Moved {
             target,
             files: Some(files),
@@ -709,32 +790,69 @@ impl History {
 
     /// The bytes of the files that the state `n` keeps (the files its
     /// command deleted, still in the history).
-    pub fn kept_size(&self, n: u64) -> u64 {
+    pub fn kept_size(&self, n: &str) -> u64 {
         kept_size(&self.project, &self.store, n)
     }
 
-    /// The files kept by the history that `target` names: a step number (the
-    /// files its command deleted), or a path (the file deleted from that
-    /// place, by any step). `{checksum: (path before the deletion, bytes)}`.
-    pub fn files_to_drop(
-        &self,
-        step: Option<u64>,
-        path: Option<&str>,
-    ) -> Result<BTreeMap<String, (String, u64)>> {
-        let mut found = BTreeMap::new();
-        let chosen: Vec<u64> = match step {
-            Some(n) if self.project.state(n).is_none() => {
-                return Err(Error::exit(format!(
-                    "no step {n} in the history of the library (see `papers history`)"
-                )));
+    /// A file deleted from `path` that the history still keeps: its copy in the history and the
+    /// step that deleted it, or none. The file is that of the last step that deleted a file there,
+    /// else the one whose checksum `.papers/files.json` has for the path (no step).
+    pub fn deleted_file(&self, path: &str) -> Option<(String, Option<StateId>)> {
+        if self.project.states().is_empty() {
+            return None;
+        }
+        let path = normpath(&abspath(path));
+        let mut steps: Vec<(&StateId, &State)> = self.project.states().iter().collect();
+        // the most recent first
+        steps.sort_by(|a, b| b.1.time().total_cmp(&a.1.time()).then(b.0.cmp(a.0)));
+        for (n, state) in steps {
+            for op in absolute_ops(&state.ops(), &self.setup.libdir) {
+                if op.kind == super::ops::OpKind::Trashed
+                    && normpath(&op.src) == path
+                    && let Some(stored) = op
+                        .checksum
+                        .as_deref()
+                        .and_then(|c| self.store.file_object(c))
+                {
+                    return Some((stored, Some(n.clone())));
+                }
             }
-            Some(n) => vec![n],
-            None => self.project.states().keys().copied().collect(),
+        }
+        let file = self.setup.file.as_deref()?;
+        let files_json = super::files_json::FilesJson {
+            path: join(&config_root(file), FILES_JSON),
+            libdir: self.setup.libdir.clone(),
+            absolute_paths: self.setup.absolute_paths,
         };
-        let wanted =
-            path.map(|p| normpath(&join(&self.setup.cwd, &crate::config::paths::expanduser(p))));
+        let digest = files_json.load().get(&path).cloned()?;
+        let stored = self.store.file_object(&digest)?;
+        Some((stored, None))
+    }
+
+    /// Whether a value of `--drop-files` is a path, not a step: a file that exists, or a name
+    /// with a folder separator or a dot.
+    pub fn is_path(target: &str) -> bool {
+        crate::config::paths::exists(target) || target.contains(['/', '.'])
+    }
+
+    /// The files kept by the history that `target` names: a step (its identifier or a start of
+    /// it: the files its command deleted), or a path (the file deleted from that place, by any
+    /// step; see `is_path`). `{checksum: (path before the deletion, bytes)}`.
+    pub fn files_to_drop(&self, target: &str) -> Result<BTreeMap<String, (String, u64)>> {
+        let mut found = BTreeMap::new();
+        let (chosen, wanted): (Vec<StateId>, Option<String>) = if History::is_path(target) {
+            (
+                self.project.states().keys().cloned().collect(),
+                Some(normpath(&join(
+                    &self.setup.cwd,
+                    &crate::config::paths::expanduser(target),
+                ))),
+            )
+        } else {
+            (vec![self.step(target)?], None)
+        };
         for n in chosen {
-            let Some(state) = self.project.state(n) else {
+            let Some(state) = self.project.state(&n) else {
                 continue;
             };
             let kept = state.deleted();
@@ -762,8 +880,8 @@ impl History {
     /// to the system trash, unless another library of the store keeps them.
     pub fn drop_files(&mut self, digests: &BTreeSet<String>) -> Result<()> {
         let trash = self.trash;
-        let numbers: Vec<u64> = self.project.states().keys().copied().collect();
-        for n in numbers {
+        let ids: Vec<StateId> = self.project.states().keys().cloned().collect();
+        for n in ids {
             let state = self.project.states()[&n].clone();
             let deleted = state.deleted();
             let kept: Vec<String> = deleted
@@ -774,7 +892,7 @@ impl History {
             if kept != deleted {
                 let mut state = state;
                 state.set_deleted(&kept);
-                self.project.update(n, state)?;
+                self.project.update(&n, state)?;
             }
         }
         let used: BTreeSet<String> = self
@@ -795,8 +913,15 @@ impl History {
     }
 }
 
+/// The error of a step that the history does not have.
+pub fn no_step(reference: &str) -> Error {
+    Error::exit(format!(
+        "no step {reference} in the history of the library (see `papers history`)"
+    ))
+}
+
 /// The bytes of the files that the state `n` keeps.
-pub fn kept_size(project: &Project, store: &super::store::Store, n: u64) -> u64 {
+pub fn kept_size(project: &Project, store: &super::store::Store, n: &str) -> u64 {
     let Some(state) = project.state(n) else {
         return 0;
     };
@@ -828,14 +953,19 @@ pub fn when(t: f64) -> String {
     )
 }
 
-/// The line of a state: `<number> <message> (<local time>[, from <from>])`.
-pub fn describe(project: &Project, n: u64) -> String {
+/// The line of a state: `<short identifier> <message> (<local time>[, from <from>])`.
+pub fn describe(project: &Project, n: &str) -> String {
     let Some(state) = project.state(n) else {
-        return format!("{n}  (not found)");
+        return format!("{}  (not found)", short(n));
     };
     let origin = state
         .from()
         .map(|f| format!(", from {}", short_home(f)))
         .unwrap_or_default();
-    format!("{n} {} ({}{origin})", state.message(), when(state.time()))
+    format!(
+        "{} {} ({}{origin})",
+        short(n),
+        state.message(),
+        when(state.time())
+    )
 }

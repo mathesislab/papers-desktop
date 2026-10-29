@@ -124,6 +124,13 @@ fn undo(config: &mut Config, steps: usize) -> papers_rs::error::Result<papers_rs
         .undo(steps, false, None, "papers undo", &mut skip())
 }
 
+/// The identifier of the n-th state (from 1) of a history, by time: what papers 3.0.0b5 numbered n.
+fn nth(history: &History, n: usize) -> String {
+    let mut states: Vec<_> = history.project.states().iter().collect();
+    states.sort_by(|a, b| a.1.time().total_cmp(&b.1.time()));
+    states[n - 1].0.clone()
+}
+
 fn id_of(config: &Config) -> String {
     let text = fs::read_to_string(config.file.as_ref().unwrap()).unwrap();
     J::parse(&text)
@@ -157,7 +164,16 @@ fn nothing_is_written_before_a_change() {
     let id = id_of(&config);
     assert_eq!(id.len(), 32);
     assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
-    assert!(Path::new(&s.path(&format!("history/projects/{id}/states/000002.json"))).exists());
+    // a state is a file named by its identifier: the start, and the command
+    let states: Vec<String> = fs::read_dir(s.path(&format!("history/projects/{id}/states")))
+        .unwrap()
+        .map(|f| f.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(states.len(), 2);
+    assert!(states.iter().all(|n| {
+        n.strip_suffix(".json")
+            .is_some_and(papers_rs::history::project::is_state_id)
+    }));
     // a dry run gives no identifier and writes nothing
     let mut other = s.init("other");
     assert!(History::open(&mut other, true, true).unwrap().is_none());
@@ -176,8 +192,9 @@ fn a_command_that_saves_the_same_library_adds_no_state() {
     add(&mut config, "one2000");
     let rec = command(&mut config, "papers tag nothing", |_| {}, vec![]);
     assert!(!rec.added);
-    assert_eq!(rec.number, Some(2));
-    assert_eq!(open(&mut config).project.states().len(), 2);
+    let history = open(&mut config);
+    assert_eq!(rec.number, Some(history.head().unwrap().state));
+    assert_eq!(history.project.states().len(), 2);
 }
 
 #[test]
@@ -261,12 +278,13 @@ fn changes_made_outside_papers_are_a_step_of_their_own() {
     .unwrap();
     // undo goes back before the outside change, redo brings it back
     let moved = undo(&mut config, 1).unwrap();
-    assert_eq!(moved.target, 2);
-    assert_eq!(keys(&config), vec!["one2000"]);
     let history = open(&mut config);
-    assert_eq!(history.project.state(3).unwrap().kind(), "outside");
+    assert_eq!(moved.target, nth(&history, 2));
+    assert_eq!(keys(&config), vec!["one2000"]);
+    let outside = nth(&history, 3);
+    assert_eq!(history.project.state(&outside).unwrap().kind(), "outside");
     assert_eq!(
-        history.project.state(3).unwrap().message(),
+        history.project.state(&outside).unwrap().message(),
         "changed outside papers"
     );
     History::require(&mut config, false)
@@ -338,7 +356,7 @@ fn undo_and_redo_stop_where_the_history_does() {
         "only 2 step(s) to redo"
     );
     assert_eq!(
-        history.restore(Some(99), None).unwrap_err().message(),
+        history.restore(Some("99"), None).unwrap_err().message(),
         "no step 99 in the history of the library (see `papers history`)"
     );
     // a dry run changes nothing
@@ -378,7 +396,7 @@ fn a_file_taken_out_of_downloads_goes_back_there() {
         .unwrap();
     // outside the library: absolute in the state; inside: relative to the library
     let history = open(&mut config);
-    let ops = history.project.state(2).unwrap().ops();
+    let ops = history.project.state(&nth(&history, 2)).unwrap().ops();
     assert_eq!(
         (ops[0].src.as_str(), ops[0].dst.as_deref()),
         (src.as_str(), Some("files/doe_2000_a.pdf"))
@@ -415,7 +433,7 @@ fn deleted_files_are_kept_and_the_operations_after_the_save_join_the_state() {
         move |c| fs::write(c.bibtex.as_ref().unwrap(), t2).unwrap(),
         vec![],
     );
-    assert_eq!(rec.number, Some(2));
+    assert_eq!(rec.number, Some(nth(&open(&mut config), 2)));
     // rm --delete-files: the bibtex is saved first, the file deleted after
     let rec = command(
         &mut config,
@@ -433,22 +451,22 @@ fn deleted_files_are_kept_and_the_operations_after_the_save_join_the_state() {
     };
     deleter.remove(&file, &mut recorded).unwrap();
     let ops = recorded.unwrap();
-    history.add_operations(n, &ops).unwrap();
-    let state = history.project.state(n).unwrap().clone();
+    history.add_operations(&n, &ops).unwrap();
+    let state = history.project.state(&n).unwrap().clone();
     let digest = papers_rs::history::store::sha256(b"pdf a");
     assert_eq!(state.deleted(), vec![digest.clone()]);
     assert_eq!(state.ops()[0].src, "files/a.pdf");
     assert!(history.store.file_object(&digest).is_some());
-    assert_eq!(history.kept_size(n), 5);
+    assert_eq!(history.kept_size(&n), 5);
     // undo brings it back, from the history
     let moved = undo(&mut config, 1).unwrap();
     assert!(moved.files.unwrap()[0].ends_with("files/a.pdf: restored from the history"));
     assert_eq!(fs::read_to_string(&file).unwrap(), "pdf a");
     // the operations are not recorded when the library changed since (a warning, no change)
     let mut history = open(&mut config);
-    let before = history.project.state(n).unwrap().clone();
-    history.add_operations(n, &ops).unwrap();
-    assert_eq!(history.project.state(n).unwrap(), &before);
+    let before = history.project.state(&n).unwrap().clone();
+    history.add_operations(&n, &ops).unwrap();
+    assert_eq!(history.project.state(&n).unwrap(), &before);
 }
 
 #[test]
@@ -467,7 +485,8 @@ fn the_files_json_of_a_state_finds_a_file_by_content() {
     assert!(files.update(&links, &links, true).unwrap());
     fs::write(config.bibtex.as_ref().unwrap(), text).unwrap();
     history.record(Step::new("papers add one.bib")).unwrap();
-    let state = open(&mut config).project.state(2).unwrap().clone();
+    let history = open(&mut config);
+    let state = history.project.state(&nth(&history, 2)).unwrap().clone();
     assert_eq!(
         state
             .files()
@@ -482,7 +501,7 @@ fn the_files_json_of_a_state_finds_a_file_by_content() {
     let relinked = bibtex(&config).replace("files/a.pdf", "files/renamed.pdf");
     fs::write(config.bibtex.as_ref().unwrap(), relinked).unwrap();
     let moved = undo(&mut config, 1).unwrap();
-    assert_eq!(moved.target, 2);
+    assert_eq!(moved.target, nth(&open(&mut config), 2));
     let lines = moved.files.unwrap();
     assert!(
         lines[0].ends_with("renamed.pdf --> renamed back to a.pdf"),
@@ -574,7 +593,12 @@ fn a_damaged_store_is_reported_as_papers_does() {
     add(&mut config, "one2000");
     add(&mut config, "two2000");
     let history = open(&mut config);
-    let piece = history.project.state(2).unwrap().bibtex_pieces()[0].clone();
+    let piece = history
+        .project
+        .state(&nth(&history, 2))
+        .unwrap()
+        .bibtex_pieces()[0]
+        .clone();
     drop(history);
     fs::remove_file(s.path(&format!("history/objects/{}/{piece}", &piece[..2]))).unwrap();
     let error = undo(&mut config, 1).unwrap_err();
@@ -620,7 +644,8 @@ fn the_store_is_pruned_at_every_fiftieth_state() {
         |c| fs::write(c.bibtex.as_ref().unwrap(), entry("k49")).unwrap(),
         vec![],
     );
-    assert_eq!(rec.number, Some(50));
+    assert_eq!(open(&mut config).project.states().len(), 50);
+    assert_eq!(rec.number, Some(open(&mut config).head().unwrap().state));
     assert!(!Path::new(&path).exists());
 }
 

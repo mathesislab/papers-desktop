@@ -4,7 +4,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
 
-use super::project::Project;
+use super::project::{Project, StateId};
 use super::recorder::{History, prune_store};
 use super::setup::Setup;
 use super::store::{MB, Ref, Store};
@@ -40,14 +40,14 @@ pub fn history_lines(
     match (&head, history) {
         (Some(head), Some(h)) => {
             let project = &h.project;
-            let line = project.line(head.state);
+            let line = project.line(&head.state);
             let count = if n >= 0 {
                 (n as usize).min(line.len())
             } else {
                 line.len().saturating_sub(n.unsigned_abs() as usize)
             };
-            let shown: &[u64] = if n == 0 { &line } else { &line[..count] };
-            let kept = |n: u64| {
+            let shown: &[StateId] = if n == 0 { &line } else { &line[..count] };
+            let kept = |n: &str| {
                 let size = kept_size(project, &h.store, n);
                 if size > 0 {
                     format!("  [{} of deleted files]", size_text(size))
@@ -58,16 +58,16 @@ pub fn history_lines(
             for r in head.redo.iter().rev() {
                 lines.push(format!(
                     "  {}  (undone: `papers redo`){}",
-                    describe(project, *r),
-                    kept(*r)
+                    describe(project, r),
+                    kept(r)
                 ));
             }
             for s in shown {
                 lines.push(format!(
                     "{} {}{}",
                     if *s == head.state { ">" } else { " " },
-                    describe(project, *s),
-                    kept(*s)
+                    describe(project, s),
+                    kept(s)
                 ));
             }
             if line.len() > shown.len() {

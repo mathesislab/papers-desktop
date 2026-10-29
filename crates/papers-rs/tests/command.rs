@@ -114,11 +114,15 @@ fn a_command_saves_records_and_leaves_no_lock() {
     assert_eq!(touched, ["new2001"]);
     let committed = session.commit().unwrap();
     assert!(committed.saved);
+    let mut config = s.config();
+    let history = History::open(&mut config, false, false).unwrap().unwrap();
     assert_eq!(
-        committed.step,
-        Some(2),
+        history.project.states().len(),
+        2,
         "the library before, then the command"
     );
+    assert_eq!(committed.step, history.head().map(|h| h.state));
+    drop(history);
     print_changes(
         &session.library,
         &touched,
@@ -221,7 +225,10 @@ fn a_library_with_a_pool_pushes_what_it_adds() {
         Some("also added to pool ../pool")
     );
     session.finish();
-    assert!(s.read("pool/papers.bib").contains("title = {Title of new2001}"));
+    assert!(
+        s.read("pool/papers.bib")
+            .contains("title = {Title of new2001}")
+    );
     assert!(s.read("lib/papers.bib").contains("@article{new2001,"));
     assert!(Path::new(&s.path("lib/.papers/origin")).is_dir());
     assert!(!Path::new(&s.path("lib/.papers/lock")).exists());
@@ -297,10 +304,10 @@ fn a_failed_command_records_the_files_it_moved() {
     session.finish();
     let mut config = s.config();
     let history = History::open(&mut config, false, false).unwrap().unwrap();
-    let states = history.project.states();
-    let last = states.iter().last().expect("a state");
-    assert_eq!(last.1.ops().len(), 1);
-    assert_eq!(last.1.ops()[0].kind, OpKind::Moved);
+    let head = history.head().expect("a head").state;
+    let last = history.project.state(&head).expect("a state");
+    assert_eq!(last.ops().len(), 1);
+    assert_eq!(last.ops()[0].kind, OpKind::Moved);
 }
 
 #[test]
@@ -336,11 +343,11 @@ fn files_deleted_by_rm_are_kept_in_the_history_and_undo_brings_them_back() {
 
     let mut config = s.config();
     let history = History::open(&mut config, false, false).unwrap().unwrap();
-    let states = history.project.states();
-    let ops = states.iter().last().unwrap().1.ops();
+    assert_eq!(history.project.states().len(), 2);
+    let head = history.project.head(&history.place).unwrap().state;
+    let ops = history.project.state(&head).unwrap().ops();
     assert_eq!(ops.len(), 1);
     assert_eq!(ops[0].kind, OpKind::Trashed);
-    assert_eq!(history.project.head(&history.place).unwrap().state, 2);
     drop(history);
 
     let mut config = s.config();

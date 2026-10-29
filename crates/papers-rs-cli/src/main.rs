@@ -248,7 +248,7 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
         "undo" => cmd_history::undo(leaf, config)?,
         "redo" => cmd_history::redo(leaf, config)?,
         "restore" | "restore-backup" => cmd_history::restore(leaf, config, &command)?,
-        "history" | "backup" => cmd_history::history(cmd_history::HistoryArgs::from_leaf(leaf), config, &command)?,
+        "history" | "backup" => cmd_history::history(leaf, config, &command)?,
         "list" | "export" => {
             let result = if command == "list" { cmd_list::list_cmd(leaf, config) } else { cmd_export::export_cmd(leaf, config) };
             match result {

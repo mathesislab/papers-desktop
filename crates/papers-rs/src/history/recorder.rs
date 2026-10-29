@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use super::ops::{FileOp, OpKind, deleted_refs, relative_ops};
-use super::project::{Head, NewState, PoolLink, Project, State, Text};
-use super::setup::{Setup, Snapshot, library_id, path_id, read_bibtex, read_kept};
+use super::project::{Head, NewState, PoolLink, Project, State, StateId, Text};
+use super::setup::{Setup, Snapshot, library_dir, library_id, path_id, read_bibtex, read_kept};
 use super::store::{MB, Store, now, sha256, to_system_trash};
 use crate::config::Config;
 use crate::config::paths::{abspath, basename, realpath};
@@ -61,7 +61,7 @@ pub struct Step {
     pub from: Option<String>,
     /// The states that this step takes back (`history --revert`, the revert
     /// of a pool step by undo).
-    pub reverts: Vec<u64>,
+    pub reverts: Vec<StateId>,
 }
 
 impl Step {
@@ -78,7 +78,7 @@ impl Step {
 pub struct Recorded {
     /// The state of the library after the save: the new one, or the head
     /// when nothing changed.
-    pub number: Option<u64>,
+    pub number: Option<StateId>,
     /// A state was added.
     pub added: bool,
     /// For a library that is not the library of the command: the link
@@ -125,9 +125,11 @@ impl History {
         }))
     }
 
-    /// At the start of a command: the library as it is before it, for its
-    /// first state if it has no history yet (the command may write the files
-    /// of `.papers/` before it saves the bibtex). Nothing is written. Not for
+    /// At the start of a command: the library as it is before it, for the
+    /// state that `sync_head` records before the save of the command (the
+    /// command may write the files of `.papers/` before it saves the bibtex):
+    /// when the library has no history yet, or its bibtex changed outside
+    /// papers since its current state. Nothing is written. Not for
     /// `status`, `config`, `init`, `install`, `uninstall`, `migrate`,
     /// `history`, `backup`, `git`, `undo`, `redo`, `restore`, `restore-backup`,
     /// nor with `--dry-run` (the caller decides).
@@ -137,9 +139,20 @@ impl History {
             return None;
         }
         match History::open(config, false, false) {
-            Ok(Some(h)) if h.project.head(&h.place).is_some() => None,
+            Ok(Some(h))
+                if h.project.head(&h.place).is_some_and(|head| {
+                    h.project.state(&head.state).and_then(State::bibtex_sha)
+                        == read_bibtex(&bibtex)
+                            .ok()
+                            .map(|t| sha256(t.as_bytes()))
+                            .as_deref()
+                }) =>
+            {
+                None
+            }
             Ok(_) => {
-                match Snapshot::read(&bibtex, &crate::config::paths::dirname(&abspath(&bibtex))) {
+                let file = config.file.as_deref().filter(|_| config.is_library);
+                match Snapshot::read(&bibtex, &library_dir(&bibtex, file)) {
                     Ok(s) => Some(s),
                     Err(e) => {
                         log::debug(&format!("the library before the command is not kept: {e}"));
@@ -162,34 +175,22 @@ impl History {
         self.project.head(&self.place)
     }
 
-    /// The bibtex and the files as they are on disk, stored: the pieces of
-    /// the bibtex, its checksum, the pieces of the kept files. `files`: those
-    /// of another state (the files on disk are not read); `texts`: the texts to
-    /// store instead of those on disk.
-    fn snapshot(
-        &self,
-        files: Option<Vec<(String, Vec<String>)>>,
-        texts: Option<&Snapshot>,
-    ) -> Result<(Text, KeptFiles)> {
-        let text = match texts {
-            Some(t) => t.bibtex.clone(),
-            None => read_bibtex(&self.setup.bibtex)?,
+    /// The bibtex and the files of `.papers/` as they are on disk, stored: the
+    /// pieces of the bibtex, its checksum, the pieces of the kept files.
+    /// `texts`: the texts to store instead of those on disk.
+    fn snapshot(&self, texts: Option<&Snapshot>) -> Result<(Text, KeptFiles)> {
+        let (text, others) = match texts {
+            Some(t) => (t.bibtex.clone(), t.files.clone()),
+            None => (
+                read_bibtex(&self.setup.bibtex)?,
+                read_kept(&self.setup.library_dir)?,
+            ),
         };
-        let files = match files {
-            Some(f) => f,
-            None => {
-                let others = match texts {
-                    Some(t) => t.files.clone(),
-                    None => read_kept(&self.setup.libdir)?,
-                };
-                let mut stored = Vec::new();
-                for (name, content) in others {
-                    let pieces = self.store.put_text(&content)?;
-                    stored.push((name, pieces));
-                }
-                stored
-            }
-        };
+        let mut files = Vec::new();
+        for (name, content) in others {
+            let pieces = self.store.put_text(&content)?;
+            files.push((name, pieces));
+        }
         let pieces = self.store.put_text(&text)?;
         Ok((
             Text {
@@ -207,9 +208,11 @@ impl History {
     /// state of its place; a new place starts from the state that has its
     /// bibtex (a moved or copied library). If the bibtex on disk is not that
     /// state, it is recorded first: changed outside papers (or, without
-    /// history yet, the library before its first command, `before`). The
-    /// number of the state, or `None` (dry run).
-    pub fn sync_head(&mut self, before: Option<&Snapshot>) -> Result<Option<u64>> {
+    /// history yet, the library before its first command): the library as it
+    /// was at the start of the command (`before`), else the bibtex and the
+    /// `.papers/` files on disk now. The identifier of the state, or `None`
+    /// (dry run).
+    pub fn sync_head(&mut self, before: Option<&Snapshot>) -> Result<Option<StateId>> {
         if self.dry_run {
             return Ok(None);
         }
@@ -221,38 +224,28 @@ impl History {
         if head.is_none() {
             self.project.forget_missing_places()?;
             if let Some(n) = self.project.start_state(&sha) {
-                self.project.set_head(&place, n, &[])?;
+                self.project.set_head(&place, &n, &[])?;
                 head = self.project.head(&place);
             }
         }
         if let Some(h) = &head
-            && self.project.state(h.state).and_then(State::bibtex_sha) == Some(sha.as_str())
+            && self.project.state(&h.state).and_then(State::bibtex_sha) == Some(sha.as_str())
         {
-            return Ok(Some(h.state));
+            return Ok(Some(h.state.clone()));
         }
-        let (kind, message, files, texts) = match &head {
-            None => (
-                "start",
-                "the library before its first recorded command",
-                None,
-                before,
-            ),
-            Some(h) => {
+        let (kind, message) = match &head {
+            None => ("start", "the library before its first recorded command"),
+            Some(_) => {
                 log::info(&format!(
                     "{} changed outside papers since its last state: recorded",
                     basename(&self.setup.bibtex)
                 ));
-                (
-                    "outside",
-                    "changed outside papers",
-                    self.project.state(h.state).and_then(State::files),
-                    None,
-                )
+                ("outside", "changed outside papers")
             }
         };
-        let (bibtex, files) = self.snapshot(files, texts)?;
+        let (bibtex, files) = self.snapshot(before)?;
         let state = State::new(NewState {
-            parent: head.as_ref().map(|h| h.state),
+            parent: head.as_ref().map(|h| h.state.clone()),
             time: now(),
             kind: kind.into(),
             message: message.into(),
@@ -262,12 +255,11 @@ impl History {
             files,
         });
         let n = self.project.add(state)?;
-        self.project.set_head(&place, n, &[])?;
-        if head.is_none()
-            && let Some(t) = before
+        self.project.set_head(&place, &n, &[])?;
+        if let Some(t) = before
             && t.bibtex != text
         {
-            return self.sync_head(before); // changed by the command before its save: recorded after
+            return self.sync_head(None); // changed by the command before its save: recorded after
         }
         Ok(Some(n))
     }
@@ -291,12 +283,12 @@ impl History {
         let place = self.place.clone();
         let head = self.project.head(&place);
         // the library had no state (e.g. its bibtex created by the command): the command is its first state
-        let parent = head.as_ref().map(|h| h.state);
+        let parent = head.as_ref().map(|h| h.state.clone());
         let own = step.from.is_none();
         let ops = relative_ops(&step.ops, &self.setup.libdir, self.setup.absolute_paths);
-        let (bibtex, files) = self.snapshot(None, step.snapshot.as_ref())?;
+        let (bibtex, files) = self.snapshot(step.snapshot.as_ref())?;
         let linked = if own { step.pools.clone() } else { Vec::new() };
-        let previous = parent.and_then(|p| self.project.state(p));
+        let previous = parent.as_deref().and_then(|p| self.project.state(p));
         let unchanged = previous.is_some_and(|prev| {
             ops.is_empty()
                 && linked.is_empty()
@@ -311,7 +303,7 @@ impl History {
             (parent, false)
         } else {
             let mut state = State::new(NewState {
-                parent,
+                parent: parent.clone(),
                 time: now(),
                 kind: "command".into(),
                 message: step.message.clone(),
@@ -330,20 +322,21 @@ impl History {
                 state.set_from(from);
             }
             let n = self.project.add(state)?;
-            self.project.set_head(&place, n, &[])?;
+            self.project.set_head(&place, &n, &[])?;
             if !own && let Some(file) = &self.setup.file {
+                // `base`: the state before the command (a command that saves a pool several times:
+                // the caller keeps the first, see `Session::link_pools`)
                 link = Some((
                     self.project.id.clone(),
-                    PoolLink {
-                        state: n,
-                        config: abspath(file),
-                    },
+                    PoolLink::new(n.clone(), parent, abspath(file)),
                 ));
             }
             (Some(n), true)
         };
+        // after a save of a library whose project has a multiple of PRUNE_EVERY states (also when
+        // the save added none)
         if ops.iter().any(|op| op.kind == OpKind::Trashed)
-            || n.is_some_and(|n| n % PRUNE_EVERY == 0)
+            || (self.project.states().len() as u64).is_multiple_of(PRUNE_EVERY)
         {
             self.prune();
         }
@@ -356,7 +349,7 @@ impl History {
 
     /// The operations done after the save of the library join its state `n`,
     /// if it is still current (a warning otherwise).
-    pub fn add_operations(&mut self, n: u64, ops: &[FileOp]) -> Result<()> {
+    pub fn add_operations(&mut self, n: &str, ops: &[FileOp]) -> Result<()> {
         if self.dry_run {
             return Ok(());
         }
@@ -388,8 +381,8 @@ impl History {
     // retention
     // ---------
 
-    /// Drop the oldest states until the store is within `history-size`
-    /// (nothing when the limit is 0).
+    /// Drop the oldest states until the store is within `history-size`, then free the
+    /// pieces and files that no state needs (also with a limit of 0: no state is dropped).
     pub fn prune(&self) {
         prune_store(&self.setup, &self.store, &self.trash);
     }
@@ -423,7 +416,7 @@ impl History {
         );
         if total > limit {
             let question = format!(
-                "{what}: more than the history keeps (history-size: {size} MB).\n- This command cannot be undone: the files go to the trash of the system, not to the history.\n- The history of the libraries is dropped: no undo before this point."
+                "{what}: more than the history keeps (history-size: {size} MB).\n- This command cannot be undone: the files go to the trash of the system, not to the history (the history keeps its steps)."
             );
             return if ask(&question) { Some(false) } else { None };
         }
@@ -459,9 +452,6 @@ impl History {
 /// `prune` of a store, with its limit, and the message.
 pub fn prune_store(setup: &Setup, store: &Store, trash: &dyn Fn(&str)) {
     let limit = setup.limit(store);
-    if limit == 0 {
-        return;
-    }
     let dropped = store.prune(limit, 0, false, trash);
     if !dropped.is_empty() {
         log::info(&format!(

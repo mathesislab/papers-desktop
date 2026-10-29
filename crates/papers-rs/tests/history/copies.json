@@ -2,6 +2,7 @@
  "machine": {},
  "name": "copies",
  "place_ids": {},
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-o8m8ogn8",
  "steps": [
   {
    "argv": [
@@ -25,7 +26,7 @@
       "text": "*\n"
      },
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib/papers.bib": {
       "text": ""
@@ -51,14 +52,14 @@
      "objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [],\n  \"time\": 1793195489.08213\n }\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"c656b429eeb0506334be307ed927e99d98bf5cb6f9674c7bad9595982ad16974\",\n  \"redo\": [],\n  \"time\": 1793270789.709497\n }\n}"
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/states/000001.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793195489.080128,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/states/91ae4bff09a1779b091cd8d778617b4d2446e2e7aeeddfc6643a153f4e8e1a6b.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270789.708221,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/states/000002.json": {
-      "text": "{\n \"parent\": 1,\n \"time\": 1793195489.0820138,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/states/c656b429eeb0506334be307ed927e99d98bf5cb6f9674c7bad9595982ad16974.json": {
+      "text": "{\n \"parent\": \"91ae4bff09a1779b091cd8d778617b4d2446e2e7aeeddfc6643a153f4e8e1a6b\",\n \"time\": 1793270789.709389,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -66,7 +67,7 @@
     "del": [],
     "set": {
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"849cd9d3db0c4f6c8660e5eb09b6a4ab\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"901907a88b11404ca53ee3fe50fc0e29\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib/papers.bib": {
       "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
@@ -93,11 +94,11 @@
      "objects/ca/ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gAwFinYoivgEivQBqVGlgJKbGEbuXtGBB3vpyM/Pz0ceNRdvAiab0LVtu2tID8UlpgNNrwk7+tARpKOlk1Qnb5xm+6g+m7yYVLtXdfClBuwlQVrfaeCog7Q/dRkYIl4w3hLbLOpdhOJLgFTvBpQdUPK8KENTwC+CmEbomWWObh5Nc1yIeSZWK+J/GPnJqDaMvfGIBiumfoEg9hnkIxUHirgXMoj1pnFDp55055QuU/7xxVWtW8H1otaHJhdl9jqcg69n8/KCL0bOK4i3oCsa582qTlb9AVPIi4s="
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 3,\n  \"redo\": [],\n  \"time\": 1793195489.155463\n }\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"e551775121d236234f8f739b3c14a2ed217b532436b0a5264b1a55e201df2293\",\n  \"redo\": [],\n  \"time\": 1793270789.7753549\n }\n}"
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/states/000003.json": {
-      "text": "{\n \"parent\": 2,\n \"time\": 1793195489.1553228,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/states/e551775121d236234f8f739b3c14a2ed217b532436b0a5264b1a55e201df2293.json": {
+      "text": "{\n \"parent\": \"c656b429eeb0506334be307ed927e99d98bf5cb6f9674c7bad9595982ad16974\",\n \"time\": 1793270789.775119,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -125,7 +126,7 @@
       "text": "*\n"
      },
      "lib2/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"849cd9d3db0c4f6c8660e5eb09b6a4ab\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"901907a88b11404ca53ee3fe50fc0e29\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib2/papers.bib": {
       "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n keywords = {x},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
@@ -152,11 +153,11 @@
      "objects/a9/a91b1dadf4cfe770d06e05992ff1871eab2f4e5c903597e6558053d409d4d862": {
       "b64": "eJyF0EFuwyAQBdC9TzEHsFLjfaUsKlXtoqriExD4EjQUogG3sazcvYwjL+xNl3yGmTccNRdvAmab0Hdd1zakx+IS0zPNLwktvesI0tHSSU4nb5xme691NnkpUt1B1YdPtcFBOsjVVxo56iDXH7qMDAkvmH4T2yzpraVJsuJLgARvBpQdUPIyK0NTwA+CFE3QC2fp3tyb5riieUGrDfofJj+YasccjEc02JiGFUHsM8hHKg4UcStkEOta006nHrpzSpc5f/viatZvcIOk9U+Ti/L2Op6Dr2vz+gWfjJw3iNegK43zblQvo/4AvbWMUA=="
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 3,\n  \"redo\": [],\n  \"time\": 1793195489.155463\n },\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": 4,\n  \"redo\": [],\n  \"time\": 1793195489.230581\n }\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"e551775121d236234f8f739b3c14a2ed217b532436b0a5264b1a55e201df2293\",\n  \"redo\": [],\n  \"time\": 1793270789.7753549\n },\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": \"9e643a8f9236ddd42ab4359c26569b86abf3e4ebab8d351e4d94a0df5bf71d99\",\n  \"redo\": [],\n  \"time\": 1793270789.8402\n }\n}"
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/states/000004.json": {
-      "text": "{\n \"parent\": 3,\n \"time\": 1793195489.23047,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add y\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"a91b1dadf4cfe770d06e05992ff1871eab2f4e5c903597e6558053d409d4d862\"\n  ],\n  \"sha\": \"a91b1dadf4cfe770d06e05992ff1871eab2f4e5c903597e6558053d409d4d862\"\n },\n \"files\": {}\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/states/9e643a8f9236ddd42ab4359c26569b86abf3e4ebab8d351e4d94a0df5bf71d99.json": {
+      "text": "{\n \"parent\": \"e551775121d236234f8f739b3c14a2ed217b532436b0a5264b1a55e201df2293\",\n \"time\": 1793270789.840075,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add y\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"a91b1dadf4cfe770d06e05992ff1871eab2f4e5c903597e6558053d409d4d862\"\n  ],\n  \"sha\": \"a91b1dadf4cfe770d06e05992ff1871eab2f4e5c903597e6558053d409d4d862\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -178,7 +179,7 @@
    "kind": "papers",
    "lib": "lib2",
    "stderr": "",
-   "stdout": "> 4 papers tag doe2000 --add y (2026-10-28 13:51)\n  3 papers tag doe2000 --add x (2026-10-28 13:51)\n  2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "> 9e643a8f papers tag doe2000 --add y (2026-10-29 10:46)\n  e5517751 papers tag doe2000 --add x (2026-10-29 10:46)\n  c656b429 papers add /dev/stdin (2026-10-29 10:46)\n  91ae4bff the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -197,7 +198,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "> 3 papers tag doe2000 --add x (2026-10-28 13:51)\n  2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "> e5517751 papers tag doe2000 --add x (2026-10-29 10:46)\n  c656b429 papers add /dev/stdin (2026-10-29 10:46)\n  91ae4bff the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -226,7 +227,7 @@
       "text": "*\n"
      },
      "lib3/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"849cd9d3db0c4f6c8660e5eb09b6a4ab\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"901907a88b11404ca53ee3fe50fc0e29\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib3/papers.bib": {
       "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n keywords = {x},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
@@ -253,11 +254,11 @@
      "objects/ab/ab5eef4a3d095c2f58bc2aa5949f0d2d68d76798fb4d3830d894c86775d25794": {
       "b64": "eJyF0EFOwzAQBdB9TjEHqEqcPVIXSAgWCDUncO0v2dTY1diBhqh3x5Mqi4QFS3+PZ57noLl4EzDZhK5t211DeiguMT3S9JSwo1cdQTpaOsrp6I3TbG+1ziYvRardq/rwoTbYSwe5+kgDRx3k+k2XgSHhGeN3YpslvUpQfAmQ04sBZQeUPA/K0BTwhSBFI/RsmVs3t6Y5LGKexWol/sfId6PaGHvjEc0f5M8K2S8qYp9BPlJxoIhrIYNYPzluuOrOPaV0nvKnL65m3UrbS1o3nFyUt5fhFHzdAy87eWfkvEI8B12tnDejOhn1C/dLkUg="
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/heads.json": {
-      "text": "{\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": 4,\n  \"redo\": [],\n  \"time\": 1793195489.230581\n },\n \"$TMP/work/lib3/papers.bib\": {\n  \"state\": 5,\n  \"redo\": [],\n  \"time\": 1793195489.448792\n }\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/heads.json": {
+      "text": "{\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": \"9e643a8f9236ddd42ab4359c26569b86abf3e4ebab8d351e4d94a0df5bf71d99\",\n  \"redo\": [],\n  \"time\": 1793270789.8402\n },\n \"$TMP/work/lib3/papers.bib\": {\n  \"state\": \"7d524c1d6d6b05da75f39a7a703258da159677d0e3c86fb591145ce08ad33a77\",\n  \"redo\": [],\n  \"time\": 1793270790.0281768\n }\n}"
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/states/000005.json": {
-      "text": "{\n \"parent\": 3,\n \"time\": 1793195489.448662,\n \"kind\": \"command\",\n \"message\": \"papers tag roe2001 --add z\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ab5eef4a3d095c2f58bc2aa5949f0d2d68d76798fb4d3830d894c86775d25794\"\n  ],\n  \"sha\": \"ab5eef4a3d095c2f58bc2aa5949f0d2d68d76798fb4d3830d894c86775d25794\"\n },\n \"files\": {}\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/states/7d524c1d6d6b05da75f39a7a703258da159677d0e3c86fb591145ce08ad33a77.json": {
+      "text": "{\n \"parent\": \"e551775121d236234f8f739b3c14a2ed217b532436b0a5264b1a55e201df2293\",\n \"time\": 1793270790.027961,\n \"kind\": \"command\",\n \"message\": \"papers tag roe2001 --add z\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ab5eef4a3d095c2f58bc2aa5949f0d2d68d76798fb4d3830d894c86775d25794\"\n  ],\n  \"sha\": \"ab5eef4a3d095c2f58bc2aa5949f0d2d68d76798fb4d3830d894c86775d25794\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -279,7 +280,7 @@
    "kind": "papers",
    "lib": "lib3",
    "stderr": "",
-   "stdout": "> 5 papers tag roe2001 --add z (2026-10-28 13:51)\n  3 papers tag doe2000 --add x (2026-10-28 13:51)\n  2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "> 7d524c1d papers tag roe2001 --add z (2026-10-29 10:46)\n  e5517751 papers tag doe2000 --add x (2026-10-29 10:46)\n  c656b429 papers add /dev/stdin (2026-10-29 10:46)\n  91ae4bff the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -298,12 +299,12 @@
    "kind": "papers",
    "lib": "lib2",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to 3 papers tag doe2000 --add x (2026-10-28 13:51)\n",
+   "stdout": "undo: papers.bib restored to e5517751 papers tag doe2000 --add x (2026-10-29 10:46)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/heads.json": {
-      "text": "{\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": 3,\n  \"redo\": [\n   4\n  ],\n  \"time\": 1793195489.590772\n },\n \"$TMP/work/lib3/papers.bib\": {\n  \"state\": 5,\n  \"redo\": [],\n  \"time\": 1793195489.448792\n }\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/heads.json": {
+      "text": "{\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": \"e551775121d236234f8f739b3c14a2ed217b532436b0a5264b1a55e201df2293\",\n  \"redo\": [\n   \"9e643a8f9236ddd42ab4359c26569b86abf3e4ebab8d351e4d94a0df5bf71d99\"\n  ],\n  \"time\": 1793270790.151733\n },\n \"$TMP/work/lib3/papers.bib\": {\n  \"state\": \"7d524c1d6d6b05da75f39a7a703258da159677d0e3c86fb591145ce08ad33a77\",\n  \"redo\": [],\n  \"time\": 1793270790.0281768\n }\n}"
      }
     }
    },
@@ -326,7 +327,7 @@
    "kind": "papers",
    "lib": "lib3",
    "stderr": "",
-   "stdout": "~/Library/Application Support/papers/history: 0.0 MB\n* 849cd9d3db0c4f6c8660e5eb09b6a4ab: 5 steps, 0.0 MB of its own, last used at $TMP/work/lib2/papers.bib\n",
+   "stdout": "~/Library/Application Support/papers/history: 0.0 MB\n* 901907a88b11404ca53ee3fe50fc0e29: 5 steps, 0.0 MB of its own, last used at $TMP/work/lib2/papers.bib\n",
    "store": {
     "del": [],
     "set": {}
@@ -351,7 +352,7 @@
       "text": "*\n"
      },
      "lib4/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"849cd9d3db0c4f6c8660e5eb09b6a4ab\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"901907a88b11404ca53ee3fe50fc0e29\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib4/papers.bib": {
       "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n keywords = {x},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n keywords = {z},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
@@ -384,18 +385,18 @@
    "kind": "papers",
    "lib": "lib4",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to 5 papers tag roe2001 --add z (2026-10-28 13:51)\n",
+   "stdout": "undo: papers.bib restored to 7d524c1d papers tag roe2001 --add z (2026-10-29 10:46)\n",
    "store": {
     "del": [],
     "set": {
      "objects/35/35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07": {
       "b64": "eJx9kUFqwzAQRfc+xRwgpJb3hSwKJV2UEJ9gIn+QWkUKI7k0mNy9GjeGJJQu/+fx9RhtWIq3AdOQ0LVtu2qo+BJAzzRtLSg7oGTiOFAGU8AXwqVCPBaXRKmXhBW9ccQM7TXtvXUsg3Jn8EzptuaPNErkoNU7l1Gg5ZC8FqZdm4o9VZX1lb80zWYxlNnQ3Br2ixKJzyAfqThQxHchi1jnz/eu/9iZB7veekT7l5786pmr3iGlzykffXG17G7tXgPXEcn3Dr2i9WLJxQeFTvNpPARfry7LD+wEOc9v/QBpJYZU"
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/heads.json": {
-      "text": "{\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": 3,\n  \"redo\": [\n   4\n  ],\n  \"time\": 1793195489.590772\n },\n \"$TMP/work/lib3/papers.bib\": {\n  \"state\": 5,\n  \"redo\": [],\n  \"time\": 1793195489.448792\n },\n \"$TMP/work/lib4/papers.bib\": {\n  \"state\": 5,\n  \"redo\": [\n   6\n  ],\n  \"time\": 1793195489.7406201\n }\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/heads.json": {
+      "text": "{\n \"$TMP/work/lib2/papers.bib\": {\n  \"state\": \"e551775121d236234f8f739b3c14a2ed217b532436b0a5264b1a55e201df2293\",\n  \"redo\": [\n   \"9e643a8f9236ddd42ab4359c26569b86abf3e4ebab8d351e4d94a0df5bf71d99\"\n  ],\n  \"time\": 1793270790.151733\n },\n \"$TMP/work/lib3/papers.bib\": {\n  \"state\": \"7d524c1d6d6b05da75f39a7a703258da159677d0e3c86fb591145ce08ad33a77\",\n  \"redo\": [],\n  \"time\": 1793270790.0281768\n },\n \"$TMP/work/lib4/papers.bib\": {\n  \"state\": \"7d524c1d6d6b05da75f39a7a703258da159677d0e3c86fb591145ce08ad33a77\",\n  \"redo\": [\n   \"ca9cbe346e56ac593c59235c94fc8017b0270dee3705ba21cb89411bf8d0a0ec\"\n  ],\n  \"time\": 1793270790.2792509\n }\n}"
      },
-     "projects/849cd9d3db0c4f6c8660e5eb09b6a4ab/states/000006.json": {
-      "text": "{\n \"parent\": 5,\n \"time\": 1793195489.739289,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n  ],\n  \"sha\": \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n },\n \"files\": {}\n}"
+     "projects/901907a88b11404ca53ee3fe50fc0e29/states/ca9cbe346e56ac593c59235c94fc8017b0270dee3705ba21cb89411bf8d0a0ec.json": {
+      "text": "{\n \"parent\": \"7d524c1d6d6b05da75f39a7a703258da159677d0e3c86fb591145ce08ad33a77\",\n \"time\": 1793270790.277847,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n  ],\n  \"sha\": \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -417,7 +418,7 @@
    "kind": "papers",
    "lib": "lib4",
    "stderr": "",
-   "stdout": "  6 changed outside papers (2026-10-28 13:51)  (undone: `papers redo`)\n> 5 papers tag roe2001 --add z (2026-10-28 13:51)\n  3 papers tag doe2000 --add x (2026-10-28 13:51)\n  2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "  ca9cbe34 changed outside papers (2026-10-29 10:46)  (undone: `papers redo`)\n> 7d524c1d papers tag roe2001 --add z (2026-10-29 10:46)\n  e5517751 papers tag doe2000 --add x (2026-10-29 10:46)\n  c656b429 papers add /dev/stdin (2026-10-29 10:46)\n  91ae4bff the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}

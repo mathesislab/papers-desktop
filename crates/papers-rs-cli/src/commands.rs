@@ -428,8 +428,8 @@ pub fn spec(path: &str) -> Option<Spec> {
         "restore" | "restore-backup" => {
             config_options(&mut b);
             b.flag("restore_files", &["--restore-files"]);
-            b.pos_int("state", "N");
-            b.int("reference", &["--ref"]);
+            b.pos("state", "STEP", Nargs::Opt);
+            b.opt("reference", &["--ref"], Nargs::One);
             b.hide(&["restore_files"]);
         }
         "git" => {
@@ -440,7 +440,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.flag("all", &["--all"]);
             b.opt("remove", &["--remove"], Nargs::Opt);
             b.opt("drop_files", &["--drop-files"], Nargs::One);
-            b.int("revert", &["--revert"]);
+            b.opt("revert", &["--revert"], Nargs::One);
             b.choice("on_duplicate", &["--on-duplicate"], ON_DUPLICATE_ALL);
             b.int("n", &["-n"]);
             b.flag("yes", &["-y", "--yes"]);

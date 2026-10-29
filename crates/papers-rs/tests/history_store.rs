@@ -22,9 +22,9 @@ fn objects(store: &Store) -> Vec<String> {
     found
 }
 
-fn state(store: &Store, text: &str, parent: Option<u64>, time: f64, deleted: &[String]) -> State {
+fn state(store: &Store, text: &str, parent: Option<&str>, time: f64, deleted: &[String]) -> State {
     State::new(NewState {
-        parent,
+        parent: parent.map(str::to_string),
         time,
         kind: "command".into(),
         message: "papers x".into(),
@@ -126,17 +126,18 @@ fn places_and_their_start_states() {
     let (tmp, store) = store();
     let mut p = store.project("p").unwrap();
     let one = p.add(state(&store, "1", None, 1.0, &[])).unwrap();
-    let two = p.add(state(&store, "2", Some(one), 2.0, &[])).unwrap();
-    p.add(state(&store, "1", Some(two), 3.0, &[])).unwrap(); // the same bibtex, later
+    let two = p.add(state(&store, "2", Some(&one), 2.0, &[])).unwrap();
+    let three = p.add(state(&store, "1", Some(&two), 3.0, &[])).unwrap(); // the same bibtex, later
     let place = format!("{}/lib.bib", tmp.path().display());
     fs::write(&place, "").unwrap();
-    p.set_head(&place, two, &[3]).unwrap();
+    p.set_head(&place, &two, std::slice::from_ref(&three))
+        .unwrap();
     let head = p.head(&place).unwrap();
-    assert_eq!((head.state, head.redo), (2, vec![3]));
+    assert_eq!((head.state, head.redo), (two.clone(), vec![three.clone()]));
     // a new place starts from the latest state with its bibtex, or else the latest
-    assert_eq!(p.start_state(&sha256(b"1")), Some(3));
-    assert_eq!(p.start_state(&sha256(b"unknown")), Some(3));
-    p.set_head("/nowhere/lib.bib", one, &[]).unwrap();
+    assert_eq!(p.start_state(&sha256(b"1")), Some(three.clone()));
+    assert_eq!(p.start_state(&sha256(b"unknown")), Some(three.clone()));
+    p.set_head("/nowhere/lib.bib", &one, &[]).unwrap();
     assert_eq!(
         p.forget_missing_places().unwrap(),
         vec!["/nowhere/lib.bib".to_string()]
@@ -157,25 +158,25 @@ fn the_oldest_states_go_first_and_the_current_one_stays() {
         .add(state(&store, "@article{old,\n}\n", None, t - 100.0, &[]))
         .unwrap();
     let new = p
-        .add(state(&store, "@article{new,\n}\n", Some(old), t, &[]))
+        .add(state(&store, "@article{new,\n}\n", Some(&old), t, &[]))
         .unwrap();
-    p.set_head("/lib.bib", new, &[]).unwrap();
+    p.set_head("/lib.bib", &new, &[]).unwrap();
     let later = t + GRACE + 1.0;
     let nothing = |_: &str| {};
     assert!(store.prune_at(0, 0, false, &nothing, later).is_empty()); // no limit
     let dropped = store.prune_at(1, 0, true, &nothing, later);
     assert_eq!(
-        dropped.iter().map(|d| d.number).collect::<Vec<_>>(),
-        vec![old]
+        dropped.iter().map(|d| d.id.clone()).collect::<Vec<_>>(),
+        vec![old.clone()]
     );
-    assert!(store.project("p").unwrap().state(old).is_some()); // dry: nothing changed
+    assert!(store.project("p").unwrap().state(&old).is_some()); // dry: nothing changed
     store.prune_at(1, 0, false, &nothing, later);
-    let left: Vec<u64> = store
+    let left: Vec<String> = store
         .project("p")
         .unwrap()
         .states()
         .keys()
-        .copied()
+        .cloned()
         .collect();
     assert_eq!(left, vec![new]); // the current state is kept
     assert_eq!(objects(&store).len(), 1);
@@ -202,9 +203,9 @@ fn files_go_to_the_trash_function() {
     store.put_file(&path, &digest).unwrap();
     let old = p.add(state(&store, "", None, 1.0, &[digest])).unwrap();
     let head = p
-        .add(state(&store, "@a{b,\n}", Some(old), 2.0, &[]))
+        .add(state(&store, "@a{b,\n}", Some(&old), 2.0, &[]))
         .unwrap();
-    p.set_head("/lib.bib", head, &[]).unwrap();
+    p.set_head("/lib.bib", &head, &[]).unwrap();
     let discarded = RefCell::new(Vec::new());
     store.prune_at(
         10,
@@ -223,9 +224,9 @@ fn what_is_about_to_be_stored_counts() {
     let mut p = store.project("p").unwrap();
     let old = p.add(state(&store, "@a{a,\n}", None, 1.0, &[])).unwrap();
     let head = p
-        .add(state(&store, "@a{b,\n}", Some(old), 2.0, &[]))
+        .add(state(&store, "@a{b,\n}", Some(&old), 2.0, &[]))
         .unwrap();
-    p.set_head("/lib.bib", head, &[]).unwrap();
+    p.set_head("/lib.bib", &head, &[]).unwrap();
     let size = store.size();
     assert!(store.prune(size, 0, true, &|_| {}).is_empty());
     assert_eq!(store.prune(size, 1000, true, &|_| {}).len(), 1);

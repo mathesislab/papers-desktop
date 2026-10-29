@@ -5,11 +5,12 @@
 use std::fs;
 use std::path::Path;
 
+use papers_rs::command::revert::Revert;
 use papers_rs::command::tag::add_remove;
 use papers_rs::command::{Options, Session};
 use papers_rs::config::{Config, MachineConfig};
 use papers_rs::error::Result;
-use papers_rs::history::History;
+use papers_rs::history::{History, short};
 use papers_rs::merge::{OnDuplicate, Resolve, Resolver};
 use serde_json::{Map, json};
 
@@ -74,7 +75,7 @@ impl Sandbox {
     }
 
     /// A command that changes the library: the closure changes it, the session is saved and recorded.
-    fn run(&self, message: &str, change: impl FnOnce(&mut Session)) -> u64 {
+    fn run(&self, message: &str, change: impl FnOnce(&mut Session)) -> String {
         let mut session = self.session(message);
         change(&mut session);
         let committed = session.commit().unwrap();
@@ -82,33 +83,35 @@ impl Sandbox {
         committed.step.expect("a step")
     }
 
-    fn tag(&self, key: &str, tags: &[&str]) -> u64 {
+    fn tag(&self, key: &str, tags: &[&str]) -> String {
         let tags: Vec<String> = tags.iter().map(|t| t.to_string()).collect();
         self.run(&format!("papers tag {key} --add {}", tags.join(" ")), |s| {
             add_remove(&mut s.library, &[key.to_string()], &tags, &[]);
         })
     }
 
-    fn untag(&self, key: &str, tag: &str) -> u64 {
+    fn untag(&self, key: &str, tag: &str) -> String {
         self.run(&format!("papers tag {key} --rm {tag}"), |s| {
             add_remove(&mut s.library, &[key.to_string()], &[], &[tag.to_string()]);
         })
     }
 
-    fn set(&self, key: &str, field: &str, value: &str) -> u64 {
+    fn set(&self, key: &str, field: &str, value: &str) -> String {
         self.run(&format!("papers edit {key} --set {field}={value}"), |s| {
             s.library.get_mut(key).unwrap().set(field, value);
         })
     }
 
     /// `papers history --revert N`: the lines it prints, and the step it records (none if nothing changed).
-    fn revert(&self, n: i64, resolver: &mut dyn Resolve) -> Result<(Vec<String>, Option<u64>)> {
+    fn revert(&self, n: &str, resolver: &mut dyn Resolve) -> Result<(Vec<String>, Option<String>)> {
         let mut session = self.session(&format!("papers history --revert {n}"));
-        let result = session.revert(n, resolver, true).and_then(|lines| {
-            session.mark_reverts(&[n as u64]);
-            let committed = session.commit()?;
-            Ok((lines, committed.step))
-        });
+        let result = session
+            .revert(n, resolver, &Revert::default())
+            .and_then(|(step, lines)| {
+                session.mark_reverts(&[step]);
+                let committed = session.commit()?;
+                Ok((lines, committed.step))
+            });
         session.finish();
         result
     }
@@ -133,8 +136,16 @@ impl Sandbox {
         History::open(&mut config, false, false).unwrap().unwrap()
     }
 
-    fn head(&self) -> u64 {
+    fn head(&self) -> String {
         self.history().head().unwrap().state
+    }
+
+    /// The identifier of the n-th state (from 1) by time: what papers 3.0.0b5 numbered n.
+    fn nth(&self, n: usize) -> String {
+        let history = self.history();
+        let mut states: Vec<_> = history.project.states().iter().collect();
+        states.sort_by(|a, b| a.1.time().total_cmp(&b.1.time()));
+        states[n - 1].0.clone()
     }
 
     fn states(&self) -> usize {
@@ -166,14 +177,14 @@ fn tags_one_by_one() {
     let n = s.tag("one2000", &["climate"]);
     s.tag("one2000", &["later"]);
     s.tag("two2001", &["ice"]);
-    let (lines, step) = s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    let (lines, step) = s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert!(lines.is_empty());
     assert_eq!(s.field("one2000", "keywords").as_deref(), Some("later"));
     assert_eq!(s.field("two2001", "keywords").as_deref(), Some("ice"));
     // a new step, which says what it reverts; undo takes it back
     let step = step.expect("a step");
     let history = s.history();
-    assert_eq!(history.project.state(step).unwrap().reverts(), [n]);
+    assert_eq!(history.project.state(&step).unwrap().reverts(), [n]);
     s.undo();
     assert_eq!(
         s.field("one2000", "keywords").as_deref(),
@@ -187,7 +198,7 @@ fn a_tag_that_was_removed_comes_back() {
     s.tag("one2000", &["a", "b"]);
     let n = s.untag("one2000", "a");
     s.tag("one2000", &["c"]);
-    s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert_eq!(s.field("one2000", "keywords").as_deref(), Some("b, c, a"));
 }
 
@@ -196,7 +207,7 @@ fn a_field_goes_back() {
     let s = Sandbox::new(&["one2000", "two2001"]);
     let n = s.set("one2000", "journal", "Nature");
     s.set("two2001", "journal", "Science");
-    s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert_eq!(s.field("one2000", "journal"), None);
     assert_eq!(s.field("two2001", "journal").as_deref(), Some("Science"));
 }
@@ -208,16 +219,14 @@ fn a_conflict_is_decided_as_in_pull() {
     s.set("one2000", "journal", "Science");
     let states = s.states();
     // an error without a terminal, and nothing is saved
-    let error = s
-        .revert(n as i64, &mut mode(OnDuplicate::Error))
-        .unwrap_err();
-    assert!(error.message().starts_with("one2000: changed since step 2 too (1 conflict)\nPass --on-duplicate with one of: ask, keep, update, skip"));
+    let error = s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap_err();
+    assert!(error.message().starts_with(&format!("one2000: changed since step {} too (1 conflict)\nPass --on-duplicate with one of: ask, keep, update, skip", short(&n))));
     assert!(error.message().ends_with("see `papers history --help`."));
     assert_eq!(s.states(), states);
     // keep: the values now; update: the values before the step
-    s.revert(n as i64, &mut mode(OnDuplicate::Keep)).unwrap();
+    s.revert(&n, &mut mode(OnDuplicate::Keep)).unwrap();
     assert_eq!(s.field("one2000", "journal").as_deref(), Some("Science"));
-    s.revert(n as i64, &mut mode(OnDuplicate::Update)).unwrap();
+    s.revert(&n, &mut mode(OnDuplicate::Update)).unwrap();
     assert_eq!(s.field("one2000", "journal"), None);
 }
 
@@ -227,11 +236,12 @@ fn skip_leaves_the_entry_as_it_is() {
     let n = s.set("one2000", "journal", "Nature");
     s.set("one2000", "journal", "Science");
     let states = s.states();
-    let (lines, step) = s.revert(n as i64, &mut mode(OnDuplicate::Skip)).unwrap();
+    let (lines, step) = s.revert(&n, &mut mode(OnDuplicate::Skip)).unwrap();
     assert_eq!(
         lines,
         [format!(
-            "one2000: changed since step {n} too: left as it is"
+            "one2000: changed since step {} too: left as it is",
+            short(&n)
         )]
     );
     assert_eq!(step, None);
@@ -253,7 +263,7 @@ fn an_added_entry_is_removed_unless_it_changed_since() {
             .set("title", "Three");
     });
     s.tag("one2000", &["later"]);
-    let (lines, _) = s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    let (lines, _) = s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert!(lines.is_empty());
     assert_eq!(s.keys(), ["one2000"]);
     assert_eq!(s.field("one2000", "keywords").as_deref(), Some("later"));
@@ -264,13 +274,13 @@ fn an_added_entry_is_removed_unless_it_changed_since() {
             .add_unchecked(papers_rs::bib::Entry::new("article", "three2002"));
     });
     s.tag("three2002", &["later"]);
-    let (lines, _) = s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    let (lines, _) = s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert_eq!(
         lines,
-        [
-            "three2002: added by step 6 and changed since: kept (`papers rm three2002` removes it)"
-                .replace('6', &n.to_string())
-        ]
+        [format!(
+            "three2002: added by step {} and changed since: kept (`papers rm three2002` removes it)",
+            short(&n)
+        )]
     );
     assert!(s.keys().contains(&"three2002".to_string()));
 }
@@ -282,7 +292,7 @@ fn a_removed_entry_comes_back() {
         session.library.remove("two2001");
     });
     s.tag("one2000", &["later"]);
-    s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert!(s.keys().contains(&"two2001".to_string()));
     assert_eq!(s.field("one2000", "keywords").as_deref(), Some("later"));
 }
@@ -300,7 +310,7 @@ fn the_key_goes_back_and_the_former_key_leaves_ids() {
         },
     );
     s.tag("first2000", &["later"]);
-    s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert!(
         s.keys().contains(&"one2000".to_string()) && !s.keys().contains(&"first2000".to_string())
     );
@@ -319,7 +329,7 @@ fn the_pairs_of_distinct_json() {
     );
     let n = s.tag("one2000", &["a"]); // the step has the pair
     s.tag("two2001", &["b"]);
-    s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     let text = fs::read_to_string(&distinct).unwrap();
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&text).unwrap()["distinct"],
@@ -331,32 +341,47 @@ fn the_pairs_of_distinct_json() {
 fn the_errors() {
     let s = Sandbox::new(&["one2000"]);
     let first = s.tag("one2000", &["a"]);
-    let message = |n: i64| {
+    let message = |n: &str| {
         s.revert(n, &mut mode(OnDuplicate::Error))
             .unwrap_err()
             .message()
             .to_string()
     };
     // the first step has nothing before it
+    let start = s.nth(1);
     assert_eq!(
-        message(1),
-        "step 1 is the first step of the history: nothing before it to go back to"
+        message(&start),
+        format!(
+            "step {} is the first step of the history: nothing before it to go back to",
+            short(&start)
+        )
+    );
+    // a start of the identifier of 4 characters is enough, 3 are not
+    assert_eq!(message(&start[..4].to_uppercase()), message(&start));
+    assert_eq!(
+        message(&start[..3]),
+        format!(
+            "no step {} in the history of the library (see `papers history`)",
+            &start[..3]
+        )
     );
     assert_eq!(
-        message(99),
+        message("99"),
         "no step 99 in the history of the library (see `papers history`)"
     );
     assert_eq!(
-        message(-1),
+        message("-1"),
         "no step -1 in the history of the library (see `papers history`)"
     );
     // a step that is no longer in the current history (after an undo and another change)
     s.undo();
     s.tag("one2000", &["b"]);
     assert_eq!(
-        message(first as i64),
+        message(&first),
         format!(
-            "step {first} is not in the current history of the library: `papers restore {first}` goes there"
+            "step {} is not in the current history of the library: `papers restore {}` goes there",
+            short(&first),
+            short(&first)
         )
     );
 }
@@ -375,7 +400,7 @@ fn a_dry_run_changes_nothing() {
     )
     .unwrap();
     session
-        .revert(n as i64, &mut mode(OnDuplicate::Error), true)
+        .revert(&n, &mut mode(OnDuplicate::Error), &Revert::default())
         .unwrap();
     session.commit().unwrap();
     session.finish();
@@ -405,7 +430,7 @@ fn the_files_go_back_as_undo_moves_them() {
         );
     });
     s.tag("one2000", &["later"]);
-    let (lines, _) = s.revert(n as i64, &mut mode(OnDuplicate::Error)).unwrap();
+    let (lines, _) = s.revert(&n, &mut mode(OnDuplicate::Error)).unwrap();
     assert!(
         lines.iter().any(|l| l.contains("moved back to")),
         "{lines:?}"
@@ -432,7 +457,7 @@ fn nothing_to_take_back_records_no_step() {
     let head = s.head();
     let mut session = s.session("papers history --revert 2");
     session
-        .revert(n as i64, &mut mode(OnDuplicate::Error), true)
+        .revert(&n, &mut mode(OnDuplicate::Error), &Revert::default())
         .unwrap();
     let committed = session.commit().unwrap();
     session.finish();

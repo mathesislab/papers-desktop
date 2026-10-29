@@ -2,6 +2,7 @@
  "machine": {},
  "name": "outside",
  "place_ids": {},
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-1h1s868f",
  "steps": [
   {
    "argv": [
@@ -25,7 +26,7 @@
       "text": "*\n"
      },
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib/papers.bib": {
       "text": ""
@@ -51,14 +52,14 @@
      "objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [],\n  \"time\": 1793195487.814521\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"1e9fa2c3893d64f3e590e21d116afe98a192710dcdc62dc480bfb7a0ae15c34d\",\n  \"redo\": [],\n  \"time\": 1793270788.589611\n }\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000001.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793195487.812664,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/1e9fa2c3893d64f3e590e21d116afe98a192710dcdc62dc480bfb7a0ae15c34d.json": {
+      "text": "{\n \"parent\": \"4a5f49357cd297a9db1fdc936a9767f252d7e818e4b3de4d76cfc118dc287401\",\n \"time\": 1793270788.589504,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000002.json": {
-      "text": "{\n \"parent\": 1,\n \"time\": 1793195487.814358,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/4a5f49357cd297a9db1fdc936a9767f252d7e818e4b3de4d76cfc118dc287401.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270788.5883882,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -66,7 +67,7 @@
     "del": [],
     "set": {
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"c1deef86a1c546628f4f53e7d8afee6c\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"f44714bc1e8f4e89947c37b0df71148b\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib/papers.bib": {
       "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
@@ -112,14 +113,14 @@
      "objects/81/81d860d354bcfbd14aa0aad2122a44ff10126ec8d2490745980f48cdfb7cd76a": {
       "b64": "eJyF0EFqwzAQBdC9TzEHCKnlfSCLQmkXpcQnUKQPUqNKZSS3MSZ3j8bGUGfTpb5GM09z1Fy8CZhsQte27a4hPRSXmA40PSfs6E1HkI6WTnI6eeM021uts8lLkWr3qj58qg320kGuPtPAUQe5ftdlYEh4wfib2GZJrxIUXwLk9GpA2QElz4MyNAX8IEjRCD1b5tbNrWmOq5hnsdqI/zHyYlQPxt54RIONqV8RxD6DfKTiQBHXQgax/ml80KlFd07pMuUvX1zNug2ul7QuNLkob7+Hc/D127yu4IOR8wbxEnSl8bIWvwj/jOxk5B3F0Y4v"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 4,\n  \"redo\": [],\n  \"time\": 1793195487.8874292\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"28fb6bad01398d4b905d8b1716f2c21b0679f8b9e6983535751360032144e25c\",\n  \"redo\": [],\n  \"time\": 1793270788.655848\n }\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000003.json": {
-      "text": "{\n \"parent\": 2,\n \"time\": 1793195487.885942,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"60f3127c9442f36cef3fcf65b581fba9325fe37902565c453b82a3581bf78980\"\n  ],\n  \"sha\": \"60f3127c9442f36cef3fcf65b581fba9325fe37902565c453b82a3581bf78980\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/28fb6bad01398d4b905d8b1716f2c21b0679f8b9e6983535751360032144e25c.json": {
+      "text": "{\n \"parent\": \"cc35f1703e6eb8715f9117accf8c8ad13d653835c6f44581c652c73fe08dc763\",\n \"time\": 1793270788.6557262,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"81d860d354bcfbd14aa0aad2122a44ff10126ec8d2490745980f48cdfb7cd76a\"\n  ],\n  \"sha\": \"81d860d354bcfbd14aa0aad2122a44ff10126ec8d2490745980f48cdfb7cd76a\"\n },\n \"files\": {}\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000004.json": {
-      "text": "{\n \"parent\": 3,\n \"time\": 1793195487.887316,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"81d860d354bcfbd14aa0aad2122a44ff10126ec8d2490745980f48cdfb7cd76a\"\n  ],\n  \"sha\": \"81d860d354bcfbd14aa0aad2122a44ff10126ec8d2490745980f48cdfb7cd76a\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/cc35f1703e6eb8715f9117accf8c8ad13d653835c6f44581c652c73fe08dc763.json": {
+      "text": "{\n \"parent\": \"1e9fa2c3893d64f3e590e21d116afe98a192710dcdc62dc480bfb7a0ae15c34d\",\n \"time\": 1793270788.65436,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"60f3127c9442f36cef3fcf65b581fba9325fe37902565c453b82a3581bf78980\"\n  ],\n  \"sha\": \"60f3127c9442f36cef3fcf65b581fba9325fe37902565c453b82a3581bf78980\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -141,7 +142,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "> 4 papers tag doe2000 --add x (2026-10-28 13:51)\n  3 changed outside papers (2026-10-28 13:51)\n  2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "> 28fb6bad papers tag doe2000 --add x (2026-10-29 10:46)\n  cc35f170 changed outside papers (2026-10-29 10:46)\n  1e9fa2c3 papers add /dev/stdin (2026-10-29 10:46)\n  4a5f4935 the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -176,18 +177,18 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to 4 papers tag doe2000 --add x (2026-10-28 13:51)\n",
+   "stdout": "undo: papers.bib restored to 28fb6bad papers tag doe2000 --add x (2026-10-29 10:46)\n",
    "store": {
     "del": [],
     "set": {
      "objects/85/85074cf6e6d2d29341eb55190ca5f133d2d869c3e7e448d775713ed085f2f066": {
       "b64": "eJx90cFqwzAMBuB7nkIPULo490Fhg7GdSvMErvODvXl2kZyxEPrus7IG2jJ2lPxb/pB3lktwEfOQ0bVtu2mohBJBjzS/OpB4oAjZNJDAUsQX4rmG7Fh8Zk09Z2zozSYsoYNWh+C85UFzE+yS0tlav+eRk43aeuIpy8mDoQdDDto07dbU6EPlbC93zk2zW5W8KM21sl9ZxEFAIVHxoITvQg6pjDzdev8Rmjth7wKS+4vHvzxz4R1z/pjlMxRfm9217iXaOoTl1tBrtG4t+3RH6LQ+jccY6uZ5/YU9Q2R56wcUN4gJ"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 4,\n  \"redo\": [\n   5\n  ],\n  \"time\": 1793195488.0335412\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"28fb6bad01398d4b905d8b1716f2c21b0679f8b9e6983535751360032144e25c\",\n  \"redo\": [\n   \"b142cf31ab9bfac586def9ef8c1de856643c6d767fab8cf98516217c10406ad3\"\n  ],\n  \"time\": 1793270788.7844899\n }\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000005.json": {
-      "text": "{\n \"parent\": 4,\n \"time\": 1793195488.032344,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"85074cf6e6d2d29341eb55190ca5f133d2d869c3e7e448d775713ed085f2f066\"\n  ],\n  \"sha\": \"85074cf6e6d2d29341eb55190ca5f133d2d869c3e7e448d775713ed085f2f066\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/b142cf31ab9bfac586def9ef8c1de856643c6d767fab8cf98516217c10406ad3.json": {
+      "text": "{\n \"parent\": \"28fb6bad01398d4b905d8b1716f2c21b0679f8b9e6983535751360032144e25c\",\n \"time\": 1793270788.783215,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"85074cf6e6d2d29341eb55190ca5f133d2d869c3e7e448d775713ed085f2f066\"\n  ],\n  \"sha\": \"85074cf6e6d2d29341eb55190ca5f133d2d869c3e7e448d775713ed085f2f066\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -209,7 +210,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "  5 changed outside papers (2026-10-28 13:51)  (undone: `papers redo`)\n> 4 papers tag doe2000 --add x (2026-10-28 13:51)\n  3 changed outside papers (2026-10-28 13:51)\n  2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "  b142cf31 changed outside papers (2026-10-29 10:46)  (undone: `papers redo`)\n> 28fb6bad papers tag doe2000 --add x (2026-10-29 10:46)\n  cc35f170 changed outside papers (2026-10-29 10:46)\n  1e9fa2c3 papers add /dev/stdin (2026-10-29 10:46)\n  4a5f4935 the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -228,12 +229,12 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "redo: papers.bib restored to 5 changed outside papers (2026-10-28 13:51)\n",
+   "stdout": "redo: papers.bib restored to b142cf31 changed outside papers (2026-10-29 10:46)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 5,\n  \"redo\": [],\n  \"time\": 1793195488.1797812\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"b142cf31ab9bfac586def9ef8c1de856643c6d767fab8cf98516217c10406ad3\",\n  \"redo\": [],\n  \"time\": 1793270788.920141\n }\n}"
      }
     }
    },
@@ -255,12 +256,12 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to 4 papers tag doe2000 --add x (2026-10-28 13:51)\n",
+   "stdout": "undo: papers.bib restored to 28fb6bad papers tag doe2000 --add x (2026-10-29 10:46)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 4,\n  \"redo\": [\n   5\n  ],\n  \"time\": 1793195488.258089\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"28fb6bad01398d4b905d8b1716f2c21b0679f8b9e6983535751360032144e25c\",\n  \"redo\": [\n   \"b142cf31ab9bfac586def9ef8c1de856643c6d767fab8cf98516217c10406ad3\"\n  ],\n  \"time\": 1793270788.9928231\n }\n}"
      }
     }
    },
@@ -305,11 +306,11 @@
      "objects/d8/d81b8ed07cabd902bbf63d84ee064008152cba9582f64c6edf01c0d386e3935c": {
       "b64": "eJx9kUFqwzAQRfc+xRwgJFazLmQRKOmilPgEE/mD1KhSGMmlweTu1bgxJKF0+T+Pr8dow1K8DRj7hKe2bRcNFV8C6JnGnQVlB5RMHHvKYAr4QrhUiIfikii1TVjQK0dM0F7T3lvH0it3Bk+Ubmv+SINEDlq9cRkEWvbJa2HapanYqqosr/ylaTazoUyG5tawm5VIfAb5SMWBIr4LWcQ6f753/cfOPNh11iPav/TkV89c9Q4pHcf86Yur5frW7iVwHZF879ApWi+WXHxQWGs+DYfg69Vl/oF3Qc7TWz9pooZW"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 6,\n  \"redo\": [],\n  \"time\": 1793195488.332792\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"d62c5399a5528d93696c7639521f7e0f4ee7e0dc0f6a43721a8461a669402e53\",\n  \"redo\": [],\n  \"time\": 1793270789.059873\n }\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000006.json": {
-      "text": "{\n \"parent\": 4,\n \"time\": 1793195488.332392,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d81b8ed07cabd902bbf63d84ee064008152cba9582f64c6edf01c0d386e3935c\"\n  ],\n  \"sha\": \"d81b8ed07cabd902bbf63d84ee064008152cba9582f64c6edf01c0d386e3935c\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/d62c5399a5528d93696c7639521f7e0f4ee7e0dc0f6a43721a8461a669402e53.json": {
+      "text": "{\n \"parent\": \"28fb6bad01398d4b905d8b1716f2c21b0679f8b9e6983535751360032144e25c\",\n \"time\": 1793270789.0595279,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d81b8ed07cabd902bbf63d84ee064008152cba9582f64c6edf01c0d386e3935c\"\n  ],\n  \"sha\": \"d81b8ed07cabd902bbf63d84ee064008152cba9582f64c6edf01c0d386e3935c\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -327,7 +328,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "> 6 changed outside papers (2026-10-28 13:51)\n  4 papers tag doe2000 --add x (2026-10-28 13:51)\n  3 changed outside papers (2026-10-28 13:51)\n  2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "> d62c5399 changed outside papers (2026-10-29 10:46)\n  28fb6bad papers tag doe2000 --add x (2026-10-29 10:46)\n  cc35f170 changed outside papers (2026-10-29 10:46)\n  1e9fa2c3 papers add /dev/stdin (2026-10-29 10:46)\n  4a5f4935 the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -345,7 +346,7 @@
    "exit": 1,
    "kind": "papers",
    "lib": "lib",
-   "stderr": "papers: error: nothing to restore: papers.bib is step 6\n",
+   "stderr": "papers: error: nothing to restore: papers.bib is step d62c5399\n",
    "stdout": "",
    "store": {
     "del": [],
@@ -364,7 +365,7 @@
    "exit": 1,
    "kind": "papers",
    "lib": "lib",
-   "stderr": "papers: error: nothing to restore: papers.bib is step 6\n",
+   "stderr": "papers: error: nothing to restore: papers.bib is step d62c5399\n",
    "stdout": "",
    "store": {
     "del": [],
@@ -394,22 +395,22 @@
   {
    "argv": [
     "restore",
-    "2"
+    "$STEP:2"
    ],
    "cwd": "lib",
    "exit": 0,
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "restore: papers.bib restored to 2 papers add /dev/stdin (2026-10-28 13:51)\n",
+   "stdout": "restore: papers.bib restored to 1e9fa2c3 papers add /dev/stdin (2026-10-29 10:46)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [\n   3,\n   4,\n   6,\n   7\n  ],\n  \"time\": 1793195488.632857\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"1e9fa2c3893d64f3e590e21d116afe98a192710dcdc62dc480bfb7a0ae15c34d\",\n  \"redo\": [\n   \"cc35f1703e6eb8715f9117accf8c8ad13d653835c6f44581c652c73fe08dc763\",\n   \"28fb6bad01398d4b905d8b1716f2c21b0679f8b9e6983535751360032144e25c\",\n   \"d62c5399a5528d93696c7639521f7e0f4ee7e0dc0f6a43721a8461a669402e53\",\n   \"f8c52e369bf8d0be57ea2b329f96176aeee6a16ed1c612c128906d97a25839b2\"\n  ],\n  \"time\": 1793270789.315153\n }\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000007.json": {
-      "text": "{\n \"parent\": 6,\n \"time\": 1793195488.6319418,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/f8c52e369bf8d0be57ea2b329f96176aeee6a16ed1c612c128906d97a25839b2.json": {
+      "text": "{\n \"parent\": \"d62c5399a5528d93696c7639521f7e0f4ee7e0dc0f6a43721a8461a669402e53\",\n \"time\": 1793270789.314235,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -447,7 +448,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "  7 changed outside papers (2026-10-28 13:51)  (undone: `papers redo`)\n  6 changed outside papers (2026-10-28 13:51)  (undone: `papers redo`)\n  4 papers tag doe2000 --add x (2026-10-28 13:51)  (undone: `papers redo`)\n  3 changed outside papers (2026-10-28 13:51)  (undone: `papers redo`)\n> 2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "  f8c52e36 changed outside papers (2026-10-29 10:46)  (undone: `papers redo`)\n  d62c5399 changed outside papers (2026-10-29 10:46)  (undone: `papers redo`)\n  28fb6bad papers tag doe2000 --add x (2026-10-29 10:46)  (undone: `papers redo`)\n  cc35f170 changed outside papers (2026-10-29 10:46)  (undone: `papers redo`)\n> 1e9fa2c3 papers add /dev/stdin (2026-10-29 10:46)\n  4a5f4935 the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -479,14 +480,14 @@
      "objects/a9/a97e0b7077281b92a40e0f6bf7209cd1ec9070e384962c48e595d24c612fe339": {
       "b64": "eJyFkLFuwzAMRHd9BZduQWp5L5ChQNEORRF/ASMRkBpZKii5rWHk3ysq8GAvHXVH3j3xhFy8CbTYRH3XdQcFOBWXGJ5geU50gDeMBBgtnOV19sYh21uds8nLkO6Oui4+1oCjJIj1mSaOGMR+xzIxiVh8CSTSqyHIjqjklpsJIdA3BRmaCVt1S1I3pU4rIDdAvQH8B4nvSHqHNBhP0WyZhhUC2GcCH6E4gki/BQzF+oV5R6fvdJeUrksefXFV6zdwg6j1fslF2b3S/JPYZrFa2Nd0Cb7egdebfDDlvKF6CVhZOe+6+9b9AAgmjWPFU38oRo9Z"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 9,\n  \"redo\": [],\n  \"time\": 1793195488.7817512\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"8e1f3343d65c9a1f9af416587bd4fb665654c0ae8abcb252c794693779fa55f2\",\n  \"redo\": [],\n  \"time\": 1793270789.4459798\n }\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000008.json": {
-      "text": "{\n \"parent\": 2,\n \"time\": 1793195488.77959,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"19b0151a13c41cee158ec66b53fd2b4ae24a03bc533ee532c3e1ff5d5faa1700\"\n  ],\n  \"sha\": \"19b0151a13c41cee158ec66b53fd2b4ae24a03bc533ee532c3e1ff5d5faa1700\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/8e1f3343d65c9a1f9af416587bd4fb665654c0ae8abcb252c794693779fa55f2.json": {
+      "text": "{\n \"parent\": \"f891dc0ae9c5982fa6b7a17ccd3c1e4db7f0b955b2a7ab47d4ac2a7010aebbe9\",\n \"time\": 1793270789.445853,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add y\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"a97e0b7077281b92a40e0f6bf7209cd1ec9070e384962c48e595d24c612fe339\"\n  ],\n  \"sha\": \"a97e0b7077281b92a40e0f6bf7209cd1ec9070e384962c48e595d24c612fe339\"\n },\n \"files\": {}\n}"
      },
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/states/000009.json": {
-      "text": "{\n \"parent\": 8,\n \"time\": 1793195488.7816162,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add y\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"a97e0b7077281b92a40e0f6bf7209cd1ec9070e384962c48e595d24c612fe339\"\n  ],\n  \"sha\": \"a97e0b7077281b92a40e0f6bf7209cd1ec9070e384962c48e595d24c612fe339\"\n },\n \"files\": {}\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/states/f891dc0ae9c5982fa6b7a17ccd3c1e4db7f0b955b2a7ab47d4ac2a7010aebbe9.json": {
+      "text": "{\n \"parent\": \"1e9fa2c3893d64f3e590e21d116afe98a192710dcdc62dc480bfb7a0ae15c34d\",\n \"time\": 1793270789.444373,\n \"kind\": \"outside\",\n \"message\": \"changed outside papers\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"19b0151a13c41cee158ec66b53fd2b4ae24a03bc533ee532c3e1ff5d5faa1700\"\n  ],\n  \"sha\": \"19b0151a13c41cee158ec66b53fd2b4ae24a03bc533ee532c3e1ff5d5faa1700\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -526,12 +527,12 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to 2 papers add /dev/stdin (2026-10-28 13:51)\n",
+   "stdout": "undo: papers.bib restored to 1e9fa2c3 papers add /dev/stdin (2026-10-29 10:46)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/c1deef86a1c546628f4f53e7d8afee6c/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [\n   8,\n   9\n  ],\n  \"time\": 1793195488.8548212\n }\n}"
+     "projects/f44714bc1e8f4e89947c37b0df71148b/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"1e9fa2c3893d64f3e590e21d116afe98a192710dcdc62dc480bfb7a0ae15c34d\",\n  \"redo\": [\n   \"f891dc0ae9c5982fa6b7a17ccd3c1e4db7f0b955b2a7ab47d4ac2a7010aebbe9\",\n   \"8e1f3343d65c9a1f9af416587bd4fb665654c0ae8abcb252c794693779fa55f2\"\n  ],\n  \"time\": 1793270789.512755\n }\n}"
      }
     }
    },
@@ -553,7 +554,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "  9 papers tag smith2002 --add y (2026-10-28 13:51)  (undone: `papers redo`)\n  8 changed outside papers (2026-10-28 13:51)  (undone: `papers redo`)\n> 2 papers add /dev/stdin (2026-10-28 13:51)\n  1 the library before its first recorded command (2026-10-28 13:51)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "  8e1f3343 papers tag smith2002 --add y (2026-10-29 10:46)  (undone: `papers redo`)\n  f891dc0a changed outside papers (2026-10-29 10:46)  (undone: `papers redo`)\n> 1e9fa2c3 papers add /dev/stdin (2026-10-29 10:46)\n  4a5f4935 the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}

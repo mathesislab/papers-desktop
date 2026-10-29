@@ -23,7 +23,7 @@ use crate::entry::{self, val};
 use crate::error::{Error, Result};
 use crate::extract::{doi::isvaliddoi, extract_pdf_doi};
 use crate::fetch::download::{download_url, is_download};
-use crate::history::{FilesJson, OpKind};
+use crate::history::{FilesJson, History, OpKind, short};
 use crate::library::{Library, Policy};
 use crate::log;
 use crate::names::{Format, fit_name};
@@ -1526,7 +1526,63 @@ pub fn check_entries_files(
         ));
     }
 
-    let relinked: usize = loaded.iter().chain(&plans).map(|p| p.found.len()).sum();
+    // last, the history: a file that a command deleted from the place of the link comes back there
+    // (a copy: the history keeps the file, and the step of the fix keeps it too, see `deleted`)
+    let mut found_links: HashSet<String> = unclear.iter().map(|(_, link, _)| link.clone()).collect();
+    found_links.extend(
+        loaded
+            .iter()
+            .chain(&plans)
+            .flat_map(|p| p.found.iter().map(|(l, _)| l.clone())),
+    );
+    let (mut restored, mut restorable): (usize, HashSet<String>) = (0, HashSet::new());
+    let history = History::open(&mut session.config.clone(), false, true)?;
+    if let Some(history) = history {
+        for key in keys {
+            let Some(e) = session.library.get(key) else {
+                continue;
+            };
+            for link in broken_links(&session.library, e) {
+                let Some((stored, step)) = (!found_links.contains(&link))
+                    .then(|| history.deleted_file(&link))
+                    .flatten()
+                else {
+                    continue;
+                };
+                let when = match &step {
+                    Some(step) => format!("deleted by step {}", short(step)),
+                    None => "deleted, its checksum known".to_string(),
+                };
+                if place {
+                    if let Some(parent) = std::path::Path::new(&link).parent() {
+                        let _ = std::fs::create_dir_all(parent);
+                    }
+                    crate::history::restore::copy_file(&stored, &link)
+                        .map_err(|e| Error::other(format!("{link}: {e}")))?;
+                    session.record_operation(OpKind::Copied, &stored, &link); // undo removes it again
+                    lines.push(format!(
+                        "{key}: {}: restored from the history ({when})",
+                        short_home(&link)
+                    ));
+                } else if fix {
+                    lines.push(format!(
+                        "DRYRUN: {key}: restore {} from the history ({when})",
+                        short_home(&link)
+                    ));
+                } else {
+                    lines.push(format!(
+                        "{key}: broken link: {} -> in the history ({when})",
+                        short_home(&link)
+                    ));
+                }
+                restored += 1;
+                restorable.insert(link);
+            }
+        }
+    }
+
+    let relinked: usize =
+        loaded.iter().chain(&plans).map(|p| p.found.len()).sum::<usize>() + restored;
     let mut issues: Vec<String> = lines.clone();
     let mut repairs: Vec<String> = Vec::new();
     let mut skip: HashSet<String> = unclear.iter().map(|(_, link, _)| link.clone()).collect();
@@ -1536,6 +1592,7 @@ pub fn check_entries_files(
                 .iter()
                 .flat_map(|p| p.found.iter().map(|(l, _)| l.clone())),
         );
+        skip.extend(restorable);
     }
     for key in keys {
         issues.extend(check_entry_files(

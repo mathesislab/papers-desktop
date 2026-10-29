@@ -208,17 +208,6 @@ impl Builder {
         self
     }
 
-    /// A positional argument that is an integer, optional.
-    pub fn pos_int(&mut self, id: &str, metavar: &str) -> &mut Builder {
-        let arg = Arg::new(id.to_string())
-            .action(ArgAction::Set)
-            .num_args(0..=1)
-            .value_parser(int_parser())
-            .value_name(metavar.to_string());
-        self.add(id, arg, &[], Nargs::Opt, true, Some(metavar.to_string()));
-        self
-    }
-
     /// A positional argument that takes the rest of the command line
     /// (argparse's `REMAINDER`).
     pub fn remainder(&mut self, id: &str, metavar: &str) -> &mut Builder {

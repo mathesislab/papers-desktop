@@ -81,10 +81,13 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   records (the text before and after, the file operations, the renamed keys); the
   history itself is not in this module.
 - `history`: the history store that papers, papers-rs and the app share (objects,
-  states, heads, retention), recording a step, undo, redo, restore, the file
+  states named by a hash of the state, heads, retention; the numbered states of papers 3.0.0b5 are
+  upgraded when a project is opened), recording a step, undo, redo, restore, the file
   operations, `.papers/files.json`, the lines of `papers history`. A pool that moved on since the
-  step that undo or redo takes back is *reverted* there (a new step of the pool, `reverts`), by the
-  revert below; `Moved::links` holds the new pool steps, for the auto-push that follows. `history::Step`
+  step that undo or redo takes back is *reverted* there (a new step of the pool, `reverts`; for a
+  redo, a step the undo took back is done again), by the revert below; `Moved::links` holds the new
+  pool steps, for the auto-push that follows (a push after an undo is a new step: nothing is left to
+  redo). `history::Step`
   is what the library model hands over after a save.
 - `command`: the commands that write a library, and the write path they share
   (`command::session`: the lock, the history before the command and the head sync,
@@ -114,7 +117,7 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   `push_after_travel` for undo and redo; the conversions of `papers config pool` (`plan_own_files`,
   `plan_relink`, `relink`). `command::exchange`: `pull`, `push` and `sync`, operations on a `Session` that
   say what they did to its `Say` and take the questions of a conflict from a `Resolve`.
-- `command::revert`: `papers history --revert N` (`Session::revert`): the changes of step N taken back
+- `command::revert`: `papers history --revert STEP` (`Session::revert`): the changes of step STEP taken back
   per entry by a three-way merge (base: the entry at N; incoming: the entry before N; target: the entry
   now), the file links and the tags one by one, the key, `distinct.json`, and the files as undo moves
   them, saved as a step with `reverts`. The same revert takes back a pool step in `undo` and `redo`.
@@ -144,7 +147,11 @@ Tests: `cargo test -p papers-rs -p papers-rs-cli`. The history is checked agains
 recordings of papers (`crates/papers-rs/tests/history/*.json`, made by
 `tests/gen_history.py` with the reference python), and, with
 `PAPERS_REFERENCE=papers cargo test -p papers-rs --test history -- --ignored`, by
-running papers on the store that papers-rs wrote. The cases in
+running papers on the store that papers-rs wrote. A step is named by the hash of its state (it
+depends on the time), so the tests compare stores and outputs with the states as `S1`, `S2`, ... in
+the order of their times, and the recorded arguments name a step by its place (`$STEP:3`). The
+numbered stores of papers 3.0.0b5 are recorded too (`numbered*`), and `tests/history_spec.rs` has the
+rules of the specification on the API. The cases in
 `crates/papers-rs-cli/tests/fixtures/cases` were recorded by running papers-cli
 (`tests/record/record_cases.py`), and the help of the commands by
 `tests/record/record_help.py` (both run with a `papers` executable; they use

@@ -46,7 +46,8 @@ impl FilesJson {
             .ok()
             .and_then(|b| String::from_utf8(b).ok())
         {
-            Some(text) => parse(&text, &self.libdir),
+            // `utf-8-sig`: a byte order mark is dropped
+            Some(text) => parse(text.strip_prefix('\u{feff}').unwrap_or(&text), &self.libdir),
             None => BTreeMap::new(),
         }
     }
@@ -113,9 +114,9 @@ impl FilesJson {
     }
 }
 
-/// `{absolute path: sha256}` of the text of a checksums file: each key
-/// resolved against the directory of the bibtex and normalized; an
-/// unreadable text means no checksums.
+/// `{absolute path: sha256}` of the text of a checksums file: each key, with any `\` read as `/`,
+/// resolved against the directory of the bibtex and normalized (so two spellings of one file are
+/// one link); an unreadable text means no checksums.
 pub fn parse(text: &str, libdir: &str) -> BTreeMap<String, String> {
     let Some(J::Obj(top)) = J::parse(text) else {
         return BTreeMap::new();
@@ -126,7 +127,8 @@ pub fn parse(text: &str, libdir: &str) -> BTreeMap<String, String> {
     stored
         .into_iter()
         .filter_map(|(path, digest)| match digest {
-            J::Str(d) => Some((normpath(&join(libdir, &path)), d)),
+            // written with / (with the separator of the system by papers on Windows before 3.0.0b6)
+            J::Str(d) => Some((normpath(&join(libdir, &path.replace('\\', "/"))), d)),
             _ => None,
         })
         .collect()

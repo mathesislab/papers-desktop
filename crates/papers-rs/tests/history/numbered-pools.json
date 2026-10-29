@@ -1,0 +1,420 @@
+{
+ "machine": {
+  "history-separate": true
+ },
+ "name": "numbered-pools",
+ "place_ids": {},
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-qt9yl7gh",
+ "steps": [
+  {
+   "argv": [
+    "init",
+    "pool"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/pool\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "pool/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "pool/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "pool/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "/dev/stdin"
+   ],
+   "cwd": "pool",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "pool",
+   "stderr": "",
+   "stdin": "@article{doe2000,\n title = {Ice sheets and sea level},\n author = {Doe, Jane and Roe, Richard},\n year = {2000},\n journal = {Nature},\n doi = {10.1000/doe.2000},\n}\n\n@article{roe2001,\n title = {Sea level rise in the next century},\n author = {Roe, Richard},\n year = {2001},\n journal = {Science},\n doi = {10.1000/roe.2001},\n}\n\n@book{smith2002,\n title = {Glaciers},\n author = {Smith, John},\n year = {2002},\n publisher = {Ice Press},\n}\n",
+   "stdout": "Added -> doe2000: Ice sheets and sea level (doi:10.1000/doe.2000)\nAdded -> roe2001: Sea level rise in the next century (doi:10.1000/roe.2001)\nAdded -> smith2002: Glaciers \n",
+   "store": {
+    "del": [],
+    "set": {
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
+      "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n  \"redo\": [],\n  \"time\": 1793270794.793453\n }\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270794.792021,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131.json": {
+      "text": "{\n \"parent\": \"6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e\",\n \"time\": 1793270794.793323,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "pool/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"279c8e6f78ab47d3afdcf33c79c75914\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "pool/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "init",
+    "lib",
+    "--pool",
+    "pool"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/lib\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    ../pool\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "lib/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "lib/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../pool\",\n  \"version\": 3\n}"
+     },
+     "lib/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "kind": "write",
+   "path": "more.bib",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "more.bib": {
+      "text": "@article{new2003,\n title = {A new paper},\n author = {New, Nick},\n year = {2003},\n journal = {Nature},\n doi = {10.1000/new.2003},\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "../more.bib"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdout": "Added -> new2003: A new paper (doi:10.1000/new.2003) [also added to pool ../pool]\n",
+   "store": {
+    "del": [],
+    "set": {
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/objects/ca/ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e": {
+      "b64": "eJyFkU1qwzAQhfc+xRzApP5ZF1IolHZhSnwCRR6QGlUyIzk/mNy9Mw5eyBSy1NObNx9v9oqS1Q7nIWBTVVVZgJqSCQSvML8HLOFLeQTlBzjI62C1UTTc2TcEK6a62tU8+MIBO0mQr58wkVdOvjuVJkIRk00ORfrUCNEgprjkRlTg8IxOTDdUy+olqbgXxX4F9Hhhsc0AO7yU0Fl9+oeH/cLTPud5A/bCqEakDUKbI9DSUZ0hPGmFHq3UG4peW/Q6x+jXHoBsRLAekkFGuybQ6Jn6tqGrH3THEE5z/LXJsNZkcL2ofMJgvMyO09FZbp7WK3wTxphBfDjFaBQ3qxpZ9QeqWa17"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\",\n  \"redo\": [],\n  \"time\": 1793270794.925718\n }\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93.json": {
+      "text": "{\n \"parent\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n \"time\": 1793270794.925601,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/objects/69/693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5": {
+      "b64": "eJwdzMEJgDAMheF7p8gAolHPgi7gDkEDVouVkCIi7m7T65f3ZyRRvwR+T747xL5yQEm3KDDAO/NdweyX48u8Rm/WYt0iYpP3tQV22mOSk0JJSJOwoXoNbDRB3sJFF4v5w1Sel9h97gdQTSei"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/objects/a2/a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba": {
+      "b64": "eJxtj82OwiAUhfd9CvZj5RZaEZNJnBdw5d4wLbUoFgZv1Wp89wF1YSaTsCDnOz+5y9odDrrHm1deh2PunbOECVnP9awVc/Vdioartqlbzusoi0oW5T3Lln9zg7W6IYWQnAkQspSsAsEl/GuOI7lX2BHqgzkp1PSkAm2dbSKmEun24nfHed1Xm0vFpeSh2eAVeink1aOga/pqiq8zR3RhzH9QjlZsO3p2YU/TRFpWAU1t9a3XZwbAJxlRA3YukE9yW+nzhKxMvb9HuXEmaQVMCwCg0T9NgYRaY3Vi6b9zQ+iVfcQVDkEn8f2svR4TfO29UTSHRwsDNssLyJlcF7AoZwtefgAsAJIXDT63vkhseEaTPmoVnuHYmd2zX1tvi9Q="
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\",\n  \"redo\": [],\n  \"time\": 1793270794.927928\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38.json": {
+      "text": "{\n \"parent\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n \"time\": 1793270794.9278028,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n },\n \"pools\": {\n  \"279c8e6f78ab47d3afdcf33c79c75914\": {\n   \"state\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\",\n   \"base\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270794.9265978,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "lib/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"613b628754284aeb80230fbbd7e524cb\",\n  \"paths\": \"relative\",\n  \"pool\": \"../pool\",\n  \"version\": 3\n}"
+     },
+     "lib/.papers/origin/pool-3abeb1.bib": {
+      "text": "@comment{papers-pool 279c8e6f78ab47d3afdcf33c79c75914}\n\n@comment{papers-pulled 1793270794925073904}\n\n@comment{papers-pool-path $TMP/work/pool}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n file = {},\n journal = {Nature},\n papers-pool-key = {new2003},\n papers-time = {2026-10-29T10:46:34+00:00},\n title = {A new paper},\n year = {2003}\n}\n"
+     },
+     "lib/papers.bib": {
+      "text": "@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n journal = {Nature},\n title = {A new paper},\n year = {2003}\n}\n"
+     },
+     "pool/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n journal = {Nature},\n title = {A new paper},\n year = {2003}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "kind": "numbered",
+   "store": {
+    "del": [
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93.json",
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e.json",
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131.json",
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38.json",
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992.json"
+    ],
+    "set": {
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": 3,\n  \"redo\": [],\n  \"time\": 1793270794.925718\n }\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000001.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270794.792021,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000002.json": {
+      "text": "{\n \"parent\": 1,\n \"time\": 1793270794.793323,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000003.json": {
+      "text": "{\n \"parent\": 2,\n \"time\": 1793270794.925601,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [],\n  \"time\": 1793270794.927928\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000001.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270794.9265978,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000002.json": {
+      "text": "{\n \"parent\": 1,\n \"time\": 1793270794.9278028,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n },\n \"pools\": {\n  \"279c8e6f78ab47d3afdcf33c79c75914\": {\n   \"state\": 3,\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "undo"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdout": "undo: papers.bib restored to 748679ed the library before its first recorded command (2026-10-29 10:46)\npool ../pool: also undone, restored to ae081dc4 papers add /dev/stdin (2026-10-29 10:46)\n",
+   "store": {
+    "del": [
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000001.json",
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000002.json",
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000003.json",
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000001.json",
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000002.json"
+    ],
+    "set": {
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/numbers.json": {
+      "text": "{\n \"279c8e6f78ab47d3afdcf33c79c75914\": {\n  \"1\": \"6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e\",\n  \"2\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n  \"3\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\"\n }\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n  \"redo\": [\n   \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\"\n  ],\n  \"time\": 1793270794.998535\n }\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93.json": {
+      "text": "{\n \"parent\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n \"time\": 1793270794.925601,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270794.792021,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131.json": {
+      "text": "{\n \"parent\": \"6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e\",\n \"time\": 1793270794.793323,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/numbers.json": {
+      "text": "{\n \"613b628754284aeb80230fbbd7e524cb\": {\n  \"1\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n  \"2\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\"\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n  \"redo\": [\n   \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\"\n  ],\n  \"time\": 1793270794.999468\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38.json": {
+      "text": "{\n \"parent\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n \"time\": 1793270794.9278028,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n },\n \"pools\": {\n  \"279c8e6f78ab47d3afdcf33c79c75914\": {\n   \"state\": 3,\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793270794.9265978,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [
+     "lib/.papers/origin/pool-3abeb1.bib"
+    ],
+    "set": {
+     "lib/papers.bib": {
+      "text": ""
+     },
+     "pool/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "history"
+   ],
+   "cwd": "pool",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "pool",
+   "stderr": "",
+   "stdout": "  56539ab6 papers add ../more.bib (2026-10-29 10:46, from $TMP/work/lib)  (undone: `papers redo`)\n> ae081dc4 papers add /dev/stdin (2026-10-29 10:46)\n  6ed39a5b the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history/separate/279c8e6f78ab47d3afdcf33c79c75914, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "redo"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdout": "redo: papers.bib restored to 5fcbbc90 papers add ../more.bib (2026-10-29 10:46)\npool ../pool: also redone, restored to 56539ab6 papers add ../more.bib (2026-10-29 10:46, from $TMP/work/lib)\n",
+   "store": {
+    "del": [],
+    "set": {
+     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\",\n  \"redo\": [],\n  \"time\": 1793270795.132555\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\",\n  \"redo\": [],\n  \"time\": 1793270795.131798\n }\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "lib/.papers/origin/pool-3abeb1.bib": {
+      "text": "@comment{papers-pool 279c8e6f78ab47d3afdcf33c79c75914}\n\n@comment{papers-pulled 1793270794925073904}\n\n@comment{papers-pool-path $TMP/work/pool}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n file = {},\n journal = {Nature},\n papers-pool-key = {new2003},\n papers-time = {2026-10-29T10:46:34+00:00},\n title = {A new paper},\n year = {2003}\n}\n"
+     },
+     "lib/papers.bib": {
+      "text": "@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n journal = {Nature},\n title = {A new paper},\n year = {2003}\n}\n"
+     },
+     "pool/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n journal = {Nature},\n title = {A new paper},\n year = {2003}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "history",
+    "--all"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdout": "~/Library/Application Support/papers/history/separate/279c8e6f78ab47d3afdcf33c79c75914: 0.0 MB\n* 279c8e6f78ab47d3afdcf33c79c75914: 3 steps, 0.0 MB of its own, last used at $TMP/work/pool/papers.bib\n~/Library/Application Support/papers/history/separate/613b628754284aeb80230fbbd7e524cb: 0.0 MB\n* 613b628754284aeb80230fbbd7e524cb: 2 steps, 0.0 MB of its own, last used at $TMP/work/lib/papers.bib\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "tag",
+    "new2003",
+    "--add",
+    "x"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdout": "Modified -> new2003: A new paper (doi:10.1000/new.2003, x)\n",
+   "store": {
+    "del": [],
+    "set": {
+     "separate/613b628754284aeb80230fbbd7e524cb/objects/41/414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6": {
+      "b64": "eJwdzcENgzAMBdB7pvAACAw9VyoLsIMFlkiJCHIdpQixO3GOfv7f/pConwNfO+cB8dU4oKRrFHjDNXFuYPLzdhdeojfrse0RsSv51gq2+sYkO4VaIU3ChhufOcryM/0bqNfANo1QynDQwWJ+MtVv9Zq73QNA/y1d"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"83853ed2e9b068639fcdda967911ce535c8eae6087bd54806305b5a83efec44a\",\n  \"redo\": [],\n  \"time\": 1793270795.2624059\n }\n}"
+     },
+     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/83853ed2e9b068639fcdda967911ce535c8eae6087bd54806305b5a83efec44a.json": {
+      "text": "{\n \"parent\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\",\n \"time\": 1793270795.262174,\n \"kind\": \"command\",\n \"message\": \"papers tag new2003 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6\"\n  ],\n  \"sha\": \"414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n }\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "lib/papers.bib": {
+      "text": "@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n journal = {Nature},\n keywords = {x},\n title = {A new paper},\n year = {2003}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "history",
+    "--revert",
+    "$STEP:2"
+   ],
+   "cwd": "lib",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "lib",
+   "stderr": "",
+   "stdout": "new2003: added by step 5fcbbc90 and changed since: kept (`papers rm new2003` removes it)\nstep 5fcbbc90 also changed pool ../pool (its step 56539ab6): `papers -C ../pool history --revert 56539ab6` takes it back there\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  }
+ ]
+}
