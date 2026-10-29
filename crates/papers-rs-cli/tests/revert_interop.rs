@@ -422,7 +422,7 @@ fn the_same_revert_by_both_programs() {
 /// A library with a pool, made by papers: the add and the pushes write the pool, so their steps link to its steps.
 fn shallow(s: &Sandbox, papers: &str) {
     s.run(papers, ".", &["init", "pool"]);
-    s.run(papers, ".", &["init", "lib", "--pool", "../pool"]);
+    s.run(papers, ".", &["init", "lib", "--pool", "pool"]);
     s.run(papers, "lib", &["add", "../refs.bib"]);
     // a step of the library that changes the pool
     s.run(

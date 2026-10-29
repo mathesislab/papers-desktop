@@ -575,7 +575,7 @@ impl Session {
         let renamed = self.library.renamed_keys();
         if self.exchange.is_none() && !self.config.shallow() {
             if !renamed.is_empty() && !self.options.dry_run {
-                let mut origin = crate::pools::Origin::for_bibtex(&self.library.bibtex, false);
+                let mut origin = crate::pools::Origin::for_library(&self.config.libdir(), false);
                 for (old, new) in &renamed {
                     origin.rekey(old, new);
                 }

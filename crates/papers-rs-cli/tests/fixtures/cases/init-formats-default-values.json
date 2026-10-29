@@ -25,7 +25,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"keyformat\": {\n    \"template\": \"{author}{year}\"\n  },\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"unknown_strict\": false\n  },\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   }
  ]

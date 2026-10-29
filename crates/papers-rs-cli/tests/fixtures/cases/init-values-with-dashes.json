@@ -36,7 +36,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -50,17 +50,17 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "created the library <TMP>/cwd/b\n* bibtex:  -b.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stdout": "created the library <TMP>/cwd/b\n* bibtex:  <TMP>/cwd/-b.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
    "stderr": "",
    "tree": {
+    "cwd/-b.bib": "",
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
-    "cwd/b/-b.bib": "",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/b/files/": null,
     "cwd/b/.papers/.gitignore": "*\n",
-    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"-b.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"../-b.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -75,21 +75,21 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "created the library <TMP>/cwd/c\n* bibtex:  -5\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stdout": "created the library <TMP>/cwd/c\n* bibtex:  <TMP>/cwd/-5\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
    "stderr": "",
    "tree": {
+    "cwd/-5": "",
+    "cwd/-b.bib": "",
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
-    "cwd/b/-b.bib": "",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/b/files/": null,
     "cwd/b/.papers/.gitignore": "*\n",
-    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"-b.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
-    "cwd/c/-5": "",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": \"../-b.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/c/files/": null,
     "cwd/c/.papers/.gitignore": "*\n",
-    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"-5\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"../-5\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   }
  ]

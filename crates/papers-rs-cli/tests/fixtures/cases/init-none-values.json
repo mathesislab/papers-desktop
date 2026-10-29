@@ -22,7 +22,7 @@
    "stderr": "",
    "tree": {
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -43,9 +43,9 @@
    "stderr": "",
    "tree": {
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/b/.papers/.gitignore": "*\n",
-    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -66,13 +66,13 @@
    "stderr": "",
    "tree": {
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/b/.papers/.gitignore": "*\n",
-    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/b/.papers/config.json": "{\n  \"bibtex\": null,\n  \"filesdir\": null,\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/c/papers.bib": "",
     "cwd/c/files/": null,
     "cwd/c/.papers/.gitignore": "*\n",
-    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/c/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   }
  ]

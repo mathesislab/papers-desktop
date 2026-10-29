@@ -1,0 +1,169 @@
+{
+ "name": "config-unknown-keys-kept",
+ "home": {},
+ "cwd": {
+  ".papers/config.json": "{\n  \"absolute_paths\": true,\n  \"backup_files\": true,\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"git\": true,\n  \"git-lfs\": true,\n  \"gitdir\": \"x\",\n  \"gitlfs\": true,\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"light\": true,\n  \"local\": true,\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"future-field\": 7,\n    \"template\": \"{title}\"\n  },\n  \"other\": 3,\n  \"pools\": [\n    \"x\"\n  ],\n  \"sync\": \"push\",\n  \"trash-days\": 3,\n  \"version\": 3\n}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "papers: warning: <TMP>/cwd/.papers/config.json: unknown pool name x: the library has no pool\n",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"future-field\": 7,\n    \"template\": \"{title}\"\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--unset",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"future-field\": 7,\n    \"template\": \"{title}\"\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "nameformat.x",
+    "y"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: unknown setting: nameformat.x. Settings: bibtex, filesdir, pool, paths, files, auto-push, editor, checksums, history-dir, history-size, history-separate, keep-deleted-files, name.template, name.author-num, name.author-sep, name.title-word-num, name.title-word-size, name.title-length, name.title-sep, name.unknown-template, name.unknown-strict, key.template, key.author-num, key.author-sep, key.title-word-num, key.title-word-size, key.title-length, key.title-sep, key.unknown-template, key.unknown-strict\n",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"future-field\": 7,\n    \"template\": \"{title}\"\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "name.template",
+    "{year}"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"future-field\": 7,\n    \"template\": \"{year}\"\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--unset",
+    "name.template"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"author_num\": 2,\n    \"future-field\": 7\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "removed from <TMP>/cwd/.papers/config.json (equal to the global or default value): name.author-num\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"future-field\": 7\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "editor",
+    "vim"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"editor\": \"vim\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"future-field\": 7\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--unset",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"future-field\": 7\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/.papers/config.json\nbibtex                = <TMP>/cwd/x.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": null,\n  \"future\": {\n    \"a\": [\n      1,\n      2\n    ],\n    \"b\": null\n  },\n  \"keyformat\": {\n    \"future_key\": [\n      1,\n      2\n    ]\n  },\n  \"nameformat\": {\n    \"future-field\": 7\n  },\n  \"other\": 3,\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

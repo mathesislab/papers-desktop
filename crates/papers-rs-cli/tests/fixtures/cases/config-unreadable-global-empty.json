@@ -17,9 +17,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 1 (char 0) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Expecting value: line 1 column 1 (char 0)): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3}",
     "home/<MC>": ""
@@ -36,9 +36,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 1 (char 0) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Expecting value: line 1 column 1 (char 0)): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3}",
     "home/<MC>": ""

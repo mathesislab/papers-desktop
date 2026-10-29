@@ -20,7 +20,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --scholar             use google scholar instead of default crossref for
                         fulltext search
   --openalex            (papers-rs) use OpenAlex instead of default crossref

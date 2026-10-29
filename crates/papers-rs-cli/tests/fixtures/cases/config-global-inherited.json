@@ -22,7 +22,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -37,13 +37,13 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "# <TMP>/cwd/a/.papers/config.json\nbibtex                = <TMP>/cwd/a/papers.bib  (library)\nfilesdir              = <TMP>/cwd/a/files  (library)\npool                  = none  (library)\npaths                 = absolute  (global)\nfiles                 = copy  (global)\nauto-push             = true  (global)\neditor                = vim  (global)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 10  (global)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 5  (global)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stdout": "# <TMP>/cwd/a/.papers/config.json\nbibtex                = <TMP>/cwd/a/papers.bib  (library)\nfilesdir              = <TMP>/cwd/a/files  (library)\npool                  = none  (library)\npaths                 = absolute  (library)\nfiles                 = copy  (global)\nauto-push             = true  (global)\neditor                = vim  (global)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 10  (global)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 5  (global)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
    "stderr": "",
    "tree": {
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -66,7 +66,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"link\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"link\",\n  \"filesdir\": \"files\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -89,7 +89,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"files\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -112,7 +112,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -135,7 +135,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -158,7 +158,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"emacs\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"emacs\",\n  \"files\": \"copy\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -181,7 +181,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"author_num\": 2\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -204,7 +204,7 @@
     "cwd/a/papers.bib": "",
     "cwd/a/files/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"files\": \"copy\",\n  \"filesdir\": \"files\",\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"auto-push\": true,\n  \"editor\": \"vim\",\n  \"files\": \"copy\",\n  \"history-size\": 10,\n  \"nameformat\": {\n    \"author_num\": 5\n  },\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
    }
   },
@@ -220,7 +220,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "nothing to remove from <TMP>/cwd/a/.papers/config.json\n",
+   "stdout": "removed from <TMP>/cwd/a/.papers/config.json (equal to the global or default value): paths, files\n",
    "stderr": "",
    "tree": {
     "cwd/a/papers.bib": "",

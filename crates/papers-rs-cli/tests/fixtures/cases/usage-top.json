@@ -14,7 +14,7 @@
    "rm": [],
    "env": {},
    "rc": 1,
-   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step STEP of its history (see\n                        `papers history`), with its files; without STEP, to\n                        its last step: the changes made outside papers since\n                        are undone (and recorded: `papers redo` brings them\n                        back)\n    history             the steps of the library (identifier, command, time; >\n                        marks where the library is; a step is named by its\n                        identifier, or the start of it, 4 characters or more),\n                        the history of the machine (where, its size: the\n                        history-size setting), and the backups of earlier\n                        versions of papers that are no longer used. The\n                        history is in a folder of the machine (the history-dir\n                        setting), not in the library: it is not synced or\n                        shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -30,7 +30,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step STEP of its history (see\n                        `papers history`), with its files; without STEP, to\n                        its last step: the changes made outside papers since\n                        are undone (and recorded: `papers redo` brings them\n                        back)\n    history             the steps of the library (identifier, command, time; >\n                        marks where the library is; a step is named by its\n                        identifier, or the start of it, 4 characters or more),\n                        the history of the machine (where, its size: the\n                        history-size setting), and the backups of earlier\n                        versions of papers that are no longer used. The\n                        history is in a folder of the machine (the history-dir\n                        setting), not in the library: it is not synced or\n                        shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -46,7 +46,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step STEP of its history (see\n                        `papers history`), with its files; without STEP, to\n                        its last step: the changes made outside papers since\n                        are undone (and recorded: `papers redo` brings them\n                        back)\n    history             the steps of the library (identifier, command, time; >\n                        marks where the library is; a step is named by its\n                        identifier, or the start of it, 4 characters or more),\n                        the history of the machine (where, its size: the\n                        history-size setting), and the backups of earlier\n                        versions of papers that are no longer used. The\n                        history is in a folder of the machine (the history-dir\n                        setting), not in the library: it is not synced or\n                        shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -62,7 +62,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step STEP of its history (see\n                        `papers history`), with its files; without STEP, to\n                        its last step: the changes made outside papers since\n                        are undone (and recorded: `papers redo` brings them\n                        back)\n    history             the steps of the library (identifier, command, time; >\n                        marks where the library is; a step is named by its\n                        identifier, or the start of it, 4 characters or more),\n                        the history of the machine (where, its size: the\n                        history-size setting), and the backups of earlier\n                        versions of papers that are no longer used. The\n                        history is in a folder of the machine (the history-dir\n                        setting), not in the library: it is not synced or\n                        shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -78,7 +78,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b5\n",
+   "stdout": "3.0.0b7.dev3+g0941475c0\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -94,7 +94,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b5\n",
+   "stdout": "3.0.0b7.dev3+g0941475c0\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -110,7 +110,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b5\n",
+   "stdout": "3.0.0b7.dev3+g0941475c0\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -227,7 +227,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b5\n",
+   "stdout": "3.0.0b7.dev3+g0941475c0\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -319,7 +319,7 @@
     "cwd/files/": null,
     "cwd/lib/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -340,7 +340,7 @@
     "cwd/files/": null,
     "cwd/lib/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -353,7 +353,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step N of its history (see\n                        `papers history`), with its files; without N, to its\n                        last step: the changes made outside papers since are\n                        undone (and recorded: `papers redo` brings them back)\n    history             the steps of the library (number, command, time; >\n                        marks where the library is), the history of the\n                        machine (where, its size: the history-size setting),\n                        and the backups of earlier versions of papers that are\n                        no longer used. The history is in a folder of the\n                        machine (the history-dir setting), not in the library:\n                        it is not synced or shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
+   "stdout": "usage: papers [-h] [--version] [-C DIR]\n              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...\n\nlibrary management tool\n\npositional arguments:\n  {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history}\n    undo                undo the last change of the library: the bibtex and\n                        the files (moved back, deleted files restored from the\n                        history). Each command that changes the library is a\n                        step of its history (`papers history`); a change made\n                        outside papers (an editor, another program) is\n                        recorded as a step of its own when papers next writes\n                        the library. To take back an older step alone: `papers\n                        history --revert N`\n    redo                redo a change undone by `papers undo`\n    restore             bring the library to the step STEP of its history (see\n                        `papers history`), with its files; without STEP, to\n                        its last step: the changes made outside papers since\n                        are undone (and recorded: `papers redo` brings them\n                        back)\n    history             the steps of the library (identifier, command, time; >\n                        marks where the library is; a step is named by its\n                        identifier, or the start of it, 4 characters or more),\n                        the history of the machine (where, its size: the\n                        history-size setting), and the backups of earlier\n                        versions of papers that are no longer used. The\n                        history is in a folder of the machine (the history-dir\n                        setting), not in the library: it is not synced or\n                        shared with it\n\noptions:\n  -h, --help            show this help message and exit\n  --version             Print version string and exit.\n  -C DIR                run as if papers was started in DIR (before the\n                        command name)\n",
    "stderr": "",
    "tree": {
     "cwd/papers.bib": "",
@@ -361,7 +361,7 @@
     "cwd/files/": null,
     "cwd/lib/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -382,7 +382,7 @@
     "cwd/files/": null,
     "cwd/lib/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -402,7 +402,7 @@
     "cwd/files/": null,
     "cwd/lib/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -422,7 +422,7 @@
     "cwd/files/": null,
     "cwd/lib/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -443,7 +443,7 @@
     "cwd/files/": null,
     "cwd/lib/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   }
  ]

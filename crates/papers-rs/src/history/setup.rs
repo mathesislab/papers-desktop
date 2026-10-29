@@ -7,9 +7,10 @@ use std::fs;
 use serde_json::Value;
 
 use super::store::{MB, Store, new_id, sha256};
-use crate::config::files::write_atomic;
-use crate::config::json::{dumps_pretty, loads};
-use crate::config::paths::{abspath, dirname, expanduser, isfile, join, realpath};
+use crate::config::files::{is_v2_config_name, move_v2_config, write_atomic};
+use crate::config::json::dumps_pretty;
+use crate::config::machine::read_json_object;
+use crate::config::paths::{abspath, dirname, isfile, join, realpath};
 use crate::config::{Config, MachineConfig, dirs, library_without_pool};
 use crate::error::{Error, Result};
 
@@ -50,8 +51,9 @@ pub struct Setup {
 impl Setup {
     pub fn from_config(config: &Config) -> Setup {
         let bibtex = config.bibtex.clone().unwrap_or_default();
+        // a relative path is relative to the folder of the global configuration, where it is set
         let root = match config.get("history-dir") {
-            Value::String(s) if !s.is_empty() => s,
+            Value::String(s) if !s.is_empty() => config.machine.absolute(&s),
             _ => dirs::history_dir(),
         };
         let pool = match (config.pool_path(), config.pool_label()) {
@@ -63,7 +65,7 @@ impl Setup {
             bibtex,
             file: config.file.clone().filter(|_| config.is_library),
             absolute_paths: config.absolute_paths,
-            root: expanduser(&root),
+            root,
             separate: config.get("history-separate") == Value::Bool(true),
             library_size: Some(config.get("history-size")).filter(|v| !v.is_null()),
             machine_size: config.machine.get("history-size"),
@@ -150,12 +152,12 @@ pub fn library_id(config: &mut Config, create: bool, dry_run: bool) -> Result<Op
         let id = new_id();
         config.id = Some(id.clone());
         if isfile(&file) && !dry_run {
-            let text =
-                fs::read_to_string(&file).map_err(|e| Error::other(format!("{file}: {e}")))?;
-            let mut js = match loads(&text) {
-                Ok(Value::Object(map)) => map,
-                Ok(_) | Err(_) => return Err(Error::other(format!("{file}: not a JSON object"))),
-            };
+            let mut file = file;
+            if is_v2_config_name(&file) {
+                file = move_v2_config(&file, false)?; // as any save does
+                config.file = Some(file.clone());
+            }
+            let mut js = read_json_object(&file)?;
             js.insert("id".into(), Value::String(id));
             write_atomic(&file, &dumps_pretty(&Value::Object(js)))?;
         }
@@ -273,6 +275,33 @@ mod tests {
                 ".papers/origin/a.bib",
                 ".papers/origin/b.bib"
             ]
+        );
+    }
+
+    #[test]
+    fn the_id_is_written_to_the_configuration_of_papers_2_after_it_is_moved() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(dir.path())
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let v2 = join(&root, ".papersconfig.json");
+        fs::write(&v2, "\u{feff}{\"bibtex\": \"lib.bib\", \"version\": 3}").unwrap();
+        let mut config = Config::load(&v2, MachineConfig::empty(), None).unwrap();
+        // with a dry run, no id is written
+        library_id(&mut config, true, true).unwrap();
+        assert!(isfile(&v2));
+        config.id = None;
+        let id = library_id(&mut config, true, false).unwrap().unwrap();
+        assert!(!isfile(&v2));
+        assert_eq!(
+            config.file.as_deref(),
+            Some(join(&root, ".papers/config.json").as_str())
+        );
+        let text = fs::read_to_string(join(&root, ".papers/config.json")).unwrap();
+        assert_eq!(
+            text,
+            format!("{{\n  \"bibtex\": \"lib.bib\",\n  \"id\": \"{id}\",\n  \"version\": 3\n}}")
         );
     }
 

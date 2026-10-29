@@ -2,10 +2,12 @@
 
 use std::fs;
 
-use papers_rs::config::paths::{abspath, exists, expanduser, getcwd, is_inside, isdir, join, realpath, relpath, short_home};
-use papers_rs::config::{Config, DEFAULT_LIBRARY, NO_POOL, Origin, find_config, library_config_file, library_without_pool};
+use papers_rs::config::paths::{abspath, exists, expanduser, getcwd, is_inside, isdir, realpath, relpath, short_home};
+use papers_rs::config::{
+    Config, DEFAULT_LIBRARY, NO_POOL, Origin, find_config, library_config_file, library_without_pool, pool_setting,
+};
 use papers_rs::error::{Error, Result};
-use papers_rs::install::{InstallOptions, apply_install, resolve_install};
+use papers_rs::install::{InstallOptions, RESET_WORDS, apply_install, resolve_install};
 use papers_rs::{config::CONFIG_FILE_LOCAL, log};
 use serde_json::Value;
 
@@ -115,7 +117,7 @@ pub fn init(mut args: InitArgs, config: Config) -> Result<()> {
         if args.pool.is_some() {
             return Err(Error::exit("--shallow is --pool with the default library: give one of them"));
         }
-        match machine.default_library() {
+        match machine.default_library_path() {
             None => return Err(Error::exit(NO_DEFAULT)),
             Some(default) => args.pool = Some(default),
         }
@@ -125,12 +127,21 @@ pub fn init(mut args: InitArgs, config: Config) -> Result<()> {
         return Err(Error::exit("--global: the default library has no pool (no --pool or --shallow)"));
     }
     let libdir = abspath(args.dir.as_deref().filter(|d| !d.is_empty()).unwrap_or("."));
-    if let Some(pool) = args.pool.as_deref().filter(|p| *p != NO_POOL) {
-        let path = abspath(&join(&libdir, &expanduser(pool)));
-        if realpath(&path) == realpath(&libdir) {
-            return Err(Error::exit(format!("--pool {pool}: this is the library itself (nothing was changed)")));
+    // the paths of the command line are relative to the current directory, not to DIR
+    for path in [&mut args.bibtex, &mut args.filesdir] {
+        if let Some(value) = path.as_deref().filter(|v| !v.is_empty() && !RESET_WORDS.contains(&v.to_lowercase().as_str())) {
+            *path = Some(abspath(value));
         }
-        library_without_pool(&path, &machine, &format!("--pool {pool}:"))?;
+    }
+    if let Some(pool) = args.pool.clone().filter(|p| p != NO_POOL) {
+        let given = if args.shallow { machine.default_library().unwrap_or_default() } else { pool.clone() };
+        let path = abspath(&expanduser(&pool));
+        if realpath(&path) == realpath(&libdir) {
+            return Err(Error::exit(format!("--pool {given}: this is the library itself (nothing was changed)")));
+        }
+        library_without_pool(&path, &machine, &format!("--pool {given}:"))?;
+        // as the pool setting writes it
+        args.pool = Some(pool_setting(&pool, &libdir, Some(&getcwd())));
     }
     match args.dir.clone() {
         None => init_here(&args, &config)?,

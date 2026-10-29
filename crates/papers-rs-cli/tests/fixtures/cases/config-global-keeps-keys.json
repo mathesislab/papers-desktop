@@ -1,0 +1,159 @@
+{
+ "name": "config-global-keeps-keys",
+ "home": {
+  "<MC>": "{\n  \"editor\": \"vi\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+ },
+ "cwd": {
+  "lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+  "v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+  "w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "cwd/w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"editor\": \"vi\",\n  \"files\": \"link\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\nfiles = link\neditor = vi\n",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "cwd/w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"editor\": \"vi\",\n  \"files\": \"link\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "--unset",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "cwd/w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"editor\": \"vi\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "default",
+    "lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "cwd/w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/lib\",\n  \"editor\": \"vi\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "default",
+    "none"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "cwd/w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"editor\": \"vi\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "/x/shared\n",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "cwd/w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"editor\": \"vi\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "w",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "none\n",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "cwd/w/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pools\": [\n    \"default\",\n    \"shared\"\n  ],\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"editor\": \"vi\",\n  \"future\": {\n    \"a\": 1\n  },\n  \"pools\": {\n    \"other\": \"../o\",\n    \"shared\": \"/x/shared\"\n  },\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

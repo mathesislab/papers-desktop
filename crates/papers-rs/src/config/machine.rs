@@ -7,9 +7,10 @@ use std::fs;
 use serde_json::{Map, Value, json};
 
 use super::dirs::machine_config_file;
+use super::files::write_atomic;
 use super::json::{dumps_pretty, loads, py_repr};
-use super::paths::{abspath, dirname, exists, expanduser};
-use super::settings::{CONFIG_VERSION, DEFAULT_LIBRARY, NO_POOL, json_get, json_set};
+use super::paths::{abspath, dirname, exists, expanduser, getcwd, join, normpath};
+use super::settings::{CONFIG_VERSION, DEFAULT_LIBRARY, NO_POOL, check_settings, json_get, json_set, names};
 use crate::error::{Error, PAPERS_VERSION, Result};
 use crate::log;
 
@@ -37,14 +38,34 @@ pub fn file_version(js: &mut Map<String, Value>, file: &str) -> Result<i64> {
     Ok(version)
 }
 
-/// Read a configuration file: its JSON object. Anything else is an error
-/// papers does not catch.
+/// Read a configuration file (`read_config_file`): its JSON object, read as UTF-8 (a byte order
+/// mark is ignored). A file that is not valid JSON, or not a JSON object, is an error that names
+/// the file, so that no later save replaces its content.
 pub fn read_json_object(file: &str) -> Result<Map<String, Value>> {
-    let text = fs::read_to_string(file).map_err(|e| Error::other(format!("{file}: {}", io_message(&e))))?;
-    match loads(&text) {
+    let unreadable = |why: &str| Error::exit(format!("{file} could not be read ({why}): correct the file"));
+    let bytes = fs::read(file).map_err(|e| unreadable(&os_error_text(&e, file)))?;
+    let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
+    let text = std::str::from_utf8(bytes).map_err(|e| {
+        unreadable(&format!(
+            "'utf-8' codec can't decode byte 0x{:02x} in position {}: invalid start byte",
+            bytes.get(e.valid_up_to()).copied().unwrap_or(0),
+            e.valid_up_to()
+        ))
+    })?;
+    match loads(text) {
         Ok(Value::Object(map)) => Ok(map),
-        Ok(_) => Err(Error::other(format!("{file}: not a JSON object"))),
-        Err(error) => Err(Error::other(format!("{file}: {error}"))),
+        Ok(_) => Err(Error::exit(format!("{file} is not a JSON object: correct the file"))),
+        Err(error) => Err(unreadable(&error.message)),
+    }
+}
+
+/// What Python's `str(OSError)` says of an error on `path`.
+fn os_error_text(error: &std::io::Error, path: &str) -> String {
+    let text = error.to_string();
+    let text = text.split(" (os error").next().unwrap_or(&text);
+    match error.raw_os_error() {
+        Some(code) => format!("[Errno {code}] {text}: '{path}'"),
+        None => text.to_string(),
     }
 }
 
@@ -86,8 +107,8 @@ pub(crate) fn single_pool(js: &mut Map<String, Value>, file: &str) -> Result<()>
 pub struct MachineConfig {
     pub file: Option<String>,
     pub data: Map<String, Value>,
-    /// Pool names of earlier v3 builds (`pools.NAME PATH`): only read, so
-    /// that their libraries keep finding their pool.
+    /// Pool names of earlier v3 builds (`pools.NAME PATH`): not a setting, but written back by
+    /// `save`, so that their libraries keep finding their pool.
     pub pool_names: Map<String, Value>,
 }
 
@@ -105,23 +126,11 @@ impl MachineConfig {
         MachineConfig { file: None, data: Map::new(), pool_names: Map::new() }
     }
 
-    /// Load the global configuration (`file`, by default the one of the
-    /// machine). A file that cannot be read is ignored, with a warning.
+    /// Load the global configuration (`file`, by default the one of the machine). A file that is
+    /// not valid JSON, or has a value of the wrong type, is an error.
     pub fn load(file: Option<&str>) -> Result<MachineConfig> {
         let file = file.map(str::to_string).unwrap_or_else(machine_config_file);
-        let mut data = Map::new();
-        if exists(&file) {
-            let read = fs::read_to_string(&file)
-                .map_err(|e| io_message(&e))
-                .and_then(|text| loads(&text).map_err(|e| e.message));
-            match read {
-                Ok(Value::Object(map)) => data = map,
-                Ok(_) => return Err(Error::other(format!("{file}: not a JSON object"))),
-                Err(message) => {
-                    log::warning(&format!("unreadable global configuration {file}: {message} -- ignored"));
-                }
-            }
-        }
+        let mut data = if exists(&file) { read_json_object(&file)? } else { Map::new() };
         file_version(&mut data, &file)?;
         data.remove("version");
         match data.remove("pool") {
@@ -131,6 +140,9 @@ impl MachineConfig {
                 "{file}: the global pool setting is no longer used (ignored); `papers config --global default PATH` sets a default library"
             )),
         }
+        let mut checked: Vec<&str> = names();
+        checked.push(DEFAULT_LIBRARY);
+        check_settings(&data, &file, &checked)?;
         Ok(MachineConfig::new(Some(&file), data))
     }
 
@@ -154,11 +166,24 @@ impl MachineConfig {
         }
     }
 
-    /// The absolute path of the default library, or `None`.
+    /// The absolute path of the default library, or `None` (a relative path is relative to the
+    /// folder of this file).
     pub fn default_library_path(&self) -> Option<String> {
-        self.default_library().map(|d| abspath(&expanduser(&d)))
+        self.default_library().map(|d| self.absolute(&d))
     }
 
+    /// A path of this configuration (`default`, `history-dir`): `~` expanded, a relative path
+    /// relative to the folder of the file.
+    pub fn absolute(&self, path: &str) -> String {
+        let base = match &self.file {
+            Some(file) => dirname(&abspath(file)),
+            None => getcwd(),
+        };
+        normpath(&join(&base, &expanduser(path)))
+    }
+
+    /// Write the file, atomically (through a temporary file): a crash never leaves half a
+    /// configuration. The pool names of earlier builds are written back.
     pub fn save(&self) -> Result<()> {
         let file = self.file.as_deref().ok_or_else(|| Error::other("the global configuration has no file"))?;
         let dir = dirname(file);
@@ -167,8 +192,10 @@ impl MachineConfig {
         }
         let mut data = self.data.clone();
         data.insert("version".into(), json!(CONFIG_VERSION));
-        fs::write(file, dumps_pretty(&Value::Object(data)))
-            .map_err(|e| Error::other(format!("{file}: {}", io_message(&e))))
+        if !self.pool_names.is_empty() {
+            data.insert("pools".into(), Value::Object(self.pool_names.clone()));
+        }
+        write_atomic(file, &dumps_pretty(&Value::Object(data)))
     }
 }
 
@@ -198,16 +225,43 @@ mod tests {
     }
 
     #[test]
-    fn a_global_configuration_that_cannot_be_read_is_ignored() {
+    fn a_global_configuration_that_cannot_be_read_is_an_error() {
         let dir = tempfile::tempdir().unwrap();
         let file = format!("{}/config.json", dir.path().display());
         fs::write(&file, "{bad").unwrap();
-        let machine = MachineConfig::load(Some(&file)).unwrap();
-        assert!(machine.data.is_empty());
+        let error = MachineConfig::load(Some(&file)).unwrap_err();
+        assert_eq!(
+            error,
+            Error::exit(format!(
+                "{file} could not be read (Expecting property name enclosed in double quotes: line 1 column 2 (char 1)): correct the file"
+            ))
+        );
+        fs::write(&file, "[1]").unwrap();
+        assert_eq!(
+            MachineConfig::load(Some(&file)).unwrap_err(),
+            Error::exit(format!("{file} is not a JSON object: correct the file"))
+        );
+        fs::write(&file, r#"{"editor": 3}"#).unwrap();
+        assert!(
+            MachineConfig::load(Some(&file))
+                .unwrap_err()
+                .message()
+                .contains("invalid value 3 for the setting editor (expected a text)")
+        );
+        // a byte order mark is ignored
+        fs::write(&file, "\u{feff}{\"editor\": \"vim\"}").unwrap();
+        assert_eq!(MachineConfig::load(Some(&file)).unwrap().get("editor"), Some(json!("vim")));
     }
 
     #[test]
-    fn pool_names_of_earlier_builds_are_read_and_dropped_when_saved() {
+    fn a_relative_default_is_relative_to_the_configuration() {
+        let machine = MachineConfig::new(Some("/a/b/config.json"), json!({"default": "../lib"}).as_object().unwrap().clone());
+        assert_eq!(machine.default_library_path().as_deref(), Some("/a/lib"));
+        assert_eq!(machine.absolute("~/x"), format!("{}/x", crate::config::paths::home()));
+    }
+
+    #[test]
+    fn pool_names_of_earlier_builds_are_read_and_written_back() {
         let dir = tempfile::tempdir().unwrap();
         let file = format!("{}/config.json", dir.path().display());
         fs::write(&file, r#"{"version": 3, "pools": {"a": "/p"}, "pool": "/old", "default": "~/x"}"#).unwrap();
@@ -215,7 +269,10 @@ mod tests {
         assert_eq!(machine.pool_names.get("a"), Some(&json!("/p")));
         assert!(!machine.data.contains_key("pool") && !machine.data.contains_key("pools"));
         machine.save().unwrap();
-        assert_eq!(fs::read_to_string(&file).unwrap(), "{\n  \"default\": \"~/x\",\n  \"version\": 3\n}");
+        assert_eq!(
+            fs::read_to_string(&file).unwrap(),
+            "{\n  \"default\": \"~/x\",\n  \"pools\": {\n    \"a\": \"/p\"\n  },\n  \"version\": 3\n}"
+        );
     }
 
     #[test]

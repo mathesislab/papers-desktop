@@ -1,0 +1,107 @@
+{
+ "name": "config-global-default-home",
+ "home": {
+  "lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+  "lib2/.papers/config.json": "{\n  \"bibtex\": \"y.bib\",\n  \"version\": 3\n}",
+  "<MC>": "{\n  \"default\": \"~/lib\",\n  \"version\": 3\n}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "bibtex"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/home/lib/x.bib\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib\",\n  \"version\": 3\n}",
+    "home/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/lib2/.papers/config.json": "{\n  \"bibtex\": \"y.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "default",
+    "~/lib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib\",\n  \"version\": 3\n}",
+    "home/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/lib2/.papers/config.json": "{\n  \"bibtex\": \"y.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "default"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "~/lib\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib\",\n  \"version\": 3\n}",
+    "home/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/lib2/.papers/config.json": "{\n  \"bibtex\": \"y.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "default",
+    "~/lib/../lib2"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib2\",\n  \"version\": 3\n}",
+    "home/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/lib2/.papers/config.json": "{\n  \"bibtex\": \"y.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\ndefault = ~/lib2\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib2\",\n  \"version\": 3\n}",
+    "home/lib/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/lib2/.papers/config.json": "{\n  \"bibtex\": \"y.bib\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,44 @@
+{
+ "name": "config-unknown-keys-v2-library",
+ "home": {},
+ "cwd": {
+  ".papersconfig.json": "{\"bibtex\": \"x.bib\", \"local\": true, \"future\": 1, \"absolute_paths\": true}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "moved <TMP>/cwd/.papersconfig.json to <TMP>/cwd/.papers/config.json\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"future\": 1,\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/.papers/config.json\nbibtex                = <TMP>/cwd/x.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = absolute  (library)\nfiles                 = link  (library)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/.gitignore": "*\n",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"files\": \"link\",\n  \"filesdir\": null,\n  \"future\": 1,\n  \"paths\": \"absolute\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

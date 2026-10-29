@@ -268,7 +268,7 @@
    "env": {},
    "rc": 2,
    "stdout": "",
-   "stderr": "usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--all] [--remove [ID]]\n                      [--drop-files N|PATH] [--revert N]\n                      [--on-duplicate {ask,keep,update,skip,error}] [-n N]\n                      [-y]\npapers history: error: argument -n: invalid int value: 'x'\n",
+   "stderr": "usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--all] [--remove [ID]]\n                      [--drop-files STEP|PATH] [--revert STEP]\n                      [--on-duplicate {ask,keep,update,skip,error}] [-n N]\n                      [-y]\npapers history: error: argument -n: invalid int value: 'x'\n",
    "tree": {}
   },
   {
@@ -310,9 +310,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 2,
+   "rc": 1,
    "stdout": "",
-   "stderr": "usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--ref N]\n                      [N]\npapers restore: error: argument N: invalid int value: 'x'\n",
+   "stderr": "papers: error: no library found here: `papers init`, or pass --bibtex\n",
    "tree": {}
   },
   {
@@ -325,9 +325,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 2,
+   "rc": 1,
    "stdout": "",
-   "stderr": "usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]\n                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                      [--dry-run] [--ref N]\n                      [N]\npapers restore: error: argument --ref: invalid int value: 'x'\n",
+   "stderr": "papers: error: no library found here: `papers init`, or pass --bibtex\n",
    "tree": {}
   },
   {

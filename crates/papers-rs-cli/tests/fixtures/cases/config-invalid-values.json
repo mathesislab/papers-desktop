@@ -1,0 +1,603 @@
+{
+ "name": "config-invalid-values",
+ "home": {},
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"no\" for the setting auto-push (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": 1,\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 1 for the setting auto-push (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": 1,\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-size\": true,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value true for the setting history-size (expected an integer): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-size\": true,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-size\": 1.5,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 1.5 for the setting history-size (expected an integer): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-size\": 1.5,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-size\": \"3\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"3\" for the setting history-size (expected an integer): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-size\": \"3\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"files\": \"keep\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"keep\" for the setting files (expected one of ask, move, copy, link): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"files\": \"keep\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"files\": [\n    \"move\"\n  ],\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value [\"move\"] for the setting files (expected one of ask, move, copy, link): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"files\": [\n    \"move\"\n  ],\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"paths\": \"relativ\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"relativ\" for the setting paths (expected one of relative, absolute): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"paths\": \"relativ\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"paths\": 1,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 1 for the setting paths (expected one of relative, absolute): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"paths\": 1,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pool\": 3,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 3 for the setting pool (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pool\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pool\": true,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value true for the setting pool (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"pool\": true,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": 5,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 5 for the setting bibtex (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": 5,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": [\n    \"a.bib\"\n  ],\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value [\"a.bib\"] for the setting bibtex (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": [\n    \"a.bib\"\n  ],\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": {},\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value {} for the setting filesdir (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": {},\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"editor\": [\n    \"vim\"\n  ],\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value [\"vim\"] for the setting editor (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"editor\": [\n    \"vim\"\n  ],\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"editor\": 3,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 3 for the setting editor (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"editor\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"checksums\": \"yes\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"yes\" for the setting checksums (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"checksums\": \"yes\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-separate\": 0,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 0 for the setting history-separate (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-separate\": 0,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-dir\": 3,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 3 for the setting history-dir (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"history-dir\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keep-deleted-files\": \"x\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"x\" for the setting keep-deleted-files (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keep-deleted-files\": \"x\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": [],\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid nameformat [] (expected an object): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": [],\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": \"x\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid nameformat 'x' (expected an object): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": \"x\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keyformat\": 3,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid keyformat 3 (expected an object): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keyformat\": 3,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": {\n    \"author_num\": \"2\"\n  },\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"2\" for the setting name.author-num (expected an integer): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": {\n    \"author_num\": \"2\"\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": {\n    \"author_num\": 2.5\n  },\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 2.5 for the setting name.author-num (expected an integer): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": {\n    \"author_num\": 2.5\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": {\n    \"unknown_strict\": 1\n  },\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 1 for the setting name.unknown-strict (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"nameformat\": {\n    \"unknown_strict\": 1\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keyformat\": {\n    \"template\": 3\n  },\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 3 for the setting key.template (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keyformat\": {\n    \"template\": 3\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keyformat\": {\n    \"author_sep\": 4,\n    \"title_sep\": null\n  },\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value 4 for the setting key.author-sep (expected a text): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"keyformat\": {\n    \"author_sep\": 4,\n    \"title_sep\": null\n  },\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": null,\n  \"bibtex\": \"x.bib\",\n  \"files\": null,\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/.papers/config.json\nbibtex                = <TMP>/cwd/x.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": null,\n  \"bibtex\": \"x.bib\",\n  \"files\": null,\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/.papers/config.json\nbibtex                = <TMP>/cwd/x.bib  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "files",
+    "link"
+   ],
+   "cwd": ".",
+   "write": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"no\" for the setting auto-push (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--unset",
+    "files"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"no\" for the setting auto-push (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--prune"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"no\" for the setting auto-push (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "sub"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/.papers/config.json: invalid value \"no\" for the setting auto-push (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: -C sub: not a directory\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"auto-push\": \"no\",\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

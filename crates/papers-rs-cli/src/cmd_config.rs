@@ -4,7 +4,7 @@
 use std::fs;
 use std::io::{BufRead, IsTerminal, Write};
 
-use papers_rs::config::json::loads;
+use papers_rs::config::json::{loads, py_eq};
 use papers_rs::config::paths::{abspath, exists, expanduser, getcwd, short_home};
 use papers_rs::config::settings;
 use papers_rs::config::{
@@ -232,15 +232,17 @@ fn prune(config: &mut Config, dry_run: bool) -> Outcome {
         Ok(_) => return Err(Error::other(format!("{file}: not a JSON object")).into()),
         Err(message) => return Err(Error::other(format!("{file}: {message}")).into()),
     };
-    let after = match config.tojson() {
-        Value::Object(map) => map,
-        _ => unreachable!("a configuration is an object"),
-    };
+    // the settings equal to their inherited value follow it from then on (`bibtex`, `filesdir` and
+    // `pool` are not inherited)
     let mut removed: Vec<String> = settings::names()
         .into_iter()
-        .filter(|name| json_get(&before, name).is_some() && json_get(&after, name).is_none())
+        .filter(|name| !["bibtex", "filesdir", "pool"].contains(name))
+        .filter(|name| json_get(&before, name).is_some() && py_eq(&config.get(name), &config.inherited(name)))
         .map(str::to_string)
         .collect();
+    for name in &removed {
+        config.unset(name)?;
+    }
     // the settings of papers before the history (git, git-lfs, trash-days...), no longer used
     removed.extend(
         ["git", "gitlfs", "backup_files", "gitdir", "trash-days", "trash-size"]
@@ -286,6 +288,13 @@ fn set_pool(o: &ConfigArgs, mut config: Config, unset: bool) -> Outcome {
     match &value {
         None => new.unset("pool")?,
         Some(v) => new.set("pool", Value::String(v.clone()))?,
+    }
+    if new.is_pool_library() {
+        return Err(Error::exit(format!(
+            "pool {}: this is the library itself (nothing was changed)",
+            o.values.first().cloned().unwrap_or_default()
+        ))
+        .into());
     }
     if new.has_pool() {
         let what = format!("pool {}:", o.values.first().cloned().unwrap_or_default());
@@ -565,7 +574,12 @@ fn machine_config_cmd(o: &ConfigArgs, machine: &mut MachineConfig, name: Option<
             Some(Value::String(short_home(&path)))
         }
     } else {
-        Some(parse_setting(name, &o.values)?)
+        let value = parse_setting(name, &o.values)?;
+        match (name, value) {
+            // relative to the current directory
+            ("history-dir", Value::String(dir)) => Some(Value::String(short_home(&abspath(&expanduser(&dir))))),
+            (_, value) => Some(value),
+        }
     };
     machine.set(name, value);
     if o.dry_run {

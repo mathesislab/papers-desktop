@@ -1,0 +1,119 @@
+{
+ "name": "init-shallow-default-relative",
+ "home": {
+  "<MC>": "{\n  \"default\": \"../../../../cwd/def\",\n  \"version\": 3\n}"
+ },
+ "cwd": {
+  "def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}"
+ },
+ "platform": "macos",
+ "steps": [
+  {
+   "args": [
+    "init",
+    "lib",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/lib\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    <TMP>/cwd/def\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"../../../../cwd/def\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "<TMP>/cwd/def\n",
+   "stderr": "",
+   "tree": {
+    "cwd/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"../../../../cwd/def\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "lib2",
+    "--shallow",
+    "--pool",
+    "x"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --shallow is --pool with the default library: give one of them\n",
+   "tree": {
+    "cwd/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"../../../../cwd/def\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "lib",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: a library already exists here (./.papers/config.json): change its settings with `papers config`\n",
+   "tree": {
+    "cwd/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"../../../../cwd/def\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\ndefault = ../../../../cwd/def\n",
+   "stderr": "",
+   "tree": {
+    "cwd/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"../../../../cwd/def\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

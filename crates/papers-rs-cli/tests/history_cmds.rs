@@ -666,7 +666,7 @@ fn status_of_a_library() {
 fn the_status_of_a_library_with_a_pool_has_its_pool_line() {
     let b = Sandbox::new();
     b.init("lib");
-    ok(b.run(&["init", "project", "--pool", "../lib"]));
+    ok(b.run(&["init", "project", "--pool", "lib"]));
     let status = ok(b.run_in("project", &["status", "--no-check-files"]));
     assert!(status.contains("* files:  in the pool, $ROOT/work/lib/files\n"), "{status}");
     assert!(status.contains("* pool:   ../lib (not pulled from yet)\n"), "{status}");
@@ -777,7 +777,7 @@ fn papers_writes_and_papers_rs_undoes() {
 fn papers_writes_a_shallow_library_and_papers_rs_undoes() {
     reference::same(&[
         ("!", "init lib"),
-        ("!", "init project --pool ../lib"),
+        ("!", "init project --pool lib"),
         ("!", "-C project add ../one.bib --attach ../Downloads/a.pdf --copy"),
         ("!", "-C project add ../two.bib"),
         (">", "-C project history"),
@@ -834,7 +834,7 @@ fn papers_rs_writes_and_papers_undoes() {
 fn undo_and_redo_of_a_library_with_auto_push_say_there_is_nothing_when_there_is_nothing() {
     let b = Sandbox::new();
     b.init("lib");
-    ok(b.run(&["init", "project", "--pool", "../lib"]));
+    ok(b.run(&["init", "project", "--pool", "lib"]));
     ok(b.run_in("project", &["config", "auto-push", "true"]));
     for command in ["undo", "redo"] {
         assert_eq!(error(b.run_in("project", &[command])), format!("papers: error: nothing to {command}\n"));

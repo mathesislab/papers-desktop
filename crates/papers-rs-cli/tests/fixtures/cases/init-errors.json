@@ -19,7 +19,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -37,7 +37,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -56,7 +56,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -75,7 +75,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -91,12 +91,12 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: --pool nolib: <TMP>/cwd/f/nolib: <TMP>/cwd/f does not exist (disk not mounted?): create it first with `papers init <TMP>/cwd/f/nolib` (nothing was changed)\n",
+   "stderr": "papers: error: --pool nolib: <TMP>/cwd/nolib does not exist: create it first with `papers init <TMP>/cwd/nolib` (nothing was changed)\n",
    "tree": {
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -110,14 +110,17 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 1,
-   "stdout": "",
-   "stderr": "papers: error: --pool .: this is the library itself (nothing was changed)\n",
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/f\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    ..\n`papers config` lists and sets the settings\n",
+   "stderr": "papers: warning: the new library is inside the library of <TMP>/cwd/.papers/config.json\n",
    "tree": {
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/f/papers.bib": "",
+    "cwd/f/.papers/.gitignore": "*\n",
+    "cwd/f/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"..\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -139,7 +142,10 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/f/papers.bib": "",
+    "cwd/f/.papers/.gitignore": "*\n",
+    "cwd/f/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"..\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -161,7 +167,10 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/f/papers.bib": "",
+    "cwd/f/.papers/.gitignore": "*\n",
+    "cwd/f/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"..\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -183,7 +192,10 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/f/papers.bib": "",
+    "cwd/f/.papers/.gitignore": "*\n",
+    "cwd/f/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"..\",\n  \"version\": 3\n}"
    }
   }
  ]

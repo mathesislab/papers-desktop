@@ -3,13 +3,21 @@
 //! that follows the same rules) do not write it at the same time.
 //!
 //! A lock is a lease: a file created only if it does not exist, with a JSON
-//! object `{token, pid, host, command}`. Its holder rewrites it every
-//! `REFRESH` seconds (a thread), as long as the command runs. A waiting
-//! command takes the lock over when it is stale:
+//! object `{token, pid, host, command}`. Its holder touches it (its modification
+//! time) every `REFRESH` seconds (a thread), as long as the command runs; the
+//! file is never rewritten, so a holder that lost its lock cannot overwrite
+//! the lock of another command. A waiting command takes the lock over when it
+//! is stale:
 //!
 //! - the file did not change for `LIFETIME` seconds, measured on the clock of
 //!   the waiting command (the clocks of two computers are never compared);
 //! - or it names this computer and a process that no longer exists.
+//!
+//! To take it over, the waiting command renames the stale file to a name of
+//! its own (one step: two waiting commands cannot both get it) and checks that
+//! the file it renamed is the one it found stale; a fresh lock taken by a
+//! faster command meanwhile is put back (a hard link, or a copy with the same
+//! token on a file system without hard links).
 //!
 //! Before writing the library, the holder checks that the lock still has its
 //! token (see `Lock::check`): a holder that could not refresh it in time (e.g.
@@ -18,10 +26,14 @@
 //! if it still has its token (when the `Lock` is dropped).
 //!
 //! A command locks the library of the command line first, then its pool; a
-//! command in the pool locks the pool only: two commands never wait for each
-//! other. A lock does not help in a folder synchronized by a service
-//! (Dropbox, Nextcloud...): the file reaches the other computers seconds or
-//! minutes later.
+//! command in the pool locks the pool only. Two commands that lock two
+//! libraries in opposite orders (a command in L1 with `--pool L2` and a
+//! command in L2 with `--pool L1`) each hold one lock and wait for the other:
+//! the first to wait fails after `WAIT` seconds with an error, before it
+//! writes anything, and the other then gets the lock if it has not waited
+//! `WAIT` seconds as well. A lock does not help in a folder synchronized by a
+//! service (Dropbox, Nextcloud...): the file reaches the other computers
+//! seconds or minutes later.
 
 use std::fs;
 use std::io::Write;
@@ -35,7 +47,7 @@ use serde_json::{Map, Value};
 
 use crate::config::json::{loads, quote};
 use crate::config::paths::{dirname, join, short_home};
-use crate::config::{Config, config_root};
+use crate::config::{Config, dry_run, ignore_papers_folder};
 use crate::error::{Error, Result};
 use crate::log;
 
@@ -53,11 +65,11 @@ pub const LOCK_FILE: &str = "lock";
 /// The lock file of a library (`.papers/lock`), or `None` (a bibtex without
 /// library).
 pub fn lock_path(config: &Config) -> Option<String> {
-    let file = config.file.as_deref()?;
+    config.file.as_deref()?;
     if !config.is_library {
         return None;
     }
-    Some(join(&join(&config_root(file), ".papers"), LOCK_FILE))
+    Some(join(&join(&config.libdir(), ".papers"), LOCK_FILE))
 }
 
 #[derive(Debug, Clone)]
@@ -119,25 +131,64 @@ fn read(path: &str) -> Option<Map<String, Value>> {
     }
 }
 
-/// What changes when the lock file is rewritten (`None`: no file).
+/// What changes when the lock file is refreshed or replaced (`None`: no file).
 fn signature(path: &str) -> Option<(i64, i64, u64, u64)> {
     let meta = fs::metadata(path).ok()?;
     Some((meta.mtime(), meta.mtime_nsec(), meta.size(), meta.ino()))
 }
 
-/// Rewrite the lock (a refresh): through a temporary file, so that a reader
-/// never sees half of it.
-fn write(path: &str, content: &Content) -> std::io::Result<()> {
-    let tmp = format!("{path}.{}.tmp", std::process::id());
-    fs::write(&tmp, content.to_json())?;
-    fs::rename(&tmp, path)
+/// Remove the stale lock file whose signature is `stale`: renamed first (one step), then removed
+/// if it is that file; a fresh lock found there instead is put back (unless another lock was
+/// created meanwhile), as a copy on a file system without hard links.
+fn take_over(path: &str, stale: Option<(i64, i64, u64, u64)>) {
+    take_over_with(path, stale, hard_link);
+}
+
+fn hard_link(original: &str, link: &str) -> std::io::Result<()> {
+    fs::hard_link(original, link)
+}
+
+/// [`take_over`], with the way to put a fresh lock back (a hard link, `fs::hard_link`).
+fn take_over_with(
+    path: &str,
+    stale: Option<(i64, i64, u64, u64)>,
+    link: fn(&str, &str) -> std::io::Result<()>,
+) {
+    let aside = format!("{path}.{}.stale", random_token());
+    if fs::rename(path, &aside).is_err() {
+        return; // gone already
+    }
+    if signature(&aside) == stale {
+        let _ = fs::remove_file(&aside);
+        return;
+    }
+    match link(&aside, path) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {} // its holder finds another token at its check and stops
+        Err(_) => {
+            // no hard links (some network or FAT drives): put back as a copy, same token
+            let mut content = read(&aside).filter(|c| !c.is_empty());
+            if content.is_none() {
+                // still being written by its holder
+                std::thread::sleep(POLL);
+                content = read(&aside).filter(|c| !c.is_empty());
+            }
+            let text = content.and_then(|_| fs::read_to_string(&aside).ok()).unwrap_or_else(|| "{}".to_string());
+            let _ = create_text(path, &text);
+        }
+    }
+    let _ = fs::remove_file(&aside);
 }
 
 /// Create the lock file if it does not exist; return whether it was created.
 fn create(path: &str, content: &Content) -> Result<bool> {
+    create_text(path, &content.to_json())
+}
+
+fn create_text(path: &str, text: &str) -> Result<bool> {
     match fs::OpenOptions::new().write(true).create_new(true).mode(0o644).open(path) {
         Ok(mut file) => {
-            file.write_all(content.to_json().as_bytes())?;
+            file.write_all(text.as_bytes())?;
             Ok(true)
         }
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
@@ -182,13 +233,17 @@ pub struct Lock {
 }
 
 /// Take the lock of the library of `config` (nothing for a bibtex without
-/// library), waiting up to `wait` (`WAIT` by default) for the command that
+/// library, or with a dry run), waiting up to `wait` (`WAIT` by default) for the command that
 /// holds it; an error after. `command` says what holds it (e.g. `papers add
 /// x.pdf`).
 pub fn acquire(config: &Config, command: &str, wait: Option<Duration>) -> Result<Option<Lock>> {
     let Some(path) = lock_path(config) else { return Ok(None) };
+    if dry_run() {
+        return Ok(None);
+    }
     let dir = dirname(&path);
     fs::create_dir_all(&dir)?;
+    ignore_papers_folder(&dir); // also when papers never saves the configuration
     let content = Content::new(command);
     let wait = wait.unwrap_or(WAIT);
     let start = Instant::now();
@@ -210,7 +265,7 @@ pub fn acquire(config: &Config, command: &str, wait: Option<Duration>) -> Result
             && (now.duration_since(since) >= LIFETIME || other.as_ref().is_some_and(|o| !o.is_empty() && process_gone(o)));
         if stale {
             log::info(&format!("{}: stale lock of {}, taken over", short_home(&path), describe(&other)));
-            let _ = fs::remove_file(&path);
+            take_over(&path, current);
             seen = None;
             continue;
         }
@@ -248,11 +303,16 @@ fn refresh(path: &str, content: &Content, stop: &(Mutex<bool>, std::sync::Condva
         drop(guard);
         let ours = read(path).and_then(|o| o.get("token").and_then(|t| t.as_str().map(str::to_string)));
         if ours.as_deref() == Some(content.token.as_str())
-            && let Err(e) = write(path, content)
+            && let Err(e) = touch(path)
         {
             log::debug(&format!("{path}: lock not refreshed: {e}"));
         }
     }
+}
+
+/// Set the modification time of the lock file to now (a refresh): the file is not rewritten.
+fn touch(path: &str) -> std::io::Result<()> {
+    fs::OpenOptions::new().write(true).open(path)?.set_modified(std::time::SystemTime::now())
 }
 
 impl Lock {
@@ -371,6 +431,97 @@ mod tests {
         fs::write(lock.path(), other.to_json()).unwrap();
         let error = lock.check().unwrap_err();
         assert!(error.message().contains("the lock was taken over by papers other"), "{error}");
+    }
+
+    fn other_lock(path: &str, host: &str, token: &str) {
+        let content = Content { token: token.into(), pid: 1, host: host.into(), command: "papers other".into() };
+        fs::create_dir_all(dirname(path)).unwrap();
+        fs::write(path, content.to_json()).unwrap();
+    }
+
+    fn stale_files(path: &str) -> Vec<String> {
+        let names = fs::read_dir(dirname(path)).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned());
+        names.filter(|n| n.contains("stale")).collect()
+    }
+
+    #[test]
+    fn takes_over_the_stale_file_only() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = lock_path(&library(dir.path())).unwrap();
+        // a stale lock is removed, whatever the name it was moved to
+        other_lock(&path, "elsewhere", "old");
+        take_over(&path, signature(&path));
+        assert!(!std::path::Path::new(&path).exists());
+        assert!(stale_files(&path).is_empty());
+        // another waiting command took the stale lock over first: its fresh lock stays
+        other_lock(&path, "elsewhere", "old");
+        let stale = signature(&path);
+        fs::remove_file(&path).unwrap();
+        other_lock(&path, "faster", "fresh");
+        take_over(&path, stale);
+        assert_eq!(read(&path).unwrap()["host"], "faster");
+        assert!(stale_files(&path).is_empty());
+        // nothing to take over
+        fs::remove_file(&path).unwrap();
+        take_over(&path, stale);
+    }
+
+    #[test]
+    fn a_fresh_lock_is_put_back_as_a_copy_without_hard_links() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = lock_path(&library(dir.path())).unwrap();
+        other_lock(&path, "elsewhere", "old");
+        let stale = signature(&path);
+        fs::remove_file(&path).unwrap();
+        other_lock(&path, "faster", "fresh");
+        take_over_with(&path, stale, |_, _| Err(std::io::Error::from_raw_os_error(libc::EPERM)));
+        let content = read(&path).unwrap();
+        assert_eq!((content["host"].as_str(), content["token"].as_str()), (Some("faster"), Some("fresh")));
+        assert!(stale_files(&path).is_empty());
+    }
+
+    #[test]
+    fn the_refresh_touches_the_file_and_does_not_rewrite_it() {
+        use std::os::unix::fs::MetadataExt;
+        let dir = tempfile::tempdir().unwrap();
+        let config = library(dir.path());
+        let lock = acquire(&config, "papers add x", None).unwrap().unwrap();
+        let before = fs::metadata(lock.path()).unwrap();
+        let text = fs::read_to_string(lock.path()).unwrap();
+        std::thread::sleep(Duration::from_millis(20));
+        touch(lock.path()).unwrap();
+        let after = fs::metadata(lock.path()).unwrap();
+        assert_eq!(before.ino(), after.ino());
+        assert!(after.modified().unwrap() > before.modified().unwrap());
+        assert_eq!(fs::read_to_string(lock.path()).unwrap(), text);
+        // a lock taken over is not rewritten by the holder that lost it
+        other_lock(lock.path(), "elsewhere", "other");
+        let ours = read(lock.path()).and_then(|o| o.get("token").and_then(|t| t.as_str().map(str::to_string)));
+        assert_eq!(ours.as_deref(), Some("other"));
+    }
+
+    #[test]
+    fn the_lock_ignores_the_papers_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = library(dir.path());
+        let ignore = format!("{}/.papers/.gitignore", dir.path().display());
+        let lock = acquire(&config, "papers add x", None).unwrap().unwrap();
+        assert_eq!(fs::read_to_string(&ignore).unwrap(), "*\n");
+        drop(lock);
+        // one that the user wrote stays; the one of earlier versions is replaced
+        fs::write(&ignore, "mine\n").unwrap();
+        drop(acquire(&config, "papers add x", None).unwrap());
+        assert_eq!(fs::read_to_string(&ignore).unwrap(), "mine\n");
+        fs::write(&ignore, "backup/\n").unwrap();
+        drop(acquire(&config, "papers add x", None).unwrap());
+        assert_eq!(fs::read_to_string(&ignore).unwrap(), "*\n");
+    }
+
+    #[test]
+    fn the_lock_is_in_the_folder_of_the_library() {
+        let mut config = library(std::path::Path::new("/a/lib"));
+        config.bibtex = Some("/a/lib/bib/papers.bib".to_string());
+        assert_eq!(lock_path(&config).as_deref(), Some("/a/lib/.papers/lock"));
     }
 
     #[test]

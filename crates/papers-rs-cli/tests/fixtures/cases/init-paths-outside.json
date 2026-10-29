@@ -18,13 +18,13 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "created the library <TMP>/cwd/e\n* bibtex:  <TMP>/cwd/x.bib\n* files:   <TMP>/cwd/pdfs (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stdout": "created the library <TMP>/cwd/e\n* bibtex:  <TMP>/x.bib\n* files:   <TMP>/pdfs (the files directory of the library)\n`papers config` lists and sets the settings\n",
    "stderr": "",
    "tree": {
-    "cwd/x.bib": "",
-    "cwd/pdfs/": null,
+    "x.bib": "",
+    "pdfs/": null,
     "cwd/e/.papers/.gitignore": "*\n",
-    "cwd/e/.papers/config.json": "{\n  \"bibtex\": \"../x.bib\",\n  \"filesdir\": \"../pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/e/.papers/config.json": "{\n  \"bibtex\": \"../../x.bib\",\n  \"filesdir\": \"../../pdfs\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -41,17 +41,17 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "created the library <TMP>/cwd/f\n* bibtex:  <TMP>/cwd/other/dir/x.bib\n* files:   /<TMP>/cwd/abs/pdfs (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stdout": "created the library <TMP>/cwd/f\n* bibtex:  <TMP>/other/dir/x.bib\n* files:   /<TMP>/cwd/abs/pdfs (the files directory of the library)\n`papers config` lists and sets the settings\n",
    "stderr": "",
    "tree": {
-    "cwd/x.bib": "",
-    "cwd/pdfs/": null,
+    "x.bib": "",
+    "pdfs/": null,
     "cwd/abs/pdfs/": null,
     "cwd/e/.papers/.gitignore": "*\n",
-    "cwd/e/.papers/config.json": "{\n  \"bibtex\": \"../x.bib\",\n  \"filesdir\": \"../pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/e/.papers/config.json": "{\n  \"bibtex\": \"../../x.bib\",\n  \"filesdir\": \"../../pdfs\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/f/.papers/.gitignore": "*\n",
-    "cwd/f/.papers/config.json": "{\n  \"bibtex\": \"../other/dir/x.bib\",\n  \"filesdir\": \"../abs/pdfs\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
-    "cwd/other/dir/x.bib": ""
+    "cwd/f/.papers/config.json": "{\n  \"bibtex\": \"../../other/dir/x.bib\",\n  \"filesdir\": \"../abs/pdfs\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "other/dir/x.bib": ""
    }
   }
  ]

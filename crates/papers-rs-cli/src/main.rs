@@ -120,6 +120,8 @@ fn run(argv: Vec<String>) -> Result<(), Exit> {
         std::env::set_current_dir(directory).map_err(|e| Error::other(format!("{directory}: {e}")))?;
     }
 
+    // before the library is loaded: a dry run moves nothing
+    papers_rs::config::set_dry_run(argv.iter().any(|a| a == "--dry-run"));
     check_legacy_global_config();
     let config = find_config(".", MachineConfig::load(None)?)?;
     let values = HelpValues::from_config(&config);
@@ -142,6 +144,9 @@ fn run(argv: Vec<String>) -> Result<(), Exit> {
         return Ok(());
     }
     if let Some(leaf) = &parsed.leaf {
+        if leaf.flag("dry_run") {
+            papers_rs::config::set_dry_run(true);
+        }
         handle_logging(leaf);
         if leaf.flag("porcelain") {
             log::set_porcelain(true);

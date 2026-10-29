@@ -15,9 +15,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting ':' delimiter: line 1 column 6 (char 5) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Expecting ':' delimiter: line 1 column 6 (char 5)): correct the file\n",
    "tree": {
     "home/<MC>": "{\"a\" 1}"
    }
@@ -33,9 +33,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Illegal trailing comma before end of object: line 1 column 8 (char 7) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Illegal trailing comma before end of object: line 1 column 8 (char 7)): correct the file\n",
    "tree": {
     "home/<MC>": "{\"a\": 1,}"
    }
@@ -51,9 +51,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Illegal trailing comma before end of array: line 1 column 3 (char 2) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Illegal trailing comma before end of array: line 1 column 3 (char 2)): correct the file\n",
    "tree": {
     "home/<MC>": "[1,]"
    }
@@ -69,9 +69,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Extra data: line 1 column 4 (char 3) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Extra data: line 1 column 4 (char 3)): correct the file\n",
    "tree": {
     "home/<MC>": "{} x"
    }
@@ -87,9 +87,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Unterminated string starting at: line 1 column 1 (char 0) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Unterminated string starting at: line 1 column 1 (char 0)): correct the file\n",
    "tree": {
     "home/<MC>": "\"abc"
    }
@@ -105,9 +105,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 7 (char 6) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Expecting value: line 1 column 7 (char 6)): correct the file\n",
    "tree": {
     "home/<MC>": "{\"a\": }"
    }
@@ -125,7 +125,7 @@
    "env": {},
    "rc": 0,
    "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0) -- ignored\n",
+   "stderr": "",
    "tree": {
     "home/<MC>": "﻿{}"
    }
@@ -141,9 +141,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting value: line 1 column 1 (char 0) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Expecting value: line 1 column 1 (char 0)): correct the file\n",
    "tree": {
     "home/<MC>": "nul"
    }
@@ -159,9 +159,9 @@
    },
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <MC>\n",
-   "stderr": "papers: warning: unreadable global configuration <MC>: Expecting ',' delimiter: line 1 column 9 (char 8) -- ignored\n",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC> could not be read (Expecting ',' delimiter: line 1 column 9 (char 8)): correct the file\n",
    "tree": {
     "home/<MC>": "{\"a\": 1 \"b\"}"
    }

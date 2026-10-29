@@ -17,8 +17,16 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   configuration (the default library, the default settings), the settings with
   their sources (library, else global, else default), the library of a
   directory (`-C DIR`, upward search, the default library), and the files
-  written as papers writes them (key order, indentation, no trailing newline).
-  Paths are strings with Python's `os.path` semantics (`config::paths`).
+  written as papers writes them (key order, indentation, no trailing newline; atomically). A
+  setting that a library was given is saved, also with the default value (`Config::is_set`); the
+  keys that papers does not know are kept when it saves the file; a value of the wrong type, or a
+  file (library or global) that is not a JSON object, is an error that names the file and the
+  setting (`settings::check_settings`). All of `.papers/` is in the library folder, also when the
+  bibtex is in another one (`Config::libdir`): what earlier builds wrote next to the bibtex is moved
+  there when the configuration is loaded (not with a dry run: `config::set_dry_run`, set before the
+  load). `~` is the home directory in `bibtex`, `filesdir`, `default` and `history-dir`; a relative
+  `default` or `history-dir` is relative to the folder of the global configuration
+  (`MachineConfig::absolute`). Paths are strings with Python's `os.path` semantics (`config::paths`).
 - `bib`: the bibtex of a library, read and written as papers does (bibtexparser
   v2 with the middlewares of papers), byte for byte, as UTF-8 with LF line ends and
   without a byte order mark (field names and keys ignore case: a second one is a
@@ -63,7 +71,8 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   name the first and the second entry, so the sides swap between the two) and of a revert (`Revert`).
   The module documentation has the rules and the modes.
 - `library`: a bibtex with its entries and configuration, as papers' `Biblio`:
-  load, insert (with the duplicate check, the key template, the files placed by
+  load (`distinct.json` of the library folder, `Config::libdir`; absolute links of a library with
+  relative paths written relative), insert (with the duplicate check, the key template, the files placed by
   the name template), remove, rename keys, set files and tags, save (an unchanged
   library is not written, nor a text that is on disk; atomic; a bibtex that
   another program wrote is refused). `Library::save` returns what the history
@@ -115,7 +124,9 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
 - `difflib`: Python's `difflib.ndiff` (`SequenceMatcher` with junk and popular elements), for the
   diff that `check` shows.
 - `install`: what `papers init` creates.
-- `lock`: the lock of a library (`.papers/lock`), a lease with a refresh thread.
+- `lock`: the lock of a library (`.papers/lock` of the library folder), a lease: its holder touches the
+  file (a thread; it is never rewritten), a stale lock is taken over in one step (a rename), and the
+  `.papers/.gitignore` is written when the lock is taken.
 - `error`, `log`: papers' errors, and its messages (`papers: warning: ...`).
 
 ## The command line

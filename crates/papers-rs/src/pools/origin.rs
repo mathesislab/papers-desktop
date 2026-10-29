@@ -24,7 +24,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::bib::{Bib, Block, Entry, Field, read_file};
-use crate::config::paths::{abspath, basename, dirname, exists, isdir, isfile, join, normpath};
+use crate::config::paths::{basename, dirname, exists, isdir, isfile, join, normpath};
 use crate::config::write_atomic;
 use crate::entry::{self, val};
 use crate::error::Result;
@@ -242,10 +242,9 @@ fn digits(text: &str) -> Option<i128> {
 }
 
 impl Origin {
-    /// The records of the library of a bibtex (`.papers/origin/` next to it).
-    pub fn for_bibtex(bibtex: &str, dry_run: bool) -> Origin {
-        let dir = join(&dirname(&abspath(bibtex)), ORIGIN_DIR);
-        Origin::load(&dir, dry_run)
+    /// The records of the library in the folder `libdir` (`Config::libdir`): its `.papers/origin/`.
+    pub fn for_library(libdir: &str, dry_run: bool) -> Origin {
+        Origin::load(&join(libdir, ORIGIN_DIR), dry_run)
     }
 
     /// Read the folder (and the legacy file next to it, which is split into one file per
@@ -653,7 +652,7 @@ mod tests {
             "@comment{papers-pull 123 ../pool}\n\n@article{a,\n title = {T},\n papers-pool = {../pool},\n papers-pool-key = {b}\n}\n",
         )
         .unwrap();
-        let origin = Origin::for_bibtex(&join(&root, "papers.bib"), false);
+        let origin = Origin::for_library(&root, false);
         assert_eq!(origin.pulled("../pool"), Some(123));
         assert!(origin.get(&entry("a", &[]), Some("../pool")).is_some());
         assert!(!exists(&join(&root, LEGACY_ORIGIN_FILE)));

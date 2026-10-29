@@ -608,7 +608,7 @@ fn side_matches(recorded: &Value, ident: &Identity) -> bool {
 
 /// The pairs of entries that are not the same paper, by identity, not by key,
 /// so that the file means the same in every library (`.papers/distinct.json`
-/// next to the bibtex).
+/// of the library folder).
 #[derive(Debug, Clone, Default)]
 pub struct Distinct {
     /// the pairs as the file has them (two JSON values each)
@@ -623,10 +623,14 @@ impl Distinct {
         Distinct::default()
     }
 
-    /// The pairs of the library of this bibtex file: `.papers/distinct.json` next to it.
+    /// The pairs of the library in the folder `libdir` (`Config::libdir`): its `.papers/distinct.json`.
+    pub fn for_library(libdir: &str) -> Distinct {
+        Distinct::load(&join(libdir, DISTINCT_FILE))
+    }
+
+    /// The pairs of a bibtex file without library: the `.papers/distinct.json` next to it.
     pub fn for_bibtex(bibtex: &str) -> Distinct {
-        let dir = dirname(&crate::config::paths::abspath(bibtex));
-        Distinct::load(&join(&dir, DISTINCT_FILE))
+        Distinct::for_library(&dirname(&crate::config::paths::abspath(bibtex)))
     }
 
     /// The pairs of a file: none if it does not exist; a file that cannot be

@@ -1,0 +1,408 @@
+{
+ "name": "config-global-invalid-values",
+ "home": {},
+ "cwd": {
+  "v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"auto-push\": \"no\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value \"no\" for the setting auto-push (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"auto-push\": \"no\"}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"default\": 3}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 3 for the setting default (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"default\": 3}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"history-size\": true}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value true for the setting history-size (expected an integer): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"history-size\": true}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"files\": \"keep\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value \"keep\" for the setting files (expected one of ask, move, copy, link): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"files\": \"keep\"}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"nameformat\": {\"title_length\": \"10\"}}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value \"10\" for the setting name.title-length (expected an integer): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"nameformat\": {\"title_length\": \"10\"}}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"keyformat\": 1}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid keyformat 1 (expected an object): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"keyformat\": 1}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"paths\": \"x\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value \"x\" for the setting paths (expected one of relative, absolute): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"paths\": \"x\"}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"editor\": 1}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 1 for the setting editor (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"editor\": 1}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"bibtex\": 1}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 1 for the setting bibtex (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"bibtex\": 1}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"filesdir\": 2}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 2 for the setting filesdir (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"filesdir\": 2}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"default\": [\"x\"]}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value [\"x\"] for the setting default (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"default\": [\"x\"]}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"history-dir\": 1}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 1 for the setting history-dir (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"history-dir\": 1}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"keep-deleted-files\": \"no\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value \"no\" for the setting keep-deleted-files (expected true or false): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"keep-deleted-files\": \"no\"}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"pool\": 3}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: <MC>: the global pool setting is no longer used (ignored); `papers config --global default PATH` sets a default library\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"pool\": 3}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"pool\": \"none\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"pool\": \"none\"}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"pool\": \"/x\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\n",
+   "stderr": "papers: warning: <MC>: the global pool setting is no longer used (ignored); `papers config --global default PATH` sets a default library\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"pool\": \"/x\"}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"version\": 3, \"default\": \"~/x\"}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\ndefault = ~/x\n",
+   "stderr": "",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"version\": 3, \"default\": \"~/x\"}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "v",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {
+    "home/<MC>": "{\"editor\": 4}"
+   },
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 4 for the setting editor (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"editor\": 4}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "editor",
+    "vim"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 4 for the setting editor (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"editor\": 4}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "--unset",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 4 for the setting editor (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"editor\": 4}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "w"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <MC>: invalid value 4 for the setting editor (expected a text): correct the file\n",
+   "tree": {
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\"editor\": 4}"
+   }
+  }
+ ]
+}

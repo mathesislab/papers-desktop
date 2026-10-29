@@ -1,0 +1,421 @@
+{
+ "name": "init-pool-itself",
+ "home": {},
+ "cwd": {
+  "e/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/a\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "a2",
+    "--pool",
+    "a2"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool a2: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "b",
+    "--pool",
+    "../b"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool ../b: <TMP>/b does not exist: create it first with `papers init <TMP>/b` (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "c",
+    "--pool",
+    "c/../c"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool c/../c: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "d",
+    "--pool",
+    "."
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool .: <TMP>/cwd is not a library (no .papers/config.json): create it first with `papers init <TMP>/cwd` (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "e",
+    "--pool",
+    "e"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool e: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "f",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: no default library: `papers init PATH --global` or `papers config --global default PATH`\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "pool",
+    "."
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: pool .: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "pool",
+    "../a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: pool ../a: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "pool",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: pool a: <TMP>/cwd/a/a does not exist: create it first with `papers init <TMP>/cwd/a/a` (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "pool",
+    "../a/"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: pool ../a/: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "pool",
+    "/<TMP>/cwd/a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: pool /<TMP>/cwd/a: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "pool",
+    "~/a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: pool ~/a: ~/a does not exist: create it first with `papers init ~/a` (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <TMP>/cwd/a/.papers/config.json\nbibtex                = <TMP>/cwd/a/papers.bib  (library)\nfilesdir              = <TMP>/cwd/a/files  (library)\npool                  = none  (library)\npaths                 = relative  (library)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                =   (default)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = 2  (default)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = -  (default)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
+   "stderr": "",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "default",
+    "a"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/a\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "g",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/g\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    <TMP>/cwd/a\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/g/papers.bib": "",
+    "cwd/g/.papers/.gitignore": "*\n",
+    "cwd/g/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/a\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/a\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "a",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: --pool <TMP>/cwd/a: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/g/papers.bib": "",
+    "cwd/g/.papers/.gitignore": "*\n",
+    "cwd/g/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/a\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/a\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "a",
+    "config",
+    "pool",
+    "../a",
+    "--dry-run"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: pool ../a: this is the library itself (nothing was changed)\n",
+   "tree": {
+    "cwd/e/": null,
+    "cwd/a/papers.bib": "",
+    "cwd/a/files/": null,
+    "cwd/a/.papers/.gitignore": "*\n",
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/g/papers.bib": "",
+    "cwd/g/.papers/.gitignore": "*\n",
+    "cwd/g/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/a\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/a\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

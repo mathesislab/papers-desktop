@@ -21,17 +21,20 @@ positional arguments:
                         the library. To take back an older step alone: `papers
                         history --revert N`
     redo                redo a change undone by `papers undo`
-    restore             bring the library to the step N of its history (see
-                        `papers history`), with its files; without N, to its
-                        last step: the changes made outside papers since are
-                        undone (and recorded: `papers redo` brings them back)
-    history             the steps of the library (number, command, time; >
-                        marks where the library is), the history of the
-                        machine (where, its size: the history-size setting),
-                        and the backups of earlier versions of papers that are
-                        no longer used. The history is in a folder of the
-                        machine (the history-dir setting), not in the library:
-                        it is not synced or shared with it
+    restore             bring the library to the step STEP of its history (see
+                        `papers history`), with its files; without STEP, to
+                        its last step: the changes made outside papers since
+                        are undone (and recorded: `papers redo` brings them
+                        back)
+    history             the steps of the library (identifier, command, time; >
+                        marks where the library is; a step is named by its
+                        identifier, or the start of it, 4 characters or more),
+                        the history of the machine (where, its size: the
+                        history-size setting), and the backups of earlier
+                        versions of papers that are no longer used. The
+                        history is in a folder of the machine (the history-dir
+                        setting), not in the library: it is not synced or
+                        shared with it
 
 options:
   -h, --help            show this help message and exit
@@ -62,7 +65,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --no-check-files      faster, less info
 
 config:
@@ -127,7 +131,9 @@ later changes go through `papers config`.
 
 positional arguments:
   DIR                   directory of the library (default: the current
-                        directory); --bibtex and --filesdir are relative to it
+                        directory); like DIR, the paths of --bibtex,
+                        --filesdir and --pool are relative to the current
+                        directory
 
 options:
   -h, --help            show this help message and exit
@@ -142,17 +148,18 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --bibtex BIBTEX       bibtex file (default: papers.bib, or the first .bib
                         file of the directory)
   --filesdir FILESDIR   files directory (default: files, or an existing pdfs/,
                         papers/... folder)
   --pool PATH           a shallow library that uses the library PATH as pool
-                        (a path relative to the library; PATH must be a
-                        library without pool): `papers add` looks in PATH
-                        first and adds the new entries and their files to it,
-                        and the library links to the files of PATH. Default:
-                        no pool, a self-contained library
+                        (PATH must be a library without pool; a relative PATH
+                        is stored relative to the library): `papers add` looks
+                        in PATH first and adds the new entries and their files
+                        to it, and the library links to the files of PATH.
+                        Default: no pool, a self-contained library
   --shallow             same as --pool with the default library (`papers
                         config --global default`)
   --global              also register the library as the default library (used
@@ -257,13 +264,15 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --unset KEY           remove the setting: the global or default value
                         applies again (pool: none)
   --prune               remove from the library configuration file the
-                        settings equal to their global or default value
-                        (papers also leaves them out each time it saves the
-                        file)
+                        settings equal to their global or default value (they
+                        follow it from then on); a setting given explicitly
+                        (`papers init`, `papers config NAME VALUE`) is kept in
+                        the file, even with the default value
   --global              the global configuration, per user (/home/papers-
                         help/Library/Application Support/papers/config.json),
                         instead of the library's: the default library, and the
@@ -278,13 +287,13 @@ name.title-word-size, name.title-length, name.title-sep, name.unknown-
 template, name.unknown-strict, key.template, key.author-num, key.author-sep,
 key.title-word-num, key.title-word-size, key.title-length, key.title-sep,
 key.unknown-template, key.unknown-strict; with --global, also default (the
-default library: PATH or none). pool PATH (a library without pool) makes the
-library shallow: it links to the pool's copies of its PDFs, and its own copies
-are deleted; each PDF must be in the pool entry already, otherwise nothing
-changes and papers names the entries to push first (`papers push --pool PATH
-KEY...`). pool none makes a shallow library self-contained: the pool files
-that it links to are copied into its files directory. papers lists what it
-will do and asks to continue.
+default library: PATH or none). pool PATH (a library without pool, not the
+library itself) makes the library shallow: it links to the pool's copies of
+its PDFs, and its own copies are deleted; each PDF must be in the pool entry
+already, otherwise nothing changes and papers names the entries to push first
+(`papers push --pool PATH KEY...`). pool none makes a shallow library self-
+contained: the pool files that it links to are copied into its files
+directory. papers lists what it will do and asks to continue.
 "#),
     ("migrate", r#"usage: papers migrate [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
@@ -314,7 +323,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --relative            store the file links of the migrated library relative
                         to its bibtex (default: keep the previous setting)
   --folders             move the files of entries kept in folders of papers <
@@ -388,7 +398,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --edit                update existing install non-interactively (updating is
                         the default; --edit also suppresses prompts) (found:
                         None)
@@ -494,7 +505,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --remove-backup, --remove-history
                         also remove the history of the library (`papers
                         history --remove`)
@@ -583,7 +595,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --format {bibtex,ris,csl-json,bibjson}
                         the format of the added files that are not PDFs
                         (default: from the extension: .ris is RIS, .json is
@@ -669,10 +682,11 @@ duplicate check:
                         what to do when the added entry is in the library,
                         with conflicting values or fields to add: ask
                         (dialogue; the default in a terminal), keep (merge,
-                        conflicts keep the library value), update (merge,
-                        conflicts take the added value), skip (leave the
-                        library entry untouched, do not add), error (stop
-                        before saving; the default without a terminal)
+                        conflicts keep the library's value: the library
+                        receives the entry), update (merge, conflicts take the
+                        value of the added entry), skip (leave the library
+                        entry untouched, do not add), error (stop before
+                        saving; the default without a terminal)
   --no-check-duplicate  disable duplicate check (faster, create duplicates)
   --no-pool             do not look in the pool first (by default, a PDF, DOI
                         or bibtex entry that is the same paper as a pool entry
@@ -803,7 +817,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -k, --keys KEYS [KEYS ...]
                         apply check on this key subset (same as the KEY
                         arguments)
@@ -967,7 +982,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
 
 config:
   --filesdir FILESDIR   files directory (default: None)
@@ -1044,7 +1060,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -f, --force           replace an existing destination file
   -n                    show the moves and the links that change (same as
                         --dry-run)
@@ -1105,7 +1122,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --move                files mode move, whatever the setting
   --copy                files mode copy, whatever the setting
   --link                files mode link, whatever the setting
@@ -1178,7 +1196,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -k, --key KEY [KEY ...]
                         only the links of these entries (key, DOI, arXiv id or
                         ISBN; - reads them from the standard input); write the
@@ -1228,7 +1247,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -k, --key KEY [KEY ...]
                         only the links of these entries (key, DOI, arXiv id or
                         ISBN; - reads them from the standard input); write the
@@ -1273,7 +1293,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --metadata            also compare the DOI of the PDFs with the entry
                         (parses the PDFs)
   --pool PATH           also look for the files of the broken links in the
@@ -1327,7 +1348,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --pool PATH           also look for the files of the broken links in the
                         library PATH, among the files of the entry of the same
                         paper, after the pool of the library and before the
@@ -1369,7 +1391,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -y, --yes             do not ask
 
 config:
@@ -1412,7 +1435,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --check               report the files that changed since their checksum,
                         and write nothing
 
@@ -1464,7 +1488,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -r, --rename          rename files
   -c, --copy            in combination with --rename, keep a copy of the file
                         in its original location
@@ -1580,7 +1605,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --strict              exact matching - instead of substring
   --fuzzy               fuzzy matching - instead of substring
   --fuzzy-ratio FUZZY_RATIO
@@ -1697,12 +1723,14 @@ action on listed results:
   --on-duplicate {ask,keep,update,skip,error}
                         what to do with an entry changed on both sides since
                         the last pull or push: ask (dialogue; the default in a
-                        terminal), keep (the receiving side values are kept),
-                        update (the other side values are taken), skip (the
-                        entry is left as it is, and comes again next time),
-                        error (stop before saving; the default without a
-                        terminal). Fields changed on one side only need no
-                        decision.
+                        terminal), keep (the values of the side that receives
+                        the changes are kept: the library's in a pull, the
+                        pool's in a push), update (the values of the side they
+                        come from are taken: the pool's in a pull, the
+                        library's in a push), skip (the entry is left as it
+                        is, and comes again next time), error (stop before
+                        saving; the default without a terminal). Fields
+                        changed on one side only need no decision.
   --export DIR          write the listed entries as a new library in DIR, as
                         `papers export DIR KEY...`
   --export-files {copy,link,none}
@@ -1753,12 +1781,15 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --from FILE           replace the entry by the entry in FILE, without an
                         editor (- reads it from the standard input: a pipe, or
                         a paste, ended by the closing brace of the entry). The
                         entry keeps its key, and its file and keywords fields
-                        when FILE has none; its other fields are those of FILE
+                        when FILE has none; its other fields are those of
+                        FILE. The file links of FILE are relative to its
+                        directory, as with papers add FILE
   --format {bibtex,ris,csl-json,bibjson}
                         the format of --from FILE (default: from the
                         extension: .ris is RIS, .json is CSL-JSON, .bib.json
@@ -1817,7 +1848,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --delete-files        also delete the files of the entries that no other
                         entry links to, without asking (also those outside the
                         files directory); an error in a shallow library
@@ -1865,7 +1897,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --add TAG [TAG ...]   add tags to the entries
   --rm TAG [TAG ...]    remove tags from the entries
   --rename OLD NEW      rename a tag in the whole library, and the tags under
@@ -1922,7 +1955,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --pool PATH           another library to pull from (a library without pool),
                         e.g. a folder shared with someone (default: the pool
                         of the library). The origin copies are recorded, as
@@ -1935,11 +1969,13 @@ options:
   --on-duplicate {ask,keep,update,skip,error}
                         what to do with an entry changed on both sides since
                         the last pull or push: ask (dialogue; the default in a
-                        terminal), keep (the library values are kept), update
-                        (the pool values are taken), skip (the entry is left
-                        as it is, and comes again next time), error (stop
-                        before saving; the default without a terminal). Fields
-                        changed on one side only need no decision.
+                        terminal), keep (the values of the side that receives
+                        the changes are kept: the library's), update (the
+                        values of the side they come from are taken: the
+                        pool's), skip (the entry is left as it is, and comes
+                        again next time), error (stop before saving; the
+                        default without a terminal). Fields changed on one
+                        side only need no decision.
   --check               only report: whether the pool changed since the last
                         pull, and the entries changed in it
 
@@ -1990,7 +2026,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --all                 push every entry of the library, adding to the pool
                         those it does not have
   --pool PATH           another library to push to (a library without pool),
@@ -2003,11 +2040,13 @@ options:
   --on-duplicate {ask,keep,update,skip,error}
                         what to do with an entry changed on both sides since
                         the last pull or push: ask (dialogue; the default in a
-                        terminal), keep (the pool values are kept), update
-                        (the library values are taken), skip (the entry is
-                        left as it is, and comes again next time), error (stop
-                        before saving; the default without a terminal). Fields
-                        changed on one side only need no decision.
+                        terminal), keep (the values of the side that receives
+                        the changes are kept: the pool's), update (the values
+                        of the side they come from are taken: the library's),
+                        skip (the entry is left as it is, and comes again next
+                        time), error (stop before saving; the default without
+                        a terminal). Fields changed on one side only need no
+                        decision.
 
 config:
   --filesdir FILESDIR   files directory (default: None)
@@ -2052,7 +2091,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --all                 also add to each side the entries it does not have
                         (pull --all, push --all)
   --pool PATH           another library to sync with (a library without pool),
@@ -2065,12 +2105,14 @@ options:
   --on-duplicate {ask,keep,update,skip,error}
                         what to do with an entry changed on both sides since
                         the last pull or push: ask (dialogue; the default in a
-                        terminal), keep (the receiving side values are kept),
-                        update (the other side values are taken), skip (the
-                        entry is left as it is, and comes again next time),
-                        error (stop before saving; the default without a
-                        terminal). Fields changed on one side only need no
-                        decision.
+                        terminal), keep (the values of the side that receives
+                        the changes are kept: the library's in a pull, the
+                        pool's in a push), update (the values of the side they
+                        come from are taken: the pool's in a pull, the
+                        library's in a push), skip (the entry is left as it
+                        is, and comes again next time), error (stop before
+                        saving; the default without a terminal). Fields
+                        changed on one side only need no decision.
 
 config:
   --filesdir FILESDIR   files directory (default: None)
@@ -2093,7 +2135,9 @@ links relative to the bibtex. `papers add DIR --recursive` adds it back;
 `papers config pool DIR` makes it the pool of the library. With --format, the
 entries are also, or instead, written as RIS (DIR/papers.ris) or CSL-JSON
 (DIR/papers.json), with file links relative to DIR; without bibtex, DIR is not
-a papers library.
+a papers library (`papers add DIR/papers.ris` adds the entries of a RIS file;
+`papers add DIR --recursive` adds the bibtex files of a folder, not the RIS or
+JSON files).
 
 positional arguments:
   DIR                   directory of the new library (must not exist, or be
@@ -2115,7 +2159,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --files {copy,link,none}
                         copy the files into DIR/files (a hard link when
                         possible; default), link to them where they are, or
@@ -2163,7 +2208,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
 
 config:
   --filesdir FILESDIR   files directory (default: None)
@@ -2196,7 +2242,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --image               convert to image and use tesseract instead of
                         pdftotext
 "#),
@@ -2225,7 +2272,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --scholar             use google scholar instead of default crossref for
                         fulltext search
 "#),
@@ -2257,7 +2305,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --doi-only            print the DOI of the PDFs: the DOI of the PDF
                         metadata, otherwise the first DOI of the text whose
                         title (from crossref) appears in the text
@@ -2296,7 +2345,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -n, --steps STEPS     number of steps to undo or redo
   --library-only        the library only: a step that also wrote the pool (add
                         in a shallow library, auto-push, push, sync) is undone
@@ -2331,7 +2381,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   -n, --steps STEPS     number of steps to undo or redo
   --library-only        the library only: a step that also wrote the pool (add
                         in a shallow library, auto-push, push, sync) is undone
@@ -2346,19 +2397,20 @@ config:
 "#),
     ("restore", r#"usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
-                      [--dry-run] [--ref N]
-                      [N]
+                      [--dry-run] [--ref STEP]
+                      [STEP]
 "#, r#"usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
-                      [--dry-run] [--ref N]
-                      [N]
+                      [--dry-run] [--ref STEP]
+                      [STEP]
 
-bring the library to the step N of its history (see `papers history`), with
-its files; without N, to its last step: the changes made outside papers since
-are undone (and recorded: `papers redo` brings them back)
+bring the library to the step STEP of its history (see `papers history`), with
+its files; without STEP, to its last step: the changes made outside papers
+since are undone (and recorded: `papers redo` brings them back)
 
 positional arguments:
-  N                     the number of the step
+  STEP                  the step: its identifier in `papers history`, or the
+                        start of it (4 characters or more)
 
 options:
   -h, --help            show this help message and exit
@@ -2373,8 +2425,9 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
-  --ref N               same as N
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
+  --ref STEP            same as STEP
 
 config:
   --filesdir FILESDIR   files directory (default: None)
@@ -2384,17 +2437,18 @@ config:
 "#),
     ("restore-backup", r#"usage: papers restore-backup [-h] [-v] [--debug] [--color {auto,always,never}]
                              [--porcelain] [--filesdir FILESDIR]
-                             [--bibtex BIBTEX] [--dry-run] [--ref N]
-                             [N]
+                             [--bibtex BIBTEX] [--dry-run] [--ref STEP]
+                             [STEP]
 "#, r#"usage: papers restore-backup [-h] [-v] [--debug] [--color {auto,always,never}]
                              [--porcelain] [--filesdir FILESDIR]
-                             [--bibtex BIBTEX] [--dry-run] [--ref N]
-                             [N]
+                             [--bibtex BIBTEX] [--dry-run] [--ref STEP]
+                             [STEP]
 
 deprecated: use `papers restore`
 
 positional arguments:
-  N                     the number of the step
+  STEP                  the step: its identifier in `papers history`, or the
+                        start of it (4 characters or more)
 
 options:
   -h, --help            show this help message and exit
@@ -2409,8 +2463,9 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
-  --ref N               same as N
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
+  --ref STEP            same as STEP
 
 config:
   --filesdir FILESDIR   files directory (default: None)
@@ -2433,18 +2488,19 @@ options:
     ("history", r#"usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
                       [--dry-run] [--all] [--remove [ID]]
-                      [--drop-files N|PATH] [--revert N]
+                      [--drop-files STEP|PATH] [--revert STEP]
                       [--on-duplicate {ask,keep,update,skip,error}] [-n N]
                       [-y]
 "#, r#"usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
                       [--dry-run] [--all] [--remove [ID]]
-                      [--drop-files N|PATH] [--revert N]
+                      [--drop-files STEP|PATH] [--revert STEP]
                       [--on-duplicate {ask,keep,update,skip,error}] [-n N]
                       [-y]
 
-the steps of the library (number, command, time; > marks where the library
-is), the history of the machine (where, its size: the history-size setting),
+the steps of the library (identifier, command, time; > marks where the library
+is; a step is named by its identifier, or the start of it, 4 characters or
+more), the history of the machine (where, its size: the history-size setting),
 and the backups of earlier versions of papers that are no longer used. The
 history is in a folder of the machine (the history-dir setting), not in the
 library: it is not synced or shared with it
@@ -2462,30 +2518,32 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --all                 the histories of all the libraries: identifier, last
                         folder, steps, space used by it only
   --remove [ID]         remove the history of this library (of this folder;
                         the history itself when no other folder uses it), or
                         of the library ID (see --all)
-  --drop-files N|PATH   remove from the history the files that step N deleted,
-                        or the file deleted from PATH (by any step): they go
-                        to the trash of the system, and undo no longer brings
-                        them back
-  --revert N            take back the changes of step N alone, as a new step
-                        (`papers undo` takes the revert back); unlike `papers
-                        undo -n N`, which goes back over the last N steps, the
-                        later steps are kept. Per entry, a three-way merge:
-                        what step N changed goes back, unless it changed since
-                        (a conflict, as in pull); the files of step N go back
-                        as undo moves them
+  --drop-files STEP|PATH
+                        remove from the history the files that step STEP
+                        deleted, or the file deleted from PATH (by any step):
+                        they go to the trash of the system, and undo no longer
+                        brings them back
+  --revert STEP         take back the changes of step STEP alone, as a new
+                        step (`papers undo` takes the revert back); unlike
+                        `papers undo -n N`, which goes back over the last N
+                        steps, the later steps are kept. Per entry, a three-
+                        way merge: what the step changed goes back, unless it
+                        changed since (a conflict, as in pull); the files of
+                        the step go back as undo moves them
   --on-duplicate {ask,keep,update,skip,error}
                         with --revert: what to do with an entry that changed
-                        since step N too: ask (dialogue; the default in a
-                        terminal), keep (its values now are kept), update (the
-                        values before step N are taken), skip (the entry is
-                        left as it is), error (stop before saving; the default
-                        without a terminal)
+                        since the step too: ask (dialogue; the default in a
+                        terminal), keep (the values of the entry now are
+                        kept), update (the values before the step are taken),
+                        skip (the entry is left as it is), error (stop before
+                        saving; the default without a terminal)
   -n N                  number of steps to show (default: 20; 0: all)
   -y, --yes             remove or drop without confirmation
 
@@ -2497,13 +2555,13 @@ config:
 "#),
     ("backup", r#"usage: papers backup [-h] [-v] [--debug] [--color {auto,always,never}]
                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
-                     [--dry-run] [--all] [--remove [ID]] [--drop-files N|PATH]
-                     [--revert N]
+                     [--dry-run] [--all] [--remove [ID]]
+                     [--drop-files STEP|PATH] [--revert STEP]
                      [--on-duplicate {ask,keep,update,skip,error}] [-n N] [-y]
 "#, r#"usage: papers backup [-h] [-v] [--debug] [--color {auto,always,never}]
                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
-                     [--dry-run] [--all] [--remove [ID]] [--drop-files N|PATH]
-                     [--revert N]
+                     [--dry-run] [--all] [--remove [ID]]
+                     [--drop-files STEP|PATH] [--revert STEP]
                      [--on-duplicate {ask,keep,update,skip,error}] [-n N] [-y]
 
 deprecated: use `papers history`
@@ -2521,30 +2579,32 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --all                 the histories of all the libraries: identifier, last
                         folder, steps, space used by it only
   --remove [ID]         remove the history of this library (of this folder;
                         the history itself when no other folder uses it), or
                         of the library ID (see --all)
-  --drop-files N|PATH   remove from the history the files that step N deleted,
-                        or the file deleted from PATH (by any step): they go
-                        to the trash of the system, and undo no longer brings
-                        them back
-  --revert N            take back the changes of step N alone, as a new step
-                        (`papers undo` takes the revert back); unlike `papers
-                        undo -n N`, which goes back over the last N steps, the
-                        later steps are kept. Per entry, a three-way merge:
-                        what step N changed goes back, unless it changed since
-                        (a conflict, as in pull); the files of step N go back
-                        as undo moves them
+  --drop-files STEP|PATH
+                        remove from the history the files that step STEP
+                        deleted, or the file deleted from PATH (by any step):
+                        they go to the trash of the system, and undo no longer
+                        brings them back
+  --revert STEP         take back the changes of step STEP alone, as a new
+                        step (`papers undo` takes the revert back); unlike
+                        `papers undo -n N`, which goes back over the last N
+                        steps, the later steps are kept. Per entry, a three-
+                        way merge: what the step changed goes back, unless it
+                        changed since (a conflict, as in pull); the files of
+                        the step go back as undo moves them
   --on-duplicate {ask,keep,update,skip,error}
                         with --revert: what to do with an entry that changed
-                        since step N too: ask (dialogue; the default in a
-                        terminal), keep (its values now are kept), update (the
-                        values before step N are taken), skip (the entry is
-                        left as it is), error (stop before saving; the default
-                        without a terminal)
+                        since the step too: ask (dialogue; the default in a
+                        terminal), keep (the values of the entry now are
+                        kept), update (the values before the step are taken),
+                        skip (the entry is left as it is), error (stop before
+                        saving; the default without a terminal)
   -n N                  number of steps to show (default: 20; 0: all)
   -y, --yes             remove or drop without confirmation
 

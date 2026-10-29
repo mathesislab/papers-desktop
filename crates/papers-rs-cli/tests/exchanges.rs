@@ -92,7 +92,7 @@ fn status_records_the_pieces_of_the_texts_it_found_in_sync() {
     let bib = "@article{smith2020,\n author = {Smith, John},\n title = {A paper},\n year = {2020}\n}\n";
     fs::write(s.path("pool/refs.bib"), bib).unwrap();
     s.ok("pool", &["add", "refs.bib"]);
-    s.ok(".", &["init", "lib", "--pool", "../pool"]);
+    s.ok(".", &["init", "lib", "--pool", "pool"]);
     s.ok("lib", &["pull", "--all"]);
     assert!(s.exchanges_json().is_none(), "nothing before status");
     assert!(s.ok("lib", &["status", "--no-check-files"]).contains("../pool (in sync)\n"));
@@ -136,4 +136,40 @@ fn the_exchanges_need_a_pool() {
     // the library is not its own pool
     let output = s.papers("lib", &["push", "--pool", "."]);
     assert!(text(&output.stderr).contains("this is the library itself"), "{}", text(&output.stderr));
+}
+
+/// The configured pool is checked again for a pool of its own when the library exchanges with it
+/// (`library.md`, States): `pull`, `push`, `sync` and the commands that add to the pool stop with the
+/// error of `--pool PATH`; the automatic push after a command warns, and pushes nothing.
+#[test]
+fn a_pool_that_took_a_pool_of_its_own_is_not_exchanged_with() {
+    let s = Sandbox::new();
+    let bib = |key: &str| format!("@article{{{key},\n author = {{Smith, John}},\n title = {{A paper}},\n year = {{2020}}\n}}\n");
+    fs::write(s.path("x.bib"), bib("x2020")).unwrap();
+    fs::write(s.path("y.bib"), bib("y2021")).unwrap();
+    for lib in ["C", "A"] {
+        s.ok(".", &["init", lib]);
+    }
+    s.ok(".", &["init", "B", "--pool", "A"]);
+    s.ok("B", &["add", "../x.bib"]);
+    s.ok("B", &["config", "auto-push", "true"]);
+    // the pool takes a pool of its own, after the pool setting of B was made
+    s.ok("A", &["config", "pool", "../C"]);
+    let error = "papers: error: ../A has a pool itself (../C): give a library without pool";
+    for command in [&["pull"][..], &["push"], &["sync"], &["pull", "--all"], &["add", "../y.bib"]] {
+        let output = s.papers("B", command);
+        assert_eq!(output.status.code(), Some(1), "{command:?}");
+        assert!(text(&output.stderr).starts_with(error), "{command:?}: {}", text(&output.stderr));
+    }
+    // commands that only read the pool go on
+    assert!(s.ok("B", &["status", "--no-check-files"]).contains("* pool:   ../A (in sync)\n"));
+    // the automatic push warns, and the command goes on
+    let output = s.papers("B", &["edit", "x2020", "--set", "journal=J"]);
+    assert_eq!(output.status.code(), Some(0), "{}", text(&output.stderr));
+    assert_eq!(
+        text(&output.stderr),
+        "papers: warning: not pushed to the pool: ../A has a pool itself (../C): give a library without pool\n"
+    );
+    assert!(s.read("B/papers.bib").contains("journal = {J}"));
+    assert!(!s.read("A/papers.bib").contains("journal"));
 }

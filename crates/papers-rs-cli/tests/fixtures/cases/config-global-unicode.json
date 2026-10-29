@@ -1,0 +1,61 @@
+{
+ "name": "config-global-unicode",
+ "home": {
+  "<MC>": "﻿{\n  \"default\": \"~/lib\",\n  \"version\": 3\n}"
+ },
+ "cwd": {},
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "config",
+    "--global",
+    "editor",
+    "édit 😀"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib\",\n  \"editor\": \"\\u00e9dit \\ud83d\\ude00\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "# <MC>\ndefault = ~/lib\neditor = édit 😀\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib\",\n  \"editor\": \"\\u00e9dit \\ud83d\\ude00\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "config",
+    "--global",
+    "editor"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "édit 😀\n",
+   "stderr": "",
+   "tree": {
+    "home/<MC>": "{\n  \"default\": \"~/lib\",\n  \"editor\": \"\\u00e9dit \\ud83d\\ude00\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

@@ -19,7 +19,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -40,7 +40,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -61,7 +61,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"template\": \"-{author}\"\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"template\": \"-{author}\"\n  },\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -81,7 +81,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"template\": \"-{author}\"\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"template\": \"-{author}\"\n  },\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -100,7 +100,7 @@
     "cwd/papers.bib": "",
     "cwd/files/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"template\": \"-{author}\"\n  },\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"editor\": \"-x\",\n  \"filesdir\": \"files\",\n  \"nameformat\": {\n    \"template\": \"-{author}\"\n  },\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   }
  ]

@@ -16,9 +16,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "# <TMP>/cwd/v/.papers/config.json\nbibtex                = <TMP>/cwd/v  (library)\nfilesdir              =   (default)\npool                  = none  (default)\npaths                 = relative  (default)\nfiles                 = 5  (library)\nauto-push             = false  (default)\neditor                = ['a', True, None, 1.5, \"it's\"]  (library)\nchecksums             = 1  (default)\nhistory-dir           =   (default)\nhistory-size          = x  (library)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {authorX}_{year}_{title}  (default)\nname.author-num       = 2  (default)\nname.author-sep       = _  (default)\nname.title-word-num   = 100  (default)\nname.title-word-size  = 1  (default)\nname.title-length     = 100  (default)\nname.title-sep        = -  (default)\nname.unknown-template = unknown_{doi_or_id}  (default)\nname.unknown-strict   = false  (default)\nkey.template          = {author}{year}  (default)\nkey.author-num        = true  (library)\nkey.author-sep        = _  (default)\nkey.title-word-num    = 100  (default)\nkey.title-word-size   = 1  (default)\nkey.title-length      = 100  (default)\nkey.title-sep         = 1.5  (library)\nkey.unknown-template  = {doi_}  (default)\nkey.unknown-strict    = false  (default)\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
@@ -34,9 +34,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "5\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
@@ -52,9 +52,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "['a', True, None, 1.5, \"it's\"]\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
@@ -70,9 +70,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "1.5\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
@@ -88,9 +88,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "x\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
@@ -106,9 +106,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "false\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
@@ -124,9 +124,9 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "1\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
     "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
@@ -142,12 +142,11 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
-   "stdout": "removed from <TMP>/cwd/v/.papers/config.json (equal to the global or default value): checksums\n",
-   "stderr": "",
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
-    "cwd/v/.papers/.gitignore": "*\n",
-    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \".\",\n  \"editor\": [\n    \"a\",\n    true,\n    null,\n    1.5,\n    \"it's\"\n  ],\n  \"files\": 5,\n  \"filesdir\": null,\n  \"history-size\": \"x\",\n  \"keyformat\": {\n    \"author_num\": true,\n    \"title_sep\": 1.5\n  },\n  \"version\": 3\n}"
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
   },
   {
@@ -162,12 +161,11 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 0,
+   "rc": 1,
    "stdout": "",
-   "stderr": "",
+   "stderr": "papers: error: <TMP>/cwd/v/.papers/config.json: invalid value 5 for the setting files (expected one of ask, move, copy, link): correct the file\n",
    "tree": {
-    "cwd/v/.papers/.gitignore": "*\n",
-    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \".\",\n  \"editor\": [\n    \"a\",\n    true,\n    null,\n    1.5,\n    \"it's\"\n  ],\n  \"filesdir\": null,\n  \"history-size\": \"x\",\n  \"keyformat\": {\n    \"author_num\": true,\n    \"title_sep\": 1.5\n  },\n  \"version\": 3\n}"
+    "cwd/v/.papers/config.json": "{\"version\": 3, \"history-size\": \"x\", \"files\": 5, \"auto-push\": null, \"editor\": [\"a\", true, null, 1.5, \"it's\"], \"keyformat\": {\"title_sep\": 1.5, \"author_num\": true}, \"checksums\": 1, \"bibtex\": \"\", \"filesdir\": null, \"unknown\": 1}"
    }
   }
  ]

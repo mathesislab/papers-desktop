@@ -199,7 +199,7 @@
     "cwd/lib/papers.bib": "",
     "cwd/lib/files/": null,
     "cwd/lib/.papers/.gitignore": "*\n",
-    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
    }
   },
@@ -222,7 +222,7 @@
     "cwd/lib/papers.bib": "",
     "cwd/lib/files/": null,
     "cwd/lib/.papers/.gitignore": "*\n",
-    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
    }
   },
@@ -242,11 +242,11 @@
     "cwd/files/": null,
     "cwd/sub/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/lib/papers.bib": "",
     "cwd/lib/files/": null,
     "cwd/lib/.papers/.gitignore": "*\n",
-    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
    }
   },
@@ -267,11 +267,11 @@
     "cwd/files/": null,
     "cwd/sub/": null,
     "cwd/.papers/.gitignore": "*\n",
-    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/lib/papers.bib": "",
     "cwd/lib/files/": null,
     "cwd/lib/.papers/.gitignore": "*\n",
-    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<V2>": "{\"bibtex\": \"/x/y/papers.bib\", \"filesdir\": \"/x/y/files\", \"absolute_paths\": true, \"nameformat\": {\"template\": \"{author}\", \"author_num\": 3}, \"local\": false, \"git\": true}"
    }
   }

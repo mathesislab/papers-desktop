@@ -1,0 +1,136 @@
+{
+ "name": "init-shallow-default-written",
+ "home": {
+  "<MC>": "{\n  \"default\": \"~/def\",\n  \"version\": 3\n}",
+  "def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}"
+ },
+ "cwd": {
+  "sub/": null
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "init",
+    "lib",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/lib\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    ~/def\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"version\": 3\n}",
+    "home/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "lib",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "~/def\n",
+   "stderr": "",
+   "tree": {
+    "cwd/sub/": null,
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"version\": 3\n}",
+    "home/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "sub/lib2",
+    "--shallow"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/sub/lib2\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    ~/def\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "cwd/sub/lib2/papers.bib": "",
+    "cwd/sub/lib2/.papers/.gitignore": "*\n",
+    "cwd/sub/lib2/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"version\": 3\n}",
+    "home/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "-C",
+    "sub/lib2",
+    "config",
+    "pool"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "~/def\n",
+   "stderr": "",
+   "tree": {
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "cwd/sub/lib2/papers.bib": "",
+    "cwd/sub/lib2/.papers/.gitignore": "*\n",
+    "cwd/sub/lib2/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"version\": 3\n}",
+    "home/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}"
+   }
+  },
+  {
+   "args": [
+    "init",
+    "lib3",
+    "--shallow",
+    "--bibtex",
+    "z.bib"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/lib3\n* bibtex:  <TMP>/cwd/z.bib\n* files:   in the pool (shallow library)\n* pool:    ~/def\n`papers config` lists and sets the settings\n",
+   "stderr": "",
+   "tree": {
+    "cwd/z.bib": "",
+    "cwd/lib/papers.bib": "",
+    "cwd/lib/.papers/.gitignore": "*\n",
+    "cwd/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "cwd/lib3/.papers/.gitignore": "*\n",
+    "cwd/lib3/.papers/config.json": "{\n  \"bibtex\": \"../z.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "cwd/sub/lib2/papers.bib": "",
+    "cwd/sub/lib2/.papers/.gitignore": "*\n",
+    "cwd/sub/lib2/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"~/def\",\n  \"version\": 3\n}",
+    "home/<MC>": "{\n  \"default\": \"~/def\",\n  \"version\": 3\n}",
+    "home/def/.papers/config.json": "{\n  \"bibtex\": \"d.bib\",\n  \"version\": 3\n}"
+   }
+  }
+ ]
+}

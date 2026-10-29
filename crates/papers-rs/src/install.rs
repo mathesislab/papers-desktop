@@ -14,7 +14,7 @@ use crate::error::{Error, Result};
 use crate::log;
 
 /// The words that clear a value on the command line.
-const RESET_WORDS: [&str; 6] = ["none", "null", "unset", "undefined", "reset", "delete"];
+pub const RESET_WORDS: [&str; 6] = ["none", "null", "unset", "undefined", "reset", "delete"];
 
 /// The folders that a new library takes as its files directory when they
 /// exist, in this order.

@@ -18,10 +18,10 @@ pub mod pools;
 pub mod settings;
 
 pub use files::{
-    check_legacy_global_config, find_config, find_library_config, ignore_papers_folder, is_v2_config_name,
-    library_config_file, move_v2_config, write_atomic,
+    check_legacy_global_config, dry_run, find_config, find_library_config, ignore_papers_folder, is_v2_config_name,
+    library_config_file, move_v2_config, set_dry_run, write_atomic,
 };
-pub use library::{Config, Origin, config_root};
+pub use library::{Config, Origin, config_root, library_dir};
 pub use machine::MachineConfig;
 pub use paths::short_home;
 pub use pools::{library_without_pool, not_a_library, pool_setting};

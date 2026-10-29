@@ -21,7 +21,7 @@
     "cwd/~/papers/lib/papers.bib": "",
     "cwd/~/papers/lib/files/": null,
     "cwd/~/papers/lib/.papers/.gitignore": "*\n",
-    "cwd/~/papers/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/~/papers/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/~/papers/lib\",\n  \"version\": 3\n}"
    }
   },
@@ -41,7 +41,7 @@
     "cwd/~/papers/lib/papers.bib": "",
     "cwd/~/papers/lib/files/": null,
     "cwd/~/papers/lib/.papers/.gitignore": "*\n",
-    "cwd/~/papers/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/~/papers/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/~/papers/lib\",\n  \"version\": 3\n}"
    }
   },
@@ -61,11 +61,11 @@
    "tree": {
     "cwd/libb/papers.bib": "",
     "cwd/libb/.papers/.gitignore": "*\n",
-    "cwd/libb/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"<TMP>/cwd/~/papers/lib\",\n  \"version\": 3\n}",
+    "cwd/libb/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"<TMP>/cwd/~/papers/lib\",\n  \"version\": 3\n}",
     "cwd/~/papers/lib/papers.bib": "",
     "cwd/~/papers/lib/files/": null,
     "cwd/~/papers/lib/.papers/.gitignore": "*\n",
-    "cwd/~/papers/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/~/papers/lib/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "home/<MC>": "{\n  \"default\": \"<TMP>/cwd/~/papers/lib\",\n  \"version\": 3\n}"
    }
   }

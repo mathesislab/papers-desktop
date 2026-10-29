@@ -3,6 +3,7 @@
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::dirs::{config_file, config_file_legacy, config_file_legacy_xdg};
 use super::library::{Config, Origin};
@@ -18,6 +19,18 @@ use crate::log;
 const GITIGNORE: &str = "*\n";
 /// The one that papers wrote before (the git backup in the library).
 const LEGACY_GITIGNORES: [&str; 1] = ["backup/\n"];
+
+static DRYRUN: AtomicBool = AtomicBool::new(false);
+
+/// A dry run is in force (`--dry-run`): papers writes nothing that it does not need to
+/// say, not even the files that it moves when it loads a library. Set before the library is loaded.
+pub fn set_dry_run(on: bool) {
+    DRYRUN.store(on, Ordering::Relaxed);
+}
+
+pub fn dry_run() -> bool {
+    DRYRUN.load(Ordering::Relaxed)
+}
 
 fn random_hex() -> String {
     use std::hash::{BuildHasher, Hasher, RandomState};

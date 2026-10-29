@@ -20,7 +20,8 @@
 //!
 //! What it does as papers does:
 //!
-//! - **load**: the bibtex is read (`Bib`), `distinct.json` next to it, and the
+//! - **load**: the bibtex is read (`Bib`), the `distinct.json` of the library
+//!   folder (that of the bibtex, for a bibtex without library), and the
 //!   entries as they are are remembered ([`Library::mark_loaded`]) for the
 //!   report of the changes ([`Library::changed_entries`]) and the keys that
 //!   were renamed;
@@ -426,7 +427,8 @@ impl Library {
     }
 
     /// Read a bibtex (`Biblio.load`): `relative_to` is the directory of the bibtex if not given.
-    /// A warning says which entries could not be read.
+    /// A warning says which entries could not be read. The pairs of `distinct.json` are those of
+    /// a bibtex without library, in the `.papers` next to it (see [`Library::load_with`]).
     pub fn load(
         bibtex: &str,
         filesdir: Option<&str>,
@@ -434,10 +436,30 @@ impl Library {
         nameformat: Format,
         keyformat: Format,
     ) -> Result<Library> {
+        let distinct = Distinct::for_bibtex(bibtex);
+        Library::load_with(
+            bibtex,
+            filesdir,
+            relative_to,
+            nameformat,
+            keyformat,
+            distinct,
+        )
+    }
+
+    /// [`Library::load`] with the pairs of `distinct.json` of the library (`Distinct::for_library`).
+    pub fn load_with(
+        bibtex: &str,
+        filesdir: Option<&str>,
+        relative_to: Option<&str>,
+        nameformat: Format,
+        keyformat: Format,
+        distinct: Distinct,
+    ) -> Result<Library> {
         let text = read_file(std::path::Path::new(bibtex)).map_err(|e| io_error(bibtex, &e))?;
         let relative_to = relative_to.map_or_else(|| dirname(bibtex), str::to_string);
         let mut library = Library::new(bibtex, filesdir, Some(&relative_to), nameformat, keyformat);
-        library.distinct = Distinct::for_bibtex(bibtex);
+        library.distinct = distinct;
         library.set_bib(Bib::parse(&text));
         library.remember(&text);
         library.unreadable = library.bib.unreadable();
@@ -455,12 +477,39 @@ impl Library {
         nameformat: Format,
         keyformat: Format,
     ) -> Result<Library> {
+        let distinct = Distinct::for_bibtex(bibtex);
+        Library::create_with(
+            bibtex,
+            filesdir,
+            relative_to,
+            nameformat,
+            keyformat,
+            distinct,
+        )
+    }
+
+    /// [`Library::create`] with the pairs of `distinct.json` of the library.
+    pub fn create_with(
+        bibtex: &str,
+        filesdir: Option<&str>,
+        relative_to: Option<&str>,
+        nameformat: Format,
+        keyformat: Format,
+        distinct: Distinct,
+    ) -> Result<Library> {
         let dir = dirname(bibtex);
         if !dir.is_empty() && !exists(&dir) {
             std::fs::create_dir_all(&dir).map_err(|e| io_error(&dir, &e))?;
         }
         write_atomic(bibtex, "")?;
-        Library::load(bibtex, filesdir, relative_to, nameformat, keyformat)
+        Library::load_with(
+            bibtex,
+            filesdir,
+            relative_to,
+            nameformat,
+            keyformat,
+            distinct,
+        )
     }
 
     /// The library of a configuration (`papers.library.get_biblio`): its bibtex (created if
@@ -478,9 +527,10 @@ impl Library {
         let nameformat = Format::from_config(config, FormatKind::Name);
         let keyformat = Format::from_config(config, FormatKind::Key);
         let filesdir = config.filesdir.as_deref();
+        let distinct = Distinct::for_library(&config.libdir());
         let mut library;
         if exists(bibtex) {
-            library = Library::load(bibtex, filesdir, None, nameformat, keyformat)?;
+            library = Library::load_with(bibtex, filesdir, None, nameformat, keyformat, distinct)?;
             if library.relative_to != relative_to {
                 if !library.set_relative_to(&relative_to).is_empty() {
                     library.load_changes = true;
@@ -490,7 +540,14 @@ impl Library {
                 library.load_changes = true;
             }
         } else {
-            library = Library::create(bibtex, filesdir, Some(&relative_to), nameformat, keyformat)?;
+            library = Library::create_with(
+                bibtex,
+                filesdir,
+                Some(&relative_to),
+                nameformat,
+                keyformat,
+                distinct,
+            )?;
         }
         library.mark_loaded();
         Ok(library)
@@ -517,7 +574,7 @@ impl Library {
             Format::from_config(config, FormatKind::Name),
             Format::from_config(config, FormatKind::Key),
         );
-        library.distinct = Distinct::for_bibtex(bibtex);
+        library.distinct = Distinct::for_library(&config.libdir());
         Ok(library)
     }
 
@@ -912,7 +969,9 @@ impl Library {
             .filter(|e| entry::files(e, None).iter().any(|f| is_abs(f)))
             .filter_map(|e| entry::update_file_path(e, &relative_to, &relative_to))
             .collect();
-        self.index = None;
+        if !updates.is_empty() {
+            self.index = None;
+        }
         updates
     }
 

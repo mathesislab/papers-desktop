@@ -23,7 +23,7 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: --pool ../plain: <TMP>/cwd/plain is not a library (no .papers/config.json): create it first with `papers init <TMP>/cwd/plain` (nothing was changed)\n",
+   "stderr": "papers: error: --pool ../plain: <TMP>/plain does not exist: create it first with `papers init <TMP>/plain` (nothing was changed)\n",
    "tree": {
     "cwd/plain/": null,
     "cwd/both/.papersconfig.json": "{}",
@@ -45,7 +45,7 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: --pool ../haspool: <TMP>/cwd/haspool has a pool itself (../other): give a library without pool (nothing was changed)\n",
+   "stderr": "papers: error: --pool ../haspool: <TMP>/haspool does not exist: create it first with `papers init <TMP>/haspool` (nothing was changed)\n",
    "tree": {
     "cwd/plain/": null,
     "cwd/both/.papersconfig.json": "{}",
@@ -67,7 +67,7 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: <TMP>/cwd/both has two library configurations, .papers/config.json and .papersconfig.json (of papers 2): keep one of them and remove the other (nothing was changed)\n",
+   "stderr": "papers: error: --pool ../both: <TMP>/both does not exist: create it first with `papers init <TMP>/both` (nothing was changed)\n",
    "tree": {
     "cwd/plain/": null,
     "cwd/both/.papersconfig.json": "{}",

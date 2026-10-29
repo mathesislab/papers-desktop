@@ -56,13 +56,13 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "created the library <TMP>/cwd/a\n* bibtex:  lib.bib\n* files:   docs (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "stdout": "created the library <TMP>/cwd/a\n* bibtex:  <TMP>/cwd/lib.bib\n* files:   <TMP>/cwd/docs (the files directory of the library)\n`papers config` lists and sets the settings\n",
    "stderr": "",
    "tree": {
-    "cwd/a/lib.bib": "",
-    "cwd/a/docs/": null,
+    "cwd/lib.bib": "",
+    "cwd/docs/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"editor\": \"subl -w\",\n  \"filesdir\": \"docs\",\n  \"keyformat\": {\n    \"author_num\": 1,\n    \"author_sep\": \"-\",\n    \"template\": \"{Author}{year}\",\n    \"title_length\": 20,\n    \"title_sep\": \".\",\n    \"title_word_num\": 2,\n    \"title_word_size\": 2,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"k{id}\"\n  },\n  \"nameformat\": {\n    \"author_num\": 3,\n    \"author_sep\": \"+\",\n    \"template\": \"{author}\",\n    \"title_length\": 50,\n    \"title_sep\": \"_\",\n    \"title_word_num\": 5,\n    \"title_word_size\": 3,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"x_{id}\"\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"../lib.bib\",\n  \"editor\": \"subl -w\",\n  \"filesdir\": \"../docs\",\n  \"keyformat\": {\n    \"author_num\": 1,\n    \"author_sep\": \"-\",\n    \"template\": \"{Author}{year}\",\n    \"title_length\": 20,\n    \"title_sep\": \".\",\n    \"title_word_num\": 2,\n    \"title_word_size\": 2,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"k{id}\"\n  },\n  \"nameformat\": {\n    \"author_num\": 3,\n    \"author_sep\": \"+\",\n    \"template\": \"{author}\",\n    \"title_length\": 50,\n    \"title_sep\": \"_\",\n    \"title_word_num\": 5,\n    \"title_word_size\": 3,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"x_{id}\"\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -76,13 +76,13 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "# <TMP>/cwd/a/.papers/config.json\nbibtex                = <TMP>/cwd/a/lib.bib  (library)\nfilesdir              = <TMP>/cwd/a/docs  (library)\npool                  = none  (library)\npaths                 = absolute  (library)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                = subl -w  (library)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {author}  (library)\nname.author-num       = 3  (library)\nname.author-sep       = +  (library)\nname.title-word-num   = 5  (library)\nname.title-word-size  = 3  (library)\nname.title-length     = 50  (library)\nname.title-sep        = _  (library)\nname.unknown-template = x_{id}  (library)\nname.unknown-strict   = true  (library)\nkey.template          = {Author}{year}  (library)\nkey.author-num        = 1  (library)\nkey.author-sep        = -  (library)\nkey.title-word-num    = 2  (library)\nkey.title-word-size   = 2  (library)\nkey.title-length      = 20  (library)\nkey.title-sep         = .  (library)\nkey.unknown-template  = k{id}  (library)\nkey.unknown-strict    = true  (library)\n",
+   "stdout": "# <TMP>/cwd/a/.papers/config.json\nbibtex                = <TMP>/cwd/lib.bib  (library)\nfilesdir              = <TMP>/cwd/docs  (library)\npool                  = none  (library)\npaths                 = absolute  (library)\nfiles                 = move  (default)\nauto-push             = false  (default)\neditor                = subl -w  (library)\nchecksums             = true  (default)\nhistory-dir           =   (default)\nhistory-size          = 500  (default)\nhistory-separate      = false  (default)\nkeep-deleted-files    = true  (default)\nname.template         = {author}  (library)\nname.author-num       = 3  (library)\nname.author-sep       = +  (library)\nname.title-word-num   = 5  (library)\nname.title-word-size  = 3  (library)\nname.title-length     = 50  (library)\nname.title-sep        = _  (library)\nname.unknown-template = x_{id}  (library)\nname.unknown-strict   = true  (library)\nkey.template          = {Author}{year}  (library)\nkey.author-num        = 1  (library)\nkey.author-sep        = -  (library)\nkey.title-word-num    = 2  (library)\nkey.title-word-size   = 2  (library)\nkey.title-length      = 20  (library)\nkey.title-sep         = .  (library)\nkey.unknown-template  = k{id}  (library)\nkey.unknown-strict    = true  (library)\n",
    "stderr": "",
    "tree": {
-    "cwd/a/lib.bib": "",
-    "cwd/a/docs/": null,
+    "cwd/lib.bib": "",
+    "cwd/docs/": null,
     "cwd/a/.papers/.gitignore": "*\n",
-    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"lib.bib\",\n  \"editor\": \"subl -w\",\n  \"filesdir\": \"docs\",\n  \"keyformat\": {\n    \"author_num\": 1,\n    \"author_sep\": \"-\",\n    \"template\": \"{Author}{year}\",\n    \"title_length\": 20,\n    \"title_sep\": \".\",\n    \"title_word_num\": 2,\n    \"title_word_size\": 2,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"k{id}\"\n  },\n  \"nameformat\": {\n    \"author_num\": 3,\n    \"author_sep\": \"+\",\n    \"template\": \"{author}\",\n    \"title_length\": 50,\n    \"title_sep\": \"_\",\n    \"title_word_num\": 5,\n    \"title_word_size\": 3,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"x_{id}\"\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/a/.papers/config.json": "{\n  \"bibtex\": \"../lib.bib\",\n  \"editor\": \"subl -w\",\n  \"filesdir\": \"../docs\",\n  \"keyformat\": {\n    \"author_num\": 1,\n    \"author_sep\": \"-\",\n    \"template\": \"{Author}{year}\",\n    \"title_length\": 20,\n    \"title_sep\": \".\",\n    \"title_word_num\": 2,\n    \"title_word_size\": 2,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"k{id}\"\n  },\n  \"nameformat\": {\n    \"author_num\": 3,\n    \"author_sep\": \"+\",\n    \"template\": \"{author}\",\n    \"title_length\": 50,\n    \"title_sep\": \"_\",\n    \"title_word_num\": 5,\n    \"title_word_size\": 3,\n    \"unknown_strict\": true,\n    \"unknown_template\": \"x_{id}\"\n  },\n  \"paths\": \"absolute\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
    }
   }
  ]

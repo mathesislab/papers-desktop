@@ -148,8 +148,8 @@ impl Exchange {
         say: Say,
         prompt: SharedPrompt,
     ) -> Exchange {
-        let origin = match config.bibtex.as_deref() {
-            Some(bibtex) => Origin::for_bibtex(bibtex, dry_run),
+        let origin = match config.bibtex {
+            Some(_) => Origin::for_library(&config.libdir(), dry_run),
             None => Origin::default(),
         };
         let mut pools = pools.unwrap_or_else(|| Pools::new(config));

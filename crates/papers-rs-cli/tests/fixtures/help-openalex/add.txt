@@ -53,7 +53,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --format {bibtex,ris,csl-json,bibjson}
                         the format of the added files that are not PDFs
                         (default: from the extension: .ris is RIS, .json is
@@ -139,10 +140,11 @@ duplicate check:
                         what to do when the added entry is in the library,
                         with conflicting values or fields to add: ask
                         (dialogue; the default in a terminal), keep (merge,
-                        conflicts keep the library value), update (merge,
-                        conflicts take the added value), skip (leave the
-                        library entry untouched, do not add), error (stop
-                        before saving; the default without a terminal)
+                        conflicts keep the library's value: the library
+                        receives the entry), update (merge, conflicts take the
+                        value of the added entry), skip (leave the library
+                        entry untouched, do not add), error (stop before
+                        saving; the default without a terminal)
   --no-check-duplicate  disable duplicate check (faster, create duplicates)
   --no-pool             do not look in the pool first (by default, a PDF, DOI
                         or bibtex entry that is the same paper as a pool entry

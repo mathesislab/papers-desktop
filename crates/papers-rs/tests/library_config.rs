@@ -93,3 +93,66 @@ fn a_library_of_a_configuration() {
     assert_eq!(lib.get("a").unwrap().get("file"), Some("files/a.pdf:PDF"));
     assert!(!lib.load_changes && lib.unchanged());
 }
+
+/// A library in `lib/` with its bibtex in `lib/bib/`.
+fn library_with_bibtex_in_a_subfolder(root: &str) -> Config {
+    std::fs::create_dir_all(format!("{root}/lib/.papers")).unwrap();
+    std::fs::write(
+        format!("{root}/lib/.papers/config.json"),
+        r#"{"bibtex": "bib/papers.bib", "filesdir": "files", "version": 3}"#,
+    )
+    .unwrap();
+    Config::load(
+        &format!("{root}/lib/.papers/config.json"),
+        MachineConfig::empty(),
+        None,
+    )
+    .unwrap()
+}
+
+#[test]
+fn the_distinct_pairs_are_in_the_folder_of_the_library_not_in_that_of_the_bibtex() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = std::fs::canonicalize(dir.path())
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let config = library_with_bibtex_in_a_subfolder(&root);
+    assert_eq!(config.libdir(), format!("{root}/lib"));
+    let mut lib = Library::open(&config).unwrap();
+    let mut a = Entry::new("article", "a2000");
+    a.set("title", "One");
+    let mut b = Entry::new("article", "b2000");
+    b.set("title", "Another");
+    lib.distinct.add(&a, &b);
+    lib.save(true).unwrap();
+    assert!(Path::new(&format!("{root}/lib/.papers/distinct.json")).exists());
+    assert!(!Path::new(&format!("{root}/lib/bib/.papers")).exists());
+    // read again from there
+    let lib = Library::open(&config).unwrap();
+    assert_eq!(lib.distinct.pairs.len(), 1);
+}
+
+#[test]
+fn the_distinct_pairs_of_an_earlier_build_are_moved_when_the_configuration_is_loaded() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = std::fs::canonicalize(dir.path())
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    library_with_bibtex_in_a_subfolder(&root);
+    std::fs::create_dir_all(format!("{root}/lib/bib/.papers")).unwrap();
+    std::fs::write(
+        format!("{root}/lib/bib/.papers/distinct.json"),
+        r#"{"distinct": [[{"title": "a"}, {"title": "b"}]]}"#,
+    )
+    .unwrap();
+    let config = Config::load(
+        &format!("{root}/lib/.papers/config.json"),
+        MachineConfig::empty(),
+        None,
+    )
+    .unwrap();
+    assert!(!Path::new(&format!("{root}/lib/bib/.papers/distinct.json")).exists());
+    assert_eq!(Library::open(&config).unwrap().distinct.pairs.len(), 1);
+}

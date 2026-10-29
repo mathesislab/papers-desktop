@@ -449,12 +449,15 @@ impl Pools {
         }
     }
 
-    /// The pool that `push` and the shallow libraries write to: an error if it is not a library.
+    /// The pool that `pull`, `push` and the shallow libraries exchange with: an error if it is not a
+    /// library, or if it has a pool itself (as `--pool PATH`).
     pub fn target(&mut self) -> std::result::Result<PoolIx, PoolError> {
         let Some(path) = self.path() else {
             return Err(PoolError(NO_POOL_MESSAGE.to_string()));
         };
-        self.resolve(&path, None)
+        let ix = self.resolve(&path, None)?;
+        check_poolless(&self.list[ix])?; // it may have taken a pool since the pool setting was made
+        Ok(ix)
     }
 
     /// A library given on the command line (`--pool PATH`): a path relative to the current

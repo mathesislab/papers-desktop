@@ -206,7 +206,7 @@ pub fn export(
             NameFormat::from_config(&created, FormatKind::Name),
             NameFormat::from_config(&created, FormatKind::Key),
         );
-        target.distinct = Distinct::for_bibtex(&bibtex);
+        target.distinct = Distinct::for_library(&created.libdir());
         new = Some(created);
     } else {
         fs::create_dir_all(&dest).map_err(|e| Error::other(format!("{dest}: {e}")))?;

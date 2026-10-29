@@ -5,7 +5,8 @@ use std::sync::LazyLock;
 
 use serde_json::{Map, Value, json};
 
-use super::json::{py_repr_str, py_str, py_truthy};
+use super::json::{dumps_compact, py_repr, py_repr_str, py_str, py_truthy};
+use crate::error::Error;
 
 /// The version of the configuration files that papers writes; a file without
 /// version was written by papers v2.
@@ -106,6 +107,53 @@ pub fn removed_setting(name: &str) -> Option<&'static str> {
         }
         _ => None,
     }
+}
+
+/// The keys of a library configuration file that papers reads, or read in earlier versions; the
+/// file keeps the others as they are (the settings of a newer implementation: see `Config::tojson`).
+/// The names of the settings are known too (see `is_known_key`).
+const KNOWN_KEYS: [&str; 14] = [
+    "git", "git-lfs", "trash-days", "trash-size", "absolute_paths", "backup_files", "id", "version", "local", "pools",
+    "light", "sync", "gitdir", "gitlfs",
+];
+
+/// The key of a configuration file is one that papers reads or wrote in earlier versions.
+pub fn is_known_key(key: &str) -> bool {
+    KNOWN_KEYS.contains(&key) || kind(key).is_some()
+}
+
+/// Raise an error if a setting of the JSON of a configuration file has a value of the wrong type
+/// (`null` is unset): `names` are the settings to check.
+pub fn check_settings(js: &Map<String, Value>, file: &str, names: &[&str]) -> crate::error::Result<()> {
+    for group in ["nameformat", "keyformat"] {
+        if let Some(value) = js.get(group).filter(|v| !v.is_null())
+            && !value.is_object()
+        {
+            return Err(Error::exit(format!(
+                "{file}: invalid {group} {} (expected an object): correct the file",
+                py_repr(value)
+            )));
+        }
+    }
+    for name in names {
+        let Some(value) = json_get(js, name) else { continue };
+        let (ok, expected) = match kind(name).unwrap_or(Kind::Str) {
+            Kind::Choice(choices) => (
+                value.as_str().is_some_and(|v| choices.contains(&v)),
+                format!("one of {}", choices.join(", ")),
+            ),
+            Kind::Bool => (value.is_boolean(), "true or false".to_string()),
+            Kind::Int => (value.is_i64() || value.is_u64(), "an integer".to_string()),
+            Kind::Path | Kind::Pool | Kind::Str => (value.is_string(), "a text".to_string()),
+        };
+        if !ok {
+            return Err(Error::exit(format!(
+                "{file}: invalid value {} for the setting {name} (expected {expected}): correct the file",
+                dumps_compact(&value)
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// The built-in default of a setting (`Null`: none).
@@ -261,6 +309,22 @@ mod tests {
         assert_eq!(names[12], "name.template");
         assert_eq!(names[29], "key.unknown-strict");
         assert_eq!(LIBRARY_SETTINGS.len(), 26);
+    }
+
+    #[test]
+    fn the_types_of_the_settings_in_a_file_are_checked() {
+        let check = |js: Value| check_settings(js.as_object().unwrap(), "config.json", &names());
+        assert!(check(json!({"auto-push": true, "history-size": 3, "nameformat": {"author_num": 2}, "editor": null})).is_ok());
+        let message = |js: Value| check(js).unwrap_err().message().to_string();
+        assert_eq!(
+            message(json!({"auto-push": "no"})),
+            "config.json: invalid value \"no\" for the setting auto-push (expected true or false): correct the file"
+        );
+        assert!(message(json!({"history-size": true})).contains("(expected an integer)"));
+        assert!(message(json!({"files": "x"})).contains("(expected one of ask, move, copy, link)"));
+        assert!(message(json!({"nameformat": {"author_num": "2"}})).contains("setting name.author-num"));
+        assert!(message(json!({"keyformat": [1]})).ends_with("invalid keyformat [1] (expected an object): correct the file"));
+        assert!(message(json!({"pool": 3})).contains("invalid value 3 for the setting pool (expected a text)"));
     }
 
     #[test]

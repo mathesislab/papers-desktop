@@ -21,7 +21,7 @@
    "stdout": "",
    "stderr": "",
    "tree": {
-    "home/<MC>": "{\n  \"default\": \"~/x\",\n  \"files\": \"link\",\n  \"other\": 1,\n  \"version\": 3\n}"
+    "home/<MC>": "{\n  \"default\": \"~/x\",\n  \"files\": \"link\",\n  \"other\": 1,\n  \"pools\": {\n    \"a\": \"/p\"\n  },\n  \"version\": 3\n}"
    }
   },
   {
@@ -37,7 +37,7 @@
    "stdout": "# <MC>\ndefault = ~/x\nfiles = link\n",
    "stderr": "",
    "tree": {
-    "home/<MC>": "{\n  \"default\": \"~/x\",\n  \"files\": \"link\",\n  \"other\": 1,\n  \"version\": 3\n}"
+    "home/<MC>": "{\n  \"default\": \"~/x\",\n  \"files\": \"link\",\n  \"other\": 1,\n  \"pools\": {\n    \"a\": \"/p\"\n  },\n  \"version\": 3\n}"
    }
   }
  ]

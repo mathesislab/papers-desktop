@@ -5,12 +5,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde_json::{Map, Value, json};
 
 use super::dirs::config_file;
-use super::files::{ignore_papers_folder, is_v2_config_name, move_v2_config, write_atomic};
+use super::files::{dry_run, ignore_papers_folder, is_v2_config_name, move_v2_config, write_atomic};
 use super::json::{dumps_pretty, py_eq, py_str, py_truthy};
-use super::machine::{MachineConfig, file_version, read_json_object, single_pool};
-use super::paths::{abspath, basename, dirname, expanduser, getcwd, join, normpath, realpath, relpath};
+use super::machine::{MachineConfig, file_version, io_message, read_json_object, single_pool};
+use super::paths::{
+    abspath, basename, dirname, exists, expanduser, getcwd, isdir, join, normpath, realpath, relpath, short_home,
+};
 use super::settings::{
-    CONFIG_VERSION, LIBRARY_ONLY, LIBRARY_SETTINGS, MACHINE_ONLY, NO_POOL, SETTINGS, format_value, json_get, json_set,
+    CONFIG_VERSION, LIBRARY_ONLY, LIBRARY_SETTINGS, MACHINE_ONLY, NO_POOL, SETTINGS, check_settings, format_value,
+    is_known_key, json_get, json_set, names,
 };
 use crate::error::{Error, Result};
 use crate::log;
@@ -46,6 +49,41 @@ pub fn config_root(file: &str) -> String {
     }
 }
 
+/// The folder whose `.papers/` holds the files of the library of `bibtex` (`distinct.json`, `origin/`,
+/// `files.json`, `lock`): that of its library configuration file `file` (see `config_root`), else the
+/// folder of the bibtex (a bibtex without library).
+pub fn library_dir(bibtex: Option<&str>, file: Option<&str>) -> String {
+    match (file, bibtex) {
+        (Some(file), _) => abspath(&config_root(file)),
+        (None, Some(bibtex)) => dirname(&abspath(bibtex)),
+        (None, None) => getcwd(),
+    }
+}
+
+/// The files of `.papers/` that earlier v3 builds wrote next to the bibtex, not in the library folder.
+const PAPERS_FILES_NEXT_TO_BIBTEX: [&str; 3] = ["distinct.json", "origin", "origin.bib"];
+
+/// `shutil.move`: a rename, else (another file system) a copy and a removal.
+fn move_path(src: &str, dst: &str) -> std::io::Result<()> {
+    fn copy_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+        if src.is_dir() {
+            std::fs::create_dir_all(dst)?;
+            for entry in std::fs::read_dir(src)? {
+                let entry = entry?;
+                copy_all(&entry.path(), &dst.join(entry.file_name()))?;
+            }
+            Ok(())
+        } else {
+            std::fs::copy(src, dst).map(|_| ())
+        }
+    }
+    if std::fs::rename(src, dst).is_ok() {
+        return Ok(());
+    }
+    copy_all(std::path::Path::new(src), std::path::Path::new(dst))?;
+    if std::path::Path::new(src).is_dir() { std::fs::remove_dir_all(src) } else { std::fs::remove_file(src) }
+}
+
 fn path_value(value: &Value, what: &str) -> Result<Option<String>> {
     match value {
         Value::Null => Ok(None),
@@ -60,8 +98,8 @@ fn path_value(value: &Value, what: &str) -> Result<Option<String>> {
 /// global configuration, else from its built-in default; the pool comes only
 /// from the library's file (none if it does not set it). The fields hold the
 /// resulting values; `explicit` names the settings set in the file. The file
-/// keeps the pool once set, and the other settings when they differ from the
-/// global or default value (see `is_set`).
+/// keeps the settings that the library set explicitly, and those that differ
+/// from the global or default value (see `is_set`).
 ///
 /// A library without pool is self-contained: its own entries and files. A
 /// library with a pool is shallow (see `shallow`): it links to the files of
@@ -84,6 +122,8 @@ pub struct Config {
     pub pool: String,
     /// The other settings, by name (see `SETTINGS`).
     values: BTreeMap<String, Value>,
+    /// The content of the configuration file, for the keys that papers does not know (see `tojson`).
+    raw: Map<String, Value>,
 }
 
 impl Config {
@@ -101,6 +141,7 @@ impl Config {
             absolute_paths: false,
             pool: NO_POOL.to_string(),
             values: BTreeMap::new(),
+            raw: Map::new(),
         };
         for (name, _) in SETTINGS.iter() {
             if !["bibtex", "filesdir", "pool", "paths"].contains(&name.as_str()) {
@@ -164,20 +205,17 @@ impl Config {
         Ok(())
     }
 
-    /// The library sets this setting: the pool once set (pool none: a
-    /// self-contained library), the other settings when their value differs
-    /// from the global or default value (a value equal to it is not saved).
+    /// The library sets this setting: a setting given explicitly (in its configuration file, by
+    /// `papers init` or `papers config NAME VALUE`), even with the global or default value, and a
+    /// setting whose value differs from it; the others are inherited (not saved).
     pub fn is_set(&self, name: &str) -> bool {
         if LIBRARY_ONLY.contains(&name) {
             return !self.get(name).is_null();
         }
-        if name == "pool" && self.explicit.contains(name) {
-            return true;
-        }
         if MACHINE_ONLY.contains(&name) {
             return false;
         }
-        !py_eq(&self.get(name), &self.inherited(name))
+        self.explicit.contains(name) || !py_eq(&self.get(name), &self.inherited(name))
     }
 
     /// Where the value of a setting comes from: `library`, `global` or
@@ -202,6 +240,12 @@ impl Config {
             Some(file) => realpath(&config_root(file)),
             None => getcwd(),
         }
+    }
+
+    /// The folder whose `.papers/` holds the files of the library (see `library_dir`).
+    pub fn libdir(&self) -> String {
+        let file = if self.is_library { self.file.as_deref() } else { None };
+        library_dir(self.bibtex.as_deref(), file)
     }
 
     /// The absolute path of the pool of the library (the pool setting,
@@ -290,12 +334,12 @@ impl Config {
         if !self.is_library {
             return realpath(path);
         }
-        // normpath, not realpath: `..` is removed, the symbolic links are kept
+        // normpath, not realpath: `..` is removed, the symbolic links are kept; `~` is the home directory
         let base = match root {
             Some(root) => realpath(root),
             None => self.configdir(),
         };
-        normpath(&join(&base, path))
+        normpath(&join(&base, &expanduser(path)))
     }
 
     // file
@@ -303,17 +347,17 @@ impl Config {
 
     /// The content of the configuration file: the paths, and the settings
     /// that the library sets (the others come from the global configuration
-    /// when loaded).
+    /// when loaded), over the keys of the file that papers does not know (kept
+    /// as they are, also in `nameformat` and `keyformat`).
     pub fn tojson(&self) -> Value {
         let path = |p: &Option<String>| p.as_deref().map(|p| Value::String(self.relative_to_configdir(p)));
-        let mut js = Map::new();
+        let mut js: Map<String, Value> =
+            self.raw.iter().filter(|(key, _)| !is_known_key(key)).map(|(k, v)| (k.clone(), v.clone())).collect();
         js.insert("filesdir".into(), path(&self.filesdir).unwrap_or(Value::Null));
         js.insert("bibtex".into(), path(&self.bibtex).unwrap_or(Value::Null));
         for name in LIBRARY_SETTINGS.iter() {
-            if self.is_set(name) {
-                let value = self.get(name);
-                json_set(&mut js, name, if value.is_null() { None } else { Some(value) });
-            }
+            let value = if self.is_set(name) { Some(self.get(name)).filter(|v| !v.is_null()) } else { None };
+            json_set(&mut js, name, value);
         }
         if self.is_library
             && let Some(id) = self.id.as_deref().filter(|id| !id.is_empty())
@@ -356,6 +400,7 @@ impl Config {
     /// apart).
     pub fn load(file: &str, machine: MachineConfig, is_library: Option<bool>) -> Result<Config> {
         let mut js = read_json_object(file)?;
+        let raw = js.clone();
         let version = file_version(&mut js, file)?;
         let mut is_library = is_library;
         if is_library.is_none() && version >= 3 {
@@ -370,7 +415,9 @@ impl Config {
         }
         let is_library = is_library.unwrap_or_else(|| basename(file) != basename(&config_file()));
         read_earlier_v3(&mut js, &machine, file)?;
+        check_settings(&js, file, &names())?;
         let mut config = Config::new(machine);
+        config.raw = raw;
         config.file = Some(file.to_string());
         config.is_library = is_library;
         config.bibtex = path_value(js.get("bibtex").unwrap_or(&Value::Null), "bibtex")?;
@@ -393,7 +440,40 @@ impl Config {
             }
         }
         config.update_paths_to_absolute();
+        config.move_papers_files();
         Ok(config)
+    }
+
+    /// Move `distinct.json` and `origin/` (`origin.bib`) from the `.papers/` next to the bibtex,
+    /// where earlier v3 builds wrote them, to the `.papers/` of the library folder: when the two
+    /// folders differ, for a file the library folder has not, and unless the folder of the bibtex
+    /// is another library. Not with a dry run.
+    fn move_papers_files(&self) {
+        let Some(bibtex) = self.bibtex.as_deref().filter(|_| self.file.is_some() && self.is_library) else { return };
+        if dry_run() {
+            return;
+        }
+        let old = join(&dirname(&abspath(bibtex)), ".papers");
+        let new = join(&self.libdir(), ".papers");
+        if realpath(&old) == realpath(&new) || !isdir(&old) || exists(&join(&old, "config.json")) {
+            return;
+        }
+        let mut moved = Vec::new();
+        for name in PAPERS_FILES_NEXT_TO_BIBTEX {
+            let (src, dst) = (join(&old, name), join(&new, name));
+            if exists(&src) && !exists(&dst) {
+                let result = std::fs::create_dir_all(&new).and_then(|()| move_path(&src, &dst));
+                match result {
+                    Ok(()) => moved.push(name),
+                    Err(error) => {
+                        log::warning(&format!("{src}: not moved to {dst} ({})", io_message(&error)));
+                    }
+                }
+            }
+        }
+        if !moved.is_empty() {
+            log::info(&format!("moved {} from {} to {}", moved.join(", "), short_home(&old), short_home(&new)));
+        }
     }
 
     fn update_paths_to_absolute(&mut self) {
@@ -649,6 +729,169 @@ mod tests {
         assert!(Config::load(&file, MachineConfig::empty(), None).unwrap().id.is_some());
         let file = library(dir.path(), r#"{"id": "NOTANID"}"#);
         assert!(Config::load(&file, MachineConfig::empty(), None).unwrap().id.is_none());
+    }
+
+    fn read_back(file: &str) -> Value {
+        crate::config::json::loads(&std::fs::read_to_string(file).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn a_setting_given_is_saved_even_with_the_default_value() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = library(dir.path(), r#"{"bibtex": "lib.bib", "files": "move", "history-size": 500, "version": 3}"#);
+        let mut config = Config::load(&file, machine(json!({"editor": "vim"})), None).unwrap();
+        config.set("editor", json!("vim")).unwrap();
+        config.set("name.author-num", json!(2)).unwrap();
+        config.save().unwrap();
+        let saved = read_back(&file);
+        assert_eq!(saved["files"], json!("move"));
+        assert_eq!(saved["history-size"], json!(500));
+        assert_eq!(saved["editor"], json!("vim"));
+        assert_eq!(saved["nameformat"], json!({"author_num": 2}));
+        assert_eq!(config.source("files"), "library");
+        // unset: inherited again (not written); the paths of a library are written as null
+        config.unset("files").unwrap();
+        config.unset("name.author-num").unwrap();
+        config.unset("filesdir").unwrap();
+        config.save().unwrap();
+        let saved = read_back(&file);
+        assert!(saved.get("files").is_none() && saved.get("nameformat").is_none());
+        assert_eq!(saved["filesdir"], Value::Null);
+        assert_eq!(config.source("files"), "default");
+        assert_eq!(saved["history-size"], json!(500));
+    }
+
+    #[test]
+    fn keys_that_papers_does_not_know_are_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = library(
+            dir.path(),
+            r#"{"bibtex": "lib.bib", "version": 3, "editor": "vim", "pools": ["old"], "future": {"a": [1]},
+                "nameformat": {"template": "{author}", "future-field": 2}, "gitdir": "x", "light": true}"#,
+        );
+        let mut config = Config::load(&file, MachineConfig::empty(), None).unwrap();
+        config.unset("editor").unwrap();
+        config.set("name.template", json!("{year}")).unwrap();
+        config.save().unwrap();
+        let saved = read_back(&file);
+        assert_eq!(saved["future"], json!({"a": [1]}));
+        assert_eq!(saved["nameformat"], json!({"template": "{year}", "future-field": 2}));
+        // the known keys are those of papers: unset, or read and no longer written
+        for key in ["editor", "pools", "gitdir", "light"] {
+            assert!(saved.get(key).is_none(), "{key}");
+        }
+        // with no setting of the group left, the unknown member keeps it
+        config.unset("name.template").unwrap();
+        config.save().unwrap();
+        assert_eq!(read_back(&file)["nameformat"], json!({"future-field": 2}));
+    }
+
+    #[test]
+    fn a_value_of_the_wrong_type_is_an_error_that_names_the_file_and_the_setting() {
+        let dir = tempfile::tempdir().unwrap();
+        for (js, name) in [
+            (json!({"auto-push": "no"}), "auto-push"),
+            (json!({"pool": 3}), "pool"),
+            (json!({"bibtex": ["a.bib"]}), "bibtex"),
+            (json!({"paths": "relativ"}), "paths"),
+            (json!({"keyformat": {"author_num": 2.5}}), "key.author-num"),
+            (json!({"history-size": true}), "history-size"),
+        ] {
+            let file = library(dir.path(), &js.to_string());
+            let error = Config::load(&file, MachineConfig::empty(), None).unwrap_err();
+            assert!(
+                error.message().starts_with(&format!("{file}: invalid value ")) && error.message().contains(&format!(" for the setting {name} (expected ")),
+                "{error}"
+            );
+            assert!(matches!(error, Error::Exit(_)));
+        }
+        let file = library(dir.path(), r#"{"version": 3, "nameformat": "x"}"#);
+        let error = Config::load(&file, MachineConfig::empty(), None).unwrap_err();
+        assert_eq!(error.message(), format!("{file}: invalid nameformat 'x' (expected an object): correct the file"));
+        // null is unset
+        let file = library(dir.path(), r#"{"version": 3, "auto-push": null, "nameformat": null}"#);
+        assert!(Config::load(&file, MachineConfig::empty(), None).is_ok());
+        // a file that is not JSON, or not an object
+        for text in ["{bad", "[]", ""] {
+            let file = library(dir.path(), text);
+            let error = Config::load(&file, MachineConfig::empty(), None).unwrap_err();
+            assert!(error.message().starts_with(&file) && error.message().ends_with("correct the file"), "{error}");
+        }
+    }
+
+    #[test]
+    fn a_library_configuration_is_read_as_utf8_and_a_byte_order_mark_is_ignored() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = library(dir.path(), "\u{feff}{\"version\":3,\"bibtex\":\"r\u{e9}f.bib\",\"editor\":\"\u{e9}\",\"filesdir\":null}");
+        let config = Config::load(&file, MachineConfig::empty(), None).unwrap();
+        assert_eq!(config.get("editor"), json!("\u{e9}"));
+        assert_eq!(config.bibtex.as_deref(), Some(format!("{}/r\u{e9}f.bib", config_root(&file)).as_str()));
+    }
+
+    #[test]
+    fn the_home_directory_is_expanded_in_bibtex_and_filesdir() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = library(dir.path(), r#"{"bibtex": "~/refs.bib", "filesdir": "~/pdfs", "version": 3}"#);
+        let config = Config::load(&file, MachineConfig::empty(), None).unwrap();
+        let home = crate::config::paths::home();
+        assert_eq!(config.bibtex.as_deref(), Some(format!("{home}/refs.bib").as_str()));
+        assert_eq!(config.filesdir.as_deref(), Some(format!("{home}/pdfs").as_str()));
+    }
+
+    #[test]
+    fn the_files_of_the_library_are_in_the_folder_of_its_configuration() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = canonical(dir.path());
+        let file = library(dir.path(), r#"{"bibtex": "bib/papers.bib", "version": 3}"#);
+        let config = Config::load(&file, MachineConfig::empty(), None).unwrap();
+        assert_eq!(config.libdir(), root);
+        // a bibtex without library: the folder of the bibtex
+        assert_eq!(library_dir(Some(&format!("{root}/x/refs.bib")), None), format!("{root}/x"));
+        assert_eq!(library_dir(Some("refs.bib"), None), getcwd());
+        // a configuration of papers 2: the folder of the file
+        assert_eq!(library_dir(None, Some(&format!("{root}/.papersconfig.json"))), root);
+        // the global configuration of papers 2 is not a library: the folder of its bibtex
+        let mut v2 = Config::new(MachineConfig::empty());
+        v2.bibtex = Some(format!("{root}/b/p.bib"));
+        v2.file = Some(format!("{root}/papersconfig.json"));
+        assert_eq!(v2.libdir(), format!("{root}/b"));
+    }
+
+    #[test]
+    fn the_files_that_earlier_builds_wrote_next_to_the_bibtex_move_to_the_library_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = canonical(dir.path());
+        let write = |path: &str, text: &str| {
+            std::fs::create_dir_all(dirname(&format!("{root}/{path}"))).unwrap();
+            std::fs::write(format!("{root}/{path}"), text).unwrap();
+        };
+        // lib/ has its bibtex in lib/bib/
+        write("lib/.papers/config.json", r#"{"bibtex": "bib/papers.bib", "version": 3}"#);
+        write("lib/bib/.papers/distinct.json", "{\"distinct\": []}\n");
+        write("lib/bib/.papers/origin/pool-123456.bib", "");
+        write("lib/bib/.papers/origin.bib", "");
+        write("lib/bib/.papers/files.json", "{}");
+        Config::load(&format!("{root}/lib/.papers/config.json"), MachineConfig::empty(), None).unwrap();
+        for name in ["distinct.json", "origin/pool-123456.bib", "origin.bib"] {
+            assert!(!std::path::Path::new(&format!("{root}/lib/bib/.papers/{name}")).exists(), "{name}");
+            assert!(std::path::Path::new(&format!("{root}/lib/.papers/{name}")).exists(), "{name}");
+        }
+        // the others stay
+        assert!(std::path::Path::new(&format!("{root}/lib/bib/.papers/files.json")).exists());
+        // not over a file that the library folder has
+        write("b/.papers/config.json", r#"{"bibtex": "s/papers.bib", "version": 3}"#);
+        write("b/.papers/distinct.json", "mine");
+        write("b/s/.papers/distinct.json", "old");
+        Config::load(&format!("{root}/b/.papers/config.json"), MachineConfig::empty(), None).unwrap();
+        assert_eq!(std::fs::read_to_string(format!("{root}/b/.papers/distinct.json")).unwrap(), "mine");
+        assert_eq!(std::fs::read_to_string(format!("{root}/b/s/.papers/distinct.json")).unwrap(), "old");
+        // not from the folder of another library
+        write("c/.papers/config.json", r#"{"bibtex": "../o/papers.bib", "version": 3}"#);
+        write("o/.papers/config.json", r#"{"bibtex": "papers.bib", "version": 3}"#);
+        write("o/.papers/distinct.json", "o");
+        Config::load(&format!("{root}/c/.papers/config.json"), MachineConfig::empty(), None).unwrap();
+        assert!(std::path::Path::new(&format!("{root}/o/.papers/distinct.json")).exists());
+        assert!(!std::path::Path::new(&format!("{root}/c/.papers/distinct.json")).exists());
     }
 
     #[test]

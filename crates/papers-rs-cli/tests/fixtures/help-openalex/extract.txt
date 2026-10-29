@@ -22,7 +22,8 @@ options:
                         renamed or removed, or found already in the library,
                         one per line: "added KEY", "modified KEY", "renamed
                         OLD NEW", "removed KEY", "existing KEY"; every other
-                        message goes to the standard error
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
   --doi-only            print the DOI of the PDFs: the DOI of the PDF
                         metadata, otherwise the first DOI of the text whose
                         title (from crossref) appears in the text

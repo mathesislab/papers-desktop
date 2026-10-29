@@ -417,6 +417,194 @@ case('usage-quoting', [step("bo'gus"), step('bo"gus'), step('bo\'g"us'), step('b
 # running
 # =======
 
+# the library and its configuration (papers 3.0.0b6)
+# ==================================================
+def cfg(**kw):
+    "a library configuration file, as json"
+    return json.dumps({'version': 3, **kw}, sort_keys=True, indent=2)
+
+
+# settings given are saved, even with the default value; --unset makes them inherited again
+case('config-explicit-settings',
+     [step('init', 'a', '--paths', 'relative', '--editor', 'vim', '--name-author-num', '2'),
+      step('-C', 'a', 'config', 'files', 'move'), step('-C', 'a', 'config', 'auto-push', 'false'),
+      step('-C', 'a', 'config', 'key.template', '{author}{year}'), step('-C', 'a', 'config', 'editor', 'vim'),
+      step('-C', 'a', 'config'), step('-C', 'a', 'config', '--unset', 'files'),
+      step('-C', 'a', 'config', '--unset', 'name.author-num'), step('-C', 'a', 'config', '--unset', 'paths'),
+      step('-C', 'a', 'config', '--unset', 'editor'), step('-C', 'a', 'config', '--unset', 'bibtex'),
+      step('-C', 'a', 'config', '--unset', 'filesdir'), step('-C', 'a', 'config', '--unset', 'pool'),
+      step('-C', 'a', 'config'), step('-C', 'a', 'config', 'pool', 'none'), step('-C', 'a', 'config', '--prune')],
+     home={MC: jd(version=3, editor='vim', files='move')})
+case('config-explicit-in-file',
+     [step('config'), step('config', 'name.title-sep', '-'), step('config', '--prune'), step('config', '--dry-run', '--prune'),
+      step('config'), step('config', 'editor', 'vi')],
+     cwd={'.papers/config.json': cfg(bibtex='x.bib', files='move', paths='relative', editor='vi', pool='none',
+                                     nameformat={'author_num': 2, 'title_sep': '_'}, keyformat={'template': '{author}{year}'},
+                                     **{'history-size': 500, 'auto-push': False})},
+     home={MC: jd(version=3, keyformat={'template': '{author}{year}'}, editor='vi')})
+# keys that papers does not know are kept when it saves the file
+case('config-unknown-keys-kept',
+     [step('config', 'files', 'link'), step('config', '--unset', 'files'), step('config', 'nameformat.x', 'y'),
+      step('config', 'name.template', '{year}'), step('config', '--unset', 'name.template'), step('config', '--prune'),
+      step('config', 'editor', 'vim'), step('config', '--unset', 'editor'), step('config')],
+     cwd={'.papers/config.json': cfg(bibtex='x.bib', filesdir=None, future={'a': [1, 2], 'b': None}, other=3,
+                                     nameformat={'template': '{title}', 'future-field': 7, 'author_num': 2},
+                                     keyformat={'future_key': [1, 2]}, gitdir='x', gitlfs=True, git=True,
+                                     **{'git-lfs': True, 'trash-days': 3}, pools=['x'], light=True, sync='push',
+                                     local=True, absolute_paths=True, backup_files=True)})
+case('config-unknown-keys-v2-library',
+     [step('config', 'files', 'link'), step('config')],
+     cwd={'.papersconfig.json': json.dumps({'bibtex': 'x.bib', 'local': True, 'future': 1, 'absolute_paths': True})})
+# a wrong value in the file is an error that names the file and the setting
+INVALID = [{'auto-push': 'no'}, {'auto-push': 1}, {'history-size': True}, {'history-size': 1.5}, {'history-size': '3'},
+           {'files': 'keep'}, {'files': ['move']}, {'paths': 'relativ'}, {'paths': 1}, {'pool': 3}, {'pool': True},
+           {'bibtex': 5}, {'bibtex': ['a.bib']}, {'filesdir': {}}, {'editor': ['vim']}, {'editor': 3},
+           {'checksums': 'yes'}, {'history-separate': 0}, {'history-dir': 3}, {'keep-deleted-files': 'x'},
+           {'nameformat': []}, {'nameformat': 'x'}, {'keyformat': 3}, {'nameformat': {'author_num': '2'}},
+           {'nameformat': {'author_num': 2.5}}, {'nameformat': {'unknown_strict': 1}}, {'keyformat': {'template': 3}},
+           {'keyformat': {'title_sep': None, 'author_sep': 4}}, {'auto-push': None, 'files': None}, {'version': 3}]
+case('config-invalid-values',
+     [step('config', write={'cwd/.papers/config.json': cfg(**{'bibtex': 'x.bib', **js})}) for js in INVALID]
+     + [step('config', 'files', 'link', write={'cwd/.papers/config.json': cfg(bibtex='x.bib', **{'auto-push': 'no'})}),
+        step('config', '--unset', 'files'), step('config', '--prune'), step('init', 'sub'), step('-C', 'sub', 'config')])
+case('config-invalid-file',
+     [step('config', write={'cwd/.papers/config.json': text})
+      for text in ['{bad', '[1]', '"x"', 'null', '1', '', '{"version": 3,}', '﻿{"version": 3, "editor": "é"}',
+                   '{"version": 3, "bibtex": "réf.bib"}']]
+     + [step('config', 'editor', 'x', write={'cwd/.papers/config.json': '{bad'}), step('config', '--prune'),
+        step('init', 'sub')])
+case('config-global-invalid-values',
+     [step('config', '--global', write={'home/<MC>': json.dumps(js)}) for js in
+      [{'auto-push': 'no'}, {'default': 3}, {'history-size': True}, {'files': 'keep'}, {'nameformat': {'title_length': '10'}},
+       {'keyformat': 1}, {'paths': 'x'}, {'editor': 1}, {'bibtex': 1}, {'filesdir': 2}, {'default': ['x']},
+       {'history-dir': 1}, {'keep-deleted-files': 'no'}, {'pool': 3}, {'pool': 'none'}, {'pool': '/x'}, {'version': 3, 'default': '~/x'}]]
+     + [step('-C', 'v', 'config', write={'home/<MC>': json.dumps({'editor': 4})}), step('config', '--global', 'editor', 'vim'),
+        step('config', '--global', '--unset', 'editor'), step('init', 'w')],
+     cwd={'v/.papers/config.json': cfg(bibtex='x.bib')})
+case('config-global-invalid-file',
+     [step('config', '--global', write={'home/<MC>': text}) for text in ['[1]', '"x"', '{bad', '', '1', '{"a": 1}']]
+     + [step('config', '--global', 'editor', 'vim'), step('init', 'lib'), step('-C', 'v', 'config'), step('status')],
+     cwd={'v/.papers/config.json': cfg(bibtex='x.bib')})
+# the global configuration is written whole: its unknown keys and the pool names of earlier builds are kept
+case('config-global-keeps-keys',
+     [step('config', '--global', 'files', 'link'), step('config', '--global'), step('config', '--global', '--unset', 'files'),
+      step('config', '--global', 'default', 'lib'), step('config', '--global', 'default', 'none'),
+      step('-C', 'v', 'config', 'pool'), step('-C', 'w', 'config', 'pool')],
+     home={MC: jd(version=3, future={'a': 1}, pools={'shared': '/x/shared', 'other': '../o'}, editor='vi')},
+     cwd={'lib/.papers/config.json': cfg(bibtex='x.bib'), 'v/.papers/config.json': cfg(bibtex='x.bib', pools=['shared']),
+          'w/.papers/config.json': cfg(bibtex='x.bib', pools=['default', 'shared'])})
+case('config-global-unicode',
+     [step('config', '--global', 'editor', 'édit \U0001F600'), step('config', '--global'),
+      step('config', '--global', 'editor')],
+     home={MC: '﻿' + jd(version=3, default='~/lib')})
+# ~ in the paths of a library configuration; relative paths of the global configuration are relative to its folder
+case('config-tilde-paths',
+     [step('config'), step('config', 'bibtex'), step('config', 'filesdir'), step('config', 'files', 'link'),
+      step('config', 'bibtex', '~/other.bib'), step('config', 'filesdir', '~/p'), step('config'),
+      step('config', 'paths', 'absolute'), step('config')],
+     cwd={'.papers/config.json': cfg(bibtex='~/docs/x.bib', filesdir='~/pdfs', pool='~/pool')})
+case('config-global-relative-paths',
+     [step('config', 'bibtex'), step('config', '-v'), step('config', '--global'), step('-C', 'sub', 'config', 'bibtex'),
+      step('config', '--global', 'default', 'lib'), step('config', '--global', 'default'),
+      step('config', '--global', 'history-dir', 'hist'), step('config', '--global', 'history-dir', '~/h'),
+      step('-C', 'sub', 'config', '--global', 'history-dir', '../h2'), step('config', '--global', 'history-dir'),
+      step('config', '--global', 'default', '../cwd/lib'), step('config', '--global'),
+      step('-C', 'sub', 'config', '--global', 'default', '../lib'), step('-C', 'sub', 'config', '--global', 'default'),
+      step('init', 'x', '--shallow'), step('-C', 'x', 'config', 'pool'), step('-C', 'x', 'config')],
+     home={MC: jd(version=3, default='../../../../cwd/lib', **{'history-dir': 'hh'})},
+     cwd={'lib/.papers/config.json': cfg(bibtex='x.bib', filesdir='files'), 'sub/': None}, platform='macos')
+case('config-global-default-home',
+     [step('config', 'bibtex'), step('config', '--global', 'default', '~/lib'), step('config', '--global', 'default'),
+      step('config', '--global', 'default', '~/lib/../lib2'), step('config', '--global')],
+     home={'lib/.papers/config.json': cfg(bibtex='x.bib'), 'lib2/.papers/config.json': cfg(bibtex='y.bib'),
+           MC: jd(version=3, default='~/lib')})
+# paths on the command line are relative to the current directory
+case('init-relative-to-the-current-directory',
+     [step('init', 'lib', '--bibtex', 'refs/my.bib', '--filesdir', 'docs/pdfs'),
+      step('init', 'lib2', '--bibtex', '../x.bib', '--filesdir', '../pdfs'), step('-C', 'lib2', 'config'),
+      step('init', 'sub/lib3', '--bibtex', 'sub/x.bib', '--filesdir', 'sub/pdfs', '--pool', 'lib'),
+      step('-C', 'sub/lib3', 'config'), step('init', 'lib4', '--pool', '../lib'), step('init', 'sub/lib5', '--pool', '../../lib'),
+      step('init', 'sub/lib6', '--pool', 'lib'), step('-C', 'sub/lib6', 'config', 'pool'),
+      step('init', 'lib7', '--pool', 'sub/..//lib'), step('-C', 'lib7', 'config', 'pool'),
+      step('init', 'sub/lib8', '--pool', '~/pool', '--bibtex', '~/b.bib'), step('-C', 'sub/lib8', 'config'),
+      step('init', 'sub/lib9', '--pool', 'lib/'), step('-C', 'sub/lib9', 'config', 'pool'),
+      step('init', 'lib10', '--pool', 'lib/files/../../lib'), step('-C', 'lib10', 'config', 'pool'),
+      step('init', 'lib/inside', '--pool', 'lib'), step('init', 'lib11', '--pool', 'lib2', '--bibtex', 'none', '--filesdir', 'NONE'),
+      step('-C', 'lib11', 'config')],
+     cwd={'sub/': None}, home={'pool/.papers/config.json': cfg(bibtex='p.bib')})
+case('init-pool-itself',
+     [step('init', 'a'), step('init', 'a2', '--pool', 'a2'), step('init', 'b', '--pool', '../b'), step('init', 'c', '--pool', 'c/../c'),
+      step('init', 'd', '--pool', '.'), step('init', 'e', '--pool', 'e'), step('init', 'f', '--shallow'),
+      step('-C', 'a', 'config', 'pool', '.'), step('-C', 'a', 'config', 'pool', '../a'), step('-C', 'a', 'config', 'pool', 'a'),
+      step('-C', 'a', 'config', 'pool', '../a/'), step('-C', 'a', 'config', 'pool', '/<TMP>/cwd/a'.replace('//', '/')),
+      step('-C', 'a', 'config', 'pool', '~/a'), step('-C', 'a', 'config'), step('config', '--global', 'default', 'a'),
+      step('init', 'g', '--shallow'), step('init', 'a', '--shallow'), step('-C', 'a', 'config', 'pool', '../a', '--dry-run')],
+     cwd={'e/': None}, home={})
+case('init-shallow-default-written',
+     [step('init', 'lib', '--shallow'), step('-C', 'lib', 'config', 'pool'), step('init', 'sub/lib2', '--shallow'),
+      step('-C', 'sub/lib2', 'config', 'pool'), step('init', 'lib3', '--shallow', '--bibtex', 'z.bib')],
+     home={MC: jd(version=3, default='~/def'), 'def/.papers/config.json': cfg(bibtex='d.bib')}, cwd={'sub/': None})
+case('init-shallow-default-relative',
+     [step('init', 'lib', '--shallow'), step('-C', 'lib', 'config', 'pool'), step('init', 'lib2', '--shallow', '--pool', 'x'),
+      step('init', 'lib', '--shallow'), step('config', '--global')],
+     home={MC: jd(version=3, default='../../../../cwd/def')}, cwd={'def/.papers/config.json': cfg(bibtex='d.bib')},
+     platform='macos')
+case('init-stores-paths',
+     [step('init', 'a'), step('init', 'b', '--paths', 'relative'), step('init', 'c', '--paths', 'absolute'),
+      step('init', 'd', '--editor', 'vim'), step('init', 'e', '--name-author-num', '2'), step('init', 'f', '--key-unknown-strict'),
+      step('-C', 'a', 'config', '--unset', 'paths'), step('-C', 'a', 'config')],
+     home={MC: jd(version=3, paths='absolute')})
+case('init-stores-paths-default',
+     [step('init', 'a'), step('-C', 'a', 'config', 'paths'), step('-C', 'a', 'config', '--prune'), step('-C', 'a', 'config')])
+# all of .papers/ is in the library folder, also when the bibtex is in a subfolder
+BIB_DISTINCT = '{"distinct": []}\n'
+case('layout-bibtex-in-subfolder',
+     [step('-C', 'a', 'config', '-v'), step('-C', 'a', 'config', '-v'), step('-C', 'b', 'config', '-v'), step('-C', 'c', 'config', '-v'),
+      step('-C', 'd', 'config', '-v'), step('-C', 'e/lib', 'config', '-v'), step('-C', 'f', 'config', '-v'),
+      step('-C', 'g', 'config', '-v'), step('-C', 'h', 'config', '-v', '--dry-run'), step('-C', 'h', 'config', '-v'),
+      step('-C', 'i', 'config', '-v')],
+     cwd={# moved: distinct.json, origin/ (a folder) and origin.bib; the other files stay
+          'a/.papers/config.json': cfg(bibtex='bib/papers.bib'), 'a/bib/.papers/distinct.json': BIB_DISTINCT,
+          'a/bib/.papers/origin/pool-123456.bib': '@comment{papers-pool ../pool}\n', 'a/bib/.papers/origin.bib': '@comment{x}\n',
+          'a/bib/.papers/files.json': '{}', 'a/bib/.papers/lock': 'x', 'a/bib/.papers/other.txt': 'x',
+          # not moved over a file of the library folder
+          'b/.papers/config.json': cfg(bibtex='s/papers.bib'), 'b/.papers/distinct.json': '{"distinct": [[1, 2]]}\n',
+          'b/s/.papers/distinct.json': BIB_DISTINCT,
+          # the folder of the bibtex is another library: left alone
+          'c/.papers/config.json': cfg(bibtex='../o/papers.bib'), 'o/.papers/config.json': cfg(bibtex='papers.bib'),
+          'o/.papers/distinct.json': BIB_DISTINCT,
+          # a bibtex in the library folder
+          'd/.papers/config.json': cfg(bibtex='papers.bib'), 'd/.papers/distinct.json': BIB_DISTINCT,
+          # a bibtex above the library folder
+          'e/lib/.papers/config.json': cfg(bibtex='../papers.bib'), 'e/.papers/distinct.json': BIB_DISTINCT,
+          'e/.papers/origin/a.bib': '@comment{papers-pool x}\n',
+          # a library configuration of papers 2
+          'f/.papersconfig.json': json.dumps({'bibtex': 'sub/x.bib', 'local': True}), 'f/sub/.papers/distinct.json': BIB_DISTINCT,
+          'g/.papers/config.json': cfg(bibtex='nosub/x.bib'),
+          # a dry run moves nothing
+          'h/.papers/config.json': cfg(bibtex='hb/x.bib'), 'h/hb/.papers/distinct.json': BIB_DISTINCT,
+          'h/hb/.papers/origin.bib': '@comment{x}\n',
+          # a bibtex given with ~
+          'i/.papers/config.json': cfg(bibtex='~/ib/x.bib'), 'i/.papers/origin.bib': '@comment{y}\n',
+          'i/.papers/distinct.json': BIB_DISTINCT}, home={'ib/.papers/distinct.json': BIB_DISTINCT, 'ib/.papers/origin/z.bib': ''})
+case('layout-dry-run-moves-nothing',
+     [step('list', '--dry-run'), step('config', '--dry-run'), step('config'), step('config', '--dry-run', 'files', 'link')],
+     cwd={'.papers/config.json': cfg(bibtex='bib/papers.bib'), 'bib/.papers/distinct.json': BIB_DISTINCT})
+# the pool is checked again for a pool of its own when the library exchanges with it
+case('pool-with-a-pool-of-its-own',
+     [step('-C', 'B', 'status'), step('-C', 'B', 'pull'), step('-C', 'B', 'pull', '--all'), step('-C', 'B', 'pull', '--check'),
+      step('-C', 'B', 'push'), step('-C', 'B', 'push', '--all'), step('-C', 'B', 'sync'), step('-C', 'B', 'sync', '--all'),
+      step('-C', 'B', 'sync', '--pool', '../A'), step('-C', 'B', 'pull', '--pool', '../C'), step('-C', 'B', 'push', '--pool', '../C'),
+      step('-C', 'B', 'pull', '--pool', '../B'), step('-C', 'B', 'config', 'pool', '../A', '--dry-run'), step('-C', 'D', 'config', 'pool', '../A'),
+      step('-C', 'B', 'list', '--pull', '--dry-run'), step('-C', 'A', 'pull', '--check'), step('-C', 'A', 'status'),
+      step('-C', 'D', 'status')],
+     cwd={'C/.papers/config.json': cfg(bibtex='c.bib', filesdir='files', pool='none'), 'C/c.bib': '',
+          'A/.papers/config.json': cfg(bibtex='a.bib', filesdir='files', pool='../C'), 'A/a.bib': '',
+          'B/.papers/config.json': cfg(bibtex='b.bib', filesdir='files', pool='../A'),
+          'B/b.bib': '@article{x2000,\n author = {X, Y},\n title = {T},\n year = {2000}\n}\n',
+          'D/.papers/config.json': cfg(bibtex='d.bib', filesdir='files', pool='../B'), 'D/d.bib': ''})
+
+
 def normalise(text, tmp):
     mc = os.path.join(tmp, 'home', MC)
     v2 = os.path.join(tmp, 'home', V2)
