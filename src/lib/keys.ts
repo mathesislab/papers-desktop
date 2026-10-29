@@ -2,13 +2,15 @@
 
 export const mac = navigator.userAgent.includes("Mac");
 
-export type Shortcut = { key: string; mod?: boolean; shift?: boolean; alt?: boolean };
+/** `code`: the physical key, for one whose character changes with ⇧ (⇧] is }) */
+export type Shortcut = { key: string; code?: string; mod?: boolean; shift?: boolean; alt?: boolean };
 
 export function matches(e: KeyboardEvent, s: Shortcut): boolean {
   const mod = mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
   // ⌥ changes the character of a key on macOS (⌥C is ç): its letter is the code
-  const key =
-    s.alt && s.key.length === 1
+  const key = s.code
+    ? e.code === s.code
+    : s.alt && s.key.length === 1
       ? e.code === `Key${s.key.toUpperCase()}`
       : e.key.toLowerCase() === s.key.toLowerCase();
   return key && mod === !!s.mod && e.shiftKey === !!s.shift && e.altKey === !!s.alt;
@@ -23,7 +25,7 @@ export function zoomStep(e: KeyboardEvent): number | null {
   return e.key === "0" ? 0 : null;
 }
 
-const names: Record<string, string> = mac ? { Enter: "↵" } : {};
+const names: Record<string, string> = mac ? { Enter: "↵", Backspace: "⌫" } : {};
 
 export function label(s: Shortcut): string {
   const key = names[s.key] ?? (s.key.length === 1 ? s.key.toUpperCase() : s.key);

@@ -7,7 +7,7 @@
   import { onMount, tick, untrack } from "svelte";
   import "$lib/theme.css";
   import { label, mac, matches, zoomStep, type Shortcut } from "$lib/keys";
-  import { hasTag, renameTagFilter, toggleTag } from "$lib/query";
+  import { renameTagFilter } from "$lib/query";
   import { foldTag, movedTag, sameTag } from "$lib/tags";
   import Details from "$lib/library/Details.svelte";
   import Add from "$lib/library/Add.svelte";
@@ -18,15 +18,35 @@
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
   import ReaderView from "$lib/library/ReaderView.svelte";
-  import Sidebar, { type View } from "$lib/library/Sidebar.svelte";
+  import {
+    NO_FILTERS,
+    VIEWS,
+    chips,
+    currentSet,
+    hasTag,
+    libraryCounts,
+    renameTags,
+    restored,
+    searchOf,
+    tabLabel,
+    tagCounts,
+    toggleTag,
+    viewCounts,
+    without,
+    type Chip,
+    type Filters,
+    type View,
+  } from "$lib/library/filters";
+  import Sidebar from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
   import type { AddOptions, Added, FilesMode, Item, Row, Status, TagCount, WriteError } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
-   *  the columns and order of the table, the papers open and the page of
-   *  each, the parent tags unfolded in the sidebar. */
+   *  the columns and order of the table, the library tab (its library, view,
+   *  tags and search), the papers open and the page of each, the parent tags
+   *  unfolded in the sidebar. */
   type Layout = {
     sidebar: number;
     details: number;
@@ -34,6 +54,8 @@
     showDetails: boolean;
     columns: Shown[];
     sort: Sort;
+    /** the filters of the library tab: the current set it shows */
+    library: Filters;
     open: string[];
     /** the paper in front; none: the library */
     active: string | null;
@@ -48,13 +70,14 @@
     showDetails: true,
     columns: DEFAULT_COLUMNS,
     sort: null,
+    library: NO_FILTERS,
     open: [],
     active: null,
     pages: {},
     openTags: [],
   };
 
-  let layout = $state<Layout>({ ...DEFAULTS });
+  let layout = $state<Layout>({ ...DEFAULTS, library: restored(null) });
   let loaded = false;
   let timer: ReturnType<typeof setTimeout>;
 
@@ -68,10 +91,10 @@
   /** the groups of papers that may be the same */
   let duplicates = $state<string[][]>([]);
 
-  let query = $state("");
-  /** the papers that match the query; none until the first answer */
+  /** the papers that match the search and the tags of the library tab; none until the first answer */
   let matched = $state<Set<string> | null>(null);
-  let view = $state<View>("all");
+  /** where the table of the library tab is scrolled to, kept while a paper is in front (not state: nothing draws it) */
+  const table = { scroll: 0 };
   let selected = $state(new Set<string>());
   /** the paper the details show, and that the arrow keys move from */
   let focus = $state<string | null>(null);
@@ -109,6 +132,8 @@
     sidebar: { key: "s", mod: true, alt: true },
     details: { key: "i", mod: true, alt: true },
     library: { key: "1", mod: true },
+    "show-next-tab": { key: "]", code: "BracketRight", mod: true, shift: true },
+    "show-previous-tab": { key: "[", code: "BracketLeft", mod: true, shift: true },
     settings: { key: ",", mod: true },
   };
   const allShortcut: Shortcut = { key: "a", mod: true };
@@ -124,25 +149,23 @@
     return ids.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined);
   });
 
+  /** the current set: the papers of the library tab, library × view × tags × search */
   let shown = $derived.by(() => {
-    const m = matched;
-    if (!m) return [];
-    const pick = (ids: string[]) =>
-      ids.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined && m.has(r.id));
-    let list: Row[];
-    if (view === "recent") list = pick(recent);
-    else if (view === "duplicates") list = pick(duplicates.flat());
-    else list = rows.filter((r) => m.has(r.id) && inView(r, view));
+    const list = currentSet(rows, matched, layout.library, recent, duplicates);
     return layout.sort ? sorted(list, layout.sort) : list;
   });
 
-  let views = $derived<{ view: View; name: string; count: number }[]>([
-    { view: "all", name: "All papers", count: rows.length },
-    { view: "recent", name: "Recently opened", count: recent.length },
-    { view: "nopdf", name: "No PDF", count: rows.filter((r) => r.file === "none").length },
-    { view: "broken", name: "Broken file links", count: rows.filter((r) => r.file === "missing").length },
-    { view: "duplicates", name: "Possible duplicates", count: duplicates.flat().length },
-  ]);
+  /** the views, with their numbers within the library chosen */
+  let views = $derived.by(() => {
+    const counts = viewCounts(rows, recent, duplicates, layout.library.bib);
+    return VIEWS.map(({ view, name }) => ({ view, name, count: counts[view] }));
+  });
+
+  /** the tags of the sidebar, counted within the library chosen */
+  let sidebarTags = $derived(layout.library.bib ? tagCounts(rows.filter((r) => r.bib === layout.library.bib)) : tags);
+
+  /** the filters on, as chips above the table */
+  let filterChips = $derived(chips(layout.library));
 
   let papers = $derived(layout.open.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined));
 
@@ -161,18 +184,7 @@
       (selected.size ? ` · ${selected.size} selected` : ""),
   );
 
-  let libraries = $derived.by(() => {
-    const counts = new Map<string, number>();
-    for (const r of rows) counts.set(r.bib, (counts.get(r.bib) ?? 0) + 1);
-    return [...counts].map(([bib, count]) => ({ bib, count }));
-  });
-
-  function inView(r: Row, v: View): boolean {
-    if (typeof v !== "string") return r.bib === v.bib;
-    if (v === "nopdf") return r.file === "none";
-    if (v === "broken") return r.file === "missing";
-    return true;
-  }
+  let libraries = $derived(libraryCounts(rows));
 
   /** The rows in the order of a column; the empty values last. */
   function sorted(list: Row[], sort: NonNullable<Sort>): Row[] {
@@ -210,7 +222,7 @@
 
   async function load() {
     const saved = await invoke<Partial<Layout> | null>("layout");
-    layout = { ...DEFAULTS, ...saved };
+    layout = { ...DEFAULTS, ...saved, library: restored(saved?.library) };
     loaded = true;
     status = await invoke<Status>("status");
     if (status.state === "ready") await loadLibrary();
@@ -261,7 +273,8 @@
    *  and the parents unfolded follow. */
   async function rename(tag: string, name: string) {
     if (!(await write(() => renameTag(tag, name)))) return;
-    query = renameTagFilter(query, tag, name);
+    layout.library.query = renameTagFilter(layout.library.query, tag, name);
+    layout.library.tags = renameTags(layout.library.tags, tag, name);
     layout.openTags = layout.openTags.map((t) => foldTag(movedTag(t, tag, name)));
     const next = pinned.map((t) => t && movedTag(t, tag, name));
     // renamed to a tag pinned already: it keeps the first key
@@ -292,13 +305,14 @@
       invoke<string[]>("recent"),
       invoke<string[][]>("duplicates"),
     ]);
-    // the selection and the tabs keep the papers still there
+    // the library tab keeps the .bib file still there; the selection and the tabs, the papers
+    if (layout.library.bib && rows.length && !rows.some((r) => r.bib === layout.library.bib)) layout.library.bib = null;
     selected = new Set([...selected].filter((id) => byId.has(id)));
     if (focus && !byId.has(focus)) focus = null;
     layout.open = layout.open.filter((id) => byId.has(id));
     if (layout.active && !byId.has(layout.active)) layout.active = null;
     if (editor.id && !byId.has(editor.id)) editor.stop();
-    await search(query);
+    await search(searchOf(layout.library));
   }
 
   let searches = 0;
@@ -310,7 +324,7 @@
   }
 
   $effect(() => {
-    search(query);
+    search(searchOf(layout.library));
   });
 
   // saved a moment after a change: a pane dragged changes it many times
@@ -392,12 +406,15 @@
     }
   }
 
-  async function openPaper(id: string) {
-    if (!(await leave(id))) return;
-    if (!layout.open.includes(id)) layout.open = [...layout.open, id];
-    layout.active = id;
-    invoke("opened", { id }).then(refresh);
+  /** Papers in tabs, those not open yet after the ones open; `front` (the first, by default) comes to the front. */
+  async function openPapers(ids: string[], front = ids[0]) {
+    if (!ids.length || !(await leave(front))) return;
+    layout.open = [...layout.open, ...ids.filter((id, i) => !layout.open.includes(id) && ids.indexOf(id) === i)];
+    layout.active = front;
+    Promise.all(ids.map((id) => invoke("opened", { id }))).then(refresh);
   }
+
+  const openPaper = (id: string) => openPapers([id]);
 
   /** The papers in a .bib file of their own, e.g. a manuscript's references. */
   async function exportBib(ids: string[]) {
@@ -435,11 +452,10 @@
     }
   }
 
-  /** The paper selected, in the library as it is without search or view to hide it, with its details. */
+  /** The paper selected, in the library tab, with its details: the filters are taken off if they hide it. */
   async function show(id: string) {
-    query = "";
-    view = "all";
     await loadLibrary();
+    if (!shown.some((r) => r.id === id)) layout.library = restored(null);
     selected = new Set([id]);
     anchor = focus = id;
     layout.showDetails = true;
@@ -475,7 +491,7 @@
 
   /** The papers of BibTeX added to a .bib file. Then the sheet closes, and
    *  the first paper added (else the first that was there) is selected, in
-   *  the library as it is without search or view to hide it. */
+   *  the library tab (see `show`). */
   async function addPapers(bib: string, text: string, options: AddOptions, fail: (message: string) => void): Promise<boolean> {
     let added: Added | undefined;
     if (!(await write(async () => (added = await addBibtex(bib, text, options)), (error) => fail(errorText(error)))) || !added)
@@ -610,8 +626,10 @@
       case "library":
         return showLibrary();
       case "next-tab":
+      case "show-next-tab":
         return cycle(1);
       case "previous-tab":
+      case "show-previous-tab":
         return cycle(-1);
       case "settings":
         invoke("open_settings");
@@ -635,6 +653,14 @@
       command(zoom > 0 ? "zoom-in" : zoom < 0 ? "zoom-out" : "zoom-fit");
       return;
     }
+    // ⌘⇧] and ⌘⇧[: from the menu on macOS; here when the menu does not take them
+    for (const name of ["show-next-tab", "show-previous-tab"]) {
+      if (mac && matches(e, commands[name])) {
+        e.preventDefault();
+        command(name);
+        return;
+      }
+    }
     // the commands: from the menu on macOS
     if (!mac) {
       const name = Object.keys(commands).find((c) => matches(e, commands[c]));
@@ -648,9 +674,9 @@
     if (!layout.active && !(e.target instanceof HTMLTextAreaElement)) libraryKey(e);
   }
 
-  /** The keys of the library: / to search, the arrows, the page keys, Home
-   *  and End move (shift extends the selection), Enter opens, Esc clears the
-   *  search then leaves it, 1–9 toggle the tag pinned to the key. */
+  /** The keys of the library: / to search, ⌘⌫ clears the search, the arrows, the page keys, Home
+   *  and End move (shift extends the selection), Enter opens, Esc leaves the
+   *  search, 1–9 toggle the tag pinned to the key. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -676,10 +702,12 @@
     } else if (e.key === "Enter" && focus) {
       e.preventDefault();
       open(focus);
+    } else if (e.key === "Backspace" && mod && !e.shiftKey && !e.altKey && (e.target === input || !typing)) {
+      e.preventDefault();
+      layout.library.query = "";
     } else if (e.key === "Escape" && typing) {
       e.preventDefault();
-      if (query) query = "";
-      else input?.blur();
+      input?.blur();
     } else if (/^[1-9]$/.test(e.key) && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       togglePinned(Number(e.key) - 1);
@@ -687,6 +715,22 @@
       e.preventDefault();
       selected = new Set(shown.map((r) => r.id));
     }
+  }
+
+  /** Click on a tag: filter by it too, or not any more. */
+  function filterByTag(tag: string) {
+    layout.library.tags = toggleTag(layout.library.tags, tag);
+    showLibrary();
+  }
+
+  function clearSearch() {
+    layout.library.query = "";
+    input?.focus();
+  }
+
+  /** The × of a chip. */
+  function dropFilter(chip: Chip) {
+    layout.library = without(layout.library, chip);
   }
 
   /** A tab to the front. */
@@ -712,7 +756,7 @@
 {#if adding}
   <Add
     bind:this={sheet}
-    bib={focus ? byId.get(focus)?.bib : null}
+    bib={(focus ? byId.get(focus)?.bib : null) ?? layout.library.bib}
     rows={byId}
     forId={adding.id}
     pdf={adding.pdf}
@@ -740,22 +784,26 @@
     <aside class="sidebar" style:width="{layout.sidebar}px">
       <Sidebar
         {libraries}
+        bib={layout.library.bib}
         {views}
-        {tags}
-        view={layout.active ? null : view}
-        filtered={(tag) => !layout.active && hasTag(query, tag)}
+        tags={sidebarTags}
+        view={layout.library.view}
+        filtered={(tag) => hasTag(layout.library.tags, tag)}
         {pinned}
         open={layout.openTags}
+        tab={{ label: tabLabel(layout.library), count: shown.length }}
         {papers}
         active={layout.active}
+        onlibrary={(bib) => {
+          layout.library.bib = bib;
+          showLibrary();
+        }}
         onview={(v) => {
-          view = v;
+          layout.library.view = v;
           showLibrary();
         }}
-        ontag={(tag) => {
-          query = toggleTag(query, tag);
-          showLibrary();
-        }}
+        ontag={filterByTag}
+        onlibrarytab={showLibrary}
         onfold={fold}
         onrename={rename}
         onpin={pin}
@@ -771,14 +819,19 @@
       {#if reader}
         <ReaderBar {reader} onclose={closeActive} />
       {:else}
-        <input
-          bind:this={input}
-          bind:value={query}
-          type="search"
-          placeholder="Search: words, author:, year:2010-2015, tag:, has:pdf, -exclude"
-          spellcheck="false"
-          autocomplete="off"
-        />
+        <div class="search">
+          <input
+            bind:this={input}
+            bind:value={layout.library.query}
+            type="search"
+            placeholder="Search: words, author:, year:2010-2015, tag:, has:pdf, -exclude"
+            spellcheck="false"
+            autocomplete="off"
+          />
+          {#if layout.library.query}
+            <button class="clear" title="Clear the search ({label({ key: 'Backspace', mod: true })})" aria-label="Clear the search" onclick={clearSearch}>×</button>
+          {/if}
+        </div>
         <span class="count">{notice ?? summary}</span>
         <div class="export">
           <button class="tool" class:on={exporting} onclick={() => (exporting = !exporting)}>Export…</button>
@@ -806,6 +859,17 @@
     </header>
     <div class="content">
       <section class="library">
+        {#if !reader && filterChips.length}
+          <div class="chips">
+            {#each filterChips as chip, i (chip.kind + chip.text)}
+              {#if i}<span class="sep" aria-hidden="true">›</span>{/if}
+              <span class="chip {chip.kind}">
+                <span class="text" title={chip.text}>{chip.text}</span>
+                <button aria-label="Remove the filter {chip.text}" onclick={() => dropFilter(chip)}>×</button>
+              </span>
+            {/each}
+          </div>
+        {/if}
         {#if reader}
           {#key reader}<ReaderView {reader} />{/key}
         {:else if status.state === "loading" && !rows.length}
@@ -825,6 +889,8 @@
             {selected}
             {focus}
             sort={layout.sort}
+            scroll={table.scroll}
+            onscrolled={(top) => (table.scroll = top)}
             oncolumns={(columns) => (layout.columns = columns)}
             onsort={(sort) => (layout.sort = sort)}
             onselect={select}
@@ -840,11 +906,8 @@
               {item}
               rows={targets}
               {tags}
-              filtered={(tag) => !layout.active && hasTag(query, tag)}
-              ontag={(tag) => {
-                query = toggleTag(query, tag);
-                showLibrary();
-              }}
+              filtered={(tag) => hasTag(layout.library.tags, tag)}
+              ontag={filterByTag}
               onset={(add, remove) => write(() => setTags(targets.map((r) => r.id), add, remove))}
               onopen={() => open(item!.id)}
               {editor}
@@ -914,12 +977,18 @@
     border-bottom: 1px solid var(--line);
   }
   /* the search keeps its width: what is next to it stays in place */
-  input {
+  .search {
+    position: relative;
     flex: 0 1 50%;
     min-width: 200px;
     max-width: 560px;
+    display: flex;
+  }
+  input {
+    flex: 1;
+    min-width: 0;
     height: 28px;
-    padding: 0 10px;
+    padding: 0 24px 0 10px;
     border: 1px solid var(--border);
     border-radius: 7px;
     background: transparent;
@@ -929,6 +998,70 @@
   }
   input:focus {
     border-color: var(--accent);
+  }
+  /* the × is the field's own, same on every platform */
+  input::-webkit-search-cancel-button {
+    display: none;
+  }
+  .clear {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 20px;
+  }
+  .clear:hover {
+    background: var(--line);
+    color: var(--fg);
+  }
+  /* the filters on: library › view › tags › search */
+  .chips {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 260px;
+    padding: 1px 2px 1px 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--fg);
+  }
+  .chip .text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .chip button {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 16px;
+  }
+  .chip button:hover {
+    background: var(--line);
+    color: var(--fg);
   }
   /* room for "99999 papers · 999 selected": the export stays in place */
   .count {

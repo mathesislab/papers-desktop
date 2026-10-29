@@ -1,7 +1,8 @@
-// Edit the filters of a query: the years clicked in the panel, the tags
-// clicked in the main window.
+// Edit the filters of a query: the years clicked in the panel. The tags of the
+// main window are filters of their own (library/filters.ts); a `tag:` typed in
+// its search is text.
 
-import { movedTag } from "$lib/tags";
+import { movedTag } from "./tags.ts";
 
 /** a year filter that keeps years (y:2012, year:2010-2015), not one that excludes them */
 const KEPT = /(^|\s)(?:y|year):(\S*)/gi;
@@ -48,21 +49,7 @@ export function toggleExcluded(query: string, year: number): string {
 }
 
 /** The filter of a tag: tag:amoc, or tag:"mass balance". */
-const tagTerm = (tag: string) => (/\s/.test(tag) ? `tag:"${tag}"` : `tag:${tag}`);
-
-const tagFilter = (tag: string) =>
-  new RegExp(`(^|\\s)${tagTerm(tag).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`, "gi");
-
-/** Whether the query filters the tag. */
-export function hasTag(query: string, tag: string): boolean {
-  return tagFilter(tag).test(query);
-}
-
-/** Click on a tag: filter it, or not any more. */
-export function toggleTag(query: string, tag: string): string {
-  if (hasTag(query, tag)) return tidy(query.replace(tagFilter(tag), " "));
-  return tidy(`${query} ${tagTerm(tag)}`);
-}
+export const tagTerm = (tag: string) => (/\s/.test(tag) ? `tag:"${tag}"` : `tag:${tag}`);
 
 /** A filter on a tag, negated or not: tag:amoc, -tag:amoc, tag:"mass balance". */
 const TAG_TERM = /(^|\s)(-?)tag:(?:"([^"]*)"|(\S+))(?=\s|$)/gi;

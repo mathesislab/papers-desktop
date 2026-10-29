@@ -1,56 +1,61 @@
-<script lang="ts" module>
-  /** what the table lists: all papers, a view of them, or one .bib file */
-  export type View = "all" | "recent" | "nopdf" | "broken" | "duplicates" | { bib: string };
-
-  /** whether the library shows view `b`: not while a paper is in front */
-  export const sameView = (a: View | null, b: View) =>
-    a !== null && (typeof a === "string" || typeof b === "string" ? a === b : a.bib === b.bib);
-</script>
-
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { CheckMenuItem, Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
   import { foldTag, lastSegment, parentsOf, sameTag } from "$lib/tags";
+  import { fileName, type View } from "./filters";
   import type { Row, TagCount } from "$lib/types";
 
   let {
     libraries,
+    bib,
     views,
     tags,
     view,
     filtered,
     pinned,
     open,
+    tab,
     papers,
     active,
     dirty,
+    onlibrary,
     onview,
     ontag,
     onfold,
     onrename,
     onpin,
+    onlibrarytab,
     onpaper,
     onclose,
   }: {
     /** the .bib files, with their number of papers */
     libraries: { bib: string; count: number }[];
+    /** the library shown by the library tab: a .bib file; none: all libraries */
+    bib: string | null;
+    /** the views, with their number of papers within the library */
     views: { view: View; name: string; count: number }[];
+    /** the tags, with their counts within the library */
     tags: TagCount[];
-    /** the view of the library; none while a paper is in front */
-    view: View | null;
-    /** whether the search filters a tag */
+    /** the view shown by the library tab */
+    view: View;
+    /** whether a tag is a filter of the library tab */
     filtered: (tag: string) => boolean;
     /** the tags pinned to the keys 1–9 (index = key − 1) */
     pinned: (string | null)[];
     /** the parent tags unfolded, folded as `foldTag` does */
     open: string[];
-    /** the papers open, as tabs */
+    /** the library tab, the first of the open ones: what it shows, and how many papers */
+    tab: { label: string; count: number };
+    /** the papers open, as tabs after it */
     papers: Row[];
-    /** the paper in front */
+    /** the paper in front; none: the library tab */
     active: string | null;
     /** the paper whose BibTeX has unsaved changes */
     dirty: string | null;
+    /** a library chosen; none: all libraries */
+    onlibrary: (bib: string | null) => void;
     onview: (view: View) => void;
+    /** a tag clicked: to filter by it, or not any more */
     ontag: (tag: string) => void;
     /** a parent tag unfolded or folded by its triangle */
     onfold: (tag: string, open: boolean) => void;
@@ -58,14 +63,14 @@
     onrename: (tag: string, name: string) => void;
     /** a tag pinned to the key of a slot (index), or unpinned */
     onpin: (tag: string, slot: number | null) => void;
+    /** the library tab chosen */
+    onlibrarytab: () => void;
     onpaper: (id: string) => void;
     onclose: (id: string) => void;
   } = $props();
 
   /** the indent of a tag per level of the tree, px */
   const INDENT = 12;
-
-  const fileName = (path: string) => path.split(/[\\/]/).pop();
 
   /** the key a tag is pinned to, 1–9 */
   const keyOf = (tag: string) => {
@@ -177,16 +182,19 @@
 <nav>
   {#if libraries.length > 1}
     <h4>Libraries</h4>
-    {#each libraries as { bib, count }}
-      <button class="item" class:selected={sameView(view, { bib })} title={bib} onclick={() => onview({ bib })}>
-        <span class="name">{fileName(bib)}</span><span class="count">{count}</span>
+    <button class="item" class:selected={bib === null} onclick={() => onlibrary(null)}>
+      <span class="name">All libraries</span><span class="count">{libraries.reduce((n, l) => n + l.count, 0)}</span>
+    </button>
+    {#each libraries as library}
+      <button class="item" class:selected={bib === library.bib} title={library.bib} onclick={() => onlibrary(library.bib)}>
+        <span class="name">{fileName(library.bib)}</span><span class="count">{library.count}</span>
       </button>
     {/each}
   {/if}
 
-  <h4>Library</h4>
+  <h4>Views</h4>
   {#each views as item}
-    <button class="item" class:selected={sameView(view, item.view)} onclick={() => onview(item.view)}>
+    <button class="item" class:selected={view === item.view} onclick={() => onview(item.view)}>
       <span class="name">{item.name}</span><span class="count">{item.count}</span>
     </button>
   {/each}
@@ -241,19 +249,22 @@
     {/each}
   {/if}
 
-  {#if papers.length}
-    <h4>Open papers</h4>
-    {#each papers as paper (paper.id)}
-      <div class="paper" class:selected={paper.id === active}>
-        <button class="tab" title={paper.title} onclick={() => onpaper(paper.id)}>
-          <span class="name">{paper.authors} {paper.year ?? ""}</span>
-          <span class="title">{paper.title}</span>
-        </button>
-        {#if paper.id === dirty}<span class="dot" title="Unsaved changes"></span>{/if}
-        <button class="close" aria-label="Close" onclick={() => onclose(paper.id)}>×</button>
-      </div>
-    {/each}
-  {/if}
+  <h4>Open</h4>
+  <div class="paper" class:selected={active === null}>
+    <button class="tab home" title={tab.label} onclick={onlibrarytab}>
+      <span class="name">{tab.label}</span><span class="count">{tab.count}</span>
+    </button>
+  </div>
+  {#each papers as paper (paper.id)}
+    <div class="paper" class:selected={paper.id === active}>
+      <button class="tab" title={paper.title} onclick={() => onpaper(paper.id)}>
+        <span class="name">{paper.authors} {paper.year ?? ""}</span>
+        <span class="title">{paper.title}</span>
+      </button>
+      {#if paper.id === dirty}<span class="dot" title="Unsaved changes"></span>{/if}
+      <button class="close" aria-label="Close" onclick={() => onclose(paper.id)}>×</button>
+    </div>
+  {/each}
 </nav>
 
 <footer>
@@ -398,6 +409,13 @@
     font: inherit;
     text-align: left;
     cursor: default;
+  }
+  /* the library tab: what it shows, and its count, in one line */
+  .tab.home {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
   }
   .tab .title {
     overflow: hidden;

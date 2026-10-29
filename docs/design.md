@@ -39,26 +39,63 @@ Two windows with different jobs:
 
 Three panes, each resized by dragging, the right one hidden on demand:
 
-- **Sidebar**: the libraries (the .bib files); views (all papers, recently
+- **Sidebar**: *Libraries* (with several .bib files: *All libraries*, then
+  one row per .bib, as the accounts of Mail); *Views* (all papers, recently
   opened, no PDF, broken file links, possible duplicates: the same DOI, or
-  the same title and year); the tags with their counts (a click adds
-  `tag:x` to the search); the open papers.
-- **Library**: a table of the papers that match the search (the panel's
-  syntax): sortable columns (authors, year, title, journal, tags, a file
-  marker that tells a missing file), multi-select. Only the rows on screen
-  are drawn.
+  the same title and year); the tags with their counts (a click filters by
+  the tag, a second click takes the filter off); *Open*: the library tab,
+  then the open papers. The counts of the views and the tags are those
+  within the library chosen.
+- **Library**: a table of the papers of the current set (below): sortable
+  columns (authors, year, title, journal, tags, a file marker that tells a
+  missing file), multi-select. Only the rows on screen are drawn. A line
+  above it shows the filters that are on as chips, each with an ×:
+  `papers.bib › No PDF › amoc › "ice"`; with no filter, there is no line.
 - **Details** of the selected paper: title, authors, tags, file (open,
   reveal), fields, citation, BibTeX (folded).
 
-**Open papers are side tabs**, in the sidebar: author, year and title in
-full, as a tab bar cannot. Enter or a double-click opens one; `⌘W` closes
-it, which goes back to the library (a setting: or to the next open paper).
+**Tabs.** The window works as a browser does: the first tab is always the
+library, then one tab per open paper, listed in the sidebar (*Open*): author,
+year and title in full, as a tab bar cannot. Enter or a double-click opens a
+paper; `⌘W` closes it, which goes back to the library (a setting: or to the
+next open paper). `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and
+*Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
+Library → paper 1 → … → Library; `⌘1` shows the library.
+
+**The library tab is the current set**, and keeps it while papers are opened
+and closed: going back shows the same list, the selection and where it was
+scrolled to. Its sidebar row is labelled by what it shows, with its count
+(`Library — papers.bib · No PDF · amoc · "ice"   (23)`). The set is the
+product of four filters (`src/lib/library/filters.ts`, a pure function of the
+rows, tested by `scripts/filters.test.ts`, `npm test`):
+
+- **Library**: all libraries, or one .bib (a click on its row).
+- **View**: all papers, recently opened, no PDF, broken file links, possible
+  duplicates. *All papers* takes the view filter off, and only that.
+- **Tags**: any number, clicked in the sidebar (or in the details); a paper
+  must have all of them (a tag counts the tags under it: `climate` finds
+  `climate/amoc`). They are filters of their own, shown as chips and
+  highlighted in the sidebar, not text of the search field: the field keeps
+  what was typed, and a click on a tag does not change it. A `tag:` typed in
+  the field works as before, as part of the search (`tag:`, `-tag:` and the
+  rest of the syntax); the core is asked for the search text followed by a
+  `tag:` term per tag filter.
+- **Search**: the text of the field. It stays when the view, library or tags
+  change and when papers are opened, until it is cleared: the × in the field,
+  or `⌘⌫` (Ctrl+Backspace elsewhere). `Esc` leaves the field; `/` and `⌘F`
+  go to it.
+
+Library, view, tags and search are kept in the layout (`window.json`, `library`)
+and come back at the next start; a .bib file no longer in the library is
+dropped. A paper shown after it was added or merged takes the filters off if
+they would hide it.
+
 A paper tab shows its PDF in the app, with the details beside it: on macOS
 in a native view of PDFKit, as Preview shows it (smooth scrolling and zoom;
 later, annotations written in the PDF), placed over the reader area of the
 page; elsewhere with pdf.js (to tune when Linux comes: its drawing on the
 GPU, fewer redraws). Find, zoom and the outline (a strip at the left of the
-PDF) drive either. The open papers, their pages, the pane widths and the
+PDF) drive either. The library tab, the open papers, their pages, the pane widths and the
 details shown or not are kept in the data folder of the app, as the recent
 papers are; the window opens again at start if it was open at the end.
 
@@ -248,7 +285,7 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   values. A tab with unsaved edits shows a dot, and closing it asks first.
 - **Tags** are matched whole in the search: `tag:amoc` is that tag, `*` a
   wildcard (`tag:amoc*`, `tag:*amoc`); a plain word still finds tags
-  loosely. A click on a tag in the sidebar writes `tag:x`.
+  loosely. A click on a tag in the sidebar adds it as a tag filter of the library tab (the core gets a `tag:x` term for it).
 - **Nested tags**: a tag with `/` is under the tags before it:
   `climate/amoc` is under `climate`. Still one string in `keywords`, which
   papers writes as any other. `tag:climate` finds `climate` and the tags

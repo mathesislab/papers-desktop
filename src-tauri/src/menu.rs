@@ -17,7 +17,15 @@ use crate::main_window::MAIN;
 /// the commands that lead to the fields and lists of the page, which take
 /// the keys back from the PDF view
 const ZOOM_IN: &str = "Zoom In";
-const TO_PAGE: &[&str] = &["add", "find", "library", "next-tab", "previous-tab"];
+const TO_PAGE: &[&str] = &[
+    "add",
+    "find",
+    "library",
+    "next-tab",
+    "previous-tab",
+    "show-next-tab",
+    "show-previous-tab",
+];
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let separator = || PredefinedMenuItem::separator(app);
@@ -97,6 +105,9 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                     &item("library", "Library", "CmdOrCtrl+1")?,
                     &item("next-tab", "Next Tab", "Ctrl+Tab")?,
                     &item("previous-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
+                    &separator()?,
+                    &item("show-next-tab", "Show Next Tab", "CmdOrCtrl+Shift+]")?,
+                    &item("show-previous-tab", "Show Previous Tab", "CmdOrCtrl+Shift+[")?,
                 ],
             )?,
         ],

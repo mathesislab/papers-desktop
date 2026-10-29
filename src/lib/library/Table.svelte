@@ -41,6 +41,7 @@
 
 <script lang="ts">
   import { CheckMenuItem, Menu } from "@tauri-apps/api/menu";
+  import { untrack } from "svelte";
 
   let {
     rows,
@@ -48,6 +49,8 @@
     selected,
     focus,
     sort,
+    scroll = 0,
+    onscrolled,
     oncolumns,
     onsort,
     onselect,
@@ -61,6 +64,10 @@
     /** the row the details show, and that the keys move from */
     focus: string | null;
     sort: Sort;
+    /** where the rows are scrolled to when the table comes, px: the library tab as it was left */
+    scroll?: number;
+    /** the table scrolled, to where */
+    onscrolled?: (top: number) => void;
     oncolumns: (columns: Shown[]) => void;
     onsort: (sort: Sort) => void;
     onselect: (id: string, e: MouseEvent) => void;
@@ -89,6 +96,11 @@
     ["26px", ...columns.map((c) => (c.column === flexible ? `minmax(${c.width}px, 1fr)` : `${c.width}px`))].join(" "),
   );
   let minWidth = $derived(26 + columns.reduce((sum, c) => sum + c.width, 0));
+
+  // back where it was left (before the focused row is scrolled into view)
+  $effect(() => {
+    if (body) body.scrollTop = untrack(() => scroll);
+  });
 
   // the focused row is scrolled into view (moved to with the keys)
   $effect(() => {
@@ -230,7 +242,7 @@
     bind:this={body}
     bind:clientHeight={height}
     style:min-width="{minWidth}px"
-    onscroll={() => (scrollTop = body!.scrollTop)}
+    onscroll={() => onscrolled?.((scrollTop = body!.scrollTop))}
   >
     <div style:height="{rows.length * ROW}px" style:position="relative">
       {#each rows.slice(first, last) as row, i (row.id)}
