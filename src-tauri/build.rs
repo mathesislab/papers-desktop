@@ -9,7 +9,7 @@ fn main() {
     // `cargo check` and `cargo test`: scripts/sidecar.sh puts the real one,
     // before a build of the app; a placeholder stands in until then
     let triple = env::var("TARGET").expect("TARGET");
-    let sidecar = Path::new("binaries").join(format!("papers-rs-{triple}"));
+    let sidecar = Path::new("binaries").join(format!("papers-rs-cli-{triple}"));
     if !sidecar.exists() {
         fs::create_dir_all("binaries").expect("binaries/");
         fs::write(&sidecar, PLACEHOLDER).expect("the placeholder of the sidecar");

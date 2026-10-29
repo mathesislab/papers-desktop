@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build the papers-rs command (crates/papers-rs-cli, release) and put it where
-# Tauri's bundle.externalBin looks for it: src-tauri/binaries/papers-rs-<target
+# Tauri's bundle.externalBin looks for it: src-tauri/binaries/papers-rs-cli-<target
 # triple>. Run by `beforeBuildCommand`, so `npx tauri build` ships it in the app.
 set -eu
 
@@ -17,5 +17,5 @@ else
 fi
 
 mkdir -p "$root/src-tauri/binaries"
-cp "$built" "$root/src-tauri/binaries/papers-rs-$triple"
-echo "sidecar: papers-rs-$triple"
+cp "$built" "$root/src-tauri/binaries/papers-rs-cli-$triple"
+echo "sidecar: papers-rs-cli-$triple"

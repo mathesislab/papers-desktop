@@ -1,5 +1,5 @@
 //! The `papers-rs` command line tool that comes with the app (Tauri's sidecar,
-//! next to the executable), installed as a link in `~/.local/bin` (macOS and
+//! `papers-rs-cli` next to the executable), installed as a link in `~/.local/bin` (macOS and
 //! Linux alike: no administrator prompt). If that folder is not in the PATH of
 //! the user's shell, the settings say so and offer to add it to the startup
 //! file of the shell, on a click. Only a link of ours is ever replaced or
@@ -13,6 +13,9 @@ use serde::Serialize;
 
 /// the name of the command, and of the link
 pub const NAME: &str = "papers-rs";
+/// the name of the sidecar: not that of the command, which tauri-build would
+/// copy over cargo's own `target/<profile>/papers-rs`
+const SIDECAR: &str = "papers-rs-cli";
 /// the executable of the app, next to the sidecar
 const APP: &str = "papers-desktop";
 /// what the placeholder of the sidecar has in its first line (build.rs)
@@ -74,8 +77,8 @@ impl Failure {
 }
 
 /// Whether the link in `dir` is of ours: a link to the binary of this app,
-/// or to a `papers-rs` of another copy of the app (named as the app's folder
-/// on macOS, or next to the app's executable).
+/// or to the sidecar of another copy of the app (named as the app's folder
+/// on macOS, or next to the app's executable; `papers-rs` up to 0.6).
 pub fn link_state(dir: &Path, binary: &Path) -> Link {
     let path = dir.join(NAME);
     let Ok(meta) = fs::symlink_metadata(&path) else {
@@ -92,7 +95,7 @@ pub fn link_state(dir: &Path, binary: &Path) -> Link {
 
 fn is_ours(target: &Path, binary: &Path) -> bool {
     target == binary
-        || (target.file_name().is_some_and(|n| n == NAME)
+        || (target.file_name().is_some_and(|n| n == SIDECAR || n == NAME)
             && (target.components().any(|c| c.as_os_str() == "Papers Desktop.app")
                 || target.parent().is_some_and(|d| d.join(APP).exists())))
 }
@@ -151,10 +154,10 @@ fn default_dir() -> Option<PathBuf> {
     cfg!(unix).then(std::env::home_dir).flatten().map(|home| local_bin(&home))
 }
 
-/// The `papers-rs` of this app: next to its executable, once built by
+/// The sidecar of this app: next to its executable, once built by
 /// scripts/sidecar.sh (a development build has the placeholder: none).
 pub fn bundled_binary() -> Option<PathBuf> {
-    let path = std::env::current_exe().ok()?.parent()?.join(NAME);
+    let path = std::env::current_exe().ok()?.parent()?.join(SIDECAR);
     (path.is_file() && !is_placeholder(&path)).then_some(path)
 }
 
@@ -460,7 +463,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let app = tmp.path().join("app");
         fs::create_dir(&app).unwrap();
-        let binary = app.join(NAME);
+        let binary = app.join(SIDECAR);
         fs::write(&binary, "binary").unwrap();
         fs::write(app.join(APP), "app").unwrap();
         let bin = tmp.path().join("bin");
@@ -489,6 +492,17 @@ mod tests {
     fn a_link_to_another_copy_of_the_app_is_pointed_again() {
         let (tmp, binary, bin) = setup();
         // the app was moved: the old link is dangling, in a folder of the app's name
+        let old = tmp.path().join("Applications/Papers Desktop.app/Contents/MacOS");
+        link(old.join(SIDECAR), bin.join(NAME)).unwrap();
+        assert_eq!(link_state(&bin, &binary), Link::Ours(old.join(SIDECAR)));
+        assert_eq!(install(&bin, &binary).unwrap(), Done::Installed);
+        assert_eq!(fs::read_link(bin.join(NAME)).unwrap(), binary);
+    }
+
+    #[test]
+    fn a_link_to_the_sidecar_of_0_6_is_pointed_again() {
+        let (tmp, binary, bin) = setup();
+        // named as the command then; gone from the app updated since
         let old = tmp.path().join("Applications/Papers Desktop.app/Contents/MacOS");
         link(old.join(NAME), bin.join(NAME)).unwrap();
         assert_eq!(link_state(&bin, &binary), Link::Ours(old.join(NAME)));

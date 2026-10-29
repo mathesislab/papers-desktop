@@ -343,10 +343,12 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
     text being edited (`merge_fetched`: papers' merge, the key stays), to review
     and save with ⌘S.
 - **The command line tool**: the app ships `papers-rs` (crates/papers-rs-cli,
-  release) as a Tauri sidecar (`bundle.externalBin`, in `Contents/MacOS/` next
-  to the executable); `scripts/sidecar.sh`, run by `beforeBuildCommand`,
-  builds it into `src-tauri/binaries/papers-rs-<triple>` (`build.rs` puts a
-  placeholder there for `cargo check` and `cargo test`). Settings (General)
+  release) as a Tauri sidecar (`bundle.externalBin`, `papers-rs-cli` in
+  `Contents/MacOS/` next to the executable: tauri-build copies it into
+  `target/<profile>/`, where `papers-rs` is cargo's own); `scripts/sidecar.sh`,
+  run by `beforeBuildCommand`, builds it into
+  `src-tauri/binaries/papers-rs-cli-<triple>` (`build.rs` puts a placeholder
+  there for `cargo check` and `cargo test`). Settings (General)
   and the app menu (macOS: *Install Command Line Tool…*) install it as a link
   `papers-rs` → the binary in the bundle (`cli_tool.rs`) in `~/.local/bin`
   (macOS and Linux alike, created if missing; no password, no administrator
