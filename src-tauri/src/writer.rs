@@ -21,7 +21,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use papers_core::{Added, Change, Item, same_tag, under};
 use papers_rs::command::report::Changes;
@@ -377,28 +376,24 @@ fn papers_folder(bib: &Path) -> Option<PathBuf> {
 }
 
 /// BibTeX pasted, in a temporary .bib file for `papers add`; removed when dropped.
-struct Pasted(PathBuf);
+struct Pasted(tempfile::NamedTempFile);
 
 impl Pasted {
+    /// The text in a new file of its own (two writes at once never share
+    /// one), removed when the `Pasted` goes.
     fn new(text: &str) -> Result<Pasted, WriteError> {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos());
-        let name = format!("papers-desktop-{}-{nanos}.bib", std::process::id());
-        let path = std::env::temp_dir().join(name);
-        fs::write(&path, text)
-            .map_err(|e| WriteError::failed(format!("{}: {e}", path.display())))?;
-        Ok(Pasted(path))
+        let failed = |e: std::io::Error| WriteError::failed(format!("a temporary file: {e}"));
+        let mut file = tempfile::Builder::new()
+            .prefix("papers-desktop-")
+            .suffix(".bib")
+            .tempfile()
+            .map_err(failed)?;
+        std::io::Write::write_all(&mut file, text.as_bytes()).map_err(failed)?;
+        Ok(Pasted(file))
     }
 
     fn path(&self) -> &Path {
-        &self.0
-    }
-}
-
-impl Drop for Pasted {
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.0);
+        self.0.path()
     }
 }
 
@@ -956,6 +951,26 @@ mod tests {
     use crate::Status;
     use crate::main_window::Layout;
     use crate::recent::Recent;
+
+    /// Texts written at the same moment, as by two writes at once, each in a
+    /// file of its own (a name from the time alone was shared at times).
+    #[test]
+    fn pasted_texts_never_share_a_file() {
+        let pasted: Vec<Pasted> = std::thread::scope(|scope| {
+            let threads: Vec<_> = (0..16)
+                .map(|i| scope.spawn(move || Pasted::new(&format!("@article{{k{i},\n}}\n")).unwrap()))
+                .collect();
+            threads.into_iter().map(|t| t.join().unwrap()).collect()
+        });
+        let paths: BTreeSet<&Path> = pasted.iter().map(Pasted::path).collect();
+        assert_eq!(paths.len(), 16);
+        for (i, p) in pasted.iter().enumerate() {
+            assert_eq!(fs::read_to_string(p.path()).unwrap(), format!("@article{{k{i},\n}}\n"));
+        }
+        let first = pasted[0].path().to_path_buf();
+        drop(pasted);
+        assert!(!first.exists());
+    }
 
     const ENTRIES: &str =
         "@article{a,\n title = {A},\n keywords = {AMOC, ice}\n}\n\n@article{b,\n title = {B}\n}\n";
