@@ -1,5 +1,6 @@
 mod cli_tool;
 mod compare;
+mod downloads;
 mod fetch;
 #[cfg(target_os = "macos")]
 mod focus;
@@ -96,6 +97,8 @@ struct AppState {
     text_size: RwLock<TextSize>,
     /// whether the panel shows the preview, which widens it
     preview: AtomicBool,
+    /// the folder of the Downloads panel, watched while the panel is shown
+    downloads: downloads::Downloads,
 }
 
 impl AppState {
@@ -381,6 +384,11 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
     settings.save(&state.settings_path)?;
     if settings.text_size != old.text_size {
         text_size::apply(&app, settings.text_size);
+    }
+    if (settings.downloads_panel, settings.downloads_dir())
+        != (old.downloads_panel, old.downloads_dir())
+    {
+        state.downloads.apply(&app, &settings);
     }
     reload(&app);
     Ok(())
@@ -883,7 +891,11 @@ pub fn run() {
                 writers: Writers::default(),
                 text_size: RwLock::new(settings.text_size),
                 preview: AtomicBool::new(false),
+                downloads: downloads::Downloads::default(),
             });
+            app.state::<AppState>()
+                .downloads
+                .apply(app.handle(), &settings);
             app.manage(Updates::new(app.handle()));
             text_size::apply(app.handle(), settings.text_size);
             hotkey::setup(app.handle(), &settings);
@@ -959,6 +971,10 @@ pub fn run() {
             get_settings,
             save_settings,
             set_pinned_tags,
+            downloads::downloads_list,
+            downloads::set_downloads_panel,
+            downloads::set_downloads_folder,
+            downloads::open_downloads,
             set_start_at_login,
             cli_tool::cli_status,
             cli_tool::install_cli,

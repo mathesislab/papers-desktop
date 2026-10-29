@@ -3206,6 +3206,7 @@ version = "0.5.1"
 dependencies = [
  "block2",
  "gtk",
+ "notify",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",

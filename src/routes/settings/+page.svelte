@@ -32,6 +32,10 @@
     openalex_key: string;
     /** the tags pinned to the keys 1–9, set from the sidebar of the main window: kept as they are */
     pinned_tags: (string | null)[];
+    /** the Downloads panel under the sidebar of the main window: the PDFs of a folder outside the library */
+    downloads_panel: boolean;
+    /** its folder (~ for the home folder) */
+    downloads_folder: string;
   };
   /** mirrors cli_tool::Status */
   type Cli = {
@@ -103,6 +107,8 @@
         progress = { done: e.payload[0], total: e.payload[1] };
       }),
       listen<string>("section", (e) => showSection(e.payload)),
+      // the panel hidden, or its folder chosen, in the main window
+      listen("downloads", syncDownloads),
       // ⌘+ and ⌘- in another window
       listen<Settings["text_size"]>("text-size", (e) => {
         if (settings) settings.text_size = e.payload;
@@ -261,6 +267,23 @@
       (file) => !settings!.bibtex.includes(file),
     );
     if (added.length) await save({ bibtex: [...settings.bibtex, ...added] });
+  }
+
+  /** The settings of the Downloads panel as they are now. */
+  async function syncDownloads() {
+    if (!settings) return;
+    const { settings: now } = await invoke<View>("get_settings");
+    settings.downloads_panel = now.downloads_panel;
+    settings.downloads_folder = now.downloads_folder;
+  }
+
+  async function chooseDownloads() {
+    const folder = await open({
+      directory: true,
+      title: "The folder of the Downloads panel",
+      defaultPath: settings?.downloads_folder.replace(/^~(?=\/)/, home ?? "~"),
+    });
+    if (typeof folder === "string") await save({ downloads_folder: folder });
   }
 
   async function chooseStyle(e: Event & { currentTarget: HTMLSelectElement }) {
@@ -434,6 +457,30 @@
             onchange={(e) => save({ papers: e.currentTarget.value.trim() })}
           />
         </label>
+      {/if}
+      <label class="row">
+        <span>
+          <span class="label">Downloads panel</span>
+          <span class="hint"
+            >Under the sidebar: the PDFs of a folder outside the library, to drag into it. Only the names, sizes and
+            dates of that folder are read.</span
+          >
+        </span>
+        <input
+          type="checkbox"
+          class="switch"
+          checked={settings.downloads_panel}
+          onchange={(e) => save({ downloads_panel: e.currentTarget.checked })}
+        />
+      </label>
+      {#if settings.downloads_panel}
+        <div class="row">
+          <span>
+            <span class="label">Downloads folder</span>
+            <span class="hint" title={settings.downloads_folder}>{tilde(settings.downloads_folder)}</span>
+          </span>
+          <button onclick={chooseDownloads}>Choose…</button>
+        </div>
       {/if}
     </section>
 

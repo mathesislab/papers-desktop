@@ -49,6 +49,11 @@ pub struct Settings {
     /// the tags pinned to the keys 1–9 of the main window (index = key − 1);
     /// set from the sidebar, not in the settings window
     pub pinned_tags: Vec<Option<String>>,
+    /// the Downloads panel at the bottom of the sidebar of the main window: the PDFs of a folder
+    /// outside the library, to drag into it (shown also for settings files from before it existed)
+    pub downloads_panel: bool,
+    /// the folder of the panel (~ for the home directory)
+    pub downloads_folder: PathBuf,
 }
 
 /// What writes a papers library: papers-rs, which the app has built in, or a
@@ -133,6 +138,8 @@ impl Default for Settings {
             email: String::new(),
             openalex_key: String::new(),
             pinned_tags: Vec::new(),
+            downloads_panel: true,
+            downloads_folder: PathBuf::from("~/Downloads"),
         }
     }
 }
@@ -185,6 +192,16 @@ impl Settings {
                 .filter(|k| !k.is_empty())
                 .map(str::to_string),
         }
+    }
+
+    /// The folder of the Downloads panel, ~ expanded; `~/Downloads` when empty.
+    pub fn downloads_dir(&self) -> PathBuf {
+        let folder = self.downloads_folder.to_string_lossy();
+        expand(if folder.trim().is_empty() {
+            "~/Downloads"
+        } else {
+            &folder
+        })
     }
 
     /// The papers command, ~ expanded; empty: to look for.
@@ -250,6 +267,23 @@ mod tests {
         assert_eq!(unset.after_close, AfterClose::Next);
         let set: Settings = serde_json::from_str(r#"{"after_close": "library"}"#).unwrap();
         assert_eq!(set.after_close, AfterClose::Library);
+    }
+
+    #[test]
+    fn downloads_panel_shown_by_default_also_for_older_files() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert!(settings.downloads_panel);
+        assert_eq!(settings.downloads_dir(), expand("~/Downloads"));
+        let hidden: Settings =
+            serde_json::from_str(r#"{"downloads_panel": false, "downloads_folder": "/tmp/inbox"}"#)
+                .unwrap();
+        assert!(!hidden.downloads_panel);
+        assert_eq!(hidden.downloads_dir(), PathBuf::from("/tmp/inbox"));
+        let empty = Settings {
+            downloads_folder: PathBuf::new(),
+            ..Settings::default()
+        };
+        assert_eq!(empty.downloads_dir(), expand("~/Downloads"));
     }
 
     #[test]

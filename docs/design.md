@@ -130,6 +130,45 @@ they would hide it.
   files go. The button says *Delete 3 papers, 2 files*. Only the ticked files
   are deleted. Then the next row is selected.
 
+**Downloads panel** (`Downloads.svelte`, `downloads.rs`, `downloads.ts` with
+`scripts/downloads.test.ts`): at the bottom of the sidebar, over the list when
+it scrolls, a panel headed *Outside the library: Downloads* (the folder's name)
+for the PDFs that have not been added yet. It is not part of the library, and
+looks it: a slightly different background and a dashed top edge. In the header
+a button opens the folder in Finder (the file manager elsewhere), and a menu
+(the … button, or a right-click on the panel) has *Choose Folder…*, *Show in
+Finder* and *Hide*.
+
+- *The list*: the PDFs of the folder (`.pdf` in any case; not those of the
+  folders in it, nor hidden files), newest first by the later of the file's
+  modification and creation time, each with its name, size and date (the time
+  today, else the day). A long list scrolls within the panel, which takes at
+  most a quarter of the window's height. A `notify` watcher on the folder
+  (`DirWatch`, events on PDFs only, debounced by half a second, as a download
+  is written in pieces and renamed) tells the page (`downloads` event), so
+  files appear and go by themselves: a PDF moved into the library leaves the
+  folder, and the list.
+- *Drag* a PDF onto the library table: the Add sheet with that PDF, as for a PDF
+  dropped on the window; onto the empty *No PDF* preview of a paper: the sheet
+  to add it to that paper. A double-click opens the sheet with the PDF as a new
+  paper. The drag is made of pointer events (`pdfDrag` in `drag.svelte.ts`), as
+  the drag of rows is, not the page's drag and drop, which the window's drop of
+  PDFs shares the page with; a label follows the pointer, the target shows the
+  same frame as a PDF dropped from outside, `Esc` cancels.
+- *In the library already* (muted, with a check): a file that a paper links (the
+  same path) or that has the same contents as a file of the library (compared
+  among files of the same size, so that few are read). So a PDF added with *Copy*
+  or *Leave in place* is marked, and is not mistaken for a new one.
+- *Settings*: *Downloads panel* (shown by default, also for a `settings.json` from
+  before it) and *Downloads folder* (`downloads_panel`, `downloads_folder`:
+  `~/Downloads` by default, *Choose…* with the folder dialog). *Hide* in the
+  panel's menu and *Choose Folder…* set the same settings (`set_downloads_panel`,
+  `set_downloads_folder`), and the settings window follows.
+- *Privacy*: only the file names, sizes and dates of that one folder are read
+  (and the contents of a PDF of it with the size of a file of the library, to
+  compare them); nothing is sent anywhere. Tests (`downloads.rs`) use temporary
+  folders, never the real one.
+
 A paper tab shows its PDF in the app, with the details beside it: on macOS
 in a native view of PDFKit, as Preview shows it (smooth scrolling and zoom;
 later, annotations written in the PDF), placed over the reader area of the
@@ -202,7 +241,7 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   with the queries and the cache of papers, the app's user agent):
   - *Opened by*: a PDF dropped on the main window (Tauri drag-drop events,
     anywhere; dropped on the empty page of the paper in the details it is that
-    paper's), *Add…* / ⌘N, then *Choose…*, or a text pasted or typed in the
+    paper's; or dragged from the Downloads panel, below), *Add…* / ⌘N, then *Choose…*, or a text pasted or typed in the
     field, which `classify_input` takes for a DOI or doi.org link, the path of
     a PDF (quoted, with escaped spaces, `file://`, `~`), a link to a PDF
     (downloaded), a link to a page, or BibTeX (the entry).

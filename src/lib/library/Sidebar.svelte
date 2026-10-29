@@ -5,6 +5,7 @@
   import { fileName, type View } from "./filters";
   import type { Row, TagCount } from "$lib/types";
   import { DROP_OPEN, rowDrag } from "./drag.svelte";
+  import Downloads from "./Downloads.svelte";
 
   let {
     libraries,
@@ -28,6 +29,7 @@
     onlibrarytab,
     onpaper,
     onclose,
+    ondownload,
   }: {
     /** the .bib files, with their number of papers */
     libraries: { bib: string; count: number }[];
@@ -68,6 +70,8 @@
     onlibrarytab: () => void;
     onpaper: (id: string) => void;
     onclose: (id: string) => void;
+    /** a PDF of the Downloads panel dropped on the table (id none) or on the empty preview of a paper, or double-clicked */
+    ondownload: (path: string, id: string | null) => void;
   } = $props();
 
   /** the indent of a tag per level of the tree, px */
@@ -273,6 +277,9 @@
   </div>
 </nav>
 
+<!-- at the bottom, over the list when it scrolls: the folder outside the library, then the gear -->
+<div class="bottom">
+<Downloads onadd={ondownload} />
 <footer>
   <button class="gear" title="Settings" aria-label="Settings" onclick={() => invoke("open_settings")}>
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -281,6 +288,7 @@
     </svg>
   </button>
 </footer>
+</div>
 </div>
 
 <style>
@@ -313,12 +321,14 @@
     flex: 1;
     padding: 6px 0 12px;
   }
-  footer {
+  .bottom {
     position: sticky;
     bottom: 0;
+    background: linear-gradient(var(--sidebar), var(--sidebar)), var(--bg);
+  }
+  footer {
     padding: 4px 8px;
     border-top: 1px solid var(--line);
-    background: linear-gradient(var(--sidebar), var(--sidebar)), var(--bg);
   }
   .gear {
     display: flex;

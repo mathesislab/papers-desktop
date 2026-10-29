@@ -1190,6 +1190,7 @@ mod tests {
             writers,
             text_size: Default::default(),
             preview: Default::default(),
+            downloads: Default::default(),
         }
     }
 

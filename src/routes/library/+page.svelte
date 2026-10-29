@@ -65,6 +65,7 @@
     type View,
   } from "$lib/library/filters";
   import Sidebar from "$lib/library/Sidebar.svelte";
+  import { DROP_NEW, pdfDrag } from "$lib/library/drag.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
   import type { AddOptions, Added, FilesMode, Item, Opened, Row, Status, TagCount, Transferred, WriteError } from "$lib/types";
@@ -138,6 +139,8 @@
   let sheet = $state<ReturnType<typeof Add>>();
   /** a PDF is being dragged over the window: onto the paper that would get it (none: a new paper), or onto the sheet */
   let dragging = $state<{ id: string | null; sheet: boolean } | null>(null);
+  /** what takes the PDF being dragged: from outside the window, or from the Downloads panel */
+  let overlay = $derived(dragging ?? (pdfDrag.target ? { id: pdfDrag.target.id, sheet: false } : null));
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
@@ -1046,13 +1049,13 @@
     oncancel={() => (deleting = null)}
   />
 {/if}
-{#if dragging}
+{#if overlay}
   <div class="drop">
     <span>
-      {dragging.sheet
+      {overlay.sheet
         ? "Drop the PDF to use it"
-        : dragging.id
-          ? `Drop the PDF to add it to ${byId.get(dragging.id)?.key ?? "the paper"}`
+        : overlay.id
+          ? `Drop the PDF to add it to ${byId.get(overlay.id)?.key ?? "the paper"}`
           : "Drop the PDF to add a paper"}
     </span>
   </div>
@@ -1089,6 +1092,7 @@
         dirty={editor.changed ? editor.id : null}
         onpaper={activate}
         onclose={closePaper}
+        ondownload={(pdf, id) => (adding = { id, pdf, choose: false })}
       />
     </aside>
     <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
@@ -1137,7 +1141,7 @@
       >
     </header>
     <div class="content">
-      <section class="library">
+      <section class="library" {...{ [DROP_NEW]: "" }}>
         {#if !reader && filterChips.length}
           <div class="chips">
             {#each filterChips as chip, i (chip.kind + chip.text)}
