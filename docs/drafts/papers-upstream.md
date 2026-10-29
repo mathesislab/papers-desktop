@@ -17,6 +17,9 @@ perrette/papers on 2026-10-29:
   slugify references, five places where the spec is looser than the code).
 - perrette/papers#192: the transliteration table (open question 20).
 - perrette/papers#193: the conformance suite (spec/) and --openalex.
+- perrette/papers#194: more points found bringing papers-rs up to v3
+  (--dry-run moving .papers/, invalid UTF-8 config, redo -n 2, depth-0
+  split, fit_name, list --fetch empty key).
 
 Fixed in 3.0.0b6 or later, not posted: the declined "Replace?" in
 Biblio.move (unreachable with the -2 suffix), month = Mar after a merge,

@@ -334,7 +334,9 @@ history. In the long run a standard both follow and change together.
   *Free* (messages, prompts, caches). The suite is its executable side: a
   case names its section and whether it checks a contract.
 
-**Done**: every command of papers 3.0.0b5 but `open`, `install`,
+**Done**: follows papers v3 at 0941475 (3.0.0b7.dev3, the specification
+merged in `design/` of perrette/papers): it passes all 225 offline cases
+of the suite re-recorded from it (2026-10-29). Earlier: every command of papers 3.0.0b5 but `open`, `install`,
 `uninstall`, `git` and Google Scholar (`--scholar`: scraping, left out),
 pools and the exchanges included. The conformance suite has 218 cases:
 papers and papers-rs pass all 212 offline ones in contract-only mode (the
@@ -352,9 +354,12 @@ OpenAlex's open API where papers has `--scholar`; off by default. On 300 of
 the user's PDFs it finds 21 of the 38 (with text) that papers' chain
 misses. To propose to Mahé.
 
-**Next**: tell Mahé (the suite as the executable side of `design/`, the
-bugs and questions in `docs/drafts/papers-upstream.md`, `--openalex`);
-then the crates leave for a repository of their own and are published
+**Upstream**: findings posted on perrette/papers (#188–#194), with the
+offer of the suite and `--openalex` (#193). The way of working, agreed
+with Mahé: `design/` is the basis; papers-rs reports what it finds there
+as issues or pull requests, and catches up with each release.
+
+**Next**: the crates leave for a repository of their own and are published
 (crates.io: `latexenc-rs`, `papers-rs`, `papers-rs-cli`; prebuilt binaries
 in releases, Homebrew), the app depending on the published crates.
 
