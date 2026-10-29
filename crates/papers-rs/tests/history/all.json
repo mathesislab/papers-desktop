@@ -1,0 +1,392 @@
+{
+ "machine": {},
+ "name": "all",
+ "place_ids": {},
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-6jvstw_h",
+ "steps": [
+  {
+   "argv": [
+    "init",
+    "e"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/e\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "e/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "e/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "e/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "init",
+    "b"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/b\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "b/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "b/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "b/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "init",
+    "d"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/d\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "d/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "d/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "d/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "init",
+    "a"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/a\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "a/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "a/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "a/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "init",
+    "c"
+   ],
+   "cwd": ".",
+   "exit": 0,
+   "kind": "papers",
+   "lib": null,
+   "stderr": "",
+   "stdout": "created the library $TMP/work/c\n* bibtex:  papers.bib\n* files:   files (the files directory of the library)\n`papers config` lists and sets the settings\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "c/.papers/.gitignore": {
+      "text": "*\n"
+     },
+     "c/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "c/papers.bib": {
+      "text": ""
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "/dev/stdin"
+   ],
+   "cwd": "e",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "e",
+   "stderr": "",
+   "stdin": "@article{doe2000,\n title = {Ice sheets and sea level},\n author = {Doe, Jane and Roe, Richard},\n year = {2000},\n journal = {Nature},\n doi = {10.1000/doe.2000},\n}\n\n@article{roe2001,\n title = {Sea level rise in the next century},\n author = {Roe, Richard},\n year = {2001},\n journal = {Science},\n doi = {10.1000/roe.2001},\n}\n\n@book{smith2002,\n title = {Glaciers},\n author = {Smith, John},\n year = {2002},\n publisher = {Ice Press},\n}\n",
+   "stdout": "Added -> doe2000: Ice sheets and sea level (doi:10.1000/doe.2000)\nAdded -> roe2001: Sea level rise in the next century (doi:10.1000/roe.2001)\nAdded -> smith2002: Glaciers \n",
+   "store": {
+    "del": [],
+    "set": {
+     "objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
+      "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
+     },
+     "projects/500ef0f58d424fe4a99ae97f03f5da0a/heads.json": {
+      "text": "{\n \"$TMP/work/e/papers.bib\": {\n  \"state\": \"a8b829580d6215982286ff8bb897145157b8d6f0882f24ce70af214ccb9c47d0\",\n  \"redo\": [],\n  \"time\": 1793296701.8147352\n }\n}"
+     },
+     "projects/500ef0f58d424fe4a99ae97f03f5da0a/states/85ec460a6ce4e370895b9c6b627df039bb499445731826123787a6544286301c.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296701.812629,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "projects/500ef0f58d424fe4a99ae97f03f5da0a/states/a8b829580d6215982286ff8bb897145157b8d6f0882f24ce70af214ccb9c47d0.json": {
+      "text": "{\n \"parent\": \"85ec460a6ce4e370895b9c6b627df039bb499445731826123787a6544286301c\",\n \"time\": 1793296701.8145778,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "e/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"500ef0f58d424fe4a99ae97f03f5da0a\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "e/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "/dev/stdin"
+   ],
+   "cwd": "b",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "b",
+   "stderr": "",
+   "stdin": "@article{doe2000,\n title = {Ice sheets and sea level},\n author = {Doe, Jane and Roe, Richard},\n year = {2000},\n journal = {Nature},\n doi = {10.1000/doe.2000},\n}\n\n@article{roe2001,\n title = {Sea level rise in the next century},\n author = {Roe, Richard},\n year = {2001},\n journal = {Science},\n doi = {10.1000/roe.2001},\n}\n\n@book{smith2002,\n title = {Glaciers},\n author = {Smith, John},\n year = {2002},\n publisher = {Ice Press},\n}\n",
+   "stdout": "Added -> doe2000: Ice sheets and sea level (doi:10.1000/doe.2000)\nAdded -> roe2001: Sea level rise in the next century (doi:10.1000/roe.2001)\nAdded -> smith2002: Glaciers \n",
+   "store": {
+    "del": [],
+    "set": {
+     "projects/cb030ca61f244ad597e70b9e25fb5a13/heads.json": {
+      "text": "{\n \"$TMP/work/b/papers.bib\": {\n  \"state\": \"29fa8eb91bf8d5fabe2071b694d1242a3944c2c19f1cfef5295dba047650b387\",\n  \"redo\": [],\n  \"time\": 1793296701.894488\n }\n}"
+     },
+     "projects/cb030ca61f244ad597e70b9e25fb5a13/states/29fa8eb91bf8d5fabe2071b694d1242a3944c2c19f1cfef5295dba047650b387.json": {
+      "text": "{\n \"parent\": \"6fecc12031c335142b16ed6593aa43ea0ffea13084e9afbbf1f1deb751bec973\",\n \"time\": 1793296701.8943732,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     },
+     "projects/cb030ca61f244ad597e70b9e25fb5a13/states/6fecc12031c335142b16ed6593aa43ea0ffea13084e9afbbf1f1deb751bec973.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296701.8934798,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "b/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"cb030ca61f244ad597e70b9e25fb5a13\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "b/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "/dev/stdin"
+   ],
+   "cwd": "d",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "d",
+   "stderr": "",
+   "stdin": "@article{doe2000,\n title = {Ice sheets and sea level},\n author = {Doe, Jane and Roe, Richard},\n year = {2000},\n journal = {Nature},\n doi = {10.1000/doe.2000},\n}\n\n@article{roe2001,\n title = {Sea level rise in the next century},\n author = {Roe, Richard},\n year = {2001},\n journal = {Science},\n doi = {10.1000/roe.2001},\n}\n\n@book{smith2002,\n title = {Glaciers},\n author = {Smith, John},\n year = {2002},\n publisher = {Ice Press},\n}\n",
+   "stdout": "Added -> doe2000: Ice sheets and sea level (doi:10.1000/doe.2000)\nAdded -> roe2001: Sea level rise in the next century (doi:10.1000/roe.2001)\nAdded -> smith2002: Glaciers \n",
+   "store": {
+    "del": [],
+    "set": {
+     "projects/f5a093dac0cc4457b61725a7c6cf49a6/heads.json": {
+      "text": "{\n \"$TMP/work/d/papers.bib\": {\n  \"state\": \"fd887d7bfbac4b722edaca36a91d626d7b9622fc766dfc7f8928afb68863fd06\",\n  \"redo\": [],\n  \"time\": 1793296701.972491\n }\n}"
+     },
+     "projects/f5a093dac0cc4457b61725a7c6cf49a6/states/d6c5339df595329be646843b03facb9e663307e22985eec717c69eccc9e2b809.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296701.9711192,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "projects/f5a093dac0cc4457b61725a7c6cf49a6/states/fd887d7bfbac4b722edaca36a91d626d7b9622fc766dfc7f8928afb68863fd06.json": {
+      "text": "{\n \"parent\": \"d6c5339df595329be646843b03facb9e663307e22985eec717c69eccc9e2b809\",\n \"time\": 1793296701.972358,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "d/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"f5a093dac0cc4457b61725a7c6cf49a6\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "d/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "/dev/stdin"
+   ],
+   "cwd": "a",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "a",
+   "stderr": "",
+   "stdin": "@article{doe2000,\n title = {Ice sheets and sea level},\n author = {Doe, Jane and Roe, Richard},\n year = {2000},\n journal = {Nature},\n doi = {10.1000/doe.2000},\n}\n\n@article{roe2001,\n title = {Sea level rise in the next century},\n author = {Roe, Richard},\n year = {2001},\n journal = {Science},\n doi = {10.1000/roe.2001},\n}\n\n@book{smith2002,\n title = {Glaciers},\n author = {Smith, John},\n year = {2002},\n publisher = {Ice Press},\n}\n",
+   "stdout": "Added -> doe2000: Ice sheets and sea level (doi:10.1000/doe.2000)\nAdded -> roe2001: Sea level rise in the next century (doi:10.1000/roe.2001)\nAdded -> smith2002: Glaciers \n",
+   "store": {
+    "del": [],
+    "set": {
+     "projects/a3fda5b2be234da6bb26da313fcd0f2f/heads.json": {
+      "text": "{\n \"$TMP/work/a/papers.bib\": {\n  \"state\": \"b4b0fecb2bf6f7ac658d1fdfdc38d0cba08e47c979a8c816da476bda1d89b91a\",\n  \"redo\": [],\n  \"time\": 1793296702.051166\n }\n}"
+     },
+     "projects/a3fda5b2be234da6bb26da313fcd0f2f/states/a3adfda71a2c1e352260a17d32e73241554b1cf3f5163ab3f838a45f690326f5.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296702.049969,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "projects/a3fda5b2be234da6bb26da313fcd0f2f/states/b4b0fecb2bf6f7ac658d1fdfdc38d0cba08e47c979a8c816da476bda1d89b91a.json": {
+      "text": "{\n \"parent\": \"a3adfda71a2c1e352260a17d32e73241554b1cf3f5163ab3f838a45f690326f5\",\n \"time\": 1793296702.051012,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "a/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"a3fda5b2be234da6bb26da313fcd0f2f\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "a/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "add",
+    "/dev/stdin"
+   ],
+   "cwd": "c",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "c",
+   "stderr": "",
+   "stdin": "@article{doe2000,\n title = {Ice sheets and sea level},\n author = {Doe, Jane and Roe, Richard},\n year = {2000},\n journal = {Nature},\n doi = {10.1000/doe.2000},\n}\n\n@article{roe2001,\n title = {Sea level rise in the next century},\n author = {Roe, Richard},\n year = {2001},\n journal = {Science},\n doi = {10.1000/roe.2001},\n}\n\n@book{smith2002,\n title = {Glaciers},\n author = {Smith, John},\n year = {2002},\n publisher = {Ice Press},\n}\n",
+   "stdout": "Added -> doe2000: Ice sheets and sea level (doi:10.1000/doe.2000)\nAdded -> roe2001: Sea level rise in the next century (doi:10.1000/roe.2001)\nAdded -> smith2002: Glaciers \n",
+   "store": {
+    "del": [],
+    "set": {
+     "projects/bde5a75fabb5421f8afc06fbd5fddfd7/heads.json": {
+      "text": "{\n \"$TMP/work/c/papers.bib\": {\n  \"state\": \"a28b390a02b161d642b59da97443651eb3f28cb9d4203f0687f1878fdbfc53b3\",\n  \"redo\": [],\n  \"time\": 1793296702.130191\n }\n}"
+     },
+     "projects/bde5a75fabb5421f8afc06fbd5fddfd7/states/268e5dd92262518b044ee9c5d1ef5d345e25f0bfc35748fb99540cf1f28f84dc.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296702.12228,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     },
+     "projects/bde5a75fabb5421f8afc06fbd5fddfd7/states/a28b390a02b161d642b59da97443651eb3f28cb9d4203f0687f1878fdbfc53b3.json": {
+      "text": "{\n \"parent\": \"268e5dd92262518b044ee9c5d1ef5d345e25f0bfc35748fb99540cf1f28f84dc\",\n \"time\": 1793296702.126766,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     }
+    }
+   },
+   "work": {
+    "del": [],
+    "set": {
+     "c/.papers/config.json": {
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"bde5a75fabb5421f8afc06fbd5fddfd7\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+     },
+     "c/papers.bib": {
+      "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "argv": [
+    "history",
+    "--all"
+   ],
+   "cwd": "a",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "a",
+   "stderr": "",
+   "stdout": "~/Library/Application Support/papers/history: 0.0 MB\n* a3fda5b2be234da6bb26da313fcd0f2f: 2 steps, 0.0 MB of its own, last used at $TMP/work/a/papers.bib\n* cb030ca61f244ad597e70b9e25fb5a13: 2 steps, 0.0 MB of its own, last used at $TMP/work/b/papers.bib\n* bde5a75fabb5421f8afc06fbd5fddfd7: 2 steps, 0.0 MB of its own, last used at $TMP/work/c/papers.bib\n* f5a093dac0cc4457b61725a7c6cf49a6: 2 steps, 0.0 MB of its own, last used at $TMP/work/d/papers.bib\n* 500ef0f58d424fe4a99ae97f03f5da0a: 2 steps, 0.0 MB of its own, last used at $TMP/work/e/papers.bib\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  },
+  {
+   "argv": [
+    "history",
+    "--all",
+    "--dry-run"
+   ],
+   "cwd": "a",
+   "exit": 0,
+   "kind": "papers",
+   "lib": "a",
+   "stderr": "",
+   "stdout": "~/Library/Application Support/papers/history: 0.0 MB\n* a3fda5b2be234da6bb26da313fcd0f2f: 2 steps, 0.0 MB of its own, last used at $TMP/work/a/papers.bib\n* cb030ca61f244ad597e70b9e25fb5a13: 2 steps, 0.0 MB of its own, last used at $TMP/work/b/papers.bib\n* bde5a75fabb5421f8afc06fbd5fddfd7: 2 steps, 0.0 MB of its own, last used at $TMP/work/c/papers.bib\n* f5a093dac0cc4457b61725a7c6cf49a6: 2 steps, 0.0 MB of its own, last used at $TMP/work/d/papers.bib\n* 500ef0f58d424fe4a99ae97f03f5da0a: 2 steps, 0.0 MB of its own, last used at $TMP/work/e/papers.bib\n",
+   "store": {
+    "del": [],
+    "set": {}
+   },
+   "work": {
+    "del": [],
+    "set": {}
+   }
+  }
+ ]
+}

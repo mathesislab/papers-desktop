@@ -298,7 +298,52 @@
    "env": {},
    "rc": 2,
    "stdout": "",
-   "stderr": "usage: papers undo [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [-n STEPS] [--library-only]\npapers undo: error: argument -n/--steps: invalid int value: 'x'\n",
+   "stderr": "usage: papers undo [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [-n STEPS] [--library-only]\npapers undo: error: argument -n/--steps: 'x': a number of steps expected\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "undo",
+    "-n",
+    "0"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers undo [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [-n STEPS] [--library-only]\npapers undo: error: argument -n/--steps: '0': 1 step or more\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "redo",
+    "-n",
+    "-1"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers redo [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [-n STEPS] [--library-only]\npapers redo: error: argument -n/--steps: '-1': 1 step or more\n",
+   "tree": {}
+  },
+  {
+   "args": [
+    "redo",
+    "--steps",
+    "1.5"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers redo [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [-n STEPS] [--library-only]\npapers redo: error: argument -n/--steps: '1.5': a number of steps expected\n",
    "tree": {}
   },
   {

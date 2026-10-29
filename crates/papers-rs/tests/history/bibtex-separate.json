@@ -4,9 +4,9 @@
  },
  "name": "bibtex-separate",
  "place_ids": {
-  "x.bib": "1ae1490b729d8843eab2b796e47dd9cc"
+  "x.bib": "60fad072251b7efe0d6eeaacee379c91"
  },
- "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-62daj1t7",
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-wn4b31no",
  "steps": [
   {
    "kind": "write",
@@ -43,20 +43,20 @@
    "store": {
     "del": [],
     "set": {
-     "separate/1ae1490b729d8843eab2b796e47dd9cc/objects/35/35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07": {
+     "separate/60fad072251b7efe0d6eeaacee379c91/objects/35/35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07": {
       "b64": "eJx9kUFqwzAQRfc+xRwgpJb3hSwKJV2UEJ9gIn+QWkUKI7k0mNy9GjeGJJQu/+fx9RhtWIq3AdOQ0LVtu2qo+BJAzzRtLSg7oGTiOFAGU8AXwqVCPBaXRKmXhBW9ccQM7TXtvXUsg3Jn8EzptuaPNErkoNU7l1Gg5ZC8FqZdm4o9VZX1lb80zWYxlNnQ3Br2ixKJzyAfqThQxHchi1jnz/eu/9iZB7veekT7l5786pmr3iGlzykffXG17G7tXgPXEcn3Dr2i9WLJxQeFTvNpPARfry7LD+wEOc9v/QBpJYZU"
      },
-     "separate/1ae1490b729d8843eab2b796e47dd9cc/objects/ca/ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a": {
+     "separate/60fad072251b7efe0d6eeaacee379c91/objects/ca/ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gAwFinYoivgEivQBqVGlgJKbGEbuXtGBB3vpyM/Pz0ceNRdvAiab0LVtu2tID8UlpgNNrwk7+tARpKOlk1Qnb5xm+6g+m7yYVLtXdfClBuwlQVrfaeCog7Q/dRkYIl4w3hLbLOpdhOJLgFTvBpQdUPK8KENTwC+CmEbomWWObh5Nc1yIeSZWK+J/GPnJqDaMvfGIBiumfoEg9hnkIxUHirgXMoj1pnFDp55055QuU/7xxVWtW8H1otaHJhdl9jqcg69n8/KCL0bOK4i3oCsa582qTlb9AVPIi4s="
      },
-     "separate/1ae1490b729d8843eab2b796e47dd9cc/projects/1ae1490b729d8843eab2b796e47dd9cc/heads.json": {
-      "text": "{\n \"$TMP/work/x.bib\": {\n  \"state\": \"adbd1f337ff0b076ca94c641b4d370057a7d8b20691ccada6800388020046b57\",\n  \"redo\": [],\n  \"time\": 1793270796.9291022\n }\n}"
+     "separate/60fad072251b7efe0d6eeaacee379c91/projects/60fad072251b7efe0d6eeaacee379c91/heads.json": {
+      "text": "{\n \"$TMP/work/x.bib\": {\n  \"state\": \"8b03ef5bf3e3667de429a2f896962eed87cb3843449278d71f3f8e62fc9a4aca\",\n  \"redo\": [],\n  \"time\": 1793296702.998563\n }\n}"
      },
-     "separate/1ae1490b729d8843eab2b796e47dd9cc/projects/1ae1490b729d8843eab2b796e47dd9cc/states/6423e8f898ae12618615c583f0c3adc9b678d9a604ec9c0b220cd2f486c38ce1.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270796.927397,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n  ],\n  \"sha\": \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n },\n \"files\": {}\n}"
+     "separate/60fad072251b7efe0d6eeaacee379c91/projects/60fad072251b7efe0d6eeaacee379c91/states/6bd2e13ff5d748e0f39c77971c3d6a1a99478e00ee7c0320e3a63d8695aa01db.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296702.9969,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n  ],\n  \"sha\": \"35638c3159915fd5dc581f06d2a6eff7ca32de5bbc50ec03b5acd63115323c07\"\n },\n \"files\": {}\n}"
      },
-     "separate/1ae1490b729d8843eab2b796e47dd9cc/projects/1ae1490b729d8843eab2b796e47dd9cc/states/adbd1f337ff0b076ca94c641b4d370057a7d8b20691ccada6800388020046b57.json": {
-      "text": "{\n \"parent\": \"6423e8f898ae12618615c583f0c3adc9b678d9a604ec9c0b220cd2f486c38ce1\",\n \"time\": 1793270796.928865,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x --bibtex $TMP/work/x.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
+     "separate/60fad072251b7efe0d6eeaacee379c91/projects/60fad072251b7efe0d6eeaacee379c91/states/8b03ef5bf3e3667de429a2f896962eed87cb3843449278d71f3f8e62fc9a4aca.json": {
+      "text": "{\n \"parent\": \"6bd2e13ff5d748e0f39c77971c3d6a1a99478e00ee7c0320e3a63d8695aa01db\",\n \"time\": 1793296702.998438,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x --bibtex $TMP/work/x.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -81,12 +81,12 @@
    "kind": "papers",
    "lib": null,
    "stderr": "",
-   "stdout": "undo: x.bib restored to 6423e8f8 the library before its first recorded command (2026-10-29 10:46)\n",
+   "stdout": "undo: x.bib restored to 6bd2e13f the library before its first recorded command (2026-10-29 17:58)\n",
    "store": {
     "del": [],
     "set": {
-     "separate/1ae1490b729d8843eab2b796e47dd9cc/projects/1ae1490b729d8843eab2b796e47dd9cc/heads.json": {
-      "text": "{\n \"$TMP/work/x.bib\": {\n  \"state\": \"6423e8f898ae12618615c583f0c3adc9b678d9a604ec9c0b220cd2f486c38ce1\",\n  \"redo\": [\n   \"adbd1f337ff0b076ca94c641b4d370057a7d8b20691ccada6800388020046b57\"\n  ],\n  \"time\": 1793270796.99229\n }\n}"
+     "separate/60fad072251b7efe0d6eeaacee379c91/projects/60fad072251b7efe0d6eeaacee379c91/heads.json": {
+      "text": "{\n \"$TMP/work/x.bib\": {\n  \"state\": \"6bd2e13ff5d748e0f39c77971c3d6a1a99478e00ee7c0320e3a63d8695aa01db\",\n  \"redo\": [\n   \"8b03ef5bf3e3667de429a2f896962eed87cb3843449278d71f3f8e62fc9a4aca\"\n  ],\n  \"time\": 1793296703.0697181\n }\n}"
      }
     }
    },
@@ -109,7 +109,7 @@
    "kind": "papers",
    "lib": null,
    "stderr": "",
-   "stdout": "~/Library/Application Support/papers/history/separate/1ae1490b729d8843eab2b796e47dd9cc: 0.0 MB\n* 1ae1490b729d8843eab2b796e47dd9cc: 2 steps, 0.0 MB of its own, last used at $TMP/work/x.bib\n",
+   "stdout": "~/Library/Application Support/papers/history/separate/60fad072251b7efe0d6eeaacee379c91: 0.0 MB\n* 60fad072251b7efe0d6eeaacee379c91: 2 steps, 0.0 MB of its own, last used at $TMP/work/x.bib\n",
    "store": {
     "del": [],
     "set": {}

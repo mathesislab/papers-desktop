@@ -22,10 +22,21 @@ const LEGACY_GITIGNORES: [&str; 1] = ["backup/\n"];
 
 static DRYRUN: AtomicBool = AtomicBool::new(false);
 
-/// A dry run is in force (`--dry-run`): papers writes nothing that it does not need to
-/// say, not even the files that it moves when it loads a library. Set before the library is loaded.
+/// A dry run is in force (`--dry-run`, or what is one for a command: `file mv -n`): papers
+/// writes nothing that it does not need to say, not even the files that it moves when it loads a
+/// library (`Config::move_papers_files`).
 pub fn set_dry_run(on: bool) {
     DRYRUN.store(on, Ordering::Relaxed);
+}
+
+/// Run `f` as in a dry run, whatever the command is: the program loads the library before it
+/// reads its command line, and moves the files of `.papers/` once the command line says that the
+/// command is not a dry run (and is correct). The dry run is off after.
+pub fn as_dry_run<T>(f: impl FnOnce() -> T) -> T {
+    set_dry_run(true);
+    let result = f();
+    set_dry_run(false);
+    result
 }
 
 pub fn dry_run() -> bool {

@@ -350,9 +350,6 @@ fn what_cannot_be_undone() {
         error(b.run_in("lib", &["restore", &step[..4].to_uppercase()])),
         "papers: error: nothing to restore: papers.bib is step #1\n"
     );
-    // a number of steps that Python's indexing turns into something else: not followed
-    assert!(error(b.run_in("lib", &["redo", "-n", "0"])).ends_with("not implemented in papers-rs yet\n"));
-    assert!(error(b.run_in("lib", &["undo", "-n", "-1"])).ends_with("not implemented in papers-rs yet\n"));
     // outside of a library
     let out = b.run(&["undo"]);
     assert_eq!(out.stderr, "papers: error: no library found here: `papers init`, or pass --bibtex\n");
@@ -485,6 +482,157 @@ fn drop_files_needs_a_history_and_a_step() {
     );
     // an empty value is no option, as in papers: the history is listed
     assert!(ok(b.run_in("lib", &["history", "--drop-files", ""])).starts_with("> #2 papers add"));
+}
+
+/// A library with a file deleted by its last step, and the step.
+fn library_with_a_deleted_file(b: &Sandbox) -> String {
+    b.init("lib");
+    b.add("lib", "one2000");
+    fs::create_dir_all(b.path("lib/files")).unwrap();
+    fs::write(b.path("lib/files/a.pdf"), "a pdf").unwrap();
+    ok(b.run_in("lib", &["file", "attach", "one2000", "files/a.pdf"]));
+    ok(b.run_in("lib", &["rm", "one2000", "--delete-files"]));
+    b.step_id(b.states().len())
+}
+
+#[test]
+fn drop_files_with_a_dry_run_lists_the_files_and_keeps_them() {
+    // history.md 9.4 (test_spec_history.py::TestDropFiles::test_dry_run)
+    let b = Sandbox::new();
+    let step = library_with_a_deleted_file(&b);
+    let out = ok(b.run_in("lib", &["history", "--drop-files", &step, "--yes", "--dry-run"]));
+    assert_eq!(
+        out,
+        "  $ROOT/work/lib/files/doe_2000_title-of-one2000.pdf (0 KB)\nDRYRUN: 1 file (0 KB) not dropped from the history\n"
+    );
+    // an abbreviation of the option is the option
+    assert_eq!(ok(b.run_in("lib", &["history", "--drop-files", &step, "--dry"])), out);
+    assert!(ok(b.run_in("lib", &["history"])).contains("[0 KB of deleted files]"));
+    assert!(ok(b.run_in("lib", &["history", "--drop-files", &step, "-y"])).ends_with("dropped 1 file (0 KB) from the history\n"));
+}
+
+#[test]
+fn removing_a_history_with_a_dry_run_removes_nothing() {
+    // history.md 9.3 (test_spec_history.py::TestRemove::test_dry_run)
+    let b = Sandbox::new();
+    b.init("lib");
+    b.add("lib", "one2000");
+    assert_eq!(
+        ok(b.run_in("lib", &["history", "--remove", "--yes", "--dry-run"])),
+        "DRYRUN: the history of the library (2 steps) not removed\n"
+    );
+    // nothing is asked either
+    assert_eq!(
+        ok(b.run_in("lib", &["history", "--remove", "--dry-run"])),
+        "DRYRUN: the history of the library (2 steps) not removed\n"
+    );
+    assert!(ok(b.run_in("lib", &["history"])).starts_with("> #2 papers add"));
+    // by the identifier of the library
+    let text = fs::read_to_string(b.path("lib/.papers/config.json")).unwrap();
+    let id = text.split("\"id\": \"").nth(1).unwrap().split('"').next().unwrap().to_string();
+    assert_eq!(
+        ok(b.run_in("lib", &["history", "--remove", &id, "--dry-run"])),
+        "DRYRUN: the history of the library $ID (2 steps) not removed\n"
+    );
+    assert!(ok(b.run_in("lib", &["history"])).starts_with("> #2 papers add"));
+    // a place used by two folders: only the place would be removed
+    fs::create_dir_all(b.path("copy")).unwrap();
+    for name in ["papers.bib", ".papers/config.json"] {
+        fs::create_dir_all(Path::new(&b.path(&format!("copy/{name}"))).parent().unwrap()).unwrap();
+        fs::copy(b.path(&format!("lib/{name}")), b.path(&format!("copy/{name}"))).unwrap();
+    }
+    ok(b.run_in("copy", &["undo"])); // a head of its own
+    assert_eq!(
+        ok(b.run_in("copy", &["history", "--remove", "--dry-run"])),
+        "DRYRUN: the history of $ROOT/work/copy/papers.bib not removed\n"
+    );
+    assert!(ok(b.run_in("copy", &["history"])).starts_with("  #2 papers add"));
+}
+
+#[test]
+fn a_place_without_history_has_nothing_to_remove() {
+    // history.md 9.3 (test_spec_history.py::TestRemove::test_place_without_history): a copy never used in its folder
+    let b = Sandbox::new();
+    b.init("lib");
+    b.add("lib", "one2000");
+    for name in ["papers.bib", ".papers/config.json"] {
+        fs::create_dir_all(Path::new(&b.path(&format!("copy/{name}"))).parent().unwrap()).unwrap();
+        fs::copy(b.path(&format!("lib/{name}")), b.path(&format!("copy/{name}"))).unwrap();
+    }
+    for args in [&["history", "--remove", "--yes"][..], &["history", "--remove", "--yes", "--dry-run"]] {
+        assert_eq!(
+            ok(b.run_in("copy", args)),
+            "nothing to remove: $ROOT/work/copy/papers.bib has no history; the history of the library is that of \
+             the other folder(s) that use it: $ROOT/work/lib/papers.bib\n"
+        );
+    }
+    assert!(ok(b.run_in("lib", &["history"])).starts_with("> #2 papers add"));
+}
+
+#[test]
+fn the_histories_of_a_store_are_listed_in_the_order_of_their_places() {
+    // history.md 12 (test_history.py::TestHistoryCommand::test_all_sorted_by_place): not in that of the identifiers
+    let b = Sandbox::new();
+    for name in ["e", "b", "d", "a", "c"] {
+        b.init(name);
+        b.add(name, &format!("{name}2000"));
+    }
+    let all = ok(b.run(&["history", "--all"]));
+    let places: Vec<&str> = all.lines().filter(|l| l.starts_with("* ")).map(|l| l.rsplit(' ').next().unwrap()).collect();
+    assert_eq!(
+        places,
+        ["a", "b", "c", "d", "e"].map(|n| format!("$ROOT/work/{n}/papers.bib")).iter().map(String::as_str).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn the_number_of_steps_is_one_or_more() {
+    // history.md 6.2 (test_spec_history.py::TestCommands::test_steps_out_of_range): else a usage error, and nothing is read
+    let b = Sandbox::new();
+    b.init("lib");
+    b.add("lib", "one2000");
+    b.add("lib", "two2000");
+    ok(b.run_in("lib", &["undo", "-n", "2"]));
+    let before = ok(b.run_in("lib", &["history"]));
+    for (args, shown) in [
+        (&["undo", "-n", "0"][..], "'0': 1 step or more"),
+        (&["undo", "-n", "-1"], "'-1': 1 step or more"),
+        (&["redo", "-n", "0"], "'0': 1 step or more"),
+        (&["redo", "-n", "-9"], "'-9': 1 step or more"),
+        (&["undo", "--steps", "x"], "'x': a number of steps expected"),
+    ] {
+        let out = b.run_in("lib", args);
+        assert_eq!(out.code, 2, "{args:?}");
+        assert!(
+            out.stderr.ends_with(&format!("papers {}: error: argument -n/--steps: {shown}\n", args[0])),
+            "{}",
+            out.stderr
+        );
+    }
+    assert_eq!(error(b.run_in("lib", &["redo", "-n", "3"])), "papers: error: only 2 step(s) to redo\n");
+    assert_eq!(before, ok(b.run_in("lib", &["history"])));
+    // a number of any size is a number
+    assert_eq!(error(b.run_in("lib", &["redo", "-n", "99999999999999999999"])), "papers: error: only 2 step(s) to redo\n");
+}
+
+#[test]
+fn undo_redo_and_restore_with_nothing_to_do_leave_no_trace() {
+    // history.md 6.2, 5.3 (test_spec_history.py::TestCommands::test_nothing_to_do_leaves_no_trace)
+    let b = Sandbox::new();
+    ok(b.run(&["init", "lib"]));
+    fs::write(b.path("lib/papers.bib"), entry("one2000")).unwrap();
+    for (args, message) in [
+        (&["undo"][..], "nothing to undo"),
+        (&["undo", "-n", "2"], "nothing to undo"),
+        (&["redo"], "nothing to redo"),
+        (&["restore"], "no history: nothing to restore"),
+        (&["restore", "abcd"], "no step abcd in the history of the library (see `papers history`)"),
+        (&["undo", "--dry-run"], "nothing to undo"),
+    ] {
+        assert_eq!(error(b.run_in("lib", args)), format!("papers: error: {message}\n"), "{args:?}");
+    }
+    assert!(!fs::read_to_string(b.path("lib/.papers/config.json")).unwrap().contains("\"id\""));
+    assert!(!Path::new(&format!("{}/store", b.root)).exists());
 }
 
 #[test]

@@ -2347,7 +2347,7 @@ options:
                         OLD NEW", "removed KEY", "existing KEY"; every other
                         message goes to the standard error (except the listing
                         of papers list, which stays on the standard output)
-  -n, --steps STEPS     number of steps to undo or redo
+  -n, --steps STEPS     number of steps to undo or redo (1 or more)
   --library-only        the library only: a step that also wrote the pool (add
                         in a shallow library, auto-push, push, sync) is undone
                         or redone in the pool too, unless the pool changed
@@ -2383,7 +2383,7 @@ options:
                         OLD NEW", "removed KEY", "existing KEY"; every other
                         message goes to the standard error (except the listing
                         of papers list, which stays on the standard output)
-  -n, --steps STEPS     number of steps to undo or redo
+  -n, --steps STEPS     number of steps to undo or redo (1 or more)
   --library-only        the library only: a step that also wrote the pool (add
                         in a shallow library, auto-push, push, sync) is undone
                         or redone in the pool too, unless the pool changed

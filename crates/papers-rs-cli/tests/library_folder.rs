@@ -164,6 +164,39 @@ fn the_records_of_an_earlier_build_next_to_the_bibtex_move_when_the_library_is_l
 }
 
 #[test]
+fn nothing_moves_with_another_spelling_of_the_dry_run_or_a_command_line_with_an_error() {
+    // library.md, Layout (test_spec_library.py::TestLayout::test_no_move_with_other_spellings_of_dry_run): the move is made
+    // once the command line is read, and it says that the command is not a dry run (an abbreviation, `file mv -n`),
+    // and is correct (a usage error moves nothing)
+    let s = Sandbox::new();
+    s.ok(".", &["init", "lib", "--bibtex", "lib/refs/papers.bib"]);
+    let moved = |s: &Sandbox| s.exists("lib/.papers/distinct.json");
+    let reset = |s: &Sandbox| {
+        let _ = fs::remove_file(s.path("lib/.papers/distinct.json"));
+        s.write("lib/refs/.papers/distinct.json", "{\"distinct\": []}\n");
+    };
+    for args in [
+        &["list", "--dry"][..],
+        &["list", "--dry-run"],
+        &["file", "mv", "-n", "x.pdf", "y.pdf"],
+        &["list", "--no-such-option"],
+        &["undo", "-n", "0"],
+        &["--version"],
+        &["--help"],
+    ] {
+        reset(&s);
+        s.papers("lib", args);
+        assert!(!moved(&s), "{args:?}");
+        assert!(s.exists("lib/refs/.papers/distinct.json"), "{args:?}");
+    }
+    // a command without a dry run moves them
+    reset(&s);
+    s.ok("lib", &["list"]);
+    assert!(moved(&s));
+    assert!(!s.exists("lib/refs/.papers/distinct.json"));
+}
+
+#[test]
 fn the_lock_writes_the_gitignore_of_the_papers_folder() {
     let s = Sandbox::new();
     s.write("x.bib", NEW_BIB);

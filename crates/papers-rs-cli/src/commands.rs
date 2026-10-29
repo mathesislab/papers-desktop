@@ -421,7 +421,7 @@ pub fn spec(path: &str) -> Option<Spec> {
         "undo" | "redo" => {
             config_options(&mut b);
             b.flag("restore_files", &["--restore-files"]);
-            b.int("steps", &["-n", "--steps"]);
+            b.steps("steps", &["-n", "--steps"]);
             b.flag("library_only", &["--library-only"]);
             b.hide(&["restore_files"]);
         }

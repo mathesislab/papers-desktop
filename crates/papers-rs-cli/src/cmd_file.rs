@@ -32,7 +32,7 @@ pub fn open(
 ) -> Result<Session, Error> {
     let options = Options {
         message: command_line(),
-        dry_run: read_only || leaf.flag("dry_run") || leaf.flag("n"),
+        dry_run: read_only || leaf.dry_run(),
         assume_yes,
         color: color_enabled(leaf),
         prompt: Box::new(Terminal),

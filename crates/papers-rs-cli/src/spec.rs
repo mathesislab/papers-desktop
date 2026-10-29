@@ -65,6 +65,18 @@ fn int_parser() -> ValueParser {
     })
 }
 
+/// `-n` of undo and redo (`_steps`): a number of steps, 1 or more.
+fn steps_parser() -> ValueParser {
+    ValueParser::new(move |value: &str| -> Result<String, String> {
+        let shown = papers_rs::config::json::py_repr_str(value);
+        match papers_rs::config::settings::py_int_saturating(value) {
+            Some(n) if n >= 1 => Ok(value.to_string()),
+            Some(_) => Err(format!("{shown}: 1 step or more")),
+            None => Err(format!("{shown}: a number of steps expected")),
+        }
+    })
+}
+
 /// `FIELD=VALUE`
 fn field_value_parser() -> ValueParser {
     ValueParser::new(move |value: &str| -> Result<String, String> {
@@ -186,6 +198,13 @@ impl Builder {
     /// An option with an integer as value.
     pub fn int(&mut self, id: &str, names: &[&str]) -> &mut Builder {
         let arg = Arg::new(id.to_string()).action(ArgAction::Set).num_args(1).value_parser(int_parser());
+        self.add(id, arg, names, Nargs::One, false, None);
+        self
+    }
+
+    /// An option with a number of steps (1 or more) as value.
+    pub fn steps(&mut self, id: &str, names: &[&str]) -> &mut Builder {
+        let arg = Arg::new(id.to_string()).action(ArgAction::Set).num_args(1).value_parser(steps_parser());
         self.add(id, arg, names, Nargs::One, false, None);
         self
     }

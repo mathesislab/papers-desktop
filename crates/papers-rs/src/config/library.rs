@@ -447,8 +447,8 @@ impl Config {
     /// Move `distinct.json` and `origin/` (`origin.bib`) from the `.papers/` next to the bibtex,
     /// where earlier v3 builds wrote them, to the `.papers/` of the library folder: when the two
     /// folders differ, for a file the library folder has not, and unless the folder of the bibtex
-    /// is another library. Not with a dry run. Done when the configuration is loaded, and again by the
-    /// command line once it knows whether the command is a dry run.
+    /// is another library. Not with a dry run (`config::dry_run`): the command line of the program
+    /// says if it is one, after the library is loaded, and the program calls this then.
     pub fn move_papers_files(&self) {
         let Some(bibtex) = self.bibtex.as_deref().filter(|_| self.file.is_some() && self.is_library) else { return };
         if dry_run() {
@@ -827,6 +827,29 @@ mod tests {
         let config = Config::load(&file, MachineConfig::empty(), None).unwrap();
         assert_eq!(config.get("editor"), json!("\u{e9}"));
         assert_eq!(config.bibtex.as_deref(), Some(format!("{}/r\u{e9}f.bib", config_root(&file)).as_str()));
+    }
+
+    #[test]
+    fn a_configuration_that_is_not_utf8_is_an_error_that_names_the_file() {
+        // library.md, Reading 1 (test_spec_library.py::TestReading::test_invalid_utf8), with what Python says of the bytes
+        let dir = tempfile::tempdir().unwrap();
+        for (bytes, why) in [
+            (&b"{\"version\": 3, \"editor\": \"\xff\"}"[..], "byte 0xff in position 26: invalid start byte"),
+            (b"\xef\xbb\xbf{\"version\": 3, \"editor\": \"\xff\"}", "byte 0xff in position 26: invalid start byte"),
+            (b"{\"version\": 3, \"editor\": \"\xc3(\"}", "byte 0xc3 in position 26: invalid continuation byte"),
+            (b"{\"version\": 3, \"editor\": \"\xe2\x82(\"}", "bytes in position 26-27: invalid continuation byte"),
+            (b"{\"version\": 3, \"editor\": \"\xed\xa0\x80\"}", "byte 0xed in position 26: invalid continuation byte"),
+            (b"{\"version\": 3, \"editor\": \"\xf0\x9f", "bytes in position 26-27: unexpected end of data"),
+            (b"{\"version\": 3, \"editor\": \"\xe2", "byte 0xe2 in position 26: unexpected end of data"),
+        ] {
+            let file = library(dir.path(), "");
+            std::fs::write(&file, bytes).unwrap();
+            let error = Config::load(&file, MachineConfig::empty(), None).unwrap_err();
+            assert_eq!(
+                error.message(),
+                format!("{file} could not be read ('utf-8' codec can't decode {why}): correct the file")
+            );
+        }
     }
 
     #[test]

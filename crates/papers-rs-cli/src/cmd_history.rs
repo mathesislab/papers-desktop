@@ -30,8 +30,6 @@ use crate::dialogue::Dialogue;
 use crate::parse::Leaf;
 use crate::util::file_uri_to_path;
 
-const NOT_IMPLEMENTED: &str = "not implemented in papers-rs yet";
-
 /// `papers COMMAND ARGS`, as the command line was written (the message of a lock).
 fn command_line() -> String {
     let args: Vec<String> = std::env::args_os().skip(1).map(|a| a.to_string_lossy().into_owned()).collect();
@@ -149,7 +147,7 @@ fn time_travel(
     let lock = if dry_run { None } else { lock::acquire(&config, &command, None)? };
     let bibtex = config.bibtex.clone().unwrap_or_default();
     let before = linked_files(&bibtex);
-    let mut history = History::require(&mut config, dry_run)?;
+    let mut history = History::for_travel(&mut config, dry_run)?;
     // a conflict of the revert of a pool step (an entry changed in the pool since) is asked in a
     // terminal, else the entry is left as it is
     let mut resolver: Box<dyn Resolve> = if std::io::stdin().is_terminal() {
@@ -186,31 +184,26 @@ fn int_option(leaf: &Leaf, id: &str) -> Option<i64> {
     leaf.string(id).and_then(|s| papers_rs::config::settings::py_int(&s))
 }
 
-/// A number of steps that Python's indexing turns into something else (a negative one, or none
-/// for redo): papers-rs does not follow it.
-fn odd_steps(n: i64) -> Error {
-    Error::exit(format!("{n} steps: {NOT_IMPLEMENTED}"))
+/// `-n` of undo and redo: 1 or more (the parser says so otherwise), a number of any size.
+fn steps(leaf: &Leaf) -> usize {
+    leaf.string("steps")
+        .and_then(|s| papers_rs::config::settings::py_int_saturating(&s))
+        .map_or(1, |n| n.max(1) as usize)
 }
 
 pub fn undo(leaf: &Leaf, config: Config) -> Result<()> {
-    let n = int_option(leaf, "steps").unwrap_or(1);
+    let n = steps(leaf);
     let library_only = leaf.flag("library_only");
     time_travel("undo", leaf, config, true, true, |h, lock, command, resolver| {
-        if n < 0 {
-            return Err(odd_steps(n));
-        }
-        h.undo(n as usize, library_only, lock, command, resolver)
+        h.undo(n, library_only, lock, command, resolver)
     })
 }
 
 pub fn redo(leaf: &Leaf, config: Config) -> Result<()> {
-    let n = int_option(leaf, "steps").unwrap_or(1);
+    let n = steps(leaf);
     let library_only = leaf.flag("library_only");
     time_travel("redo", leaf, config, true, true, |h, lock, command, resolver| {
-        if n <= 0 {
-            return Err(odd_steps(n));
-        }
-        h.redo(n as usize, library_only, lock, command, resolver)
+        h.redo(n, library_only, lock, command, resolver)
     })
 }
 
@@ -341,6 +334,10 @@ fn remove_history(config: &mut Config, args: &HistoryArgs, id: &str) -> Result<(
         let setup = Setup::from_config(config);
         let (store, mut project) = find_project(&setup, id)?;
         let what = format!("the history of the library {id} ({} steps)", project.states().len());
+        if args.dry_run {
+            log::println(&format!("DRYRUN: {what} not removed"));
+            return Ok(());
+        }
         if !args.yes && !confirm(&format!("remove {what}?"))? {
             return Ok(());
         }
@@ -355,8 +352,12 @@ fn remove_history(config: &mut Config, args: &HistoryArgs, id: &str) -> Result<(
         return Ok(());
     };
     let removal = history.remove_place()?;
+    if let Some(line) = removal.dry_message().filter(|_| args.dry_run) {
+        log::println(&line);
+        return Ok(());
+    }
     match &removal {
-        Removal::NoHistory | Removal::Place { .. } => log::println(&removal.message()),
+        Removal::NoHistory | Removal::NoPlace { .. } | Removal::Place { .. } => log::println(&removal.message()),
         Removal::Project { .. } => {
             let what = removal.message();
             if !args.yes && !confirm(&format!("remove {what}?"))? {
@@ -385,6 +386,11 @@ fn drop_files(config: &mut Config, args: &HistoryArgs, target: &str) -> Result<(
     let plan = drop_files_plan(&found);
     for line in &plan.list {
         log::println(line);
+    }
+    if args.dry_run {
+        let s = if found.len() > 1 { "s" } else { "" };
+        log::println(&format!("DRYRUN: {} file{s} ({}) not dropped from the history", found.len(), plan.size));
+        return Ok(());
     }
     if !args.yes && !confirm(&plan.question)? {
         return Ok(());

@@ -120,14 +120,13 @@ fn run(argv: Vec<String>) -> Result<(), Exit> {
         std::env::set_current_dir(directory).map_err(|e| Error::other(format!("{directory}: {e}")))?;
     }
 
-    // the library is loaded before the arguments are parsed, as in a dry run: its files are moved
-    // once the arguments say it is not one (`run_command`; `--dry-run` has other spellings: `--dry`,
-    // `file mv -n`)
-    papers_rs::config::set_dry_run(true);
     check_legacy_global_config();
-    let config = MachineConfig::load(None).and_then(|machine| find_config(".", machine));
-    papers_rs::config::set_dry_run(false);
-    let config = config?;
+    // the library is loaded before the command line is read, as in a dry run: its files are moved
+    // once the command line says it is not one (`Config::move_papers_files`, in `run_command`); a
+    // command line with an error moves nothing
+    let config = papers_rs::config::as_dry_run(|| -> Result<Config, Error> {
+        find_config(".", MachineConfig::load(None)?)
+    })?;
     let values = HelpValues::from_config(&config);
 
     // the viewer passthrough of papers: files given instead of a command
@@ -147,11 +146,8 @@ fn run(argv: Vec<String>) -> Result<(), Exit> {
         println!("{PAPERS_VERSION}");
         return Ok(());
     }
+    papers_rs::config::set_dry_run(parsed.leaf.as_ref().is_some_and(Leaf::dry_run));
     if let Some(leaf) = &parsed.leaf {
-        if leaf.flag("dry_run") || leaf.flag("n") {
-            // (`n`: `file mv -n`)
-            papers_rs::config::set_dry_run(true);
-        }
         handle_logging(leaf);
         if leaf.flag("porcelain") {
             log::set_porcelain(true);
@@ -228,7 +224,7 @@ fn run_command(parsed: Parsed, config: Config, values: &HelpValues) -> Result<()
             ));
         }
     }
-    config.move_papers_files();
+    config.move_papers_files(); // not done when the library was loaded
     let Some(leaf) = &parsed.leaf else {
         // papers without command, or `papers file` without subcommand: its help
         log::print(&help::help(&command, values));

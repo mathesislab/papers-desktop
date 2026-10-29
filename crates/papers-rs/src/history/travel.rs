@@ -24,8 +24,8 @@ use super::ops::absolute_ops;
 use super::project::{Base, Head, LinkedState, PoolLink, Project, State, StateId, short};
 use super::recorder::History;
 use super::restore::{Deleter, Restore};
-use super::setup::read_bibtex;
-use super::store::sha256;
+use super::setup::{Setup, read_bibtex};
+use super::store::{new_id, sha256};
 use crate::bib::encoding::parse_file_relative;
 use crate::bib::{Bib, read_file};
 use crate::command::revert::Revert;
@@ -110,6 +110,49 @@ impl History {
     pub fn require(config: &mut Config, dry_run: bool) -> Result<History> {
         History::open(config, true, dry_run)?
             .ok_or_else(|| Error::exit("no history: the library has no bibtex"))
+    }
+
+    /// The history of the library of `config` for undo, redo and restore, which leave no trace
+    /// when they have nothing to do (spec/history.md 5.3, 6.2): no identifier is made, and nothing
+    /// is written. A library without identifier has no history yet: its project is empty, and
+    /// every one of the three stops with an error before it writes anything (`nothing to undo`,
+    /// `nothing to redo`, `no history: nothing to restore`, no step named), so that the identifier
+    /// it is given here is never kept. An error without bibtex.
+    pub fn for_travel(config: &mut Config, dry_run: bool) -> Result<History> {
+        if let Some(history) = History::open(config, false, dry_run)? {
+            return Ok(history);
+        }
+        let Some(bibtex) = config.bibtex.clone() else {
+            return Err(Error::exit("no history: the library has no bibtex"));
+        };
+        let setup = Setup::from_config(config);
+        let id = new_id();
+        let store = setup.store(Some(&id));
+        let project = store.project(&id)?;
+        Ok(History {
+            setup,
+            store,
+            project,
+            place: realpath(&bibtex),
+            dry_run,
+            trash: super::store::to_system_trash,
+        })
+    }
+
+    /// Where `sync_head` would bring the head, without writing anything: the state it would start
+    /// from, and whether it would add a state on top (the start, or a change made outside papers).
+    /// Undo, redo and restore with nothing to do leave no trace.
+    fn synced(&mut self) -> Result<(Option<StateId>, bool)> {
+        self.project.reload();
+        let sha = sha256(read_bibtex(&self.setup.bibtex)?.as_bytes());
+        let n = match self.head() {
+            Some(head) => Some(head.state),
+            None => self.project.start_state(&sha),
+        };
+        let added = n.as_ref().is_none_or(|n| {
+            self.project.state(n).and_then(State::bibtex_sha) != Some(sha.as_str())
+        });
+        Ok((n, added))
     }
 
     /// The line of a state: identifier (short), command, time, and the library that made
@@ -432,7 +475,12 @@ impl History {
                         .into_iter()
                         .find(|r| project.state(r).is_some_and(|s| s.reverts().contains(&n)));
                     match revert {
-                        Some(r) => pool.reverts.push(r),
+                        Some(r) => {
+                            // one revert of several steps (undo -n N): reverted once
+                            if !pool.reverts.contains(&r) {
+                                pool.reverts.push(r);
+                            }
+                        }
                         None => {
                             // the undo took step n back there, and the pool moved on since: done again
                             pool.bases.insert(n.clone(), parent);
@@ -631,20 +679,28 @@ impl History {
         command: &str,
         resolver: &mut dyn Resolve,
     ) -> Result<Moved> {
+        // the errors are decided as if the head were brought up to date, which is done after
+        let (cur, added) = if self.dry_run {
+            (self.head().map(|h| h.state), false)
+        } else {
+            self.synced()?
+        };
+        let length = cur.as_ref().map_or(0, |c| self.project.line(c).len()) + usize::from(added);
+        if length <= steps {
+            return Err(Error::exit(if length <= 1 {
+                "nothing to undo".to_string()
+            } else {
+                format!("only {} step(s) to undo", length - 1)
+            }));
+        }
         let cur = if self.dry_run {
-            self.head().map(|h| h.state)
+            cur
         } else {
             self.sync_head(None)?
         };
-        let line = cur.map(|c| self.project.line(&c)).unwrap_or_default();
-        if line.len() <= steps {
-            return Err(Error::exit(if line.len() <= 1 {
-                "nothing to undo".to_string()
-            } else {
-                format!("only {} step(s) to undo", line.len() - 1)
-            }));
-        }
-        let (cur, target) = (line[0].clone(), line[steps].clone());
+        let cur = cur.ok_or_else(|| Error::exit("nothing to undo"))?;
+        let line = self.project.line(&cur);
+        let target = line[steps].clone();
         if self.dry_run {
             return Ok(Moved {
                 target,
@@ -759,9 +815,12 @@ impl History {
                 links: vec![],
             });
         }
-        let cur = self
-            .sync_head(None)?
-            .ok_or_else(|| Error::exit("no history: nothing to restore"))?;
+        let cur = if self.synced()? == (Some(target.clone()), false) {
+            target.clone() // nothing to do: the head is not brought up to date
+        } else {
+            self.sync_head(None)?
+                .ok_or_else(|| Error::exit("no history: nothing to restore"))?
+        };
         if cur == target {
             return Err(Error::exit(format!(
                 "nothing to restore: {} is step {}",

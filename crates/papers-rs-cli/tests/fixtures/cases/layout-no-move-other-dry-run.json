@@ -1,0 +1,123 @@
+{
+ "name": "layout-no-move-other-dry-run",
+ "home": {},
+ "cwd": {
+  ".papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
+  "bib/papers.bib": "",
+  "bib/.papers/distinct.json": "{\"distinct\": []}\n"
+ },
+ "platform": null,
+ "steps": [
+  {
+   "args": [
+    "list",
+    "--dry"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
+    "cwd/bib/papers.bib": "",
+    "cwd/bib/.papers/distinct.json": "{\"distinct\": []}\n"
+   }
+  },
+  {
+   "args": [
+    "file",
+    "mv",
+    "-n",
+    "x.pdf",
+    "y.pdf"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 1,
+   "stdout": "",
+   "stderr": "papers: error: <TMP>/cwd/x.pdf: does not exist\nnothing was moved\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
+    "cwd/bib/papers.bib": "",
+    "cwd/bib/.papers/distinct.json": "{\"distinct\": []}\n"
+   }
+  },
+  {
+   "args": [
+    "list",
+    "--no-such-option"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [--strict | --fuzzy]\n                   [--fuzzy-ratio FUZZY_RATIO] [--invert] [--any]\n                   [-a AUTHOR [AUTHOR ...]]\n                   [--first-author FIRST_AUTHOR [FIRST_AUTHOR ...]]\n                   [-y YEAR [YEAR ...]] [-t TITLE [TITLE ...]]\n                   [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]\n                   [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]\n                   [--by {key,doi,title}] [--duplicates] [--has-file]\n                   [--no-file] [--broken-file] [--review-required]\n                   [--format {line,bibtex,ris,csl-json,bibjson,key} |\n                   --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]\n                   [--delete] [--delete-files] [--keep-files] [-e]\n                   [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]\n                   [--keep-source] [-o] [--attach FILE [FILE ...]]\n                   [--rm-tag TAG [TAG ...]] [--detach [FILE ...]]\n                   [--detach-broken] [--fix-files [DIR ...]] [--move] [--push]\n                   [--pull] [--sync] [--pool PATH]\n                   [--on-duplicate {ask,keep,update,skip,error}]\n                   [--export DIR] [--export-files {copy,link,none}]\n                   [--export-format FORMAT]\n                   [fullsearch ...]\npapers list: error: unrecognized arguments: --no-such-option\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
+    "cwd/bib/papers.bib": "",
+    "cwd/bib/.papers/distinct.json": "{\"distinct\": []}\n"
+   }
+  },
+  {
+   "args": [
+    "undo",
+    "-n",
+    "0"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 2,
+   "stdout": "",
+   "stderr": "usage: papers undo [-h] [-v] [--debug] [--color {auto,always,never}]\n                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]\n                   [--dry-run] [-n STEPS] [--library-only]\npapers undo: error: argument -n/--steps: '0': 1 step or more\n",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
+    "cwd/bib/papers.bib": "",
+    "cwd/bib/.papers/distinct.json": "{\"distinct\": []}\n"
+   }
+  },
+  {
+   "args": [
+    "--version"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "3.0.0b7.dev49+ged8b4dcc3\n",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
+    "cwd/bib/papers.bib": "",
+    "cwd/bib/.papers/distinct.json": "{\"distinct\": []}\n"
+   }
+  },
+  {
+   "args": [
+    "list"
+   ],
+   "cwd": ".",
+   "write": {},
+   "rm": [],
+   "env": {},
+   "rc": 0,
+   "stdout": "",
+   "stderr": "",
+   "tree": {
+    "cwd/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",
+    "cwd/.papers/distinct.json": "{\"distinct\": []}\n",
+    "cwd/bib/papers.bib": "",
+    "cwd/bib/.papers/": null
+   }
+  }
+ ]
+}

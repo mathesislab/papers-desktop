@@ -34,6 +34,11 @@ pub struct Leaf {
 }
 
 impl Leaf {
+    /// The command is a dry run: `--dry-run`, or `-n` of `file mv`.
+    pub fn dry_run(&self) -> bool {
+        self.flag("dry_run") || self.flag("n")
+    }
+
     pub fn flag(&self, id: &str) -> bool {
         self.matches.try_get_one::<bool>(id).ok().flatten().copied().unwrap_or(false)
     }

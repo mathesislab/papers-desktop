@@ -78,7 +78,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev3+g0941475c0\n",
+   "stdout": "3.0.0b7.dev49+ged8b4dcc3\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -94,7 +94,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev3+g0941475c0\n",
+   "stdout": "3.0.0b7.dev49+ged8b4dcc3\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -110,7 +110,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev3+g0941475c0\n",
+   "stdout": "3.0.0b7.dev49+ged8b4dcc3\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -227,7 +227,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev3+g0941475c0\n",
+   "stdout": "3.0.0b7.dev49+ged8b4dcc3\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",

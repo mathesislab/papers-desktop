@@ -20,11 +20,13 @@ papers-rs is 3 to 7 times faster than papers on a library of 2,346 entries: see
   written as papers writes them (key order, indentation, no trailing newline; atomically). A
   setting that a library was given is saved, also with the default value (`Config::is_set`); the
   keys that papers does not know are kept when it saves the file; a value of the wrong type, or a
-  file (library or global) that is not a JSON object, is an error that names the file and the
+  file (library or global) that is not UTF-8, JSON or a JSON object, is an error that names the file and the
   setting (`settings::check_settings`). All of `.papers/` is in the library folder, also when the
   bibtex is in another one (`Config::libdir`): what earlier builds wrote next to the bibtex is moved
-  there when the configuration is loaded (not with a dry run: `config::set_dry_run`, set before the
-  load). `~` is the home directory in `bibtex`, `filesdir`, `default` and `history-dir`; a relative
+  there when the configuration is loaded (`Config::move_papers_files`; not with a dry run:
+  `config::dry_run`). The program loads the library as in a dry run (`config::as_dry_run`), and moves the files once
+  its command line is read and is not one (`--dry-run`, an abbreviation, `file mv -n`: `config::set_dry_run`; a command
+  line with an error moves nothing). `~` is the home directory in `bibtex`, `filesdir`, `default` and `history-dir`; a relative
   `default` or `history-dir` is relative to the folder of the global configuration
   (`MachineConfig::absolute`). Paths are strings with Python's `os.path` semantics (`config::paths`).
 - `bib`: the bibtex of a library, read and written as papers does (bibtexparser
@@ -86,8 +88,10 @@ papers-rs is 3 to 7 times faster than papers on a library of 2,346 entries: see
   history itself is not in this module.
 - `history`: the history store that papers, papers-rs and the app share (objects,
   states named by a hash of the state, heads, retention; the numbered states of papers 3.0.0b5 are
-  upgraded when a project is opened), recording a step, undo, redo, restore, the file
-  operations, `.papers/files.json`, the lines of `papers history`. A pool that moved on since the
+  upgraded when a project is opened), recording a step, undo, redo, restore (on `History::for_travel`: with nothing
+  to do, they write no identifier, no state, no store folder; a change made outside papers counts as a step to undo),
+  the file operations, `.papers/files.json`, the lines of `papers history` (`--all` in the order of the bibtex of the
+  place last used) and the removal of a history (nothing is removed with a dry run). A pool that moved on since the
   step that undo or redo takes back is *reverted* there (a new step of the pool, `reverts`; for a
   redo, a step the undo took back is done again), by the revert below; `Moved::links` holds the new
   pool steps, for the auto-push that follows (a push after an undo is a new step: nothing is left to

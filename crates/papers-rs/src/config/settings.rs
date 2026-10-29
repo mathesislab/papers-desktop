@@ -246,8 +246,8 @@ pub fn json_set(js: &mut Map<String, Value>, name: &str, value: Option<Value>) {
     }
 }
 
-/// Python's `int(text)`.
-pub fn py_int(text: &str) -> Option<i64> {
+/// The sign and the digits of Python's `int(text)` (no underscores left).
+fn int_digits(text: &str) -> Option<(bool, String)> {
     let t = text.trim();
     let (negative, digits) = match t.strip_prefix('-') {
         Some(rest) => (true, rest),
@@ -259,8 +259,21 @@ pub fn py_int(text: &str) -> Option<i64> {
     if !digits.chars().all(|c| c.is_ascii_digit() || c == '_') {
         return None;
     }
-    let clean: String = digits.chars().filter(|c| *c != '_').collect();
+    Some((negative, digits.chars().filter(|c| *c != '_').collect()))
+}
+
+/// Python's `int(text)`; none for a number that does not fit an `i64`.
+pub fn py_int(text: &str) -> Option<i64> {
+    let (negative, clean) = int_digits(text)?;
     let n: i64 = clean.parse().ok()?;
+    Some(if negative { -n } else { n })
+}
+
+/// Python's `int(text)` where the size of the number does not matter: one that does not fit an
+/// `i64` is the largest (or the smallest).
+pub fn py_int_saturating(text: &str) -> Option<i64> {
+    let (negative, clean) = int_digits(text)?;
+    let n: i64 = clean.parse().unwrap_or(i64::MAX);
     Some(if negative { -n } else { n })
 }
 

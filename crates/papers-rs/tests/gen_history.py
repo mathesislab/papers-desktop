@@ -206,6 +206,7 @@ SCENARIOS = {
         p('restore', '$STEP:4'),
         p('restore', '$STEPU:1'),
         p('restore', '$STEP:9'),
+        p('history', '--drop-files', '$STEP:8', '-y', '--dry-run'),
         p('history', '--drop-files', '$STEP:8', '-y'),
         p('history', '--drop-files', '$STEP4:7', '-y'),
         p('history', '--drop-files', '$STEP:9', '-y'),
@@ -361,10 +362,16 @@ SCENARIOS = {
         p('add', '/dev/stdin', stdin=BIB),
         p('tag', 'doe2000', '--add', 'x'),
         ('cp', 'lib', 'lib2'),
+        # a copy never used in its folder has no history to remove (also with a dry run)
+        p('history', '--remove', '-y', lib='lib2'),
+        p('history', '--remove', '-y', '--dry-run', lib='lib2'),
         p('tag', 'doe2000', '--add', 'y', lib='lib2'),
+        p('history', '--remove', '-y', '--dry-run', lib='lib2'),
         p('history', '--remove', '-y', lib='lib2'),
         p('history', lib='lib2'),
         p('history', '--all', lib='lib2'),
+        p('history', '--remove', '-y', '--dry-run'),
+        p('history', '--all'),
         p('history', '--remove', '-y'),
         p('history', '--all'),
         p('history', '--remove', '-y'),
@@ -374,7 +381,14 @@ SCENARIOS = {
         p('history', '--all'),
         p('history'),
     ]),
-    # papers undo, redo, restore on a library that has no history: undo gives it an identifier and a first state
+    # papers history --all lists the projects in the order of the bibtex of their last place (the identifiers are random)
+    'all': dict(steps=[
+        *[p('init', name, cwd='.', lib=None) for name in 'ebdac'],
+        *[p('add', '/dev/stdin', stdin=BIB, lib=name) for name in 'ebdac'],
+        p('history', '--all', lib='a'),
+        p('history', '--all', '--dry-run', lib='a'),
+    ]),
+    # papers undo, redo, restore on a library that has no history: with nothing to do they leave no trace (no identifier, no state)
     'fresh': dict(steps=[
         p('init', 'lib', cwd='.', lib=None),
         p('undo'),

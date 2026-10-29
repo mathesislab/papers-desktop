@@ -744,7 +744,7 @@ fn time_travel(
         .as_deref()
         .map(linked_files)
         .unwrap_or_default();
-    let mut history = History::require(&mut config, false).unwrap();
+    let mut history = History::for_travel(&mut config, false).unwrap();
     history.setup.cwd = cwd_of(e, step);
     history.trash = |p| drop(fs::remove_file(p));
     let kind = args[0].as_str();
@@ -898,6 +898,7 @@ fn history_edit(
     let delete: fn(&str) = |p| drop(fs::remove_file(p));
     let mut config = config_for(e, fx, step);
     let setup = Setup::from_config(&config);
+    let dry = args.iter().any(|a| a == "--dry-run");
     let mut out: Vec<String> = Vec::new();
     let result: Result<(), String> = (|| {
         if let Some(at) = args.iter().position(|a| a == "--remove") {
@@ -909,20 +910,25 @@ fn history_edit(
                     "the history of the library {id} ({} steps)",
                     project.states().len()
                 );
-                project.remove();
-                out.push(format!("removed {what}"));
-                papers_rs::history::listing::prune_after_removal(&setup, &store, &delete);
+                if dry {
+                    out.push(format!("DRYRUN: {what} not removed"));
+                } else {
+                    project.remove();
+                    out.push(format!("removed {what}"));
+                    papers_rs::history::listing::prune_after_removal(&setup, &store, &delete);
+                }
             } else {
-                match History::open(&mut config, false, false).unwrap() {
+                match History::open(&mut config, false, dry).unwrap() {
                     None => out.push("the library has no history".into()),
                     Some(mut history) => {
                         let removal = history.remove_place().unwrap();
-                        match removal {
-                            Removal::Project { .. } => {
+                        match (removal.dry_message().filter(|_| dry), &removal) {
+                            (Some(line), _) => out.push(line),
+                            (None, Removal::Project { .. }) => {
                                 history.remove_project();
                                 out.push(format!("removed {}", removal.message()));
                             }
-                            other => out.push(other.message()),
+                            (None, other) => out.push(other.message()),
                         }
                     }
                 }
@@ -930,7 +936,7 @@ fn history_edit(
         } else {
             let at = args.iter().position(|a| a == "--drop-files").unwrap();
             let target = &args[at + 1];
-            let Some(mut history) = History::open(&mut config, false, false)
+            let Some(mut history) = History::open(&mut config, false, dry)
                 .unwrap()
                 .filter(|h| h.project.exists())
             else {
@@ -950,10 +956,19 @@ fn history_edit(
             } else {
                 let plan = drop_files_plan(&found);
                 out.extend(plan.list.clone());
-                history
-                    .drop_files(&found.keys().cloned().collect())
-                    .unwrap();
-                out.push(plan.done);
+                if dry {
+                    let s = if found.len() > 1 { "s" } else { "" };
+                    out.push(format!(
+                        "DRYRUN: {} file{s} ({}) not dropped from the history",
+                        found.len(),
+                        plan.size
+                    ));
+                } else {
+                    history
+                        .drop_files(&found.keys().cloned().collect())
+                        .unwrap();
+                    out.push(plan.done);
+                }
             }
         }
         Ok(())
@@ -1297,6 +1312,7 @@ fn the_reference_papers_undoes_what_papers_rs_recorded() {
         "bibtex",
         "bibtex-separate",
         "remove",
+        "fresh",
         "pools",
         "pools-moved",
     ] {
@@ -1351,6 +1367,12 @@ fn a_store_of_its_own() {
 fn a_bibtex_without_library() {
     let c = run_fixture("bibtex");
     assert!(c.undone >= 3 && c.recorded >= 2, "{c:?}");
+}
+
+#[test]
+fn the_projects_of_a_store_are_listed_in_the_order_of_their_places() {
+    let c = run_fixture("all");
+    assert!(c.recorded >= 5 && c.listed >= 2, "{c:?}");
 }
 
 #[test]

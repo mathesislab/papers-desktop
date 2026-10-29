@@ -140,24 +140,39 @@ pub fn all_lines(setup: &Setup) -> Vec<String> {
             projects.push(project);
         }
         lines.push(format!("{}: {}", short_home(&store.root), mb(store.size())));
-        for project in &projects {
+        // in the order of the bibtex of the place last used (the identifiers are random), those
+        // without place last, the identifier breaking ties (history.md 12)
+        let mut projects: Vec<(Option<String>, &Project)> = projects
+            .iter()
+            .map(|project| {
+                let mut last: Option<(String, f64)> = None;
+                for h in project.heads() {
+                    if last.as_ref().is_none_or(|(_, t)| h.time > *t) {
+                        last = Some((h.place, h.time));
+                    }
+                }
+                (last.map(|(place, _)| place), project)
+            })
+            .collect();
+        projects.sort_by(|(a, x), (b, y)| {
+            (a.is_none(), a.as_deref().unwrap_or(""), &x.id).cmp(&(
+                b.is_none(),
+                b.as_deref().unwrap_or(""),
+                &y.id,
+            ))
+        });
+        for (last, project) in projects {
             let own: u64 = refs
                 .iter()
                 .filter(|(_, users)| users.len() == 1 && users.contains(&project.id))
                 .filter_map(|(r, _)| sizes.get(r).map(|i| i.size))
                 .sum();
-            let mut last: Option<(String, f64)> = None;
-            for h in project.heads() {
-                if last.as_ref().is_none_or(|(_, t)| h.time > *t) {
-                    last = Some((h.place, h.time));
-                }
-            }
             lines.push(format!(
                 "* {}: {} steps, {} of its own{}",
                 project.id,
                 project.states().len(),
                 mb(own),
-                last.map(|(p, _)| format!(", last used at {}", short_home(&p)))
+                last.map(|place| format!(", last used at {}", short_home(&place)))
                     .unwrap_or_default()
             ));
         }
@@ -216,7 +231,10 @@ pub fn stale_backups(setup: &Setup) -> Vec<(String, u64)> {
 pub enum Removal {
     /// No history: `the library has no history`.
     NoHistory,
-    /// Other places use the project: this place's head was removed.
+    /// Other places use the project, and this place has no head (a copy of the library never used
+    /// in its folder): nothing is removed.
+    NoPlace { place: String, others: Vec<String> },
+    /// Other places use the project: this place's head was removed (not with a dry run).
     Place { place: String, others: Vec<String> },
     /// No other place uses it: the number of its steps.
     Project { steps: usize },
@@ -229,6 +247,15 @@ impl Removal {
     pub fn message(&self) -> String {
         match self {
             Removal::NoHistory => "the library has no history".to_string(),
+            Removal::NoPlace { place, others } => format!(
+                "nothing to remove: {} has no history; the history of the library is that of the other folder(s) that use it: {}",
+                short_home(place),
+                others
+                    .iter()
+                    .map(|p| short_home(p))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             Removal::Place { place, others } => format!(
                 "removed the history of {}; the history of the library stays for the other folder(s) that use it: {}",
                 short_home(place),
@@ -243,6 +270,20 @@ impl Removal {
     }
 }
 
+impl Removal {
+    /// What a dry run says instead of removing (`None`: nothing would be removed anyway).
+    pub fn dry_message(&self) -> Option<String> {
+        match self {
+            Removal::Place { place, .. } => Some(format!(
+                "DRYRUN: the history of {} not removed",
+                short_home(place)
+            )),
+            Removal::Project { .. } => Some(format!("DRYRUN: {} not removed", self.message())),
+            Removal::NoHistory | Removal::NoPlace { .. } => None,
+        }
+    }
+}
+
 /// What `papers history --drop-files` shows and asks.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DropFiles {
@@ -252,6 +293,8 @@ pub struct DropFiles {
     pub question: String,
     /// What is printed when it is done.
     pub done: String,
+    /// The total size, as the messages say it.
+    pub size: String,
 }
 
 /// The lines of `papers history --drop-files` for the files found (see
@@ -276,24 +319,33 @@ pub fn drop_files_plan(found: &std::collections::BTreeMap<String, (String, u64)>
             found.len(),
             size_text(total)
         ),
+        size: size_text(total),
     }
 }
 
 impl History {
-    /// Forget this place; says what is left to do (see `Removal`).
+    /// Forget this place; says what is left to do (see `Removal`). With `dry_run` nothing is
+    /// removed.
     pub fn remove_place(&mut self) -> Result<Removal> {
         if !self.project.exists() {
             return Ok(Removal::NoHistory);
         }
-        let others: Vec<String> = self
-            .project
-            .heads()
-            .into_iter()
-            .map(|h| h.place)
-            .filter(|p| *p != self.place)
+        let heads: Vec<String> = self.project.heads().into_iter().map(|h| h.place).collect();
+        let others: Vec<String> = heads
+            .iter()
+            .filter(|p| **p != self.place)
+            .cloned()
             .collect();
+        if !others.is_empty() && !heads.contains(&self.place) {
+            return Ok(Removal::NoPlace {
+                place: self.place.clone(),
+                others,
+            });
+        }
         if !others.is_empty() {
-            self.project.remove_head(&self.place)?;
+            if !self.dry_run {
+                self.project.remove_head(&self.place)?;
+            }
             return Ok(Removal::Place {
                 place: self.place.clone(),
                 others,

@@ -37,8 +37,9 @@
 //! - [`recorder`]: `History`, the history of one library: recording a step
 //!   (`Step`, the hook of the library model), the changes made outside papers,
 //!   the operations after the save, the guard before deleting files;
-//! - [`travel`]: undo, redo, restore (`History::undo`, `redo`, `restore`),
-//!   with the steps of a pool;
+//! - [`travel`]: undo, redo, restore (`History::undo`, `redo`, `restore`, on the history of
+//!   `History::for_travel`: they leave no trace when they have nothing to do), with the steps of
+//!   a pool;
 //! - [`report`]: what undo, redo and restore print;
 //! - [`listing`]: the lines of `papers history`, the removal of a history.
 //!

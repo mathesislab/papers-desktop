@@ -2,7 +2,7 @@
  "machine": {},
  "name": "numbered",
  "place_ids": {},
- "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-r7bqdaxj",
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-tfmftcq1",
  "steps": [
   {
    "argv": [
@@ -52,14 +52,14 @@
      "objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"f89135c93817c997c9a44279653b27e9921cecf7ee29f1d91e8606429b03d2ef\",\n  \"redo\": [],\n  \"time\": 1793270794.0102558\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"0afbb73571a7b619f29c250ed09b6d233b02c3ea17937aa51197efac28cad9bc\",\n  \"redo\": [],\n  \"time\": 1793296698.444764\n }\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/4e23738a43d057eba1bf4eb7203b9b647f4b7e0d72a936d15776cd569a2d3103.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.008996,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/0afbb73571a7b619f29c250ed09b6d233b02c3ea17937aa51197efac28cad9bc.json": {
+      "text": "{\n \"parent\": \"10978ed82d6390ac8f3435cb76dc8346723969cecaf5897b5c33fa2938529c36\",\n \"time\": 1793296698.4446158,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/f89135c93817c997c9a44279653b27e9921cecf7ee29f1d91e8606429b03d2ef.json": {
-      "text": "{\n \"parent\": \"4e23738a43d057eba1bf4eb7203b9b647f4b7e0d72a936d15776cd569a2d3103\",\n \"time\": 1793270794.010147,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/10978ed82d6390ac8f3435cb76dc8346723969cecaf5897b5c33fa2938529c36.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296698.443151,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -67,7 +67,7 @@
     "del": [],
     "set": {
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"047e9ffa0b8c41adae81625da998ebaa\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"12e06d4f0506492789358bd0f49a560e\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "lib/papers.bib": {
       "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
@@ -94,11 +94,11 @@
      "objects/ca/ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gAwFinYoivgEivQBqVGlgJKbGEbuXtGBB3vpyM/Pz0ceNRdvAiab0LVtu2tID8UlpgNNrwk7+tARpKOlk1Qnb5xm+6g+m7yYVLtXdfClBuwlQVrfaeCog7Q/dRkYIl4w3hLbLOpdhOJLgFTvBpQdUPK8KENTwC+CmEbomWWObh5Nc1yIeSZWK+J/GPnJqDaMvfGIBiumfoEg9hnkIxUHirgXMoj1pnFDp55055QuU/7xxVWtW8H1otaHJhdl9jqcg69n8/KCL0bOK4i3oCsa582qTlb9AVPIi4s="
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n  \"redo\": [],\n  \"time\": 1793270794.076145\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n  \"redo\": [],\n  \"time\": 1793296698.513119\n }\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5.json": {
-      "text": "{\n \"parent\": \"f89135c93817c997c9a44279653b27e9921cecf7ee29f1d91e8606429b03d2ef\",\n \"time\": 1793270794.075896,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4.json": {
+      "text": "{\n \"parent\": \"0afbb73571a7b619f29c250ed09b6d233b02c3ea17937aa51197efac28cad9bc\",\n \"time\": 1793296698.5129979,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -130,11 +130,11 @@
      "objects/d9/d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160": {
       "b64": "eJyFkEFqwzAQRfc+xRwgpJb3gSwKpV2UEp9AkT5IjSqFkdzEGN+9GhcvHApdzp8/f97MUXPxJmCyCV3btruG9FBcYjrQ9JywozcdQTpaOkl18sZptnP12eTFpNq9qoNPNWAvCdL6TANHHaT9rsvAEPGC8ZbYZlHvIhRfAqR6NaDsgJKXRRmaAr4RxDRCLyw1Ws3N3DTHlZgXYrUh/oeRfxnVA2NvPKLBhqlfIYh9BvlIxYEi7oUMYr1p/JvunNJlyl++uKp1G7he1PrQ5KLMXodz8PVsXl/wwch5A/ESdEXj/LCqk1U/VNaLjA=="
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"adb47f3e560958635b0c269f2bfbf77fb8df1ce81292ac2a4e4b69a062d66561\",\n  \"redo\": [],\n  \"time\": 1793270794.141006\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"2d1d91a707ce3f1d26509eb017f64e22cc892025f3122f3f8b40f4c96f269bc9\",\n  \"redo\": [],\n  \"time\": 1793296698.582168\n }\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/adb47f3e560958635b0c269f2bfbf77fb8df1ce81292ac2a4e4b69a062d66561.json": {
-      "text": "{\n \"parent\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n \"time\": 1793270794.140785,\n \"kind\": \"command\",\n \"message\": \"papers edit doe2000 --set year=2001\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n  ],\n  \"sha\": \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/2d1d91a707ce3f1d26509eb017f64e22cc892025f3122f3f8b40f4c96f269bc9.json": {
+      "text": "{\n \"parent\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n \"time\": 1793296698.58204,\n \"kind\": \"command\",\n \"message\": \"papers edit doe2000 --set year=2001\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n  ],\n  \"sha\": \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -156,12 +156,12 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to d46e97fe papers tag doe2000 --add x (2026-10-29 10:46)\n",
+   "stdout": "undo: papers.bib restored to 713ca7dc papers tag doe2000 --add x (2026-10-29 17:58)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n  \"redo\": [\n   \"adb47f3e560958635b0c269f2bfbf77fb8df1ce81292ac2a4e4b69a062d66561\"\n  ],\n  \"time\": 1793270794.2058759\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n  \"redo\": [\n   \"2d1d91a707ce3f1d26509eb017f64e22cc892025f3122f3f8b40f4c96f269bc9\"\n  ],\n  \"time\": 1793296698.651524\n }\n}"
      }
     }
    },
@@ -193,11 +193,11 @@
      "objects/f7/f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf": {
       "b64": "eJyF0DFuwzAMBdDdp+ABgtT2XiBDgaIdiiI+AS1/QGpUKaDkNoaRu1d04MFeOuqTop54YsnOeMxDRFvX9aEiHrONQs80v0Qc6J0DiMNAZz2dnbEsw730DdFpU1Mfm3LxqQw46gQtfcVRAnstf3AeBRpeMP1GGZKmNw2yyx56ejOgZIGclocSmDx+4LVpAi+WZXR1r6rTKpZF3GzE/xjlYWx2xs44BIONqVsRJC6BXKBsQQG3TAah/Gna6ZqHro/xMqdvl23J2g2u07QsNNqw30cvHIzV9Dr23pVlyLqYT0FKG9qr5wKWtAO0CvgD1qCTPA=="
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303\",\n  \"redo\": [],\n  \"time\": 1793270794.272098\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d\",\n  \"redo\": [],\n  \"time\": 1793296698.722806\n }\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303.json": {
-      "text": "{\n \"parent\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n \"time\": 1793270794.2718668,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add branch\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n  ],\n  \"sha\": \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d.json": {
+      "text": "{\n \"parent\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n \"time\": 1793296698.722682,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add branch\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n  ],\n  \"sha\": \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -214,30 +214,30 @@
    "kind": "numbered",
    "store": {
     "del": [
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/4e23738a43d057eba1bf4eb7203b9b647f4b7e0d72a936d15776cd569a2d3103.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/adb47f3e560958635b0c269f2bfbf77fb8df1ce81292ac2a4e4b69a062d66561.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/f89135c93817c997c9a44279653b27e9921cecf7ee29f1d91e8606429b03d2ef.json"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/0afbb73571a7b619f29c250ed09b6d233b02c3ea17937aa51197efac28cad9bc.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/10978ed82d6390ac8f3435cb76dc8346723969cecaf5897b5c33fa2938529c36.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/2d1d91a707ce3f1d26509eb017f64e22cc892025f3122f3f8b40f4c96f269bc9.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4.json"
     ],
     "set": {
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 5,\n  \"redo\": [],\n  \"time\": 1793270794.272098\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 5,\n  \"redo\": [],\n  \"time\": 1793296698.722806\n }\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000001.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.008996,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000001.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296698.443151,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000002.json": {
-      "text": "{\n \"parent\": 1,\n \"time\": 1793270794.010147,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000002.json": {
+      "text": "{\n \"parent\": 1,\n \"time\": 1793296698.4446158,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000003.json": {
-      "text": "{\n \"parent\": 2,\n \"time\": 1793270794.075896,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000003.json": {
+      "text": "{\n \"parent\": 2,\n \"time\": 1793296698.5129979,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000004.json": {
-      "text": "{\n \"parent\": 3,\n \"time\": 1793270794.140785,\n \"kind\": \"command\",\n \"message\": \"papers edit doe2000 --set year=2001\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n  ],\n  \"sha\": \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000004.json": {
+      "text": "{\n \"parent\": 3,\n \"time\": 1793296698.58204,\n \"kind\": \"command\",\n \"message\": \"papers edit doe2000 --set year=2001\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n  ],\n  \"sha\": \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000005.json": {
-      "text": "{\n \"parent\": 3,\n \"time\": 1793270794.2718668,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add branch\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n  ],\n  \"sha\": \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000005.json": {
+      "text": "{\n \"parent\": 3,\n \"time\": 1793296698.722682,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add branch\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n  ],\n  \"sha\": \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -255,36 +255,36 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "> 34dbe493 papers tag smith2002 --add branch (2026-10-29 10:46)\n  d46e97fe papers tag doe2000 --add x (2026-10-29 10:46)\n  f89135c9 papers add /dev/stdin (2026-10-29 10:46)\n  4e23738a the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "> 3ca724ab papers tag smith2002 --add branch (2026-10-29 17:58)\n  713ca7dc papers tag doe2000 --add x (2026-10-29 17:58)\n  0afbb735 papers add /dev/stdin (2026-10-29 17:58)\n  10978ed8 the library before its first recorded command (2026-10-29 17:58)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000001.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000002.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000003.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000004.json",
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/000005.json"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000001.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000002.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000003.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000004.json",
+     "projects/12e06d4f0506492789358bd0f49a560e/states/000005.json"
     ],
     "set": {
      "numbers.json": {
-      "text": "{\n \"047e9ffa0b8c41adae81625da998ebaa\": {\n  \"1\": \"4e23738a43d057eba1bf4eb7203b9b647f4b7e0d72a936d15776cd569a2d3103\",\n  \"2\": \"f89135c93817c997c9a44279653b27e9921cecf7ee29f1d91e8606429b03d2ef\",\n  \"3\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n  \"4\": \"adb47f3e560958635b0c269f2bfbf77fb8df1ce81292ac2a4e4b69a062d66561\",\n  \"5\": \"34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303\"\n }\n}"
+      "text": "{\n \"12e06d4f0506492789358bd0f49a560e\": {\n  \"1\": \"10978ed82d6390ac8f3435cb76dc8346723969cecaf5897b5c33fa2938529c36\",\n  \"2\": \"0afbb73571a7b619f29c250ed09b6d233b02c3ea17937aa51197efac28cad9bc\",\n  \"3\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n  \"4\": \"2d1d91a707ce3f1d26509eb017f64e22cc892025f3122f3f8b40f4c96f269bc9\",\n  \"5\": \"3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d\"\n }\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303\",\n  \"redo\": [],\n  \"time\": 1793270794.272098\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d\",\n  \"redo\": [],\n  \"time\": 1793296698.722806\n }\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303.json": {
-      "text": "{\n \"parent\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n \"time\": 1793270794.2718668,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add branch\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n  ],\n  \"sha\": \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/0afbb73571a7b619f29c250ed09b6d233b02c3ea17937aa51197efac28cad9bc.json": {
+      "text": "{\n \"parent\": \"10978ed82d6390ac8f3435cb76dc8346723969cecaf5897b5c33fa2938529c36\",\n \"time\": 1793296698.4446158,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/4e23738a43d057eba1bf4eb7203b9b647f4b7e0d72a936d15776cd569a2d3103.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.008996,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/10978ed82d6390ac8f3435cb76dc8346723969cecaf5897b5c33fa2938529c36.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296698.443151,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/adb47f3e560958635b0c269f2bfbf77fb8df1ce81292ac2a4e4b69a062d66561.json": {
-      "text": "{\n \"parent\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n \"time\": 1793270794.140785,\n \"kind\": \"command\",\n \"message\": \"papers edit doe2000 --set year=2001\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n  ],\n  \"sha\": \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/2d1d91a707ce3f1d26509eb017f64e22cc892025f3122f3f8b40f4c96f269bc9.json": {
+      "text": "{\n \"parent\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n \"time\": 1793296698.58204,\n \"kind\": \"command\",\n \"message\": \"papers edit doe2000 --set year=2001\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n  ],\n  \"sha\": \"d96a33b9dacd8a82f74f0a32dd800f7af97ce34d1745b47141c48ab5eb377160\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5.json": {
-      "text": "{\n \"parent\": \"f89135c93817c997c9a44279653b27e9921cecf7ee29f1d91e8606429b03d2ef\",\n \"time\": 1793270794.075896,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d.json": {
+      "text": "{\n \"parent\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n \"time\": 1793296698.722682,\n \"kind\": \"command\",\n \"message\": \"papers tag smith2002 --add branch\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n  ],\n  \"sha\": \"f72f61b926b89a1e0249ad78f517ea8ab8a53102d7e19d980d0cd44dfa626bcf\"\n },\n \"files\": {}\n}"
      },
-     "projects/047e9ffa0b8c41adae81625da998ebaa/states/f89135c93817c997c9a44279653b27e9921cecf7ee29f1d91e8606429b03d2ef.json": {
-      "text": "{\n \"parent\": \"4e23738a43d057eba1bf4eb7203b9b647f4b7e0d72a936d15776cd569a2d3103\",\n \"time\": 1793270794.010147,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/states/713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4.json": {
+      "text": "{\n \"parent\": \"0afbb73571a7b619f29c250ed09b6d233b02c3ea17937aa51197efac28cad9bc\",\n \"time\": 1793296698.5129979,\n \"kind\": \"command\",\n \"message\": \"papers tag doe2000 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n  ],\n  \"sha\": \"ca28a0fb2ed58467a70ea1dbe438e7f69cb4808e55319457f231584d0f75e37a\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -302,12 +302,12 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to d46e97fe papers tag doe2000 --add x (2026-10-29 10:46)\n",
+   "stdout": "undo: papers.bib restored to 713ca7dc papers tag doe2000 --add x (2026-10-29 17:58)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n  \"redo\": [\n   \"34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303\"\n  ],\n  \"time\": 1793270794.402555\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n  \"redo\": [\n   \"3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d\"\n  ],\n  \"time\": 1793296698.863916\n }\n}"
      }
     }
    },
@@ -329,7 +329,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "  34dbe493 papers tag smith2002 --add branch (2026-10-29 10:46)  (undone: `papers redo`)\n> d46e97fe papers tag doe2000 --add x (2026-10-29 10:46)\n  f89135c9 papers add /dev/stdin (2026-10-29 10:46)\n  4e23738a the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "  3ca724ab papers tag smith2002 --add branch (2026-10-29 17:58)  (undone: `papers redo`)\n> 713ca7dc papers tag doe2000 --add x (2026-10-29 17:58)\n  0afbb735 papers add /dev/stdin (2026-10-29 17:58)\n  10978ed8 the library before its first recorded command (2026-10-29 17:58)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -348,12 +348,12 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "redo: papers.bib restored to 34dbe493 papers tag smith2002 --add branch (2026-10-29 10:46)\n",
+   "stdout": "redo: papers.bib restored to 3ca724ab papers tag smith2002 --add branch (2026-10-29 17:58)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303\",\n  \"redo\": [],\n  \"time\": 1793270794.5296168\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d\",\n  \"redo\": [],\n  \"time\": 1793296699.001312\n }\n}"
      }
     }
    },
@@ -376,12 +376,12 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "restore: papers.bib restored to d46e97fe papers tag doe2000 --add x (2026-10-29 10:46)\n",
+   "stdout": "restore: papers.bib restored to 713ca7dc papers tag doe2000 --add x (2026-10-29 17:58)\n",
    "store": {
     "del": [],
     "set": {
-     "projects/047e9ffa0b8c41adae81625da998ebaa/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"d46e97fe3e4efdf45233899eae25afe8af037ab0bafcda071de6be950d1541f5\",\n  \"redo\": [\n   \"34dbe493be9df2fbd46259472396ce6941f869b89b231a487ed2c250b9614303\"\n  ],\n  \"time\": 1793270794.596949\n }\n}"
+     "projects/12e06d4f0506492789358bd0f49a560e/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"713ca7dc8bb167058e84f3ba362b46f5cd74145cd9df8daf22f40ed96da154a4\",\n  \"redo\": [\n   \"3ca724abcff0c52f96bc5b814bec652a5f9568f5cf80339b27710f7efdab810d\"\n  ],\n  \"time\": 1793296699.0731149\n }\n}"
      }
     }
    },
@@ -405,7 +405,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "  34dbe493 papers tag smith2002 --add branch (2026-10-29 10:46)  (undone: `papers redo`)\n> d46e97fe papers tag doe2000 --add x (2026-10-29 10:46)\n  f89135c9 papers add /dev/stdin (2026-10-29 10:46)\n  4e23738a the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "  3ca724ab papers tag smith2002 --add branch (2026-10-29 17:58)  (undone: `papers redo`)\n> 713ca7dc papers tag doe2000 --add x (2026-10-29 17:58)\n  0afbb735 papers add /dev/stdin (2026-10-29 17:58)\n  10978ed8 the library before its first recorded command (2026-10-29 17:58)\nhistory: ~/Library/Application Support/papers/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}

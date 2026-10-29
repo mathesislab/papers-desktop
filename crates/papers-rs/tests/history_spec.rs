@@ -166,6 +166,46 @@ fn only_the_files_named_by_an_identifier_holding_an_object_are_states() {
 }
 
 #[test]
+fn a_state_without_kind_is_read() {
+    // history.md 3.1: `kind` is optional for a reader (papers writes it in each state it makes)
+    let s = Sandbox::new();
+    let mut config = s.init("lib");
+    s.add(&mut config, "one2000");
+    s.add(&mut config, "two2000");
+    let history = open(&mut config);
+    for n in history.project.states().keys() {
+        let file = format!("{}/{n}.json", history.project.states_dir());
+        let text = fs::read_to_string(&file).unwrap();
+        let start = text.find("\"kind\"").unwrap();
+        let end = start + text[start..].find(",\n").unwrap() + 2;
+        fs::write(
+            &file,
+            format!(
+                "{}{}",
+                text[..start].trim_end_matches(' '),
+                text[end..].trim_start_matches(' ')
+            ),
+        )
+        .unwrap();
+    }
+    let mut history = open(&mut config);
+    assert!(
+        history
+            .project
+            .states()
+            .values()
+            .all(|state| state.kind().is_empty())
+    );
+    history.sync_head(None).unwrap();
+    assert_eq!(
+        history.project.line(&history.head().unwrap().state).len(),
+        3
+    );
+    undo(&mut config, 2).unwrap();
+    assert_eq!(s.read("lib/papers.bib"), "");
+}
+
+#[test]
 fn a_step_is_named_by_a_start_of_its_identifier() {
     // history.md 2.5: 4 characters or more, without case, spaces dropped; several is refused
     let s = Sandbox::new();
@@ -512,6 +552,106 @@ fn a_file_brought_back_from_the_history_is_kept_by_the_step_that_copied_it() {
     assert_eq!(s.read("lib/files/a.pdf"), "pdf a");
 }
 
+// 6. Undo, redo, restore
+// ======================
+
+/// The history for undo, redo and restore, as the commands open it: no identifier is made.
+fn travel(config: &mut Config) -> History {
+    History::for_travel(config, false).unwrap()
+}
+
+fn copy_folder(from: &str, to: &str) {
+    fs::create_dir_all(to).unwrap();
+    for item in fs::read_dir(from).unwrap() {
+        let item = item.unwrap();
+        let target = format!("{to}/{}", item.file_name().to_string_lossy());
+        if item.path().is_dir() {
+            copy_folder(&item.path().to_string_lossy(), &target);
+        } else {
+            fs::copy(item.path(), target).unwrap();
+        }
+    }
+}
+
+#[test]
+fn nothing_to_do_leaves_no_trace() {
+    // history.md 6.2, 5.3 (test_spec_history.py::TestCommands::test_nothing_to_do_leaves_no_trace):
+    // undo, redo and restore with nothing to do write no id, no state, no store folder
+    let s = Sandbox::new();
+    let mut config = s.init("lib");
+    s.write("lib/papers.bib", &entry("one2000"));
+    let mut errors = Vec::new();
+    for steps in [1, 2] {
+        errors.push(
+            travel(&mut config)
+                .undo(steps, false, None, "papers undo", &mut skip())
+                .unwrap_err(),
+        );
+    }
+    errors.push(
+        travel(&mut config)
+            .redo(1, false, None, "papers redo", &mut skip())
+            .unwrap_err(),
+    );
+    errors.push(travel(&mut config).restore(None, None).unwrap_err());
+    errors.push(travel(&mut config).restore(Some("abcd"), None).unwrap_err());
+    let messages: Vec<&str> = errors.iter().map(|e| e.message()).collect();
+    assert_eq!(
+        messages,
+        [
+            "nothing to undo",
+            "nothing to undo",
+            "nothing to redo",
+            "no history: nothing to restore",
+            "no step abcd in the history of the library (see `papers history`)",
+        ]
+    );
+    assert!(!s.read("lib/.papers/config.json").contains("\"id\""));
+    assert!(config.id.is_none());
+    assert!(!Path::new(&s.path("history")).exists());
+    // a copy, never used in its folder, at the step it was copied at: no head written
+    let mut lib = s.config("lib");
+    s.add(&mut lib, "two2000");
+    copy_folder(&s.path("lib"), &s.path("copy"));
+    let mut copy = s.config("copy");
+    let head = open(&mut lib).head().unwrap().state;
+    let error = travel(&mut copy).restore(Some(&head), None).unwrap_err();
+    assert!(error.message().starts_with("nothing to restore"), "{error}");
+    let error = travel(&mut copy)
+        .redo(1, false, None, "papers redo", &mut skip())
+        .unwrap_err();
+    assert_eq!(error.message(), "nothing to redo");
+    let heads = open(&mut lib).project.heads();
+    assert_eq!(heads.len(), 1);
+    assert_eq!(heads[0].place, travel(&mut lib).place);
+}
+
+#[test]
+fn a_change_made_outside_papers_counts_as_a_step_to_undo() {
+    // history.md 6.2: the errors are decided as if the head were brought up to date, and nothing is written
+    let s = Sandbox::new();
+    let mut config = s.init("lib");
+    s.add(&mut config, "one2000");
+    s.add(&mut config, "two2000");
+    let states = open(&mut config).project.states().len();
+    s.write(
+        "lib/papers.bib",
+        &(s.read("lib/papers.bib") + &entry("three2000")),
+    );
+    // three steps and the change made outside: 3 steps to undo, not 4
+    let error = travel(&mut config)
+        .undo(4, false, None, "papers undo", &mut skip())
+        .unwrap_err();
+    assert_eq!(error.message(), "only 3 step(s) to undo");
+    assert_eq!(open(&mut config).project.states().len(), states);
+    // within the steps: the change is recorded, then undone
+    travel(&mut config)
+        .undo(3, false, None, "papers undo", &mut skip())
+        .unwrap();
+    assert_eq!(open(&mut config).project.states().len(), states + 1);
+    assert_eq!(s.read("lib/papers.bib"), "");
+}
+
 // 7. Undo and redo with a pool
 // ============================
 
@@ -534,16 +674,15 @@ fn command_with_pool(
     let mut history = History::open(lib, true, false).unwrap().unwrap();
     history.sync_head(before.as_ref()).unwrap();
     let mut links = links;
-    for i in 0..saves {
+    for _ in 0..saves {
         let before = History::before_command(pool);
         let mut pool_history = History::open(pool, true, false).unwrap().unwrap();
         pool_history.sync_head(before.as_ref()).unwrap();
         let bibtex = pool.bibtex.clone().unwrap();
-        fs::write(
-            &bibtex,
-            fs::read_to_string(&bibtex).unwrap() + &entry(&format!("pool{i}")),
-        )
-        .unwrap();
+        let text = fs::read_to_string(&bibtex).unwrap();
+        // a key of its own (the command may be the second of the test)
+        let key = format!("pool{}", text.matches("{pool").count());
+        fs::write(&bibtex, text + &entry(&key)).unwrap();
         let rec = pool_history
             .record(Step {
                 message: "papers sync".into(),
@@ -560,11 +699,9 @@ fn command_with_pool(
         links.push((id, link));
     }
     let bibtex = lib.bibtex.clone().unwrap();
-    fs::write(
-        &bibtex,
-        fs::read_to_string(&bibtex).unwrap() + &entry("lib"),
-    )
-    .unwrap();
+    let text = fs::read_to_string(&bibtex).unwrap();
+    let key = format!("lib{}", text.matches("{lib").count());
+    fs::write(&bibtex, text + &entry(&key)).unwrap();
     history
         .record(Step {
             message: "papers sync".into(),
@@ -647,6 +784,38 @@ fn a_command_that_saved_the_pool_several_times_is_undone_in_full() {
         .redo(1, false, None, "papers redo", &mut skip())
         .unwrap();
     assert!(s.read("pool/papers.bib").contains("pool1"));
+}
+
+#[test]
+fn redo_of_several_steps_reverted_together_reverts_the_revert_once() {
+    // history.md 7.3 (test_undo_pool.py::UndoInLibrary::test_redo_of_several_steps_reverted_together): the pool moved
+    // on, undo -n 2 reverts the two steps of the pool in one state, redo -n 2 reverts that state once
+    let s = Sandbox::new();
+    let (mut pool, mut lib) = pool_and_library(&s);
+    let (links, _) = command_with_pool(&s, &mut lib, &mut pool, 1, vec![]);
+    command_with_pool(&s, &mut lib, &mut pool, 1, links);
+    s.add(&mut pool, "other2023");
+    let mut resolver = skip();
+    travel(&mut lib)
+        .undo(2, false, None, "papers undo -n 2", &mut resolver)
+        .unwrap();
+    let undo = open(&mut pool).head().unwrap().state;
+    let removed = s.read("pool/papers.bib");
+    assert!(
+        !removed.contains("pool0") && !removed.contains("pool1") && removed.contains("other2023"),
+        "{removed}"
+    );
+    travel(&mut lib)
+        .redo(2, false, None, "papers redo -n 2", &mut resolver)
+        .unwrap();
+    let history = open(&mut pool);
+    let head = history.head().unwrap().state;
+    assert_eq!(history.project.state(&head).unwrap().reverts(), vec![undo]);
+    let text = s.read("pool/papers.bib");
+    assert!(
+        text.contains("pool0") && text.contains("pool1") && text.contains("other2023"),
+        "{text}"
+    );
 }
 
 #[test]

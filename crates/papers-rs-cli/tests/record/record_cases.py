@@ -389,7 +389,7 @@ case('usage-required', [step('rm'), step('edit'), step('export'), step('open'), 
                         step('add', '--format', 'x'), step('add', '--mode', 'z'), step('check', '--on-duplicate', 'update'),
                         step('check', '--encoding', 'x'), step('list', '--format', 'x'), step('list', '--by', 'x'),
                         step('add', '--on-duplicate', 'x'), step('history', '-n', 'x'), step('extract', '-n', 'x'),
-                        step('undo', '--steps', 'x'), step('restore', 'x'), step('restore', '--ref', 'x'), step('list', '--fuzzy-ratio', 'x'),
+                        step('undo', '--steps', 'x'), step('undo', '-n', '0'), step('redo', '-n', '-1'), step('redo', '--steps', '1.5'), step('restore', 'x'), step('restore', '--ref', 'x'), step('list', '--fuzzy-ratio', 'x'),
                         step('add', '--metadata', 'x'), step('add', '--metadata'), step('edit', 'k', '--set', 'novalue'),
                         step('edit', 'k', '--set', '=v'), step('tag', '--rename', 'a'), step('tag', '--rename'), step('tag', '--rename', 'a', 'b', 'c'),
                         step('add', '-a'), step('add', '--attach'), step('list', '--author'), step('list', '--detach'), step('list', '--export-files', 'x'),
@@ -590,6 +590,11 @@ case('layout-bibtex-in-subfolder',
 case('layout-dry-run-moves-nothing',
      [step('list', '--dry-run'), step('config', '--dry-run'), step('config'), step('config', '--dry-run', 'files', 'link')],
      cwd={'.papers/config.json': cfg(bibtex='bib/papers.bib'), 'bib/.papers/distinct.json': BIB_DISTINCT})
+# the files are moved once the command line is read: a dry run in another spelling, and a usage error, move nothing
+case('layout-no-move-other-dry-run',
+     [step('list', '--dry'), step('file', 'mv', '-n', 'x.pdf', 'y.pdf'), step('list', '--no-such-option'), step('undo', '-n', '0'),
+      step('--version'), step('list')],
+     cwd={'.papers/config.json': cfg(bibtex='bib/papers.bib'), 'bib/papers.bib': '', 'bib/.papers/distinct.json': BIB_DISTINCT})
 # the pool is checked again for a pool of its own when the library exchanges with it
 case('pool-with-a-pool-of-its-own',
      [step('-C', 'B', 'status'), step('-C', 'B', 'pull'), step('-C', 'B', 'pull', '--all'), step('-C', 'B', 'pull', '--check'),

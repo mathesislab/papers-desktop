@@ -39,24 +39,38 @@ pub fn file_version(js: &mut Map<String, Value>, file: &str) -> Result<i64> {
 }
 
 /// Read a configuration file (`read_config_file`): its JSON object, read as UTF-8 (a byte order
-/// mark is ignored). A file that is not valid JSON, or not a JSON object, is an error that names
-/// the file, so that no later save replaces its content.
+/// mark is ignored). A file that is not valid UTF-8, not valid JSON, or not a JSON object, is an
+/// error that names the file, so that no later save replaces its content.
 pub fn read_json_object(file: &str) -> Result<Map<String, Value>> {
     let unreadable = |why: &str| Error::exit(format!("{file} could not be read ({why}): correct the file"));
     let bytes = fs::read(file).map_err(|e| unreadable(&os_error_text(&e, file)))?;
     let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
-    let text = std::str::from_utf8(bytes).map_err(|e| {
-        unreadable(&format!(
-            "'utf-8' codec can't decode byte 0x{:02x} in position {}: invalid start byte",
-            bytes.get(e.valid_up_to()).copied().unwrap_or(0),
-            e.valid_up_to()
-        ))
-    })?;
+    let text = std::str::from_utf8(bytes).map_err(|e| unreadable(&utf8_error_text(bytes, e)))?;
     match loads(text) {
         Ok(Value::Object(map)) => Ok(map),
         Ok(_) => Err(Error::exit(format!("{file} is not a JSON object: correct the file"))),
         Err(error) => Err(unreadable(&error.message)),
     }
+}
+
+/// What Python's `str(UnicodeDecodeError)` says of the `bytes` that `error` found not to be UTF-8.
+fn utf8_error_text(bytes: &[u8], error: std::str::Utf8Error) -> String {
+    let start = error.valid_up_to();
+    let (end, why) = match error.error_len() {
+        None => (bytes.len(), "unexpected end of data"),
+        Some(len) => {
+            // a byte that starts no sequence, else the sequence it starts is broken
+            let first = bytes[start];
+            let invalid_start = matches!(first, 0x80..=0xC1 | 0xF5..=0xFF);
+            (start + len, if invalid_start { "invalid start byte" } else { "invalid continuation byte" })
+        }
+    };
+    let at = if end == start + 1 {
+        format!("byte 0x{:02x} in position {start}", bytes[start])
+    } else {
+        format!("bytes in position {start}-{}", end - 1)
+    };
+    format!("'utf-8' codec can't decode {at}: {why}")
 }
 
 /// What Python's `str(OSError)` says of an error on `path`.

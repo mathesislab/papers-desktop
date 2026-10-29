@@ -4,7 +4,7 @@
  },
  "name": "numbered-pools",
  "place_ids": {},
- "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-qt9yl7gh",
+ "sandbox": "/private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/T/papers-rs-history-t_lfugrz",
  "steps": [
   {
    "argv": [
@@ -51,17 +51,17 @@
    "store": {
     "del": [],
     "set": {
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
+     "separate/88eb9d0dac6841cd93c99f2056407e91/objects/f6/f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554": {
       "b64": "eJyFkDFuwzAMRXefggcIUst7gQwFimQIivgEjPwBqVWkgpKLBkbuXtGBB3vpyM/Pz0ceWIq3AdOQ0LVtu2uIx+KS0CtNbwk7OnEEcRzootXFW8cyPKpvSF5Npt2bOvhSA/aaoK3PNErkoO0zl1GgYvElQKWjBWUHlDznZjAF/CCo6Q6eV89JzaNpDgugzIBmBfgPkjyRzAaptx7Rrpn6BYLEZ5CPVBwo4reQRawn3Dd05kl3TelryjdfXNW6FVyvav1fclFnv8dr8PVsWV7wIch5BfEeuKJJ3qzqdNUfzkyF0A=="
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
-      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n  \"redo\": [],\n  \"time\": 1793270794.793453\n }\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762\",\n  \"redo\": [],\n  \"time\": 1793296699.290824\n }\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.792021,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762.json": {
+      "text": "{\n \"parent\": \"822362f594249b30d9dcbdb27266ed9505c012be6e4aea98a347d2225e95685a\",\n \"time\": 1793296699.290693,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131.json": {
-      "text": "{\n \"parent\": \"6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e\",\n \"time\": 1793270794.793323,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/822362f594249b30d9dcbdb27266ed9505c012be6e4aea98a347d2225e95685a.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296699.289459,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      }
     }
    },
@@ -69,7 +69,7 @@
     "del": [],
     "set": {
      "pool/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"279c8e6f78ab47d3afdcf33c79c75914\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"88eb9d0dac6841cd93c99f2056407e91\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
      },
      "pool/papers.bib": {
       "text": "@article{doe2000,\n author = {Doe, Jane and Roe, Richard},\n doi = {10.1000/doe.2000},\n journal = {Nature},\n title = {Ice sheets and sea level},\n year = {2000}\n}\n\n@article{roe2001,\n author = {Roe, Richard},\n doi = {10.1000/roe.2001},\n journal = {Science},\n title = {Sea level rise in the next century},\n year = {2001}\n}\n\n@book{smith2002,\n author = {Smith, John},\n publisher = {Ice Press},\n title = {Glaciers},\n year = {2002}\n}\n"
@@ -139,29 +139,29 @@
    "store": {
     "del": [],
     "set": {
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/objects/ca/ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e": {
-      "b64": "eJyFkU1qwzAQhfc+xRzApP5ZF1IolHZhSnwCRR6QGlUyIzk/mNy9Mw5eyBSy1NObNx9v9oqS1Q7nIWBTVVVZgJqSCQSvML8HLOFLeQTlBzjI62C1UTTc2TcEK6a62tU8+MIBO0mQr58wkVdOvjuVJkIRk00ORfrUCNEgprjkRlTg8IxOTDdUy+olqbgXxX4F9Hhhsc0AO7yU0Fl9+oeH/cLTPud5A/bCqEakDUKbI9DSUZ0hPGmFHq3UG4peW/Q6x+jXHoBsRLAekkFGuybQ6Jn6tqGrH3THEE5z/LXJsNZkcL2ofMJgvMyO09FZbp7WK3wTxphBfDjFaBQ3qxpZ9QeqWa17"
+     "separate/27c9e8078913436bbbe39644d88172a1/objects/4d/4dd3e559ba101d9f0f049245c4ffe42a311abcaa02d776cb5a00cdbba3ff3463": {
+      "b64": "eJxtj8uOwiAUhvd9CvZj5UCvx8TEeQFX7g0DVFEsBKnX+O5T1IWZTMKC/N9/yVlIdzjoPt698Docc++cJW2rf1CBErJuSyYVFhKx41DVJTQa2SPLFn9zg7VaEdZgwbGuEcuy4FWN0PxnHkdyL+KWUB/MSURNTyLQzlk1YoqRbi5+d2xlX60vVYFYBLWON+ixwZuPDV3Rd9P4tuYYXbjmcW27YRNu9OzCnqaJtCxCNNLqe6/PHKCYZEQMcesCmZP7Up8nZGnk/jHKypmkMZgyAKCjf5oCCXXG6sTSf+eG0Av7jIs4BJ3Ez7P2+prge++DRnN4tnDgdc4g57hizaxqZwy/AGYAyRtNfG19k7HhFU36VYvwCo+d2SP7BSwki+o="
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
-      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\",\n  \"redo\": [],\n  \"time\": 1793270794.925718\n }\n}"
-     },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93.json": {
-      "text": "{\n \"parent\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n \"time\": 1793270794.925601,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
-     },
-     "separate/613b628754284aeb80230fbbd7e524cb/objects/69/693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5": {
+     "separate/27c9e8078913436bbbe39644d88172a1/objects/69/693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5": {
       "b64": "eJwdzMEJgDAMheF7p8gAolHPgi7gDkEDVouVkCIi7m7T65f3ZyRRvwR+T747xL5yQEm3KDDAO/NdweyX48u8Rm/WYt0iYpP3tQV22mOSk0JJSJOwoXoNbDRB3sJFF4v5w1Sel9h97gdQTSei"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/objects/a2/a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba": {
-      "b64": "eJxtj82OwiAUhfd9CvZj5RZaEZNJnBdw5d4wLbUoFgZv1Wp89wF1YSaTsCDnOz+5y9odDrrHm1deh2PunbOECVnP9awVc/Vdioartqlbzusoi0oW5T3Lln9zg7W6IYWQnAkQspSsAsEl/GuOI7lX2BHqgzkp1PSkAm2dbSKmEun24nfHed1Xm0vFpeSh2eAVeink1aOga/pqiq8zR3RhzH9QjlZsO3p2YU/TRFpWAU1t9a3XZwbAJxlRA3YukE9yW+nzhKxMvb9HuXEmaQVMCwCg0T9NgYRaY3Vi6b9zQ+iVfcQVDkEn8f2svR4TfO29UTSHRwsDNssLyJlcF7AoZwtefgAsAJIXDT63vkhseEaTPmoVnuHYmd2zX1tvi9Q="
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd\",\n  \"redo\": [],\n  \"time\": 1793296699.446923\n }\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\",\n  \"redo\": [],\n  \"time\": 1793270794.927928\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd.json": {
+      "text": "{\n \"parent\": \"899a490ed75dec0baa1f9a063ba7a0a96fd598baf7e4625d9b071a82d0f89f4f\",\n \"time\": 1793296699.446798,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-ebfaeb.bib\": [\n   \"4dd3e559ba101d9f0f049245c4ffe42a311abcaa02d776cb5a00cdbba3ff3463\"\n  ]\n },\n \"pools\": {\n  \"88eb9d0dac6841cd93c99f2056407e91\": {\n   \"state\": \"3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de\",\n   \"base\": \"6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762\",\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38.json": {
-      "text": "{\n \"parent\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n \"time\": 1793270794.9278028,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n },\n \"pools\": {\n  \"279c8e6f78ab47d3afdcf33c79c75914\": {\n   \"state\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\",\n   \"base\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/899a490ed75dec0baa1f9a063ba7a0a96fd598baf7e4625d9b071a82d0f89f4f.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296699.4452522,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.9265978,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/objects/ca/ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e": {
+      "b64": "eJyFkU1qwzAQhfc+xRzApP5ZF1IolHZhSnwCRR6QGlUyIzk/mNy9Mw5eyBSy1NObNx9v9oqS1Q7nIWBTVVVZgJqSCQSvML8HLOFLeQTlBzjI62C1UTTc2TcEK6a62tU8+MIBO0mQr58wkVdOvjuVJkIRk00ORfrUCNEgprjkRlTg8IxOTDdUy+olqbgXxX4F9Hhhsc0AO7yU0Fl9+oeH/cLTPud5A/bCqEakDUKbI9DSUZ0hPGmFHq3UG4peW/Q6x+jXHoBsRLAekkFGuybQ6Jn6tqGrH3THEE5z/LXJsNZkcL2ofMJgvMyO09FZbp7WK3wTxphBfDjFaBQ3qxpZ9QeqWa17"
+     },
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de\",\n  \"redo\": [],\n  \"time\": 1793296699.443939\n }\n}"
+     },
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de.json": {
+      "text": "{\n \"parent\": \"6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762\",\n \"time\": 1793296699.443808,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
      }
     }
    },
@@ -169,10 +169,10 @@
     "del": [],
     "set": {
      "lib/.papers/config.json": {
-      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"613b628754284aeb80230fbbd7e524cb\",\n  \"paths\": \"relative\",\n  \"pool\": \"../pool\",\n  \"version\": 3\n}"
+      "text": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"id\": \"27c9e8078913436bbbe39644d88172a1\",\n  \"paths\": \"relative\",\n  \"pool\": \"../pool\",\n  \"version\": 3\n}"
      },
-     "lib/.papers/origin/pool-3abeb1.bib": {
-      "text": "@comment{papers-pool 279c8e6f78ab47d3afdcf33c79c75914}\n\n@comment{papers-pulled 1793270794925073904}\n\n@comment{papers-pool-path $TMP/work/pool}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n file = {},\n journal = {Nature},\n papers-pool-key = {new2003},\n papers-time = {2026-10-29T10:46:34+00:00},\n title = {A new paper},\n year = {2003}\n}\n"
+     "lib/.papers/origin/pool-ebfaeb.bib": {
+      "text": "@comment{papers-pool 88eb9d0dac6841cd93c99f2056407e91}\n\n@comment{papers-pulled 1793296699443256907}\n\n@comment{papers-pool-path $TMP/work/pool}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n file = {},\n journal = {Nature},\n papers-pool-key = {new2003},\n papers-time = {2026-10-29T17:58:19+00:00},\n title = {A new paper},\n year = {2003}\n}\n"
      },
      "lib/papers.bib": {
       "text": "@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n journal = {Nature},\n title = {A new paper},\n year = {2003}\n}\n"
@@ -187,33 +187,33 @@
    "kind": "numbered",
    "store": {
     "del": [
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93.json",
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e.json",
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131.json",
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38.json",
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992.json"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd.json",
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/899a490ed75dec0baa1f9a063ba7a0a96fd598baf7e4625d9b071a82d0f89f4f.json",
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de.json",
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762.json",
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/822362f594249b30d9dcbdb27266ed9505c012be6e4aea98a347d2225e95685a.json"
     ],
     "set": {
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
-      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": 3,\n  \"redo\": [],\n  \"time\": 1793270794.925718\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [],\n  \"time\": 1793296699.446923\n }\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000001.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.792021,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/000001.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296699.4452522,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000002.json": {
-      "text": "{\n \"parent\": 1,\n \"time\": 1793270794.793323,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/000002.json": {
+      "text": "{\n \"parent\": 1,\n \"time\": 1793296699.446798,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-ebfaeb.bib\": [\n   \"4dd3e559ba101d9f0f049245c4ffe42a311abcaa02d776cb5a00cdbba3ff3463\"\n  ]\n },\n \"pools\": {\n  \"88eb9d0dac6841cd93c99f2056407e91\": {\n   \"state\": 3,\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000003.json": {
-      "text": "{\n \"parent\": 2,\n \"time\": 1793270794.925601,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": 3,\n  \"redo\": [],\n  \"time\": 1793296699.443939\n }\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": 2,\n  \"redo\": [],\n  \"time\": 1793270794.927928\n }\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/000001.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296699.289459,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000001.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.9265978,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/000002.json": {
+      "text": "{\n \"parent\": 1,\n \"time\": 1793296699.290693,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000002.json": {
-      "text": "{\n \"parent\": 1,\n \"time\": 1793270794.9278028,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n },\n \"pools\": {\n  \"279c8e6f78ab47d3afdcf33c79c75914\": {\n   \"state\": 3,\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/000003.json": {
+      "text": "{\n \"parent\": 2,\n \"time\": 1793296699.443808,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
      }
     }
    },
@@ -231,48 +231,48 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "undo: papers.bib restored to 748679ed the library before its first recorded command (2026-10-29 10:46)\npool ../pool: also undone, restored to ae081dc4 papers add /dev/stdin (2026-10-29 10:46)\n",
+   "stdout": "undo: papers.bib restored to 899a490e the library before its first recorded command (2026-10-29 17:58)\npool ../pool: also undone, restored to 6ecfb679 papers add /dev/stdin (2026-10-29 17:58)\n",
    "store": {
     "del": [
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000001.json",
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000002.json",
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/000003.json",
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000001.json",
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/000002.json"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/000001.json",
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/000002.json",
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/000001.json",
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/000002.json",
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/000003.json"
     ],
     "set": {
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/numbers.json": {
-      "text": "{\n \"279c8e6f78ab47d3afdcf33c79c75914\": {\n  \"1\": \"6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e\",\n  \"2\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n  \"3\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\"\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/numbers.json": {
+      "text": "{\n \"27c9e8078913436bbbe39644d88172a1\": {\n  \"1\": \"899a490ed75dec0baa1f9a063ba7a0a96fd598baf7e4625d9b071a82d0f89f4f\",\n  \"2\": \"08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd\"\n }\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
-      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n  \"redo\": [\n   \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\"\n  ],\n  \"time\": 1793270794.998535\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"899a490ed75dec0baa1f9a063ba7a0a96fd598baf7e4625d9b071a82d0f89f4f\",\n  \"redo\": [\n   \"08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd\"\n  ],\n  \"time\": 1793296699.5344498\n }\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93.json": {
-      "text": "{\n \"parent\": \"ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131\",\n \"time\": 1793270794.925601,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd.json": {
+      "text": "{\n \"parent\": \"899a490ed75dec0baa1f9a063ba7a0a96fd598baf7e4625d9b071a82d0f89f4f\",\n \"time\": 1793296699.446798,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-ebfaeb.bib\": [\n   \"4dd3e559ba101d9f0f049245c4ffe42a311abcaa02d776cb5a00cdbba3ff3463\"\n  ]\n },\n \"pools\": {\n  \"88eb9d0dac6841cd93c99f2056407e91\": {\n   \"state\": 3,\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.792021,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/899a490ed75dec0baa1f9a063ba7a0a96fd598baf7e4625d9b071a82d0f89f4f.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296699.4452522,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      },
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/states/ae081dc493be900a5ab667ca52692515b68a54fc5790e79662d75dfaeaa7d131.json": {
-      "text": "{\n \"parent\": \"6ed39a5b8b885359c210ff8e34666edcd795281e0a5e89a12dcd1373b490235e\",\n \"time\": 1793270794.793323,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/numbers.json": {
+      "text": "{\n \"88eb9d0dac6841cd93c99f2056407e91\": {\n  \"1\": \"822362f594249b30d9dcbdb27266ed9505c012be6e4aea98a347d2225e95685a\",\n  \"2\": \"6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762\",\n  \"3\": \"3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de\"\n }\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/numbers.json": {
-      "text": "{\n \"613b628754284aeb80230fbbd7e524cb\": {\n  \"1\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n  \"2\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\"\n }\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762\",\n  \"redo\": [\n   \"3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de\"\n  ],\n  \"time\": 1793296699.5335019\n }\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n  \"redo\": [\n   \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\"\n  ],\n  \"time\": 1793270794.999468\n }\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de.json": {
+      "text": "{\n \"parent\": \"6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762\",\n \"time\": 1793296699.443808,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n  ],\n  \"sha\": \"ca45041223b63f8dc408e1e7b61ea74dd6798606401e09e2ffb7c07e05f8a98e\"\n },\n \"files\": {},\n \"from\": \"$TMP/work/lib\"\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38.json": {
-      "text": "{\n \"parent\": \"748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992\",\n \"time\": 1793270794.9278028,\n \"kind\": \"command\",\n \"message\": \"papers add ../more.bib\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n  ],\n  \"sha\": \"693ea8cec1e040ccfa29c4af06ef9ab03ad1b8423e3a29313d7ee8e7ef457ae5\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n },\n \"pools\": {\n  \"279c8e6f78ab47d3afdcf33c79c75914\": {\n   \"state\": 3,\n   \"config\": \"$TMP/work/pool/.papers/config.json\"\n  }\n }\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/6ecfb679aa9c45509f1218ec4166613361a472b4e85a773ee369ba7114f14762.json": {
+      "text": "{\n \"parent\": \"822362f594249b30d9dcbdb27266ed9505c012be6e4aea98a347d2225e95685a\",\n \"time\": 1793296699.290693,\n \"kind\": \"command\",\n \"message\": \"papers add /dev/stdin\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n  ],\n  \"sha\": \"f6670fa12d282c6d3817c28b641e2be9956e6b192c630eabd11d2af3d7c5a554\"\n },\n \"files\": {}\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/748679ed76ce745ab2fbee22939a7a0c42b4312f8c0bf462a83ff4e6a1748992.json": {
-      "text": "{\n \"parent\": null,\n \"time\": 1793270794.9265978,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/states/822362f594249b30d9dcbdb27266ed9505c012be6e4aea98a347d2225e95685a.json": {
+      "text": "{\n \"parent\": null,\n \"time\": 1793296699.289459,\n \"kind\": \"start\",\n \"message\": \"the library before its first recorded command\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [],\n  \"sha\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n },\n \"files\": {}\n}"
      }
     }
    },
    "work": {
     "del": [
-     "lib/.papers/origin/pool-3abeb1.bib"
+     "lib/.papers/origin/pool-ebfaeb.bib"
     ],
     "set": {
      "lib/papers.bib": {
@@ -293,7 +293,7 @@
    "kind": "papers",
    "lib": "pool",
    "stderr": "",
-   "stdout": "  56539ab6 papers add ../more.bib (2026-10-29 10:46, from $TMP/work/lib)  (undone: `papers redo`)\n> ae081dc4 papers add /dev/stdin (2026-10-29 10:46)\n  6ed39a5b the library before its first recorded command (2026-10-29 10:46)\nhistory: ~/Library/Application Support/papers/history/separate/279c8e6f78ab47d3afdcf33c79c75914, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
+   "stdout": "  3caa7e97 papers add ../more.bib (2026-10-29 17:58, from $TMP/work/lib)  (undone: `papers redo`)\n> 6ecfb679 papers add /dev/stdin (2026-10-29 17:58)\n  822362f5 the library before its first recorded command (2026-10-29 17:58)\nhistory: ~/Library/Application Support/papers/history/separate/88eb9d0dac6841cd93c99f2056407e91, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)\n",
    "store": {
     "del": [],
     "set": {}
@@ -312,23 +312,23 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "redo: papers.bib restored to 5fcbbc90 papers add ../more.bib (2026-10-29 10:46)\npool ../pool: also redone, restored to 56539ab6 papers add ../more.bib (2026-10-29 10:46, from $TMP/work/lib)\n",
+   "stdout": "redo: papers.bib restored to 08345b27 papers add ../more.bib (2026-10-29 17:58)\npool ../pool: also redone, restored to 3caa7e97 papers add ../more.bib (2026-10-29 17:58, from $TMP/work/lib)\n",
    "store": {
     "del": [],
     "set": {
-     "separate/279c8e6f78ab47d3afdcf33c79c75914/projects/279c8e6f78ab47d3afdcf33c79c75914/heads.json": {
-      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"56539ab65dbe1ce95fffa5d68571397d7283b237338721a77413b44458ce5e93\",\n  \"redo\": [],\n  \"time\": 1793270795.132555\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd\",\n  \"redo\": [],\n  \"time\": 1793296699.6969368\n }\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\",\n  \"redo\": [],\n  \"time\": 1793270795.131798\n }\n}"
+     "separate/88eb9d0dac6841cd93c99f2056407e91/projects/88eb9d0dac6841cd93c99f2056407e91/heads.json": {
+      "text": "{\n \"$TMP/work/pool/papers.bib\": {\n  \"state\": \"3caa7e97220c6d37f015bdea9ec72ed2aa795fe6e6182d59b26e1b49942846de\",\n  \"redo\": [],\n  \"time\": 1793296699.697899\n }\n}"
      }
     }
    },
    "work": {
     "del": [],
     "set": {
-     "lib/.papers/origin/pool-3abeb1.bib": {
-      "text": "@comment{papers-pool 279c8e6f78ab47d3afdcf33c79c75914}\n\n@comment{papers-pulled 1793270794925073904}\n\n@comment{papers-pool-path $TMP/work/pool}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n file = {},\n journal = {Nature},\n papers-pool-key = {new2003},\n papers-time = {2026-10-29T10:46:34+00:00},\n title = {A new paper},\n year = {2003}\n}\n"
+     "lib/.papers/origin/pool-ebfaeb.bib": {
+      "text": "@comment{papers-pool 88eb9d0dac6841cd93c99f2056407e91}\n\n@comment{papers-pulled 1793296699443256907}\n\n@comment{papers-pool-path $TMP/work/pool}\n\n@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n file = {},\n journal = {Nature},\n papers-pool-key = {new2003},\n papers-time = {2026-10-29T17:58:19+00:00},\n title = {A new paper},\n year = {2003}\n}\n"
      },
      "lib/papers.bib": {
       "text": "@article{new2003,\n author = {New, Nick},\n doi = {10.1000/new.2003},\n journal = {Nature},\n title = {A new paper},\n year = {2003}\n}\n"
@@ -349,7 +349,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "~/Library/Application Support/papers/history/separate/279c8e6f78ab47d3afdcf33c79c75914: 0.0 MB\n* 279c8e6f78ab47d3afdcf33c79c75914: 3 steps, 0.0 MB of its own, last used at $TMP/work/pool/papers.bib\n~/Library/Application Support/papers/history/separate/613b628754284aeb80230fbbd7e524cb: 0.0 MB\n* 613b628754284aeb80230fbbd7e524cb: 2 steps, 0.0 MB of its own, last used at $TMP/work/lib/papers.bib\n",
+   "stdout": "~/Library/Application Support/papers/history/separate/27c9e8078913436bbbe39644d88172a1: 0.0 MB\n* 27c9e8078913436bbbe39644d88172a1: 2 steps, 0.0 MB of its own, last used at $TMP/work/lib/papers.bib\n~/Library/Application Support/papers/history/separate/88eb9d0dac6841cd93c99f2056407e91: 0.0 MB\n* 88eb9d0dac6841cd93c99f2056407e91: 3 steps, 0.0 MB of its own, last used at $TMP/work/pool/papers.bib\n",
    "store": {
     "del": [],
     "set": {}
@@ -375,14 +375,14 @@
    "store": {
     "del": [],
     "set": {
-     "separate/613b628754284aeb80230fbbd7e524cb/objects/41/414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6": {
+     "separate/27c9e8078913436bbbe39644d88172a1/objects/41/414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6": {
       "b64": "eJwdzcENgzAMBdB7pvAACAw9VyoLsIMFlkiJCHIdpQixO3GOfv7f/pConwNfO+cB8dU4oKRrFHjDNXFuYPLzdhdeojfrse0RsSv51gq2+sYkO4VaIU3ChhufOcryM/0bqNfANo1QynDQwWJ+MtVv9Zq73QNA/y1d"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/heads.json": {
-      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"83853ed2e9b068639fcdda967911ce535c8eae6087bd54806305b5a83efec44a\",\n  \"redo\": [],\n  \"time\": 1793270795.2624059\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/heads.json": {
+      "text": "{\n \"$TMP/work/lib/papers.bib\": {\n  \"state\": \"33462999209a0c876647af1613f6a2e3bf3488d2ef191fd3703ddd6adc52e89f\",\n  \"redo\": [],\n  \"time\": 1793296699.846518\n }\n}"
      },
-     "separate/613b628754284aeb80230fbbd7e524cb/projects/613b628754284aeb80230fbbd7e524cb/states/83853ed2e9b068639fcdda967911ce535c8eae6087bd54806305b5a83efec44a.json": {
-      "text": "{\n \"parent\": \"5fcbbc90fdd6173248caeaac55c8a1213b8c0131b264bfeb7e7a88a69f30eb38\",\n \"time\": 1793270795.262174,\n \"kind\": \"command\",\n \"message\": \"papers tag new2003 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6\"\n  ],\n  \"sha\": \"414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6\"\n },\n \"files\": {\n  \".papers/origin/pool-3abeb1.bib\": [\n   \"a26699315c45dc3009179a8bc6515a0d5d50f92b3f2706828679a27c663607ba\"\n  ]\n }\n}"
+     "separate/27c9e8078913436bbbe39644d88172a1/projects/27c9e8078913436bbbe39644d88172a1/states/33462999209a0c876647af1613f6a2e3bf3488d2ef191fd3703ddd6adc52e89f.json": {
+      "text": "{\n \"parent\": \"08345b27497007a42f0bb0bacd158d4a2f89eb4f0f1074275086b0e89de7bfdd\",\n \"time\": 1793296699.846378,\n \"kind\": \"command\",\n \"message\": \"papers tag new2003 --add x\",\n \"ops\": [],\n \"deleted\": [],\n \"bibtex\": {\n  \"pieces\": [\n   \"414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6\"\n  ],\n  \"sha\": \"414f48eb21d5f200f496ef28e18a9bb935cdd9b9b7864406ad714c4ef95ae8b6\"\n },\n \"files\": {\n  \".papers/origin/pool-ebfaeb.bib\": [\n   \"4dd3e559ba101d9f0f049245c4ffe42a311abcaa02d776cb5a00cdbba3ff3463\"\n  ]\n }\n}"
      }
     }
    },
@@ -406,7 +406,7 @@
    "kind": "papers",
    "lib": "lib",
    "stderr": "",
-   "stdout": "new2003: added by step 5fcbbc90 and changed since: kept (`papers rm new2003` removes it)\nstep 5fcbbc90 also changed pool ../pool (its step 56539ab6): `papers -C ../pool history --revert 56539ab6` takes it back there\n",
+   "stdout": "new2003: added by step 08345b27 and changed since: kept (`papers rm new2003` removes it)\nstep 08345b27 also changed pool ../pool (its step 3caa7e97): `papers -C ../pool history --revert 3caa7e97` takes it back there\n",
    "store": {
     "del": [],
     "set": {}

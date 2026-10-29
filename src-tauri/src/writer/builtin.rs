@@ -298,7 +298,7 @@ impl PapersWriter for Builtin {
         let mut config = self.config(folder)?;
         let command = command_line(folder, if back { "undo" } else { "redo" }, &[]);
         let lock = lock::acquire(&config, &command, None)?;
-        let mut history = History::require(&mut config, false)?;
+        let mut history = History::for_travel(&mut config, false)?;
         // a pool's step reverted with conflicts: skipped, as papers does
         // without a terminal (the app asks nothing)
         let mut skip = Resolver::new(Merging::Skip);
