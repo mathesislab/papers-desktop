@@ -85,7 +85,7 @@
     "v",
     "config",
     "filesdir",
-    "/abs/elsewhere"
+    "<TMP>/abs/elsewhere"
    ],
    "cwd": ".",
    "write": {},
@@ -93,10 +93,10 @@
    "env": {},
    "rc": 0,
    "stdout": "",
-   "stderr": "papers: warning: /abs/elsewhere does not exist\n",
+   "stderr": "papers: warning: <TMP>/abs/elsewhere does not exist\n",
    "tree": {
     "cwd/v/.papers/.gitignore": "*\n",
-    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"x.bib\",\n  \"filesdir\": \"../../abs/elsewhere\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -116,7 +116,7 @@
    "stderr": "papers: warning: ~/home.bib does not exist\n",
    "tree": {
     "cwd/v/.papers/.gitignore": "*\n",
-    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"~/home.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"~/home.bib\",\n  \"filesdir\": \"../../abs/elsewhere\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -136,7 +136,7 @@
    "stderr": "papers: warning: ../v2/../../out/y.bib does not exist\n",
    "tree": {
     "cwd/v/.papers/.gitignore": "*\n",
-    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"../../out/y.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"../../out/y.bib\",\n  \"filesdir\": \"../../abs/elsewhere\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -154,7 +154,7 @@
    "stderr": "papers: error: no library found here: `papers init`, or use `papers config --global`\n",
    "tree": {
     "cwd/v/.papers/.gitignore": "*\n",
-    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"../../out/y.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"../../out/y.bib\",\n  \"filesdir\": \"../../abs/elsewhere\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -174,7 +174,7 @@
    "stderr": "papers: warning: file://<TMP>/cwd/v/uri.bib does not exist\n",
    "tree": {
     "cwd/v/.papers/.gitignore": "*\n",
-    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"file:<TMP>/cwd/v/uri.bib\",\n  \"filesdir\": \"../../../../../../../../../abs/elsewhere\",\n  \"version\": 3\n}"
+    "cwd/v/.papers/config.json": "{\n  \"bibtex\": \"file:<TMP>/cwd/v/uri.bib\",\n  \"filesdir\": \"../../abs/elsewhere\",\n  \"version\": 3\n}"
    }
   }
  ]
