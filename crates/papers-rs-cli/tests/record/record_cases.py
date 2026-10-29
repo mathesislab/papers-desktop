@@ -102,7 +102,7 @@ case('init-pool-not-library', [step('init', 'x', '--pool', '../plain'), step('in
                                step('init', 'x', '--pool', '../both')],
      cwd={'plain/': None, 'haspool/.papers/config.json': jd(version=3, pool='../other', bibtex='p.bib'),
           'other/.papers/config.json': jd(version=3), 'both/.papers/config.json': '{}', 'both/.papersconfig.json': '{}'})
-case('init-nested-pool', [step('init', 'A'), step('init', 'pdfs/deeper/nested', '--pool', '../../../A'),
+case('init-nested-pool', [step('init', 'A'), step('init', 'pdfs/deeper/nested', '--pool', 'A'),
                           step('-C', 'pdfs/deeper/nested', 'config', 'pool'),
                           step('init', 'B', '--pool', 'A'), step('init', 'C', '--pool', '~/nowhere')],
      cwd={'pdfs/': None})
@@ -523,7 +523,7 @@ case('init-relative-to-the-current-directory',
      [step('init', 'lib', '--bibtex', 'refs/my.bib', '--filesdir', 'docs/pdfs'),
       step('init', 'lib2', '--bibtex', '../x.bib', '--filesdir', '../pdfs'), step('-C', 'lib2', 'config'),
       step('init', 'sub/lib3', '--bibtex', 'sub/x.bib', '--filesdir', 'sub/pdfs', '--pool', 'lib'),
-      step('-C', 'sub/lib3', 'config'), step('init', 'lib4', '--pool', '../lib'), step('init', 'sub/lib5', '--pool', '../../lib'),
+      step('-C', 'sub/lib3', 'config'), step('init', 'lib4', '--pool', '../lib'), step('init', 'sub/lib5', '--pool', 'lib'),
       step('init', 'sub/lib6', '--pool', 'lib'), step('-C', 'sub/lib6', 'config', 'pool'),
       step('init', 'lib7', '--pool', 'sub/..//lib'), step('-C', 'lib7', 'config', 'pool'),
       step('init', 'sub/lib8', '--pool', '~/pool', '--bibtex', '~/b.bib'), step('-C', 'sub/lib8', 'config'),

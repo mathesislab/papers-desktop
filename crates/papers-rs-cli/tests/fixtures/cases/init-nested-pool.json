@@ -31,21 +31,23 @@
     "init",
     "pdfs/deeper/nested",
     "--pool",
-    "../../../A"
+    "A"
    ],
    "cwd": ".",
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 1,
-   "stdout": "",
-   "stderr": "papers: error: --pool ../../../A: /private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/A does not exist: create it first with `papers init /private/var/folders/9t/gxpjs8cn5_x53993rd_tz0n979zpt7/A` (nothing was changed)\n",
+   "rc": 0,
+   "stdout": "created the library <TMP>/cwd/pdfs/deeper/nested\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    ../../../A\n`papers config` lists and sets the settings\n",
+   "stderr": "",
    "tree": {
-    "cwd/pdfs/": null,
     "cwd/A/papers.bib": "",
     "cwd/A/files/": null,
     "cwd/A/.papers/.gitignore": "*\n",
-    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -59,15 +61,17 @@
    "write": {},
    "rm": [],
    "env": {},
-   "rc": 1,
-   "stdout": "",
-   "stderr": "papers: error: -C pdfs/deeper/nested: not a directory\n",
+   "rc": 0,
+   "stdout": "../../../A\n",
+   "stderr": "",
    "tree": {
-    "cwd/pdfs/": null,
     "cwd/A/papers.bib": "",
     "cwd/A/files/": null,
     "cwd/A/.papers/.gitignore": "*\n",
-    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}"
+    "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -85,14 +89,16 @@
    "stdout": "created the library <TMP>/cwd/B\n* bibtex:  papers.bib\n* files:   in the pool (shallow library)\n* pool:    ../A\n`papers config` lists and sets the settings\n",
    "stderr": "",
    "tree": {
-    "cwd/pdfs/": null,
     "cwd/A/papers.bib": "",
     "cwd/A/files/": null,
     "cwd/A/.papers/.gitignore": "*\n",
     "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/B/papers.bib": "",
     "cwd/B/.papers/.gitignore": "*\n",
-    "cwd/B/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../A\",\n  \"version\": 3\n}"
+    "cwd/B/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../A\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
    }
   },
   {
@@ -110,14 +116,16 @@
    "stdout": "",
    "stderr": "papers: error: --pool ~/nowhere: ~/nowhere does not exist: create it first with `papers init ~/nowhere` (nothing was changed)\n",
    "tree": {
-    "cwd/pdfs/": null,
     "cwd/A/papers.bib": "",
     "cwd/A/files/": null,
     "cwd/A/.papers/.gitignore": "*\n",
     "cwd/A/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
     "cwd/B/papers.bib": "",
     "cwd/B/.papers/.gitignore": "*\n",
-    "cwd/B/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../A\",\n  \"version\": 3\n}"
+    "cwd/B/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../A\",\n  \"version\": 3\n}",
+    "cwd/pdfs/deeper/nested/papers.bib": "",
+    "cwd/pdfs/deeper/nested/.papers/.gitignore": "*\n",
+    "cwd/pdfs/deeper/nested/.papers/config.json": "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"paths\": \"relative\",\n  \"pool\": \"../../../A\",\n  \"version\": 3\n}"
    }
   }
  ]
