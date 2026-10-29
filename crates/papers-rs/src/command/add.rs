@@ -522,7 +522,12 @@ pub fn add(
                 for (k, v) in metadata.iter().filter(|(k, _)| k != "ENTRYTYPE") {
                     sample.set(k, v.clone());
                 }
-                let key = session.library.keyformat.render(&sample)?;
+                // the template's key, else (empty) that of a new entry: from the title and the
+                // year, with a suffix if taken (`keyformat(metadata) or generate_key(metadata, new=True)`)
+                let mut key = session.library.keyformat.render(&sample)?;
+                if key.is_empty() {
+                    key = session.library.generate_key(&sample)?;
+                }
                 set_meta(&mut metadata, "ID", &key);
             }
             if get_meta(&metadata, "ENTRYTYPE").is_none() {
