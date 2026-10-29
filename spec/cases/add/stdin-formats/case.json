@@ -5,6 +5,9 @@
     "formats.md#1.2",
     "formats.md#3.4"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestCommands::test_from_stdin_with_format"
+  ],
   "steps": [
     {
       "argv": [

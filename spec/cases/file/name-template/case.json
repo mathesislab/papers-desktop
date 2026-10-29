@@ -7,6 +7,10 @@
     "library.md#path-safety",
     "bibtex.md#5.1"
   ],
+  "tests": [
+    "tests/test_path_traversal.py::TestRename::test_template_outside_is_refused",
+    "tests/test_paths.py::TestFlatLayout::test_new_name_keeps_labels"
+  ],
   "steps": [
     {
       "argv": [

@@ -4,6 +4,9 @@
     "library.md#finding-the-library-of-a-command",
     "formats.md#7.3"
   ],
+  "tests": [
+    "tests/test_cli_unit.py::TestMain::test_C_not_a_directory"
+  ],
   "steps": [
     {
       "argv": [

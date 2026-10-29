@@ -3,6 +3,10 @@
   "sections": [
     "exchange.md#3.8"
   ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestLegacyOrigin::test_origin_dir_wins",
+    "tests/test_pools.py::TestOrigin::test_migration"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

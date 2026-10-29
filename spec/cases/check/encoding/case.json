@@ -5,6 +5,10 @@
     "bibtex.md#4.3",
     "formats.md#7.2"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestUnicodeToLatex::test_check_encoding_latex",
+    "tests/test_bib_fix.py::TestFixEntry::test_encoding_latex"
+  ],
   "steps": [
     {
       "argv": [

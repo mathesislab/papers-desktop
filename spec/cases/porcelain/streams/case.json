@@ -1,9 +1,14 @@
 {
-  "description": "with --porcelain the standard output has the porcelain lines only: the listing of list and the messages go to the standard error; a command that has no lines prints nothing on the standard output",
+  "description": "with --porcelain the standard output has the porcelain lines, and the listing of list (its data); the other messages go to the standard error; a command that has no lines prints nothing on the standard output",
   "sections": [
     "formats.md#7.1",
     "formats.md#7.2",
     "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainStreams::test_commands_without_lines",
+    "tests/test_porcelain.py::TestPorcelain::test_list_on_stdout",
+    "tests/test_porcelain.py::TestPorcelain::test_other_messages_on_stderr"
   ],
   "steps": [
     {
@@ -19,10 +24,6 @@
         "bibtex",
         "smith",
         "--porcelain"
-      ],
-      "contract": [
-        "stdout",
-        "stderr"
       ]
     },
     {

@@ -6,7 +6,8 @@
     "history.md#8.2",
     "history.md#8.4",
     "history.md#8.3",
-    "history.md#4"
+    "history.md#4",
+    "history.md#2.5"
   ],
   "steps": [
     {
@@ -38,7 +39,7 @@
       "argv": [
         "history",
         "--revert",
-        "2"
+        "$STATE2"
       ]
     },
     {
@@ -110,7 +111,7 @@
       "argv": [
         "history",
         "--revert",
-        "6"
+        "$STATE6"
       ]
     },
     {

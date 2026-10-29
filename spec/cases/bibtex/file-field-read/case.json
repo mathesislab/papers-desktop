@@ -6,6 +6,11 @@
     "formats.md#6",
     "formats.md#5.1"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFileSyntax::test_reading",
+    "tests/test_spec_bibtex.py::TestFilePaths::test_relative_to_bibtex",
+    "tests/test_entries.py::TestBibtexFileEntry::test_parse_file_empty_path_ignored"
+  ],
   "steps": [
     {
       "argv": [

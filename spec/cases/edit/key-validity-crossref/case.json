@@ -6,6 +6,9 @@
     "bibtex.md#7.3",
     "formats.md#7.3"
   ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditSet::test_key_refused"
+  ],
   "steps": [
     {
       "argv": [

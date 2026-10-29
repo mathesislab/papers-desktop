@@ -6,7 +6,8 @@
     "history.md#8.2",
     "history.md#8.4",
     "bibtex.md#10.6",
-    "exchange.md#5.7"
+    "exchange.md#5.7",
+    "history.md#2.5"
   ],
   "steps": [
     {
@@ -50,7 +51,7 @@
       "argv": [
         "history",
         "--revert",
-        "2",
+        "$STATE2",
         "--on-duplicate",
         "ask"
       ],
@@ -60,7 +61,7 @@
       "argv": [
         "history",
         "--revert",
-        "2",
+        "$STATE2",
         "--on-duplicate",
         "ask"
       ],
@@ -70,7 +71,7 @@
       "argv": [
         "history",
         "--revert",
-        "2",
+        "$STATE2",
         "--on-duplicate",
         "ask"
       ],
@@ -89,7 +90,7 @@
       "argv": [
         "history",
         "--revert",
-        "3",
+        "$STATE3",
         "--on-duplicate",
         "ask"
       ],
@@ -99,7 +100,7 @@
       "argv": [
         "history",
         "--revert",
-        "3",
+        "$STATE3",
         "--on-duplicate",
         "ask"
       ],
@@ -109,7 +110,7 @@
       "argv": [
         "history",
         "--revert",
-        "3",
+        "$STATE3",
         "--on-duplicate",
         "ask"
       ],

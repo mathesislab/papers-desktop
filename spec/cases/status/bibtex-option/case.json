@@ -3,6 +3,9 @@
   "sections": [
     "library.md#finding-the-library-of-a-command"
   ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_of_the_library_from_elsewhere"
+  ],
   "steps": [
     {
       "argv": [

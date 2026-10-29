@@ -2,7 +2,7 @@
 bibtex                = $WORK/out/refs.bib  (library)
 filesdir              = $WORK/out/files  (library)
 pool                  = none  (library)
-paths                 = relative  (default)
+paths                 = relative  (library)
 files                 = move  (default)
 auto-push             = false  (default)
 editor                =   (default)

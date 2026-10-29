@@ -3,6 +3,10 @@
   "sections": [
     "exchange.md#13.1"
   ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_add_from_pool_links_to_pool_file",
+    "tests/test_pools.py::TestAdd::test_pdf_same_content_move_mode"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

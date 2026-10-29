@@ -3,6 +3,10 @@
   "sections": [
     "exchange.md#3.7"
   ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestRenamedKeys::test_shallow_library",
+    "tests/test_pools.py::TestPull::test_rename_onto_a_leftover_record"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

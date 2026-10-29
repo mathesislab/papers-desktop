@@ -6,7 +6,8 @@
     "history.md#8.2",
     "history.md#8.4",
     "history.md#8.2",
-    "exchange.md#5.3"
+    "exchange.md#5.3",
+    "history.md#2.5"
   ],
   "steps": [
     {
@@ -37,7 +38,7 @@
       "argv": [
         "history",
         "--revert",
-        "2",
+        "$STATE2",
         "--on-duplicate",
         "update"
       ]
@@ -60,7 +61,7 @@
       "argv": [
         "history",
         "--revert",
-        "2",
+        "$STATE2",
         "--on-duplicate",
         "keep"
       ]

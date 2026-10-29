@@ -8,6 +8,9 @@
     "formats.md#2.4",
     "formats.md#6"
   ],
+  "tests": [
+    "tests/test_formats.py::TestListFormats::test_ris"
+  ],
   "steps": [
     {
       "argv": [

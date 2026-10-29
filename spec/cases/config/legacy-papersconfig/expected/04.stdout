@@ -1,4 +1,4 @@
-# $WORK/old/.papersconfig.json
+# $WORK/old/.papers/config.json
 bibtex                = $WORK/old/refs.bib  (library)
 filesdir              = $WORK/old/pdfs  (library)
 pool                  = none  (default)

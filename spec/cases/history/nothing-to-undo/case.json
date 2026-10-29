@@ -3,6 +3,9 @@
   "sections": [
     "history.md#6.2"
   ],
+  "tests": [
+    "tests/test_undo.py::TestTimeTravel::test_nothing_to_undo"
+  ],
   "steps": [
     {
       "argv": [

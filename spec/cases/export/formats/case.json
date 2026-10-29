@@ -6,6 +6,11 @@
     "formats.md#5.1",
     "formats.md#8"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExportLayout::test_format_names",
+    "tests/test_formats.py::TestExportFormats::test_unknown_format",
+    "tests/test_formats.py::TestExportFormats::test_repeated_and_comma"
+  ],
   "steps": [
     {
       "argv": [

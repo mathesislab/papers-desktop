@@ -5,6 +5,11 @@
     "exchange.md#5",
     "exchange.md#11"
   ],
+  "tests": [
+    "tests/test_pools_more.py::TestSync::test_conflict_stops_before_push",
+    "tests/test_pools_more.py::TestSync::test_pull_then_push",
+    "tests/test_spec_exchange.py::TestSync::test_conflict_exit_status"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

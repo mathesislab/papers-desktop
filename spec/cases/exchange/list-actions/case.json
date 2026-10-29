@@ -4,6 +4,10 @@
     "exchange.md#6.1",
     "exchange.md#7.1"
   ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestPullSelection::test_list_pull",
+    "tests/test_spec_exchange.py::TestPushSelection::test_list_push"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

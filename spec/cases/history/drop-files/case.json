@@ -1,9 +1,13 @@
 {
-  "description": "history --drop-files N|PATH: the files a step deleted leave the history (asks without -y; without a terminal it stops); undo then does not bring them back",
+  "description": "history --drop-files STEP|PATH: the files a step deleted leave the history (asks without -y; without a terminal it stops); undo then does not bring them back",
   "sections": [
     "history.md#9.4",
     "history.md#5.6",
-    "history.md#12"
+    "history.md#12",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_journal.py::TestDropFiles::test_drop_by_step"
   ],
   "steps": [
     {
@@ -29,7 +33,7 @@
       "argv": [
         "history",
         "--drop-files",
-        "2"
+        "$STATE2"
       ]
     },
     {
@@ -50,14 +54,14 @@
       "argv": [
         "history",
         "--drop-files",
-        "1"
+        "$STATE1"
       ]
     },
     {
       "argv": [
         "history",
         "--drop-files",
-        "2",
+        "$STATE2",
         "-y"
       ]
     },
@@ -65,7 +69,7 @@
       "argv": [
         "history",
         "--drop-files",
-        "2",
+        "$STATE2",
         "-y"
       ]
     },

@@ -4,6 +4,9 @@
     "bibtex.md#3.4",
     "history.md#5.1"
   ],
+  "tests": [
+    "tests/test_history.py::TestSeparate::test_dry_run_writes_nothing"
+  ],
   "steps": [
     {
       "argv": [

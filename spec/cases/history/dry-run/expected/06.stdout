@@ -1,1 +1,1 @@
-DRYRUN: undo: $WORK/papers.bib not restored to 1 the library before its first recorded command ($TIME)
+DRYRUN: undo: $WORK/papers.bib not restored to $STATE1 the library before its first recorded command ($TIME)

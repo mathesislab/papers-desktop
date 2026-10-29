@@ -6,6 +6,9 @@
     "exchange.md#7",
     "exchange.md#8"
   ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestOriginWriting::test_dry_run_writes_nothing"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

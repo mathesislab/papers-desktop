@@ -4,6 +4,9 @@
     "bibtex.md#9.5",
     "formats.md#7.2"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFindingDuplicates::test_add_candidates"
+  ],
   "steps": [
     {
       "argv": [

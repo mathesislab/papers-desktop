@@ -5,6 +5,10 @@
     "history.md#3.2",
     "history.md#5.4"
   ],
+  "tests": [
+    "tests/test_spec_history.py::TestRecording::test_command_after_undo_starts_a_branch",
+    "tests/test_undo.py::TestTimeTravel::test_undo_then_change_branches"
+  ],
   "steps": [
     {
       "argv": [

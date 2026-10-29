@@ -5,6 +5,9 @@
     "library.md#pools-and-shallow-libraries/the-pool-setting",
     "formats.md#7.3"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainConfigPool::test_config_pool"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

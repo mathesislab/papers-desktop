@@ -2,6 +2,7 @@
   "bibtex": "papers.bib",
   "filesdir": "files",
   "id": "$PROJECT1",
+  "paths": "relative",
   "pool": "none",
   "version": 3
 }

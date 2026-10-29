@@ -8,8 +8,10 @@
   },
   "nameformat": {
     "template": "{author}_{title}",
-    "title_sep": "_"
+    "title_sep": "_",
+    "unknown_strict": false
   },
+  "paths": "relative",
   "pool": "none",
   "version": 3
 }

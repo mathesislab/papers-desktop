@@ -3,6 +3,10 @@
   "sections": [
     "library.md#the-library-configuration/which-keys-papers-writes"
   ],
+  "tests": [
+    "tests/test_config_v3.py::TestConfigCommand::test_prune",
+    "tests/test_spec_library.py::TestWrittenKeys::test_prune_removes_the_settings_of_papers_2"
+  ],
   "steps": [
     {
       "argv": [

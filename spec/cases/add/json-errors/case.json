@@ -5,6 +5,9 @@
     "formats.md#5.2",
     "formats.md#7.3"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestCSLDocument::test_add_error_exit"
+  ],
   "steps": [
     {
       "argv": [

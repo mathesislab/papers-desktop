@@ -4,6 +4,9 @@
     "formats.md#9",
     "formats.md#4.3"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExportLayout::test_dir"
+  ],
   "steps": [
     {
       "argv": [

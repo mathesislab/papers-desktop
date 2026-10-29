@@ -5,6 +5,9 @@
     "formats.md#7.2",
     "history.md#4"
   ],
+  "tests": [
+    "tests/test_porcelain.py::TestPorcelain::test_tag_and_rm"
+  ],
   "steps": [
     {
       "argv": [

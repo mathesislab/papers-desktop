@@ -5,6 +5,11 @@
     "exchange.md#14.1",
     "exchange.md#14.3"
   ],
+  "tests": [
+    "tests/test_pools.py::TestStatus::test_status_not_pulled_in_full",
+    "tests/test_pools.py::TestStatus::test_status",
+    "tests/test_pools.py::TestStatus::test_pool_changed"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

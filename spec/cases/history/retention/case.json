@@ -6,6 +6,9 @@
     "history.md#5.6",
     "history.md#2.5"
   ],
+  "tests": [
+    "tests/test_journal.py::TestGuard::test_more_than_the_history_keeps_without_terminal"
+  ],
   "steps": [
     {
       "argv": [

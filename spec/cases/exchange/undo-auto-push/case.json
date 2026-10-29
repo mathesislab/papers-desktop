@@ -5,6 +5,9 @@
     "history.md#7.6",
     "exchange.md#12.1"
   ],
+  "tests": [
+    "tests/test_undo_pool.py::TestUndoPoolAutoPush::test_undo_pushes_what_a_step_did_not"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

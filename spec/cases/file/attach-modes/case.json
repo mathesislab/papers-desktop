@@ -6,6 +6,9 @@
     "bibtex.md#5.1",
     "history.md#4"
   ],
+  "tests": [
+    "tests/test_files_mode.py::TestAttach::test_attach"
+  ],
   "steps": [
     {
       "argv": [

@@ -2,7 +2,12 @@
   "description": "undo, redo and restore of another bibtex (--bibtex): the history of the library of that bibtex, or, for a bibtex without library, of its path",
   "sections": [
     "history.md#5.1",
-    "library.md#finding-the-library-of-a-command"
+    "library.md#finding-the-library-of-a-command",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library",
+    "tests/test_spec_history.py::TestSeparateStores::test_bibtex_without_library"
   ],
   "steps": [
     {
@@ -54,7 +59,7 @@
         "restore",
         "--bibtex",
         "b/papers.bib",
-        "1"
+        "$STATE3"
       ]
     },
     {

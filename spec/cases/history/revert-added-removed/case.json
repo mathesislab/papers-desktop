@@ -4,7 +4,13 @@
     "history.md#8",
     "history.md#8.1",
     "history.md#8.2",
-    "history.md#8.4"
+    "history.md#8.4",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertEntries::test_added_entry",
+    "tests/test_revert.py::TestRevertEntries::test_added_entry_changed_since",
+    "tests/test_revert.py::TestRevertEntries::test_removed_entry"
   ],
   "steps": [
     {
@@ -53,7 +59,7 @@
       "argv": [
         "history",
         "--revert",
-        "2"
+        "$STATE2"
       ]
     },
     {
@@ -66,7 +72,7 @@
       "argv": [
         "history",
         "--revert",
-        "4"
+        "$STATE4"
       ]
     },
     {
@@ -79,7 +85,7 @@
       "argv": [
         "history",
         "--revert",
-        "5"
+        "$STATE5"
       ]
     },
     {
@@ -92,14 +98,14 @@
       "argv": [
         "history",
         "--revert",
-        "3"
+        "$STATE3"
       ]
     },
     {
       "argv": [
         "history",
         "--revert",
-        "6"
+        "$STATE6"
       ]
     },
     {

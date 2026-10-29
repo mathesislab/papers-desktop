@@ -3,6 +3,9 @@
   "sections": [
     "formats.md#6"
   ],
+  "tests": [
+    "tests/test_list.py::FormattingTest::test_color"
+  ],
   "steps": [
     {
       "argv": [

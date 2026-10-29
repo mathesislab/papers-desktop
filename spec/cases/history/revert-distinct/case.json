@@ -6,7 +6,11 @@
     "history.md#8.2",
     "history.md#8.4",
     "history.md#8.3",
-    "bibtex.md#10"
+    "bibtex.md#10",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertEntries::test_distinct"
   ],
   "steps": [
     {
@@ -30,7 +34,7 @@
       "argv": [
         "history",
         "--revert",
-        "2"
+        "$STATE2"
       ]
     },
     {

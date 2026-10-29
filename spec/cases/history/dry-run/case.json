@@ -2,7 +2,11 @@
   "description": "undo, redo and restore with --dry-run say what they would do and change nothing (no lock, no history created)",
   "sections": [
     "history.md#6.2",
-    "history.md#6.5"
+    "history.md#6.5",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_undo.py::TestTimeTravel::test_dry_run"
   ],
   "steps": [
     {
@@ -59,7 +63,7 @@
       "argv": [
         "restore",
         "--dry-run",
-        "1"
+        "$STATE1"
       ]
     },
     {

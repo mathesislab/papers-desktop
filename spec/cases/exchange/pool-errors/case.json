@@ -4,6 +4,11 @@
     "exchange.md#2.2",
     "exchange.md#2.1"
   ],
+  "tests": [
+    "tests/test_pools.py::TestConfigPoolSelfContained::test_config_pool_not_the_library_itself",
+    "tests/test_pools.py::TestConfigPoolSelfContained::test_init_pool_must_be_a_library_without_pool",
+    "tests/test_spec_exchange.py::TestPoolRules::test_unreadable_pool_stops_the_automatic_push"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

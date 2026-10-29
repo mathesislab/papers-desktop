@@ -67,7 +67,7 @@
       "id": "f8",
       "title": "White space is part of the path",
       "file": [
-        "$WORK/ files/one.txt "
+        "$WORK/files/one.txt"
       ]
     },
     {

@@ -10,6 +10,10 @@
     "formats.md#2.6",
     "formats.md#8"
   ],
+  "tests": [
+    "tests/test_formats.py::TestCSL::test_types",
+    "tests/test_spec_formats.py::TestCSLExportFields::test_key_order"
+  ],
   "steps": [
     {
       "argv": [

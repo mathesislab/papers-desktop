@@ -5,6 +5,10 @@
     "bibtex.md#9.3",
     "bibtex.md#9.5"
   ],
+  "tests": [
+    "tests/test_duplicate_equivalence.py::TestEquivalence::test_find_duplicates",
+    "tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_authors_and_title"
+  ],
   "steps": [
     {
       "argv": [

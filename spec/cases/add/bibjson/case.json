@@ -5,6 +5,9 @@
     "formats.md#5.2",
     "formats.md#2.7"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestBibJSONReading::test_type_key_and_skipped"
+  ],
   "steps": [
     {
       "argv": [

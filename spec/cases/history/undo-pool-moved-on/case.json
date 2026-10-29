@@ -6,6 +6,11 @@
     "history.md#7.3",
     "history.md#8"
   ],
+  "tests": [
+    "tests/test_undo_pool.py::TestUndoPool::test_redo_after_the_pool_moved_on",
+    "tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since",
+    "tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since_elsewhere"
+  ],
   "ignore": [
     "home/data/history/*"
   ],
@@ -21,7 +26,7 @@
         "init",
         "lib",
         "--pool",
-        "../pool"
+        "pool"
       ]
     },
     {

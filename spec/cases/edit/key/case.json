@@ -5,6 +5,11 @@
     "bibtex.md#7.2",
     "formats.md#7.2"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestIds::test_keep_old_key_written",
+    "tests/test_entry_cmds.py::TestEditSet::test_keep_old_key",
+    "tests/test_entry_cmds.py::TestEditSet::test_keep_old_key_once"
+  ],
   "steps": [
     {
       "argv": [

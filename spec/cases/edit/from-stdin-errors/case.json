@@ -4,6 +4,9 @@
     "formats.md#1.2",
     "formats.md#7.3"
   ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditFrom::test_errors"
+  ],
   "steps": [
     {
       "argv": [

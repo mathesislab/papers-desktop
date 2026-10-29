@@ -1,8 +1,14 @@
 {
-  "description": "restore N brings the library to the step N; a new change starts a new line",
+  "description": "restore STEP brings the library to a step (named by its identifier or the start of it); a new change starts a new line",
   "sections": [
     "history.md#6.2",
-    "history.md#6.3"
+    "history.md#6.3",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestCommands::test_restore_redo_list",
+    "tests/test_spec_history.py::TestCommands::test_nothing_to_restore",
+    "tests/test_journal.py::TestSeveralSteps::test_restore_state"
   ],
   "steps": [
     {
@@ -28,7 +34,7 @@
     {
       "argv": [
         "restore",
-        "2"
+        "$STATE2"
       ]
     },
     {
@@ -40,7 +46,7 @@
     {
       "argv": [
         "restore",
-        "1"
+        "$STATE1"
       ]
     },
     {
@@ -70,7 +76,7 @@
     {
       "argv": [
         "restore",
-        "4"
+        "$STATE4"
       ]
     },
     {

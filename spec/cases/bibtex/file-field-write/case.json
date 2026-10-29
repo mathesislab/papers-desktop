@@ -5,6 +5,13 @@
     "bibtex.md#5.2",
     "library.md#settings/table"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFileSyntax::test_writing",
+    "tests/test_spec_bibtex.py::TestFilePaths::test_one_file_however_written"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
   "steps": [
     {
       "argv": [
@@ -89,8 +96,5 @@
         "bibtex"
       ]
     }
-  ],
-  "ignore": [
-    "home/data/history/*"
   ]
 }

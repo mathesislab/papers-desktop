@@ -5,6 +5,9 @@
     "library.md#layout",
     "library.md#the-library-configuration/which-keys-papers-writes"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExportLayout::test_new_library"
+  ],
   "steps": [
     {
       "argv": [

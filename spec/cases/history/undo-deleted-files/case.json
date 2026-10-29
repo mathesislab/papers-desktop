@@ -6,6 +6,11 @@
     "history.md#5.6",
     "history.md#6.4"
   ],
+  "tests": [
+    "tests/test_journal.py::TestDeleted::test_rm_undo_restores_from_the_history",
+    "tests/test_journal.py::TestDeleted::test_keep_deleted_files_false",
+    "tests/test_journal.py::TestDeleted::test_redo_with_keep_deleted_files_false"
+  ],
   "steps": [
     {
       "argv": [

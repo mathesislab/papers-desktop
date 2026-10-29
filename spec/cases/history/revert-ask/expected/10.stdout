@@ -1,7 +1,7 @@
-Same paper: 2 entries (step 3)
+Same paper: 2 entries (step $STATE3)
   1  doe2019  book  no doi
   2  doe2019  book  no doi
-     origin = the pool version at the last pull or push
+     origin = the entry as last exchanged (add, pull or push)
 
 @book{doe2019,
    abstract  = {An overview of the large-scale circulation.}

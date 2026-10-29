@@ -3,6 +3,9 @@
   "sections": [
     "history.md#2.1"
   ],
+  "tests": [
+    "tests/test_spec_history.py::TestLocation::test_relative_history_dir"
+  ],
   "ignore": [
     "home/home/elsewhere/*"
   ],

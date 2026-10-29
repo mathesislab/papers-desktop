@@ -1,5 +1,7 @@
-usage: papers restore [-h] [-v] [--debug] [--color {auto,always,never}]
+usage: papers history [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
-                      [--dry-run] [--ref N]
-                      [N]
-papers restore: error: argument N: invalid int value: 'last'
+                      [--dry-run] [--all] [--remove [ID]]
+                      [--drop-files STEP|PATH] [--revert STEP]
+                      [--on-duplicate {ask,keep,update,skip,error}] [-n N]
+                      [-y]
+papers history: error: argument --revert: expected one argument

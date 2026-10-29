@@ -4,6 +4,10 @@
     "library.md#the-machine-configuration/format",
     "library.md#finding-the-library-of-a-command"
   ],
+  "tests": [
+    "tests/test_config_v3.py::TestDefaultLibrary::test_init_global",
+    "tests/test_config_v3.py::TestDefaultLibrary::test_config_global_default"
+  ],
   "steps": [
     {
       "argv": [

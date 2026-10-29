@@ -1,12 +1,18 @@
 {
-  "description": "history --revert N takes back what step N changed in each entry: a field goes back to its value, the tags one by one (those added are removed, those removed come back, the tags added since stay); later steps stay; the revert is a new step that undo takes back",
+  "description": "history --revert STEP takes back what step N changed in each entry: a field goes back to its value, the tags one by one (those added are removed, those removed come back, the tags added since stay); later steps stay; the revert is a new step that undo takes back",
   "sections": [
     "history.md#8",
     "history.md#8.1",
     "history.md#8.2",
     "history.md#8.4",
     "bibtex.md#10",
-    "history.md#3.2"
+    "history.md#3.2",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertEntries::test_tag_removed_comes_back",
+    "tests/test_revert.py::TestRevertEntries::test_tags_one_by_one",
+    "tests/test_revert.py::TestRevertEntries::test_field"
   ],
   "steps": [
     {
@@ -50,7 +56,7 @@
       "argv": [
         "history",
         "--revert",
-        "2"
+        "$STATE2"
       ]
     },
     {
@@ -66,7 +72,7 @@
       "argv": [
         "history",
         "--revert",
-        "3"
+        "$STATE3"
       ]
     },
     {
@@ -98,7 +104,7 @@
       "argv": [
         "history",
         "--revert",
-        "8"
+        "$STATE8"
       ]
     },
     {

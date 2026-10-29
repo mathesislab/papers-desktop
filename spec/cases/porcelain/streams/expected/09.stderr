@@ -1,1 +1,1 @@
-undo: papers.bib restored to 2 papers list --add-tag x --porcelain smith ($TIME)
+undo: papers.bib restored to $STATE2 papers list --add-tag x --porcelain smith ($TIME)

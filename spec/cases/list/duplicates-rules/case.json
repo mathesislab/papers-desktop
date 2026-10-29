@@ -6,6 +6,11 @@
     "bibtex.md#9.3",
     "bibtex.md#9.5"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestSamePaperRule::test_isbn_has_no_title_guard",
+    "tests/test_duplicates.py::TestIdentifiers::test_isbn_different_books",
+    "tests/test_duplicates.py::TestIdentifiers::test_one_doi_only_falls_back_to_author_title"
+  ],
   "steps": [
     {
       "argv": [

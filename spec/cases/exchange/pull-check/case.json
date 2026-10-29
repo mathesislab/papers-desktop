@@ -5,6 +5,10 @@
     "exchange.md#14.2",
     "exchange.md#4.3"
   ],
+  "tests": [
+    "tests/test_auto_push.py::TestRemovals::test_pull_check_lists_a_removal",
+    "tests/test_pools.py::TestPull::test_check_and_status"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

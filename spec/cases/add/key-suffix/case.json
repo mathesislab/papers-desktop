@@ -4,6 +4,10 @@
     "bibtex.md#8",
     "library.md#name-and-key-templates/keys"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestKeySuffix::test_given_key_taken",
+    "tests/test_bib_fix.py::TestFixEntry::test_auto_key_suffix_is_stable"
+  ],
   "steps": [
     {
       "argv": [

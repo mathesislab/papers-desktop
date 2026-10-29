@@ -4,6 +4,10 @@
     "library.md#layout/papersgitignore",
     "library.md#the-library-configuration/which-keys-papers-writes"
   ],
+  "tests": [
+    "tests/test_history.py::TestPlaces::test_gitignore",
+    "tests/test_history.py::TestPlaces::test_gitignore_without_a_save_of_the_configuration"
+  ],
   "steps": [
     {
       "argv": [

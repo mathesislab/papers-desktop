@@ -4,6 +4,9 @@
     "library.md#finding-the-library-of-a-command",
     "library.md#layout"
   ],
+  "tests": [
+    "tests/test_config_v3.py::TestInit::test_init_dir"
+  ],
   "steps": [
     {
       "argv": [

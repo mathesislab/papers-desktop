@@ -6,6 +6,9 @@
     "exchange.md#3.6",
     "exchange.md#6.1"
   ],
+  "tests": [
+    "tests/test_auto_push.py::TestShallowSharedLinks::test_pull_removes_the_links_the_pool_removed"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

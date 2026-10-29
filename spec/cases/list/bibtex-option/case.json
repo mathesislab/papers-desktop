@@ -4,6 +4,9 @@
     "library.md#finding-the-library-of-a-command",
     "bibtex.md#2.2"
   ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library"
+  ],
   "steps": [
     {
       "argv": [

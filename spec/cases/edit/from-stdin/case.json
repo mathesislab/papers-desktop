@@ -4,6 +4,10 @@
     "formats.md#1.2",
     "formats.md#7.2"
   ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditFrom::test_from_stdin_pipe",
+    "tests/test_entry_cmds.py::TestEditFrom::test_from_file_with_file_and_keywords"
+  ],
   "steps": [
     {
       "argv": [

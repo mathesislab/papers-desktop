@@ -3,6 +3,9 @@
   "sections": [
     "bibtex.md#2.5"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFailedBlocks::test_kinds_and_warning"
+  ],
   "steps": [
     {
       "argv": [

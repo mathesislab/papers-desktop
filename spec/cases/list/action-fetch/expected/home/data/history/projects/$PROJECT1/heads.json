@@ -1,8 +1,8 @@
 {
  "$WORK/papers.bib": {
-  "state": 2,
+  "state": "$STATE1",
   "redo": [
-   3
+   "$STATE2"
   ],
   "time": "$TIME"
  }

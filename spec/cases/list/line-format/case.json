@@ -3,6 +3,9 @@
   "sections": [
     "formats.md#6"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_line_format"
+  ],
   "steps": [
     {
       "argv": [

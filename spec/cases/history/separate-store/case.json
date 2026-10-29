@@ -4,6 +4,10 @@
     "history.md#2.6",
     "history.md#9.1"
   ],
+  "tests": [
+    "tests/test_history.py::TestSeparate::test_own_store",
+    "tests/test_history.py::TestSeparate::test_shared_store_in_a_folder_named_separate"
+  ],
   "ignore": [
     "home/data/history/separate/*"
   ],

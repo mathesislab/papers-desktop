@@ -4,6 +4,9 @@
     "formats.md#7.3",
     "formats.md#1.2"
   ],
+  "tests": [
+    "tests/test_formats.py::TestAddFormats::test_metadata_one_entry_only"
+  ],
   "steps": [
     {
       "argv": [

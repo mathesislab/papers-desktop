@@ -9,7 +9,7 @@
         "init",
         "project",
         "--pool",
-        "../nowhere"
+        "nowhere"
       ]
     }
   ]

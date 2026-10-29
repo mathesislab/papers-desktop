@@ -1,1 +1,1 @@
-undo: papers.bib restored to 2 papers list --fetch --porcelain ($TIME)
+undo: papers.bib restored to $STATE1 the library before its first recorded command ($TIME)

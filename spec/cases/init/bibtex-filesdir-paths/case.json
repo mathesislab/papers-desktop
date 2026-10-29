@@ -1,8 +1,12 @@
 {
-  "description": "init with --bibtex, --filesdir and --paths: stored in the library configuration",
+  "description": "init with --bibtex, --filesdir (read from the current folder) and --paths: stored in the library configuration",
   "sections": [
     "library.md#the-library-configuration/relative-paths",
     "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestInit::test_init_paths_relative_to_current_directory",
+    "tests/test_spec_library.py::TestWrittenKeys::test_init_writes_pool_and_paths"
   ],
   "steps": [
     {
@@ -10,9 +14,9 @@
         "init",
         "lib",
         "--bibtex",
-        "refs.bib",
+        "lib/refs.bib",
         "--filesdir",
-        "pdfs",
+        "lib/pdfs",
         "--paths",
         "absolute"
       ]

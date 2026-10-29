@@ -6,6 +6,10 @@
     "formats.md#5.1",
     "formats.md#8"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_other_formats_paths",
+    "tests/test_list.py::FormattingTest::test_format"
+  ],
   "steps": [
     {
       "argv": [

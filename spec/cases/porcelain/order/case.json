@@ -4,6 +4,9 @@
     "formats.md#7.2",
     "formats.md#7.1"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainLines::test_order"
+  ],
   "steps": [
     {
       "argv": [

@@ -5,6 +5,11 @@
     "history.md#12",
     "history.md#2.7"
   ],
+  "tests": [
+    "tests/test_history.py::TestHistoryCommand::test_remove_keeps_the_history_of_a_copy",
+    "tests/test_history.py::TestHistoryCommand::test_remove_without_terminal",
+    "tests/test_history.py::TestHistoryCommand::test_all_and_remove"
+  ],
   "steps": [
     {
       "argv": [

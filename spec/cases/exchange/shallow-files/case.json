@@ -5,6 +5,11 @@
     "exchange.md#15",
     "library.md#pools-and-shallow-libraries/files-of-a-shallow-library"
   ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_file_attach_places_files_in_pool",
+    "tests/test_pools.py::TestShallow::test_file_rename_places_files_in_pool",
+    "tests/test_pools.py::TestShallow::test_add_places_files_in_pool"
+  ],
   "ignore": [
     "home/data/history/*"
   ],

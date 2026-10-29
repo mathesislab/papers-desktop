@@ -1,5 +1,6 @@
 {
   "bibtex": "papers.bib",
+  "checksums": true,
   "filesdir": "files",
   "id": "$PROJECT1",
   "pool": "none",

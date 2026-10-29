@@ -5,6 +5,9 @@
     "formats.md#8",
     "formats.md#6"
   ],
+  "tests": [
+    "tests/test_formats.py::TestBibJSON::test_field_named_as_a_bibjson_key"
+  ],
   "steps": [
     {
       "argv": [

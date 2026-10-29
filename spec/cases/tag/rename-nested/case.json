@@ -3,6 +3,9 @@
   "sections": [
     "bibtex.md#6"
   ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestNestedTags::test_rename_nested"
+  ],
   "steps": [
     {
       "argv": [

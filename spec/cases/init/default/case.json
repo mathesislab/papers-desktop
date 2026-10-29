@@ -5,6 +5,11 @@
     "library.md#layout/papersgitignore",
     "library.md#the-library-configuration/which-keys-papers-writes"
   ],
+  "tests": [
+    "tests/test_config_v3.py::TestInit::test_init",
+    "tests/test_config_v3.py::TestInit::test_init_machine_defaults",
+    "tests/test_spec_library.py::TestWrittenKeys::test_init_writes_pool_and_paths"
+  ],
   "steps": [
     {
       "argv": [

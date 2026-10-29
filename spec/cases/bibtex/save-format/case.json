@@ -10,6 +10,9 @@
     "bibtex.md#3.3",
     "bibtex.md#3.4"
   ],
+  "tests": [
+    "tests/test_sort_format.py::TestSortFormat::test_sort_format_unchanged"
+  ],
   "steps": [
     {
       "argv": [

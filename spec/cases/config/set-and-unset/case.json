@@ -5,6 +5,10 @@
     "library.md#the-library-configuration/which-keys-papers-writes",
     "library.md#settings/precedence"
   ],
+  "tests": [
+    "tests/test_config_v3.py::TestConfigCommand::test_get_set_unset",
+    "tests/test_config_v3.py::TestResolution::test_unset"
+  ],
   "steps": [
     {
       "argv": [

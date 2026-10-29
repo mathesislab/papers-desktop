@@ -5,6 +5,9 @@
     "bibtex.md#5.1",
     "library.md#the-files-directory/file-names"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainCommands::test_file_commands"
+  ],
   "steps": [
     {
       "argv": [

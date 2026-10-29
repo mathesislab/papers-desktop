@@ -1,6 +1,9 @@
 {
   "metadata": {
-    "records": 8
+    "records": 8,
+    "namespace": {
+      "bibtex": "https://www.bibtex.org/Format/"
+    }
   },
   "records": [
     {
@@ -78,7 +81,7 @@
       ]
     },
     {
-      "type": "Working paper",
+      "type": "techreport",
       "id": "rep2020",
       "address": "Potsdam",
       "author": [
@@ -88,6 +91,7 @@
       ],
       "institution": "PIK",
       "title": "Report",
+      "bibtex:type": "Working paper",
       "year": "2020"
     },
     {

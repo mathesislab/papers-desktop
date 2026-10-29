@@ -5,6 +5,9 @@
     "formats.md#3.4",
     "formats.md#5.1"
   ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_no_entry"
+  ],
   "steps": [
     {
       "argv": [

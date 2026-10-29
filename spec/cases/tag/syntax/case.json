@@ -1,8 +1,12 @@
 {
-  "description": "the keywords field: comma separated, trimmed, empty tags dropped; tags are written joined by \", \", appended in the order given, case-sensitive to add, remove and rename; the field is written only when the tags change",
+  "description": "the keywords field: comma separated, trimmed, empty tags dropped; tags are written joined by \", \", appended in the order given; adding, removing and renaming ignore case; the field is written only when the tags change",
   "sections": [
     "bibtex.md#6",
     "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestTags::test_syntax",
+    "tests/test_spec_bibtex.py::TestTags::test_add_remove_rename_ignore_case"
   ],
   "steps": [
     {

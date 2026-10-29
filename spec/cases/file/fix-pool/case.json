@@ -4,6 +4,10 @@
     "exchange.md#15.3",
     "library.md#pools-and-shallow-libraries/files-of-a-shallow-library"
   ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_file_check_fix",
+    "tests/test_pools_more.py::TestExchange::test_repair_links_without_pool_entry_or_file"
+  ],
   "ignore": [
     "home/data/history/*"
   ],
