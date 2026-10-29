@@ -1,4 +1,255 @@
 {
+ "ids": [
+  {
+   "expected": {
+    "file": "pool-569371.bib",
+    "id": "7e5754a0ccd246968e910bcd2a16dcf2",
+    "paths": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": "$ROOT/pool"
+    },
+    "pulls": {},
+    "records": {},
+    "saved": {}
+   },
+   "scenario": {
+    "files": {},
+    "name": "an identifier, no records",
+    "pool_id": "7e5754a0ccd246968e910bcd2a16dcf2"
+   }
+  },
+  {
+   "expected": {
+    "file": "pool-615fe0.bib",
+    "id": "../pool",
+    "paths": {},
+    "pulls": {},
+    "records": {},
+    "saved": {}
+   },
+   "scenario": {
+    "files": {},
+    "name": "an identifier that is not one: 32 lower-case digits",
+    "pool_id": "7E5754A0CCD246968E910BCD2A16DCF2"
+   }
+  },
+  {
+   "expected": {
+    "file": "pool-615fe0.bib",
+    "id": "../pool",
+    "paths": {},
+    "pulls": {},
+    "records": {},
+    "saved": {}
+   },
+   "scenario": {
+    "files": {},
+    "name": "a configuration without identifier",
+    "pool_id": null
+   }
+  },
+  {
+   "expected": {
+    "file": "pool-569371.bib",
+    "id": "7e5754a0ccd246968e910bcd2a16dcf2",
+    "paths": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": "$ROOT/pool"
+    },
+    "pulls": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": 7
+    },
+    "records": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": [
+      "a",
+      "b"
+     ]
+    },
+    "saved": {
+     "pool-569371.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 7}\n\n@comment{papers-pool-path $ROOT/pool}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n"
+    }
+   },
+   "scenario": {
+    "files": {
+     "pool-615fe0.bib": "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 7}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n"
+    },
+    "name": "a path id of the setting moves to the identifier",
+    "pool_id": "7e5754a0ccd246968e910bcd2a16dcf2"
+   }
+  },
+  {
+   "expected": {
+    "file": "pool-569371.bib",
+    "id": "7e5754a0ccd246968e910bcd2a16dcf2",
+    "paths": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": "$ROOT/pool"
+    },
+    "pulls": {
+     "../other": 3,
+     "7e5754a0ccd246968e910bcd2a16dcf2": 2
+    },
+    "records": {
+     "../other": [
+      "o"
+     ],
+     "7e5754a0ccd246968e910bcd2a16dcf2": [
+      "a",
+      "b",
+      "c",
+      "x"
+     ]
+    },
+    "saved": {
+     "d.bib": "@comment{papers-pool ../other}\n\n@comment{papers-pulled 3}\n\n@article{o,\n papers-pool-key = {O},\n title = {o}\n}\n",
+     "pool-569371.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 2}\n\n@comment{papers-pool-path $ROOT/pool}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n\n@article{c,\n papers-pool-key = {C},\n title = {c}\n}\n\n@article{x,\n papers-pool-key = {X},\n title = {x}\n}\n"
+    }
+   },
+   "scenario": {
+    "files": {
+     "a.bib": "@comment{papers-pool ../pool/}\n\n@comment{papers-pulled 1}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n\n@article{x,\n papers-pool-key = {X},\n title = {x}\n}\n",
+     "b.bib": "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 2}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n",
+     "c.bib": "@comment{papers-pool ../x/../pool}\n\n@article{c,\n papers-pool-key = {C},\n title = {c}\n}\n",
+     "d.bib": "@comment{papers-pool ../other}\n\n@comment{papers-pulled 3}\n\n@article{o,\n papers-pool-key = {O},\n title = {o}\n}\n"
+    },
+    "name": "every path id that designates the pool moves, the earlier one wins",
+    "pool_id": "7e5754a0ccd246968e910bcd2a16dcf2"
+   }
+  },
+  {
+   "expected": {
+    "file": "a.bib",
+    "id": "7e5754a0ccd246968e910bcd2a16dcf2",
+    "paths": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": "$ROOT/pool"
+    },
+    "pulls": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": 4
+    },
+    "records": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": [
+      "a",
+      "b"
+     ]
+    },
+    "saved": {
+     "pool-569371.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 4}\n\n@comment{papers-pool-path $ROOT/pool}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n"
+    }
+   },
+   "scenario": {
+    "files": {
+     "a.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 4}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n",
+     "b.bib": "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 5}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n"
+    },
+    "name": "the identifier has records already: they stay",
+    "pool_id": "7e5754a0ccd246968e910bcd2a16dcf2"
+   }
+  },
+  {
+   "expected": {
+    "file": "pool-569371.bib",
+    "id": "7e5754a0ccd246968e910bcd2a16dcf2",
+    "paths": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": "$ROOT/pool"
+    },
+    "pulls": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": 4
+    },
+    "records": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": [
+      "a"
+     ]
+    },
+    "saved": {
+     "pool-569371.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 4}\n\n@comment{papers-pool-path $ROOT/pool}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n"
+    }
+   },
+   "scenario": {
+    "files": {
+     "pool-569371.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 4}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n"
+    },
+    "name": "a file of the identifier without the path of the pool is written again under the folder name",
+    "pool_id": "7e5754a0ccd246968e910bcd2a16dcf2"
+   }
+  },
+  {
+   "expected": {
+    "file": "b.bib",
+    "id": "../pool",
+    "paths": {},
+    "pulls": {
+     "../pool": 2
+    },
+    "records": {
+     "../pool": [
+      "b"
+     ],
+     "../pool/": [
+      "a"
+     ]
+    },
+    "saved": {
+     "a.bib": "@comment{papers-pool ../pool/}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n",
+     "b.bib": "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 2}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n"
+    }
+   },
+   "scenario": {
+    "files": {
+     "a.bib": "@comment{papers-pool ../pool/}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n",
+     "b.bib": "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 2}\n\n@article{b,\n papers-pool-key = {B},\n title = {b}\n}\n"
+    },
+    "name": "no identifier: the first path id in sorted order",
+    "pool_id": null
+   }
+  },
+  {
+   "expected": {
+    "file": "a.bib",
+    "id": "../x/../pool",
+    "paths": {},
+    "pulls": {},
+    "records": {
+     "../x/../pool": [
+      "a"
+     ]
+    },
+    "saved": {
+     "a.bib": "@comment{papers-pool ../x/../pool}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n"
+    }
+   },
+   "scenario": {
+    "files": {
+     "a.bib": "@comment{papers-pool ../x/../pool}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n"
+    },
+    "name": "no identifier: a path id given with ~ and another way",
+    "pool_id": null
+   }
+  },
+  {
+   "expected": {
+    "file": "pool-569371.bib",
+    "id": "7e5754a0ccd246968e910bcd2a16dcf2",
+    "paths": {
+     "7e5754a0ccd246968e910bcd2a16dcf2": "$ROOT/pool"
+    },
+    "pulls": {
+     "../elsewhere": 1
+    },
+    "records": {
+     "../elsewhere": [
+      "a"
+     ]
+    },
+    "saved": {
+     "a.bib": "@comment{papers-pool ../elsewhere}\n\n@comment{papers-pulled 1}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n"
+    }
+   },
+   "scenario": {
+    "files": {
+     "a.bib": "@comment{papers-pool ../elsewhere}\n\n@comment{papers-pulled 1}\n\n@article{a,\n papers-pool-key = {A},\n title = {a}\n}\n"
+    },
+    "name": "the pool of another folder: its path id stays",
+    "pool_id": "7e5754a0ccd246968e910bcd2a16dcf2"
+   }
+  }
+ ],
  "matching": [
   {
    "expected": {
@@ -305,6 +556,338 @@
        [
         "title",
         "Pool title"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Old title"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": null,
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "pool1": "lib1"
+    },
+    "missing": [],
+    "removed": [
+     "lib1"
+    ],
+    "shared": []
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Library title"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the pool key was reused by another paper without identifiers: other authors",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Jones, Mary"
+       ],
+       [
+        "title",
+        "Another paper"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Old title"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": null,
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "pool1": "lib1"
+    },
+    "missing": [],
+    "removed": [
+     "lib1"
+    ],
+    "shared": []
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Library title"
+       ],
+       [
+        "year",
+        "2020"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the pool key was reused: the same authors, another year",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Pool title"
+       ],
+       [
+        "year",
+        "2021"
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Old title"
+       ],
+       [
+        "year",
+        "2020"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": "pool1",
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "pool1": "lib1"
+    },
+    "missing": [],
+    "removed": [],
+    "shared": [
+     "lib1"
+    ]
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Library title"
+       ],
+       [
+        "year",
+        "2020"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the title changed on both sides, the same authors and year (trimmed)",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, J. and Doe, J."
+       ],
+       [
+        "title",
+        "Pool title"
+       ],
+       [
+        "year",
+        " 2020 "
+       ]
+      ],
+      "key": "pool1",
+      "type": "article"
+     }
+    ],
+    "records": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Old title"
+       ],
+       [
+        "year",
+        "2020"
+       ],
+       [
+        "papers-pool-key",
+        "pool1"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ]
+   }
+  },
+  {
+   "expected": {
+    "entries": [
+     {
+      "key": "lib1",
+      "pool_key": null,
+      "record": "pool1"
+     }
+    ],
+    "library_entries": {
+     "pool1": "lib1"
+    },
+    "missing": [],
+    "removed": [
+     "lib1"
+    ],
+    "shared": []
+   },
+   "scenario": {
+    "library": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Library title"
+       ],
+       [
+        "year",
+        "2020"
+       ]
+      ],
+      "key": "lib1",
+      "type": "article"
+     }
+    ],
+    "name": "the title changed on both sides, the year changed in the pool",
+    "pool": [
+     {
+      "fields": [
+       [
+        "author",
+        "Smith, John and Doe, Jane"
+       ],
+       [
+        "title",
+        "Pool title"
+       ],
+       [
+        "year",
+        "2020"
+       ],
+       [
+        "note",
+        "x"
        ]
       ],
       "key": "pool1",
@@ -1173,6 +1756,48 @@
   "../ü-pool": "u-pool-f2f2c5.bib",
   "./sub": "sub-ec91bf.bib",
   "/abs/path/to/library": "library-cf2cd1.bib",
+  "named": [
+   [
+    "7e5754a0ccd246968e910bcd2a16dcf2",
+    null,
+    "pool-569371.bib"
+   ],
+   [
+    "7e5754a0ccd246968e910bcd2a16dcf2",
+    "/home/me/papers/shared-with-bob",
+    "shared-with-bob-569371.bib"
+   ],
+   [
+    "7e5754a0ccd246968e910bcd2a16dcf2",
+    "/x/My Pool/",
+    "my-pool-569371.bib"
+   ],
+   [
+    "7e5754a0ccd246968e910bcd2a16dcf2",
+    "/x/...",
+    "pool-569371.bib"
+   ],
+   [
+    "7e5754a0ccd246968e910bcd2a16dcf2",
+    "/x/../y/pool",
+    "pool-569371.bib"
+   ],
+   [
+    "../pool",
+    "/ignored/folder",
+    "folder-615fe0.bib"
+   ],
+   [
+    "7E5754A0CCD246968E910BCD2A16DCF2",
+    null,
+    "7e5754a0ccd246968e910bcd2a16dcf2-4d4e87.bib"
+   ],
+   [
+    "../pool",
+    null,
+    "pool-615fe0.bib"
+   ]
+  ],
   "pool": "pool-51a4b1.bib",
   "~/Documents/papers": "papers-e311da.bib"
  },
@@ -1283,6 +1908,219 @@
      "pulled",
      "../one",
      7
+    ]
+   ]
+  },
+  {
+   "files": {
+    "moved-pool-569371.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 77}\n\n@comment{papers-pool-path /data/papers/moved-pool}\n\n@article{a,\n papers-pool-key = {a1},\n papers-time = {$TIME},\n title = {A}\n}\n\n@article{b,\n file = {},\n papers-pool-key = {b1},\n papers-time = {$TIME},\n title = {B}\n}\n"
+   },
+   "ops": [
+    [
+     "set",
+     "a",
+     "../pool",
+     {
+      "ID": "a1",
+      "title": "A"
+     },
+     null
+    ],
+    [
+     "pulled",
+     "../pool",
+     77
+    ],
+    [
+     "save"
+    ],
+    [
+     "reload"
+    ],
+    [
+     "rename",
+     "../pool",
+     "7e5754a0ccd246968e910bcd2a16dcf2",
+     "/data/papers/pool"
+    ],
+    [
+     "set",
+     "b",
+     "7e5754a0ccd246968e910bcd2a16dcf2",
+     {
+      "ID": "b1",
+      "title": "B"
+     },
+     ""
+    ],
+    [
+     "save"
+    ],
+    [
+     "reload"
+    ],
+    [
+     "locate",
+     "7e5754a0ccd246968e910bcd2a16dcf2",
+     "/data/papers/moved-pool"
+    ]
+   ]
+  },
+  {
+   "files": {
+    "pool-569371.bib": "@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}\n\n@comment{papers-pulled 5}\n\n@comment{papers-pool-path /data/papers/pool}\n\n@article{a,\n papers-pool-key = {new},\n papers-time = {$TIME},\n title = {New}\n}\n\n@article{c,\n papers-pool-key = {c1},\n papers-time = {$TIME},\n title = {C}\n}\n"
+   },
+   "ops": [
+    [
+     "set",
+     "a",
+     "7e5754a0ccd246968e910bcd2a16dcf2",
+     {
+      "ID": "new",
+      "title": "New"
+     },
+     null
+    ],
+    [
+     "pulled",
+     "7e5754a0ccd246968e910bcd2a16dcf2",
+     5
+    ],
+    [
+     "set",
+     "a",
+     "../pool",
+     {
+      "ID": "old",
+      "title": "Old"
+     },
+     null
+    ],
+    [
+     "set",
+     "c",
+     "../pool",
+     {
+      "ID": "c1",
+      "title": "C"
+     },
+     null
+    ],
+    [
+     "pulled",
+     "../pool",
+     9
+    ],
+    [
+     "rename",
+     "../pool",
+     "7e5754a0ccd246968e910bcd2a16dcf2",
+     "/data/papers/pool"
+    ]
+   ]
+  },
+  {
+   "files": {
+    "one-abc0eb.bib": "@comment{papers-pool ../one}\n\n@article{b,\n papers-pool-key = {a1},\n papers-time = {$TIME},\n title = {A}\n}\n",
+    "two-5719f5.bib": "@comment{papers-pool ../two}\n"
+   },
+   "ops": [
+    [
+     "set",
+     "a",
+     "../one",
+     {
+      "ID": "a1",
+      "title": "A"
+     },
+     null
+    ],
+    [
+     "set",
+     "b",
+     "../one",
+     {
+      "ID": "b1",
+      "title": "B"
+     },
+     null
+    ],
+    [
+     "set",
+     "b",
+     "../two",
+     {
+      "ID": "b2",
+      "title": "B"
+     },
+     null
+    ],
+    [
+     "rekey",
+     "a",
+     "b"
+    ]
+   ]
+  },
+  {
+   "files": {
+    "pool-615fe0.bib": "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 5}\n\n@article{KEY,\n papers-pool-key = {B},\n title = {B}\n}\n\n@article{new,\n papers-pool-key = {n1},\n papers-time = {$TIME},\n title = {N}\n}\n\n@article{other,\n papers-pool-key = {O},\n title = {O}\n}\n",
+    "z.txt": "not an origin file"
+   },
+   "ops": [
+    [
+     "write",
+     "x.bib",
+     "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 5}\n\n@article{Key,\n papers-pool-key = {A},\n title = {A}\n}\n"
+    ],
+    [
+     "write",
+     "y.bib",
+     "@comment{papers-pool ../pool}\n\n@article{KEY,\n papers-pool-key = {B},\n title = {B}\n}\n\n@article{other,\n papers-pool-key = {O},\n title = {O}\n}\n"
+    ],
+    [
+     "write",
+     "z.txt",
+     "not an origin file"
+    ],
+    [
+     "reload"
+    ],
+    [
+     "set",
+     "new",
+     "../pool",
+     {
+      "ID": "n1",
+      "title": "N"
+     },
+     null
+    ]
+   ]
+  },
+  {
+   "files": {
+    "x.bib": "@comment{papers-pool ../pool}\n\n@article{a,\n ids = {old},\n papers-pool-key = {A},\n title = {A}\n}\n"
+   },
+   "ops": [
+    [
+     "write",
+     "x.bib",
+     "@comment{papers-pool ../pool}\n\n@article{a,\n ids = {old},\n papers-pool-key = {A},\n title = {A}\n}\n"
+    ],
+    [
+     "reload"
+    ],
+    [
+     "set",
+     "a",
+     "../pool",
+     {
+      "ID": "A",
+      "ids": "older",
+      "title": "A"
+     },
+     null
     ]
    ]
   },

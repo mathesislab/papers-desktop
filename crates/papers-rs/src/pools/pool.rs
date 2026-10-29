@@ -11,11 +11,13 @@ use crate::config::paths::{
 };
 use crate::config::{Config, library_config_file, not_a_library};
 use crate::error::{Error, Result};
-use crate::identity::{Distinct, Kind, Verdict, contradicts};
+use crate::identity::{Distinct, Identifiers, Kind, Verdict, contradicts};
 use crate::library::{Library, unreadable_message};
 use crate::lock::{self, Lock};
 use crate::log;
 use crate::merge::checksum_hex;
+
+use super::origin::{is_library_id, is_path_id};
 
 /// The error of the exchanges without a pool.
 pub const NO_POOL_MESSAGE: &str = "this library has no pool: give one with `--pool PATH`";
@@ -173,15 +175,19 @@ impl Pool {
     }
 
     /// The pool entry of key `key` (the pool key of an origin record) if its identifiers do not
-    /// contradict the origin copy: found this way when the title (the only identifier of entries
-    /// without DOI) changed on both sides.
+    /// contradict the origin copy and it has the same authors (normalized family names) and year:
+    /// found this way when the title (the only identifier of entries without DOI) changed on both
+    /// sides; another paper put under a reused key is not taken.
     pub fn by_key(&mut self, key: &str, origin: &Entry) -> Result<Option<u64>> {
         let Some(uid) = self.entry_of_key(key)? else {
             return Ok(None);
         };
         let library = self.library()?;
         let pe = library.entry_by_uid(uid).expect("the entry");
-        Ok((!contradicts(pe, origin)).then_some(uid))
+        let year = |e: &Entry| crate::entry::val(e, "year").trim().to_string();
+        let same = Identifiers::of(pe).author == Identifiers::of(origin).author
+            && year(pe) == year(origin);
+        Ok((!contradicts(pe, origin) && same).then_some(uid))
     }
 
     /// The pool entry of this DOI.
@@ -283,6 +289,35 @@ pub fn mtime(file: &str) -> Option<i128> {
     Some(meta.mtime() as i128 * 1_000_000_000 + meta.mtime_nsec() as i128)
 }
 
+/// The identifier of the library in directory `path` (the `id` of its configuration, 32 lower-case
+/// hexadecimal digits), or none: a configuration that cannot be read, or another `id`, counts as none.
+pub fn library_id(path: &str) -> Option<String> {
+    let file = library_config_file(path).ok()??;
+    let text = String::from_utf8(std::fs::read(file).ok()?).ok()?;
+    let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+    match crate::config::json::loads(text).ok()? {
+        serde_json::Value::Object(map) => map
+            .get("id")
+            .and_then(|v| v.as_str())
+            .filter(|id| is_library_id(id))
+            .map(str::to_string),
+        _ => None,
+    }
+}
+
+/// What finding the id of a pool tells the origin records (see [`Pools::id_of`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdEvent {
+    /// The records of the path id `from` move to the identifier `to` of the pool at `path`.
+    Moved {
+        from: String,
+        to: String,
+        path: String,
+    },
+    /// The pool of the identifier `id` is at `path`.
+    Located { id: String, path: String },
+}
+
 /// The pool of a library, or a library given with `--pool PATH`, has no pool itself: an exchange
 /// goes one level.
 pub fn check_poolless(pool: &Pool) -> std::result::Result<(), PoolError> {
@@ -303,6 +338,10 @@ pub struct Pools {
     list: Vec<Pool>,
     /// The pool ids of the origin records of the library (see [`Pools::set_known_ids`]).
     known_ids: Vec<String>,
+    /// What the ids found say to the origin records, until [`Pools::take_events`]; none unless
+    /// `moves` (`papers status` does not move the records).
+    events: Vec<IdEvent>,
+    moves: bool,
     /// The name of the command, for the locks of the pools.
     command: String,
     /// The command holds the lock of its library: it takes the lock of each pool before reading it.
@@ -315,9 +354,22 @@ impl Pools {
             config: config.clone(),
             list: Vec::new(),
             known_ids: Vec::new(),
+            events: Vec::new(),
+            moves: false,
             command: "papers".to_string(),
             locking: false,
         }
+    }
+
+    /// The records under a path id move to the identifier of the pool's library, in a command that
+    /// exchanges (see [`Pools::id_of`]).
+    pub fn move_records(&mut self) {
+        self.moves = true;
+    }
+
+    /// What the ids found since say to the origin records (the exchange applies them).
+    pub fn take_events(&mut self) -> Vec<IdEvent> {
+        std::mem::take(&mut self.events)
     }
 
     /// The pools are locked before they are read, by a command of this name (a command that
@@ -348,19 +400,50 @@ impl Pools {
         ids.dedup();
         self.known_ids = ids;
         for i in 0..self.list.len() {
-            let id = self.id_of(&self.list[i].path);
-            self.list[i].id = id;
+            let path = self.list[i].path.clone();
+            self.list[i].id = self.id_of(&path);
         }
     }
 
-    /// How the origin records name the pool in `path`: the id of its records if it has some, else
+    /// How the origin records name the pool in `path`: the identifier of the pool library (its `id`,
+    /// which stays when a library moves); the records under a path id that designates the pool (every
+    /// such id, in sorted order) move to it (see [`Pools::take_events`]). A pool without identifier (a
+    /// library of an earlier version that never recorded a step): the first path id of its records, else
     /// for the pool of the library its pool setting, else its path relative to the library.
-    pub fn id_of(&self, path: &str) -> String {
+    pub fn id_of(&mut self, path: &str) -> String {
+        let own_id = library_id(path);
         let libdir = self.libdir();
-        for id in &self.known_ids {
-            if realpath(&join(&libdir, &expanduser(id))) == realpath(path) {
-                return id.clone();
+        let formers: Vec<String> = self
+            .known_ids
+            .iter()
+            .filter(|id| {
+                Some(*id) != own_id.as_ref()
+                    && is_path_id(id)
+                    && realpath(&join(&libdir, &expanduser(id))) == realpath(path)
+            })
+            .cloned()
+            .collect();
+        if !formers.is_empty() && !self.moves {
+            return formers[0].clone(); // the records move at the next exchange (not with `papers status`)
+        }
+        if let Some(own_id) = own_id {
+            if self.moves {
+                for from in formers {
+                    self.events.push(IdEvent::Moved {
+                        from,
+                        to: own_id.clone(),
+                        path: path.to_string(),
+                    });
+                }
+                self.events.push(IdEvent::Located {
+                    id: own_id.clone(),
+                    path: path.to_string(),
+                });
             }
+            return own_id;
+        }
+        if let Some(former) = formers.into_iter().next() {
+            return former;
         }
         if let Some(own) = self.path()
             && realpath(&own) == realpath(path)

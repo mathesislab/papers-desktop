@@ -191,7 +191,7 @@ impl Session {
         }
         let name_from_library = self.config.source("name.template") == "library";
         let exchange = self.exchange();
-        let ix = exchange.pools.target()?;
+        let ix = exchange.target()?;
         let pool = exchange.pools.at(ix);
         let label = pool.label();
         let Some(filesdir) = pool.filesdir() else {
@@ -219,7 +219,7 @@ impl Session {
         self.exchange();
         let exchange = self.exchange.as_mut().expect("the exchange");
         let pool = match path {
-            Some(path) => Some(exchange.pools.get(path)?),
+            Some(path) => Some(exchange.get_pool(path)?),
             None => exchange.pools.pool(false),
         };
         self.lookup = pool.map(crate::pools::lookup::PoolLookup::new);
@@ -358,7 +358,7 @@ impl Session {
     ) -> Result<Option<Vec<Outcome>>> {
         let library = &mut self.library;
         let exchange = self.exchange.as_mut().expect("the exchange");
-        let pool = match exchange.pools.target() {
+        let pool = match exchange.target() {
             Ok(pool) => pool,
             Err(error) => {
                 log::warning(&format!("not pushed to the pool: {error}"));
@@ -543,7 +543,7 @@ impl Session {
         let keys: Vec<String> = self.library.entries().map(|e| e.key.clone()).collect();
         self.exchange();
         let exchange = self.exchange.as_mut().expect("the exchange");
-        let pool = match exchange.pools.target() {
+        let pool = match exchange.target() {
             Ok(pool) => pool,
             Err(error) => {
                 log::warning(&format!("not pushed to the pool: {error}"));

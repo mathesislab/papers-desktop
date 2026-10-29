@@ -126,6 +126,12 @@ impl Sandbox {
 
     fn normalize(&self, text: &str) -> String {
         let mut out = text.replace(&self.root, "$ROOT");
+        // the libraries have identifiers of their own (a pool id), and the origin files are named by a hash of it
+        for sub in ["lib", "pool"] {
+            if let Some(id) = self.library_id(sub) {
+                out = out.replace(&id, "$ID");
+            }
+        }
         for (key, placeholder) in [("papers-pulled ", "$N"), ("papers-time = {", "$T")] {
             let mut done = String::new();
             let mut rest = out.as_str();
@@ -142,14 +148,28 @@ impl Sandbox {
         out
     }
 
+    /// The identifier of a library (its `id`), once a command recorded a step in its history.
+    fn library_id(&self, sub: &str) -> Option<String> {
+        let config: serde_json::Value =
+            serde_json::from_str(&self.read(&format!("{sub}/.papers/config.json"))).ok()?;
+        config["id"].as_str().map(str::to_string)
+    }
+
     /// The records of the library: the files of `.papers/origin`, by name.
     fn records(&self) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
         if let Ok(read) = fs::read_dir(self.path("lib/.papers/origin")) {
             for e in read.flatten() {
                 let name = e.file_name().to_string_lossy().into_owned();
+                // `pool-0fea92.bib`: the hash is of the pool id
+                let shown = format!(
+                    "{}-$H.bib",
+                    name.trim_end_matches(".bib")
+                        .rsplit_once('-')
+                        .map_or("", |x| x.0)
+                );
                 out.insert(
-                    name.clone(),
+                    shown,
                     self.normalize(&self.read(&format!("lib/.papers/origin/{name}"))),
                 );
             }
@@ -273,13 +293,22 @@ fn what_one_records_the_other_reads() {
         .collect();
     assert_eq!(files.len(), 1, "{files:?}");
     let by_rs = fs::read_to_string(&files[0]).unwrap();
+    // the pool had no identifier at the first status (its id was its path), then it had (a push recorded a step)
     assert!(
         by_rs.starts_with("{\"../pool\": {\"library\": [\""),
         "{by_rs}"
     );
+    let id = s.library_id("pool").expect("the identifier of the pool");
+    let of_id = |text: &str| {
+        let at = text
+            .find(&format!("\"{id}\": "))
+            .expect("the pieces of the pool");
+        text[at..].to_string()
+    };
     fs::remove_file(&files[0]).unwrap();
     s.run(&papers, "lib", &["status"]);
-    assert_eq!(fs::read_to_string(&files[0]).unwrap(), by_rs);
+    let by_papers = fs::read_to_string(&files[0]).unwrap();
+    assert_eq!(by_papers, format!("{{{}", of_id(&by_rs)));
 }
 
 /// The undo of one program takes back the exchange of the other, in the library and in the pool.
@@ -304,4 +333,57 @@ fn an_undo_takes_back_the_exchange_of_the_other_program() {
         s.run(adds, "lib", &["redo"]);
         assert!(s.read("pool/papers.bib").contains("A fresh paper"));
     }
+}
+
+/// A file link that the pool removed: `status` says `pool changed`, a push does not add it back to the pool (the
+/// record keeps it), and the next pull removes it from the library, which then has no `file` field; the same by both.
+#[test]
+#[ignore = "needs the reference papers: PAPERS_REFERENCE=papers cargo test -p papers-rs-cli --test pools_interop -- --ignored"]
+fn a_link_that_the_pool_removed_is_not_pushed_back() {
+    let Some(papers) = reference() else { return };
+    let (a, b) = (Sandbox::new(), Sandbox::new());
+    for (s, program) in [(&a, papers.as_str()), (&b, RS)] {
+        s.run(program, "lib", &["pull", "--all"]);
+        assert!(
+            s.read("lib/papers.bib")
+                .contains("smith_doe_2020_a-title-of-a-paper.txt")
+        );
+        // the pool removes the link
+        s.write(
+            "pool/papers.bib",
+            &POOL.replace(
+                "doi = {10.1000/abc},",
+                "doi = {10.1000/abc},\n note = {pool note},",
+            ),
+        );
+    }
+    let steps: &[&[&str]] = &[
+        &["status"],
+        &["edit", "smith2020", "--set", "journal=Library Journal"],
+        &["status"],
+        &["push"],
+        &["status"],
+        &["pull", "--check"],
+        &["pull"],
+        &["status"],
+    ];
+    for step in steps {
+        let (x, y) = (a.says(&papers, "lib", step), b.says(RS, "lib", step));
+        assert_eq!(x, y, "papers {step:?}");
+    }
+    assert!(!a.read("pool/papers.bib").contains("smith_doe_2020"));
+    assert!(
+        !a.read("lib/papers.bib").contains("file = "),
+        "{}",
+        a.read("lib/papers.bib")
+    );
+    assert_eq!(a.records(), b.records());
+    assert_eq!(
+        a.normalize(&a.read("lib/papers.bib")),
+        b.normalize(&b.read("lib/papers.bib"))
+    );
+    assert_eq!(
+        a.normalize(&a.read("pool/papers.bib")),
+        b.normalize(&b.read("pool/papers.bib"))
+    );
 }

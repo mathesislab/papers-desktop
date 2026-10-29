@@ -101,14 +101,16 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   rm, check, fix, clean, checksum, and the actions of `papers list` on the files) are operations on a
   `Session`; the other writing commands use the same `Session`. Not yet: Google Scholar
   (`add --scholar`).
-- `pools`: the pools of a library (spec `exchange.md`). `pools::origin`: `.papers/origin/`, the records
-  of what was exchanged with each pool (the base of the next three-way merge), the pool ids and the names of
-  their files, the legacy `origin.bib`; `pools::pool`: the pool of a library and the libraries given by `--pool PATH`,
+- `pools`: the pools of a library (spec `exchange.md`). `pools::origin`: `.papers/origin/` (of the library folder), the records
+  of what was exchanged with each pool (the base of the next three-way merge, without `ids`), the pool ids (the
+  identifier of the pool's library; the records under a path id move to it, but not with `status`) and the names of
+  their files (after the pool folder, `papers-pool-path`; the files of one id are merged, the others removed at the
+  save), the legacy `origin.bib`; `pools::pool`: the pool of a library and the libraries given by `--pool PATH`,
   loaded when first used and locked with the library; `pools::exchange`: `Exchange`, the pool entry of a library
   entry (and the other way round), `pull`, `push`, the links of a shallow library, the repair of broken links to
   pool files, with the merge of `merge`; `pools::lookup`: `add` looks in the pool first; `pools::state`: the pool
-  line of `papers status` and `exchanges.json` (the pieces of the bibtex texts, so that only what changed is
-  compared).
+  line of `papers status` (it writes nothing in the library, repairs links in memory, sees entry types and entries removed
+  from the pool) and `exchanges.json` (the pieces of the bibtex texts, so that only what changed is compared).
 - `command::pool`: what a writing command does with the pool of a shallow library: the broken links repaired
   when it loads the library, the files placed in the pool (`Session::use_pool_files`), the **automatic push** at
   `Session::commit` (new entries always, changed ones with `auto-push`, the links that changed; conflicts are

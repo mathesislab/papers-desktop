@@ -23,7 +23,19 @@ fn expected() -> Value {
 #[test]
 fn the_file_of_the_records_of_a_pool() {
     for (id, name) in expected()["names"].as_object().unwrap() {
-        assert_eq!(origin_file_name(id), name.as_str().unwrap(), "{id:?}");
+        if id == "named" {
+            // a pool id with where the pool is
+            for case in name.as_array().unwrap() {
+                let (id, path, name) = (
+                    case[0].as_str().unwrap(),
+                    case[1].as_str(),
+                    case[2].as_str().unwrap(),
+                );
+                assert_eq!(origin_file_name(id, path), name, "{id:?} {path:?}");
+            }
+        } else {
+            assert_eq!(origin_file_name(id, None), name.as_str().unwrap(), "{id:?}");
+        }
     }
 }
 
@@ -64,6 +76,14 @@ fn the_records_written_for_a_sequence_of_operations() {
                 "remove" => origin.remove(s(1), s(2)),
                 "rekey" => origin.rekey(s(1), s(2)),
                 "pulled" => origin.set_pulled(s(1), Some(op[2].as_i64().unwrap() as i128)),
+                "locate" => origin.locate(s(1), s(2)),
+                "rename" => origin.rename_pool(s(1), s(2), Some(s(3))),
+                "save" => origin.save().unwrap(),
+                "reload" => origin = Origin::load(&path, false),
+                "write" => {
+                    fs::create_dir_all(&path).unwrap();
+                    fs::write(format!("{path}/{}", s(1)), s(2)).unwrap();
+                }
                 other => panic!("{other}"),
             }
         }
@@ -131,7 +151,7 @@ fn the_pool_entry_of_a_library_entry_and_the_entries_shared() {
         write("pool/papers.bib", &bibtex(&scenario["pool"]));
         if !scenario["records"].as_array().unwrap().is_empty() {
             write(
-                &format!("lib/.papers/origin/{}", origin_file_name("../pool")),
+                &format!("lib/.papers/origin/{}", origin_file_name("../pool", None)),
                 &format!(
                     "@comment{{papers-pool ../pool}}\n\n{}",
                     bibtex(&scenario["records"])
@@ -187,5 +207,109 @@ fn the_pool_entry_of_a_library_entry_and_the_entries_shared() {
             "missing": missing,
         });
         assert_eq!(got, case["expected"], "{name}");
+    }
+}
+
+/// The pool id of a pool, and what finding it does to the records (`expected/pools.json`, `ids`): the records of
+/// the path ids that designate the pool move to its library identifier, the pool is located, and the files are
+/// named after the folder of the pool; a pool without identifier keeps the path id of its records.
+#[test]
+fn the_pool_id_and_the_records_that_move_to_it() {
+    for case in expected()["ids"].as_array().unwrap() {
+        let scenario = &case["scenario"];
+        let name = scenario["name"].as_str().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(dir.path()).unwrap();
+        let write = |rel: &str, text: &str| {
+            let path = root.join(rel);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write(
+            "lib/.papers/config.json",
+            "{\"bibtex\": \"papers.bib\", \"filesdir\": \"files\", \"pool\": \"../pool\", \"version\": 3}",
+        );
+        let mut pool_config = serde_json::json!({"bibtex": "papers.bib", "filesdir": "files", "pool": "none", "version": 3});
+        if let Some(id) = scenario["pool_id"].as_str() {
+            pool_config["id"] = id.into();
+        }
+        write("pool/.papers/config.json", &pool_config.to_string());
+        write("lib/papers.bib", "");
+        write("pool/papers.bib", "");
+        fs::create_dir_all(root.join("lib/.papers/origin")).unwrap();
+        for (file, text) in scenario["files"].as_object().unwrap() {
+            write(
+                &format!("lib/.papers/origin/{file}"),
+                text.as_str().unwrap(),
+            );
+        }
+        let config = Config::load(
+            &root.join("lib/.papers/config.json").to_string_lossy(),
+            MachineConfig::empty(),
+            None,
+        )
+        .unwrap();
+        let mut exchange = Exchange::quiet(&config, false);
+        let pool = exchange.target().unwrap();
+        let id = exchange.pools.at(pool).id.clone();
+        let root_text = root.to_string_lossy().into_owned();
+        let fix = |text: &str| text.replace(&root_text, "$ROOT");
+        let mut records = serde_json::Map::new();
+        let mut pulls = serde_json::Map::new();
+        let mut paths = serde_json::Map::new();
+        let want_empty: Vec<&str> = case["expected"]["records"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .filter(|(_, v)| v.as_array().is_some_and(|a| a.is_empty()))
+            .map(|(k, _)| k.as_str())
+            .collect();
+        let mut ids = exchange.origin.pool_ids();
+        ids.insert(id.clone());
+        for pool_id in ids {
+            let keys: Vec<String> = exchange
+                .origin
+                .records(Some(&pool_id))
+                .into_iter()
+                .map(|r| r.key)
+                .collect();
+            let mut keys = keys;
+            keys.sort();
+            // papers has a pool without records only if its file was read: compare the pools with records
+            if !keys.is_empty() || want_empty.contains(&pool_id.as_str()) {
+                records.insert(pool_id.clone(), serde_json::json!(keys));
+            }
+            if let Some(n) = exchange.origin.pulled(&pool_id) {
+                pulls.insert(pool_id.clone(), serde_json::json!(n as i64));
+            }
+            if let Some(path) = exchange.origin.path_of(&pool_id) {
+                paths.insert(pool_id.clone(), fix(path).into());
+            }
+        }
+        let file =
+            fix(&exchange.origin.file_of(&id).unwrap()).replace("$ROOT/lib/.papers/origin/", "");
+        exchange.origin.save().unwrap();
+        let mut saved = serde_json::Map::new();
+        for e in fs::read_dir(root.join("lib/.papers/origin"))
+            .unwrap()
+            .flatten()
+        {
+            let text = fs::read_to_string(e.path()).unwrap();
+            saved.insert(
+                e.file_name().to_string_lossy().into_owned(),
+                fix(&untimed(&text)).into(),
+            );
+        }
+        let got = serde_json::json!({
+            "id": id, "records": records, "pulls": pulls, "paths": paths, "file": file, "saved": saved,
+        });
+        let mut want = case["expected"].clone();
+        // the times of the records, which differ from one run to the next
+        if let Some(saved) = want["saved"].as_object_mut() {
+            for text in saved.values_mut() {
+                *text = fix(&untimed(text.as_str().unwrap())).into();
+            }
+        }
+        assert_eq!(got, want, "{name}");
     }
 }

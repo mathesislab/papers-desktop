@@ -1,6 +1,9 @@
 //! How a library stands with its pool, for `papers status` (`papers.pools.status_line`,
 //! `exchange_state`; spec `exchange.md` section 14): the line of the pool and the hint for the last line.
 //!
+//! `status` writes nothing in the library (no origin file, no bibtex, no history step): the records stay
+//! under their path id, and it repairs the broken links to pool files in memory, as a pull finds them.
+//!
 //! To avoid comparing every entry, the pieces of the library's bibtex, of the pool's bibtex and of
 //! the origin file, as `status` last found them in sync, are kept in `exchanges.json` in the history
 //! folder of the library (section 14.4); only the entries in the pieces that changed since are compared.
@@ -14,12 +17,9 @@ use crate::config::{Config, write_atomic};
 use crate::error::Result;
 use crate::history::History;
 use crate::history::store::piece_digests;
-use crate::library::Library;
 use crate::merge::Merge;
-use crate::names::{Format, FormatKind};
 
 use super::exchange::{Exchange, exchange_copy};
-use super::origin::origin_file_name;
 use super::pool::PoolIx;
 
 /// The colours of the note of a pool line (empty strings without colours).
@@ -36,7 +36,7 @@ fn hint(state: &str) -> Option<&'static str> {
         "library changed" => "`papers push --dry-run` shows the changes, `papers push` sends them",
         "both changed" => "`papers sync --dry-run` shows the changes, `papers sync` exchanges them",
         "not pulled from yet" => "`papers pull` takes the entries shared with the pool",
-        "never pulled" => "`papers pull` takes the changes of the pool",
+        "not pulled in full yet" => "`papers pull` takes the changes of the pool",
         _ => return None,
     })
 }
@@ -101,11 +101,105 @@ fn read_text(path: Option<&str>) -> String {
         .unwrap_or_default()
 }
 
+/// The pairs of a JSON object in the order they are in the text (as Python's dictionaries keep them): the
+/// key, and the text of the value as a value of `loads`. Empty if the text is not an object.
+fn ordered_pairs(text: &str) -> Vec<(String, serde_json::Value)> {
+    let chars: Vec<char> = text.chars().collect();
+    if loads(text).is_err() {
+        return Vec::new();
+    }
+    let mut at = 0;
+    let skip = |at: &mut usize| {
+        while *at < chars.len() && chars[*at].is_whitespace() {
+            *at += 1;
+        }
+    };
+    // the end of the JSON string that starts at `at` (the closing quote)
+    let string_end = |at: usize| {
+        let mut i = at + 1;
+        while i < chars.len() && chars[i] != '"' {
+            i += if chars[i] == '\\' { 2 } else { 1 };
+        }
+        i
+    };
+    skip(&mut at);
+    if chars.get(at) != Some(&'{') {
+        return Vec::new();
+    }
+    at += 1;
+    let mut pairs: Vec<(String, serde_json::Value)> = Vec::new();
+    loop {
+        skip(&mut at);
+        if chars.get(at) != Some(&'"') {
+            break; // the closing brace
+        }
+        let end = string_end(at);
+        let key_text: String = chars[at..=end].iter().collect();
+        let Ok(serde_json::Value::String(key)) = loads(&key_text) else {
+            return Vec::new();
+        };
+        at = end + 1;
+        skip(&mut at);
+        at += 1; // the colon
+        skip(&mut at);
+        let start = at;
+        let mut depth = 0;
+        while at < chars.len() {
+            match chars[at] {
+                '"' => at = string_end(at),
+                '{' | '[' => depth += 1,
+                '}' | ']' if depth > 0 => depth -= 1,
+                ',' | '}' if depth == 0 => break,
+                _ => {}
+            }
+            at += 1;
+        }
+        let raw: String = chars[start..at].iter().collect();
+        let Ok(value) = loads(&raw) else {
+            return Vec::new();
+        };
+        match pairs.iter_mut().find(|(k, _)| *k == key) {
+            Some(pair) => pair.1 = value,
+            None => pairs.push((key, value)),
+        }
+        skip(&mut at);
+        if chars.get(at) == Some(&',') {
+            at += 1;
+        }
+    }
+    pairs
+}
+
+/// A key's value set in a list of pairs: in place if the key is there, else at the end.
+fn set_in_order(pairs: &mut Vec<(String, String)>, key: String, value: String) {
+    match pairs.iter_mut().find(|(k, _)| *k == key) {
+        Some(pair) => pair.1 = value,
+        None => pairs.push((key, value)),
+    }
+}
+
+/// The pieces of a pool as they are written: `library`, `pool`, `origin` in this order.
+fn dump_pieces(value: &serde_json::Value) -> String {
+    if let serde_json::Value::Object(map) = value
+        && map.len() == 3
+        && let (Some(library), Some(pool), Some(origin)) =
+            (map.get("library"), map.get("pool"), map.get("origin"))
+    {
+        let dump = crate::config::json::dumps_compact;
+        return format!(
+            "{{\"library\": {}, \"pool\": {}, \"origin\": {}}}",
+            dump(library),
+            dump(pool),
+            dump(origin)
+        );
+    }
+    crate::config::json::dumps_compact(value)
+}
+
 /// The pieces of the library, its pool and its origin file for that pool, when status last found them
 /// in sync: a piece that did not change on any side holds entries still in sync.
 struct Pieces {
     path: Option<String>,
-    id: String,
     /// side -> digest -> piece
     now: BTreeMap<&'static str, BTreeMap<String, String>>,
     then: Option<serde_json::Map<String, serde_json::Value>>,
@@ -147,18 +241,22 @@ impl Pieces {
                 serde_json::Value::Object(map) => Some(map),
                 _ => None,
             });
-        Pieces {
-            path,
-            id: id.to_string(),
-            now,
-            then,
-        }
+        Pieces { path, now, then }
     }
 
     /// `(keys of the library, keys of the pool)` of the entries in pieces that changed since, or none (not
     /// known: compare everything).
     fn changed(&self) -> Option<(BTreeSet<String>, BTreeSet<String>)> {
         let then = self.then.as_ref()?;
+        // pieces gone from the pool (an entry removed): their keys are not known
+        let pool_then: BTreeSet<&str> = then
+            .get("pool")
+            .and_then(|v| v.as_array())
+            .map(|a| a.iter().filter_map(|x| x.as_str()).collect())
+            .unwrap_or_default();
+        if pool_then.iter().any(|d| !self.now["pool"].contains_key(*d)) {
+            return None;
+        }
         let new = |side: &str| -> Vec<&str> {
             let known: BTreeSet<&str> = then
                 .get(side)
@@ -176,30 +274,30 @@ impl Pieces {
         Some((library, pool))
     }
 
-    /// After status found the library and the pool in sync.
-    fn save(&mut self, origin_path: Option<&str>) -> Result<()> {
+    /// After status found the library and the pool in sync (`id`: the id of the pool now).
+    fn save(&mut self, origin_path: Option<&str>, id: &str) -> Result<()> {
         let Some(path) = self.path.clone() else {
             return Ok(());
         };
         self.now
             .insert("origin", pieces_of(&read_text(origin_path)));
-        // the pools already there, then this one
-        let mut data: BTreeMap<String, String> = BTreeMap::new();
+        // the pools already there (in the order of the file), then this one
+        let mut data: Vec<(String, String)> = Vec::new();
         if let Some(text) = std::fs::read(&path)
             .ok()
             .and_then(|b| String::from_utf8(b).ok())
-            && let Ok(serde_json::Value::Object(map)) = loads(&text)
         {
-            for (id, value) in map {
-                data.insert(id, crate::config::json::dumps_compact(&value));
+            for (pool, value) in ordered_pairs(&text) {
+                set_in_order(&mut data, pool, dump_pieces(&value));
             }
         }
         let side = |name: &str| -> String {
             let digests: Vec<String> = self.now[name].keys().map(|d| quote(d)).collect();
             format!("[{}]", digests.join(", "))
         };
-        data.insert(
-            self.id.clone(),
+        set_in_order(
+            &mut data,
+            id.to_string(),
             format!(
                 "{{\"library\": {}, \"pool\": {}, \"origin\": {}}}",
                 side("library"),
@@ -251,7 +349,7 @@ pub fn exchange_state(
     config: &Config,
     path: &str,
 ) -> std::result::Result<(String, Option<String>), crate::pools::PoolError> {
-    let mut exchange = Exchange::quiet(config, false);
+    let mut exchange = Exchange::for_status(config);
     let pool = exchange.pools.resolve(path, None)?;
     compare(config, &mut exchange, pool)
         .map_err(|e| crate::pools::PoolError(e.message().to_string()))
@@ -263,21 +361,17 @@ fn compare(
     pool: PoolIx,
 ) -> Result<(String, Option<String>)> {
     let first = exchange.pool_state(pool);
-    if first == "not pulled from yet" || first == "never pulled" {
+    if first == "not pulled from yet" || first == "not pulled in full yet" {
         return Ok((first.to_string(), hint(first).map(str::to_string)));
     }
     let in_sync = || Ok(("in sync".to_string(), None));
-    let Some(bibtex) = config.bibtex.clone().filter(|b| isfile(b)) else {
+    if !config.bibtex.as_deref().is_some_and(isfile) {
         return in_sync();
-    };
+    }
     let id = exchange.pools.at(pool).id.clone();
     let mtime = exchange.pools.at(pool).bibtex_mtime();
     let moved = exchange.origin.pulled(&id) != mtime;
-    let origin_path = exchange
-        .origin
-        .dir
-        .as_ref()
-        .map(|d| join(d, &origin_file_name(&id)));
+    let origin_path = exchange.origin.file_of(&id);
     let pool_bibtex = exchange.pools.at(pool).config.bibtex.clone();
     let mut pieces = Pieces::new(config, pool_bibtex.as_deref(), origin_path.as_deref(), &id);
     let changed = pieces.changed();
@@ -286,22 +380,15 @@ fn compare(
         && b.is_empty()
     {
         // no piece changed on any side since status found them in sync
-        if moved {
-            exchange.origin.set_pulled(&id, mtime);
-            exchange.origin.save()?;
-            pieces.save(origin_path.as_deref())?;
-        }
         return in_sync();
     }
-    let library = Library::load(
-        &bibtex,
-        config.filesdir.as_deref(),
-        None,
-        Format::from_config(config, FormatKind::Name),
-        Format::from_config(config, FormatKind::Key),
-    )?;
-    let keys: Vec<String> = library.entries().map(|e| e.key.clone()).collect();
+    // the library as pull finds it: the broken links to pool files repaired (in memory)
+    let library = crate::command::pool::load_library(config)?;
+    // the records of a path id move to the identifier of the pool, in memory only: nothing is saved
+    exchange.begin_moves();
+    let id = exchange.pools.at(pool).id.clone();
     let pool_relative = exchange.pools.at_mut(pool).library()?.relative_to.clone();
+    let keys: Vec<String> = library.entries().map(|e| e.key.clone()).collect();
     let (mut pool_changed, mut library_changed) = (false, false);
     for key in keys {
         let Some(e) = library.get(&key).cloned() else {
@@ -316,7 +403,10 @@ fn compare(
         {
             continue; // in pieces that changed on no side since they were in sync
         }
-        if !moved && fields(&e) == fields(&record.entry) {
+        if !moved
+            && fields(&e) == fields(&record.entry)
+            && e.entry_type.to_lowercase() == record.entry.entry_type.to_lowercase()
+        {
             continue; // neither side changed (the pool file did not change)
         }
         let (pe, record) = exchange.pool_entry(&library, pool, &e)?;
@@ -344,12 +434,7 @@ fn compare(
         {
             pool_changed = true;
         }
-        let outgoing = exchange_copy(
-            &e,
-            &library.relative_to,
-            &pool_relative,
-            Some(&pool_entry.key),
-        );
+        let outgoing = exchange.outgoing(&library, &e, pool, pe, Some(&record))?;
         let mut base = record.entry.clone();
         base.key = pool_entry.key.clone();
         let pushed = Merge::exchange(
@@ -376,10 +461,6 @@ fn compare(
         };
         return Ok((state.to_string(), hint(state).map(str::to_string)));
     }
-    if moved {
-        exchange.origin.set_pulled(&id, mtime);
-        exchange.origin.save()?;
-    }
-    pieces.save(origin_path.as_deref())?;
+    pieces.save(origin_path.as_deref(), &id)?;
     in_sync()
 }

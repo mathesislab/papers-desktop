@@ -65,8 +65,8 @@ pub fn prepare(session: &mut Session, args: &ExchangeArgs) -> Result<()> {
 fn source(session: &mut Session, args: &ExchangeArgs) -> Result<PoolIx> {
     let exchange = session.exchange();
     match &args.pool {
-        Some(path) => exchange.pools.get(path),
-        None => exchange.pools.target(),
+        Some(path) => exchange.get_pool(path),
+        None => exchange.target(),
     }
     .map_err(stopped)
 }

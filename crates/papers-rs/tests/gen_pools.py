@@ -4,9 +4,14 @@
 The origin records of a library and how the exchanges match the entries of a library and of its
 pool (`papers.pools`, spec `exchange.md` sections 2.3, 3 and 4):
 
-  names     the file of the origin records of a pool id
+  names     the file of the origin records of a pool id (and of the folder of the pool, for a library identifier)
   origin    sequences of operations on the records (`Origin.set`, `set_files`, `remove`, `rekey`,
-            `set_pulled`) and the files that `Origin.save` writes (the times of the records aside)
+            `set_pulled`, `locate`, `rename_pool`, a save and a reload, files written by hand) and the files
+            that `Origin.save` writes (the times of the records aside)
+  ids       the pool id of a pool (its library identifier, or the path id of its records, or its setting), and what
+            finding it does to the records (the records of the path ids move to the identifier, `rename_pool`;
+            the pool is located, `locate`), saved
+
   matching  for libraries made of a bibtex, the bibtex of the pool, origin records and pairs that are
             not the same paper: the pool entry of each library entry and its record (`pool_entry`),
             the entries shared with the pool and those removed from it (`sharing`), the library entry
@@ -47,8 +52,16 @@ IDS = ['../pool', '../pool/', '../x/../pool', '~/Documents/papers', '../shared-w
        '../' + 'long' * 30]
 
 
+IDENT = '7e5754a0ccd246968e910bcd2a16dcf2'
+# (pool id, where the pool is)
+NAMED = [(IDENT, None), (IDENT, '/home/me/papers/shared-with-bob'), (IDENT, '/x/My Pool/'), (IDENT, '/x/...'),
+         (IDENT, '/x/../y/pool'), ('../pool', '/ignored/folder'), (IDENT.upper(), None), ('../pool', None)]
+
+
 def names():
-    return {i: origin_file_name(i) for i in IDS}
+    out = {i: origin_file_name(i) for i in IDS}
+    out['named'] = [[i, p, origin_file_name(i, p)] for i, p in NAMED]
+    return out
 
 
 def entry(key, fields, type='article'):
@@ -79,6 +92,41 @@ OPS = [
      ['set', 'a', '../one', {'ID': 'a1', 'title': 'A'}, ':y:pdf'],
      ['set', 'a', '../one', {'ID': 'a1', 'title': 'A2'}, ':y:pdf'],
      ['pulled', '../two', 5], ['pulled', '../one', 7]],
+    # the records of a pool id move to its identifier, the pool is located; the file of the path id goes
+    [['set', 'a', '../pool', {'ID': 'a1', 'title': 'A'}, None],
+     ['pulled', '../pool', 77],
+     ['save'],
+     ['reload'],
+     ['rename', '../pool', IDENT, '/data/papers/pool'],
+     ['set', 'b', IDENT, {'ID': 'b1', 'title': 'B'}, ''],
+     ['save'],
+     ['reload'],
+     ['locate', IDENT, '/data/papers/moved-pool']],
+    # a record of the identifier stays when the path id has one of the same key; its time too
+    [['set', 'a', IDENT, {'ID': 'new', 'title': 'New'}, None],
+     ['pulled', IDENT, 5],
+     ['set', 'a', '../pool', {'ID': 'old', 'title': 'Old'}, None],
+     ['set', 'c', '../pool', {'ID': 'c1', 'title': 'C'}, None],
+     ['pulled', '../pool', 9],
+     ['rename', '../pool', IDENT, '/data/papers/pool']],
+    # a key renamed onto the key of a record that a removed entry left: replaced, or dropped
+    [['set', 'a', '../one', {'ID': 'a1', 'title': 'A'}, None],
+     ['set', 'b', '../one', {'ID': 'b1', 'title': 'B'}, None],
+     ['set', 'b', '../two', {'ID': 'b2', 'title': 'B'}, None],
+     ['rekey', 'a', 'b']],
+    # two files of one pool id are merged (the last read wins), and the files other than its own are removed
+    [['write', 'x.bib', '@comment{papers-pool ../pool}\n\n@comment{papers-pulled 5}\n\n'
+                        '@article{Key,\n papers-pool-key = {A},\n title = {A}\n}\n'],
+     ['write', 'y.bib', '@comment{papers-pool ../pool}\n\n@article{KEY,\n papers-pool-key = {B},\n title = {B}\n}\n\n'
+                        '@article{other,\n papers-pool-key = {O},\n title = {O}\n}\n'],
+     ['write', 'z.txt', 'not an origin file'],
+     ['reload'],
+     ['set', 'new', '../pool', {'ID': 'n1', 'title': 'N'}, None]],
+    # records with ids (of an earlier build): not part of the base, and not kept in a record that is set again
+    [['write', 'x.bib', '@comment{papers-pool ../pool}\n\n@article{a,\n ids = {old},\n papers-pool-key = {A},\n'
+                        ' title = {A}\n}\n'],
+     ['reload'],
+     ['set', 'a', '../pool', {'ID': 'A', 'title': 'A', 'ids': 'older'}, None]],
     # unicode, braces, long values, the key case
     [['set', 'Müller2019', '../p', {'ID': 'mueller', 'title': 'Über {Ice}', 'author': 'Müller, Hans and Doe, Jane',
                                     'abstract': 'x ' * 200}, ''],
@@ -89,10 +137,23 @@ OPS = [
 
 def run_ops(ops):
     d = tempfile.mkdtemp(dir=TMP)
-    origin = Origin(os.path.join(d, 'origin'))
+    folder = os.path.join(d, 'origin')
+    origin = Origin(folder)
     for op in ops:
         kind = op[0]
-        if kind == 'set':
+        if kind == 'save':
+            origin.save()
+        elif kind == 'reload':
+            origin = Origin.load(folder)
+        elif kind == 'write':
+            os.makedirs(folder, exist_ok=True)
+            with open(os.path.join(folder, op[1]), 'w') as f:
+                f.write(op[2])
+        elif kind == 'locate':
+            origin.locate(op[1], op[2])
+        elif kind == 'rename':
+            origin.rename_pool(op[1], op[2], op[3])
+        elif kind == 'set':
             _, key, pool, fields, files = op
             origin.set(key, pool, entry(fields.pop('ID'), fields), files=files)
         elif kind == 'set_files':
@@ -142,6 +203,22 @@ SCENARIOS = [
     {'name': 'the title changed on both sides: found by the pool key',
      'library': [e('lib1', A, ('title', 'Library title'))],
      'pool': [e('pool1', A, ('title', 'Pool title'))],
+     'records': [e('lib1', A, ('title', 'Old title'), ('papers-pool-key', 'pool1'))]},
+    {'name': 'the pool key was reused by another paper without identifiers: other authors',
+     'library': [e('lib1', A, ('title', 'Library title'))],
+     'pool': [e('pool1', ('author', 'Jones, Mary'), ('title', 'Another paper'))],
+     'records': [e('lib1', A, ('title', 'Old title'), ('papers-pool-key', 'pool1'))]},
+    {'name': 'the pool key was reused: the same authors, another year',
+     'library': [e('lib1', A, ('title', 'Library title'), ('year', '2020'))],
+     'pool': [e('pool1', A, ('title', 'Pool title'), ('year', '2021'))],
+     'records': [e('lib1', A, ('title', 'Old title'), ('year', '2020'), ('papers-pool-key', 'pool1'))]},
+    {'name': 'the title changed on both sides, the same authors and year (trimmed)',
+     'library': [e('lib1', A, ('title', 'Library title'), ('year', '2020'))],
+     'pool': [e('pool1', ('author', 'Smith, J. and Doe, J.'), ('title', 'Pool title'), ('year', ' 2020 '))],
+     'records': [e('lib1', A, ('title', 'Old title'), ('year', '2020'), ('papers-pool-key', 'pool1'))]},
+    {'name': 'the title changed on both sides, the year changed in the pool',
+     'library': [e('lib1', A, ('title', 'Library title'), ('year', '2020'))],
+     'pool': [e('pool1', A, ('title', 'Pool title'), ('year', '2020'), ('note', 'x'))],
      'records': [e('lib1', A, ('title', 'Old title'), ('papers-pool-key', 'pool1'))]},
     {'name': 'the pool key was reused by another paper',
      'library': [e('lib1', ('title', 'A'), ('doi', '10.1/a'))],
@@ -220,8 +297,78 @@ def matching(scenario):
             'library_entries': library_entries, 'missing': [x.key for x in exchange.missing(pool)]}
 
 
+# the pool id: scenarios (the identifier of the pool, the setting of the library, the files of .papers/origin)
+RECORD = '@article{{{key},\n papers-pool-key = {{{pool_key}}},\n title = {{{key}}}\n}}\n'
+
+
+def origin_file(pool_id, *records, pulled=None, path=None):
+    text = f'@comment{{papers-pool {pool_id}}}\n\n'
+    if pulled is not None:
+        text += f'@comment{{papers-pulled {pulled}}}\n\n'
+    if path is not None:
+        text += f'@comment{{papers-pool-path {path}}}\n\n'
+    return text + '\n'.join(RECORD.format(key=k, pool_key=k.upper()) for k in records)
+
+
+ID_SCENARIOS = [
+    {'name': 'an identifier, no records', 'pool_id': IDENT, 'files': {}},
+    {'name': 'an identifier that is not one: 32 lower-case digits', 'pool_id': IDENT.upper(), 'files': {}},
+    {'name': 'a configuration without identifier', 'pool_id': None, 'files': {}},
+    {'name': 'a path id of the setting moves to the identifier', 'pool_id': IDENT,
+     'files': {'pool-615fe0.bib': origin_file('../pool', 'a', 'b', pulled=7)}},
+    {'name': 'every path id that designates the pool moves, the earlier one wins', 'pool_id': IDENT,
+     'files': {'a.bib': origin_file('../pool/', 'a', 'x', pulled=1), 'b.bib': origin_file('../pool', 'a', 'b', pulled=2),
+               'c.bib': origin_file('../x/../pool', 'c'), 'd.bib': origin_file('../other', 'o', pulled=3)}},
+    {'name': 'the identifier has records already: they stay', 'pool_id': IDENT,
+     'files': {'a.bib': origin_file(IDENT, 'a', pulled=4), 'b.bib': origin_file('../pool', 'a', 'b', pulled=5)}},
+    {'name': 'a file of the identifier without the path of the pool is written again under the folder name',
+     'pool_id': IDENT, 'files': {'pool-569371.bib': origin_file(IDENT, 'a', pulled=4)}},
+    {'name': 'no identifier: the first path id in sorted order', 'pool_id': None,
+     'files': {'a.bib': origin_file('../pool/', 'a'), 'b.bib': origin_file('../pool', 'b', pulled=2)}},
+    {'name': 'no identifier: a path id given with ~ and another way', 'pool_id': None,
+     'files': {'a.bib': origin_file('../x/../pool', 'a')}},
+    {'name': 'the pool of another folder: its path id stays', 'pool_id': IDENT,
+     'files': {'a.bib': origin_file('../elsewhere', 'a', pulled=1)}},
+]
+
+
+def pool_ids(scenario):
+    d = tempfile.mkdtemp(dir=TMP)
+    config = {'bibtex': 'papers.bib', 'filesdir': 'files', 'pool': '../pool', 'version': 3}
+    pool_config = {'bibtex': 'papers.bib', 'filesdir': 'files', 'pool': 'none', 'version': 3}
+    if scenario['pool_id'] is not None:
+        pool_config['id'] = scenario['pool_id']
+    for sub, cfg in [('lib', config), ('pool', pool_config)]:
+        os.makedirs(os.path.join(d, sub, '.papers'))
+        json.dump(cfg, open(os.path.join(d, sub, '.papers', 'config.json'), 'w'))
+        open(os.path.join(d, sub, 'papers.bib'), 'w').write('')
+    os.makedirs(os.path.join(d, 'lib', '.papers', 'origin'))
+    for name, text in scenario['files'].items():
+        open(os.path.join(d, 'lib', '.papers', 'origin', name), 'w').write(text)
+    c = Config.load(os.path.join(d, 'lib', '.papers', 'config.json'), machine=MachineConfig())
+    exchange = Exchange(c, get_biblio(c))
+    pool = exchange.pools.target()
+    origin = exchange.origin
+    root = [os.path.realpath(d), d]
+
+    def fix(text):
+        for r in root:
+            text = text.replace(r, '$ROOT')
+        return text
+    out = {'id': pool.id,
+           'records': {i: sorted(r) for i, r in origin.entries.items()},
+           'pulls': dict(origin.pulls),
+           'paths': {i: fix(p) for i, p in origin.paths.items()},
+           'file': fix(origin.file_of(pool.id)).replace('$ROOT/lib/.papers/origin/', '')}
+    origin.save()
+    out['saved'] = {n: fix(t) for n, t in origin_texts(origin.dir).items()}
+    return out
+
+
 def main():
-    out = {'names': names(), 'origin': [], 'matching': []}
+    out = {'names': names(), 'origin': [], 'matching': [], 'ids': []}
+    for s in ID_SCENARIOS:
+        out['ids'].append({'scenario': s, 'expected': pool_ids(s)})
     for ops in OPS:
         out['origin'].append({'ops': ops, 'files': run_ops(sets(ops))})
     for s in SCENARIOS:

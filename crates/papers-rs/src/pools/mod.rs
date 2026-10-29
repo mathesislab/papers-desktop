@@ -18,5 +18,8 @@ pub mod pool;
 pub mod state;
 
 pub use exchange::{Exchange, Outcome, Relinks, Repaired, What, exchange_copy, removed_note};
-pub use origin::{Origin, Record, origin_file_name};
-pub use pool::{NO_POOL_MESSAGE, Pool, PoolError, PoolIx, Pools, check_poolless, pool_files_dir};
+pub use origin::{Origin, Record, is_library_id, is_path_id, origin_file_name};
+pub use pool::{
+    IdEvent, NO_POOL_MESSAGE, Pool, PoolError, PoolIx, Pools, check_poolless, library_id,
+    pool_files_dir,
+};

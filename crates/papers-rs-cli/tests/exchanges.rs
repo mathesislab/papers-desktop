@@ -98,8 +98,11 @@ fn status_records_the_pieces_of_the_texts_it_found_in_sync() {
     assert!(s.ok("lib", &["status", "--no-check-files"]).contains("../pool (in sync)\n"));
     let json = s.exchanges_json().expect("written");
     let origin_file = fs::read_dir(s.path("lib/.papers/origin")).unwrap().flatten().next().unwrap().path();
+    // the pool is named by the identifier of its library
+    let config: serde_json::Value = serde_json::from_str(&s.read("pool/.papers/config.json")).unwrap();
+    let id = config["id"].as_str().expect("the pool has an identifier").to_string();
     let want = format!(
-        "{{\"../pool\": {{\"library\": {}, \"pool\": {}, \"origin\": {}}}}}",
+        "{{\"{id}\": {{\"library\": {}, \"pool\": {}, \"origin\": {}}}}}",
         list(&sorted_digests(&s.read("lib/papers.bib"))),
         list(&sorted_digests(&s.read("pool/papers.bib"))),
         list(&sorted_digests(&fs::read_to_string(origin_file).unwrap())),

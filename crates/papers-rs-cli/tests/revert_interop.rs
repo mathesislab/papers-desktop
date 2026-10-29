@@ -78,14 +78,22 @@ impl Sandbox {
         let projects = self.path("history/projects");
         for project in fs::read_dir(&projects).into_iter().flatten().flatten() {
             let id = project.file_name().to_string_lossy().into_owned();
-            for state in fs::read_dir(project.path().join("states")).into_iter().flatten().flatten() {
+            for state in fs::read_dir(project.path().join("states"))
+                .into_iter()
+                .flatten()
+                .flatten()
+            {
                 let name = state.file_name().to_string_lossy().into_owned();
                 let Some(n) = name.strip_suffix(".json").filter(|n| n.len() == 64) else {
                     continue;
                 };
                 let text = fs::read_to_string(state.path()).unwrap_or_default();
                 let value: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
-                found.push((value["time"].as_f64().unwrap_or(0.0), id.clone(), n.to_string()));
+                found.push((
+                    value["time"].as_f64().unwrap_or(0.0),
+                    id.clone(),
+                    n.to_string(),
+                ));
             }
         }
         found.sort_by(|a, b| a.0.total_cmp(&b.0));
@@ -247,7 +255,7 @@ impl Sandbox {
             out.push(chars[i]);
             i += 1;
         }
-        out
+        hide_origin_hashes(&out)
     }
 
     /// Every file of the sandbox, as text, with the times, the places and the identifiers normalized. The objects
@@ -356,6 +364,26 @@ impl Sandbox {
         }
         tree
     }
+}
+
+/// The names of the origin files, `.papers/origin/pool-776acf.bib`, have the hash of the pool id, which is random.
+fn hide_origin_hashes(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(at) = rest.find(".papers/origin/") {
+        let (head, tail) = rest.split_at(at + ".papers/origin/".len());
+        out.push_str(head);
+        match tail.find(".bib") {
+            Some(end) if end > 7 && !tail[..end].contains(['\n', '"', ' ']) => {
+                out.push_str(&tail[..end - 6]);
+                out.push_str("$H");
+                rest = &tail[end..];
+            }
+            _ => rest = tail,
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 fn reference() -> Option<String> {

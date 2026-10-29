@@ -22,7 +22,7 @@ use crate::merge::{Context, Decision, Merge, Resolve, Resolver, apply_entry};
 use crate::names::append_abc_in;
 
 use super::origin::{Origin, Record};
-use super::pool::{PoolError, PoolIx, Pools};
+use super::pool::{IdEvent, PoolError, PoolIx, Pools};
 
 /// What separates the name of an entry from the label of its other files.
 const ATTACHMENT_SEP: &str = "--";
@@ -132,6 +132,9 @@ pub struct Exchange {
     /// of the library]
     after: HashMap<String, [bool; 2]>,
     pool_id: Option<String>,
+    /// (lower-case key of a library entry, pool id) -> its links that the pool removed, which a push leaves
+    /// out and the next record keeps (see [`Exchange::outgoing`]).
+    removed_links: HashMap<(String, String), Vec<String>>,
     /// A file deleted -> its identical copy that stays (see `relink`).
     pub same: Vec<(String, String)>,
     dry_run: bool,
@@ -148,14 +151,28 @@ impl Exchange {
         say: Say,
         prompt: SharedPrompt,
     ) -> Exchange {
+        Exchange::build(config, dry_run, pools, say, prompt, true)
+    }
+
+    fn build(
+        config: &Config,
+        dry_run: bool,
+        pools: Option<Pools>,
+        say: Say,
+        prompt: SharedPrompt,
+        moves: bool,
+    ) -> Exchange {
         let origin = match config.bibtex {
             Some(_) => Origin::for_library(&config.libdir(), dry_run),
             None => Origin::default(),
         };
         let mut pools = pools.unwrap_or_else(|| Pools::new(config));
+        if moves {
+            pools.move_records();
+        }
         pools.set_known_ids(origin.pool_ids());
         let pool_id = pools.path().map(|p| pools.id_of(&p));
-        Exchange {
+        let mut exchange = Exchange {
             config: config.clone(),
             origin,
             pools,
@@ -163,11 +180,71 @@ impl Exchange {
             pushed_pools: Vec::new(),
             after: HashMap::new(),
             pool_id,
+            removed_links: HashMap::new(),
             same: Vec::new(),
             dry_run,
             say,
             prompt,
+        };
+        exchange.settle();
+        exchange
+    }
+
+    /// An exchange for `papers status`: it does not move the records of a path id to the identifier of
+    /// the pool (see [`Exchange::begin_moves`]).
+    pub fn for_status(config: &Config) -> Exchange {
+        let prompt: SharedPrompt = std::sync::Arc::new(std::sync::Mutex::new(Box::new(NoPrompt)));
+        Exchange::build(config, false, None, Say::new(None), prompt, false)
+    }
+
+    /// From here the records of a path id move to the identifier of the pool's library (in memory: the
+    /// command that saves them is the one that exchanges).
+    pub fn begin_moves(&mut self) {
+        self.pools.move_records();
+        self.pools.set_known_ids(self.origin.pool_ids());
+        self.pool_id = self.pools.path().map(|p| self.pools.id_of(&p));
+        self.settle();
+    }
+
+    /// What the pool ids found say to the origin records: the records of a path id move to the identifier
+    /// of the pool's library, and the pool is located for the name of its file (saved with the records).
+    fn settle(&mut self) {
+        for event in self.pools.take_events() {
+            match event {
+                IdEvent::Moved { from, to, path } => {
+                    self.origin.rename_pool(&from, &to, Some(&path))
+                }
+                IdEvent::Located { id, path } => self.origin.locate(&id, &path),
+            }
         }
+    }
+
+    /// The pool that `pull`, `push` and the shallow libraries exchange with ([`Pools::target`]).
+    pub fn target(&mut self) -> std::result::Result<PoolIx, PoolError> {
+        let ix = self.pools.target();
+        self.settle();
+        ix
+    }
+
+    /// A library given on the command line, without pool ([`Pools::get`]).
+    pub fn get_pool(&mut self, path: &str) -> std::result::Result<PoolIx, PoolError> {
+        let ix = self.pools.get(path);
+        self.settle();
+        ix
+    }
+
+    /// A library given on the command line, which may have a pool ([`Pools::get_library`]).
+    pub fn get_library(&mut self, path: &str) -> std::result::Result<PoolIx, PoolError> {
+        let ix = self.pools.get_library(path);
+        self.settle();
+        ix
+    }
+
+    /// The pool of the library, if it can be read ([`Pools::pool`]).
+    pub fn pool(&mut self, quiet: bool) -> Option<PoolIx> {
+        let ix = self.pools.pool(quiet);
+        self.settle();
+        ix
     }
 
     /// An exchange without terminal and without output sink (what only reads).
@@ -278,19 +355,54 @@ impl Exchange {
         base: &Entry,
         pe: u64,
     ) -> Result<()> {
+        let id = self.pools.at(pool).id.clone();
         let files = if self.shares_links(pool) {
+            let pending = self
+                .removed_links
+                .remove(&(key.to_lowercase(), id.clone()))
+                .unwrap_or_default();
             let p = self.pools.at_mut(pool).library()?;
             let e = p.entry_by_uid(pe).expect("a pool entry");
-            Some(format_files(
-                &entry::files(e, Some(&p.relative_to)),
-                Some(&lib.relative_to),
-            ))
+            let mut links = entry::files(e, Some(&p.relative_to));
+            links.extend(pending);
+            Some(format_files(&links, Some(&lib.relative_to)))
         } else {
             None
         };
-        let id = self.pools.at(pool).id.clone();
         self.origin.set(key, &id, base, files.as_deref());
         Ok(())
+    }
+
+    /// The library entry as push sends it to the pool entry `pe`: without the file links that the pool
+    /// removed since the last exchange (see [`Exchange::pool_removed`]; pull removes them from the
+    /// library). They stay in the record that the push writes, so that the next pull removes them.
+    pub(crate) fn outgoing(
+        &mut self,
+        lib: &Library,
+        e: &Entry,
+        pool: PoolIx,
+        pe: u64,
+        record: Option<&Record>,
+    ) -> Result<Entry> {
+        let pool_relative = self.pool_relative_to(pool)?;
+        let key = self.pool_entry_copy(pool, pe)?.key;
+        let mut out = exchange_copy(e, &lib.relative_to, &pool_relative, Some(&key));
+        let removed = self.pool_removed(lib, e, pe, record, pool)?;
+        if !removed.is_empty() {
+            let kept: Vec<String> = entry::files(&out, Some(&pool_relative))
+                .into_iter()
+                .filter(|f| !removed.contains(&realpath(f)))
+                .collect();
+            set_files(&mut out, &kept, &pool_relative);
+            let pending: Vec<String> = entry::files(e, Some(&lib.relative_to))
+                .into_iter()
+                .filter(|f| removed.contains(&realpath(f)))
+                .collect();
+            let id = self.pools.at(pool).id.clone();
+            self.removed_links
+                .insert((e.key.to_lowercase(), id), pending);
+        }
+        Ok(out)
     }
 
     /// In a shallow library, the file links that the command added to a library entry (not there
@@ -763,7 +875,7 @@ impl Exchange {
     }
 
     /// Whether a pool changed since the last exchange with it (pull, push or add: a modification
-    /// time check): `never pulled`, `not pulled from yet`, `changed since last pull or push`, `up to date`.
+    /// time check): `not pulled in full yet`, `not pulled from yet`, `changed since last pull or push`, `up to date`.
     pub fn pool_state(&self, pool: PoolIx) -> &'static str {
         let id = &self.pools.at(pool).id;
         let current = self.pools.at(pool).bibtex_mtime();
@@ -772,7 +884,7 @@ impl Exchange {
                 if self.origin.records(Some(id)).is_empty() {
                     "not pulled from yet"
                 } else {
-                    "never pulled"
+                    "not pulled in full yet"
                 }
             }
             Some(pulled) if Some(pulled) != current => "changed since last pull or push",
@@ -947,7 +1059,7 @@ impl Exchange {
     ) -> Result<What> {
         let pool_relative = self.pool_relative_to(pool)?;
         let pool_entry = self.pool_entry_copy(pool, pe)?;
-        let outgoing = exchange_copy(e, &lib.relative_to, &pool_relative, Some(&pool_entry.key));
+        let outgoing = self.outgoing(lib, e, pool, pe, record.as_ref())?;
         let base = record.as_ref().map(|r| rekey(&r.entry, &pool_entry.key));
         let merge = Merge::exchange(
             pool_entry.clone(),

@@ -4,9 +4,11 @@
 //! key, with the pool's key and the time). Spec `exchange.md` section 3.
 //!
 //! ```text
-//! @comment{papers-pool ../pool}
+//! @comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}
 //!
 //! @comment{papers-pulled 1793189510108569698}
+//!
+//! @comment{papers-pool-path ~/papers/pool}
 //!
 //! @article{Smith2020,
 //!  author = {Smith, John},
@@ -17,14 +19,19 @@
 //! }
 //! ```
 //!
-//! The files are read in sorted name order; the pool is named by the `papers-pool` comment,
-//! not by the file name. The legacy file `.papers/origin.bib` (earlier v3 builds) is read after
-//! them, and split into one file per pool.
+//! The pool id is the identifier of the pool's library (its `id`); a pool of a library without one,
+//! and the records of earlier versions, have the path of the pool as id (a *path id*: the records
+//! move to the identifier, see [`Origin::rename_pool`]). The files are read in sorted name order,
+//! and the files of one pool id are merged; the pool is named by the `papers-pool` comment, not by
+//! the file name. When a pool is written, the other files of its id are removed. The legacy file
+//! `.papers/origin.bib` (earlier v3 builds) is read after them, and split into one file per pool.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::bib::{Bib, Block, Entry, Field, read_file};
-use crate::config::paths::{basename, dirname, exists, isdir, isfile, join, normpath};
+use crate::config::paths::{
+    basename, dirname, exists, expanduser, isdir, isfile, join, normpath, realpath, short_home,
+};
 use crate::config::write_atomic;
 use crate::entry::{self, val};
 use crate::error::Result;
@@ -46,6 +53,8 @@ const DEV_FILES_FIELD: &str = "papers-files";
 const ORIGIN_FIELDS: [&str; 4] = [POOL_FIELD, POOL_KEY_FIELD, TIME_FIELD, DEV_FILES_FIELD];
 const POOL_COMMENT: &str = "papers-pool";
 const PULLED_COMMENT: &str = "papers-pulled";
+/// Where the pool was at the last exchange (for the reader, and the name of the file).
+const PATH_COMMENT: &str = "papers-pool-path";
 /// `<mtime> <pool id>`, in the legacy file.
 const LEGACY_PULL_COMMENT: &str = "papers-pull";
 
@@ -93,18 +102,42 @@ pub fn sha1_hex(data: &[u8]) -> String {
     h.iter().map(|x| format!("{x:08x}")).collect()
 }
 
-/// The origin file of a pool: the name of the pool folder and the start of the sha1 of the
-/// pool id (two pools in folders of the same name get different files).
+/// A pool id of an earlier version: the pool's path, not a library identifier (32 lower-case
+/// hexadecimal digits).
+pub fn is_path_id(id: &str) -> bool {
+    !is_library_id(id)
+}
+
+/// A library identifier: 32 lower-case hexadecimal digits.
+pub fn is_library_id(id: &str) -> bool {
+    id.len() == 32 && id.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+/// The origin file of a pool: the name of the pool folder (`path`: where the pool is, for a pool id
+/// that is a library identifier; else the pool id itself) and the start of the sha1 of the pool id
+/// (two pools in folders of the same name get different files).
 ///
 /// ```
 /// use papers_rs::pools::origin::origin_file_name;
-/// assert_eq!(origin_file_name("../pool"), "pool-615fe0.bib");
-/// assert_eq!(origin_file_name("../pool/"), "pool-b6adbc.bib");
-/// assert_eq!(origin_file_name("~/Documents/papers"), "papers-e311da.bib");
-/// assert_eq!(origin_file_name("../My Papers"), "my-papers-94036c.bib");
+/// assert_eq!(origin_file_name("../pool", None), "pool-615fe0.bib");
+/// assert_eq!(origin_file_name("../pool/", None), "pool-b6adbc.bib");
+/// assert_eq!(origin_file_name("~/Documents/papers", None), "papers-e311da.bib");
+/// assert_eq!(origin_file_name("../My Papers", None), "my-papers-94036c.bib");
+/// let id = "7e5754a0ccd246968e910bcd2a16dcf2";
+/// assert_eq!(origin_file_name(id, None), "pool-569371.bib");
+/// assert_eq!(origin_file_name(id, Some("/home/me/papers/shared-with-bob")), "shared-with-bob-569371.bib");
 /// ```
-pub fn origin_file_name(pool: &str) -> String {
-    let name = slugify(&basename(&normpath(pool)));
+pub fn origin_file_name(pool: &str, path: Option<&str>) -> String {
+    let folder = match path {
+        Some(path) => path,
+        None if is_path_id(pool) => pool,
+        None => "",
+    };
+    let name = if folder.is_empty() {
+        String::new()
+    } else {
+        slugify(&basename(&normpath(folder)))
+    };
     let name = if name.is_empty() {
         "pool".to_string()
     } else {
@@ -172,11 +205,13 @@ fn same_fields(a: &Entry, b: &Entry) -> bool {
     fields(a) == fields(b)
 }
 
+/// Not part of the base entry: the fields of the record, the file links, and the `ids` (former keys)
+/// of the side that sent the entry, which are not exchanged.
 fn record_extra() -> Vec<&'static str> {
     ORIGIN_FIELDS
         .iter()
         .copied()
-        .chain([FILE_FIELD])
+        .chain([FILE_FIELD, "ids"])
         .collect::<Vec<_>>()
 }
 
@@ -194,6 +229,12 @@ pub struct Origin {
     changed: BTreeSet<String>,
     /// the pools that have records when loaded
     known: BTreeSet<String>,
+    /// pool id -> where the pool was (`papers-pool-path`, with `~` for the home directory)
+    paths: BTreeMap<String, String>,
+    /// pool id -> the files its records were read from, in the order read
+    read_from: BTreeMap<String, Vec<String>>,
+    /// files to remove at the save (the records of a pool that moved to another id)
+    stale: BTreeSet<String>,
     dry_run: bool,
 }
 
@@ -318,6 +359,19 @@ impl Origin {
         if let Some(n) = digits(&pulled) {
             self.pulls.insert(pool.clone(), n);
         }
+        let place = words
+            .iter()
+            .find(|w| w.len() == 2 && w[0] == PATH_COMMENT)
+            .map(|w| w[1].trim().to_string())
+            .filter(|w| !w.is_empty());
+        if let Some(place) = place {
+            self.paths.insert(pool.clone(), place);
+        }
+        // several files of one pool id are merged: the last read wins
+        self.read_from
+            .entry(pool.clone())
+            .or_default()
+            .push(path.to_string());
         let records = self.records_mut(&pool);
         for e in bib.entries() {
             records.insert(e.key.to_lowercase(), e.clone());
@@ -498,15 +552,87 @@ impl Origin {
         }
     }
 
-    /// The records of a library entry whose key changed from `old` to `new`, in every pool.
+    /// The records of a library entry whose key changed from `old` to `new` (a key that no entry had),
+    /// in every pool. A record left under `new` by a removed entry is another paper's: replaced, or
+    /// dropped where the entry has no record.
     pub fn rekey(&mut self, old: &str, new: &str) {
         for (pool, records) in &mut self.entries {
             if let Some(mut record) = records.remove(&old.to_lowercase()) {
                 record.key = new.to_string();
                 records.insert(new.to_lowercase(), record);
                 self.changed.insert(pool.clone());
+            } else if records.remove(&new.to_lowercase()).is_some() {
+                self.changed.insert(pool.clone());
             }
         }
+    }
+
+    /// The origin file of the pool id `pool` (see [`origin_file_name`]): the file its records were
+    /// read from (the last one), else the file named after the pool folder; none without origin folder.
+    pub fn file_of(&self, pool: &str) -> Option<String> {
+        let dir = self.dir.as_deref()?;
+        if let Some(file) = self.read_from.get(pool).and_then(|f| f.last()) {
+            return Some(file.clone());
+        }
+        Some(join(dir, &self.name_of(pool)))
+    }
+
+    fn name_of(&self, pool: &str) -> String {
+        let place = self.paths.get(pool).map(|p| expanduser(p));
+        origin_file_name(pool, place.as_deref())
+    }
+
+    /// Where the pool `pool` was (`papers-pool-path`, with `~` for the home directory), if recorded.
+    pub fn path_of(&self, pool: &str) -> Option<&str> {
+        self.paths.get(pool).map(String::as_str)
+    }
+
+    /// Where the pool `pool` (a library identifier) is: its origin file is named after that folder, and
+    /// says it (`papers-pool-path`).
+    pub fn locate(&mut self, pool: &str, path: &str) {
+        let place = short_home(path);
+        if self.paths.get(pool) != Some(&place) {
+            self.paths.insert(pool.to_string(), place);
+            if self.records_of(pool).is_some() || self.pulls.contains_key(pool) {
+                self.changed.insert(pool.to_string()); // written again, under the name of the folder
+            }
+        }
+    }
+
+    /// The records of the pool `old` move to the id `new` (the library identifier of the pool, see
+    /// [`super::Pools::id_of`]), where they do not have a record of the key already; `path`: where the
+    /// pool is. The file of `old` is removed at the save.
+    pub fn rename_pool(&mut self, old: &str, new: &str, path: Option<&str>) {
+        if self.records_of(old).is_none() && !self.pulls.contains_key(old) {
+            return;
+        }
+        let moved = self
+            .entries
+            .iter()
+            .position(|(p, _)| p == old)
+            .map(|i| self.entries.remove(i).1)
+            .unwrap_or_default();
+        let target = self.records_mut(new);
+        for (key, record) in moved {
+            target.entry(key).or_insert(record);
+        }
+        if let Some(n) = self.pulls.remove(old) {
+            self.pulls.entry(new.to_string()).or_insert(n);
+        }
+        if self.known.contains(old) {
+            self.known.insert(new.to_string());
+        }
+        if let Some(path) = path {
+            self.paths.insert(new.to_string(), short_home(path));
+        }
+        if let Some(files) = self.read_from.remove(old) {
+            self.stale.extend(files);
+        }
+        self.changed.remove(old);
+        self.changed.insert(new.to_string());
+        log::info(&format!(
+            "origin records of {old}: now under the identifier of the pool library, {new}"
+        ));
     }
 
     /// The modification time (ns) of the pool's bibtex at the last exchange, if any.
@@ -534,6 +660,9 @@ impl Origin {
         if let Some(n) = self.pulls.get(pool) {
             blocks.push(Block::Comment(format!("{PULLED_COMMENT} {n}")));
         }
+        if let Some(place) = self.paths.get(pool) {
+            blocks.push(Block::Comment(format!("{PATH_COMMENT} {place}")));
+        }
         if let Some(records) = self.records_of(pool) {
             blocks.extend(records.values().cloned().map(Block::Entry));
         }
@@ -554,9 +683,10 @@ impl Origin {
             return Ok(());
         }
         std::fs::create_dir_all(&dir)?;
+        let mut written: BTreeSet<String> = BTreeSet::new();
         for pool in std::mem::take(&mut self.changed) {
             let text = self.text(&pool);
-            let path = join(&dir, &origin_file_name(&pool));
+            let path = join(&dir, &self.name_of(&pool));
             let on_disk = if isfile(&path) {
                 read_file(std::path::Path::new(&path)).ok()
             } else {
@@ -564,6 +694,19 @@ impl Origin {
             };
             if on_disk.as_deref() != Some(text.as_str()) {
                 write_atomic(&path, &text)?;
+            }
+            written.insert(realpath(&path));
+            // the files of an earlier name, and the other files of the pool id
+            for file in self.read_from.get(&pool).into_iter().flatten() {
+                if realpath(file) != realpath(&path) {
+                    self.stale.insert(file.clone());
+                }
+            }
+            self.read_from.insert(pool, vec![path]);
+        }
+        for file in std::mem::take(&mut self.stale) {
+            if !written.contains(&realpath(&file)) && isfile(&file) {
+                let _ = std::fs::remove_file(&file);
             }
         }
         Ok(())
@@ -601,7 +744,8 @@ mod tests {
         origin.set("Smith2020", "../pool", &pool_entry, Some(""));
         origin.set_pulled("../pool", Some(1793189510108569698));
         origin.save().unwrap();
-        let text = std::fs::read_to_string(join(&path, &origin_file_name("../pool"))).unwrap();
+        let text =
+            std::fs::read_to_string(join(&path, &origin_file_name("../pool", None))).unwrap();
         assert!(text.starts_with(
             "@comment{papers-pool ../pool}\n\n@comment{papers-pulled 1793189510108569698}\n\n@article{Smith2020,\n file = {},\n papers-pool-key = {smith_2020},\n papers-time = {"
         ), "{text}");
@@ -660,7 +804,7 @@ mod tests {
         assert!(text.is_none()); // a folder
         assert!(isfile(&join(
             &root,
-            &format!(".papers/origin/{}", origin_file_name("../pool"))
+            &format!(".papers/origin/{}", origin_file_name("../pool", None))
         )));
     }
 }

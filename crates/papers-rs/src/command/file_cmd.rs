@@ -1234,7 +1234,7 @@ fn plan_relinks(
     let (mut plans, mut unclear, mut count): (Vec<Plan>, Vec<(String, String, String)>, usize) =
         (Vec::new(), Vec::new(), 0);
     let own = if session.config.shallow() {
-        session.exchange().pools.pool(true)
+        session.exchange().pool(true)
     } else {
         None
     };
@@ -1393,7 +1393,7 @@ pub fn check_entries_files(
     let search = SearchFolders::new(&options.search)?;
     let mut others: Vec<PoolIx> = Vec::new();
     for path in &options.pools {
-        others.push(session.exchange().pools.get_library(path)?);
+        others.push(session.exchange().get_library(path)?);
     }
     let mode = if fix {
         Some(files_mode(false, options.move_, false, &session.config)?)
