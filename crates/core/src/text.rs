@@ -4,7 +4,7 @@
 use std::collections::BTreeSet;
 use std::ops::Range;
 
-use deunicode::deunicode;
+use any_ascii::any_ascii;
 use serde::{Deserialize, Serialize};
 
 /// How a query word matches a word of the library.
@@ -44,9 +44,10 @@ impl Span {
     }
 }
 
-/// Lowercase ASCII, accents and ligatures spelt out: "Müller" → "muller".
+/// Lowercase ASCII, accents and ligatures spelt out as papers does (AnyAscii):
+/// "Müller" → "muller".
 pub(crate) fn fold(s: &str) -> String {
-    deunicode(s).to_lowercase()
+    any_ascii(s).to_lowercase()
 }
 
 /// The words of a folded text.
