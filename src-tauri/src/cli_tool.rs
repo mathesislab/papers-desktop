@@ -125,6 +125,17 @@ pub fn install(dir: &Path, binary: &Path) -> Result<Done, Failure> {
     Ok(Done::Installed)
 }
 
+/// Point our link in `dir` again if what it points to is gone: the app was
+/// moved, or updated from 0.6 (its sidecar was `papers-rs`). A link to another
+/// copy of the app that is still there is left: it may be the one chosen.
+/// `None`: nothing to do.
+pub fn repair(dir: &Path, binary: &Path) -> Result<Option<Done>, Failure> {
+    match link_state(dir, binary) {
+        Link::Ours(target) if !dir.join(&target).exists() => install(dir, binary).map(Some),
+        _ => Ok(None),
+    }
+}
+
 /// Remove the link in `dir`, if it is ours.
 pub fn uninstall(dir: &Path, binary: &Path) -> Result<Done, Failure> {
     let path = dir.join(NAME);
@@ -256,6 +267,17 @@ fn install_here() -> Result<Done, Failure> {
 fn uninstall_here() -> Result<Done, Failure> {
     let (dir, binary) = target()?;
     uninstall(&dir, &binary)
+}
+
+/// At the start of the app, off its thread: our link pointed again if what it
+/// points to is gone (`repair`). Nothing when there is nothing to install.
+pub fn repair_at_start() {
+    std::thread::spawn(|| {
+        let Ok((dir, binary)) = target() else { return };
+        if let Err(e) = repair(&dir, &binary) {
+            eprintln!("papers-desktop: the papers-rs link: {}", e.message);
+        }
+    });
 }
 
 /// The shells whose startup file we can add the folder to.
@@ -508,6 +530,32 @@ mod tests {
         assert_eq!(link_state(&bin, &binary), Link::Ours(old.join(NAME)));
         assert_eq!(install(&bin, &binary).unwrap(), Done::Installed);
         assert_eq!(fs::read_link(bin.join(NAME)).unwrap(), binary);
+    }
+
+    #[test]
+    fn repair_points_again_only_a_link_whose_target_is_gone() {
+        let (tmp, binary, bin) = setup();
+        assert_eq!(repair(&bin, &binary).unwrap(), None);
+        // another copy of the app, still there: left
+        let other = tmp.path().join("other");
+        fs::create_dir(&other).unwrap();
+        fs::write(other.join(SIDECAR), "binary").unwrap();
+        fs::write(other.join(APP), "app").unwrap();
+        link(other.join(SIDECAR), bin.join(NAME)).unwrap();
+        assert_eq!(repair(&bin, &binary).unwrap(), None);
+        assert_eq!(fs::read_link(bin.join(NAME)).unwrap(), other.join(SIDECAR));
+        // the papers-rs of 0.6, gone with the update
+        fs::remove_file(bin.join(NAME)).unwrap();
+        let old = tmp.path().join("Applications/Papers Desktop.app/Contents/MacOS");
+        link(old.join(NAME), bin.join(NAME)).unwrap();
+        assert_eq!(repair(&bin, &binary).unwrap(), Some(Done::Installed));
+        assert_eq!(fs::read_link(bin.join(NAME)).unwrap(), binary);
+        assert_eq!(repair(&bin, &binary).unwrap(), None);
+        // a foreign link is never touched
+        fs::remove_file(bin.join(NAME)).unwrap();
+        link(tmp.path().join("cargo/papers-rs"), bin.join(NAME)).unwrap();
+        assert_eq!(repair(&bin, &binary).unwrap(), None);
+        assert_eq!(fs::read_link(bin.join(NAME)).unwrap(), tmp.path().join("cargo/papers-rs"));
     }
 
     #[test]

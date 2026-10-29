@@ -352,7 +352,9 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   and the app menu (macOS: *Install Command Line Tool…*) install it as a link
   `papers-rs` → the binary in the bundle (`cli_tool.rs`) in `~/.local/bin`
   (macOS and Linux alike, created if missing; no password, no administrator
-  prompt; not from an AppImage, which is mounted only while it runs). If that
+  prompt; not from an AppImage, which is mounted only while it runs). At
+  start, the app points its link again if what it points to is gone (the app
+  moved, or updated from 0.6, whose sidecar was `papers-rs`). If that
   folder is not in the PATH of the user's login shell (`$SHELL -lic`),
   Settings shows `export PATH="$HOME/.local/bin:$PATH"` and a button adding it
   to the startup file of the shell (zsh `~/.zshrc`; bash `~/.bashrc`, on macOS

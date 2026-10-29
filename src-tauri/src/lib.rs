@@ -903,6 +903,7 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             menu::setup(app.handle())?;
             selection::setup(app.handle());
+            cli_tool::repair_at_start();
             reload(app.handle());
             update::watch(app.handle());
             main_window::reopen(app.handle());
