@@ -2,7 +2,7 @@
 //! and `format_library` (bibtexparser's writer with the default unparse stack,
 //! a one-space indent and a single newline between the blocks).
 
-use super::pystr::{splitlines, strip};
+use super::pystr::{is_space, splitlines, strip};
 use super::read::is_writable_unenclosed;
 use std::borrow::Cow;
 
@@ -109,6 +109,22 @@ fn without_failed_comments(comment: &str) -> Option<String> {
     }
 }
 
+/// The text of an unreadable block without the warning lines that were
+/// written above the block after it at the previous saves (it runs to the next
+/// `@`, so it has them) and without the whitespace and empty lines at its end,
+/// then one `\n` (`_without_failed_comments`): the empty line written after
+/// each block would be read back into it, one more at each save.
+fn without_failed_lines(raw: &str) -> String {
+    let lines: Vec<&str> = splitlines(raw)
+        .into_iter()
+        .filter(|l| !is_failed_comment(strip(l)))
+        .collect();
+    let mut text = lines.join("\n");
+    text.truncate(text.trim_end_matches(is_space).len());
+    text.push('\n');
+    text
+}
+
 /// A value in its enclosing: braces, except a value that must be written as it is.
 fn enclose(value: &str, verbatim: bool) -> String {
     if verbatim && is_writable_unenclosed(value) {
@@ -169,8 +185,9 @@ pub(super) fn format(blocks: &[Block]) -> String {
                 out.push('\n');
             }
             Block::Unreadable(u) => {
-                let lines = splitlines(&u.raw).len();
-                out.push_str(&format!("{PARSING_FAILED}{lines} lines.\n{}\n", u.raw));
+                let raw = without_failed_lines(&u.raw);
+                let lines = splitlines(&raw).len();
+                out.push_str(&format!("{PARSING_FAILED}{lines} lines.\n{raw}\n"));
             }
         }
         if i + 1 < n {

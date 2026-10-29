@@ -10,7 +10,7 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
-use papers_rs::bib::latex_table::latex_to_unicode;
+use papers_rs::bib::latex::latex_to_unicode;
 use unicode_normalization::UnicodeNormalization;
 
 use super::{dir, json_file};
@@ -61,7 +61,9 @@ impl Translit {
     pub fn explains(&self, text: &str) -> bool {
         text.chars().any(|c| self.differs(c))
             || text.nfkd().any(|c| self.differs(c))
-            || latex_to_unicode(text).chars().any(|c| self.differs(c))
+            || latex_to_unicode(text, true)
+                .chars()
+                .any(|c| self.differs(c))
     }
 }
 

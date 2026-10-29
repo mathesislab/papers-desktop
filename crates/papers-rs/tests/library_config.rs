@@ -69,18 +69,27 @@ fn a_library_of_a_configuration() {
     assert_eq!(lib.save(false).unwrap().status, SaveStatus::Written);
     let text = std::fs::read_to_string(format!("{root}/lib/papers.bib")).unwrap();
     assert!(text.contains(&format!("{root}/lib/files/x.pdf")));
-    // with relative paths nothing is rewritten at load: the absolute links stay until the files
-    // of the entry change, or until the links are converted (`papers config paths relative`)
+    // with relative paths, an absolute link is made relative at load, in memory (the text on disk
+    // is as it was until the next command that saves), as relative links are made absolute in an
+    // absolute library; the links that are relative are left alone
     let mut lib = Library::open(&config_of(&root, "relative")).unwrap();
-    assert_eq!(
-        lib.get("x").unwrap().get("file"),
-        Some(format!(":{root}/lib/files/x.pdf:pdf").as_str())
-    );
-    assert!(!lib.load_changes && lib.unchanged());
-    let here = lib.relative_to.clone();
-    assert_eq!(lib.set_relative_to(&here).len(), 1);
     assert_eq!(lib.get("x").unwrap().get("file"), Some(":files/x.pdf:pdf"));
+    assert!(lib.load_changes && !lib.unchanged());
+    let on_disk = std::fs::read_to_string(format!("{root}/lib/papers.bib")).unwrap();
+    assert!(on_disk.contains(&format!("{root}/lib/files/x.pdf")));
     assert_eq!(lib.save(false).unwrap().status, SaveStatus::Written);
+    let text = std::fs::read_to_string(format!("{root}/lib/papers.bib")).unwrap();
+    assert!(text.contains(" file = {:files/x.pdf:pdf}") && !text.contains(&root));
     let lib = Library::open(&config_of(&root, "relative")).unwrap();
+    assert_eq!(lib.get("x").unwrap().get("file"), Some(":files/x.pdf:pdf"));
+    assert!(!lib.load_changes && lib.unchanged());
+    // links as JabRef writes them (`files/a.pdf:PDF`) are relative: nothing to rewrite
+    std::fs::write(
+        format!("{root}/lib/papers.bib"),
+        "@article{a,\n file = {files/a.pdf:PDF},\n title = {A}\n}\n",
+    )
+    .unwrap();
+    let lib = Library::open(&config_of(&root, "relative")).unwrap();
+    assert_eq!(lib.get("a").unwrap().get("file"), Some("files/a.pdf:PDF"));
     assert!(!lib.load_changes && lib.unchanged());
 }

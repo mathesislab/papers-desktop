@@ -27,7 +27,8 @@ AUTHORS = ['John Smith', 'Smith, John', 'M. Perrette and A. Yool', 'Jörg Mülle
            "Fran{\\c{c}}ois M{\\'e}nard", 'Ludwig van Beethoven', 'de la Cruz, José and Ñandú, A.', 'Søren Kierkegaard',
            'Smith', 'A. B. Cee and D. Ee and F. Gee', 'Łukasz Żółć', 'Zhang Wei and 李明', "O'Brien, P.", 'Tom  Jones',
            'X and Y and Z and W', '  padded name  ', 'Jean-Paul Sartre and Simone de Beauvoir', '', 'Dr. J. R. R. Tolkien',
-           'Author, A.', 'Author, Anne']
+           'Author, A.', 'Author, Anne', 'John {van der Berg}', '{World Health Organization}',
+           '{Barnes and Noble} and Doe, J.', 'Jane {Q.} Public and {Smith, Jones}, Ltd']
 TITLES = ["Test Article {\\'e}", 'Über die {Natur} von $\\alpha$', 'Near-ubiquity of ice-edge blooms', 'The \\"u{ }ber thing',
           "Caf\\'e au lait \\& more", 'Plain title', '{\\o}ster {\\AA}ngstr{\\"o}m', "M\\\"uller's 100\\% result", 'ünïcödé tïtle',
           'a_b ~ c', 'Ocean heat uptake: \\emph{new} results', 'x \\textbf{y} z', '{\\ss}tra{\\ss}e', 'Ma\\v{r}ák', '\\c{c}a va',
@@ -106,6 +107,14 @@ def case():
     seen, text = set(), ''
     for i in range(n):
         t = bibtex_entry(i)
+        if random.random() < .25:  # a key that is the one of the key template: --auto-key keeps it
+            e = parse_string(t).entries[0]
+            try:
+                template_key = KEYFORMAT(e)
+            except Exception:
+                template_key = ''
+            if template_key and template_key.isidentifier() and not template_key[0].isdigit():
+                t = t.replace('{' + e.key + ',', '{' + template_key + ',', 1)
         k = t.split('{', 1)[1].split(',', 1)[0].lower()
         if k in seen:
             continue

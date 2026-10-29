@@ -19,21 +19,10 @@
    "class": "DuplicateFieldKeyBlock"
   },
   {
-   "kind": "entry",
-   "type": "article",
-   "key": "Title3",
-   "fields": [
-    [
-     "title",
-     "Capital",
-     false
-    ],
-    [
-     "title",
-     "lower",
-     false
-    ]
-   ]
+   "kind": "unreadable",
+   "raw": "@article{Title3,\n Title = {Capital},\n title = {lower},\n}",
+   "line": 10,
+   "class": "DuplicateFieldKeyBlock"
   },
   {
    "kind": "unreadable",
@@ -186,12 +175,16 @@
    "a field given twice: 'title'"
   ],
   [
+   11,
+   "a field given twice: 'title'"
+  ],
+  [
    16,
    "syntax error"
   ],
   [
    24,
-   "syntax error"
+   "a key given twice (keys ignore case): 'ok1'"
   ],
   [
    28,
@@ -215,7 +208,7 @@
   ],
   [
    61,
-   "syntax error"
+   "a key given twice (keys ignore case): 's14'"
   ],
   [
    63,
@@ -227,7 +220,7 @@
   ]
  ],
  "cache_agrees": true,
- "formatted": "@article{ok1,\n title = {Fine}\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{twice2,\n title = {One},\n title = {Two},\n year = 2001\n}\n\n@article{Title3,\n title = {Capital},\n title = {lower}\n}\n\n% WARNING Parsing failed for the following 3 lines.\n@article{noclose4,\n title = {Missing closing brace\n}\n\n\n@article{ok5,\n title = {Fine too}\n}\n\n% WARNING Parsing failed for the following 3 lines.\n@article{ok1,\n title = {A second ok1},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{nokey6\n title =\n\n{no comma after the key},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals7,\n title \n\nno equals},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals8,\n title\n\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unbalanced9,\n title = {a {b},\n year = 2009,\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unterminated_quote10,\n title = \"open,\n year = 2010,\n}\n\n\n@article{ok11,\n title = {Fine 11}\n}\n\n@article{ok12,\n title = {{Still fine 12} year = 2012}\n}\n\n@article{ok13,\n title = {Fine 13}\n}\n\n@string{s14 = {x}}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s14 = {y}}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s15 {\n\nno equals}}\n\n@article{ok16,\n title = {last good}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{eof17,\n title = {ends here\n",
- "saved_twice": "@string{s14 = {x}}\n\n@article{ok1,\n title = {Fine}\n}\n\n@article{ok11,\n title = {Fine 11}\n}\n\n@article{ok12,\n title = {{Still fine 12} year = 2012}\n}\n\n@article{ok13,\n title = {Fine 13}\n}\n\nno equals}}\n\n@article{ok16,\n title = {last good}\n}\n\n@article{ok5,\n title = {Fine too}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{Title3,\n title = {Capital},\n title = {lower}\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{twice2,\n title = {One},\n title = {Two},\n year = 2001\n}\n\n% WARNING Parsing failed for the following 6 lines.\n@article{noclose4,\n title = {Missing closing brace\n}\n\n\n% WARNING Parsing failed for the following 2 lines.\n\n% WARNING Parsing failed for the following 2 lines.\n@article{nokey6\n title =\n\n{no comma after the key},\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{noequals7,\n title \n\nno equals}\n\n,\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{noequals8,\n title\n\n}\n\n% WARNING Parsing failed for the following 7 lines.\n@article{unbalanced9,\n title = {a {b},\n year = 2009,\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n\n% WARNING Parsing failed for the following 7 lines.\n@article{unterminated_quote10,\n title = \"open,\n year = 2010,\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s15 {\n\n% WARNING Parsing failed for the following 4 lines.\n@article{eof17,\n title = {ends here\n\n% WARNING Parsing failed for the following 3 lines.\n\n% WARNING Parsing failed for the following 3 lines.\n@article{ok1,\n title = {A second ok1},\n}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s14 = {y}}\n",
- "edited_saved": "@string{s14 = {x}}\n\n@article{Title3,\n title = {lower (edited)},\n title = {lower},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok1,\n title = {Fine (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok11,\n title = {Fine 11 (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok12,\n title = {{Still fine 12} year = 2012 (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok13,\n title = {Fine 13 (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\nno equals}}\n\n@article{ok16,\n title = {last good (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok5,\n title = {Fine too (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{twice2,\n title = {One},\n title = {Two},\n year = 2001\n}\n\n% WARNING Parsing failed for the following 3 lines.\n@article{noclose4,\n title = {Missing closing brace\n}\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{nokey6\n title =\n\n{no comma after the key},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals7,\n title \n\nno equals},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals8,\n title\n\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unbalanced9,\n title = {a {b},\n year = 2009,\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unterminated_quote10,\n title = \"open,\n year = 2010,\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s15 {\n\n% WARNING Parsing failed for the following 2 lines.\n@article{eof17,\n title = {ends here\n\n% WARNING Parsing failed for the following 3 lines.\n@article{ok1,\n title = {A second ok1},\n}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s14 = {y}}\n"
+ "formatted": "@article{ok1,\n title = {Fine}\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{twice2,\n title = {One},\n title = {Two},\n year = 2001\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{Title3,\n Title = {Capital},\n title = {lower},\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{noclose4,\n title = {Missing closing brace\n}\n\n\n@article{ok5,\n title = {Fine too}\n}\n\n% WARNING Parsing failed for the following 3 lines.\n@article{ok1,\n title = {A second ok1},\n}\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{nokey6\n title =\n\n\n{no comma after the key},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals7,\n title\n\n\nno equals},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals8,\n title\n\n\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unbalanced9,\n title = {a {b},\n year = 2009,\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unterminated_quote10,\n title = \"open,\n year = 2010,\n}\n\n\n@article{ok11,\n title = {Fine 11}\n}\n\n@article{ok12,\n title = {{Still fine 12} year = 2012}\n}\n\n@article{ok13,\n title = {Fine 13}\n}\n\n@string{s14 = {x}}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s14 = {y}}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s15 {\n\n\nno equals}}\n\n@article{ok16,\n title = {last good}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{eof17,\n title = {ends here\n\n",
+ "saved_twice": "@string{s14 = {x}}\n\n@article{ok1,\n title = {Fine}\n}\n\n@article{ok11,\n title = {Fine 11}\n}\n\n@article{ok12,\n title = {{Still fine 12} year = 2012}\n}\n\n@article{ok13,\n title = {Fine 13}\n}\n\nno equals}}\n\n@article{ok16,\n title = {last good}\n}\n\n@article{ok5,\n title = {Fine too}\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{twice2,\n title = {One},\n title = {Two},\n year = 2001\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{Title3,\n Title = {Capital},\n title = {lower},\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{noclose4,\n title = {Missing closing brace\n}\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{nokey6\n title =\n\n\n{no comma after the key},\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{noequals7,\n title\n\n\nno equals}\n\n\n,\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{noequals8,\n title\n\n\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unbalanced9,\n title = {a {b},\n year = 2009,\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unterminated_quote10,\n title = \"open,\n year = 2010,\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s15 {\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{eof17,\n title = {ends here\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{ok1,\n title = {A second ok1},\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s14 = {y}}\n\n",
+ "edited_saved": "@string{s14 = {x}}\n\n@article{ok1,\n title = {Fine (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok11,\n title = {Fine 11 (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok12,\n title = {{Still fine 12} year = 2012 (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok13,\n title = {Fine 13 (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\nno equals}}\n\n@article{ok16,\n title = {last good (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{ok5,\n title = {Fine too (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 5 lines.\n@article{twice2,\n title = {One},\n title = {Two},\n year = 2001\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{Title3,\n Title = {Capital},\n title = {lower},\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{noclose4,\n title = {Missing closing brace\n}\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{nokey6\n title =\n\n\n{no comma after the key},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals7,\n title\n\n\nno equals},\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{noequals8,\n title\n\n\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unbalanced9,\n title = {a {b},\n year = 2009,\n}\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{unterminated_quote10,\n title = \"open,\n year = 2010,\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s15 {\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{eof17,\n title = {ends here\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{ok1,\n title = {A second ok1},\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{s14 = {y}}\n\n"
 }

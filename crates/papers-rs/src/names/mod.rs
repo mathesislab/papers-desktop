@@ -32,7 +32,7 @@ use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::bib::pystr::is_space;
-use crate::config::paths::{basename, join, normpath};
+use crate::config::paths::{basename, dirname, join, normpath};
 use crate::pytables::{DECIMAL, DIGIT, ENTITIES};
 
 pub use template::{Fields, Format, FormatKind, PLACEHOLDERS, TemplateError, make_template_fields};
@@ -204,10 +204,11 @@ fn replace_named_entities(text: &str) -> String {
 }
 
 /// A text as a slug of `a-z`, `0-9` and `-` (python-slugify's `slugify` with
-/// its defaults, as papers uses it).
+/// its defaults, as papers uses it, always with the transliteration table of
+/// Unidecode).
 ///
 /// In order: the `'` become `-`; NFKD and the transliteration to ASCII
-/// ([`ascii`]); the HTML entities, decimal and hexadecimal references are
+/// ([`ascii`]), the `'` of the table dropped; the HTML entities, decimal and hexadecimal references are
 /// decoded; NFKD again and lower case; the `'` that are left are removed, and
 /// a comma between two digits; each run of other characters becomes `-`, runs
 /// of `-` become one, and the `-` at the ends are removed.
@@ -222,7 +223,8 @@ fn replace_named_entities(text: &str) -> String {
 pub fn slugify(text: &str) -> String {
     let text = quotes_to_dash(text);
     let text: String = text.nfkd().collect();
-    let text = ascii(&text);
+    // an apostrophe that the table gives (as for Ь) is dropped, one of the text separated words
+    let text: String = ascii(&text).chars().filter(|&c| c != '\'').collect();
     let text = replace_named_entities(&text);
     let text = replace_references(&text, "#", |c| is_decimal(c).then(|| decimal_value(c)), 10);
     let text = replace_references(
@@ -294,6 +296,94 @@ pub fn path_safe(value: &str) -> String {
     value
 }
 
+/// The longest name (in bytes, as UTF-8) of a file or folder that papers names
+/// after an entry: 255 is the limit of most file systems, minus room for the
+/// `-2`, `-3`... suffix of a name already taken.
+pub const MAX_NAME_BYTES: usize = 250;
+
+/// The start of `text` that is at most `size` bytes as UTF-8 (`cut_bytes`).
+pub fn cut_bytes(text: &str, size: usize) -> &str {
+    let mut end = size.min(text.len());
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
+}
+
+/// The names that Windows reserves for devices.
+fn is_reserved(name: &str) -> bool {
+    let name = name.to_uppercase();
+    matches!(name.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (name.len() == 4
+            && (name.starts_with("COM") || name.starts_with("LPT"))
+            && matches!(name.as_bytes()[3], b'1'..=b'9'))
+}
+
+/// A file name made from a template, valid on every system (`safe_file_name`):
+/// in each folder of it, the characters that Windows forbids (`< > : " | ? *`
+/// and the control characters) replaced with `-`, no trailing dot or space, `-`
+/// after a reserved name of Windows (`CON`, `NUL`...), and at most
+/// [`MAX_NAME_BYTES`] bytes.
+///
+/// ```
+/// use papers_rs::names::safe_file_name;
+/// assert_eq!(safe_file_name("2020/what: a?"), "2020/what- a-");
+/// assert_eq!(safe_file_name("nul.pdf"), "nul-.pdf");
+/// ```
+pub fn safe_file_name(name: &str) -> String {
+    let parts: Vec<String> = name
+        .split('/')
+        .map(|part| {
+            if matches!(part, "" | "." | "..") {
+                return part.to_string();
+            }
+            let part: String = part
+                .chars()
+                .map(|c| match c {
+                    '<' | '>' | ':' | '"' | '|' | '?' | '*' | '\0'..='\u{1f}' => '-',
+                    c => c,
+                })
+                .collect();
+            let part = cut_bytes(&part, MAX_NAME_BYTES).trim_end_matches(['.', ' ']);
+            let part = if part.is_empty() { "-" } else { part };
+            let (first, rest) = part.split_once('.').map_or((part, ""), |(f, r)| (f, r));
+            if is_reserved(first) {
+                let dot = if part.contains('.') { "." } else { "" };
+                return cut_bytes(&format!("{first}-{dot}{rest}"), MAX_NAME_BYTES).to_string();
+            }
+            part.to_string()
+        })
+        .collect();
+    parts.join("/")
+}
+
+/// A path with its file name (extension included) cut to [`MAX_NAME_BYTES`]
+/// bytes, keeping the extension (`fit_name`).
+///
+/// ```
+/// use papers_rs::names::fit_name;
+/// assert_eq!(fit_name("/lib/a.pdf"), "/lib/a.pdf");
+/// assert_eq!(fit_name(&format!("/lib/{}.pdf", "x".repeat(300))), format!("/lib/{}.pdf", "x".repeat(246)));
+/// ```
+pub fn fit_name(path: &str) -> String {
+    let head = dirname(path);
+    let name = basename(path);
+    if name.len() <= MAX_NAME_BYTES {
+        return path.to_string();
+    }
+    let (stem, ext) = splitext(&name);
+    // (an extension of more than MAX_NAME_BYTES leaves a negative size, which cuts from the end, as Python's slice does)
+    let room = MAX_NAME_BYTES as i64 - ext.len() as i64;
+    let size = if room >= 0 {
+        room as usize
+    } else {
+        stem.len().saturating_sub(room.unsigned_abs() as usize)
+    };
+    let stem = cut_bytes(stem, size).trim_end_matches(['.', ' ']);
+    let stem = if stem.is_empty() { "-" } else { stem };
+    join(&head, &format!("{stem}{ext}"))
+}
+
 /// `s[:n]` in characters, with Python's meaning of a negative `n`.
 pub(crate) fn head_chars(s: &str, n: i64) -> String {
     let len = s.chars().count() as i64;
@@ -358,14 +448,18 @@ pub(crate) fn capitalize(s: &str) -> String {
 // ----
 
 /// The next free key of a key that is taken (`papers.bib.append_abc`): a
-/// letter after a digit is a suffix of this function (`Author2000b`), the
-/// next letters are tried (`c`, `d`...); otherwise `b` to `z` are appended.
-/// The keys are compared without case. The first free one is returned.
+/// letter after a digit is a suffix of this function (`Author2000b`,
+/// `Author2000B`), the next letters are tried in its case (`c`, `d`..., or
+/// `C`, `D`...); otherwise `b` to `z` are appended. Then the key itself followed
+/// by each of `a` to `z` (`Author2000za` after `z`). The keys are compared
+/// without case. The first free one is returned.
 ///
 /// ```
 /// use papers_rs::names::append_abc;
 /// assert_eq!(append_abc("Author2000", &[]).unwrap(), "Author2000b");
 /// assert_eq!(append_abc("Author2000", &["author2000", "author2000b"]).unwrap(), "Author2000c");
+/// assert_eq!(append_abc("Author2000B", &[]).unwrap(), "Author2000C");
+/// assert_eq!(append_abc("Author2000z", &[]).unwrap(), "Author2000za");
 /// assert_eq!(append_abc("Ab", &["ab"]).unwrap(), "Abb");
 /// ```
 pub fn append_abc(key: &str, keys: &[&str]) -> Result<String, String> {
@@ -376,21 +470,41 @@ pub fn append_abc(key: &str, keys: &[&str]) -> Result<String, String> {
 /// [`append_abc`] with the set of the keys (in lower case) as a function.
 pub(crate) fn append_abc_in(key: &str, taken: impl Fn(&str) -> bool) -> Result<String, String> {
     let chars: Vec<char> = key.chars().collect();
-    let letters: Vec<char> = ('a'..='z').collect();
-    let (stem, letters): (String, &[char]) = match chars.as_slice() {
-        [.., prev, last] if last.is_ascii_lowercase() && is_digit(*prev) => {
-            let i = letters.iter().position(|l| l == last).unwrap();
-            (chars[..chars.len() - 1].iter().collect(), &letters[i + 1..])
+    let alphabet: Vec<char> = ('a'..='z').collect();
+    // a letter after a digit is a suffix of this function, in either case
+    let suffix = match chars.as_slice() {
+        [.., prev, last] if is_digit(*prev) => {
+            let lower: Vec<char> = last.to_lowercase().collect();
+            match lower.as_slice() {
+                [l] if l.is_ascii_lowercase() => Some((last, *l)),
+                _ => None,
+            }
         }
-        _ => (key.to_string(), &letters[1..]), // start at b
+        _ => None,
     };
-    for l in letters {
-        let candidate = format!("{stem}{l}");
+    let (base, letters): (String, Vec<char>) = match suffix {
+        Some((last, l)) => {
+            let next = alphabet.iter().skip_while(|&&a| a != l).skip(1);
+            let letters = if last.is_uppercase() {
+                next.map(char::to_ascii_uppercase).collect()
+            } else {
+                next.copied().collect()
+            };
+            (chars[..chars.len() - 1].iter().collect(), letters)
+        }
+        None => (key.to_string(), alphabet[1..].to_vec()), // start at b
+    };
+    // no letter left (after z): a second letter (Author2000za)
+    let candidates = letters
+        .iter()
+        .map(|l| format!("{base}{l}"))
+        .chain(alphabet.iter().map(|l| format!("{key}{l}")));
+    for candidate in candidates {
         if !taken(&candidate.to_lowercase()) {
             return Ok(candidate);
         }
     }
-    Err(format!("{stem}: no free key with a letter suffix"))
+    Err(format!("{key}: no free key with a letter suffix"))
 }
 
 /// A key is valid if it is not empty and does not start with a digit
@@ -473,7 +587,7 @@ pub fn attachment_label(file: &str, prefixes: &[&str]) -> String {
 /// );
 /// ```
 pub fn attachment_names(files: &[String], target: &str) -> Vec<String> {
-    let mut new = vec![format!("{target}{}", splitext(&files[0]).1)];
+    let mut new = vec![fit_name(&format!("{target}{}", splitext(&files[0]).1))];
     // the prefixes of a previous rename: the current name of the first file, the target name
     let first_base = basename(&files[0]);
     let target_base = basename(target);
@@ -482,10 +596,11 @@ pub fn attachment_names(files: &[String], target: &str) -> Vec<String> {
     for file in &files[1..] {
         let ext = splitext(file).1;
         let label = attachment_label(file, &prefixes);
-        let mut newfile = format!("{target}{ATTACHMENT_SEP}{label}{ext}");
+        let mut newfile = fit_name(&format!("{target}{ATTACHMENT_SEP}{label}{ext}"));
+        let stem = newfile[..newfile.len() - ext.len()].to_string();
         let mut i = 2;
         while taken.contains(&newfile) {
-            newfile = format!("{target}{ATTACHMENT_SEP}{label}-{i}{ext}");
+            newfile = format!("{stem}-{i}{ext}");
             i += 1;
         }
         taken.insert(newfile.clone());

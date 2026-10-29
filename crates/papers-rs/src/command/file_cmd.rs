@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use crate::bib::Entry;
 use crate::bib::encoding::parse_file;
-use crate::bib::latex_table::latex_to_unicode;
+use crate::bib::latex::latex_to_unicode;
 use crate::config::json::py_repr_str;
 use crate::config::paths::{
     abspath, basename, dirname, exists, expanduser, is_abs, is_inside, isdir, isfile, join,
@@ -25,12 +25,12 @@ use crate::extract::{doi::isvaliddoi, extract_pdf_doi};
 use crate::fetch::download::{download_url, is_download};
 use crate::history::{FilesJson, OpKind};
 use crate::library::{Library, Policy};
-use crate::names::Format;
-use crate::pools::PoolIx;
 use crate::log;
+use crate::names::{Format, fit_name};
+use crate::pools::PoolIx;
 
-use super::pool::push_note_lines;
 use super::files::{Mode, Placement, PolicyOptions, files_mode, files_policy_with};
+use super::pool::push_note_lines;
 use super::queries::Queries;
 use super::session::Session;
 
@@ -952,7 +952,7 @@ impl SearchFolders {
 /// leading `/` restored when it was omitted (`home/...` instead of `/home/...`)
 /// (`fix_mendeley_path`).
 fn fix_mendeley_path(file: &str) -> String {
-    let mut file = latex_to_unicode(file);
+    let mut file = latex_to_unicode(file, false);
     let directory = dirname(&file);
     let candidate = format!("/{file}");
     if !file.starts_with('/')
@@ -1004,7 +1004,10 @@ fn broken_links(library: &Library, e: &Entry) -> Vec<String> {
 
 /// The number of broken links of the entries of the library (`broken_links` of each).
 pub fn broken_link_count(library: &Library) -> usize {
-    library.entries().map(|e| broken_links(library, e).len()).sum()
+    library
+        .entries()
+        .map(|e| broken_links(library, e).len())
+        .sum()
 }
 
 fn checksum(file: &str) -> String {
@@ -1178,7 +1181,7 @@ fn search_names(nameformat: &Format, e: &Entry, link: &str, rest: &[String]) -> 
         == 1
     {
         match nameformat.render(e) {
-            Ok(name) => names.push(format!("{}{ext}", basename(&name))),
+            Ok(name) => names.push(basename(&fit_name(&format!("{name}{ext}")))),
             Err(error) => log::debug(&format!("{}: no template name: {}", e.key, error.0)),
         }
     }
@@ -1405,7 +1408,10 @@ pub fn check_entries_files(
         .map(|(key, found)| Plan {
             key: key.clone(),
             found: found.clone(),
-            sources: found.iter().map(|(l, _)| (l.clone(), Source::Pool)).collect(),
+            sources: found
+                .iter()
+                .map(|(l, _)| (l.clone(), Source::Pool))
+                .collect(),
         })
         .collect();
     let (plans, unclear, count) = plan_relinks(session, keys, &search, &nameformat, &others)?;

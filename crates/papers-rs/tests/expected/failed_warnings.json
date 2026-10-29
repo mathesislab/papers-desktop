@@ -34,7 +34,7 @@
   ]
  ],
  "cache_agrees": true,
- "formatted": "% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n\n% my note\n\n@article{b,\n title = {fine}\n}\n",
- "saved_twice": "% my note\n\n@article{b,\n title = {fine}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n",
- "edited_saved": "% my note\n\n@article{b,\n title = {fine (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n"
+ "formatted": "% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n\n\n% my note\n\n@article{b,\n title = {fine}\n}\n",
+ "saved_twice": "% my note\n\n@article{b,\n title = {fine}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n\n",
+ "edited_saved": "% my note\n\n@article{b,\n title = {fine (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{again,\n title = {x},\n title = {y},\n}\n\n"
 }

@@ -1,8 +1,13 @@
 //! The unit tests of papers (test_parsing, test_unreadable, test_sort_format,
 //! test_latexenc, test_entries) for the bibtex layer, as they are there.
 
-use papers_rs::bib::latex_table::{latex_to_unicode, protect_uppercase, string_to_latex};
+use papers_rs::bib::latex::latex_to_unicode as decode;
+use papers_rs::bib::latex_table::{protect_uppercase, string_to_latex};
 use papers_rs::bib::{Bib, Entry, Field};
+
+fn latex_to_unicode(s: &str) -> String {
+    decode(s, true)
+}
 
 // test_parsing.py
 
@@ -51,11 +56,73 @@ fn a_second_key_and_a_syntax_error_are_unreadable() {
     assert_eq!(
         bib.unreadable(),
         vec![
-            (2, "syntax error".to_string()),
+            (2, "a key given twice (keys ignore case): 'a'".to_string()),
             (3, "syntax error".to_string())
         ]
     );
     assert_eq!(bib.entries().count(), 1);
+}
+
+#[test]
+fn field_names_and_keys_ignore_case() {
+    // BibTeX ignores the case of field names and keys: Title and title, Smith2000 and
+    // smith2000, are given twice (test_unreadable.py test_case)
+    let text = "@article{Smith2000, title={A}}\n\n@article{smith2000, title={B}}\n\n@article{other, Title={C}, title={D}}\n";
+    let bib = Bib::parse(text);
+    let keys: Vec<&str> = bib.entries().map(|e| e.key.as_str()).collect();
+    assert_eq!(keys, ["Smith2000"]);
+    let reasons: Vec<String> = bib.unreadable().into_iter().map(|(_, r)| r).collect();
+    assert_eq!(
+        reasons,
+        [
+            "a key given twice (keys ignore case): 'smith2000'",
+            "a field given twice: 'title'"
+        ]
+    );
+    // the text of the blocks that cannot be read is written back
+    let saved = bib.to_string();
+    for part in ["@article{smith2000, title={B}}", "Title={C}, title={D}"] {
+        assert!(saved.contains(part), "{saved}");
+    }
+    // a string name keeps its case: names that differ by case are both read
+    let bib = Bib::parse("@string{A = {x}}\n@string{a = {y}}\n@string{a = {z}}\n");
+    assert_eq!(bib.strings().count(), 2);
+    assert_eq!(bib.unreadable().len(), 1);
+}
+
+#[test]
+fn unreadable_blocks_stay_as_they_are() {
+    // test_unchanged_save.py: each save wrote one more warning line above the second unreadable block
+    let text = "@article{good2000,\n title = {Good},\n year = {2000}\n}\n\n@article{bad1,\n title = {Bad one\n\n@article{bad2,\n title = {Bad two\n\n";
+    let mut saved: Vec<String> = Vec::new();
+    let mut current = text.to_string();
+    for _ in 0..4 {
+        let mut bib = Bib::parse(&current);
+        bib.entries_mut().next().unwrap().set("year", "2001");
+        current = bib.to_string();
+        saved.push(current.clone());
+    }
+    assert_eq!(saved[1], saved[2]);
+    assert_eq!(saved[2], saved[3]);
+    assert_eq!(saved[2].matches("% WARNING Parsing failed").count(), 2);
+    // a failed block ends with an empty line of its own, and the file with one when it is the last block
+    assert!(saved[2].ends_with("Bad two\n\n"), "{:?}", saved[2]);
+}
+
+#[test]
+fn a_byte_order_mark_is_dropped() {
+    // test_unchanged_save.py TestReadWrite
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("papers.bib");
+    let text = "@article{zed2000,\n title = {Zéd},\n year = {2000}\n}\n\n@article{alpha2000,\n title = {A},\n year = {2000}\n}\n";
+    std::fs::write(&file, format!("\u{feff}{text}")).unwrap();
+    let read = papers_rs::bib::read_file(&file).unwrap();
+    assert_eq!(read, text);
+    let bib = Bib::parse(&read);
+    assert!(bib.unreadable().is_empty());
+    let keys: Vec<&str> = bib.entries().map(|e| e.key.as_str()).collect();
+    assert_eq!(keys, ["zed2000", "alpha2000"]);
+    assert!(!bib.to_string().contains('\u{feff}'));
 }
 
 // test_sort_format.py

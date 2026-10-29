@@ -193,7 +193,21 @@ fn key_suffixes_and_validity() {
         append_abc("10-1000-abc", &["10-1000-abc"]).unwrap(),
         "10-1000-abcb"
     );
-    assert!(append_abc("Author2000z", &["Author2000z"]).is_err());
+    // test_bib_unit.py: a suffix in either case, and a second letter after z
+    assert_eq!(append_abc("Author2000B", &[]).unwrap(), "Author2000C");
+    assert_eq!(
+        append_abc("Author2000z", &["Author2000z"]).unwrap(),
+        "Author2000za"
+    );
+    assert_eq!(append_abc("Author2000Z", &[]).unwrap(), "Author2000Za");
+    assert_eq!(
+        append_abc("Author2000", &["author2000", "AUTHOR2000B"]).unwrap(),
+        "Author2000c"
+    );
+    let all: Vec<String> = ('b'..='z').map(|c| format!("ab{c}")).collect();
+    let mut taken: Vec<&str> = all.iter().map(String::as_str).collect();
+    taken.push("ab");
+    assert_eq!(append_abc("Ab", &taken).unwrap(), "Aba");
     assert!(is_valid_key("Author2020") && is_valid_key("Smith"));
     assert!(
         !is_valid_key("2020Author") && !is_valid_key("10.5194/bg-8-515-2011") && !is_valid_key("")
@@ -452,7 +466,8 @@ fn a_file_moved_onto_itself_or_a_link_to_itself_stays() {
 }
 
 #[test]
-fn a_file_with_other_content_at_the_destination_is_replaced_only_when_confirmed() {
+fn a_file_with_other_content_at_the_destination_is_never_replaced() {
+    // the file takes a -2 suffix, whatever the answer to `Replace? (y/n)` would be (test_file_cmd.py)
     for confirm in [false, true] {
         let disk = Disk::new();
         let a = disk.write("in/a.pdf", "new");
@@ -462,11 +477,36 @@ fn a_file_with_other_content_at_the_destination_is_replaced_only_when_confirmed(
         lib.confirm_replace = Box::new(move |_| confirm);
         lib.rename_entry_files("x", &Policy::all(Action::Move), None, None, true)
             .unwrap();
-        assert_eq!(
-            std::fs::read_to_string(&dest).unwrap(),
-            if confirm { "new" } else { "old" }
-        );
-        assert_eq!(std::path::Path::new(&a).exists(), !confirm);
+        assert_eq!(std::fs::read_to_string(&dest).unwrap(), "old");
+        let second = format!("{}/lib/files/doe_2020_t-2.pdf", disk.root);
+        assert_eq!(std::fs::read_to_string(&second).unwrap(), "new");
+        assert_eq!(lib.files("x"), [second]);
+        assert!(!std::path::Path::new(&a).exists());
+    }
+}
+
+#[test]
+fn two_papers_with_the_same_file_name() {
+    // TestSameFileName: the second file gets a -2 suffix, no file is replaced; renaming again
+    // changes nothing; the same content is the same file
+    for same_content in [false, true] {
+        let disk = Disk::new();
+        disk.write("in/a.pdf", "pdf a");
+        disk.write("in/b.pdf", if same_content { "pdf a" } else { "pdf b" });
+        let text = "@article{one2000,\n author = {Doe, Jane},\n year = {2000},\n title = {T},\n file = {:../in/a.pdf:pdf}\n}\n\n@article{other2000,\n author = {Doe, Jane},\n year = {2000},\n title = {T},\n file = {:../in/b.pdf:pdf}\n}\n";
+        let mut lib = disk.library(text, Format::name());
+        lib.rename_all_files(&Policy::all(Action::Move), None, true);
+        let (fa, fb) = (lib.files("one2000"), lib.files("other2000"));
+        assert_eq!(fa, [format!("{}/lib/files/doe_2000_t.pdf", disk.root)]);
+        if same_content {
+            assert_eq!(fa, fb);
+            continue;
+        }
+        assert_eq!(fb, [format!("{}/lib/files/doe_2000_t-2.pdf", disk.root)]);
+        assert_eq!(std::fs::read_to_string(&fa[0]).unwrap(), "pdf a");
+        assert_eq!(std::fs::read_to_string(&fb[0]).unwrap(), "pdf b");
+        lib.rename_all_files(&Policy::all(Action::Move), None, true);
+        assert_eq!((lib.files("one2000"), lib.files("other2000")), (fa, fb));
     }
 }
 
@@ -1080,4 +1120,346 @@ fn the_merge_model() {
         false,
     );
     assert_eq!(m.files.len(), 1);
+}
+
+// the tests of papers 3.0.0b6 for bibtex.md
+// -----------------------------------------
+
+fn name_of(template: &str, kind: FormatKind, fields: &[(&str, &str)]) -> String {
+    let mut f = if kind == FormatKind::Key {
+        Format::key()
+    } else {
+        Format::name()
+    };
+    f.template = template.into();
+    f.unknown_template = None;
+    f.render(&entry("k", "article", fields)).unwrap()
+}
+
+#[test]
+fn file_names_are_valid_on_every_system() {
+    // test_filename_unit.py TestSafeFileNames
+    let n = FormatKind::Name;
+    let fields = [
+        ("author", "Doe, J."),
+        ("year", "2000"),
+        ("journal", "Nature: \"A|B\" <x>?*\x01. "),
+    ];
+    assert_eq!(
+        name_of("{journal}/{author}_{year}", n, &fields),
+        "Nature- -A-B- -x----/doe_2000"
+    );
+    assert_eq!(
+        name_of(
+            "{journal}/{author}",
+            n,
+            &[("author", "Nul"), ("journal", "con.x")]
+        ),
+        "con-.x/nul-"
+    );
+    // no journal: no 'None' folder, an empty folder of the template is left out
+    assert_eq!(
+        name_of(
+            "{journal}/{author}_{year}",
+            n,
+            &[("author", "Doe, J."), ("year", "2000")]
+        ),
+        "doe_2000"
+    );
+    assert_eq!(
+        name_of(
+            "{author}{journal}",
+            FormatKind::Key,
+            &[("author", "Doe, J.")]
+        ),
+        "doe"
+    );
+    // a key is not a file name
+    assert_eq!(
+        name_of("{journal}", FormatKind::Key, &[("journal", "a:b")]),
+        "a:b"
+    );
+}
+
+#[test]
+fn file_names_are_at_most_250_bytes() {
+    use papers_rs::names::{MAX_NAME_BYTES, attachment_names, fit_name};
+    let mut f = Format::name();
+    f.template = "{journal}/{author}".into();
+    f.unknown_template = None;
+    f.author_num = 200;
+    let author = vec!["Müller"; 200].join(" and ");
+    let e = entry(
+        "k",
+        "article",
+        &[("author", author.as_str()), ("journal", &"é".repeat(300))],
+    );
+    let name = f.render(&e).unwrap();
+    let (folder, base) = name.split_once('/').unwrap();
+    assert!(folder.len() <= MAX_NAME_BYTES && base.len() <= MAX_NAME_BYTES);
+    let fitted = fit_name(&format!("{name}.pdf"));
+    assert!(fitted.ends_with(".pdf"));
+    assert_eq!(fitted.split_once('/').unwrap().1.len(), MAX_NAME_BYTES);
+    // the other files of an entry, with a suffix for two that coincide
+    let target = format!("files/{}", "a".repeat(240));
+    let files = ["x.pdf", "a/supplement.pdf", "b/supplement.pdf"].map(String::from);
+    let names = attachment_names(&files, &target);
+    assert_eq!(names[0], format!("{target}.pdf"));
+    for n in &names {
+        assert!(n.split_once('/').unwrap().1.len() <= MAX_NAME_BYTES + 2);
+    }
+    assert_eq!(
+        names.iter().collect::<std::collections::HashSet<_>>().len(),
+        3
+    );
+}
+
+#[test]
+fn slugs_are_always_transliterated_with_the_table_of_unidecode() {
+    // test_filename_unit.py TestSlugTable: the slug of python-slugify with Unidecode, apostrophes included
+    let slug = papers_rs::names::slugify("l'objet Объект Хрущёв µm");
+    assert_eq!(slug, "l-objet-obekt-khrushchev-mm");
+}
+
+#[test]
+fn braces_are_one_name() {
+    use papers_rs::bib::encoding::{family_names, standard_name};
+    use papers_rs::identity::split_names;
+    // test_encoding.py, test_entries.py
+    assert_eq!(
+        family_names("{Barnes and Noble} and {Smith, Jones}, J. and John Doe"),
+        ["{Barnes and Noble}", "{Smith, Jones}", "Doe"]
+    );
+    assert_eq!(standard_name("John {van der Berg}"), "{van der Berg}, John");
+    assert_eq!(
+        standard_name("{World Health Organization}"),
+        "{World Health Organization}"
+    );
+    assert_eq!(
+        standard_name("John Smith and\n  Jane Doe"),
+        "Smith, John and Doe, Jane"
+    );
+    assert_eq!(
+        standard_name("Smith, John and {Barnes and Noble}"),
+        "Smith, John and {Barnes and Noble}"
+    );
+    assert_eq!(
+        standard_name("Jean-Paul de la Fontaine"),
+        "Fontaine, Jean-Paul de la"
+    );
+    // test_merge_dup_unit.py
+    assert_eq!(
+        parse_name("{Smith, Jones and Co}"),
+        ("{Smith, Jones and Co}".into(), String::new())
+    );
+    assert_eq!(
+        parse_name("{Smith, Jones}, Ltd"),
+        ("{Smith, Jones}".into(), "Ltd".into())
+    );
+    assert_eq!(
+        split_names("{Barnes and Noble} and Smith, J."),
+        ["{Barnes and Noble}", "Smith, J."]
+    );
+    let e = entry(
+        "k",
+        "article",
+        &[
+            ("author", "{Barnes and Noble} and Smith, J."),
+            ("title", "T"),
+        ],
+    );
+    assert_eq!(Identifiers::of(&e).author, "barnes and noble smith");
+}
+
+#[test]
+fn file_links_are_trimmed() {
+    use papers_rs::bib::encoding::parse_file;
+    // test_entries.py test_parse_files_trimmed
+    assert_eq!(parse_file("a.pdf; b.pdf"), ["a.pdf", "b.pdf"]);
+    assert_eq!(parse_file(":a.pdf :pdf; :b.pdf:pdf"), ["a.pdf", "b.pdf"]);
+    assert_eq!(parse_file(r":C:\x.pdf:pdf"), [r"C:\x.pdf"]);
+    assert_eq!(parse_file(r"C:\x.pdf"), ["C"]);
+    // a file given twice, however written, is one link (test_spec_bibtex.py TestFilePaths)
+    let mut e = Entry::new("article", "x");
+    set_files(
+        &mut e,
+        &[
+            "/lib/files/./a.pdf".into(),
+            "/lib/files/a.pdf".into(),
+            "/lib/b.pdf".into(),
+        ],
+        "/lib",
+    );
+    assert_eq!(e.get("file"), Some(":files/a.pdf:pdf;:b.pdf:pdf"));
+    set_files(&mut e, &[], "/lib");
+    assert_eq!(e.get("file"), None);
+}
+
+#[test]
+fn tags_are_compared_without_case() {
+    use papers_rs::entry::{add_tags, remove_tags, rename_tag, tags};
+    // test_entries.py test_tags_without_case
+    let mut e = Entry::new("article", "a");
+    e.set("keywords", "climate, Ice");
+    let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+    add_tags(&mut e, &s(&["Climate", "ocean", "OCEAN"]));
+    assert_eq!(tags(&e), ["climate", "Ice", "ocean"]);
+    remove_tags(&mut e, &s(&["ice"]));
+    assert_eq!(tags(&e), ["climate", "ocean"]);
+    assert!(rename_tag(&mut e, "CLIMATE", "Climate")); // a rename can change the case
+    assert_eq!(tags(&e), ["Climate", "ocean"]);
+    add_tags(&mut e, &s(&["Climate/amoc"]));
+    assert!(rename_tag(&mut e, "climate", "sea"));
+    assert_eq!(tags(&e), ["sea", "ocean", "sea/amoc"]);
+}
+
+#[test]
+fn the_key_of_an_entry_in_the_library_is_not_taken() {
+    // test_bib_fix.py test_auto_key_keeps_a_right_key: an entry whose key is the template key keeps it
+    let disk = Disk::new();
+    let text = "@article{smith2000,\n author = {Smith, J.},\n title = {T},\n year = {2000}\n}\n\n@article{smith2000b,\n author = {Smith, K.},\n title = {U},\n year = {2000}\n}\n";
+    let lib = disk.library(text, Format::name());
+    let own = lib.get("smith2000").unwrap().clone();
+    assert_eq!(lib.regenerate_key(&own).unwrap(), "smith2000");
+    // an entry that is not in the library gets a letter
+    assert_eq!(lib.generate_key(&own).unwrap(), "smith2000c");
+}
+
+#[test]
+fn a_merge_keeps_bare_values_and_adds_no_empty_field() {
+    use papers_rs::bib::Block;
+    use papers_rs::merge::apply_entry;
+    // test_merge_dup_unit.py test_bare_value_stays_bare, test_empty_field_not_added
+    let es =
+        entries("@article{a, month = jan, title = {T}}\n@article{b, title = {T}, year = {2000}}");
+    let merged = Merge::new(&[es[0].clone(), es[1].clone()], None, false).result();
+    let mut bib = Bib::default();
+    bib.blocks.push(Block::Entry(merged));
+    let written = bib.to_string();
+    assert!(written.contains(" month = jan,"), "{written}");
+    assert!(written.contains(" year = {2000}"), "{written}");
+    // written into the library entry
+    let mut target = es[1].clone();
+    apply_entry(
+        &mut target,
+        &Merge::new(&[es[1].clone(), es[0].clone()], None, false).result(),
+    );
+    let mut bib = Bib::default();
+    bib.blocks.push(Block::Entry(target));
+    assert!(bib.to_string().contains(" month = jan,"));
+    // an empty field of the added entry is not added; an empty field of the target stays
+    let es = entries("@article{a, note = {}, title = {T}}\n@article{b, pages = {}, title = {T}}");
+    let result = Merge::new(&es, None, false).result();
+    assert_eq!(result.get("pages"), None);
+    assert_eq!(result.get("note"), Some(""));
+    // given names beyond the shorter name are not compared (J. and John Quincy)
+    assert!(papers_rs::merge::names_compatible(
+        "Smith, J.",
+        "Smith, John Quincy"
+    ));
+}
+
+#[test]
+fn a_crossref_follows_the_merge() {
+    // test_duplicates.py test_crossref_follows_the_merge
+    let disk = Disk::new();
+    let text = "@book{proc2000a, title = {Proceedings of X}, year = {2000}, doi = {10.1000/p}}\n\n@book{proc2000b, title = {Proceedings of X}, year = {2000}, doi = {10.1000/p}, publisher = {P}}\n\n@inproceedings{talk2000, title = {A talk}, crossref = {proc2000a}}\n";
+    let mut lib = disk.library(text, Format::name());
+    lib.check_duplicates(&mut Resolver::new(OnDuplicate::Keep))
+        .unwrap();
+    let keys: Vec<String> = lib.entries().map(|e| e.key.clone()).collect();
+    let target = if keys.contains(&"proc2000b".to_string()) {
+        "proc2000b"
+    } else {
+        "proc2000a"
+    };
+    assert_eq!(field(&lib, "talk2000", "crossref").as_deref(), Some(target));
+    assert_eq!(keys.len(), 2);
+}
+
+#[test]
+fn ids_are_the_former_keys_once() {
+    // test_entry_cmds.py test_keep_old_key_once, test_spec_bibtex.py TestIds
+    let disk = Disk::new();
+    let mut lib = disk.library(
+        "@article{a,\n ids = {Old, new},\n title = {T}\n}\n",
+        Format::name(),
+    );
+    lib.set_key("a", "b", true).unwrap();
+    assert_eq!(field(&lib, "b", "ids").as_deref(), Some("Old, new, a"));
+    lib.set_key("b", "a", true).unwrap(); // back: never the key itself
+    assert_eq!(field(&lib, "a", "ids").as_deref(), Some("Old, new, b"));
+    lib.set_key("a", "b", true).unwrap(); // a former key once
+    assert_eq!(field(&lib, "b", "ids").as_deref(), Some("Old, new, a"));
+    // without keep-old-key a part equal to the new key goes, and the field with the last of them
+    let mut lib = disk.library(
+        "@article{a,\n ids = {B},\n title = {T}\n}\n",
+        Format::name(),
+    );
+    lib.set_key("a", "b", false).unwrap();
+    assert_eq!(field(&lib, "b", "ids"), None);
+}
+
+#[test]
+fn the_same_paper_with_a_taken_key_is_folded_in_when_nothing_differs() {
+    // test_bib_fix.py test_same_key_title_by_case: a title that differs by case is no difference
+    let disk = Disk::new();
+    let mut lib = disk.library(LIB, Format::name());
+    let same_key = "@article{smith2020climate,\n author = {Smith, John and Doe, Jane},\n doi = {10.1000/abc123},\n file = {:files/smith.pdf:pdf},\n journal = {Nature},\n keywords = {climate, mine},\n title = {Climate Sensitivity Revisited},\n year = {2020}\n}\n";
+    let result = lib
+        .add_bibtex(
+            same_key,
+            Some(&disk.root),
+            &[],
+            false,
+            &InsertOptions::default(),
+            &mut Resolver::new(OnDuplicate::Error),
+        )
+        .unwrap();
+    assert_eq!(result[0].what, What::ExactDuplicate);
+    assert_eq!(lib.len(), 1);
+    // another version of the paper (a field to add) is not: the key is taken
+    let more = same_key.replace(" year = {2020}", " volume = {1},\n year = {2020}");
+    let err = lib
+        .add_bibtex(
+            &more,
+            Some(&disk.root),
+            &[],
+            false,
+            &InsertOptions::default(),
+            &mut Resolver::new(OnDuplicate::Error),
+        )
+        .unwrap_err();
+    assert!(
+        err.message()
+            .contains("for another paper or another version of it")
+    );
+}
+
+#[test]
+fn a_bibtex_to_add_with_entries_that_cannot_be_read() {
+    // test_unreadable.py test_added_bibtex_warns: they are not added
+    let disk = Disk::new();
+    let mut lib = disk.library("", Format::name());
+    lib.add_bibtex(
+        "@article{a2000, title={A}, year={2000}}\n\n@article{b2000, Title={B}, title={C}}\n",
+        Some(&disk.root),
+        &[],
+        false,
+        &InsertOptions::default(),
+        &mut Resolver::new(OnDuplicate::Error),
+    )
+    .unwrap();
+    let keys: Vec<&str> = lib.entries().map(|e| e.key.as_str()).collect();
+    assert_eq!(keys, ["a2000"]);
+}
+
+#[test]
+fn only_commands_and_braces_are_decoded_in_a_path() {
+    // test_files_unit.py test_fix_mendeley_path_keeps_text_signs
+    use papers_rs::bib::latex::latex_to_unicode;
+    assert_eq!(
+        latex_to_unicode("/a/x--y~z$w{\\_}{\\\"u}.pdf", false),
+        "/a/x--y~z$w_ü.pdf"
+    );
 }

@@ -1,0 +1,74 @@
+{
+ "blocks": [
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "first",
+   "fields": [
+    [
+     "title",
+     "Fine",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{open1,\n title = {an unbalanced { brace swallows the lines below, up to the next entry},\n",
+   "line": 4,
+   "class": "ParsingFailedBlock"
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{open2,\n title = {and so does this one { },\n",
+   "line": 7,
+   "class": "ParsingFailedBlock"
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{twice3,\n title = {One},\n title = {Two},\n}",
+   "line": 10,
+   "class": "DuplicateFieldKeyBlock"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "last",
+   "fields": [
+    [
+     "title",
+     "Fine",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{open4,\n title = {an unreadable block at the end of the file, with empty lines after it { },\n\n\n\n",
+   "line": 19,
+   "class": "ParsingFailedBlock"
+  }
+ ],
+ "unreadable": [
+  [
+   5,
+   "syntax error"
+  ],
+  [
+   8,
+   "syntax error"
+  ],
+  [
+   11,
+   "a field given twice: 'title'"
+  ],
+  [
+   20,
+   "syntax error"
+  ]
+ ],
+ "cache_agrees": true,
+ "formatted": "@article{first,\n title = {Fine}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open1,\n title = {an unbalanced { brace swallows the lines below, up to the next entry},\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open2,\n title = {and so does this one { },\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{twice3,\n title = {One},\n title = {Two},\n}\n\n\n@article{last,\n title = {Fine}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open4,\n title = {an unreadable block at the end of the file, with empty lines after it { },\n\n",
+ "saved_twice": "@article{first,\n title = {Fine}\n}\n\n@article{last,\n title = {Fine}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open1,\n title = {an unbalanced { brace swallows the lines below, up to the next entry},\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open2,\n title = {and so does this one { },\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{twice3,\n title = {One},\n title = {Two},\n}\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open4,\n title = {an unreadable block at the end of the file, with empty lines after it { },\n\n",
+ "edited_saved": "@article{first,\n title = {Fine (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{last,\n title = {Fine (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open1,\n title = {an unbalanced { brace swallows the lines below, up to the next entry},\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open2,\n title = {and so does this one { },\n\n\n% WARNING Parsing failed for the following 4 lines.\n@article{twice3,\n title = {One},\n title = {Two},\n}\n\n\n% WARNING Parsing failed for the following 2 lines.\n@article{open4,\n title = {an unreadable block at the end of the file, with empty lines after it { },\n\n"
+}

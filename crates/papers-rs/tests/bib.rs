@@ -7,7 +7,8 @@ use std::path::PathBuf;
 use papers_rs::bib::encoding::{
     family_names, format_file, parse_file, parse_keywords, standard_name,
 };
-use papers_rs::bib::latex_table::{latex_to_unicode, protect_uppercase, string_to_latex};
+use papers_rs::bib::latex::latex_to_unicode as decode;
+use papers_rs::bib::latex_table::{protect_uppercase, string_to_latex};
 use papers_rs::bib::{Bib, read_file};
 use serde_json::{Value, json};
 
@@ -146,9 +147,14 @@ fn latex_and_unicode_as_papers() {
             "string_to_latex({s:?})"
         );
         assert_eq!(
-            latex_to_unicode(s),
+            decode(s, true),
             c["to_unicode"].as_str().unwrap(),
             "latex_to_unicode({s:?})"
+        );
+        assert_eq!(
+            decode(s, false),
+            c["to_unicode_path"].as_str().unwrap(),
+            "latex_to_unicode({s:?}, text=False)"
         );
         assert_eq!(
             protect_uppercase(s),

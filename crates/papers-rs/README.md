@@ -20,11 +20,14 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   written as papers writes them (key order, indentation, no trailing newline).
   Paths are strings with Python's `os.path` semantics (`config::paths`).
 - `bib`: the bibtex of a library, read and written as papers does (bibtexparser
-  v2 with the middlewares of papers), byte for byte; LaTeX and unicode as papers
-  converts them: by the tables of `papers.latexenc` (`bib::latex_table`) and by
-  pylatexenc (`bib::unicode`: the decoding of a library or an entry, and of the
-  values for the export; the `latexenc-rs` crate); names, keywords and the `file`
-  field (`bib::encoding`).
+  v2 with the middlewares of papers), byte for byte, as UTF-8 with LF line ends and
+  without a byte order mark (field names and keys ignore case: a second one is a
+  block that cannot be read); LaTeX and unicode as papers converts them: LaTeX as
+  LaTeX reads it, for the same-paper rule and the Mendeley links (`bib::latex`),
+  unicode as LaTeX by the table of `papers.latexenc` (`bib::latex_table`), and
+  LaTeX as unicode by pylatexenc (`bib::unicode`: the decoding of a library or an
+  entry, and of the values for the export; the `latexenc-rs` crate); names (split at
+  brace depth 0), keywords and the `file` field (`bib::encoding`).
 - `formats`: the export formats (`papers.formats`, spec `formats.md`): CSL-JSON, RIS
   (written as the `rispy` package writes it: no dependency), BibJSON, the JSON text
   they are written in, the name parsing, the dates, the pages and the DOIs they
@@ -44,10 +47,11 @@ papers-rs is 3 to 8 times faster than papers on a library of 2,344 entries: see
   (nested with `/`: `tag:x` finds `x` and the tags under it, counts of a subtree,
   rename of a subtree), the former keys of `ids`.
 - `names`: the keys and the names of the files: the key and name templates
-  (Python's `str.format`), slugify, path safety, the suffix rule of the keys,
-  the names of the other files of an entry. The transliteration to ASCII is one
-  function, `names::ascii`: papers uses Unidecode, papers-rs the `deunicode`
-  crate, which differs for some characters (below).
+  (Python's `str.format`), slugify, path safety, file names valid on every system and
+  of at most 250 bytes, the suffix rule of the keys (a suffix in either case, a second
+  letter after `z`), the names of the other files of an entry. The transliteration to
+  ASCII is one function, `names::ascii`: papers uses Unidecode (for the slugs too, since
+  3.0.0b6), papers-rs the `deunicode` crate, which differs for some characters (below).
 - `identity`: when two entries are the same paper (DOI, arXiv id, ISBN, authors
   and title; the title guard), `.papers/distinct.json`, the search for
   duplicates, naming an entry by key, former key, DOI, arXiv id or ISBN.

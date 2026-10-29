@@ -478,7 +478,8 @@ pub fn add(
                     // the pool entry of that key, as it is written there
                     let taken = match (session.lookup.as_mut(), session.exchange.as_mut()) {
                         (Some(lookup), Some(exchange)) => {
-                            let files: Vec<String> = attachments.iter().map(|f| abspath(f)).collect();
+                            let files: Vec<String> =
+                                attachments.iter().map(|f| abspath(f)).collect();
                             lookup.key(exchange, &session.library, &key, &files)?
                         }
                         _ => None,
@@ -648,7 +649,9 @@ fn taker_of<'a>(
     exchange: &'a mut Option<crate::pools::Exchange>,
 ) -> Option<crate::pools::lookup::PoolTaker<'a>> {
     match (lookup.as_mut(), exchange.as_mut()) {
-        (Some(lookup), Some(exchange)) => Some(crate::pools::lookup::PoolTaker { lookup, exchange }),
+        (Some(lookup), Some(exchange)) => {
+            Some(crate::pools::lookup::PoolTaker { lookup, exchange })
+        }
         _ => None,
     }
 }
@@ -669,11 +672,15 @@ pub(super) fn add_file(
     }
     let bytes = std::fs::read(file).map_err(|e| Error::exit(os_error(&e, file)))?;
     let text = String::from_utf8(bytes).map_err(|e| Error::exit(format!("{e}")))?;
-    let text = crate::bib::universal_newlines(&text);
+    // UTF-8 without the byte order mark that some editors write first
+    let text = crate::bib::universal_newlines(crate::bib::without_bom(&text));
     // file links in the added file are relative to its own directory
     let relative_to = dirname(&abspath(file));
     let inserted = if format == Format::Bibtex {
-        let entries: Vec<Entry> = crate::bib::Bib::parse(&text).entries().cloned().collect();
+        let entries: Vec<Entry> = crate::library::parse_added_bibtex(&text)
+            .entries()
+            .cloned()
+            .collect();
         let mut taker = taker_of(&mut session.lookup, &mut session.exchange);
         session.library.add_entries_taking(
             entries,
@@ -685,8 +692,7 @@ pub(super) fn add_file(
             taker.as_mut().map(|t| t as &mut dyn crate::library::Taker),
         )?
     } else {
-        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
-        let entries = loads(text, format).map_err(Error::exit)?;
+        let entries = loads(&text, format).map_err(Error::exit)?;
         let what = format!("{} file", format.label());
         let mut taker = taker_of(&mut session.lookup, &mut session.exchange);
         session.library.add_entries_taking(

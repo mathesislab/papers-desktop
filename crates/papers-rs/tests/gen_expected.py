@@ -41,7 +41,8 @@ import papers  # noqa: E402
 from papers.bib import Biblio, unreadable_blocks  # noqa: E402
 from papers.encoding import family_names, parse_keywords, standard_name  # noqa: E402
 from papers.entries import format_file, parse_file, parse_string  # noqa: E402
-from papers.latexenc import latex_to_unicode, protect_uppercase, string_to_latex  # noqa: E402
+from papers.latex import latex_to_unicode  # noqa: E402
+from papers.latexenc import protect_uppercase, string_to_latex  # noqa: E402
 
 logging.disable(logging.CRITICAL)
 
@@ -51,7 +52,7 @@ EXPECTED = os.path.join(HERE, 'expected')
 
 def read(path):
     "the text of a file as papers reads it"
-    with open(path) as f:
+    with open(path, encoding='utf-8-sig') as f:
         return f.read()
 
 
@@ -188,11 +189,21 @@ def latexenc_cases(extra):
         'é́', 'é', 'ABC', 'Hello', 'A{B}C', '{A}', 'Zeta2020', 'a_b~c', '5% of $x$', '"quoted"',
         "\\'e\\`a", "\\^{o}\\v{s}\\H{o}", '\\c c', '\\AA ngstr\\"om', 'M{\\"u}ller', 'x\\\\y', '– — “',
         '\U0001d7d8', 'αβγ', '\\alpha', '\\textbf{a}', 'a\n\nb', '\\ss{}', '\\o{}', '\\"{\\i}', '\\^\\i', "\\'\\i",
+        # the decoder of the same-paper rule (bibtex.md 4.1)
+        'T\\^ete', "\\'e", '\\v{S}koda', 'A{\\dh}algeirsd{\\\'o}ttir', '\\url{x}', '$\\alpha$-decay', 'CO$_2$',
+        "\\'{\\\"u}", '\\"u\\"u', '\\c c', '\\c{c}', '{\\c c}', '\\k{a}', '\\=o', '\\.z', '\\u{g}', '\\r{a}', '\\H{o}',
+        '\\d{s}', '\\b{b}', '\\t{oo}', "\\'", '\\^', 'a\\^', '\\i', '\\j', '\\"\\i', '\\'+'{\\j}', '\\AA ngstr\\"om',
+        '\\o  x', '\\ss  y', '\\l', '\\th', '\\textendash', '\\textendash x', '\\space', '\\copyright', '\\times',
+        '\\ell', '\\dh', '\\foo', '\\foo{bar}', '\\foo bar', '\\&\\%\\$\\#\\_\\{\\}', 'a\\ b\\,c\\;d\\:e\\!f\\\\g',
+        'a\\-b', 'a~b', 'a--b', 'a---b', '``q\'\'', '\\emph{x} \\textit{y} \\href{u}{t}', '\\cyrchar\\CYRA', '$x$',
+        '\\\'{}e', '\\\'  {e}', '{\\\'{\\i}}', '\\mathrm{CO}', '\\relax', 'x\\', '\\\n', '\\é', '\\textbf', '{{a}}',
+        '{', '}}', '\\\'{e', '\\\'{e}}', '\\\'{{e}}', '\\\'\\\'e', '\\v\\c{s}',
     ]
     atoms = ['a', 'e', 'o', 'C', 'ss', ' ', '{', '}', '\\', "\\'", '\\"', '\\`', '\\^', '\\~', '\\c', '\\v', '\\H',
              '\\u', '\\=', '\\.', '\\AA', '\\ss', '\\i', 'é', 'ü', '́', '̈', '$', '%', '_', '~',
-             '#', '&', '–', 'A', 'Z', '\\textbf', '\\alpha', '\\\\']
-    for _ in range(600):
+             '#', '&', '–', 'A', 'Z', '\\textbf', '\\alpha', '\\\\', '--', '\'\'', '`', '\\url', '\\emph', '\\j', '\\o',
+             '\\k', '\\d', '\\cyrchar', '\\-', '\\,', '\n', '\\space', '\\textendash']
+    for _ in range(1500):
         strings.append(''.join(rng.choice(atoms) for _ in range(rng.randint(1, 8))))
     seen, out = set(), []
     for s in strings:
@@ -200,19 +211,24 @@ def latexenc_cases(extra):
             continue
         seen.add(s)
         out.append({'in': s, 'to_latex': string_to_latex(s), 'to_unicode': latex_to_unicode(s),
-                    'protect': protect_uppercase(s)})
+                    'to_unicode_path': latex_to_unicode(s, text=False), 'protect': protect_uppercase(s)})
     return out
 
 
 def encoding_cases(authors, keywords, files):
     names = ['Smith, John', 'John Smith', 'Doe, Jane and Smith, John', 'John Smith and Jane Doe', 'Cher',
              'van der Berg, Jane and {The Collaboration}', ' A B  and  C D ', 'Perrette, M. and Yool, A.', '',
-             'A and', 'A and and B', 'Jean-Paul Sartre and Simone de Beauvoir', 'x, y, z and u v']
+             'A and', 'A and and B', 'Jean-Paul Sartre and Simone de Beauvoir', 'x, y, z and u v',
+             'John {van der Berg}', '{van der Berg}, Jane', '{World Health Organization}', 'Jane {Van Der} Berg and X',
+             '{Barnes and Noble} and Doe, J.', '{Intergovernmental Panel on Climate Change}', 'a {b, c} d', '{a, b}',
+             'A  and\tB', 'A and\nB', 'A AND B', '{x and y', 'x} and y z', '{a} {b}', 'A  B ', 'Smith ,John', ',',
+             'a and  and b c', 'J. {de la} Cruz and {\\"O}zt{\\"u}rk, Ali']
     kws = ['', 'ocean', 'kiwi, ocean, climate', ' sea-level ,  projections ', ',,a,,', 'a;b, c']
     fs = ['', 'file.pdf:/path/to/file.pdf:pdf', ':/path/to/file.pdf:pdf', '/path/to/file.pdf:pdf', '/path/to/file.pdf',
           ':/path/to/file.pdf:', ':/path/to/file1.pdf:pdf;:/path/to/file2.pdf:pdf',
           ':/path/to/American Economic Journal: Applied Economics.pdf:pdf', 'desc:/path/with:colon.pdf:pdf', '::pdf',
-          ':/path/to/file.pdf:pdf;', ';;', ' ; ', 'a:b:c:d:e', 'a:b', ':', '::', ':::', 'x;y;z', 'files/a.b.pdf:pdf']
+          ':/path/to/file.pdf:pdf;', ';;', ' ; ', 'a:b:c:d:e', 'a:b', ':', '::', ':::', 'x;y;z', 'files/a.b.pdf:pdf',
+          'a.pdf; b.pdf', ' :  x.pdf : pdf ', ':  :pdf', 'd: p.pdf :pdf; \t', ' a b.pdf ', 'C:\\x.pdf', ':C:\\x.pdf:pdf']
     lists = [['/path/to/file.pdf'], ['/a/b.pdf', '/a/c.tar.gz'], ['noext'], ['.hidden'], ['x.'], ['a/.b/c'],
              ['a.b/c'], ['..x.txt'], ['dir.d/file'], ['a..b'], [], ['/p/q.PDF', 'r.djvu']]
     return {

@@ -39,10 +39,10 @@
 },
 {
 "in": "van der Berg, Jane and {The Collaboration}",
-"standard": "van der Berg, Jane and Collaboration}, {The",
+"standard": "van der Berg, Jane and {The Collaboration}",
 "family": [
 "van der Berg",
-"Collaboration}"
+"{The Collaboration}"
 ]
 },
 {
@@ -97,6 +97,146 @@
 "family": [
 "x",
 "v"
+]
+},
+{
+"in": "John {van der Berg}",
+"standard": "{van der Berg}, John",
+"family": [
+"{van der Berg}"
+]
+},
+{
+"in": "{van der Berg}, Jane",
+"standard": "{van der Berg}, Jane",
+"family": [
+"{van der Berg}"
+]
+},
+{
+"in": "{World Health Organization}",
+"standard": "{World Health Organization}",
+"family": [
+"{World Health Organization}"
+]
+},
+{
+"in": "Jane {Van Der} Berg and X",
+"standard": "Berg, Jane {Van Der} and X",
+"family": [
+"Berg",
+"X"
+]
+},
+{
+"in": "{Barnes and Noble} and Doe, J.",
+"standard": "{Barnes and Noble} and Doe, J.",
+"family": [
+"{Barnes and Noble}",
+"Doe"
+]
+},
+{
+"in": "{Intergovernmental Panel on Climate Change}",
+"standard": "{Intergovernmental Panel on Climate Change}",
+"family": [
+"{Intergovernmental Panel on Climate Change}"
+]
+},
+{
+"in": "a {b, c} d",
+"standard": "d, a {b, c}",
+"family": [
+"d"
+]
+},
+{
+"in": "{a, b}",
+"standard": "{a, b}",
+"family": [
+"{a, b}"
+]
+},
+{
+"in": "A  and\tB",
+"standard": "A and B",
+"family": [
+"A",
+"B"
+]
+},
+{
+"in": "A and\nB",
+"standard": "A and B",
+"family": [
+"A",
+"B"
+]
+},
+{
+"in": "A AND B",
+"standard": "B, A AND",
+"family": [
+"B"
+]
+},
+{
+"in": "{x and y",
+"standard": "{x and y",
+"family": [
+"{x and y"
+]
+},
+{
+"in": "x} and y z",
+"standard": "x} and y z",
+"family": [
+"x} and y z"
+]
+},
+{
+"in": "{a} {b}",
+"standard": "{b}, {a}",
+"family": [
+"{b}"
+]
+},
+{
+"in": "A  B ",
+"standard": "B, A",
+"family": [
+"B"
+]
+},
+{
+"in": "Smith ,John",
+"standard": "Smith ,John",
+"family": [
+"Smith"
+]
+},
+{
+"in": ",",
+"standard": ",",
+"family": [
+""
+]
+},
+{
+"in": "a and  and b c",
+"standard": "a and c, and b",
+"family": [
+"a",
+"c",
+"b"
+]
+},
+{
+"in": "J. {de la} Cruz and {\\\"O}zt{\\\"u}rk, Ali",
+"standard": "Cruz, J. {de la} and {\\\"O}zt{\\\"u}rk, Ali",
+"family": [
+"Cruz",
+"{\\\"O}zt{\\\"u}rk"
 ]
 },
 {
@@ -160,10 +300,10 @@
 },
 {
 "in": "van der Berg, Jane and {The Collaboration}",
-"standard": "van der Berg, Jane and Collaboration}, {The",
+"standard": "van der Berg, Jane and {The Collaboration}",
 "family": [
 "van der Berg",
-"Collaboration}"
+"{The Collaboration}"
 ]
 },
 {
@@ -393,6 +533,47 @@
 "in": "files/a.b.pdf:pdf",
 "parse": [
 "files/a.b.pdf"
+]
+},
+{
+"in": "a.pdf; b.pdf",
+"parse": [
+"a.pdf",
+"b.pdf"
+]
+},
+{
+"in": " :  x.pdf : pdf ",
+"parse": [
+"x.pdf"
+]
+},
+{
+"in": ":  :pdf",
+"parse": []
+},
+{
+"in": "d: p.pdf :pdf; \t",
+"parse": [
+"p.pdf"
+]
+},
+{
+"in": " a b.pdf ",
+"parse": [
+"a b.pdf"
+]
+},
+{
+"in": "C:\\x.pdf",
+"parse": [
+"C"
+]
+},
+{
+"in": ":C:\\x.pdf:pdf",
+"parse": [
+"C:\\x.pdf"
 ]
 },
 {

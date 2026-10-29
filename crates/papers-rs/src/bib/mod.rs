@@ -13,8 +13,9 @@
 //! What papers keeps of a text, `Bib` keeps: the entries (type in lower case,
 //! key, fields with their values without the braces), the strings, the
 //! preambles, the comments, and the text of what bibtexparser cannot read
-//! (an entry with a field given twice, a second entry with a key, a syntax
-//! error), which is written back as it was and is not seen as an entry.
+//! (an entry with a field given twice, a second entry with a key: both
+//! ignore case, as BibTeX does; a syntax error), which is written back as it
+//! was and is not seen as an entry.
 //! What papers drops, `Bib` drops: the string references are resolved, the
 //! quotes of a value become braces, the field names are in lower case, the
 //! spacing of an entry is gone. The values are as written, LaTeX included:
@@ -24,8 +25,9 @@
 //! - [`Bib::parse`], [`read_file`]: a text, a file.
 //! - [`Bib::unreadable`]: what could not be read, and where.
 //! - [`Bib::sort`], [`Bib::format`], and `Display` (both: the text of a save).
-//! - [`latex_table`]: LaTeX and unicode by the tables of `papers.latexenc`
-//!   (`fix --encoding latex`, identity of entries and file names).
+//! - [`latex`]: LaTeX as unicode, the decoder of the same-paper rule (`papers.latex`).
+//! - [`latex_table`]: LaTeX by the table of `papers.latexenc`
+//!   (`check --encoding latex`).
 //! - [`unicode`]: the LaTeX of the values as unicode text, by pylatexenc
 //!   with the [`latexenc`] crate: of a library or an entry
 //!   (`fix --encoding unicode`, `add`; bibtexparser's `LatexDecodingMiddleware`),
@@ -42,6 +44,7 @@ mod split;
 mod write;
 
 pub mod encoding;
+pub mod latex;
 pub mod latex_table;
 pub mod unicode;
 
@@ -128,9 +131,10 @@ pub struct Unreadable {
 /// Why a block could not be read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnreadableKind {
-    /// the names (sorted) of the fields given twice
+    /// the names (sorted, in lower case) of the fields given twice (field names ignore case)
     DuplicateFields(Vec<String>),
-    /// the key of an entry (or a string) that another block has already
+    /// the key of an entry that an entry before it has already (keys ignore
+    /// case), or of a string whose name another string has exactly
     DuplicateKey(String),
     /// a syntax error
     Syntax,
@@ -206,6 +210,9 @@ impl Unreadable {
             UnreadableKind::DuplicateFields(keys) => {
                 let keys: Vec<&str> = keys.iter().map(String::as_str).collect();
                 format!("a field given twice: '{}'", keys.join(", "))
+            }
+            UnreadableKind::DuplicateKey(key) => {
+                format!("a key given twice (keys ignore case): '{key}'")
             }
             _ => "syntax error".to_string(),
         }
@@ -289,13 +296,19 @@ impl fmt::Display for Bib {
     }
 }
 
-/// The text of a file as papers reads it (`open(file).read()`): UTF-8, the
-/// line ends `\r\n` and `\r` read as `\n`.
+/// The text of a file as papers reads it (`open(file, encoding='utf-8-sig').read()`):
+/// UTF-8 without the byte order mark that some editors write first, the line
+/// ends `\r\n` and `\r` read as `\n`.
 pub fn read_file(path: &Path) -> std::io::Result<String> {
     let bytes = std::fs::read(path)?;
     let text = String::from_utf8(bytes)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-    Ok(universal_newlines(&text))
+    Ok(universal_newlines(without_bom(&text)))
+}
+
+/// A text without the byte order mark at its start (the `utf-8-sig` codec).
+pub fn without_bom(text: &str) -> &str {
+    text.strip_prefix('\u{feff}').unwrap_or(text)
 }
 
 /// Python's universal newlines: `\r\n` and `\r` become `\n`.

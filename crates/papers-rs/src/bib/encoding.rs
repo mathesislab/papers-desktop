@@ -4,32 +4,100 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use super::pystr::strip;
+use super::pystr::{is_space, strip};
 
-/// Authors as `Last, First and Last, First`: a name with a comma is kept,
-/// one without has its last word moved to the front (`standard_name`).
-pub fn standard_name(author: &str) -> String {
-    let parts: Vec<String> = author
-        .split(" and ")
-        .map(|p| {
-            let p = strip(p);
-            if p.contains(',') {
-                return p.to_string();
+/// The separators that a value is split on outside braces ([`split_depth0`]).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Sep {
+    /// `\s+and\s+`: the `and` between authors
+    And,
+    /// `,`
+    Comma,
+    /// `\s+`
+    Space,
+}
+
+impl Sep {
+    /// The length of the separator that starts at byte `i` of `value`, if one
+    /// does (`re.match(pattern, value, i)`).
+    fn matches(self, value: &str, i: usize) -> Option<usize> {
+        let rest = &value[i..];
+        let spaces = |s: &str| s.len() - s.trim_start_matches(is_space).len();
+        match self {
+            Sep::Comma => rest.starts_with(',').then_some(1),
+            Sep::Space => Some(spaces(rest)).filter(|&n| n > 0),
+            Sep::And => {
+                let lead = spaces(rest);
+                let after = rest[lead..].strip_prefix("and")?;
+                let trail = spaces(after);
+                (lead > 0 && trail > 0).then_some(lead + 3 + trail)
             }
-            match p.rsplit_once(' ') {
-                Some((first, last)) => format!("{last}, {first}"),
-                None => p.to_string(),
+        }
+    }
+}
+
+/// A value split on a separator that is outside braces, each part stripped
+/// (`split_depth0`): a `{...}` group is one word whatever it contains. The
+/// depth is counted as papers counts it, an unmatched `}` included.
+///
+/// ```
+/// use papers_rs::bib::encoding::{Sep, split_depth0};
+/// assert_eq!(
+///     split_depth0("{Barnes and Noble} and Smith, J.", Sep::And),
+///     ["{Barnes and Noble}", "Smith, J."]
+/// );
+/// ```
+pub fn split_depth0(value: &str, sep: Sep) -> Vec<String> {
+    let mut parts: Vec<&str> = Vec::new();
+    let (mut depth, mut start, mut i) = (0i64, 0, 0);
+    while i < value.len() {
+        let c = value[i..].chars().next().unwrap();
+        match c {
+            '{' => depth += 1,
+            '}' => depth -= 1,
+            _ if depth == 0 => {
+                if let Some(n) = sep.matches(value, i) {
+                    parts.push(&value[start..i]);
+                    i += n;
+                    start = i;
+                    continue;
+                }
+            }
+            _ => {}
+        }
+        i += c.len_utf8();
+    }
+    parts.push(&value[start..]);
+    parts.into_iter().map(|p| strip(p).to_string()).collect()
+}
+
+/// Authors as `Last, First and Last, First`: a name with a comma (outside
+/// braces) is kept, one without has its last word moved to the front. A part
+/// in braces is one word: `John {van der Berg}` is `{van der Berg}, John`,
+/// `{World Health Organization}` stays (`standard_name`).
+pub fn standard_name(author: &str) -> String {
+    let parts: Vec<String> = split_depth0(author, Sep::And)
+        .into_iter()
+        .filter(|p| !p.is_empty())
+        .map(|p| {
+            if split_depth0(&p, Sep::Comma).len() > 1 {
+                return p;
+            }
+            let words = split_depth0(&p, Sep::Space);
+            match words.split_last() {
+                Some((last, first)) if !first.is_empty() => format!("{last}, {}", first.join(" ")),
+                _ => p,
             }
         })
         .collect();
     parts.join(" and ")
 }
 
-/// The family name of each author (`family_names`).
+/// The family name of each author; names and commas in braces are not split (`family_names`).
 pub fn family_names(author: &str) -> Vec<String> {
-    standard_name(author)
-        .split(" and ")
-        .map(|n| n.split(',').next().unwrap_or("").to_string())
+    split_depth0(&standard_name(author), Sep::And)
+        .iter()
+        .map(|n| split_depth0(n, Sep::Comma).swap_remove(0))
         .collect()
 }
 
@@ -66,7 +134,7 @@ pub fn parse_file(file: &str) -> Vec<String> {
     file.split(';')
         .filter(|f| !strip(f).is_empty())
         .filter_map(|f| {
-            let path = parse_one(f);
+            let path = strip(parse_one(f));
             if path.is_empty() {
                 crate::log::warning(&format!(
                     "empty file path in file field (ignored): {}",

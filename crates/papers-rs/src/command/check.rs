@@ -291,7 +291,7 @@ pub fn fix_entry_fields(
     }
 
     if (options.fix_key || options.auto_key) && (options.auto_key || !is_valid_key(&e.key)) {
-        let key = library.generate_key(e)?;
+        let key = library.regenerate_key(e)?;
         if e.key != key {
             log::info(&format!("update key {} => {key}", e.key));
             e.key = key;

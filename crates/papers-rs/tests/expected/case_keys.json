@@ -1,0 +1,122 @@
+{
+ "blocks": [
+  {
+   "kind": "string",
+   "key": "Jgr",
+   "value": "Journal of Geophysical Research",
+   "verbatim": false
+  },
+  {
+   "kind": "string",
+   "key": "jgr",
+   "value": "a string whose name differs by case: both are read",
+   "verbatim": false
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@string{jgr = {the same name again: a block that cannot be read}}",
+   "line": 2,
+   "class": "DuplicateBlockKeyBlock",
+   "key": "jgr"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "Smith2000",
+   "fields": [
+    [
+     "title",
+     "First",
+     false
+    ],
+    [
+     "year",
+     "2000",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{smith2000,\n title = {The key of the first, in lower case},\n}",
+   "line": 9,
+   "class": "DuplicateBlockKeyBlock",
+   "key": "smith2000"
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{SMITH2000,\n title = {The key of the first, in upper case},\n}",
+   "line": 13,
+   "class": "DuplicateBlockKeyBlock",
+   "key": "SMITH2000"
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{Smith2000,\n title = {The exact key of the first},\n}",
+   "line": 17,
+   "class": "DuplicateBlockKeyBlock",
+   "key": "Smith2000"
+  },
+  {
+   "kind": "unreadable",
+   "raw": "@article{other2001,\n Title = {Field names that differ only by case},\n title = {Both are the title},\n Year = {2001},\n YEAR = {2002},\n Journal = jgr,\n}",
+   "line": 21,
+   "class": "DuplicateFieldKeyBlock"
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "Other2001",
+   "fields": [
+    [
+     "title",
+     "The key of a block that cannot be read is free",
+     false
+    ]
+   ]
+  },
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "ok2002",
+   "fields": [
+    [
+     "title",
+     "Fine: capitals in a field name are lower-cased",
+     false
+    ],
+    [
+     "month",
+     "jan",
+     true
+    ]
+   ]
+  }
+ ],
+ "unreadable": [
+  [
+   3,
+   "a key given twice (keys ignore case): 'jgr'"
+  ],
+  [
+   10,
+   "a key given twice (keys ignore case): 'smith2000'"
+  ],
+  [
+   14,
+   "a key given twice (keys ignore case): 'SMITH2000'"
+  ],
+  [
+   18,
+   "a key given twice (keys ignore case): 'Smith2000'"
+  ],
+  [
+   22,
+   "a field given twice: 'title, year'"
+  ]
+ ],
+ "cache_agrees": true,
+ "formatted": "@string{Jgr = {Journal of Geophysical Research}}\n\n@string{jgr = {a string whose name differs by case: both are read}}\n\n% WARNING Parsing failed for the following 1 lines.\n@string{jgr = {the same name again: a block that cannot be read}}\n\n\n@article{Smith2000,\n title = {First},\n year = {2000}\n}\n\n% WARNING Parsing failed for the following 3 lines.\n@article{smith2000,\n title = {The key of the first, in lower case},\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{SMITH2000,\n title = {The key of the first, in upper case},\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{Smith2000,\n title = {The exact key of the first},\n}\n\n\n% WARNING Parsing failed for the following 7 lines.\n@article{other2001,\n Title = {Field names that differ only by case},\n title = {Both are the title},\n Year = {2001},\n YEAR = {2002},\n Journal = jgr,\n}\n\n\n@article{Other2001,\n title = {The key of a block that cannot be read is free}\n}\n\n@article{ok2002,\n month = jan,\n title = {Fine: capitals in a field name are lower-cased}\n}\n",
+ "saved_twice": "@string{Jgr = {Journal of Geophysical Research}}\n\n@string{jgr = {a string whose name differs by case: both are read}}\n\n@article{Other2001,\n title = {The key of a block that cannot be read is free}\n}\n\n@article{Smith2000,\n title = {First},\n year = {2000}\n}\n\n@article{ok2002,\n month = jan,\n title = {Fine: capitals in a field name are lower-cased}\n}\n\n% WARNING Parsing failed for the following 7 lines.\n@article{other2001,\n Title = {Field names that differ only by case},\n title = {Both are the title},\n Year = {2001},\n YEAR = {2002},\n Journal = jgr,\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{SMITH2000,\n title = {The key of the first, in upper case},\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{Smith2000,\n title = {The exact key of the first},\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{jgr = {the same name again: a block that cannot be read}}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{smith2000,\n title = {The key of the first, in lower case},\n}\n\n",
+ "edited_saved": "@string{Jgr = {Journal of Geophysical Research}}\n\n@string{jgr = {a string whose name differs by case: both are read}}\n\n@article{Other2001,\n title = {The key of a block that cannot be read is free (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n@article{Smith2000,\n title = {First (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2000}\n}\n\n@article{ok2002,\n month = jan,\n title = {Fine: capitals in a field name are lower-cased (edited)},\n x-edited = {yes {braced} & \"quoted\"}\n}\n\n% WARNING Parsing failed for the following 7 lines.\n@article{other2001,\n Title = {Field names that differ only by case},\n title = {Both are the title},\n Year = {2001},\n YEAR = {2002},\n Journal = jgr,\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{SMITH2000,\n title = {The key of the first, in upper case},\n}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{Smith2000,\n title = {The exact key of the first},\n}\n\n\n% WARNING Parsing failed for the following 1 lines.\n@string{jgr = {the same name again: a block that cannot be read}}\n\n\n% WARNING Parsing failed for the following 3 lines.\n@article{smith2000,\n title = {The key of the first, in lower case},\n}\n\n"
+}

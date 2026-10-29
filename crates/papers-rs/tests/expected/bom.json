@@ -1,0 +1,26 @@
+{
+ "blocks": [
+  {
+   "kind": "entry",
+   "type": "article",
+   "key": "bom1",
+   "fields": [
+    [
+     "title",
+     "A file that starts with a byte order mark, with CRLF line ends",
+     false
+    ],
+    [
+     "year",
+     "2020",
+     false
+    ]
+   ]
+  }
+ ],
+ "unreadable": [],
+ "cache_agrees": true,
+ "formatted": "@article{bom1,\n title = {A file that starts with a byte order mark, with CRLF line ends},\n year = {2020}\n}\n",
+ "saved_twice": "@article{bom1,\n title = {A file that starts with a byte order mark, with CRLF line ends},\n year = {2020}\n}\n",
+ "edited_saved": "@article{bom1,\n title = {A file that starts with a byte order mark, with CRLF line ends (edited)},\n x-edited = {yes {braced} & \"quoted\"},\n year = {2020}\n}\n"
+}

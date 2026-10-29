@@ -1,0 +1,49 @@
+@string{Jgr = {Journal of Geophysical Research}}
+
+@string{jgr = {a string whose name differs by case: both are read}}
+
+@article{Other2001,
+ title = {The key of a block that cannot be read is free}
+}
+
+@article{Smith2000,
+ title = {First},
+ year = {2000}
+}
+
+@article{ok2002,
+ month = jan,
+ title = {Fine: capitals in a field name are lower-cased}
+}
+
+% WARNING Parsing failed for the following 7 lines.
+@article{other2001,
+ Title = {Field names that differ only by case},
+ title = {Both are the title},
+ Year = {2001},
+ YEAR = {2002},
+ Journal = jgr,
+}
+
+
+% WARNING Parsing failed for the following 3 lines.
+@article{SMITH2000,
+ title = {The key of the first, in upper case},
+}
+
+
+% WARNING Parsing failed for the following 3 lines.
+@article{Smith2000,
+ title = {The exact key of the first},
+}
+
+
+% WARNING Parsing failed for the following 1 lines.
+@string{jgr = {the same name again: a block that cannot be read}}
+
+
+% WARNING Parsing failed for the following 3 lines.
+@article{smith2000,
+ title = {The key of the first, in lower case},
+}
+

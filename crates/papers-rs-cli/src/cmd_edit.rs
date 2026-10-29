@@ -2,10 +2,11 @@
 
 use std::io::{BufRead, IsTerminal, Read};
 
-use papers_rs::command::edit::{Editor, edit_selected, replace_from_text, set_fields, set_key};
+use papers_rs::command::edit::{Editor, edit_selected, replace_from_text_in, set_fields, set_key};
 use papers_rs::command::read_selection;
 use papers_rs::command::report::print_changes;
 use papers_rs::config::Config;
+use papers_rs::config::paths::{abspath, dirname};
 use papers_rs::error::Error;
 use papers_rs::formats::{Format, file_format};
 
@@ -130,12 +131,15 @@ pub fn edit_cmd(leaf: &Leaf, config: Config) -> Done {
             } else {
                 file_format(path, forced)
             };
-            replace_from_text(
+            // the file links of FILE are relative to its folder, as with `add`
+            let links_from = (path != "-").then(|| dirname(&abspath(path)));
+            replace_from_text_in(
                 &mut session.library,
                 &keys[0],
                 &text,
                 fmt,
                 &format!("--from {path}"),
+                links_from.as_deref(),
             )?;
         } else if !set.is_empty() || !unset.is_empty() {
             set_fields(&mut session.library, &keys, &set, &unset)?;

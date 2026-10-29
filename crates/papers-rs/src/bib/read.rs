@@ -2,19 +2,26 @@
 //! then `RemoveEnclosingMiddleware`) and the lower-casing of the field names
 //! that `papers.entries.parse_string` adds.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use super::pystr::{is_digit, strip};
-use super::{Block, Field};
+use super::{Block, Entry, Field, Unreadable, UnreadableKind};
 
 /// Run the middlewares on the blocks of the splitter.
 pub(super) fn transform(blocks: &mut [Block]) {
     resolve_string_references(blocks);
+    let mut keys: HashSet<String> = HashSet::new();
     for block in blocks.iter_mut() {
         match block {
             Block::Entry(entry) => {
                 for field in &mut entry.fields {
                     strip_field(field);
+                }
+                if let Some(unreadable) = case_duplicate(entry, &mut keys) {
+                    *block = Block::Unreadable(unreadable);
+                    continue;
+                }
+                for field in &mut entry.fields {
                     if field.key != field.key.to_lowercase() {
                         field.key = field.key.to_lowercase();
                     }
@@ -28,6 +35,40 @@ pub(super) fn transform(blocks: &mut [Block]) {
             _ => {}
         }
     }
+}
+
+/// BibTeX ignores the case of the names of the fields and of the keys: an entry
+/// with two fields that differ only by case (`Title` and `title`), or with the
+/// key of an entry before it in another case (`smith2000` after `Smith2000`), is
+/// a block that could not be read, as an entry with a field or a key given
+/// exactly twice is (`papers.entries.lowercase_fields`). `keys` holds the keys
+/// of the entries kept, in lower case.
+fn case_duplicate(entry: &Entry, keys: &mut HashSet<String>) -> Option<Unreadable> {
+    let names: Vec<String> = entry.fields.iter().map(|f| f.key.to_lowercase()).collect();
+    let twice: BTreeSet<&String> = names
+        .iter()
+        .filter(|n| names.iter().filter(|m| m == n).count() > 1)
+        .collect();
+    let (raw, line) = entry
+        .source
+        .as_ref()
+        .map_or((String::new(), 0), |s| (s.raw.clone(), s.line));
+    if !twice.is_empty() {
+        let twice = twice.into_iter().cloned().collect();
+        return Some(Unreadable {
+            raw,
+            line,
+            kind: UnreadableKind::DuplicateFields(twice),
+        });
+    }
+    if !keys.insert(entry.key.to_lowercase()) {
+        return Some(Unreadable {
+            raw,
+            line,
+            kind: UnreadableKind::DuplicateKey(entry.key.clone()),
+        });
+    }
+    None
 }
 
 /// A value that is the key of a string (case-insensitive) is replaced by the

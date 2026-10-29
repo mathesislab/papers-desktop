@@ -31,7 +31,8 @@ use std::collections::{BTreeSet, HashMap};
 use serde_json::{Map, Value};
 
 use crate::bib::Entry;
-use crate::bib::latex_table::latex_to_unicode;
+use crate::bib::encoding::{Sep, split_depth0};
+use crate::bib::latex::latex_to_unicode;
 use crate::bib::pystr::{is_space, strip};
 use crate::config::json::{dumps_sorted, loads};
 use crate::config::paths::{dirname, exists, join};
@@ -42,9 +43,8 @@ use crate::names::{ascii, decimal_value, is_decimal};
 // normalization
 // -------------
 
-/// A text normalized for comparison: LaTeX as unicode (by the table of
-/// `papers.latexenc`), ASCII, without braces, lower case, single spaces
-/// (`normalize_text`).
+/// A text normalized for comparison: LaTeX as unicode ([`latex_to_unicode`]),
+/// ASCII, without braces, lower case, single spaces (`normalize_text`).
 ///
 /// ```
 /// use papers_rs::identity::normalize_text;
@@ -57,7 +57,7 @@ pub fn normalize_text(s: &str) -> String {
     let s = if s.is_ascii() && !s.contains(['\\', '{', '}']) {
         s.to_string()
     } else {
-        latex_to_unicode(s)
+        latex_to_unicode(s, true)
     };
     let s = ascii(&s);
     let s: String = s.chars().filter(|&c| c != '{' && c != '}').collect();
@@ -68,42 +68,13 @@ pub fn normalize_text(s: &str) -> String {
         .join(" ")
 }
 
-/// The names of an `author` field, split at `and` between spaces (`\s+and\s+`),
-/// stripped, the empty ones dropped (`split_names`).
+/// The names of an `author` field, split at `and` between spaces (`\s+and\s+`)
+/// outside braces (`{Barnes and Noble}` is one name), stripped, the empty ones
+/// dropped (`split_names`).
 pub fn split_names(field: &str) -> Vec<String> {
-    let chars: Vec<(usize, char)> = field.char_indices().collect();
-    let mut parts: Vec<&str> = Vec::new();
-    let mut start = 0;
-    let mut i = 0;
-    while i < chars.len() {
-        if is_space(chars[i].1) {
-            // the run of spaces from here, then `and`, then spaces
-            let mut j = i;
-            while j < chars.len() && is_space(chars[j].1) {
-                j += 1;
-            }
-            let at = chars.get(j).map_or(field.len(), |c| c.0);
-            if field[at..].starts_with("and") && chars.get(j + 3).is_some_and(|c| is_space(c.1)) {
-                let mut k = j + 3;
-                while k < chars.len() && is_space(chars[k].1) {
-                    k += 1;
-                }
-                parts.push(&field[start..chars[i].0]);
-                start = chars.get(k).map_or(field.len(), |c| c.0);
-                i = k;
-                continue;
-            }
-            i = j;
-        } else {
-            i += 1;
-        }
-    }
-    parts.push(&field[start..]);
-    parts
+    split_depth0(field, Sep::And)
         .into_iter()
-        .map(strip)
         .filter(|n| !n.is_empty())
-        .map(str::to_string)
         .collect()
 }
 
@@ -117,8 +88,20 @@ pub fn split_names(field: &str) -> Vec<String> {
 /// ```
 pub fn parse_name(name: &str) -> (String, String) {
     let name = strip(name);
-    if let Some((family, given)) = name.split_once(',') {
-        return (strip(family).to_string(), strip(given).to_string());
+    let mut depth = 0i64;
+    for (i, c) in name.char_indices() {
+        // the first comma outside braces
+        match c {
+            '{' => depth += 1,
+            '}' => depth -= 1,
+            ',' if depth == 0 => {
+                return (
+                    strip(&name[..i]).to_string(),
+                    strip(&name[i + 1..]).to_string(),
+                );
+            }
+            _ => {}
+        }
     }
     // `^(.*?)\s*(\{[^{}]*\}|\S+)$`: the last word, a braced group kept together
     let mut ends: Vec<usize> = name.char_indices().map(|(i, _)| i).collect();
@@ -655,7 +638,8 @@ impl Distinct {
                 let bytes =
                     std::fs::read(path).map_err(|e| crate::config::machine::io_message(&e))?;
                 let text = String::from_utf8(bytes).map_err(|e| e.to_string())?;
-                let value = loads(&text).map_err(|e| e.message)?;
+                // read as UTF-8, a byte order mark dropped
+                let value = loads(crate::bib::without_bom(&text)).map_err(|e| e.message)?;
                 let Value::Object(map) = value else {
                     return Err(format!(
                         "'{}' object has no attribute 'get'",

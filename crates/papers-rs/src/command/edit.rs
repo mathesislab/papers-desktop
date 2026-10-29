@@ -174,7 +174,10 @@ pub fn edit_text(text: &str, editor: &Editor) -> Option<String> {
         }
         let bytes = std::fs::read(&path).ok()?;
         let text = String::from_utf8(bytes).ok()?;
-        Some(crate::bib::universal_newlines(&text))
+        // without the byte order mark that some editors write first
+        Some(crate::bib::universal_newlines(crate::bib::without_bom(
+            &text,
+        )))
     })();
     let _ = std::fs::remove_file(&path);
     result
@@ -211,6 +214,20 @@ pub fn replace_from_text(
     format: Format,
     label: &str,
 ) -> Result<()> {
+    replace_from_text_in(library, key, text, format, label, None)
+}
+
+/// [`replace_from_text`] for the text of a file: its file links are relative to
+/// `links_from`, the folder of that file, as with `add` (they are written relative
+/// to the library).
+pub fn replace_from_text_in(
+    library: &mut Library,
+    key: &str,
+    text: &str,
+    format: Format,
+    label: &str,
+    links_from: Option<&str>,
+) -> Result<()> {
     let mut new = parse_edited(text, format)?;
     if new.len() != 1 {
         return Err(Error::exit(format!(
@@ -224,6 +241,12 @@ pub fn replace_from_text(
         .cloned()
         .ok_or_else(|| Error::exit(format!("{key}: no entry found")))?;
     new.key = old.key.clone();
+    if let Some(from) = links_from
+        && new.get("file").is_some()
+    {
+        let links = crate::entry::files(&new, Some(from));
+        crate::entry::set_files(&mut new, &links, &library.relative_to);
+    }
     for name in ["file", "keywords"] {
         if new.get(name).is_none() && old.get(name).is_some() {
             new.set(name, val(&old, name));

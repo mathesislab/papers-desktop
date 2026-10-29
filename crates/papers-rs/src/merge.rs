@@ -14,7 +14,8 @@
 //! `pull`, `push` and `history --revert` (and the revert of a pool step by undo) merge
 //! two versions of an entry with the version they both come from, the **base**
 //! ([`Merge::exchange`]): what one side changed since the base wins, what both changed
-//! is a conflict, a removal counts as a change. The two sides are the **target** (entry 1,
+//! is a conflict, an equivalent change (case, braces) of the incoming entry wins only when the
+//! target has the base exactly, a removal counts as a change. The two sides are the **target** (entry 1,
 //! it keeps its key and its place) and the **incoming** entry (entry 2); the base is the
 //! origin record of the entry (`pull`: the target is the library entry, the incoming the pool
 //! entry; `push`: the other way round, with the base under the pool key), or, for a revert, the
@@ -271,8 +272,9 @@ impl FieldMerge {
             value: None,
         };
         if present.is_empty() {
-            // the target's value as written (possibly empty), or empty if absent
-            field.value = Some(original[0].unwrap_or("").to_string());
+            // the target's value as written (possibly empty): an empty field of the target is
+            // kept, one of another entry is not added
+            field.value = original[0].map(str::to_string);
             return field;
         }
         field.choice = if values[0].is_some() {
@@ -280,7 +282,25 @@ impl FieldMerge {
         } else {
             values.iter().position(Option::is_some).unwrap()
         };
-        if present[1..].iter().all(|v| equivalent(name, present[0], v))
+        if three_way
+            && field.base.is_some()
+            && values[0] == field.base
+            && values.get(1).is_some_and(|v| {
+                v.is_some()
+                    && *v != values[0]
+                    && equivalent(
+                        name,
+                        values[0].as_deref().unwrap_or(""),
+                        v.as_deref().unwrap(),
+                    )
+            })
+        {
+            // an equivalent change of the other side only (case, braces): offered
+            field.status = Status::Added;
+            field.value = values[1].clone();
+            field.choice = 1;
+            field.changed = Some(Changed::Other);
+        } else if present[1..].iter().all(|v| equivalent(name, present[0], v))
             && !(three_way && values.iter().any(Option::is_none))
         {
             field.value = Some(preferred(name, &present).to_string());
@@ -630,15 +650,33 @@ impl Merge {
         )
     }
 
+    /// The field of the merged value of `f`: a bare value (`month = jan`, the
+    /// name of a `@string`) stays bare when it is the value of one of the
+    /// entries; the entry whose value was chosen is looked at first, then the
+    /// entries in order, and the first that has the field with that value decides.
+    fn field(&self, f: &FieldMerge, value: &str) -> Field {
+        let mut field = Field::new(&f.name, value);
+        let chosen = self.entries.get(f.choice);
+        for e in chosen.into_iter().chain(&self.entries) {
+            if let Some(same) = e.fields.iter().rev().find(|x| x.key == f.name)
+                && same.value == value
+            {
+                field.verbatim = same.verbatim;
+                break;
+            }
+        }
+        field
+    }
+
     /// The merged entry, with the key of the target: the fields that have a
-    /// value (all in braces: the bare mark of a value is lost), the links
-    /// and the former keys.
+    /// value (a value that is bare in an entry stays bare, the others are in
+    /// braces), the links and the former keys.
     pub fn result(&self) -> Entry {
         let mut fields: Vec<Field> = self
             .fields
             .iter()
             .filter(|f| f.name != ENTRYTYPE)
-            .filter_map(|f| f.value().map(|v| Field::new(&f.name, v)))
+            .filter_map(|f| f.value().map(|v| self.field(f, v)))
             .collect();
         if !self.files.is_empty() {
             fields.push(Field::new(

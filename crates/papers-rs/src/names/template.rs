@@ -11,7 +11,7 @@ use std::fmt;
 
 use serde_json::Value;
 
-use super::{capitalize, head, head_chars, path_safe, slugify, title_words};
+use super::{capitalize, head, head_chars, path_safe, safe_file_name, slugify, title_words};
 use crate::bib::Entry;
 use crate::bib::encoding::family_names;
 use crate::config::json::py_repr_str;
@@ -20,6 +20,7 @@ use crate::config::library::Config;
 pub const UNKNOWN_AUTHOR: &str = "unknown";
 pub const UNKNOWN_YEAR: &str = "0000";
 pub const UNKNOWN_TITLE: &str = "";
+pub const UNKNOWN_JOURNAL: &str = "";
 
 /// The placeholders, in the order papers lists them in its error.
 pub const PLACEHOLDERS: [&str; 14] = [
@@ -57,30 +58,17 @@ impl From<TemplateError> for crate::error::Error {
     }
 }
 
-/// What a placeholder is: a text, or the `None` of a missing journal.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FieldValue {
-    Str(String),
-    None,
-}
-
 /// The values of the placeholders for an entry (see [`make_template_fields`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Fields(pub Vec<(&'static str, FieldValue)>);
+pub struct Fields(pub Vec<(&'static str, String)>);
 
 impl Fields {
-    /// The text of a placeholder (the journal of an entry without one is `None`).
+    /// The text of a placeholder (empty for the journal of an entry without one).
     pub fn get(&self, name: &str) -> Option<String> {
-        self.0
-            .iter()
-            .find(|(n, _)| *n == name)
-            .map(|(_, v)| match v {
-                FieldValue::Str(s) => s.clone(),
-                FieldValue::None => "None".to_string(),
-            })
+        self.value(name).cloned()
     }
 
-    fn value(&self, name: &str) -> Option<&FieldValue> {
+    fn value(&self, name: &str) -> Option<&String> {
         self.0.iter().find(|(n, _)| *n == name).map(|(_, v)| v)
     }
 }
@@ -189,15 +177,30 @@ impl Format {
     }
 
     /// The name or key of an entry: the unknown template if the entry is unknown
-    /// and there is one, else the template.
+    /// and there is one, else the template. A name is made valid for every
+    /// system ([`safe_file_name`]), without the empty first folder of a template
+    /// that does not start with `/` (`{journal}/...` without journal).
     pub fn render(&self, entry: &Entry) -> Result<String, TemplateError> {
         let fields = make_template_fields(entry, self);
-        if let Some(unknown) = self.unknown_template.as_deref().filter(|t| !t.is_empty())
-            && self.is_unknown(entry)
-        {
-            return format_template(unknown, &fields, &format!("{} unknown", self.kind.word()));
+        let (template, name) = match self.unknown_template.as_deref().filter(|t| !t.is_empty()) {
+            Some(unknown) if self.is_unknown(entry) => (
+                unknown,
+                format_template(unknown, &fields, &format!("{} unknown", self.kind.word()))?,
+            ),
+            _ => (
+                self.template.as_str(),
+                format_template(&self.template, &fields, self.kind.word())?,
+            ),
+        };
+        if self.kind != FormatKind::Name {
+            return Ok(name);
         }
-        format_template(&self.template, &fields, self.kind.word())
+        let name = if template.starts_with('/') {
+            name.as_str()
+        } else {
+            name.trim_start_matches('/')
+        };
+        Ok(safe_file_name(name))
     }
 }
 
@@ -218,7 +221,7 @@ fn cite_author(names: &[String]) -> String {
 ///   `authorX`: the first, the first and the second, the first et al; `AuthorX`: capitalized;
 /// - `title`: the words of the slug of the title ([`title_words`]), joined with `title_sep`; `Title`: capitalized;
 /// - `journal`, `year`, `key`, `ID`, `doi`: the field as it is, without path separators
-///   ([`path_safe`]), `None` for a journal that is missing, `0000` for a year;
+///   ([`path_safe`]), empty for a journal that is missing, `0000` for a year;
 /// - `doi_`: the slug of the DOI; `doi_or_id`: that of the DOI, or of the key.
 pub fn make_template_fields(entry: &Entry, format: &Format) -> Fields {
     let author = entry.get("author").unwrap_or(UNKNOWN_AUTHOR).to_lowercase();
@@ -234,10 +237,7 @@ pub fn make_template_fields(entry: &Entry, format: &Format) -> Fields {
     let author_x_cap = cite_author(&caps).replace(' ', &format.author_sep);
     let author_x = author_x_cap.to_lowercase();
 
-    let journal = match entry.get("journal") {
-        Some(j) => FieldValue::Str(path_safe(j)),
-        None => FieldValue::None,
-    };
+    let journal = path_safe(entry.get("journal").unwrap_or(UNKNOWN_JOURNAL));
     let year = path_safe(entry.get("year").unwrap_or(UNKNOWN_YEAR));
 
     let (title, title_cap) = match entry.get("title") {
@@ -259,22 +259,21 @@ pub fn make_template_fields(entry: &Entry, format: &Format) -> Fields {
 
     let key = path_safe(&entry.key);
     let doi = entry.get("doi");
-    let s = FieldValue::Str;
     Fields(vec![
-        ("author", s(author_joined.clone())),
-        ("Author", s(author_cap)),
-        ("AUTHOR", s(author_joined.to_uppercase())),
-        ("authorX", s(author_x)),
-        ("AuthorX", s(author_x_cap)),
+        ("author", author_joined.clone()),
+        ("Author", author_cap),
+        ("AUTHOR", author_joined.to_uppercase()),
+        ("authorX", author_x),
+        ("AuthorX", author_x_cap),
         ("journal", journal),
-        ("year", s(year)),
-        ("title", s(title)),
-        ("Title", s(title_cap)),
-        ("key", s(key.clone())),
-        ("ID", s(key)),
-        ("doi", s(path_safe(doi.unwrap_or("")))),
-        ("doi_", s(slugify(doi.unwrap_or("")))),
-        ("doi_or_id", s(slugify(doi.unwrap_or(&entry.key)))),
+        ("year", year),
+        ("title", title),
+        ("Title", title_cap),
+        ("key", key.clone()),
+        ("ID", key),
+        ("doi", path_safe(doi.unwrap_or(""))),
+        ("doi_", slugify(doi.unwrap_or(""))),
+        ("doi_or_id", slugify(doi.unwrap_or(&entry.key))),
     ])
 }
 
@@ -470,17 +469,13 @@ fn render_field(
     let value = fields
         .value(first)
         .ok_or_else(|| FormatError::Key(first.to_string()))?;
-    let mut text = match value {
-        FieldValue::Str(s) => Some(s.clone()),
-        FieldValue::None => None, // the `None` of Python
-    };
+    let mut text = value.clone();
     let mut rest = rest;
     while !rest.is_empty() {
         if let Some(after) = rest.strip_prefix('.') {
             let end = after.find(['.', '[']).unwrap_or(after.len());
             return Err(FormatError::Other(format!(
-                "'{}' object has no attribute '{}'",
-                if text.is_some() { "str" } else { "NoneType" },
+                "'str' object has no attribute '{}'",
                 &after[..end]
             )));
         }
@@ -489,11 +484,6 @@ fn render_field(
             return Err(FormatError::Value("Missing ']' in format string".into()));
         };
         let index = &after[..close];
-        let Some(s) = &text else {
-            return Err(FormatError::Other(
-                "'NoneType' object is not subscriptable".into(),
-            ));
-        };
         if index.is_empty() {
             return Err(FormatError::Value(
                 "Empty attribute in format string".into(),
@@ -505,7 +495,7 @@ fn render_field(
             ));
         }
         let n: usize = index.parse().unwrap_or(usize::MAX);
-        text = Some(s.chars().nth(n).ok_or(FormatError::Index)?.to_string());
+        text = text.chars().nth(n).ok_or(FormatError::Index)?.to_string();
         rest = &after[close + 1..];
         if !rest.is_empty() && !rest.starts_with(['.', '[']) {
             return Err(FormatError::Value(
@@ -521,20 +511,11 @@ fn render_field(
     } else {
         spec.to_string()
     };
-    let text = match (conversion, text) {
-        (None, None) => {
-            if spec.is_empty() {
-                return Ok("None".into());
-            }
-            return Err(FormatError::Other(
-                "unsupported format string passed to NoneType.__format__".into(),
-            ));
-        }
-        (None, Some(t)) => t,
-        (Some('s'), t) => t.unwrap_or_else(|| "None".into()),
-        (Some('r'), t) => t.map_or_else(|| "None".into(), |t| py_repr_str(&t)),
-        (Some('a'), t) => t.map_or_else(|| "None".into(), |t| py_ascii(&t)),
-        (Some(c), _) => {
+    let text = match conversion {
+        None | Some('s') => text,
+        Some('r') => py_repr_str(&text),
+        Some('a') => py_ascii(&text),
+        Some(c) => {
             return Err(FormatError::Value(format!(
                 "Unknown conversion specifier {}",
                 if c.is_ascii_graphic() {
@@ -708,7 +689,7 @@ mod tests {
         assert_eq!(f.get("AUTHOR").unwrap(), "SMITH_DOE");
         assert_eq!(f.get("authorX").unwrap(), "smith_et_al");
         assert_eq!(f.get("AuthorX").unwrap(), "Smith_et_al");
-        assert_eq!(f.get("journal").unwrap(), "None");
+        assert_eq!(f.get("journal").unwrap(), "");
         assert_eq!(f.get("key").unwrap(), "smith2020");
     }
 
@@ -727,7 +708,7 @@ mod tests {
         assert_eq!(r("{{x}}{year}").unwrap(), "{x}2020");
         assert_eq!(
             r("{title:.5}|{year:>6}|{author:*^9}|{year:06}").unwrap(),
-            "a-stu|  2020|**smith**|202000"
+            "a-stu-  2020---smith---202000" // `|` and `*` are not valid on Windows
         );
         assert_eq!(r("{author!r}{year!s}").unwrap(), "'smith'2020");
         assert_eq!(r("{author[0]}").unwrap(), "s");

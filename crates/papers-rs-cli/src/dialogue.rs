@@ -249,7 +249,7 @@ impl Screen<'_> {
             lines.push(format!("  {}", cells.join("  ").trim_end()));
         }
         if m.is_three_way() {
-            lines.push("     origin = the pool version at the last pull or push".to_string());
+            lines.push("     origin = the entry as last exchanged (add, pull or push)".to_string());
         }
         lines.join("\n")
     }

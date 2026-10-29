@@ -53,12 +53,17 @@ pub fn format_files(paths: &[String], relative_to: Option<&str>) -> String {
     format_file(&paths)
 }
 
-/// Give an entry these links (`Biblio.set_files`): a path given twice is kept
-/// once, at its first place; with no link left, the field is removed.
+/// Give an entry these links (`Biblio.set_files`): a file given twice is kept
+/// once, at its first place (the paths are compared normalized, resolved against
+/// `relative_to`: `files/./a.pdf` and `files/a.pdf` are one link); with no link
+/// left, the field is removed.
 pub fn set_files(entry: &mut Entry, paths: &[String], relative_to: &str) {
     let mut unique: Vec<String> = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
     for p in paths {
-        if !unique.contains(p) {
+        let path = normpath(&join(relative_to, p));
+        if !seen.contains(&path) {
+            seen.push(path);
             unique.push(p.clone());
         }
     }
@@ -236,13 +241,21 @@ pub fn set_tags(entry: &mut Entry, tags: &[String]) {
     }
 }
 
-/// Add tags after the existing ones, those that are there already and the
-/// repeats skipped (case-sensitive); true if the tags changed.
+// Tags are compared without case, as `--tag` finds them (`Climate` and
+// `climate` are one tag); the spelling of a tag that is there is kept.
+
+fn has_tag(tags: &[String], tag: &str) -> bool {
+    let lower = tag.to_lowercase();
+    tags.iter().any(|t| t.to_lowercase() == lower)
+}
+
+/// Add tags after the existing ones, those that are there already (whatever
+/// their case) and the repeats skipped; true if the tags changed.
 pub fn add_tags(entry: &mut Entry, new: &[String]) -> bool {
     let old = tags(entry);
     let mut all = old.clone();
     for t in new {
-        if !all.contains(t) {
+        if !has_tag(&all, t) {
             all.push(t.clone());
         }
     }
@@ -253,10 +266,10 @@ pub fn add_tags(entry: &mut Entry, new: &[String]) -> bool {
     true
 }
 
-/// Remove the tags equal to one given (case-sensitive); true if the tags changed.
+/// Remove the tags equal to one given, whatever their case; true if the tags changed.
 pub fn remove_tags(entry: &mut Entry, gone: &[String]) -> bool {
     let old = tags(entry);
-    let kept: Vec<String> = old.iter().filter(|t| !gone.contains(t)).cloned().collect();
+    let kept: Vec<String> = old.iter().filter(|t| !has_tag(gone, t)).cloned().collect();
     if kept == old {
         return false;
     }
@@ -265,14 +278,17 @@ pub fn remove_tags(entry: &mut Entry, gone: &[String]) -> bool {
 }
 
 /// Rename a tag and the tags under it (`climate/amoc` of `climate` renamed
-/// `ocean` is `ocean/amoc`), the repeats removed, the first kept; true if the
-/// tags changed.
+/// `ocean` is `ocean/amoc`), whatever their case, the repeats removed, the
+/// first kept; true if the tags changed.
 pub fn rename_tag(entry: &mut Entry, old: &str, new: &str) -> bool {
+    let old_lower = old.to_lowercase();
     let rename = |t: &str| -> String {
-        if t == old {
+        let lower = t.to_lowercase();
+        if lower == old_lower {
             new.to_string()
-        } else if let Some(rest) = t.strip_prefix(&format!("{old}/")) {
-            format!("{new}/{rest}")
+        } else if lower.starts_with(&format!("{old_lower}/")) {
+            let rest: String = t.chars().skip(old.chars().count()).collect();
+            format!("{new}{rest}")
         } else {
             t.to_string()
         }
@@ -283,7 +299,7 @@ pub fn rename_tag(entry: &mut Entry, old: &str, new: &str) -> bool {
     }
     let mut renamed: Vec<String> = Vec::new();
     for t in tags.iter().map(|t| rename(t)) {
-        if !renamed.contains(&t) {
+        if !has_tag(&renamed, &t) {
             renamed.push(t);
         }
     }
@@ -304,19 +320,33 @@ pub fn ids(entry: &Entry) -> Vec<String> {
         .collect()
 }
 
-/// Give an entry the key `new`; with `keep_old`, its former key goes to the
-/// end of its `ids` (a part equal to the new key, without case, is removed).
-/// No check of the key (see [`crate::names::check_key`], and the library for
-/// the keys that are taken).
+/// Give an entry the key `new`. The `ids` never have the key itself (a part
+/// equal to the new key, without case, is removed, also without `keep_old`), and
+/// each former key once: with `keep_old`, the former key goes to the end of
+/// the `ids` unless they have it (without case) or it is the new key apart
+/// from case; the field is removed when no part is left. No check of the key
+/// (see [`crate::names::check_key`], and the library for the keys that are taken).
 pub fn set_key(entry: &mut Entry, new: &str, keep_old: bool) {
     let old = std::mem::replace(&mut entry.key, new.to_string());
-    if keep_old {
-        let mut parts: Vec<String> = ids(entry)
-            .into_iter()
-            .filter(|i| i.to_lowercase() != new.to_lowercase())
-            .collect();
-        parts.push(old);
-        entry.set("ids", parts.join(", "));
+    let before = ids(entry);
+    let new_lower = new.to_lowercase();
+    let mut kept: Vec<String> = before
+        .iter()
+        .filter(|i| i.to_lowercase() != new_lower)
+        .cloned()
+        .collect();
+    if keep_old
+        && old.to_lowercase() != new_lower
+        && !kept.iter().any(|i| i.to_lowercase() == old.to_lowercase())
+    {
+        kept.push(old);
+    }
+    if kept != before {
+        if kept.is_empty() {
+            entry.remove("ids");
+        } else {
+            entry.set("ids", kept.join(", "));
+        }
     }
 }
 

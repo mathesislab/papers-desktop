@@ -7,8 +7,8 @@ use papers_rs::entry::{
     add_tags, fnmatch, remove_tags, rename_tag, tag_counts, tag_matches, tag_parents, tags,
 };
 use papers_rs::names::{
-    Format, FormatKind, append_abc, ascii, attachment_names, check_key, list_tag, path_safe,
-    slugify, target_in,
+    Format, FormatKind, append_abc, ascii, attachment_names, check_key, fit_name, list_tag,
+    path_safe, safe_file_name, slugify, target_in,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -86,6 +86,20 @@ fn small_functions_as_papers() {
         assert_eq!(
             path_safe(case[0].as_str().unwrap()),
             case[1].as_str().unwrap()
+        );
+    }
+    for case in j["safe_file_name"].as_array().unwrap() {
+        assert_eq!(
+            safe_file_name(case[0].as_str().unwrap()),
+            case[1].as_str().unwrap(),
+            "{case}"
+        );
+    }
+    for case in j["fit_name"].as_array().unwrap() {
+        assert_eq!(
+            fit_name(case[0].as_str().unwrap()),
+            case[1].as_str().unwrap(),
+            "{case}"
         );
     }
     for case in j["listtag"].as_array().unwrap() {

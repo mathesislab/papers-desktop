@@ -12,8 +12,8 @@ what papers-rs does with what is recorded here:
   library.json    sequences of operations on a library (insert, remove, rename a key, tags,
                   files, check duplicates), the text saved, distinct.json
   files.json      the files of an entry placed by the name template, on a tree of files
-  translit.json   where the transliteration of papers (Unidecode) and of papers-rs (the
-                  deunicode crate) differ
+  translit.json   where the transliteration of papers (Unidecode, for the slugs too since
+                  papers 3.0.0b6) and of papers-rs (the deunicode crate) differ
 
 Run with the python that has papers installed (the reference), from anywhere:
 
@@ -48,7 +48,6 @@ warnings.simplefilter('ignore')
 import fnmatch  # noqa: E402
 import unicodedata  # noqa: E402
 
-import text_unidecode  # noqa: E402
 import unidecode  # noqa: E402
 from slugify import slugify  # noqa: E402
 
@@ -59,7 +58,7 @@ from papers.bib import Biblio, _KEY_FORBIDDEN, append_abc, isvalidkey  # noqa: E
 from papers.cli import entry_cmds  # noqa: E402
 from papers.entries import entry_from_dict, format_library, library_from_entries, parse_string  # noqa: E402
 from papers.files import attachment_names  # noqa: E402
-from papers.filename import Format, TemplateError, listtag, path_safe  # noqa: E402
+from papers.filename import Format, TemplateError, fit_name, listtag, path_safe, safe_file_name  # noqa: E402
 from papers.merge import Merge, Resolver  # noqa: E402
 
 logging.disable(logging.CRITICAL)
@@ -106,13 +105,10 @@ def translit():
         cp, text = line.split('\t')
         rust[int(cp, 16)] = json.loads(text)
     below, above, agree = [], [], []
-    text_differs = 0
     for cp in range(0x80, 0x110000):
         if 0xD800 <= cp <= 0xDFFF:
             continue
         u = unidecode.unidecode(chr(cp))
-        if text_unidecode.unidecode(chr(cp)) != u:
-            text_differs += 1
         r = rust.get(cp, '')
         if u == r:
             if u:
@@ -134,10 +130,8 @@ def translit():
         'agree_digest': hashlib.sha256(''.join(agree).encode()).hexdigest(),
         'agree_count': len(agree),
         'difference_count': len(below) + len(above),
-        'text_unidecode_differs_from_unidecode': text_differs,
     })
-    print(f'translit: {len(below) + len(above)} differences, {len(agree)} agree, '
-          f'text-unidecode differs from Unidecode in {text_differs}')
+    print(f'translit: {len(below) + len(above)} differences, {len(agree)} agree')
 
 
 # names
@@ -157,8 +151,9 @@ def fuzz_text(rng, n=(1, 5)):
 
 
 NAMES = ['Smith', 'Müller', 'van der Berg', '{van der Berg}', 'Ångström', "O'Brien", 'de la Cruz', 'Li', 'Nguyễn',
-         'Perrette', 'Dvořák', 'Łukasz', 'Ünal', 'Ño', 'St-Pierre', 'Doe', 'M{\\"u}ller', 'Sch{\\"o}n', '{\\AA}ngstr{\\"o}m']
-GIVEN = ['John', 'J.', 'Jane', 'J. D.', 'Mahé', 'Jörg', 'M.', 'Anne-Marie', 'A.-M.', 'Wei', 'Zoë', 'J{\\"o}rg', '']
+         'Perrette', 'Dvořák', 'Łukasz', 'Ünal', 'Ño', 'St-Pierre', 'Doe', 'M{\\"u}ller', 'Sch{\\"o}n', '{\\AA}ngstr{\\"o}m',
+         '{Barnes and Noble}', '{Smith, Jones}', '{World Health Organization}', 'Fontaine, de la']
+GIVEN = ['John', 'J.', 'Jane', 'J. D.', 'Mahé', 'Jörg', 'M.', 'Anne-Marie', 'A.-M.', 'Wei', 'Zoë', 'J{\\"o}rg', '', 'John {Q.} Adams', '{de la}']
 TITLE_WORDS = ['climate', 'Sea', 'level', 'rise', 'of', 'the', 'ice', 'Sheets', 'in', 'a', 'warming', 'world', 'and',
                'AMOC', '{AMOC}', 'CO2', 'Über', 'München', 'naïve', 'résumé', "Hawai'i", '3.5', '1,000', 'x–y',
                'D{\\"u}sseldorf', '\\emph{Glacier}', 'tipping', 'points:', 'review']
@@ -195,7 +190,8 @@ def make_entry_fields(rng):
     if rng.random() < 0.8:
         fields.append(('year', rng.choice(['2020', '2019', '1999', '0000', '2020a', '/../x', '..', '.', 'n.d.'])))
     if rng.random() < 0.4:
-        fields.append(('journal', rng.choice(['Nature', 'J. Clim.', 'The Cryosphere', 'a/b', 'Ocean & Sea', '..'])))
+        fields.append(('journal', rng.choice(['Nature', 'J. Clim.', 'The Cryosphere', 'a/b', 'Ocean & Sea', '..', 'Nature: "A|B" <x>?*', 'con.x', 'Nul',
+                                                'é' * 130, 'x ', 'x.', '', 'a\x01b'])))
     if rng.random() < 0.5:
         fields.append(('doi', rng.choice(['10.1000/abc', '10.1000/ABC', 'https://doi.org/10.1000/abc', 'doi: 10.1000/abc',
                                           '10.5194/tc-14-1-2020', '10.1000/x(1)', 'dx', '', '10.48550/arXiv.2101.01234',
@@ -220,6 +216,16 @@ def names_cases():
             items.append([s, slugify(s)])
     out['slugify'] = items
 
+    sfn = ['', 'a', 'a:b', 'a/b', '/a', '//a', 'a//b', './a', '../a', 'a/./b', 'a?b*c|d<e>f"g', 'a\x01\x1fb', 'a.', 'a ', 'a. .', '...', '. ', '.hidden',
+           'CON', 'con', 'Con.txt', 'a/NUL/b', 'nul.tar.gz', 'COM1', 'com9.x', 'COM0', 'LPT3', 'lpt3.', 'AUX ', 'CONX', 'x.con',
+           'é' * 200, 'é' * 124 + 'a', 'a' * 300, 'a' * 250, 'a' * 251, ('a' * 300) + '/' + ('é' * 200), 'CON' + 'a' * 300, ('a' * 249) + '.',
+           'a' * 248 + '. ', 'x/' + 'y' * 260 + '.pdf']
+    out['safe_file_name'] = [[x, safe_file_name(x)] for x in sfn]
+    fits = ['a.pdf', '/lib/files/a.pdf', 'a' * 300 + '.pdf', '/lib/' + 'é' * 200 + '.pdf', 'x/' + 'a' * 250 + '.tar.gz', 'a' * 251,
+            '/lib/' + 'a' * 247 + '.pdf', '/lib/' + 'a' * 246 + '.pdf', '/lib/' + 'a' * 300 + '.' + 'b' * 300, '.' + 'a' * 300,
+            '/lib/' + 'a' * 240 + ' .pdf', '/lib/' + 'a' * 300, '/lib/' + 'a' * 245 + '.. .pdf', 'é' * 130 + '.pdf', '/' + 'a' * 260]
+    out['fit_name'] = [[x, fit_name(x)] for x in fits]
+
     out['path_safe'] = [[s, path_safe(s)] for s in ['', 'a', 'a/b', 'a\\b', 'a\0b', '.', '..', '...', '2013', '.a', 'a.',
                                                     '/../../x', '..\\..', ' .. ', ' ']]
 
@@ -235,14 +241,20 @@ def names_cases():
     for key, keys in [('Author2000', []), ('Author2000b', []), ('Author2000', ['Author2000', 'Author2000b']),
                       ('Author2000', ['author2000', 'author2000b']), ('perrette', ['perrette']), ('10-1000-abc', ['10-1000-abc']),
                       ('Author2000z', ['Author2000z']), ('Ab', ['ab']), ('Author2000B', []), ('x1', []), ('a', []), ('', []),
-                      ('É2000', []), ('Author2000a', []), ('Author2000y', ['author2000z']), ('Ü9z', [])]:
+                      ('É2000', []), ('Author2000a', []), ('Author2000y', ['author2000z']), ('Ü9z', []),
+                      ('Author2000Z', []), ('Author2000z', []), ('Author2000B', ['author2000c']), ('Author2000Y', ['author2000z']),
+                      ('Ab', ['ab'] + ['ab' + c for c in 'bcdefghijklmnopqrstuvwxyz']),
+                      ('Author2000z', ['author2000za']), ('Author2000Z', ['author2000za', 'author2000zb']),
+                      ('Author2000', ['author2000'] + ['author2000' + c for c in 'bcdefghijklmnopqrstuvwxyz']),
+                      ('Author2000z', ['author2000z'] + ['author2000z' + c for c in 'abcdefghijklmnopqrstuvwxyz']),
+                      ('1Z', []), ('x.B', []), ('K2000K', []), ('smith2000e', ['smith2000e', 'smith2000f'])]:
         try:
             r = append_abc(key, keys)
         except ValueError as e:
             r = {'error': str(e)}
         abc.append([key, keys, r])
     for _ in range(100):
-        base = rng.choice(['smith2020', 'Smith2020', 'smith2020b', 'smith', 'a', 'x1', 'doe_smith2020c', 'k9'])
+        base = rng.choice(['smith2020', 'Smith2020', 'smith2020b', 'smith', 'a', 'x1', 'doe_smith2020c', 'k9', 'Smith2020B', 'smith2020z', 'Smith2020Y'])
         letters = 'abcdefghijklmnopqrstuvwxyz'
         keys = [base + rng.choice(letters) for _ in range(rng.randint(0, 30))] + [base]
         try:
@@ -264,7 +276,9 @@ def names_cases():
                  '{year!x}', '{year:d}', '{author.real}', '{title:{year}}', '../{author}', '/tmp/{author}', '{author}/../../x',
                  '.', '', '{journal:>5}', '{journal!s}', '{journal!r}', '{year:#}', '{year:+}', '{year:,}', '{year:10.3s}',
                  '{ year }', '{year!}', '{year!r:}', '{year:}', '{year[1:2]}', '{year[9]}', '{author}{', '}{author}', '{{}}',
-                 '{year:{}}', '{year:{{}}}']
+                 '{year:{}}', '{year:{{}}}', '{journal}/{author}_{year}', '{journal}/{journal}', '/{journal}/{author}', 'x/{journal}',
+                 '{author}{journal}', '{journal}/{Title}', '//{author}', '{journal}//{author}', '{journal}.{journal}', '{author}.',
+                 '{title}/{journal}.pdf', '{doi}', 'a:b', 'a?b', '{author}:{year}']
     for i in range(400):
         template = rng.choice(templates)
         kind = rng.choice(['name', 'key'])
@@ -307,7 +321,10 @@ def names_cases():
                           (['/x/doe.pdf', '/x/doe--notes.txt'], '/l/f/doe'), (['/x/old.pdf', '/x/old--supp.zip'], '/l/f/new'),
                           (['/x/a.pdf', '/x/s.pdf', '/x/s.txt', '/x/s.pdf'], '/l/f/doe'), (['/x/.hidden', '/x/b'], '/l/f/doe'),
                           (['/x/a.tar.gz', '/x/b.TXT'], '/l/f/doe'), (['/x/doe--.pdf', '/x/doe--.txt'], '/l/f/doe'),
-                          (['/x/a.PDF', '/x/doe--a.pdf'], '/l/f/doe'), (['a.pdf', 'b'], 'doe'), (['/x/a.pdf', '/y/a.pdf', '/z/a.pdf'], '/l/f/a')]:
+                          (['/x/a.PDF', '/x/doe--a.pdf'], '/l/f/doe'), (['a.pdf', 'b'], 'doe'), (['/x/a.pdf', '/y/a.pdf', '/z/a.pdf'], '/l/f/a'),
+                          (['/x/a.pdf', '/a/supplement.pdf', '/b/supplement.pdf'], '/l/f/' + 'a' * 240),
+                          (['/x/a.pdf', '/a/' + 'é' * 100 + '.pdf', '/b/' + 'é' * 100 + '.pdf'], '/l/f/' + 'b' * 200),
+                          (['/x/a.pdf'], '/l/f/' + 'c' * 300), (['/x/a.pdf', '/x/b.pdf'], '/l/f/' + 'é' * 160)]:
         att.append([files, target, attachment_names(files, target)])
     out['attachment_names'] = att
 
@@ -339,14 +356,14 @@ def names_cases():
 
     ops = []
     for _ in range(300):
-        old = rng.choice(['a', 'a/b', 'b', 'c'])
-        new = rng.choice(['x', 'x/y', 'a', 'b', 'a/b'])
+        old = rng.choice(['a', 'a/b', 'b', 'c', 'A', 'A/B', 'B'])
+        new = rng.choice(['x', 'x/y', 'a', 'b', 'a/b', 'X', 'A', 'B/c'])
         e = entry_from_dict({'ID': 'k', 'ENTRYTYPE': 'article',
-                             'keywords': ', '.join(rng.choice(['a', 'a/b', 'a/b/c', 'b', 'c', 'x', 'x/y', 'ab']) for _ in range(rng.randint(0, 5)))})
+                             'keywords': ', '.join(rng.choice(['a', 'a/b', 'a/b/c', 'b', 'c', 'x', 'x/y', 'ab', 'A', 'A/b', 'B', 'X/Y']) for _ in range(rng.randint(0, 5)))})
         before = e['keywords'] if 'keywords' in e else None
         e2 = entry_from_dict(dict(e.items()))
-        added = [rng.choice(['a', 'z', 'z', 'a/b', 'q']) for _ in range(rng.randint(0, 3))]
-        removed = [rng.choice(['a', 'b', 'x', 'z']) for _ in range(rng.randint(0, 2))]
+        added = [rng.choice(['a', 'z', 'z', 'a/b', 'q', 'A', 'Z', 'A/B']) for _ in range(rng.randint(0, 3))]
+        removed = [rng.choice(['a', 'b', 'x', 'z', 'A', 'B', 'X']) for _ in range(rng.randint(0, 2))]
         entry_cmds.rename_tag([e], old, new)
         renamed = e['keywords'] if 'keywords' in e else None
         entry_cmds.add_tags([e2], added)
@@ -475,13 +492,18 @@ def identity_cases():
 
     # strings
     texts = ['', 'Müller', 'M{\\"u}ller', 'The {CO2}   Problem', '{\\AA}ngstr{\\"o}m', 'Über alles', '{\\"U}ber alles', 'ﬁnite', 'a b',
-             'x\ty\nz', '\\url{x}', 'T\\^ete', "\\'e", "{\\'e}", 'ß', 'Ñ', 'ǅ', '日本', 'a{b}c', '}{', '\\textbf{x}', '{\\ss}']
+             'x\ty\nz', '\\url{x}', 'T\\^ete', "\\'e", "{\\'e}", 'ß', 'Ñ', 'ǅ', '日本', 'a{b}c', '}{', '\\textbf{x}', '{\\ss}',
+             '\\v{S}koda', 'A{\\dh}algeirsd{\\\'o}ttir', '$\\alpha$-decay', 'CO$_2$', 'a~b', 'a--b', 'a---b', '``q\'\'', '\\emph{x} \\textit{y}',
+             '\\o', '{\\o}', '\\"{\\i}', "\\'\\i", '\\AA ngstr\\"om', 'T{\\"u}rkiye', 'm\\"uller', '\\foo{bar}', 'a\\&b', '\\ss  x']
     texts += [fuzz_text(rng) for _ in range(300)]
     out['norm'] = [[t, dup.normalize_text(t)] for t in texts]
     names = ['Smith, John and Doe, Jane', 'John Smith and Jane Doe', 'A and B', 'A and and B', 'A  and  B', 'A\tand\nB',
              'and', ' and ', 'A and', 'and B', 'A AND B', 'A, B and C, D and E, F', '', '   ', 'Smith, J. and', 'x andy', 'x and y',
              'a and b', 'Jane {van der Berg}', 'Smith, John', 'John Quincy Adams', '{van der Berg}, Jane', 'Cher', 'A\nB C',
-             'Doe,  Jane', 'Doe,Jane', ',', 'a,b,c', 'John {van} {der Berg}', 'John {a{b}c}', 'John{x}', '{x}', '{', '}', 'John {}']
+             'Doe,  Jane', 'Doe,Jane', ',', 'a,b,c', 'John {van} {der Berg}', 'John {a{b}c}', 'John{x}', '{x}', '{', '}', 'John {}',
+             '{Barnes and Noble} and Smith, J.', '{Smith, Jones and Co}', '{Smith, Jones}, Ltd', '{Barnes and Noble}',
+             'Smith, John and {Barnes and Noble}', '{a and b', 'a} and b', '{a} and {b}', 'x {and} y', 'x {a and} y and z',
+             '{World Health Organization}', 'John {van der Berg} and {Intergovernmental Panel, on Climate}', 'A {\\"U}ber and B']
     names += [make_author(rng) for _ in range(150)]
     out['split_names'] = [[n, dup.split_names(n)] for n in names]
     parsed = []
@@ -541,6 +563,49 @@ def distinct_text(distinct):
 # merge
 # =====
 
+RAW_MERGES = [
+    '@article{a, month = jan, title = {T}}\n@article{b, title = {T}, year = {2000}}\n',
+    '@article{a, title = {T}, year = {2000}}\n@article{b, month = jan, title = {T}}\n',
+    '@article{a, month = jan, title = {T}}\n@article{b, month = {jan}, title = {T}}\n',
+    '@article{a, month = {jan}, title = {T}}\n@article{b, month = jan, title = {T}}\n',
+    '@article{a, month = jan, title = {T}}\n@article{b, month = feb, title = {T}}\n',
+    '@article{a, month = {jan}, title = {T}}\n@article{b, month = jan, title = {T}}\n@article{c, month = jan, title = {T}}\n',
+    '@article{a, year = 2000, title = {T}}\n@article{b, year = {2000}, title = {T}}\n',
+    '@string{s = {Nature}}\n@article{a, journal = s, title = {T}}\n@article{b, journal = {Science}, title = {T}}\n',
+    '@string{s = {Nature}}\n@article{a, journal = {Science}, title = {T}}\n@article{b, journal = s, title = {T}}\n',
+    '@article{a, note = {}, title = {T}}\n@article{b, pages = {}, title = {T}}\n',
+    '@article{a, title = {T}}\n@article{b, pages = {}, note = {x}, title = {T}}\n',
+    '@article{a, pages = {}, title = {T}}\n@article{b, pages = {1--2}, title = {T}}\n',
+    '@article{a, pages = {1--2}, title = {T}}\n@article{b, pages = {}, title = {T}}\n',
+    '@article{a, author = {Smith, J.}, title = {T}}\n@article{b, author = {Smith, John Quincy}, title = {T}}\n',
+    '@article{a, author = {Smith, John Quincy}, title = {T}}\n@article{b, author = {Smith, J.}, title = {T}}\n',
+    '@article{a, author = {Smith, J. and {Barnes and Noble}}, title = {T}}\n@article{b, author = {Smith, John and {Barnes and Noble}}, title = {T}}\n',
+    '@article{a, author = {John {van der Berg}}, title = {T}}\n@article{b, author = {{van der Berg}, J.}, title = {T}}\n',
+    '@article{a, author = {Smith, John}, title = {T}}\n@article{b, author = {Smith, John D.}, title = {T}}\n',
+    '@article{a, author = {Smith, John D.}, title = {T}}\n@article{b, author = {Smith, Jo}, title = {T}}\n',
+]
+
+
+def describe_merge(text, es, keys_to_ids, rel):
+    m = Merge(es, relative_to=rel, keys_to_ids=keys_to_ids)
+    case = {'bibtex': text, 'keys_to_ids': keys_to_ids, 'relative_to': rel}
+    case['fields'] = [[x.name, x.status, x.values, x.value, x.alternatives()] for x in m.fields]
+    case['files'] = m.files
+    case['new_files'] = m.new_files
+    case['ids'] = m.ids
+    case['ids_added'] = m.ids_added
+    case['exact'] = m.is_exact()
+    case['result'] = formatted([m.result()])
+    for choice in (0, 1):
+        m2 = Merge(es, relative_to=rel, keys_to_ids=keys_to_ids)
+        m2.choose_all(choice)
+        case[f'choose{choice}'] = formatted([m2.result()])
+    if len(es) > 1:
+        m3 = Merge(es, relative_to=rel, keys_to_ids=keys_to_ids).with_target(1)
+        case['with_target1'] = formatted([m3.result()])
+    return case
+
+
 def merge_cases():
     rng = random.Random(9)
     cases = []
@@ -568,23 +633,12 @@ def merge_cases():
         text, es = pyentries(group)
         keys_to_ids = rng.random() < 0.5
         rel = rng.choice(['/lib', '/lib/sub', None])
-        m = Merge(es, relative_to=rel, keys_to_ids=keys_to_ids)
-        case = {'bibtex': text, 'keys_to_ids': keys_to_ids, 'relative_to': rel}
-        case['fields'] = [[x.name, x.status, x.values, x.value, x.alternatives()] for x in m.fields]
-        case['files'] = m.files
-        case['new_files'] = m.new_files
-        case['ids'] = m.ids
-        case['ids_added'] = m.ids_added
-        case['exact'] = m.is_exact()
-        case['result'] = formatted([m.result()])
-        for choice in (0, 1):
-            m2 = Merge(es, relative_to=rel, keys_to_ids=keys_to_ids)
-            m2.choose_all(choice)
-            case[f'choose{choice}'] = formatted([m2.result()])
-        if len(es) > 1:
-            m3 = Merge(es, relative_to=rel, keys_to_ids=keys_to_ids).with_target(1)
-            case['with_target1'] = formatted([m3.result()])
-        cases.append(case)
+        cases.append(describe_merge(text, es, keys_to_ids, rel))
+    # texts written by hand: bare values (month = jan, a @string), empty fields, given names
+    for text in RAW_MERGES:
+        es = parse_string(text).entries
+        for keys_to_ids, rel in ((False, None), (True, '/lib')):
+            cases.append(describe_merge(text, es, keys_to_ids, rel))
     out = {'cases': cases}
     names = [(a, b) for a in ['Smith, John', 'J. Smith', 'Smith, J.', 'Smith, John D.', 'John Smith', 'Smith, Jo', 'Smith, John and Doe, J.',
                               'M{\\"u}ller, H.', 'Müller, Hans', 'Perrette, M.', 'M. Perrette', 'Smith, J. D.', 'Smith, J.-D.', 'Smith, J~D', '',
@@ -768,6 +822,10 @@ def library_cases():
     scenario('add same key other paper', LIB_TEXT, [add(same_key.replace('10.1000/ABC123', '10.5/other'))])
     scenario('add same key same paper', LIB_TEXT, [add(same_key.replace('Smith, J. and Doe, J.', 'Smith, John and Doe, Jane')
                                                        .replace('Climate Sensitivity Revisited', 'Climate sensitivity revisited'))])
+    scenario('add same key same paper, title by case', LIB_TEXT, [add(same_key.replace('Smith, J. and Doe, J.', 'Smith, John and Doe, Jane')
+                                                                    .replace(' file = {:other/smith-preprint.pdf:pdf},\n', ''))])
+    scenario('add same key same paper, a field to add', LIB_TEXT, [add(same_key.replace('Smith, J. and Doe, J.', 'Smith, John and Doe, Jane')
+                                                                     .replace('Nature Climate Change', 'Nature'))])
     scenario('add same key update key', LIB_TEXT, [add(same_key.replace('10.1000/ABC123', '10.5/other'), update_key=True)])
     chapter = entry_text('chap', 'incollection', [('doi', '10.1000/abc123'), ('title', 'Sea level rise in the next century')])
     scenario('title guard keep', LIB_TEXT, [add(chapter, check_duplicate=True, on_duplicate='keep')])
@@ -787,6 +845,14 @@ def library_cases():
     scenario('set key keep old', LIB_TEXT, [{'op': 'set_key', 'key': 'handbook', 'new': 'handbook2', 'keep_old': True}])
     scenario('set key keep old twice', LIB_TEXT, [{'op': 'set_key', 'key': 'handbook', 'new': 'h2', 'keep_old': True},
                                                   {'op': 'set_key', 'key': 'h2', 'new': 'h3', 'keep_old': True}])
+    scenario('set key keep old, back and forth', LIB_TEXT, [{'op': 'set_key', 'key': 'handbook', 'new': 'h2', 'keep_old': True},
+                                                            {'op': 'set_key', 'key': 'h2', 'new': 'handbook', 'keep_old': True},
+                                                            {'op': 'set_key', 'key': 'handbook', 'new': 'h2', 'keep_old': True}])
+    scenario('set key, ids', LIB_TEXT.replace(' isbn =', ' ids = {Handbook, old1, handbook3},\n isbn ='),
+             [{'op': 'set_key', 'key': 'handbook', 'new': 'handbook2'}, {'op': 'set_key', 'key': 'handbook2', 'new': 'HANDBOOK3'},
+              {'op': 'set_key', 'key': 'HANDBOOK3', 'new': 'old1', 'keep_old': True}])
+    scenario('set key, ids emptied', LIB_TEXT.replace(' isbn =', ' ids = {Handbook2},\n isbn ='), [{'op': 'set_key', 'key': 'handbook', 'new': 'handbook2'}])
+    scenario('set key same key other case', LIB_TEXT, [{'op': 'set_key', 'key': 'handbook', 'new': 'Handbook', 'keep_old': True}])
     scenario('set key back', LIB_TEXT, [{'op': 'set_key', 'key': 'handbook', 'new': 'h2'}, {'op': 'set_key', 'key': 'h2', 'new': 'handbook'}])
     scenario('set key invalid', LIB_TEXT, [{'op': 'set_key', 'key': 'handbook', 'new': new} for new in
                                            ['2020', 'a b', 'a,b', '', 'Child', 'a{b', 'a\\b', 'a#b', 'a=b']])
@@ -795,6 +861,11 @@ def library_cases():
                                 {'op': 'tags_remove', 'keys': ['child'], 'tags': ['c']},
                                 {'op': 'tag_rename', 'old': 'a', 'new': 'z'},
                                 {'op': 'tags_add', 'keys': ['smith2020climate'], 'tags': ['mine', 'Mine']}])
+    scenario('tags without case', LIB_TEXT.replace('climate, mine', 'Climate/Arctic, mine, climate/amoc'),
+             [{'op': 'tags_add', 'keys': ['smith2020climate'], 'tags': ['CLIMATE/ARCTIC', 'MINE', 'new', 'New']},
+              {'op': 'tags_remove', 'keys': ['smith2020climate'], 'tags': ['MINE']},
+              {'op': 'tag_rename', 'old': 'climate', 'new': 'ocean'},
+              {'op': 'tag_rename', 'old': 'NEW', 'new': 'New'}])
     scenario('tags unchanged', LIB_TEXT, [{'op': 'tags_add', 'keys': ['smith2020climate'], 'tags': ['mine']}])
     scenario('files', LIB_TEXT, [{'op': 'set_files', 'key': 'child', 'files': ['lib/files/a.pdf', 'lib/files/a.pdf', 'other/b.pdf', 'lib/x.txt']},
                                  {'op': 'files', 'key': 'child'}, {'op': 'set_files', 'key': 'smith2020climate', 'files': []}])
@@ -827,6 +898,8 @@ def library_cases():
     scenario('check duplicates ids', group.replace(' journal = {Nature},', ' ids = {old, Smith_2020},\n journal = {Nature},'),
              [{'op': 'check_duplicates', 'mode': 'keep'}])
     scenario('crossref follows', LIB_TEXT, [{'op': 'set_key', 'key': 'handbook', 'new': 'handbook2'}])
+    scenario('crossref follows the merge', group + '\n@inproceedings{talk,\n crossref = {Smith_2020},\n title = {A talk}\n}\n'
+             + '\n@inproceedings{talk2,\n crossref = {SMITH2020CLIMATE},\n title = {Another talk}\n}\n', [{'op': 'check_duplicates', 'mode': 'keep'}])
     scenario('crossref merged away', group.replace('@article{child', '@article{child2'), [{'op': 'check_duplicates', 'mode': 'keep'}])
     # templates
     nf = Format('{Author}{year}-{Title}', title_word_num=2, kind='key')

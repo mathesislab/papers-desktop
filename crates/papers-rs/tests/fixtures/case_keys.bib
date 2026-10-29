@@ -1,0 +1,37 @@
+@string{Jgr = {Journal of Geophysical Research}}
+@string{jgr = {a string whose name differs by case: both are read}}
+@string{jgr = {the same name again: a block that cannot be read}}
+
+@article{Smith2000,
+ title = {First},
+ year = 2000,
+}
+
+@article{smith2000,
+ title = {The key of the first, in lower case},
+}
+
+@article{SMITH2000,
+ title = {The key of the first, in upper case},
+}
+
+@article{Smith2000,
+ title = {The exact key of the first},
+}
+
+@article{other2001,
+ Title = {Field names that differ only by case},
+ title = {Both are the title},
+ Year = {2001},
+ YEAR = {2002},
+ Journal = jgr,
+}
+
+@article{Other2001,
+ title = {The key of a block that cannot be read is free},
+}
+
+@article{ok2002,
+ TITLE = {Fine: capitals in a field name are lower-cased},
+ Month = jan,
+}

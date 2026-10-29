@@ -2551,11 +2551,3 @@ pub(super) static UNICODE_TO_CRAPPY_LATEX1: &[(&str, &str)] = &[
     ("\u{3cc}", "\\'{o}"),
 ];
 
-/// `unicode_to_crappy_latex2`
-pub(super) static UNICODE_TO_CRAPPY_LATEX2: &[(&str, &str)] = &[
-    ("\u{300}", "\\`"),
-    ("\u{301}", "\\'"),
-    ("\u{302}", "\\^"),
-    ("\u{327}", "\\c"),
-];
-

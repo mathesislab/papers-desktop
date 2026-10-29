@@ -42,14 +42,14 @@ use std::sync::Arc;
 
 use crate::bib::{Bib, Block, Entry, Field, read_file};
 use crate::config::paths::{
-    abspath, basename, dirname, exists, expanduser, isfile, join, realpath,
+    abspath, basename, dirname, exists, expanduser, is_abs, isfile, join, realpath,
 };
 use crate::config::{Config, write_atomic};
 use crate::entry::{self, files as entry_files, set_files, val};
 use crate::error::{Error, Result};
 use crate::identity::{
-    Distinct, IdKind, IdentityIndex, Kind, Verdict, duplicate_groups, entry_identifiers, find_duplicates,
-    parse_identifier, same_paper,
+    Distinct, IdKind, IdentityIndex, Kind, Verdict, duplicate_groups, entry_identifiers,
+    find_duplicates, parse_identifier, same_paper,
 };
 use crate::log;
 use crate::merge::{Context, Decision, DuplicateError, Merge, OnDuplicate, Resolve, Resolver};
@@ -137,6 +137,28 @@ fn file_checksum(path: &str) -> Option<String> {
     isfile(path)
         .then(|| crate::merge::checksum_hex(path).ok())
         .flatten()
+}
+
+/// The path where the file `source` goes when its name is `path` (`free_name`): `path`
+/// itself if it is free, or `source` itself, or a file with the same content (the same
+/// file); else `path` with a `-2`, `-3`... suffix before the extension: a file of
+/// another entry is never replaced.
+pub fn free_name(path: &str, source: &str) -> String {
+    let (base, ext) = crate::names::splitext(path);
+    let lexists = |p: &str| std::fs::symlink_metadata(p).is_ok();
+    let (mut candidate, mut i) = (path.to_string(), 2);
+    while lexists(&candidate) {
+        if realpath(&candidate) == realpath(source)
+            || (isfile(&candidate)
+                && isfile(source)
+                && file_checksum(&candidate) == file_checksum(source))
+        {
+            return candidate;
+        }
+        candidate = format!("{base}-{i}{ext}");
+        i += 1;
+    }
+    candidate
 }
 
 /// The legacy name of the hidden bibtex of an entry directory (before papers 2.19).
@@ -327,6 +349,19 @@ impl fmt::Debug for Library {
 
 /// The message about the entries of a bibtex that could not be read (`unreadable_message`).
 pub fn unreadable_message(bibtex: &str, unreadable: &[(usize, String)]) -> String {
+    unreadable_message_with(
+        bibtex,
+        unreadable,
+        "papers ignores them until they are fixed",
+    )
+}
+
+/// [`unreadable_message`] with what becomes of the entries (`outcome`).
+pub fn unreadable_message_with(
+    bibtex: &str,
+    unreadable: &[(usize, String)],
+    outcome: &str,
+) -> String {
     let lines: Vec<String> = unreadable
         .iter()
         .map(|(line, why)| format!("line {line}: {why}"))
@@ -338,10 +373,25 @@ pub fn unreadable_message(bibtex: &str, unreadable: &[(usize, String)]) -> Strin
         None => bibtex.to_string(),
     };
     format!(
-        "{shown}: {n} entr{} could not be read ({}): papers ignores them until they are fixed",
+        "{shown}: {n} entr{} could not be read ({}): {outcome}",
         if n > 1 { "ies" } else { "y" },
         lines.join("; ")
     )
+}
+
+/// Read a bibtex text that is to be added (`add_bibtex`): a warning says which entries
+/// could not be read, they are not added.
+pub fn parse_added_bibtex(text: &str) -> Bib {
+    let bib = Bib::parse(text);
+    let unreadable = bib.unreadable();
+    if !unreadable.is_empty() {
+        log::warning(&unreadable_message_with(
+            "the added bibtex",
+            &unreadable,
+            "they are not added",
+        ));
+    }
+    bib
 }
 
 impl Library {
@@ -431,9 +481,12 @@ impl Library {
         let mut library;
         if exists(bibtex) {
             library = Library::load(bibtex, filesdir, None, nameformat, keyformat)?;
-            if library.relative_to != relative_to
-                && !library.set_relative_to(&relative_to).is_empty()
-            {
+            if library.relative_to != relative_to {
+                if !library.set_relative_to(&relative_to).is_empty() {
+                    library.load_changes = true;
+                }
+            } else if !config.absolute_paths && !library.relative_links().is_empty() {
+                // absolute links in a library with relative paths become relative
                 library.load_changes = true;
             }
         } else {
@@ -690,7 +743,23 @@ impl Library {
     /// A key for an entry from the key template, not yet in the library (`generate_key`):
     /// a key that is taken gets a letter suffix.
     pub fn generate_key(&self, entry: &Entry) -> Result<String> {
-        let keys = self.lower_keys();
+        self.template_key(entry, false)
+    }
+
+    /// The key from the key template of an entry that is in the library already (a copy of
+    /// it: `check --auto-key`): its own key is not taken, so that an entry whose key is the
+    /// template key keeps it (`smith2000` stays `smith2000`).
+    pub fn regenerate_key(&self, entry: &Entry) -> Result<String> {
+        self.template_key(entry, true)
+    }
+
+    fn template_key(&self, entry: &Entry, in_library: bool) -> Result<String> {
+        let own = entry.key.to_lowercase();
+        let keys: HashSet<String> = self
+            .entries()
+            .map(|e| e.key.to_lowercase())
+            .filter(|k| !(in_library && *k == own))
+            .collect();
         let key = self.keyformat.render(entry)?;
         if keys.contains(&key.to_lowercase()) {
             return append_abc_in(&key, |k| keys.contains(k)).map_err(Error::exit);
@@ -833,6 +902,20 @@ impl Library {
         updates
     }
 
+    /// The absolute links of a library with relative links written relative to the
+    /// bibtex directory (`relative_links`): the fields that changed, before and after.
+    pub fn relative_links(&mut self) -> Vec<(String, String)> {
+        let relative_to = self.relative_to.clone();
+        let updates: Vec<(String, String)> = self
+            .bib
+            .entries_mut()
+            .filter(|e| entry::files(e, None).iter().any(|f| is_abs(f)))
+            .filter_map(|e| entry::update_file_path(e, &relative_to, &relative_to))
+            .collect();
+        self.index = None;
+        updates
+    }
+
     /// Place the files of an entry by the name template (`rename_entry_files`): the first is
     /// `<filesdir>/<name>.<ext>`, the others `<name>--<label>.<ext>`. The name must stay in
     /// the files directory: if it does not, the files are left where they are (and an error is logged).
@@ -880,8 +963,12 @@ impl Library {
                 log::warning(&format!("{file}: original file link is broken"));
                 file.clone()
             } else if *file != newfile {
-                self.move_file(file, &newfile, *action == Action::Copy, hardlink)?;
-                count += 1;
+                // the name of another entry's file: a suffix
+                let newfile = free_name(&newfile, file);
+                if *file != newfile {
+                    self.move_file(file, &newfile, *action == Action::Copy, hardlink)?;
+                    count += 1;
+                }
                 newfile
             } else {
                 newfile
@@ -1152,8 +1239,16 @@ impl Library {
                 entry.key = newkey;
             } else {
                 let existing_entry = self.get(&existing_key).cloned().unwrap();
-                if val(&existing_entry, "title") == val(&entry, "title")
-                    && same_paper(&existing_entry, &entry, Some(&self.distinct)).kind == Kind::Same
+                // the same paper with nothing to decide, as for "already in library"
+                // (equivalent values, such as titles that differ only by case or braces,
+                // are no difference)
+                if same_paper(&existing_entry, &entry, Some(&self.distinct)).kind == Kind::Same
+                    && Merge::new(
+                        &[existing_entry.clone(), entry.clone()],
+                        Some(&self.relative_to),
+                        false,
+                    )
+                    .is_exact()
                 {
                     log::info("exact duplicate");
                     // keep the files of the new entry
@@ -1173,7 +1268,7 @@ impl Library {
                 }
                 // (with update_key, the key generated above is not in the library)
                 return Err(Error::exit(format!(
-                    "{}: this key is already in the library, for another paper: pass -u/--update-key to generate a new key, or --key KEY",
+                    "{}: this key is already in the library, for another paper or another version of it: pass -u/--update-key to generate a new key, or --key KEY",
                     entry.key
                 )));
             }
@@ -1293,7 +1388,7 @@ impl Library {
         options: &InsertOptions,
         resolver: &mut dyn Resolve,
     ) -> Result<Vec<Inserted>> {
-        let mut bib = Bib::parse(text);
+        let mut bib = parse_added_bibtex(text);
         if convert_to_unicode {
             bib = crate::bib::unicode::latex_to_unicode_library(bib);
         }
@@ -1318,7 +1413,15 @@ impl Library {
         options: &InsertOptions,
         resolver: &mut dyn Resolve,
     ) -> Result<Vec<Inserted>> {
-        self.add_entries_taking(added, relative_to, attachments, what, options, resolver, None)
+        self.add_entries_taking(
+            added,
+            relative_to,
+            attachments,
+            what,
+            options,
+            resolver,
+            None,
+        )
     }
 
     /// [`Library::add_entries`] with a [`Taker`]: an entry that it finds elsewhere (in a pool) is
@@ -1438,7 +1541,12 @@ impl Library {
     /// order of the library), with the pairs of `distinct`: the handle and the verdict.
     pub fn find_same(&mut self, entry: &Entry, distinct: Option<&Distinct>) -> Vec<(u64, Verdict)> {
         self.ensure_index();
-        find_duplicates(entry, self.index.as_ref().expect("the index"), distinct, None)
+        find_duplicates(
+            entry,
+            self.index.as_ref().expect("the index"),
+            distinct,
+            None,
+        )
     }
 
     /// Make the entry of a handle equal to `entry` (`apply_entry`), keeping the index of
@@ -1453,11 +1561,7 @@ impl Library {
         if let Block::Entry(target) = &mut self.bib.blocks[at] {
             target.entry_type = entry.entry_type.clone();
             target.key = entry.key.clone();
-            target.fields = entry
-                .fields
-                .iter()
-                .map(|f| Field::new(&f.key, &f.value))
-                .collect();
+            target.fields = entry.fields.clone(); // a bare value stays bare
         }
         if let (Some(index), Block::Entry(target)) = (&mut self.index, &self.bib.blocks[at]) {
             index.add(uid, target);
@@ -1714,16 +1818,16 @@ impl Library {
                     {
                         target.entry_type = result.entry_type.clone();
                         target.key = result.key.clone();
-                        target.fields = result
-                            .fields
-                            .iter()
-                            .map(|f| Field::new(&f.key, &f.value))
-                            .collect();
+                        target.fields = result.fields.clone(); // a bare value stays bare
                     }
                     for k in &others {
                         if let Some(i) = self.position_exact(k) {
                             self.uids.remove(i);
                             self.bib.blocks.remove(i);
+                        }
+                        if k.to_lowercase() != result.key.to_lowercase() {
+                            // a crossref to the entry merged into the target
+                            self.rekey_references(k, &result.key);
                         }
                     }
                     self.index = None;
@@ -1762,7 +1866,7 @@ impl Library {
             std::fs::read(&path)
                 .ok()
                 .and_then(|b| String::from_utf8(b).ok())
-                .map(|t| crate::bib::universal_newlines(&t))
+                .map(|t| crate::bib::universal_newlines(crate::bib::without_bom(&t)))
         };
         let Some(state) = self.read_state.as_ref().filter(|s| s.path == path) else {
             return Ok(read_text());
