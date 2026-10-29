@@ -71,18 +71,37 @@ impl Builtin {
     fn transact(
         &self,
         folder: &Path,
-        (command, args): (&str, &[String]),
+        command: (&str, &[String]),
         change: impl FnOnce(&mut Session) -> Result<Vec<String>, Error>,
+    ) -> Result<Changes, WriteError> {
+        self.transact_deleting(folder, command, false, |session| {
+            Ok((change(session)?, Vec::new()))
+        })
+    }
+
+    /// [`Builtin::transact`] for a command that deletes files once the library is saved: `change`
+    /// returns them too. They are kept in the history for undo, as papers does (`yes`: the
+    /// questions about more than the history keeps are answered yes, those files going to the
+    /// trash of the system; the app has asked the user already).
+    fn transact_deleting(
+        &self,
+        folder: &Path,
+        (command, args): (&str, &[String]),
+        yes: bool,
+        change: impl FnOnce(&mut Session) -> Result<(Vec<String>, Vec<String>), Error>,
     ) -> Result<Changes, WriteError> {
         let config = self.config(folder)?;
         let options = Options {
             message: command_line(folder, command, args),
+            assume_yes: yes,
             ..Options::default()
         };
         let mut session = Session::open(config, options)?;
-        let done = change(&mut session).and_then(|touched| {
+        let done = change(&mut session).and_then(|(touched, delete)| {
             session.commit()?;
-            Ok(Changes::of(&session.library, &touched).unwrap_or_default())
+            let changes = Changes::of(&session.library, &touched).unwrap_or_default();
+            session.delete_files(&delete, &[])?;
+            Ok(changes)
         });
         session.finish();
         Ok(done?)
@@ -203,8 +222,9 @@ impl PapersWriter for Builtin {
             .map(|p| p.to_string_lossy().into_owned());
         if let Some(pdf) = &pdf {
             args.extend(["--attach".to_string(), pdf.clone()]);
-            args.extend(options.files.map(|m| m.flag().to_string()));
         }
+        // (the files that the entries link are placed as it says, too)
+        args.extend(options.files.map(|m| m.flag().to_string()));
         self.transact(folder, ("add", &args), |session| {
             let request = AddRequest {
                 files: vec![file],
@@ -248,13 +268,22 @@ impl PapersWriter for Builtin {
         })
     }
 
-    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Changes, WriteError> {
+    fn remove(&self, folder: &Path, keys: &[String], delete_files: bool) -> Result<Changes, WriteError> {
         let mut args = keys.to_vec();
-        args.push("--keep-files".to_string());
-        self.transact(folder, ("rm", &args), |session| {
+        args.push(if delete_files { "--delete-files" } else { "--keep-files" }.to_string());
+        if delete_files {
+            args.push("-y".to_string());
+        }
+        self.transact_deleting(folder, ("rm", &args), delete_files, |session| {
+            if delete_files && session.config.shallow() {
+                return Err(Error::exit(
+                    "The files of a shallow library are the pool's: remove them with `papers file rm FILE`",
+                ));
+            }
             let keys = session.library.select(keys)?;
-            remove_entries(session, &keys, Files::Keep, false)?;
-            Ok(keys)
+            let files = if delete_files { Files::Delete } else { Files::Keep };
+            let delete = remove_entries(session, &keys, files, false)?;
+            Ok((keys, delete))
         })
     }
 

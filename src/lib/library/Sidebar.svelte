@@ -4,6 +4,7 @@
   import { foldTag, lastSegment, parentsOf, sameTag } from "$lib/tags";
   import { fileName, type View } from "./filters";
   import type { Row, TagCount } from "$lib/types";
+  import { DROP_OPEN, rowDrag } from "./drag.svelte";
 
   let {
     libraries,
@@ -249,7 +250,10 @@
     {/each}
   {/if}
 
+  <!-- rows of the table dropped here open as tabs -->
+  <div class="open" class:target={rowDrag.ids.length > 0} class:over={rowDrag.over} {...{ [DROP_OPEN]: "" }}>
   <h4>Open</h4>
+  {#if rowDrag.ids.length}<div class="hint">Drop to open {rowDrag.ids.length === 1 ? "the paper" : `${rowDrag.ids.length} papers`}</div>{/if}
   <div class="paper" class:selected={active === null}>
     <button class="tab home" title={tab.label} onclick={onlibrarytab}>
       <span class="name">{tab.label}</span><span class="count">{tab.count}</span>
@@ -265,6 +269,7 @@
       <button class="close" aria-label="Close" onclick={() => onclose(paper.id)}>×</button>
     </div>
   {/each}
+  </div>
 </nav>
 
 <footer>
@@ -278,6 +283,25 @@
 </div>
 
 <style>
+  /* a drag of rows is on: the Open section says it takes them, the frame when the pointer is over it */
+  .open {
+    margin: 0 2px;
+    padding: 0 0 4px;
+    border: 1px dashed transparent;
+    border-radius: 7px;
+  }
+  .open.target {
+    border-color: var(--border);
+  }
+  .open.over {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .hint {
+    padding: 0 8px 4px;
+    color: var(--accent);
+    font-size: 11px;
+  }
   /* the sidebar fills its pane: the gear stays at the bottom, over the list when it scrolls */
   .box {
     display: flex;

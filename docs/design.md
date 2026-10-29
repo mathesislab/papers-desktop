@@ -82,13 +82,47 @@ rows, tested by `scripts/filters.test.ts`, `npm test`):
   `tag:` term per tag filter.
 - **Search**: the text of the field. It stays when the view, library or tags
   change and when papers are opened, until it is cleared: the × in the field,
-  or `⌘⌫` (Ctrl+Backspace elsewhere). `Esc` leaves the field; `/` and `⌘F`
-  go to it.
+  or `⌘⌫` (Ctrl+Backspace elsewhere) in the field, where it clears it;
+  elsewhere in the library `⌘⌫` deletes the selection (*Delete*, below), or
+  clears the search when nothing is selected. `Esc` leaves the field; `/` and
+  `⌘F` go to it.
 
 Library, view, tags and search are kept in the layout (`window.json`, `library`)
 and come back at the next start; a .bib file no longer in the library is
 dropped. A paper shown after it was added or merged takes the filters off if
 they would hide it.
+
+**Several papers at once** (`+page.svelte`, `Table.svelte`, `rowmenu.ts`,
+`selection.ts`, pure and tested by `scripts/selection.test.ts`):
+
+- *Open*: Enter, a double-click, or *Open* in the context menu opens every
+  paper selected as a tab (`openPapers`, the first in front); a double-click on
+  one of several selected opens all of them (a click on one of several selected
+  keeps them selected until the button is released, as in Finder, so that they
+  can be dragged). Above 5 papers it asks first (*Open 12 papers?*). A paper
+  without a file opens its web page in the browser, as before.
+- *Drag* rows (the selection if the row is in it, else the row) onto the
+  *Open* section of the sidebar: they open as tabs. The drag is made of pointer
+  events (`drag.svelte.ts`: the page's own drag and drop is the window's drop of
+  PDFs); a label follows the pointer, the section shows a frame and *Drop to
+  open*; `Esc` cancels.
+- *Open in Preview* (macOS; *Open in default app* elsewhere): the PDFs of the
+  selection outside the app (`open_pdfs`, the opener plugin: Preview on macOS,
+  the system's default app elsewhere). A paper without a PDF is skipped, and
+  the notice says how many (*Opened 3 PDFs, 2 papers without a PDF skipped*).
+- *The context menu of a row* (right-click; on the selection if the row is in
+  it, else on that row, which becomes the selection): *Open*, *Open in Preview*,
+  *Reveal in Finder*, *Open DOI page*; *Copy [@key]* (`[@a; @b]` for several),
+  *Copy BibTeX* (one after the other), *Copy citation* (the style of the
+  settings, one per line), *Edit BibTeX* (one paper: the editor of the
+  details); *Tags ▸* (the tags pinned to the keys, then the most used, each a
+  check that puts it on the papers or takes it off; *Edit tags…* opens the field
+  of the details); *Add PDF…* (one paper without a file); *Copy to ▸* and *Move
+  to ▸* (the other .bib files, when there are several); *Export selection…*;
+  *Delete…*. What does not apply is disabled (no PDF, no DOI).
+- *Delete…* (the menu, `⌘⌫` on the selection): *Delete 3 papers?* with a
+  checkbox *Also delete their PDFs* (off; shown when a paper has a file) and a
+  line on where the PDFs go. Then the next row is selected.
 
 A paper tab shows its PDF in the app, with the details beside it: on macOS
 in a native view of PDFKit, as Preview shows it (smooth scrolling and zoom;
@@ -277,6 +311,45 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
   entries whose key is in the file already are not added, but reported. A PDF
   added to an entry is linked in its `file` field where it is (JabRef's
   `:path:PDF`, the real path), not moved or renamed.
+- **Delete, copy, move** (`remove_entries`, `transfer_entries`; both writers):
+  - *Delete* removes the entries (`papers rm`) and, if asked, their PDFs.
+    A papers library: `--keep-files` (the PDFs stay), or `--delete-files -y`:
+    the files no other entry links to are deleted and kept in papers' history, so
+    that undo brings them back (more than the history keeps, `history-size`, goes
+    to the system trash, which `-y` accepts: the app has asked already); built in,
+    the same through `Session::delete_files`; a shallow library refuses
+    `--delete-files` (its files are the pool's). A plain .bib: the entries are
+    removed by the app's writer and, if asked, the PDFs that no other entry links
+    to are moved to the system Trash (recoverable by hand; never deleted for good:
+    without a trash the PDFs stay and the error says so).
+  - *Copy to* / *Move to* another .bib: the entries are added by the writer of
+    the target, as the entry is (tags and fields kept) without its `file`
+    links, which are replaced by links to the files that are there (a link
+    to a missing file is left out and counted). A papers target: one `papers add`
+    of the entries with `--on-duplicate skip --copy`, so papers copies each PDF into
+    its files folder, named by its template, in the same step. A plain .bib target:
+    `Library::add_entries`, the PDFs linked where they are (real path). A paper the
+    target has already, by key or, for papers, by its rule for the same paper, is
+    not added, and not removed from the source: the notice says how many were
+    already there (*Copied 2 papers to refs.bib, 1 already in refs.bib*).
+  - *Move* is that copy followed by the removal of the papers added from their
+    .bib: from a papers library to a papers library the PDFs go with them (papers
+    never moves a file that belongs to another library, so they are copied, and
+    the source's are deleted as in *Delete*: kept in the source's history, which
+    undo brings back); the PDFs of a plain .bib source stay where they are, and so
+    do those of a papers library moved to a plain .bib (the target links them).
+    When the removal fails after the copy, the error says so and the library is
+    read again.
+  - Undo of a copy is one step of the target; of a move, one step of each .bib
+    (the removal in the source, the addition in the target).
+- **Undo and redo**: Edit → Undo and Redo (`⌘Z`, `⌘⇧Z`; Ctrl elsewhere): in a
+  text field the field's own; otherwise the last change of a .bib file, through
+  the commands `undo` and `redo` (papers' history for a papers library, the app's
+  stack of the session for a plain .bib). The .bib is the one of the paper in
+  front or shown, else of the library tab, else the only one; after a delete,
+  copy or move, the one the app wrote until another paper is chosen. On macOS the
+  menu items are the app's (`menu.rs`, which sends the field's undo to any other
+  window); elsewhere the page catches the keys.
 - **An edit of the BibTeX** of an entry keeps its key, tags and files, in
   either library, as `papers edit --from` does: an edit that changes them is
   refused. Tags have their own commands, files will too.
@@ -327,12 +400,9 @@ answers), not yet tried in the built app.
 **Next** (proposed, to confirm before starting; one agent each, in a git
 worktree, merged one by one):
 
-1. **Files, delete, undo**: *Delete…* in the details and `⌘⌫` on the
-   selection, after asking (the PDFs stay); detach a PDF (attaching one is
-   done: *Add paper*), rename it by the names of papers (`papers file rename`,
-   papers libraries only);
-   `⌘Z` / `⌘⇧Z` undo and redo the last change of the library, but undo the
-   typing in a field.
+1. **Files**: detach a PDF (attaching one is done: *Add paper*), rename it by
+   the names of papers (`papers file rename`, papers libraries only). (Delete,
+   copy and move, and undo and redo, are done: *Delete, copy, move* above.)
 2. **A manuscript's tag**, after these: the citations of a `.md` (`[@key]`),
    `.tex` or `.aux` tag their papers, and the keys not in the library are
    listed.

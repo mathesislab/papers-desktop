@@ -4,7 +4,7 @@
 // WriteError.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { AddOptions, Added, FilesMode, WriteError, Writer } from "$lib/types";
+import type { AddOptions, Added, FilesMode, Transferred, WriteError, Writer } from "$lib/types";
 
 export function isWriteError(e: unknown): e is WriteError {
   return typeof e === "object" && e !== null && "kind" in e && "message" in e;
@@ -76,9 +76,18 @@ export function defaultFiles(bib: string): Promise<FilesMode | null> {
   return invoke("default_files_mode", { bib });
 }
 
-/** Remove entries; their files stay. */
-export function removeEntries(ids: string[]): Promise<void> {
-  return write("remove_entries", { ids });
+/** Remove entries. Their files stay, or with `deleteFiles` those no other entry links to are deleted: in a
+ *  papers library papers keeps them in its history (undo brings them back), from a plain .bib they go to the
+ *  trash of the system. */
+export function removeEntries(ids: string[], deleteFiles = false): Promise<void> {
+  return write("remove_entries", { ids, deleteFiles });
+}
+
+/** Copy entries to another .bib file of the library, or with `move` move them: added by the writer of that
+ *  file with their files (copied into a papers library, linked where they are in a plain .bib). What was
+ *  added, and what it already had. */
+export function transferEntries(ids: string[], bib: string, move: boolean): Promise<Transferred> {
+  return write("transfer_entries", { ids, bib, remove: move });
 }
 
 /** Undo the last change of a .bib file. */

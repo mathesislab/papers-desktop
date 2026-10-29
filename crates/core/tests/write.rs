@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use papers_core::{Error, Library, entry_keys, with_files};
+use papers_core::{Error, Library, entry_keys, with_files, without_files};
 use tempfile::TempDir;
 
 /// Copies of fixtures in a temporary directory.
@@ -457,6 +457,29 @@ fn the_text_of_an_entry_with_files() {
     );
     assert!(matches!(
         with_files("@article{a, title = {A}}\n@article{b, title = {B}}", &pdf),
+        Err(Error::NotOneEntry { found: 2 })
+    ));
+}
+
+#[test]
+fn the_text_of_an_entry_without_files() {
+    assert_eq!(
+        without_files("@article{a,\n file = {:/d/b.pdf:PDF},\n title = {A}\n}").unwrap(),
+        "@article{a,\n title = {A}\n}"
+    );
+    // the last field, and more than one
+    assert_eq!(
+        without_files("@article{a,\n title = {A},\n file = {:/d/b.pdf:PDF}\n}").unwrap(),
+        "@article{a,\n title = {A}\n}"
+    );
+    assert_eq!(
+        without_files("@article{a,\n file = {x},\n title = {A},\n File = \"y\"\n}").unwrap(),
+        "@article{a,\n title = {A}\n}"
+    );
+    let plain = "@article{a,\n title = {A}\n}";
+    assert_eq!(without_files(plain).unwrap(), plain);
+    assert!(matches!(
+        without_files("@article{a, title = {A}}\n@article{b, title = {B}}"),
         Err(Error::NotOneEntry { found: 2 })
     ));
 }

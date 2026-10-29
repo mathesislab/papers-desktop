@@ -9,11 +9,37 @@
   import { label, mac, matches, zoomStep, type Shortcut } from "$lib/keys";
   import { renameTagFilter } from "$lib/query";
   import { foldTag, movedTag, sameTag } from "$lib/tags";
+  import * as cite from "$lib/cite";
+  import { copy as copyText } from "$lib/clipboard";
   import Details from "$lib/library/Details.svelte";
+  import DeleteSheet from "$lib/library/DeleteSheet.svelte";
   import Add from "$lib/library/Add.svelte";
   import PapersMissing from "$lib/library/PapersMissing.svelte";
   import { Editor } from "$lib/library/editor.svelte";
-  import { addBibtex, attachPdf, errorText, renameTag, replaceEntry, setTags, writeError, writers } from "$lib/library/writes";
+  import {
+    addBibtex,
+    attachPdf,
+    errorText,
+    redo,
+    removeEntries,
+    renameTag,
+    replaceEntry,
+    setTags,
+    transferEntries,
+    undo,
+    writeError,
+    writers,
+  } from "$lib/library/writes";
+  import { showRowMenu, type RowActions } from "$lib/library/rowmenu";
+  import {
+    OPEN_ASK,
+    count,
+    deletedMessage,
+    menuTags,
+    nextAfter,
+    openedMessage,
+    transferMessage,
+  } from "$lib/library/selection";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -23,6 +49,7 @@
     VIEWS,
     chips,
     currentSet,
+    fileName,
     hasTag,
     libraryCounts,
     renameTags,
@@ -40,7 +67,7 @@
   import Sidebar from "$lib/library/Sidebar.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
-  import type { AddOptions, Added, FilesMode, Item, Row, Status, TagCount, WriteError } from "$lib/types";
+  import type { AddOptions, Added, FilesMode, Item, Opened, Row, Status, TagCount, Transferred, WriteError } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
@@ -114,6 +141,13 @@
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
+  /** papers to delete, being asked about: the question of the sheet */
+  let deleting = $state<{ ids: string[]; title: string | null; files: boolean; note: string } | null>(null);
+  /** the .bib file last written by a delete, copy or move, which Undo takes back until another paper is chosen */
+  let lastWrite: string | null = null;
+  /** a click on one of several selected papers leaves them selected, for a drag or a double-click; this one gets
+   *  the selection when the click is no more than that */
+  let collapse: string | null = null;
   /** the BibTeX of the paper in the details, being edited */
   const editor = new Editor();
   /** after a paper is closed: the library, or the next paper open (a setting) */
@@ -135,6 +169,9 @@
     "show-next-tab": { key: "]", code: "BracketRight", mod: true, shift: true },
     "show-previous-tab": { key: "[", code: "BracketLeft", mod: true, shift: true },
     settings: { key: ",", mod: true },
+    // the library's, except in a field, where they are the field's (the menu of macOS has them)
+    undo: { key: "z", mod: true },
+    redo: { key: "z", mod: true, shift: true },
   };
   const allShortcut: Shortcut = { key: "a", mod: true };
 
@@ -288,10 +325,14 @@
     const tag = pinned[slot];
     const ids = selected.size ? [...selected] : focus ? [focus] : [];
     if (!tag || !ids.length) return;
-    const count = (n: number) => `${n} ${n === 1 ? "paper" : "papers"}`;
-    const lacking = ids.filter((id) => !byId.get(id)?.tags.some((t) => sameTag(t, tag)));
-    if (lacking.length) {
-      if (await write(() => setTags(lacking, [tag]))) say(`Added ${tag} to ${count(lacking.length)}`);
+    await setTagOn(tag, ids, !ids.every((id) => byId.get(id)?.tags.some((t) => sameTag(t, tag))));
+  }
+
+  /** A tag on papers, or off them. */
+  async function setTagOn(tag: string, ids: string[], on: boolean) {
+    if (on) {
+      const lacking = ids.filter((id) => !byId.get(id)?.tags.some((t) => sameTag(t, tag)));
+      if (lacking.length && (await write(() => setTags(lacking, [tag])))) say(`Added ${tag} to ${count(lacking.length)}`);
     } else if (await write(() => setTags(ids, [], [tag]))) {
       say(`Removed ${tag} from ${count(ids.length)}`);
     }
@@ -355,6 +396,8 @@
 
   async function select(id: string, e: MouseEvent) {
     if (e.button !== 0 || !(await leave(id))) return;
+    lastWrite = null;
+    collapse = null;
     if (e.shiftKey && anchor) {
       selectRange(anchor, id);
     } else if (mac ? e.metaKey : e.ctrlKey) {
@@ -363,11 +406,28 @@
       else s.add(id);
       selected = s;
       anchor = id;
+    } else if (selected.has(id) && selected.size > 1) {
+      collapse = id;
     } else {
       selected = new Set([id]);
       anchor = id;
     }
     focus = id;
+  }
+
+  /** The click that ends a press on one of several selected papers, which no drag followed: it selects that one. */
+  function clickRow(id: string) {
+    if (collapse === id) {
+      selected = new Set([id]);
+      anchor = id;
+    }
+    collapse = null;
+  }
+
+  /** The papers of `ids` that are in the table, in its order. */
+  function ordered(ids: Iterable<string>): string[] {
+    const set = new Set(ids);
+    return shown.filter((r) => set.has(r.id)).map((r) => r.id);
   }
 
   function selectRange(from: string, to: string) {
@@ -386,6 +446,7 @@
       to === "first" ? 0 : to === "last" ? ids.length - 1 : at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + to));
     const next = ids[index];
     if (!(await leave(next))) return;
+    lastWrite = null;
     if (extend && anchor) {
       selectRange(anchor, next);
     } else {
@@ -404,6 +465,209 @@
     } else {
       openPaper(id);
     }
+  }
+
+  /** Whether to go on with an action on several papers: above `OPEN_ASK` it asks first. */
+  async function confirmMany(n: number, question: string, button: string): Promise<boolean> {
+    return n <= OPEN_ASK || (await ask(question, { title: button, okLabel: button, cancelLabel: "Cancel" }));
+  }
+
+  /** Enter, a double-click, Open: the papers each in a tab (above 5, after asking); one without a file opens its web
+   *  page in the browser. The first in front. */
+  async function openMany(ids: string[]) {
+    if (!ids.length || !(await confirmMany(ids.length, `Open ${count(ids.length)}?`, "Open"))) return;
+    const tabs = ids.filter((id) => byId.get(id)?.file !== "none");
+    if (tabs.length) await openPapers(tabs);
+    let failed = 0;
+    for (const id of ids.filter((id) => !tabs.includes(id))) {
+      try {
+        await invoke("open", { id });
+      } catch {
+        failed++;
+      }
+    }
+    if (tabs.length < ids.length) recent = await invoke<string[]>("recent");
+    if (failed) say(`${count(failed)} without a file, DOI or URL`);
+  }
+
+  /** The PDFs of papers in the app that opens PDFs: Preview on macOS, else the default one. */
+  async function openExternal(ids: string[]) {
+    if (!(await confirmMany(ids.length, `Open ${count(ids.length)} outside the app?`, "Open"))) return;
+    try {
+      say(openedMessage(await invoke<Opened>("open_pdfs", { ids, preview: mac })));
+      recent = await invoke<string[]>("recent");
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** The files of papers shown in the file manager. */
+  async function revealMany(ids: string[]) {
+    const found = ids.filter((id) => byId.get(id)?.file === "found");
+    if (!(await confirmMany(found.length, `Show ${count(found.length)} in the ${mac ? "Finder" : "file manager"}?`, "Show"))) return;
+    try {
+      for (const id of found) await invoke("reveal", { id });
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** The web page of the DOI of papers. */
+  async function openDois(ids: string[]) {
+    const dois = ids.filter((id) => byId.get(id)?.doi);
+    if (!(await confirmMany(dois.length, `Open ${dois.length} DOI pages?`, "Open"))) return;
+    try {
+      for (const id of dois) await invoke("open_link", { id });
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** The keys, or the BibTeX, of papers on the clipboard. */
+  async function copyMany(ids: string[], format: "pandoc" | "bibtex") {
+    try {
+      const text = await invoke<string>("copy_many", { ids, format });
+      say(
+        format === "bibtex"
+          ? `Copied the BibTeX of ${count(ids.length)}`
+          : `Copied ${text.length > 50 ? text.slice(0, 50) + "…" : text}`,
+      );
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** The citations of papers on the clipboard, one to a line. */
+  async function copyCitations(ids: string[]) {
+    try {
+      const parts = await Promise.all(ids.map(async (id) => cite.toCopy(await cite.citation(id))));
+      await copyText(ids[0], { text: parts.map((p) => p.text).join("\n"), html: parts.map((p) => p.html).join("<br>") });
+      say(`Copied ${count(ids.length, "citation")}`);
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** One paper alone selected, with the details shown. Whether it was: a BibTeX being edited asks first. */
+  async function showOnly(id: string): Promise<boolean> {
+    if (!(await leave(id))) return false;
+    selected = new Set([id]);
+    anchor = focus = id;
+    layout.showDetails = true;
+    await tick();
+    return true;
+  }
+
+  /** Edit BibTeX of the menu: the paper selected, its BibTeX in the details to edit. */
+  async function editBibtex(id: string) {
+    if (await showOnly(id)) await edit(id);
+  }
+
+  /** Edit tags… of the menu: the papers selected, the field of the tags in the details open. */
+  async function editTags(ids: string[]) {
+    layout.showDetails = true;
+    selected = new Set(ids);
+    focus = focus && ids.includes(focus) ? focus : ids[0];
+    await tick();
+    document.querySelector<HTMLButtonElement>("button[data-add-tag]")?.click();
+  }
+
+  /** Papers copied to another .bib file, or moved: what it did said, and after a move the next paper selected. */
+  async function transfer(ids: string[], bib: string, move: boolean) {
+    let done: Transferred | undefined;
+    if (!(await write(async () => (done = await transferEntries(ids, bib, move)))) || !done) return;
+    say(transferMessage(done, bib, move));
+    const added = done.added;
+    const moved = move ? ids.filter((id) => added.includes(byId.get(id)?.key ?? "")) : [];
+    const sources = new Set(moved.map((id) => byId.get(id)?.bib));
+    lastWrite = move ? (sources.size === 1 ? ([...sources][0] ?? null) : null) : bib;
+    if (moved.length) {
+      const next = nextAfter(shown, new Set(moved));
+      selected = new Set(next ? [next] : []);
+      anchor = focus = next;
+    }
+  }
+
+  /** Delete… of the menu, ⌘⌫: the question first, whether to delete the PDFs too. */
+  async function askDelete(ids: string[]) {
+    if (!ids.length) return;
+    if (editor.id && ids.includes(editor.id) && !(await leave(null))) return;
+    const kinds = new Map((await writers()).map((w) => [w.bib, w.kind]));
+    const bibs = new Set(ids.map((id) => byId.get(id)?.bib ?? ""));
+    const plain = [...bibs].some((b) => kinds.get(b) === "native");
+    const papers = [...bibs].some((b) => kinds.get(b) !== "native");
+    const note =
+      papers && plain
+        ? "In a papers library papers keeps the PDFs in its history, so that Undo brings them back; those of a plain .bib go to the Trash."
+        : papers
+          ? "papers keeps them in its history, so that Undo brings them back."
+          : "They go to the Trash.";
+    deleting = {
+      ids,
+      title: ids.length === 1 ? (byId.get(ids[0])?.title ?? null) : null,
+      files: ids.some((id) => byId.get(id)?.file !== "none"),
+      note,
+    };
+  }
+
+  /** The papers of the question deleted, then the next row selected. */
+  async function doDelete(deleteFiles: boolean) {
+    if (!deleting) return;
+    const { ids, files } = deleting;
+    deleting = null;
+    const next = nextAfter(shown, new Set(ids));
+    const bibs = new Set(ids.map((id) => byId.get(id)?.bib));
+    if (!(await write(() => removeEntries(ids, deleteFiles)))) return;
+    say(deletedMessage(ids.length, deleteFiles && files));
+    lastWrite = bibs.size === 1 ? ([...bibs][0] ?? null) : null;
+    selected = new Set(next ? [next] : []);
+    anchor = focus = next;
+  }
+
+  /** Right-click on a row: the papers selected when it is one of them, else that paper alone. */
+  async function rowMenu(id: string, _e: MouseEvent) {
+    if (!selected.has(id)) {
+      if (!(await leave(id))) return;
+      selected = new Set([id]);
+      anchor = focus = id;
+      lastWrite = null;
+    }
+    const picked = ordered(selected)
+      .map((i) => byId.get(i))
+      .filter((r): r is Row => r !== undefined);
+    if (!picked.length) return;
+    const bibs = (await writers()).map((w) => w.bib);
+    await showRowMenu(picked, bibs, menuTags(pinned, tags), rowActions);
+  }
+
+  const rowActions: RowActions = {
+    open: openMany,
+    external: openExternal,
+    reveal: revealMany,
+    doi: openDois,
+    copyKeys: (ids) => copyMany(ids, "pandoc"),
+    copyBibtex: (ids) => copyMany(ids, "bibtex"),
+    copyCitation: copyCitations,
+    edit: editBibtex,
+    tag: setTagOn,
+    editTags,
+    addPdf,
+    transfer,
+    exportBib,
+    remove: askDelete,
+  };
+
+  /** ⌘Z, ⌘⇧Z: the last change of the .bib of the paper shown (of the one the app wrote last, after a delete, copy or
+   *  move), else of the library tab's, else the only one. In a field, the field's own undo. */
+  async function stepLibrary(back: boolean) {
+    const el = document.activeElement;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable)) {
+      document.execCommand(back ? "undo" : "redo");
+      return;
+    }
+    const bib = lastWrite ?? byId.get(layout.active ?? focus ?? "")?.bib ?? layout.library.bib ?? (libraries.length === 1 ? libraries[0].bib : null);
+    if (!bib) return say("Choose a paper or a library to " + (back ? "undo" : "redo") + " in");
+    if (await write(() => (back ? undo(bib) : redo(bib)))) say(`${back ? "Undid" : "Redid"} the last change of ${fileName(bib)}`);
   }
 
   /** Papers in tabs, those not open yet after the ones open; `front` (the first, by default) comes to the front. */
@@ -633,6 +897,11 @@
         return cycle(-1);
       case "settings":
         invoke("open_settings");
+        return;
+      case "undo":
+        return stepLibrary(true);
+      case "redo":
+        return stepLibrary(false);
     }
   }
 
@@ -640,6 +909,8 @@
   const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 120) / 26));
 
   function onkeydown(e: KeyboardEvent) {
+    // the question before a delete has the keys
+    if (deleting) return;
     // ⌃Tab: the menu of macOS does not get it from a field of the page
     if (e.ctrlKey && e.key === "Tab") {
       e.preventDefault();
@@ -674,7 +945,8 @@
     if (!layout.active && !(e.target instanceof HTMLTextAreaElement)) libraryKey(e);
   }
 
-  /** The keys of the library: / to search, ⌘⌫ clears the search, the arrows, the page keys, Home
+  /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
+   *  elsewhere (after asking), the arrows, the page keys, Home
    *  and End move (shift extends the selection), Enter opens, Esc leaves the
    *  search, 1–9 toggle the tag pinned to the key. */
   function libraryKey(e: KeyboardEvent) {
@@ -701,10 +973,13 @@
       go("last");
     } else if (e.key === "Enter" && focus) {
       e.preventDefault();
-      open(focus);
+      openMany(selected.has(focus) ? ordered(selected) : [focus]);
     } else if (e.key === "Backspace" && mod && !e.shiftKey && !e.altKey && (e.target === input || !typing)) {
       e.preventDefault();
-      layout.library.query = "";
+      // in the search field it clears the search; elsewhere it deletes the papers selected, if there are any
+      const picked = ordered(selected);
+      if (e.target !== input && picked.length) askDelete(picked);
+      else layout.library.query = "";
     } else if (e.key === "Escape" && typing) {
       e.preventDefault();
       input?.blur();
@@ -765,6 +1040,16 @@
     onchange={changePaper}
     onshow={showPaper}
     onclose={() => (adding = null)}
+  />
+{/if}
+{#if deleting}
+  <DeleteSheet
+    papers={deleting.ids.length}
+    title={deleting.title}
+    files={deleting.files}
+    note={deleting.note}
+    ondelete={doDelete}
+    oncancel={() => (deleting = null)}
   />
 {/if}
 {#if dragging}
@@ -894,7 +1179,10 @@
             oncolumns={(columns) => (layout.columns = columns)}
             onsort={(sort) => (layout.sort = sort)}
             onselect={select}
-            onopen={open}
+            onclickrow={clickRow}
+            onopen={openMany}
+            onmenu={rowMenu}
+            ondrop={openMany}
           />
         {/if}
       </section>

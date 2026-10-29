@@ -42,6 +42,7 @@
 <script lang="ts">
   import { CheckMenuItem, Menu } from "@tauri-apps/api/menu";
   import { untrack } from "svelte";
+  import { DRAG_DISTANCE, endDrag, overDrop, rowDrag } from "./drag.svelte";
 
   let {
     rows,
@@ -54,7 +55,10 @@
     oncolumns,
     onsort,
     onselect,
+    onclickrow,
     onopen,
+    onmenu,
+    ondrop,
   }: {
     /** the rows shown, in order */
     rows: Row[];
@@ -71,7 +75,14 @@
     oncolumns: (columns: Shown[]) => void;
     onsort: (sort: Sort) => void;
     onselect: (id: string, e: MouseEvent) => void;
-    onopen: (id: string) => void;
+    /** a click that did not start a drag, after the selection was left as it was (see `onselect`) */
+    onclickrow: (id: string) => void;
+    /** Enter-like: the papers to open, a double-click on one of several selected being those selected */
+    onopen: (ids: string[]) => void;
+    /** right-click on a row: its context menu */
+    onmenu: (id: string, e: MouseEvent) => void;
+    /** the rows dragged and dropped on the Open section of the sidebar */
+    ondrop: (ids: string[]) => void;
   } = $props();
 
   const ROW = 26;
@@ -110,6 +121,71 @@
     if (top < body.scrollTop) body.scrollTop = top;
     else if (top + ROW > body.scrollTop + body.clientHeight) body.scrollTop = top + ROW - body.clientHeight;
   });
+
+  /** the papers selected before the first click of a double-click, which the second opens together */
+  let before: string[] | null = null;
+  /** a click that ends a drag is not a click on the row */
+  let dragged = false;
+
+  /** The papers of `ids`, in the order of the table. */
+  const inOrder = (ids: Iterable<string>) => {
+    const set = new Set(ids);
+    return rows.filter((r) => set.has(r.id)).map((r) => r.id);
+  };
+
+  function rowDown(e: MouseEvent, id: string) {
+    if (e.detail === 1) before = selected.has(id) && selected.size > 1 ? inOrder(selected) : null;
+    onselect(id, e);
+  }
+
+  function rowClick(id: string) {
+    if (!dragged) onclickrow(id);
+  }
+
+  function rowOpen(id: string) {
+    onopen(before?.includes(id) ? before : [id]);
+  }
+
+  /** A row pressed: dragged far enough, the rows are dragged (the selection when the row is in it, else the
+   *  row), to drop on the Open section of the sidebar. */
+  function rowPress(e: PointerEvent, id: string) {
+    if (e.button !== 0 || e.ctrlKey) return;
+    const [x, y] = [e.clientX, e.clientY];
+    let ids: string[] | null = null;
+    const move = (m: PointerEvent) => {
+      if (!ids) {
+        if (Math.hypot(m.clientX - x, m.clientY - y) < DRAG_DISTANCE) return;
+        ids = inOrder(selected.has(id) ? selected : [id]);
+        rowDrag.ids = ids;
+      }
+      [rowDrag.x, rowDrag.y] = [m.clientX, m.clientY];
+      rowDrag.over = overDrop(m.clientX, m.clientY);
+    };
+    const finish = (drop: boolean) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("keydown", key, true);
+      if (!ids) return;
+      const dropped = drop && rowDrag.over ? ids : null;
+      endDrag();
+      // the click that follows the release is not a click on a row
+      dragged = true;
+      setTimeout(() => (dragged = false), 0);
+      if (dropped) ondrop(dropped);
+    };
+    const up = () => finish(true);
+    const cancel = () => finish(false);
+    const key = (k: KeyboardEvent) => {
+      if (k.key !== "Escape") return;
+      k.stopPropagation();
+      finish(false);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("keydown", key, true);
+  }
 
   /** A click: ascending, descending, then the order of the library. Years
    *  start with the newest. */
@@ -255,8 +331,14 @@
           aria-selected={selected.has(row.id)}
           style:top="{(first + i) * ROW}px"
           style:grid-template-columns={template}
-          onmousedown={(e) => onselect(row.id, e)}
-          ondblclick={() => onopen(row.id)}
+          onpointerdown={(e) => rowPress(e, row.id)}
+          onmousedown={(e) => rowDown(e, row.id)}
+          onclick={() => rowClick(row.id)}
+          ondblclick={() => rowOpen(row.id)}
+          oncontextmenu={(e) => {
+            e.preventDefault();
+            onmenu(row.id, e);
+          }}
         >
           <span class="file" title={row.file === "missing" ? "File not found" : ""}>
             {#if row.file !== "none"}
@@ -274,7 +356,28 @@
   </div>
 </div>
 
+{#if rowDrag.ids.length}
+  <!-- what is dragged, next to the pointer -->
+  <div class="ghost" style:left="{rowDrag.x + 12}px" style:top="{rowDrag.y + 12}px">
+    {rowDrag.ids.length === 1 ? (rows.find((r) => r.id === rowDrag.ids[0])?.title ?? "1 paper") : `${rowDrag.ids.length} papers`}
+  </div>
+{/if}
+
 <style>
+  .ghost {
+    position: fixed;
+    z-index: 20;
+    max-width: 260px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
   .table {
     flex: 1;
     min-height: 0;

@@ -577,6 +577,30 @@ pub fn with_files(text: &str, files: &[PathBuf]) -> Result<String> {
     Ok(splice(text, vec![edit]))
 }
 
+/// The text of an entry without its `file` fields (the links to its files). It must be one entry.
+pub fn without_files(text: &str) -> Result<String> {
+    let mut text = text.trim().to_string();
+    let given = given_entries(&text)?;
+    if given.len() != 1 {
+        return Err(Error::NotOneEntry { found: given.len() });
+    }
+    // one field at a time, the last first: the text is read again after each
+    loop {
+        let edit = {
+            let parsed = parse_entry(Path::new(""), &text)?;
+            let fields = &parsed.entries[0].v.fields;
+            fields
+                .iter()
+                .rposition(|f| f.key.v.eq_ignore_ascii_case("file"))
+                .map(|i| (remove_field(&text, fields, i), String::new()))
+        };
+        match edit {
+            Some(edit) => text = splice(&text, vec![edit]),
+            None => return Ok(text),
+        }
+    }
+}
+
 /// Where a field is removed: with its comma, and with its line when it has
 /// one of its own; the last field takes the comma before it.
 fn remove_field(raw: &str, fields: &[Pair], i: usize) -> Range<usize> {

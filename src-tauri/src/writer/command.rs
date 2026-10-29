@@ -160,8 +160,9 @@ impl PapersWriter for PapersCommand {
         }
         if let Some(pdf) = &options.pdf {
             args.extend(["--attach".to_string(), pdf.to_string_lossy().into()]);
-            args.extend(options.files.map(|m| m.flag().to_string()));
         }
+        // (the files that the entries link are placed as it says, too)
+        args.extend(options.files.map(|m| m.flag().to_string()));
         self.run(folder, "add", &args, None)
     }
 
@@ -182,9 +183,14 @@ impl PapersWriter for PapersCommand {
         self.run(folder, "add", &args, None)
     }
 
-    fn remove(&self, folder: &Path, keys: &[String]) -> Result<Changes, WriteError> {
+    fn remove(&self, folder: &Path, keys: &[String], delete_files: bool) -> Result<Changes, WriteError> {
         let mut args = keys.to_vec();
-        args.push("--keep-files".to_string());
+        if delete_files {
+            // (-y: the user has been asked; more than the history keeps goes to the trash)
+            args.extend(["--delete-files".to_string(), "-y".to_string()]);
+        } else {
+            args.push("--keep-files".to_string());
+        }
         self.run(folder, "rm", &args, None)
     }
 

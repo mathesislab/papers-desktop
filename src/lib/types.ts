@@ -89,6 +89,20 @@ export type Added = {
   existing: string[];
 };
 
+/** mirrors writer::Transferred of src-tauri: what a copy or move of papers to another .bib did, by keys */
+export type Transferred = {
+  added: string[];
+  /** left out: the target has the paper (the same key, or for a papers library the same paper) */
+  existing: string[];
+  /** removed from their .bib files, for a move */
+  removed: number;
+  /** links to files that are not there, left out */
+  missing: number;
+};
+
+/** mirrors Opened of src-tauri: the PDFs opened outside the app, and the papers without one */
+export type Opened = { opened: number; skipped: number };
+
 /** mirrors writer::AddOptions of src-tauri: how entries are added to a papers
  *  library (a plain .bib adds them as they are) */
 export type AddOptions = {

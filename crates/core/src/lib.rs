@@ -26,7 +26,7 @@ pub use table::{FileState, Incoming, Row, TagCount};
 pub use tag::{same_tag, under};
 pub use text::{Matching, Span};
 pub use watch::BibWatch;
-pub use write::{Added, Change, entry_keys, with_files};
+pub use write::{Added, Change, entry_keys, with_files, without_files};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

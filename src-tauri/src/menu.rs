@@ -1,7 +1,8 @@
 //! The menu bar of the app (macOS), shown while the main window is open. Its
 //! items are the commands of the main window, which reach its page also
 //! while the PDF view has the keys; ⌘W closes the paper in front, as the page
-//! decides, not the window. The zoom items are the text size of the other
+//! decides, not the window. Undo and Redo are the library's in the main window (the page decides:
+//! in a field they are the field's); in another window, the field's. The zoom items are the text size of the other
 //! windows; in the main window, the page decides: the PDF in front zooms,
 //! else the text size.
 
@@ -70,8 +71,8 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                 "Edit",
                 true,
                 &[
-                    &PredefinedMenuItem::undo(app, None)?,
-                    &PredefinedMenuItem::redo(app, None)?,
+                    &item("undo", "Undo", "CmdOrCtrl+Z")?,
+                    &item("redo", "Redo", "CmdOrCtrl+Shift+Z")?,
                     &separator()?,
                     &PredefinedMenuItem::cut(app, None)?,
                     &PredefinedMenuItem::copy(app, None)?,
@@ -167,8 +168,25 @@ fn close(app: &AppHandle) {
     }
 }
 
+/// Undo and Redo: the main window's page decides (the last change of the library, or the field's
+/// own); in another window the field in focus does it.
+fn undo_redo(app: &AppHandle, name: &str) {
+    let windows = app.webview_windows();
+    let Some(window) = windows.values().find(|w| w.is_focused().unwrap_or(false)) else {
+        return;
+    };
+    if window.label() == MAIN {
+        let _ = window.emit("command", name);
+    } else {
+        let _ = window.eval(format!("document.execCommand('{name}')"));
+    }
+}
+
 /// A command for the main window, when it is in front.
 fn command(app: &AppHandle, name: &str) {
+    if matches!(name, "undo" | "redo") {
+        return undo_redo(app, name);
+    }
     if let Some(window) = app.get_webview_window(MAIN)
         && window.is_focused().unwrap_or(false)
     {

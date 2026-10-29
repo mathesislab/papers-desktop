@@ -279,6 +279,74 @@ fn copy(
     Ok(text)
 }
 
+/// The PDF of an item that is there: the first of its files that is one.
+fn pdf_of(item: &Item) -> Option<&PathBuf> {
+    item.files.iter().find(|f| {
+        f.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) && f.is_file()
+    })
+}
+
+/// What `open_pdfs` did: how many PDFs were opened, and how many papers had none.
+#[derive(Debug, Serialize)]
+struct Opened {
+    opened: usize,
+    skipped: usize,
+}
+
+/// Open the PDFs of papers outside the app: in Preview (`preview`, macOS only), else in the
+/// default app of the system. A paper without a PDF is skipped, and counted.
+#[tauri::command]
+fn open_pdfs(app: AppHandle, state: State<AppState>, ids: Vec<String>, preview: bool) -> Result<Opened, String> {
+    let with = (preview && cfg!(target_os = "macos")).then_some("Preview");
+    let mut done = Opened { opened: 0, skipped: 0 };
+    for id in &ids {
+        let item = state.item(id)?;
+        let Some(pdf) = pdf_of(&item) else {
+            done.skipped += 1;
+            continue;
+        };
+        app.opener()
+            .open_path(pdf.to_string_lossy(), with)
+            .map_err(|e| e.to_string())?;
+        state.recent.add(&item);
+        done.opened += 1;
+    }
+    Ok(done)
+}
+
+/// What several items are cited by: `[@a; @b]` (Pandoc), `a, b`, `\cite{a,b}`, or their BibTeX
+/// one after the other.
+fn cited(items: &[Item], format: Format, bibtex: impl Fn(&str) -> Option<String>) -> Result<String, String> {
+    let keys: Vec<&str> = items.iter().map(|it| it.key.as_str()).collect();
+    Ok(match format {
+        Format::Key => keys.join(", "),
+        Format::Pandoc => format!("[{}]", keys.iter().map(|k| format!("@{k}")).collect::<Vec<_>>().join("; ")),
+        Format::Latex => format!("\\cite{{{}}}", keys.join(",")),
+        Format::Bibtex => items
+            .iter()
+            .map(|it| bibtex(&it.id).ok_or_else(|| format!("{}: not in the library", it.id)))
+            .collect::<Result<Vec<_>, _>>()?
+            .join("\n\n"),
+    })
+}
+
+/// Copy the citations or the BibTeX of several items in one text; returns the text copied.
+#[tauri::command]
+fn copy_many(app: AppHandle, state: State<AppState>, ids: Vec<String>, format: Format) -> Result<String, String> {
+    let items = ids.iter().map(|id| state.item(id)).collect::<Result<Vec<_>, _>>()?;
+    let text = {
+        let library = state.library.read().unwrap();
+        cited(&items, format, |id| library.bibtex(id))?
+    };
+    app.clipboard()
+        .write_text(text.clone())
+        .map_err(|e| e.to_string())?;
+    for item in &items {
+        state.recent.add(item);
+    }
+    Ok(text)
+}
+
 /// What the settings window shows.
 #[derive(Serialize)]
 struct SettingsView {
@@ -878,6 +946,8 @@ pub fn run() {
             open_link,
             reveal,
             copy,
+            copy_many,
+            open_pdfs,
             copy_text,
             clear_recent,
             bibtex,
@@ -927,9 +997,55 @@ pub fn run() {
             writer::default_files_mode,
             writer::library_key,
             writer::remove_entries,
+            writer::transfer_entries,
             writer::undo,
             writer::redo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Items a, b and c of a .bib file: `a` links a PDF that is there and a note, `b` a PDF that
+    /// is not, `c` nothing.
+    fn items(dir: &std::path::Path) -> Vec<Item> {
+        std::fs::write(dir.join("a.PDF"), "%PDF").unwrap();
+        std::fs::write(dir.join("a.txt"), "note").unwrap();
+        let bib = dir.join("refs.bib");
+        std::fs::write(
+            &bib,
+            "@article{a,\n title = {A},\n file = {:a.txt:TXT;:a.PDF:PDF}\n}\n\n\
+             @article{b,\n title = {B},\n file = {:gone.pdf:PDF}\n}\n\n@article{c,\n title = {C}\n}\n",
+        )
+        .unwrap();
+        let library = Library::load(&[bib]).unwrap();
+        ["a", "b", "c"].map(|id| library.get(id).unwrap().clone()).to_vec()
+    }
+
+    #[test]
+    fn the_pdf_of_an_item_is_one_that_is_there() {
+        let dir = tempfile::tempdir().unwrap();
+        let items = items(dir.path());
+        let name = |it: &Item| pdf_of(it).map(|p| p.file_name().unwrap().to_string_lossy().into_owned());
+        assert_eq!(name(&items[0]).as_deref(), Some("a.PDF"));
+        assert_eq!(name(&items[1]), None);
+        assert_eq!(name(&items[2]), None);
+    }
+
+    #[test]
+    fn several_items_are_cited_together() {
+        let dir = tempfile::tempdir().unwrap();
+        let items = items(dir.path());
+        let bibtex = |id: &str| Some(format!("@article{{{id}}}"));
+        let cite = |format| cited(&items, format, bibtex).unwrap();
+        assert_eq!(cite(Format::Pandoc), "[@a; @b; @c]");
+        assert_eq!(cite(Format::Key), "a, b, c");
+        assert_eq!(cite(Format::Latex), "\\cite{a,b,c}");
+        assert_eq!(cite(Format::Bibtex), "@article{a}\n\n@article{b}\n\n@article{c}");
+        assert_eq!(cited(&items[..1], Format::Pandoc, bibtex).unwrap(), "[@a]");
+        assert!(cited(&items, Format::Bibtex, |_| None).is_err());
+    }
 }

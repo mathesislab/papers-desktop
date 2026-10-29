@@ -172,7 +172,7 @@
         onblur={close}
       />
     {:else}
-      <button bind:this={plus} class="plus" title="Add a tag" aria-label="Add a tag" onclick={open}>+</button>
+      <button bind:this={plus} class="plus" data-add-tag title="Add a tag" aria-label="Add a tag" onclick={open}>+</button>
     {/if}
   </div>
   {#if adding && (options.length || text.trim())}
