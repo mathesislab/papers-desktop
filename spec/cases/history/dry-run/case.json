@@ -6,7 +6,8 @@
     "history.md#2.5"
   ],
   "tests": [
-    "tests/test_undo.py::TestTimeTravel::test_dry_run"
+    "tests/test_undo.py::TestTimeTravel::test_dry_run",
+    "tests/test_spec_history.py::TestCommands::test_nothing_to_do_leaves_no_trace"
   ],
   "steps": [
     {

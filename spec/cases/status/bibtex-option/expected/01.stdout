@@ -1,4 +1,4 @@
-papers library: $WORK
-* bibtex: papers.bib (5 entries, 0 file links)
+papers library: (no library found: create one with `papers init`)
+* bibtex: other.bib (2 entries, 0 file links)
 * files:  files (the files directory of the library, empty)
-`papers config` lists and sets the settings
+* default library: none

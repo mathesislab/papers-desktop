@@ -1,7 +1,8 @@
 {
   "description": "list: --by key, doi or title, --invert, --review-required (invalid key or DOI, no author, title or year), --broken-file, --has-file, --no-file, --any; --by with --fuzzy is a usage error; -f and --duplicates-key are deprecated",
   "sections": [
-    "formats.md#6"
+    "formats.md#6",
+    "formats.md#6.1"
   ],
   "steps": [
     {

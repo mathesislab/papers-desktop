@@ -1,5 +1,5 @@
 {
-  "description": "edit --key refuses an empty key, a key that starts with a digit or has a forbidden character, a key another entry has (any case; an empty --key is not a rename: it opens the editor); crossref follows a rename (not xref); a former key in ids is a key on the command line",
+  "description": "edit --key refuses an empty key, a key that starts with a digit or has a forbidden character, a key another entry has (any case); crossref follows a rename (not xref); a former key in ids is a key on the command line",
   "sections": [
     "bibtex.md#7.1",
     "bibtex.md#7.2",
@@ -7,7 +7,8 @@
     "formats.md#7.3"
   ],
   "tests": [
-    "tests/test_entry_cmds.py::TestEditSet::test_key_refused"
+    "tests/test_entry_cmds.py::TestEditSet::test_key_refused",
+    "tests/test_entry_cmds.py::TestEditSet::test_empty_key_refused"
   ],
   "steps": [
     {
@@ -97,6 +98,14 @@
         "list",
         "--format",
         "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        ""
       ]
     }
   ]

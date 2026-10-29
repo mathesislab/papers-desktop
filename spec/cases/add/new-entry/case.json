@@ -1,10 +1,13 @@
 {
-  "description": "add without a file makes an entry of the fields given (--key, --title, --author, --year, --journal, --type, --metadata), with a key from the template unless --key; an attachment is placed as the files setting says; nothing given, or only --type, is an error; the same paper twice is a duplicate",
+  "description": "add without a file makes an entry of the fields given (--key, --title, --author, --year, --journal, --type, --metadata), with a key from the template unless --key (without author and year: from the title); an attachment is placed as the files setting says; nothing given, or only --type, is an error; the same paper twice is a duplicate",
   "sections": [
     "bibtex.md#3.3",
     "bibtex.md#8",
     "formats.md#1.2",
     "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestAddEmptyKey::test_add"
   ],
   "steps": [
     {

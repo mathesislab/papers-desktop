@@ -7,7 +7,8 @@
   ],
   "tests": [
     "tests/test_spec_bibtex.py::TestUnicodeToLatex::test_check_encoding_latex",
-    "tests/test_bib_fix.py::TestFixEntry::test_encoding_latex"
+    "tests/test_bib_fix.py::TestFixEntry::test_encoding_latex",
+    "tests/test_spec_tables.py::TestSpecTables::test_latex_characters"
   ],
   "steps": [
     {

@@ -8,7 +8,9 @@
   "tests": [
     "tests/test_history.py::TestHistoryCommand::test_remove_keeps_the_history_of_a_copy",
     "tests/test_history.py::TestHistoryCommand::test_remove_without_terminal",
-    "tests/test_history.py::TestHistoryCommand::test_all_and_remove"
+    "tests/test_history.py::TestHistoryCommand::test_all_and_remove",
+    "tests/test_history.py::TestHistoryCommand::test_all_sorted_by_place",
+    "tests/test_spec_history.py::TestRemove::test_place_without_history"
   ],
   "steps": [
     {
@@ -136,6 +138,32 @@
         "-C",
         "c",
         "undo"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "tag",
+        "mueller2021",
+        "--add",
+        "w"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "tag",
+        "plain2020",
+        "--add",
+        "v"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
       ]
     }
   ]

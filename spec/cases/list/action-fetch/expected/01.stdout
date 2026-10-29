@@ -1,7 +1,5 @@
 *** UPDATE ***
-- @article{2019doe,
-?          -------
-+ @article{,
+  @article{2019doe,
 -  author = {Doe Jane and Smith John},
 +  author = {Jane, Doe and John, Smith},
    journal = {Nature},

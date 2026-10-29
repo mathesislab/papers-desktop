@@ -4,6 +4,9 @@
     "bibtex.md#9.3",
     "bibtex.md#9.4"
   ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestDistinctFile::test_reading_bad_values"
+  ],
   "steps": [
     {
       "argv": [

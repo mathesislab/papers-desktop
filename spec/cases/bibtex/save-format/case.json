@@ -11,7 +11,8 @@
     "bibtex.md#3.4"
   ],
   "tests": [
-    "tests/test_sort_format.py::TestSortFormat::test_sort_format_unchanged"
+    "tests/test_sort_format.py::TestSortFormat::test_sort_format_unchanged",
+    "tests/test_parsecache.py::TestParseCache::test_warning_once"
   ],
   "steps": [
     {

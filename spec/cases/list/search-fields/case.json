@@ -1,7 +1,17 @@
 {
   "description": "search in a field: --key, --author, --first-author, --year, --title, --doi...",
   "sections": [
-    "formats.md#6"
+    "formats.md#6",
+    "formats.md#6.1"
+  ],
+  "tests": [
+    "tests/test_list.py::SearchTest::test_list_title",
+    "tests/test_list.py::SearchTest::test_list_title_multiple",
+    "tests/test_list.py::SearchTest::test_list_author",
+    "tests/test_list.py::SearchTest::test_list_first_author",
+    "tests/test_list.py::SearchTest::test_list_key",
+    "tests/test_list.py::SearchTest::test_list_year",
+    "tests/test_list.py::SearchTest::test_list_combined"
   ],
   "steps": [
     {
