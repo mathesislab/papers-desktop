@@ -4,6 +4,8 @@
 
 #[path = "../src/help_text.rs"]
 mod help_text;
+#[path = "fixtures/help_linux.rs"]
+mod help_linux;
 
 use std::process::Command;
 
@@ -42,8 +44,14 @@ fn help_of_every_command() {
         let output = papers(&args, dir.path());
         assert_eq!(output.status.code(), Some(0), "papers {path} -h");
         let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+        // on Linux, papers' help shows the path of the global configuration there
+        let linux = help_linux::HELP_LINUX.iter().find(|(name, _)| name == path).map(|(_, text)| *text);
+        let text = match linux {
+            Some(linux) if cfg!(target_os = "linux") => linux,
+            _ => *text,
+        };
         match openalex(path) {
-            None => assert_eq!(stdout, *text, "papers {path} -h"),
+            None => assert_eq!(stdout, text, "papers {path} -h"),
             Some(extended) => {
                 assert_eq!(stdout, extended, "papers {path} -h");
                 // it is the help of papers with the option, and nothing else
