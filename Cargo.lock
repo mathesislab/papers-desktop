@@ -3189,7 +3189,7 @@ dependencies = [
 
 [[package]]
 name = "papers-core"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "biblatex",
  "deunicode",
@@ -3202,7 +3202,7 @@ dependencies = [
 
 [[package]]
 name = "papers-desktop"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "block2",
  "gtk",
