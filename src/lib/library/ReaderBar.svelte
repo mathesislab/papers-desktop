@@ -34,7 +34,7 @@
 <button title="Fit the width" onclick={() => reader.zoom(0)}>Fit</button>
 <button title="Zoom in" onclick={() => reader.zoom(1)}>+</button>
 <button title="Open in the default PDF app" onclick={() => invoke("open", { id: reader.id })}>Open ↗</button>
-<button title="Close ({label({ key: 'w', mod: true })})" onclick={onclose}>Close</button>
+<button class="close" title="Close ({label({ key: 'w', mod: true })})" onclick={onclose}>Close PDF</button>
 
 <style>
   button {
@@ -48,6 +48,17 @@
   }
   button.on {
     background: var(--line);
+  }
+  /* at the right end, lightly in the accent: the way out of the PDF */
+  button.close {
+    margin-left: auto;
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  button.close:hover {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
   }
   input {
     width: min(360px, 40%);
