@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { folderName, formatDate, formatSize } from "../src/lib/library/downloads.ts";
+import { folderName, formatDate, formatSize, libraryNote } from "../src/lib/library/downloads.ts";
 
 test("sizes in bytes, KB, MB", () => {
   assert.equal(formatSize(0), "0 B");
@@ -26,4 +26,12 @@ test("the name of a folder", () => {
   assert.equal(folderName("/Users/me/Downloads/"), "Downloads");
   assert.equal(folderName("C:\\Users\\me\\Inbox"), "Inbox");
   assert.equal(folderName("/"), "/");
+});
+
+test("the note of a PDF in the library: the paper and its file, a line per paper", () => {
+  const a = { id: "a", key: "rahmstorf2015", file: "files/rahmstorf_2015_x.pdf", same_contents: false };
+  const b = { id: "b", key: "jones2021", file: "jones.pdf", same_contents: true };
+  assert.equal(libraryNote([a]), "in the library: rahmstorf2015 — files/rahmstorf_2015_x.pdf");
+  assert.equal(libraryNote([b]), "in the library: jones2021 — same contents as jones.pdf");
+  assert.equal(libraryNote([a, b]).split("\n").length, 2);
 });

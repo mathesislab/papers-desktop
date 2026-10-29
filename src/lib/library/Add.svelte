@@ -11,6 +11,7 @@
   import { open as pickFile } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onMount, untrack } from "svelte";
+  import { holdModal } from "./modal.svelte";
   import { label } from "$lib/keys";
   import { defaultFiles, writers } from "$lib/library/writes";
   import type { AddOptions, Comparison, FilesMode, Incoming, Input, Item, Page, PdfRead, Row, Writer } from "$lib/types";
@@ -185,6 +186,8 @@
         return "";
     }
   });
+
+  onMount(holdModal);
 
   onMount(async () => {
     input?.focus();

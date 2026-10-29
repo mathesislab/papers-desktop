@@ -26,6 +26,14 @@ export class NativeReader extends Reader {
     return sent;
   }
 
+  /** a modal of the page is open: the view is hidden, as it lies above the page */
+  #covered = false;
+
+  cover(covered: boolean) {
+    this.#covered = covered;
+    this.#send("pdf_cover", { id: this.id, covered });
+  }
+
   mount(area: HTMLDivElement): () => void {
     let opened = false;
     // the area changes with the panes, the outline, the window
@@ -34,7 +42,7 @@ export class NativeReader extends Reader {
     });
     resize.observe(area);
     const unlisten = listen<number>("pdf-page", (e) => this.turned(e.payload));
-    this.#send<Opened>("pdf_open", { id: this.id, page: this.page, frame: frame(area) })
+    this.#send<Opened>("pdf_open", { id: this.id, page: this.page, frame: frame(area), covered: this.#covered })
       .then(({ count, outline }) => {
         opened = true;
         this.count = count;

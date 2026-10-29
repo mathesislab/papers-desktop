@@ -989,6 +989,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             pdf_view::pdf_frame,
             #[cfg(target_os = "macos")]
+            pdf_view::pdf_cover,
+            #[cfg(target_os = "macos")]
             pdf_view::pdf_close,
             #[cfg(target_os = "macos")]
             pdf_view::pdf_find,

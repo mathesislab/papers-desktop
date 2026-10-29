@@ -2,6 +2,9 @@
   // A papers library is written by papers: without it (or with papers older
   // than 3.0.0b4), how to install it. No release has 3.0.0b4 yet: from git.
 
+  import { onMount } from "svelte";
+  import { holdModal } from "./modal.svelte";
+
   let {
     version = null,
     onclose,
@@ -21,6 +24,8 @@
   let close: HTMLButtonElement;
 
   $effect(() => close.focus());
+
+  onMount(holdModal);
 
   async function copy(command: string) {
     await navigator.clipboard.writeText(command);

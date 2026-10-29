@@ -30,6 +30,7 @@
     onpaper,
     onclose,
     ondownload,
+    onshow,
   }: {
     /** the .bib files, with their number of papers */
     libraries: { bib: string; count: number }[];
@@ -72,6 +73,8 @@
     onclose: (id: string) => void;
     /** a PDF of the Downloads panel dropped on the table (id none) or on the empty preview of a paper, or double-clicked */
     ondownload: (path: string, id: string | null) => void;
+    /** a paper of the library to show (from the Downloads panel: the paper that has a PDF) */
+    onshow: (id: string) => void;
   } = $props();
 
   /** the indent of a tag per level of the tree, px */
@@ -279,7 +282,7 @@
 
 <!-- at the bottom, over the list when it scrolls: the folder outside the library, then the gear -->
 <div class="bottom">
-<Downloads onadd={ondownload} />
+<Downloads onadd={ondownload} {onshow} />
 <footer>
   <button class="gear" title="Settings" aria-label="Settings" onclick={() => invoke("open_settings")}>
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

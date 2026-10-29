@@ -9,13 +9,16 @@
   import { onMount } from "svelte";
   import { mac } from "$lib/keys";
   import { DRAG_DISTANCE, endPdfDrag, pdfDrag, pdfTarget } from "./drag.svelte";
-  import { folderName, formatDate, formatSize, type Download, type DownloadsView } from "./downloads";
+  import { folderName, formatDate, formatSize, libraryNote, type Download, type DownloadsView } from "./downloads";
 
   let {
     onadd,
+    onshow,
   }: {
     /** a PDF dropped on the table (id none: a new paper) or on the empty preview of a paper, or opened by a double-click */
     onadd: (path: string, id: string | null) => void;
+    /** a paper of the library shown: the one that has a PDF of the panel */
+    onshow: (id: string) => void;
   } = $props();
 
   let view = $state<DownloadsView | null>(null);
@@ -41,6 +44,7 @@
     return () => unlisten.forEach((u) => u.then((f) => f()));
   });
 
+  const where = mac ? "Finder" : "file manager";
   const reveal = () => invoke("open_downloads").catch((err) => (problem = String(err)));
 
   async function chooseFolder() {
@@ -61,6 +65,17 @@
         action: () => invoke("set_downloads_panel", { shown: false }).catch((err) => (problem = String(err))),
       }),
     ];
+    await (await Menu.new({ items })).popup();
+  }
+
+  /** The right-click on a PDF in the library: show its paper (one item each, when several have it). */
+  async function fileMenu(e: MouseEvent, file: Download) {
+    if (!file.matches.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const items = await Promise.all(
+      file.matches.map((m) => MenuItem.new({ text: `Show ${m.key} in the library`, action: () => onshow(m.id) })),
+    );
     await (await Menu.new({ items })).popup();
   }
 
@@ -106,12 +121,14 @@
 
 {#if view?.shown}
   <!-- not part of the library: a different background, a dashed edge -->
-  <section class="downloads" aria-label="Downloads, outside the library" oncontextmenu={menu}>
+  <section class="downloads" aria-label="Quick folder view of {folderName(view.folder)}, outside the library" oncontextmenu={menu}>
     <header>
-      <span class="title" title={view.folder}>Outside the library: <b>{folderName(view.folder)}</b></span>
-      <button class="icon" title={mac ? "Show in Finder" : "Open the folder"} aria-label="Open the folder" onclick={reveal}>
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true">
-          <path d="M1.8 4.2c0-.7.5-1.2 1.2-1.2h3l1.5 1.6H13c.7 0 1.2.5 1.2 1.2v6.2c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z" />
+      <span class="title" title={view.folder}>Quick folder view: <b>{folderName(view.folder)}</b></span>
+      <button class="icon" title="Open in {where}" aria-label="Open in {where}" onclick={reveal}>
+        <!-- a folder with an arrow going out: opens outside the app -->
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14.2 8.6v3.2c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2V4.2c0-.7.5-1.2 1.2-1.2h3l1.5 1.6H11" />
+          <path d="M10.4 7.4 14.4 3.4M11.2 3.2h3.2v3.2" />
         </svg>
       </button>
       <button class="icon" title="Choose the folder, or hide the panel" aria-label="Menu" onclick={menu}>
@@ -128,15 +145,16 @@
       <ul>
         {#each view.files as file (file.path)}
           <li
-            class:in={file.in_library}
-            title="{file.path}{file.in_library ? '\nIn the library already' : ''}\nDrag onto the table or onto a paper without a PDF; double-click to add"
+            class:in={file.matches.length > 0}
+            title="{file.path}{file.matches.length ? '\n' + libraryNote(file.matches) : ''}\nDrag onto the table or onto a paper without a PDF; double-click to add"
             onpointerdown={(e) => press(e, file)}
+            oncontextmenu={(e) => fileMenu(e, file)}
             ondblclick={() => onadd(file.path, null)}
           >
             <span class="name">{file.name}</span>
             <span class="meta">
               {formatSize(file.size)} · {formatDate(file.added)}
-              {#if file.in_library}<span class="check">✓ in the library</span>{/if}
+              {#if file.matches.length}<span class="check">✓ in the library</span>{/if}
             </span>
           </li>
         {/each}

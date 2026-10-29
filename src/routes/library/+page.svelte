@@ -40,6 +40,7 @@
     openedMessage,
     transferMessage,
   } from "$lib/library/selection";
+  import { modalOpen } from "$lib/library/modal.svelte";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -217,6 +218,9 @@
     const Kind = mac ? NativeReader : PdfjsReader;
     return untrack(() => new Kind(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
   });
+
+  // a modal of the page (the Add sheet, the delete question) has the PDF step aside
+  $effect(() => reader?.cover(modalOpen()));
 
   /** what the search found, next to it */
   let summary = $derived(
@@ -1093,6 +1097,7 @@
         onpaper={activate}
         onclose={closePaper}
         ondownload={(pdf, id) => (adding = { id, pdf, choose: false })}
+        onshow={show}
       />
     </aside>
     <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />

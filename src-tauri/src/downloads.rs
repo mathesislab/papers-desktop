@@ -33,8 +33,48 @@ pub struct Download {
     pub size: u64,
     /// when it came: the later of its modification and creation, ms since the epoch
     pub added: i64,
-    /// a paper of the library links this file, or has a file with the same content
-    pub in_library: bool,
+    /// the papers of the library that link this file, or a file with the same content: empty when
+    /// it is not in the library
+    pub matches: Vec<Match>,
+}
+
+/// A paper of the library that has a PDF of the folder.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Match {
+    pub id: String,
+    pub key: String,
+    /// the file the paper links, relative to the folder of its .bib as the library has it (its full
+    /// path when elsewhere)
+    pub file: String,
+    /// not the same file, but a file with the same contents
+    pub same_contents: bool,
+}
+
+/// A file a paper of the library links.
+#[derive(Debug, Clone)]
+pub struct Linked {
+    pub id: String,
+    pub key: String,
+    pub bib: PathBuf,
+    pub file: PathBuf,
+}
+
+impl Linked {
+    fn to_match(&self, same_contents: bool) -> Match {
+        let relative = self
+            .bib
+            .parent()
+            .and_then(|dir| self.file.strip_prefix(dir).ok());
+        Match {
+            id: self.id.clone(),
+            key: self.key.clone(),
+            file: relative
+                .unwrap_or(&self.file)
+                .to_string_lossy()
+                .into_owned(),
+            same_contents,
+        }
+    }
 }
 
 fn is_pdf(path: &Path) -> bool {
@@ -70,7 +110,7 @@ pub fn list(dir: &Path) -> Result<Vec<Download>, String> {
                 name,
                 size: meta.len(),
                 added,
-                in_library: false,
+                matches: Vec::new(),
             })
         })
         .collect();
@@ -91,41 +131,50 @@ fn content(path: &Path) -> Option<u64> {
     }
 }
 
-/// Mark the files that are in the library already: one of the `linked` files of its papers is that
-/// file (the same path), or has the same contents (compared only among files of the same size, so
-/// that few are read).
-pub fn mark_in_library(files: &mut [Download], linked: &[PathBuf]) {
+/// Say which papers have each file that is in the library already: those that link that file (the
+/// same path), else those that link a file with the same contents (compared only among files of
+/// the same size, so that few are read). A paper once, by the first of its files that matches.
+pub fn mark_in_library(files: &mut [Download], linked: &[Linked]) {
     let canonical = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
-    let linked: Vec<&PathBuf> = linked.iter().filter(|p| is_pdf(p)).collect();
+    let linked: Vec<&Linked> = linked.iter().filter(|l| is_pdf(&l.file)).collect();
+    let once = |matches: &mut Vec<Match>, m: Match| {
+        if !matches.iter().any(|x| x.id == m.id) {
+            matches.push(m);
+        }
+    };
     // by path: only the linked files with the name of the download are looked at
     for file in files.iter_mut() {
         let name = file.path.file_name();
-        let mut same_name = linked.iter().filter(|p| p.file_name() == name);
-        if same_name.any(|p| canonical(p) == canonical(&file.path)) {
-            file.in_library = true;
+        let path = canonical(&file.path);
+        for l in linked.iter().filter(|l| l.file.file_name() == name) {
+            if canonical(&l.file) == path {
+                once(&mut file.matches, l.to_match(false));
+            }
         }
     }
-    if files.iter().all(|f| f.in_library) {
+    if files.iter().all(|f| !f.matches.is_empty()) {
         return;
     }
     // by contents
-    let mut sizes: Vec<(u64, &PathBuf)> = linked
+    let mut sizes: Vec<(u64, &Linked)> = linked
         .iter()
-        .filter_map(|p| Some((fs::metadata(p).ok()?.len(), *p)))
+        .filter_map(|l| Some((fs::metadata(&l.file).ok()?.len(), *l)))
         .collect();
-    sizes.sort();
-    for file in files.iter_mut().filter(|f| !f.in_library) {
+    sizes.sort_by_key(|(size, _)| *size);
+    for file in files.iter_mut().filter(|f| f.matches.is_empty()) {
         let start = sizes.partition_point(|(size, _)| *size < file.size);
-        let same: Vec<&PathBuf> = sizes[start..]
+        let same: Vec<&Linked> = sizes[start..]
             .iter()
             .take_while(|(size, _)| *size == file.size)
-            .map(|(_, p)| *p)
+            .map(|(_, l)| *l)
             .collect();
         if same.is_empty() {
             continue;
         }
         if let Some(hash) = content(&file.path) {
-            file.in_library = same.iter().any(|p| content(p) == Some(hash));
+            for l in same.into_iter().filter(|l| content(&l.file) == Some(hash)) {
+                once(&mut file.matches, l.to_match(true));
+            }
         }
     }
 }
@@ -224,12 +273,19 @@ pub async fn downloads_list(state: State<'_, AppState>) -> Result<DownloadsView,
     }
     let (files, error) = match list(&folder) {
         Ok(mut files) => {
-            let linked: Vec<PathBuf> = {
+            let linked: Vec<Linked> = {
                 let library = state.library.read().unwrap();
                 library
                     .items()
                     .iter()
-                    .flat_map(|i| i.files.iter().cloned())
+                    .flat_map(|i| {
+                        i.files.iter().map(|file| Linked {
+                            id: i.id.clone(),
+                            key: i.key.clone(),
+                            bib: i.bib.clone(),
+                            file: file.clone(),
+                        })
+                    })
                     .collect()
             };
             mark_in_library(&mut files, &linked);
@@ -326,7 +382,7 @@ mod tests {
         assert_eq!(names(&files), ["new.PDF", "middle.Pdf", "old.pdf"]);
         assert_eq!(files.iter().map(|f| f.size).collect::<Vec<_>>(), [7, 8, 6]);
         assert_eq!(files[0].path, dir.path().join("new.PDF"));
-        assert!(files.iter().all(|f| !f.in_library));
+        assert!(files.iter().all(|f| f.matches.is_empty()));
     }
 
     #[test]
@@ -341,8 +397,37 @@ mod tests {
         assert!(list(&dir.path().join("none")).is_err());
     }
 
+    fn linked(id: &str, bib: &Path, file: PathBuf) -> Linked {
+        Linked {
+            id: id.to_string(),
+            key: format!("key-{id}"),
+            bib: bib.to_path_buf(),
+            file,
+        }
+    }
+
+    /// (id, file, same contents) of a match
+    type Seen<'a> = (&'a str, &'a str, bool);
+
+    /// (name, matches) of each file, by name
+    fn marked(files: &[Download]) -> Vec<(&str, Vec<Seen<'_>>)> {
+        let mut marked: Vec<_> = files
+            .iter()
+            .map(|f| {
+                let matches = f
+                    .matches
+                    .iter()
+                    .map(|m| (m.id.as_str(), m.file.as_str(), m.same_contents))
+                    .collect();
+                (f.name.as_str(), matches)
+            })
+            .collect();
+        marked.sort();
+        marked
+    }
+
     #[test]
-    fn marked_when_linked_by_path_or_the_same_content() {
+    fn marked_with_the_papers_that_link_it_or_a_file_of_the_same_content() {
         let downloads = tempfile::tempdir().unwrap();
         let library = tempfile::tempdir().unwrap();
         let put = |dir: &Path, name: &str, bytes: &[u8]| {
@@ -350,31 +435,76 @@ mod tests {
             fs::write(&path, bytes).unwrap();
             path
         };
+        let bib = library.path().join("refs.bib");
         let linked_here = put(downloads.path(), "linked.pdf", b"%PDF linked");
         put(downloads.path(), "copied.pdf", b"%PDF copied");
         put(downloads.path(), "same-size.pdf", b"%PDF AAAAAA");
         put(downloads.path(), "other.pdf", b"%PDF other, longer");
-        let renamed = put(library.path(), "Smith2020.pdf", b"%PDF copied");
-        let different = put(library.path(), "Jones2021.pdf", b"%PDF BBBBBB");
+        fs::create_dir(library.path().join("files")).unwrap();
+        let renamed = put(
+            &library.path().join("files"),
+            "smith_2020.pdf",
+            b"%PDF copied",
+        );
+        let copy = put(library.path(), "jones_2021.pdf", b"%PDF copied");
+        let different = put(library.path(), "other-one.pdf", b"%PDF BBBBBB");
         // not a PDF: its contents do not count
         let note = put(library.path(), "note.txt", b"%PDF other, longer");
 
         let mut files = list(downloads.path()).unwrap();
-        mark_in_library(&mut files, &[linked_here, renamed, different, note]);
-        let mut marked: Vec<(&str, bool)> = files
-            .iter()
-            .map(|f| (f.name.as_str(), f.in_library))
-            .collect();
-        marked.sort();
+        mark_in_library(
+            &mut files,
+            &[
+                // two papers link the same file
+                linked("1", &bib, linked_here.clone()),
+                linked("2", &bib, linked_here.clone()),
+                linked("3", &bib, renamed),
+                linked("4", &bib, copy),
+                linked("5", &bib, different),
+                linked("6", &bib, note),
+            ],
+        );
         assert_eq!(
-            marked,
+            marked(&files),
             [
-                ("copied.pdf", true),
-                ("linked.pdf", true),
-                ("other.pdf", false),
-                ("same-size.pdf", false)
+                (
+                    "copied.pdf",
+                    vec![
+                        ("3", "files/smith_2020.pdf", true),
+                        ("4", "jones_2021.pdf", true)
+                    ]
+                ),
+                (
+                    "linked.pdf",
+                    // outside the folder of the .bib: the full path
+                    vec![
+                        ("1", linked_here.to_str().unwrap(), false),
+                        ("2", linked_here.to_str().unwrap(), false)
+                    ]
+                ),
+                ("other.pdf", vec![]),
+                ("same-size.pdf", vec![]),
             ]
         );
+    }
+
+    #[test]
+    fn a_paper_once_even_with_several_files_that_match() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = dir.path().join("refs.bib");
+        fs::create_dir(dir.path().join("downloads")).unwrap();
+        fs::write(dir.path().join("downloads/a.pdf"), "same").unwrap();
+        fs::write(dir.path().join("a1.pdf"), "same").unwrap();
+        fs::write(dir.path().join("a2.pdf"), "same").unwrap();
+        let mut files = list(&dir.path().join("downloads")).unwrap();
+        mark_in_library(
+            &mut files,
+            &[
+                linked("1", &bib, dir.path().join("a1.pdf")),
+                linked("1", &bib, dir.path().join("a2.pdf")),
+            ],
+        );
+        assert_eq!(marked(&files), [("a.pdf", vec![("1", "a1.pdf", true)])]);
     }
 
     #[test]
@@ -383,8 +513,13 @@ mod tests {
         fs::write(dir.path().join("a.pdf"), "x").unwrap();
         fs::create_dir(dir.path().join("sub")).unwrap();
         let mut files = list(dir.path()).unwrap();
-        mark_in_library(&mut files, &[dir.path().join("sub/../a.pdf")]);
-        assert!(files[0].in_library);
+        let bib = dir.path().join("refs.bib");
+        mark_in_library(
+            &mut files,
+            &[linked("1", &bib, dir.path().join("sub/../a.pdf"))],
+        );
+        assert_eq!(files[0].matches.len(), 1);
+        assert!(!files[0].matches[0].same_contents);
     }
 
     /// Wait for `condition`, a few seconds at most.

@@ -4,6 +4,8 @@
   // be deleted or not (not, to start with). What becomes of a file depends on how the .bib is written: a
   // papers library keeps it in its history, so that Undo brings it back; from a plain .bib it goes to the Trash.
 
+  import { onMount } from "svelte";
+  import { holdModal } from "./modal.svelte";
   import * as cite from "$lib/cite";
   import { fileName } from "./filters";
   import { count } from "./selection";
@@ -28,6 +30,8 @@
   let confirm = $state<HTMLButtonElement>();
 
   $effect(() => confirm?.focus());
+
+  onMount(holdModal);
 </script>
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && oncancel()} />

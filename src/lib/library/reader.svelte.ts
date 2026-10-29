@@ -29,6 +29,10 @@ export abstract class Reader {
   /** Show the PDF in `area`; returns what takes it away. */
   abstract mount(area: HTMLDivElement): () => void;
 
+  /** Step aside for a modal of the page (`covered`), or come back: a PDF drawn in the page is under the modal by its
+   *  z-index; a native view is above all of the page, so it hides. */
+  cover(covered: boolean): void {}
+
   /** In (1) or out (-1), or the width of the pane (0). */
   abstract zoom(step: number): void;
 

@@ -132,10 +132,11 @@ they would hide it.
 
 **Downloads panel** (`Downloads.svelte`, `downloads.rs`, `downloads.ts` with
 `scripts/downloads.test.ts`): at the bottom of the sidebar, over the list when
-it scrolls, a panel headed *Outside the library: Downloads* (the folder's name)
+it scrolls, a panel headed *Quick folder view: Downloads* (the folder's name)
 for the PDFs that have not been added yet. It is not part of the library, and
 looks it: a slightly different background and a dashed top edge. In the header
-a button opens the folder in Finder (the file manager elsewhere), and a menu
+a button (a folder with an arrow going out) opens the folder in Finder (the
+file manager elsewhere), and a menu
 (the … button, or a right-click on the panel) has *Choose Folder…*, *Show in
 Finder* and *Hide*.
 
@@ -158,7 +159,14 @@ Finder* and *Hide*.
 - *In the library already* (muted, with a check): a file that a paper links (the
   same path) or that has the same contents as a file of the library (compared
   among files of the same size, so that few are read). So a PDF added with *Copy*
-  or *Leave in place* is marked, and is not mistaken for a new one.
+  or *Leave in place* is marked, and is not mistaken for a new one. Which paper
+  and which file is told (`Match` of `downloads.rs`: the paper's id and key, its
+  file relative to the folder of its .bib, or the full path elsewhere, and
+  whether it matched by contents only; a paper once): in the tooltip,
+  *in the library: KEY — files/x.pdf* (*same contents as* for a match by
+  contents), a line per paper; and the right-click menu of the PDF has *Show KEY
+  in the library* (one item each, when several papers have it), which selects
+  the paper in the library tab with its details.
 - *Settings*: *Downloads panel* (shown by default, also for a `settings.json` from
   before it) and *Downloads folder* (`downloads_panel`, `downloads_folder`:
   `~/Downloads` by default, *Choose…* with the folder dialog). *Hide* in the
@@ -174,7 +182,12 @@ in a native view of PDFKit, as Preview shows it (smooth scrolling and zoom;
 later, annotations written in the PDF), placed over the reader area of the
 page; elsewhere with pdf.js (to tune when Linux comes: its drawing on the
 GPU, fewer redraws). Find, zoom and the outline (a strip at the left of the
-PDF) drive either. The library tab, the open papers, their pages, the pane widths and the
+PDF) drive either. A native view lies above all of the web view, the modals of
+the page (the Add sheet, the delete question, the papers-missing notice) included:
+each holds `holdModal` (`modal.svelte.ts`) while it is open, and the page has
+the reader step aside (`Reader.cover`: PDFKit's view is hidden, `pdf_cover`,
+and the keys go to the page; shown again, with the keys, when the last modal
+has closed). A pdf.js PDF is in the page, under the modals by their z-index. The library tab, the open papers, their pages, the pane widths and the
 details shown or not are kept in the data folder of the app, as the recent
 papers are; the window opens again at start if it was open at the end.
 
