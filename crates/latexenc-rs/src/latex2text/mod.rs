@@ -25,7 +25,7 @@ mod pyformat;
 pub(crate) use defaults::{DISCARD_FALSE, DISCARD_TRUE, DISCARD_UNSET, DefaultFn, DefaultRepl};
 pub use defaults::{
     fmt_equation_environment, fmt_input_macro, fmt_math_text_style, fmt_matrix_environment_node,
-    fmt_placeholder_node, get_default_latex_context_db, placeholder_node_formatter,
+    fmt_placeholder_node, get_default_latex_context_db, latex_today, placeholder_node_formatter,
 };
 
 use crate::latexwalker::{LatexNode, LatexWalker, LatexWalkerError, LatexWalkerOptions, NodeKind};

@@ -4213,7 +4213,7 @@ false
 ],
 [
 "doi",
-"T2\n    A2\n    October 28, 2026\n====================\n\n",
+"T2\n    A2\n    {TODAY}\n====================\n\n",
 false
 ]
 ]
@@ -4226,7 +4226,7 @@ false
 ]
 ],
 "in": "@article{k596979,\n url = {\\\nand\\c c Smith \\ldots\\c },\n author = {Zeitschrift f{\\\"u}r Gletscherkunde},\n publisher = {Berlin}\n}\n\n@article{k173933,\n booktitle = x # {y},\n publisher = {\\&\\footnote{n}\\footnote{n}pp   % comment\\TeX},\n author = {{}},\n abstract = {in Res2020 \\unknown \\begin{itemize}\\item a\\item b\\end{itemize} },\n journal = {JournalRes pp }\n}\n\n@article{k975062,\n publisher = {  },\n booktitle = {Smith {\\\" \\\"a pp }\n}\n\n@article{k432019,\n abstract = {Nature \\begin{a}\\end{b}\\verb\\c c Smith \\(a+b\\) },\n doi = {\\title{T2}\\author{A2}\\maketitle}\n}\n",
-"saved": "@article{k173933,\n abstract = {in Res2020 \n  * a\n  * b },\n author = {},\n booktitle = x # y,\n journal = {JournalRes pp },\n publisher = {&[n][n]pp   }\n}\n\n@article{k432019,\n abstract = {Nature (a+b },\n doi = {T2\n    A2\n    October 28, 2026\n====================\n\n}\n}\n\n@article{k596979,\n author = {Zeitschrift für Gletscherkunde},\n publisher = {Berlin},\n url = {andç Smith … ̧}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{k975062,\n publisher = {  },\n booktitle = {Smith {\\\" \\\"a pp }\n}\n\n",
+"saved": "@article{k173933,\n abstract = {in Res2020 \n  * a\n  * b },\n author = {},\n booktitle = x # y,\n journal = {JournalRes pp },\n publisher = {&[n][n]pp   }\n}\n\n@article{k432019,\n abstract = {Nature (a+b },\n doi = {T2\n    A2\n    {TODAY}\n====================\n\n}\n}\n\n@article{k596979,\n author = {Zeitschrift für Gletscherkunde},\n publisher = {Berlin},\n url = {andç Smith … ̧}\n}\n\n% WARNING Parsing failed for the following 4 lines.\n@article{k975062,\n publisher = {  },\n booktitle = {Smith {\\\" \\\"a pp }\n}\n\n",
 "name": "random41"
 },
 {
@@ -6089,7 +6089,7 @@ false
 "fields": [
 [
 "url",
-"T2\n    A2\n    October 28, 2026\n====================\n\n",
+"T2\n    A2\n    {TODAY}\n====================\n\n",
 false
 ]
 ]
@@ -6129,7 +6129,7 @@ false
 ],
 "unreadable": [],
 "in": "@article{k758190,\n url = {\\title{T2}\\author{A2}\\maketitle}\n}\n\n@article{k241123,\n url = {\\\nRes },\n title = {$$ },\n journal = {Ice\\begin{verbatim}x_y\\end{verbatim}@ \\c c \\# },\n note = jan,\n booktitle = {Journalin JournalThe Cryosphere }\n}\n",
-"saved": "@article{k241123,\n booktitle = {Journalin JournalThe Cryosphere },\n journal = {Ice@ ç # },\n note = jan,\n title = {\n$$ \n},\n url = {Res }\n}\n\n@article{k758190,\n url = {T2\n    A2\n    October 28, 2026\n====================\n\n}\n}\n",
+"saved": "@article{k241123,\n booktitle = {Journalin JournalThe Cryosphere },\n journal = {Ice@ ç # },\n note = jan,\n title = {\n$$ \n},\n url = {Res }\n}\n\n@article{k758190,\n url = {T2\n    A2\n    {TODAY}\n====================\n\n}\n}\n",
 "name": "random79"
 },
 {

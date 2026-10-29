@@ -8,10 +8,13 @@ use papers_rs::bib::unicode::{
 use serde_json::{Value, json};
 
 mod common;
-use common::{dir, dump, json_file};
+use common::{dir, dump};
 
+/// The recorded results, `{TODAY}` (the date of `\maketitle` without `\date`, which the
+/// generator replaces) as today's date.
 fn expected() -> Value {
-    json_file(&dir("expected").join("unicode.json"))
+    let text = std::fs::read_to_string(dir("expected").join("unicode.json")).unwrap();
+    serde_json::from_str(&text.replace("{TODAY}", &latexenc::latex2text::latex_today())).unwrap()
 }
 
 #[test]

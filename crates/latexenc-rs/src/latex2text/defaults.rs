@@ -227,7 +227,8 @@ fn make_accented_char(node: &LatexNode, combining: &str, l2tobj: &LatexNodes2Tex
         .collect())
 }
 
-fn latex_today() -> String {
+/// The date `\today` gives, as pylatexenc writes it (`October 28, 2026`), in UTC.
+pub fn latex_today() -> String {
     // `'{dt:%B} {dt.day}, {dt.year}'.format(dt=datetime.datetime.now())`; the local time zone is
     // not known to the standard library: this is the date in UTC
     let secs = std::time::SystemTime::now()

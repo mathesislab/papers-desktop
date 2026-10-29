@@ -17,6 +17,7 @@ Run after gen_expected.py (it reads expected/fuzz.json), with the python that ha
 
 Like gen_expected.py, it never touches the configuration or the libraries of the user.
 """
+import datetime
 import json
 import os
 import random
@@ -163,6 +164,9 @@ def main():
             fields.append({'in': text, 'index': i, 'out': [list(kv) for kv in _unicode_fields(e).items()]})
 
     out = {'libraries': libraries, 'entries': entries, 'values': seq, 'fields': fields}
+    # the date of \maketitle without \date is the day of the run: tests/unicode.rs puts today's back
+    today = '{dt:%B} {dt.day}, {dt.year}'.format(dt=datetime.datetime.now())
+    out = json.loads(json.dumps(out).replace(today, '{TODAY}'))
     with open(os.path.join(G.EXPECTED, 'unicode.json'), 'w') as f:
         json.dump(out, f, ensure_ascii=False, indent=0)
         f.write('\n')
