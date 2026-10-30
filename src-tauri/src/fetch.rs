@@ -274,8 +274,8 @@ pub enum FreePdf {
         version: Version,
         /// the site it came from
         site: String,
-        /// for an accepted manuscript or a preprint: the publisher's page of the published
-        /// version, to open in a browser
+        /// for an accepted manuscript or a preprint found after the published version was
+        /// refused: its first refused link (as papers gives them), to open in a browser
         published: Option<String>,
     },
     /// none: the links to open in a browser, and why the links tried gave no PDF (none tried: no
@@ -306,15 +306,11 @@ pub fn find_free_pdf(fetcher: &Fetcher, access: &OpenAlex, doi: &str) -> FreePdf
     let mut search = Search::new(fetcher, access, Some(doi), None, Least::Any);
     let tried = match first_pdf(&mut search, None) {
         Ok(found) => {
-            let published = match (found.link.version, search.doi.as_deref()) {
-                (Version::Published, _) | (_, None) => None,
-                (_, Some(doi)) => Some(format!("https://doi.org/{doi}")),
-            };
             return FreePdf::Found {
+                published: found.refused.first().cloned(),
                 path: PathBuf::from(found.path),
                 version: found.link.version,
                 site: found.link.host(),
-                published,
             };
         }
         Err(tried) => tried,
@@ -767,8 +763,8 @@ mod tests {
             (version, site.as_str()),
             (Version::Accepted, "repo.example.edu")
         );
-        // the published version, to open in a browser
-        assert_eq!(published.as_deref(), Some(ARTICLE));
+        // the refused published version, to open in a browser
+        assert_eq!(published.as_deref(), Some("https://example.org/ice.pdf"));
         // OpenAlex with the address and the key of the settings
         let openalex = asked.iter().find(|url| url.starts_with(OPENALEX)).unwrap();
         assert!(
@@ -779,6 +775,34 @@ mod tests {
             !asked.iter().any(|url| url.contains("arxiv.org")),
             "{asked:?}"
         );
+    }
+
+    #[test]
+    fn an_accepted_manuscript_without_a_published_version_tried() {
+        let locations = [(
+            "https://repo.example.edu/am.pdf",
+            "https://repo.example.edu/am",
+            "acceptedVersion",
+        )];
+        let canned = Canned::default()
+            .with(ARTICLE, 200, "text/html", "<html></html>")
+            .with(OPENALEX, 200, "application/json", &work(&locations))
+            .with(
+                "https://repo.example.edu/am.pdf",
+                200,
+                "application/pdf",
+                "%PDF-1.5",
+            );
+        let (found, _) = free_pdf(canned);
+        let FreePdf::Found {
+            version, published, ..
+        } = found
+        else {
+            panic!("{found:?}");
+        };
+        assert_eq!(version, Version::Accepted);
+        // nothing refused: no published version to open
+        assert_eq!(published, None);
     }
 
     #[test]

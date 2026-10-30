@@ -162,7 +162,7 @@ export type Page = {
 /** mirrors fetch::FreePdf: the free PDF of an article, as `papers fetch --pdf` finds it */
 export type FreePdf =
   /** downloaded into a temporary folder; its version (never a supplement), the site it came from, and for an accepted
-   *  manuscript or a preprint the publisher's page of the published version */
+   *  manuscript or a preprint found after the published version was refused, its first refused link */
   | {
       kind: "found";
       path: string;

@@ -357,8 +357,9 @@ read, a thread of its own (the library shows at once; the page is told,
     placed in the library, as `download_pdf` places a link to a PDF typed in
     the field; a line under the PDF says what it is and where it came from
     (*Accepted manuscript, from repo.example.edu*), with *Open published
-    version in browser* (the doi.org page of the DOI) for an accepted
-    manuscript or a preprint. The publisher's page is read with the user
+    version in browser* (its first refused link, as papers gives them) for
+    an accepted manuscript or a preprint found after the published version
+    was refused. The publisher's page is read with the user
     agent of `journal_page`, OpenAlex with the address and the key of the
     settings. While the search runs (*looking for a free PDF…*), the paper
     is not added (the main button is disabled); *skip* goes on without it.
