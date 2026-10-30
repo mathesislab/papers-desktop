@@ -539,8 +539,8 @@ options:
                   [--journal JOURNAL] [--year YEAR]
                   [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]
                   [--no-query-fulltext] [--scholar | --openalex]
-                  [--attach FILE [FILE ...]] [--move] [-r] [-c] [--link] [-e]
-                  [-o]
+                  [--attach FILE [FILE ...]] [--fetch-pdf] [--move] [-r] [-c]
+                  [--link] [-e] [-o]
                   [file ...]
 "#, r#"usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]
                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
@@ -570,8 +570,8 @@ options:
                   [--journal JOURNAL] [--year YEAR]
                   [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]
                   [--no-query-fulltext] [--scholar | --openalex]
-                  [--attach FILE [FILE ...]] [--move] [-r] [-c] [--link] [-e]
-                  [-o]
+                  [--attach FILE [FILE ...]] [--fetch-pdf] [--move] [-r] [-c]
+                  [--link] [-e] [-o]
                   [file ...]
 
 add PDF(s), bibtex(s), RIS (.ris) or CSL-JSON (.json) file(s) to library. In a
@@ -760,6 +760,9 @@ files:
   --attach FILE [FILE ...]
                         attach these files to the entry (e.g. supplementary
                         material)
+  --fetch-pdf           with --doi DOI (no FILE): also download the free PDF
+                        of the entry and attach it, as `papers file fetch KEY`
+                        does
   --move                files mode move, whatever the setting
   -r, --rename          same as --move
   -c, --copy            files mode copy, whatever the setting
@@ -907,11 +910,9 @@ duplicates:
                         terminal, and skip with -y/--yes)
 "#),
     ("file", r#"usage: papers file [-h]
-                   {rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum}
-                   ...
+                   {rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum} ...
 "#, r#"usage: papers file [-h]
-                   {rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum}
-                   ...
+                   {rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum} ...
 
 the files of the entries: rename, move, attach, fetch, detach, remove, check
 them, and clean the files directory
@@ -2382,13 +2383,18 @@ options:
                         pdftotext
 "#),
     ("fetch", r#"usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]
-                    [--porcelain] [--scholar | --openalex]
+                    [--porcelain] [--pdf] [-o FILE]
+                    [--version {published,accepted,any}] [--scholar |
+                    --openalex]
                     doi_or_text [doi_or_text ...]
 "#, r#"usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]
-                    [--porcelain] [--scholar | --openalex]
+                    [--porcelain] [--pdf] [-o FILE]
+                    [--version {published,accepted,any}] [--scholar |
+                    --openalex]
                     doi_or_text [doi_or_text ...]
 
-fetch bibtex from DOI or full-text
+fetch bibtex from DOI or full-text; with --pdf, download the free PDF of DOIs
+or arXiv ids instead (as `papers file fetch` finds it)
 
 positional arguments:
   doi_or_text           DOI or full text.
@@ -2408,6 +2414,14 @@ options:
                         OLD NEW", "removed KEY", "existing KEY"; every other
                         message goes to the standard error (except the listing
                         of papers list, which stays on the standard output)
+  --pdf                 download the free PDF of each DOI or arXiv id into the
+                        current directory, under the name of its URL (or -o
+                        FILE), and say which version it is and where it came
+                        from
+  -o, --output FILE     with --pdf and one DOI: the file to write
+  --version {published,accepted,any}
+                        with --pdf: the least final version, as for `papers
+                        file fetch`
   --scholar             use google scholar instead of default crossref for
                         fulltext search
   --openalex            use OpenAlex (open API, CC0 data) instead of crossref;

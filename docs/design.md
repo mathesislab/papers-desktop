@@ -512,14 +512,15 @@ history. In the long run a standard both follow and change together.
   *Free* (messages, prompts, caches). The suite is its executable side: a
   case names its section and whether it checks a contract.
 
-**Done**: follows papers v3 at 0941475 (3.0.0b7.dev3, the specification
-merged in `design/` of perrette/papers): it passes all 225 offline cases
-of the suite re-recorded from it (2026-10-29). Earlier: every command of papers 3.0.0b5 but `open`, `install`,
+**Done**: follows papers v3 at faeaf4d (3.0.0b7.dev91: the free PDF of an
+entry, `file fetch`, `add --fetch-pdf`, `fetch --pdf`, perrette/papers#211
+to #215; the file of a broken link in the other libraries of the machine;
+`--openalex` as papers has it, #205; #207, #210). It passes all 252
+offline cases of the suite in contract-only mode (`spec/papers`); the full
+comparison differs only in Free output (bibtexparser's warnings, PyMuPDF's
+messages). Earlier: every command of papers 3.0.0b5 but `open`, `install`,
 `uninstall`, `git` and Google Scholar (`--scholar`: scraping, left out),
-pools and the exchanges included. The conformance suite has 218 cases:
-papers and papers-rs pass all 212 offline ones in contract-only mode (the
-full comparison differs only in Free output: bibtexparser's warnings, the
-usage lines of `--openalex`). Interop both ways: each reads, undoes and
+pools and the exchanges included. Interop both ways: each reads, undoes and
 pulls what the other recorded. 3 to 8 times faster than papers
 (`crates/papers-rs/PERFORMANCE.md`). The app writes with it, built in
 (*Writing*). Decided: transliteration with AnyAscii (ISC; the `any_ascii` crate, papers'
@@ -528,10 +529,10 @@ code point), PDF text with `pdf-extract` (PyMuPDF has no
 permissive Rust binding), the release profile unwinds (a panic of
 pdf-extract is caught).
 
-**Extension**: `--openalex` (add, extract, fetch), a full-text search on
-OpenAlex's open API where papers has `--scholar`; off by default. On 300 of
-the user's PDFs it finds 21 of the 38 (with text) that papers' chain
-misses. To propose to Mahé.
+**`--openalex`** (add, extract, fetch): first an extension of papers-rs, a
+full-text search on OpenAlex's open API where papers has `--scholar`; in
+papers since #205, and papers-rs does what papers does. On 300 of the
+user's PDFs it finds 21 of the 38 (with text) that papers' chain misses.
 
 **Upstream**: findings posted on perrette/papers (#188–#194), with the
 offer of the suite and `--openalex` (#193). The way of working, agreed

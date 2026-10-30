@@ -17,7 +17,7 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: <MC> was written by a newer papers (configuration version 4; papers 3.0.0b7.dev49+ged8b4dcc3 reads up to version 3): upgrade papers\n",
+   "stderr": "papers: error: <MC> was written by a newer papers (configuration version 4; papers 3.0.0b7.dev91+gfaeaf4dba reads up to version 3): upgrade papers\n",
    "tree": {
     "home/<MC>": "{\n  \"version\": 4\n}"
    }
@@ -34,7 +34,7 @@
    "env": {},
    "rc": 1,
    "stdout": "",
-   "stderr": "papers: error: <MC> was written by a newer papers (configuration version 4; papers 3.0.0b7.dev49+ged8b4dcc3 reads up to version 3): upgrade papers\n",
+   "stderr": "papers: error: <MC> was written by a newer papers (configuration version 4; papers 3.0.0b7.dev91+gfaeaf4dba reads up to version 3): upgrade papers\n",
    "tree": {
     "home/<MC>": "{\n  \"version\": 4\n}"
    }

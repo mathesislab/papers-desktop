@@ -93,7 +93,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev49+ged8b4dcc3\n",
+   "stdout": "3.0.0b7.dev91+gfaeaf4dba\n",
    "stderr": "",
    "tree": {
     "cwd/.papers/config.json": "{\n  \"bibtex\": \"bib/papers.bib\",\n  \"version\": 3\n}",

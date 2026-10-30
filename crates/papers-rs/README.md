@@ -181,10 +181,8 @@ rules of the specification on the API. The cases in
 `crates/papers-rs-cli/tests/fixtures/cases` were recorded by running papers-cli
 (`tests/record/record_cases.py`), and the help of the commands by
 `tests/record/record_help.py` (both run with a `papers` executable; they use
-temporary home directories). The help and the usage cases of `add`, `extract` and `fetch` have the
-`--openalex` of papers #205 (df2d81d): recorded with papers ed8b4dc with the change of #205 to its
-`papers/cli/parser.py` applied (`git show df2d81d -- papers/cli/parser.py | patch -p1` in a copy),
-until they are recorded again from a papers that has it.
+temporary home directories), with papers v3 at faeaf4d on Python 3.14 (the usage lines and
+some messages of argparse and json depend on the version of Python).
 
 The library model (`names`, `entry`, `identity`, `merge`, `library`) is tested
 against papers-cli: `tests/gen_library_expected.py` runs the reference (names, keys,
