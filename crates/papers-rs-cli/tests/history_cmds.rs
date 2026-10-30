@@ -861,6 +861,169 @@ fn the_status_of_a_library_with_a_pool_has_its_pool_line() {
     assert!(status.ends_with("`papers pull` takes the entries shared with the pool\n"), "{status}");
 }
 
+// damaged files of the history
+// =============================
+
+/// `test_spec_history.py::TestDamagedFiles` (history.md 2.9): an object, a file object or a state
+/// file that cannot be read (e.g. after a power loss). The commands that need it stop with an error
+/// naming the step, nothing changed; the others go on.
+mod damaged {
+    use super::*;
+    use papers_rs::history::project::Project;
+
+    fn project(b: &Sandbox) -> Project {
+        let store = Store::new(format!("{}/store", b.root));
+        store.project(&store.project_ids()[0]).unwrap()
+    }
+
+    /// The current state of the library.
+    fn head(b: &Sandbox) -> String {
+        project(b).heads()[0].state.clone().unwrap()
+    }
+
+    fn object(b: &Sandbox, digest: &str) -> String {
+        format!("{}/store/objects/{}/{digest}", b.root, &digest[..2])
+    }
+
+    fn state_file(b: &Sandbox, n: &str) -> String {
+        format!("{}/{n}.json", project(b).states_dir())
+    }
+
+    /// A library of two steps (one2000, two2000): the state that undo goes to.
+    fn library(b: &Sandbox) -> String {
+        b.init("lib");
+        b.add("lib", "one2000");
+        b.add("lib", "two2000");
+        project(b).line(&head(b))[1].clone()
+    }
+
+    /// Empty (or cut short) the last piece of the bibtex of the state `n`: the piece.
+    fn damage_piece(b: &Sandbox, n: &str, empty: bool) -> String {
+        let piece = project(b).state(n).unwrap().bibtex_pieces().pop().unwrap();
+        let path = object(b, &piece);
+        let data = fs::read(&path).unwrap();
+        fs::write(&path, if empty { &data[..0] } else { &data[..5] }).unwrap();
+        piece
+    }
+
+    /// The command stops with the error on the step `n` (its short identifier as `show` gives it),
+    /// the bibtex and the head left as they are.
+    fn stopped(b: &Sandbox, args: &[&str], n: &str, why: &str) {
+        let (bibtex, before) = (b.bibtex("lib"), head(b));
+        assert_eq!(
+            error(b.run_in("lib", args)),
+            format!("papers: error: step {n}: its data in the history is damaged ({why}); nothing was changed\n"),
+            "{args:?}"
+        );
+        assert_eq!(b.bibtex("lib"), bibtex, "{args:?}");
+        assert_eq!(head(b), before, "{args:?}");
+    }
+
+    #[test]
+    fn an_empty_object() {
+        let b = Sandbox::new();
+        let target = library(&b);
+        let piece = damage_piece(&b, &target, true);
+        let why = format!("piece {piece} cannot be read");
+        stopped(&b, &["undo"], "#2", &why);
+        stopped(&b, &["restore", &target[..8]], "#2", &why);
+        let history = ok(b.run_in("lib", &["history"]));
+        assert!(
+            history.contains("  #2 papers add ../one2000.bib ($TIME)  (damaged: a piece of it is missing or empty in the history)\n"),
+            "{history}"
+        );
+        assert!(history.starts_with("> #3 papers add ../two2000.bib ($TIME)\n"), "{history}");
+    }
+
+    #[test]
+    fn a_truncated_object() {
+        let b = Sandbox::new();
+        let target = library(&b);
+        let piece = damage_piece(&b, &target, false);
+        let why = format!("piece {piece} cannot be read");
+        stopped(&b, &["undo"], "#2", &why);
+        stopped(&b, &["history", "--revert", &head(&b)[..8]], "#2", &why);
+        // not empty: not marked, found when read
+        assert!(!ok(b.run_in("lib", &["history"])).contains("(damaged"));
+        let store = Store::new(format!("{}/store", b.root));
+        store.prune_at(1, 0, false, &|_| {}, papers_rs::history::store::now() + 2.0 * papers_rs::history::store::GRACE);
+    }
+
+    #[test]
+    fn an_empty_state_file() {
+        let b = Sandbox::new();
+        let target = library(&b);
+        fs::write(state_file(&b, &target), "").unwrap();
+        let short = &target[..8];
+        let why = "its state file cannot be read";
+        stopped(&b, &["undo"], short, why);
+        stopped(&b, &["restore", short], short, why);
+        stopped(&b, &["history", "--revert", &head(&b)[..8]], short, why);
+        // listed where the line stops
+        assert_eq!(
+            ok(b.run_in("lib", &["history"])),
+            format!("> #2 papers add ../two2000.bib ($TIME)\n  {short} damaged: its state file in the history cannot be read\n{STORE_LINE}\n")
+        );
+        assert_eq!(project(&b).damaged().iter().cloned().collect::<Vec<_>>(), [target.clone()]);
+        let store = Store::new(format!("{}/store", b.root));
+        store.prune_at(1, 0, false, &|_| {}, papers_rs::history::store::now() + 2.0 * papers_rs::history::store::GRACE);
+        assert!(Path::new(&state_file(&b, &target)).exists()); // left as it is
+        ok(b.run_in("lib", &["tag", "one2000", "--add", "x"])); // the other commands go on
+    }
+
+    #[test]
+    fn a_damaged_state_file_redone() {
+        let b = Sandbox::new();
+        library(&b);
+        ok(b.run_in("lib", &["undo"]));
+        let undone = project(&b).heads()[0].redo[0].clone();
+        fs::write(state_file(&b, &undone), "{\"parent\": ").unwrap();
+        let short = &undone[..8];
+        stopped(&b, &["redo"], short, "its state file cannot be read");
+        let history = ok(b.run_in("lib", &["history"]));
+        assert!(
+            history.starts_with(&format!(
+                "  {short} damaged: its state file in the history cannot be read  (undone: `papers redo`)\n"
+            )),
+            "{history}"
+        );
+    }
+
+    #[test]
+    fn nothing_is_moved_before_the_error() {
+        // the steps between are read first: the file that a later step moved stays where it is
+        let b = Sandbox::new();
+        library(&b);
+        fs::create_dir_all(b.path("src")).unwrap();
+        fs::write(b.path("src/a.pdf"), "pdf a").unwrap();
+        ok(b.run_in("lib", &["file", "attach", "one2000", "../src/a.pdf", "--move"]));
+        assert!(!Path::new(&b.path("src/a.pdf")).exists());
+        let first = project(&b).line(&head(&b))[2].clone(); // one2000 alone
+        let piece = damage_piece(&b, &first, true);
+        stopped(&b, &["undo", "-n", "2"], "#2", &format!("piece {piece} cannot be read"));
+        assert!(!Path::new(&b.path("src/a.pdf")).exists());
+    }
+
+    #[test]
+    fn an_empty_file_object() {
+        let b = Sandbox::new();
+        library(&b);
+        fs::create_dir_all(b.path("lib/files")).unwrap();
+        fs::write(b.path("lib/files/a.pdf"), "pdf a").unwrap();
+        ok(b.run_in("lib", &["file", "attach", "two2000", "files/a.pdf"]));
+        let linked = b.bibtex("lib");
+        ok(b.run_in("lib", &["rm", "two2000", "--delete-files"]));
+        let step = head(&b);
+        let digest = project(&b).state(&step).unwrap().deleted()[0].clone();
+        let store = Store::new(format!("{}/store", b.root));
+        fs::write(store.file_object(&digest).unwrap(), "").unwrap();
+        let why = format!("deleted file {digest} is damaged");
+        stopped(&b, &["undo"], "#5", &why);
+        assert!(!linked.is_empty());
+        assert!(fs::read_dir(b.path("lib/files")).unwrap().next().is_none(), "nothing brought back");
+    }
+}
+
 // with the reference
 // ==================
 

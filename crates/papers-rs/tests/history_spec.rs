@@ -863,6 +863,34 @@ fn with_no_limit_no_state_is_dropped_and_the_removable_objects_go() {
 }
 
 #[test]
+fn a_damaged_state_file_is_named_and_skipped() {
+    // history.md 2.9 (test_history.py::TestPrune::test_damaged_state_skipped): a state file that is not
+    // JSON is not a state, but it is named; the retention leaves it
+    let tmp = tempfile::tempdir().unwrap();
+    let store = Store::new(tmp.path().to_string_lossy().into_owned());
+    let mut p = store.project("p").unwrap();
+    let old = p
+        .add(state(None, 1.0, "@article{old,\n}\n", &store))
+        .unwrap();
+    let new = p
+        .add(state(Some(&old), 2.0, "@article{new,\n}\n", &store))
+        .unwrap();
+    p.set_head("/lib.bib", &new, &[]).unwrap();
+    let file = format!("{}/{old}.json", p.states_dir());
+    fs::write(&file, "{\"parent\"").unwrap();
+    let q = store.project("p").unwrap();
+    assert_eq!(q.states().keys().collect::<Vec<_>>(), [&new]);
+    assert_eq!(q.damaged().iter().collect::<Vec<_>>(), [&old]);
+    assert_eq!(q.resolve(&old[..6]).unwrap(), Some(old.clone()));
+    assert!(
+        store
+            .prune_at(1, 0, false, &|_| {}, now() + GRACE + 1.0)
+            .is_empty()
+    );
+    assert!(Path::new(&file).exists());
+}
+
+#[test]
 fn the_states_are_dropped_by_time_then_identifier_all_projects_together() {
     // history.md 9.2
     let tmp = tempfile::tempdir().unwrap();

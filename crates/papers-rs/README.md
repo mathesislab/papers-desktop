@@ -95,7 +95,10 @@ papers-rs is 3 to 7 times faster than papers on a library of 2,346 entries: see
   step that undo or redo takes back is *reverted* there (a new step of the pool, `reverts`; for a
   redo, a step the undo took back is done again), by the revert below; `Moved::links` holds the new
   pool steps, for the auto-push that follows (a push after an undo is a new step: nothing is left to
-  redo). `history::Step`
+  redo). A damaged file of the store (a piece empty, cut short or not UTF-8, a file object that
+  does not have its checksum, a state file that is not JSON: `Project::damaged`) stops the command
+  that needs it before anything changes, naming the step (`History::plan` reads first what undo,
+  redo and restore need); `papers history` marks it. `history::Step`
   is what the library model hands over after a save.
 - `command`: the commands that write a library, and the write path they share
   (`command::session`: the lock, the history before the command and the head sync,

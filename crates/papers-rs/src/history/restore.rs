@@ -243,7 +243,7 @@ impl Restore<'_> {
             && let Some(found) = op
                 .checksum
                 .as_deref()
-                .and_then(|c| self.store.file_object(c))
+                .and_then(|c| self.store.intact_file(c))
         {
             return found;
         }
@@ -421,7 +421,7 @@ impl Restore<'_> {
                 }
                 continue;
             }
-            let found = want.as_deref().and_then(|w| self.store.file_object(w));
+            let found = want.as_deref().and_then(|w| self.store.intact_file(w));
             if let Some(found) = found {
                 place_file(&found, path, true)?; // the history keeps it, for the other states
                 push(record, OpKind::Copied, &found, Some(path), None);
@@ -470,7 +470,7 @@ impl Restore<'_> {
                 let found = op
                     .checksum
                     .as_deref()
-                    .and_then(|c| self.store.file_object(c));
+                    .and_then(|c| self.store.intact_file(c));
                 match found {
                     Some(found) => {
                         place_file(&found, path, true)?;

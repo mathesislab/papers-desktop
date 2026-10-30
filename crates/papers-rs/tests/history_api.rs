@@ -593,19 +593,17 @@ fn a_damaged_store_is_reported_as_papers_does() {
     add(&mut config, "one2000");
     add(&mut config, "two2000");
     let history = open(&mut config);
-    let piece = history
-        .project
-        .state(&nth(&history, 2))
-        .unwrap()
-        .bibtex_pieces()[0]
-        .clone();
+    let target = nth(&history, 2);
+    let piece = history.project.state(&target).unwrap().bibtex_pieces()[0].clone();
     drop(history);
     fs::remove_file(s.path(&format!("history/objects/{}/{piece}", &piece[..2]))).unwrap();
     let error = undo(&mut config, 1).unwrap_err();
+    // spec/history.md 2.9: the step whose data is damaged is named
     assert_eq!(
         error.message(),
         format!(
-            "the history of the library is damaged: 'piece {piece} is missing from the history'"
+            "step {}: its data in the history is damaged (piece {piece} is missing from the history); nothing was changed",
+            &target[..8]
         )
     );
 }

@@ -371,6 +371,9 @@ pub struct Project {
     states_dir: String,
     store: Store,
     states: BTreeMap<StateId, State>,
+    /// The state files that cannot be read (not a JSON object, e.g. emptied by a power loss):
+    /// not states, but still named (spec/history.md 2.9).
+    damaged: BTreeSet<StateId>,
 }
 
 fn valid_id(id: &str) -> bool {
@@ -420,6 +423,7 @@ impl Project {
             states_dir,
             store: store.clone(),
             states: BTreeMap::new(),
+            damaged: BTreeSet::new(),
         };
         project.reload();
         Ok(project)
@@ -429,6 +433,7 @@ impl Project {
     /// earlier version are upgraded first (see [`Store::upgrade`]).
     pub fn reload(&mut self) {
         self.states.clear();
+        self.damaged.clear();
         let mut names = listing(&self.states_dir);
         if names.iter().any(|n| state_number(n).is_some()) {
             let _ = self.store.upgrade();
@@ -438,10 +443,13 @@ impl Project {
             let Some(id) = name.strip_suffix(".json").filter(|id| is_state_id(id)) else {
                 continue;
             };
-            if let Some(j) = read_json(&join(&self.states_dir, &name))
-                && j.is_object()
-            {
-                self.states.insert(id.to_string(), State(j));
+            match read_json(&join(&self.states_dir, &name)) {
+                Some(j) if j.is_object() => {
+                    self.states.insert(id.to_string(), State(j));
+                }
+                _ => {
+                    self.damaged.insert(id.to_string());
+                }
             }
         }
     }
@@ -461,6 +469,16 @@ impl Project {
         self.states.get(n)
     }
 
+    /// The identifiers of the state files that cannot be read (not a JSON object).
+    pub fn damaged(&self) -> &BTreeSet<StateId> {
+        &self.damaged
+    }
+
+    /// Whether the state file of `n` cannot be read.
+    pub fn is_damaged(&self, n: &str) -> bool {
+        self.damaged.contains(n)
+    }
+
     /// The identifier of the state that an earlier version numbered `n` (a link from a state of
     /// another store, see [`Store::upgrade`]); none if it is not known.
     pub fn upgraded(&self, n: &LinkedState) -> Option<StateId> {
@@ -476,11 +494,12 @@ impl Project {
     }
 
     /// The identifier of the state that `reference` names: the identifier, or a unique start of
-    /// it of at least [`PREFIX`] characters (without case, spaces dropped). `Ok(None)` if no
-    /// state has it; an error (the message lists them) if several have it.
+    /// it of at least [`PREFIX`] characters (without case, spaces dropped); a damaged state file
+    /// is named too. `Ok(None)` if no state has it; an error (the message lists them) if several
+    /// have it.
     pub fn resolve(&self, reference: &str) -> std::result::Result<Option<StateId>, String> {
         let reference = crate::bib::pystr::strip(reference).to_lowercase();
-        if self.states.contains_key(&reference) {
+        if self.states.contains_key(&reference) || self.damaged.contains(&reference) {
             return Ok(Some(reference));
         }
         if reference.chars().count() < PREFIX
@@ -490,9 +509,9 @@ impl Project {
         {
             return Ok(None);
         }
-        let found: Vec<&StateId> = self
-            .states
-            .keys()
+        let known: BTreeSet<&StateId> = self.states.keys().chain(&self.damaged).collect();
+        let found: Vec<&StateId> = known
+            .into_iter()
             .filter(|n| n.starts_with(&reference))
             .collect();
         match found.as_slice() {
@@ -538,12 +557,14 @@ impl Project {
     pub fn update(&mut self, n: &str, state: State) -> Result<()> {
         write_bytes(&self.path(n), state.0.dumps().as_bytes())?;
         self.states.insert(n.to_string(), state);
+        self.damaged.remove(n);
         Ok(())
     }
 
     pub fn drop_state(&mut self, n: &str) {
         let _ = fs::remove_file(self.path(n));
         self.states.remove(n);
+        self.damaged.remove(n);
     }
 
     /// The states from `n` back to the oldest one kept: `n`, its parent, …
@@ -614,7 +635,7 @@ impl Project {
     }
 
     /// The head of a place, if its state exists; the redo states that no
-    /// longer exist are left out.
+    /// longer exist are left out (a damaged one stays: redo stops there).
     pub fn head(&self, place: &str) -> Option<Head> {
         let h = self.heads().into_iter().find(|h| h.place == place)?;
         let state = h.state.filter(|n| self.states.contains_key(n))?;
@@ -623,7 +644,7 @@ impl Project {
             redo: h
                 .redo
                 .into_iter()
-                .filter(|n| self.states.contains_key(n))
+                .filter(|n| self.states.contains_key(n) || self.damaged.contains(n))
                 .collect(),
             time: h.time,
         })
@@ -697,6 +718,7 @@ impl Project {
     pub fn remove(&mut self) {
         let _ = fs::remove_dir_all(&self.dir);
         self.states.clear();
+        self.damaged.clear();
     }
 
     /// The directory of the states of the project.
