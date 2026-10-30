@@ -966,7 +966,8 @@ pub const ACCEPTED: &str = "key, DOI, arXiv id or ISBN";
 /// The kind and the normalized value of an identifier of the command line
 /// (`parse_identifier`): a DOI, an arXiv id, an ISBN, else a key (in lower
 /// case). An argument that starts with a digit and is none of the others is
-/// an error (a key cannot start with a digit).
+/// an error (`Library::select_some` takes a key of the library first: only
+/// then may a key start with a digit).
 pub fn parse_identifier(arg: &str) -> Result<(IdKind, String), String> {
     if let Some(doi) = normalize_doi(arg) {
         return Ok((IdKind::Doi, doi));
@@ -980,7 +981,7 @@ pub fn parse_identifier(arg: &str) -> Result<(IdKind, String), String> {
     let key = strip(arg);
     if key.starts_with(|c: char| c.is_ascii_digit()) {
         return Err(format!(
-            "{arg}: not a {ACCEPTED} (a key cannot start with a digit)"
+            "{arg}: not a key of the library, nor a DOI, arXiv id or ISBN"
         ));
     }
     Ok((IdKind::Key, key.to_lowercase()))

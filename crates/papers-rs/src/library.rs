@@ -41,6 +41,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::Arc;
 
+use crate::bib::pystr::strip;
 use crate::bib::{Bib, Block, Entry, Field, read_file};
 use crate::config::paths::{
     abspath, basename, dirname, exists, expanduser, is_abs, isfile, join, realpath,
@@ -698,8 +699,9 @@ impl Library {
 
     /// The entries named by identifiers (a key, a former key, a DOI, an arXiv id, an ISBN; `-` is
     /// for the caller to read), in the order given and without repetition: their keys, and the
-    /// identifiers that match no entry (`select_some`). An identifier that matches several entries
-    /// is an error, raised before anything is changed.
+    /// identifiers that match no entry (`select_some`). A key of the library names its entry first,
+    /// even if it starts with a digit or reads as a DOI or ISBN. An identifier that matches several
+    /// entries is an error, raised before anything is changed.
     pub fn select_some(&self, args: &[String]) -> Result<(Vec<String>, Vec<String>)> {
         let mut by_key: HashMap<String, Vec<usize>> = HashMap::new();
         let all: Vec<(u64, &Entry)> = self.uid_entries().collect();
@@ -710,11 +712,17 @@ impl Library {
         let (mut found_keys, mut errors, mut missing): (Vec<usize>, Vec<String>, Vec<String>) =
             Default::default();
         for arg in args {
-            let ident = match parse_identifier(arg) {
-                Ok(i) => i,
-                Err(e) => {
-                    errors.push(e);
-                    continue;
+            let as_key = strip(arg).to_lowercase();
+            let ident = if by_key.contains_key(&as_key) {
+                // a key of the library is that entry, even if it reads as a DOI or ISBN
+                (IdKind::Key, as_key)
+            } else {
+                match parse_identifier(arg) {
+                    Ok(i) => i,
+                    Err(e) => {
+                        errors.push(e);
+                        continue;
+                    }
                 }
             };
             let mut found: Vec<usize> = if ident.0 == IdKind::Key {
