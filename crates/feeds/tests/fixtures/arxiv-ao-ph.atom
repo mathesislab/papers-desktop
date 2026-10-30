@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://www.w3.org/2005/Atom" xml:lang="en-us">
+  <id>http://rss.arxiv.org/atom/physics.ao-ph</id>
+  <title>physics.ao-ph updates on arXiv.org</title>
+  <updated>2026-10-30T12:00:02.686517+00:00</updated>
+  <link href="http://rss.arxiv.org/atom/physics.ao-ph" rel="self" type="application/atom+xml"/>
+  <subtitle>physics.ao-ph updates on the arXiv.org e-print archive.</subtitle>
+  <entry>
+    <id>oai:arXiv.org:2610.38522v1</id>
+    <title>The Alpha--Omega Problem in the Assessments of Atmospheric Power</title>
+    <updated>2026-10-30T12:00:02.686596+00:00</updated>
+    <link href="https://arxiv.org/abs/2610.38522"/>
+    <summary>arXiv:2610.38522v1 Announce Type: new 
+Abstract: Atmospheric power is commonly assessed with two Lorenz-cycle formulations treated as equivalent: the $\alpha\omega$ formulation, yielding gas expansion power $W_\omega$, and the $\mathbf{v}\cdot\nabla z$ formulation, yielding kinetic-energy generation by horizontal pressure gradients, $W_K$. We show that, for a statistically stationary global moist atmosphere, $W_\omega=W_K+W_P+W_{\rm nh}$, where $W_P$ is the power of lifting precipitating water and $W_{\rm nh}$ is power associated with departures from gas-phase hydrostatic balance. Since $W_P\simeq1$ W m$^{-2}$ globally, equality would require $W_{\rm nh}\simeq-W_P&lt;0$, so the associated vertical force imbalance would have to do negative work globally. Using six-hourly ERA5, JRA-3Q, and MERRA-2 fields for 2025, we find that resolved $W_\omega$ varies by a factor of 1.7 (1.9--3.2 W m$^{-2}$), versus 1.2 for $W_K$ (2.4--2.8 W m$^{-2}$). Zonal-mean $\alpha\omega$ profiles have area-weighted contributions near $\pm50$ W m$^{-2}$, making global $W_\omega$ a cancellation residual, whereas $\mathbf{v}\cdot\nabla z$ profiles vary much less with latitude. The difference $W_\omega-W_K$ ranges from $-0.61$ to $+0.87$ W m$^{-2}$. Thus reanalysis-derived $W_\omega$ cannot provide an independent constraint on atmospheric power. Two treatments of the omitted surface layer give cross-reanalysis mean $W_K$ of 2.8 and 3.1 W m$^{-2}$, with corrected values spanning 2.6--3.5 W m$^{-2}$. Both exceed the observation-based Lorenz available-potential-energy generation estimate of 1.2 W m$^{-2}$. Assuming $W_{\rm nh}\geq0$, adding $W_P\simeq1$ W m$^{-2}$ gives total atmospheric power of about 3.8--4.1 W m$^{-2}$, motivating investigation of additional power-generation mechanisms.</summary>
+    <category term="physics.ao-ph"/>
+    <published>2026-10-30T00:00:00-04:00</published>
+    <arxiv:announce_type>new</arxiv:announce_type>
+    <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+    <dc:creator>Anastassia M. Makarieva, Andrei V. Nefiodov</dc:creator>
+  </entry>
+  <entry>
+    <id>oai:arXiv.org:2610.38775v1</id>
+    <title>Skillful and realistic precipitation forecasting with reinforced diffusion</title>
+    <updated>2026-10-30T12:00:02.686781+00:00</updated>
+    <link href="https://arxiv.org/abs/2610.38775"/>
+    <summary>arXiv:2610.38775v1 Announce Type: cross 
+Abstract: Accurate precipitation forecasting remains elusive as physics-based models struggle to resolve mesoscale convection and machine learning often yields physically inconsistent, blurred results that consistently underestimate extreme events. We present FitzRoy, the first system that simultaneously achieves state-of-the-art predictive skill and physical realism over the continental United States. Through a reinforced diffusion framework, where a conditional discrete diffusion model is refined via reinforcement learning, FitzRoy effectively resolves the long-standing trade-off between pointwise accuracy and structural fidelity. Across lead times up to 24 hours, FitzRoy consistently matches or exceeds state-of-the-art models while preserving structural realism and capturing extreme events. Its low-latency inference further enables deployment in real-time operational settings. In case studies such as the 2025 Texas Hill Country floods and the 2026 Missouri floods, FitzRoy signals record-breaking accumulations that existing models largely missed. By bridging the gap between realism and skill, FitzRoy establishes a new frontier for high-fidelity precipitation forecasting.</summary>
+    <category term="cs.LG"/>
+    <category term="physics.ao-ph"/>
+    <published>2026-10-30T00:00:00-04:00</published>
+    <arxiv:announce_type>cross</arxiv:announce_type>
+    <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+    <dc:creator>Ozan Sener, Anand Avati, David Hafner, Jierui Lin, Laura Manduchi, Xiaoying Pang, Langwen Huang, Torsten Hoefler, Russ Schumacher, Vladlen Koltun</dc:creator>
+  </entry>
+  <entry>
+    <id>oai:arXiv.org:2604.27200v3</id>
+    <title>Estimating the Kinetic Energy Spectrum from the Second-Order Velocity Structure Function using a Regularized Fitting Approach</title>
+    <updated>2026-10-30T12:00:02.686897+00:00</updated>
+    <link href="https://arxiv.org/abs/2604.27200"/>
+    <summary>arXiv:2604.27200v3 Announce Type: replace 
+Abstract: Ocean turbulence plays a key role in shaping large-scale circulation, heat uptake, and biogeochemical processes. The kinetic energy (KE) wavenumber spectrum is a fundamental diagnostic, quantifying how KE is distributed across spatial scales. The second-order structure function -- computed from velocity differences between spatially separated observations -- provides a complementary measure, but unlike the KE spectrum, it reflects a non-local, weighted integral of KE over all scales. Analytic relationships link the two metrics, permitting forward and inverse transformations between them. However, recovering the KE spectrum from the structure function via the inverse relationship is highly sensitive to sampling limitations and numerical discretization errors. Here we propose a regularized approach in which the spectrum is assumed to consist of a finite number of segments with distinct slopes and amplitudes, and the inversion is formulated as an optimization problem. The approach is first validated in an idealized setting; for a number of idealized KE spectra with prescribed sets of spectral slopes and amplitudes, the corresponding structure functions are computed by numerically evaluating the forward relationship. These structure functions are then used to determine the underlying parameters using our proposed approach, which shows that we are able to perfectly recover the parameters and consequently the KE spectra. The method is further evaluated on high-resolution ocean model output, where it reconstructs the underlying spectra well even in the presence of noise. Finally, we apply the method to surface drifter observations (GLAD and LASER experiments). The results show that the framework enables estimation of the KE spectrum from sparse Lagrangian data, extending spectral diagnostics beyond gridded Eulerian measurements.</summary>
+    <category term="physics.ao-ph"/>
+    <published>2026-10-30T00:00:00-04:00</published>
+    <arxiv:announce_type>replace</arxiv:announce_type>
+    <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+    <dc:creator>Ayantika Bhattacharjee, Spencer Jones, Dhruv Balwada, Shane Elipot, Manuel Gutierrez-Villanueva</dc:creator>
+  </entry>
+  <entry>
+    <id>oai:arXiv.org:2405.04836v2</id>
+    <title>On-ground calibration of the X-ray, gamma-ray, and relativistic electron detector onboard TARANIS</title>
+    <updated>2026-10-30T12:00:02.687132+00:00</updated>
+    <link href="https://arxiv.org/abs/2405.04836"/>
+    <summary>arXiv:2405.04836v2 Announce Type: replace-cross 
+Abstract: We developed the X-ray, Gamma-ray and Relativistic Electron detector (XGRE) onboard the TARANIS satellite, to investigate high-energy phenomena associated with lightning discharges such as terrestrial gamma-ray flashes and terrestrial electron beams. XGRE consisted of three sensors. Each sensor has one layer of LaBr$_{3}$ crystals for X-ray/gamma-ray detections, and two layers of plastic scintillators for electron and charged-particle discrimination. Since 2018, the flight model of XGRE was developed, and validation and calibration tests, such as a thermal cycle test and a calibration test with the sensors onboard the satellite were performed before the launch of TARANIS on 17 November 2020. The energy range of the LaBr$_{3}$ crystals sensitive to X-rays and gamma rays was determined to be 0.04-11.6 MeV, 0.08-11.0 MeV, and 0.08-11.3 MeV for XGRE1, 2, and 3, respectively. The energy resolution at 0.662 MeV (full width at half maximum) was to be 20.5%, 25.9%, and 28.6%, respectively. Results from the calibration test were then used to validate a simulation model of XGRE and TARANIS. By performing Monte Carlo simulations with the verified model, we calculated effective areas of XGRE to X-rays, gamma rays, electrons, and detector responses to incident photons and electrons coming from various elevation and azimuth angles.</summary>
+    <category term="astro-ph.IM"/>
+    <category term="physics.ao-ph"/>
+    <published>2026-10-30T00:00:00-04:00</published>
+    <arxiv:announce_type>replace-cross</arxiv:announce_type>
+    <dc:rights>http://creativecommons.org/licenses/by-nc-nd/4.0/</dc:rights>
+    <arxiv:journal_reference>Journal of Astronomical Telescopes, Instruments, and Systems 10(2), 026005 (7 May 2024)</arxiv:journal_reference>
+    <arxiv:DOI>10.1117/1.JATIS.10.2.026005</arxiv:DOI>
+    <dc:creator>Yuuki Wada, Philippe Laurent, Damien Pailot, Ion Cojocari, Eric Br\'eelle, St\'ephane Colonges, Jean-Pierre Baronick, Fran\c{c}ois Lebrun, Pierre-Louis Blelly, David Sarria, Kazuhiro Nakazawa, Miles Lindsey Clark</dc:creator>
+  </entry>
+</feed>

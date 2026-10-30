@@ -1,0 +1,26 @@
+[package]
+name = "papers-feeds"
+version = "0.1.0"
+description = "Feeds of journals, preprint servers, news and blogs for papers-desktop: subscriptions, fetching, parsing, merging, the store"
+authors = ["Alexander Robinson"]
+edition = "2024"
+license = "MIT"
+
+[lib]
+name = "papers_feeds"
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+feed-rs = "3"
+html-escape = "0.3"
+percent-encoding = "2"
+quick-xml = "0.42"
+regex = "1"
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "blocking"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+unicode-normalization = "0.1"
+url = "2"
