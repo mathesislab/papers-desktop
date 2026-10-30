@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::bib;
 use crate::item::Item;
@@ -120,15 +120,15 @@ impl Library {
         let items: Vec<&Item> = self.ordered().collect();
         let mut groups = Groups::new(items.len());
         let mut doi: HashMap<String, usize> = HashMap::new();
-        let mut title: HashMap<(String, Option<i32>), usize> = HashMap::new();
+        let mut title: HashMap<String, usize> = HashMap::new();
         for (i, item) in items.iter().enumerate() {
-            if let Some(d) = &item.doi {
-                let first = *doi.entry(d.to_lowercase()).or_insert(i);
+            let Identity { doi: d, title: t } = item.identity();
+            if let Some(d) = d {
+                let first = *doi.entry(d).or_insert(i);
                 groups.join(first, i);
             }
-            let t = title_words(&item.title);
-            if !t.is_empty() {
-                let first = *title.entry((t, item.year)).or_insert(i);
+            if let Some(t) = t {
+                let first = *title.entry(t).or_insert(i);
                 groups.join(first, i);
             }
         }
@@ -161,24 +161,23 @@ impl Library {
             message,
         })?;
         let mut doi: HashMap<String, Vec<&Item>> = HashMap::new();
-        let mut title: HashMap<(String, Option<i32>), Vec<&Item>> = HashMap::new();
+        let mut title: HashMap<String, Vec<&Item>> = HashMap::new();
         for item in self.ordered() {
-            if let Some(d) = &item.doi {
-                doi.entry(d.to_lowercase()).or_default().push(item);
+            let Identity { doi: d, title: t } = item.identity();
+            if let Some(d) = d {
+                doi.entry(d).or_default().push(item);
             }
-            title
-                .entry((title_words(&item.title), item.year))
-                .or_default()
-                .push(item);
+            if let Some(t) = t {
+                title.entry(t).or_default().push(item);
+            }
         }
         Ok(entries
             .iter()
             .map(|e| {
                 let new = Item::from_entry(e, String::new());
-                let by_doi = new.doi.iter().flat_map(|d| doi.get(&d.to_lowercase()));
-                let by_title = Some(title_words(&new.title))
-                    .filter(|t| !t.is_empty())
-                    .and_then(|t| title.get(&(t, new.year)));
+                let identity = new.identity();
+                let by_doi = identity.doi.and_then(|d| doi.get(&d)).into_iter();
+                let by_title = identity.title.and_then(|t| title.get(&t));
                 let mut same: Vec<String> = Vec::new();
                 for item in by_doi.chain(by_title).flatten() {
                     if !same.contains(&item.id) {
@@ -205,9 +204,36 @@ pub struct Incoming {
     pub item: Item,
 }
 
-/// A title as compared: case, accents, punctuation and white space are gone.
-fn title_words(title: &str) -> String {
-    words(&fold(title)).join(" ")
+/// What tells a paper apart, as the possible duplicates and the papers to add are compared: the
+/// same DOI, or the same title and year, is the same paper. It stays when the key changes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Identity {
+    /// in lower case
+    pub doi: Option<String>,
+    /// the words of the title (case, accents, punctuation and white space are gone), and the year:
+    /// `ice sheet stability (2019)`; none without a title
+    pub title: Option<String>,
+}
+
+impl Item {
+    pub fn identity(&self) -> Identity {
+        let words = words(&fold(&self.title)).join(" ");
+        Identity {
+            doi: self.doi.as_ref().map(|d| d.to_lowercase()),
+            title: (!words.is_empty()).then(|| match self.year {
+                Some(year) => format!("{words} ({year})"),
+                None => words,
+            }),
+        }
+    }
+}
+
+impl Identity {
+    /// Whether it is the same paper: the same DOI, or the same title and year.
+    pub fn same_paper(&self, other: &Identity) -> bool {
+        let same = |a: &Option<String>, b: &Option<String>| a.is_some() && a == b;
+        same(&self.doi, &other.doi) || same(&self.title, &other.title)
+    }
 }
 
 fn row(item: &Item) -> Row {

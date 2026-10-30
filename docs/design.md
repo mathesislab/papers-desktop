@@ -41,8 +41,8 @@ Three panes, each resized by dragging, the right one hidden on demand:
 
 - **Sidebar**: *Libraries* (with several .bib files: *All libraries*, then
   one row per .bib, as the accounts of Mail); *Views* (all papers, recently
-  opened, no PDF, broken file links, possible duplicates: the same DOI, or
-  the same title and year); the tags with their counts (a click filters by
+  opened, recently added, no PDF, broken file links, possible duplicates: the
+  same DOI, or the same title and year); the tags with their counts (a click filters by
   the tag, a second click takes the filter off); *Open*: the library tab,
   then the open papers. The counts of the views and the tags are those
   within the library chosen.
@@ -73,8 +73,9 @@ product of four filters (`src/lib/library/filters.ts`, a pure function of the
 rows, tested by `scripts/filters.test.ts`, `npm test`):
 
 - **Library**: all libraries, or one .bib (a click on its row).
-- **View**: all papers, recently opened, no PDF, broken file links, possible
-  duplicates. *All papers* takes the view filter off, and only that.
+- **View**: all papers, recently opened, recently added, no PDF, broken file
+  links, possible duplicates. *All papers* takes the view filter off, and only
+  that.
 - **Tags**: any number, clicked in the sidebar (or in the details); a paper
   must have all of them (a tag counts the tags under it: `climate` finds
   `climate/amoc`). They are filters of their own, shown as chips and
@@ -147,8 +148,7 @@ Finder* and *Hide*.
   most a quarter of the window's height. A `notify` watcher on the folder
   (`DirWatch`, events on PDFs only, debounced by half a second, as a download
   is written in pieces and renamed) tells the page (`downloads` event), so
-  files appear and go by themselves: a PDF moved into the library leaves the
-  folder, and the list.
+  files appear and go by themselves.
 - *Drag* a PDF onto the library table: the Add sheet with that PDF, as for a PDF
   dropped on the window; onto the empty *No PDF* preview of a paper: the sheet
   to add it to that paper. A double-click opens the sheet with the PDF as a new
@@ -167,13 +167,21 @@ Finder* and *Hide*.
   contents), a line per paper; and the right-click menu of the PDF has *Show KEY
   in the library* (one item each, when several papers have it), which selects
   the paper in the library tab with its details.
+- *Moved into the library* (`Listed` of `downloads.rs`, in memory until the app
+  quits): a PDF that leaves the folder for the library stays listed in its
+  place, lighter, with *In library: KEY* (the same menu to show the paper; no
+  drag, no double-click: it is no longer there). It is the file a paper links
+  now, moved: the same device, inode and size (a rename keeps them; a move to
+  another disk, a copy then a delete, is not seen), looked for for a minute
+  while the library is read again; a PDF deleted is not in the library, and
+  goes. Taken back (undo), it is in the folder again.
 - *Settings*: *Downloads panel* (shown by default, also for a `settings.json` from
   before it) and *Downloads folder* (`downloads_panel`, `downloads_folder`:
   `~/Downloads` by default, *Choose…* with the folder dialog). *Hide* in the
   panel's menu and *Choose Folder…* set the same settings (`set_downloads_panel`,
   `set_downloads_folder`), and the settings window follows.
-- *Privacy*: only the file names, sizes and dates of that one folder are read
-  (and the contents of a PDF of it with the size of a file of the library, to
+- *Privacy*: only the file names, sizes, dates and inodes of that one folder are
+  read (and the contents of a PDF of it with the size of a file of the library, to
   compare them); nothing is sent anywhere. Tests (`downloads.rs`) use temporary
   folders, never the real one.
 
@@ -188,8 +196,8 @@ each holds `holdModal` (`modal.svelte.ts`) while it is open, and the page has
 the reader step aside (`Reader.cover`: PDFKit's view is hidden, `pdf_cover`,
 and the keys go to the page; shown again, with the keys, when the last modal
 has closed). A pdf.js PDF is in the page, under the modals by their z-index. The library tab, the open papers, their pages, the pane widths and the
-details shown or not are kept in the data folder of the app, as the recent
-papers are; the window opens again at start if it was open at the end.
+details shown or not are kept in the data folder of the app (`window.json`), as
+the recent papers are (`recent.json`) and the dates added (`added.json`); the window opens again at start if it was open at the end.
 
 A gear button at the bottom of the sidebar opens the settings window, as the
 app menu's Settings… does.
@@ -213,7 +221,33 @@ there is no menu: the page takes `+` and `=` alike.
 A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 `references.bib` (for texmark).
 
-"Recently added" needs a date the `.bib` does not have: see issue #1.
+**Recently added** (#1; `added.rs`, the view in `filters.ts`): the last 100
+papers added to the library chosen, newest first, before the tags and the
+search narrow them, with an *Added* column (the date as the Downloads panel
+writes it; shown in that view, and in the column menu of any view). Nothing in
+a `.bib` tells when an entry came, so the app keeps it: `added.json` in its data
+folder, for each .bib (by its real path) each key with the time it was first
+seen (`added`, Unix seconds, or `null`) and what tells the paper apart (`doi`,
+`title`: the identity of `papers_core::Identity`, by which duplicates are
+found). Not portable: another computer starts again. Each time the library is
+read, a thread of its own (the library shows at once; the page is told,
+`added`) compares its keys with the file:
+
+- a key not there yet takes the time papers' history gives it
+  (`History::entry_times` of papers-rs: the oldest state on the line of the
+  head whose bibtex has the key; exact for anything written through papers or
+  papers-rs, the app included). The keys of the oldest state are not dated by it:
+  they were there before the history began (the library before its first
+  recorded command). The history is read once per .bib, each piece of text once
+  (the states share them): about 0.2 s for a library of 4000 entries and 1000
+  steps;
+- else, the first time a .bib is seen, the modification time of its PDF, or no
+  date at all (an older paper, not in the view);
+- else, later, the time it is seen (a plain .bib, an editor);
+- a key that comes when another goes, the same paper (the same DOI, or the same
+  title and year), takes the date of that one: a key renamed (`papers edit
+  --key`, `check --auto-key`) keeps it. A key gone is dropped; a .bib no longer
+  in the library is kept as it was, in case it comes back.
 
 ## Writing (P1)
 

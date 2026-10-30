@@ -63,13 +63,26 @@
     without,
     type Chip,
     type Filters,
+    type Lists,
     type View,
   } from "$lib/library/filters";
   import Sidebar from "$lib/library/Sidebar.svelte";
   import { DROP_NEW, pdfDrag } from "$lib/library/drag.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import Table, { DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
-  import type { AddOptions, Added, FilesMode, Item, Opened, Row, Status, TagCount, Transferred, WriteError } from "$lib/types";
+  import Table, { COLUMNS, DEFAULT_COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
+  import type {
+    AddOptions,
+    Added,
+    Dated,
+    FilesMode,
+    Item,
+    Opened,
+    Row,
+    Status,
+    TagCount,
+    Transferred,
+    WriteError,
+  } from "$lib/types";
 
   /** What the window keeps between sessions (window.json, in the data folder
    *  of the app): the widths of the side panes, whether the details show,
@@ -119,6 +132,15 @@
   let recent = $state<string[]>([]);
   /** the groups of papers that may be the same */
   let duplicates = $state<string[][]>([]);
+  /** the papers with the date they came into the library, the newest first */
+  let added = $state<Dated[]>([]);
+  /** the papers of the views in their order */
+  let lists = $derived<Lists>({ recent, added: added.map((d) => d.id), duplicates });
+  /** the rows with the date they came into the library, for the Added column */
+  let dated = $derived.by(() => {
+    const at = new Map(added.map((d) => [d.id, d.added]));
+    return at.size ? rows.map((r) => (at.has(r.id) ? { ...r, added: at.get(r.id) } : r)) : rows;
+  });
 
   /** the papers that match the search and the tags of the library tab; none until the first answer */
   let matched = $state<Set<string> | null>(null);
@@ -192,18 +214,30 @@
 
   /** the current set: the papers of the library tab, library × view × tags × search */
   let shown = $derived.by(() => {
-    const list = currentSet(rows, matched, layout.library, recent, duplicates);
+    const list = currentSet(dated, matched, layout.library, lists);
     return layout.sort ? sorted(list, layout.sort) : list;
   });
 
   /** the views, with their numbers within the library chosen */
   let views = $derived.by(() => {
-    const counts = viewCounts(rows, recent, duplicates, layout.library.bib);
+    const counts = viewCounts(rows, lists, layout.library.bib);
     return VIEWS.map(({ view, name }) => ({ view, name, count: counts[view] }));
   });
 
   /** the tags of the sidebar, counted within the library chosen */
   let sidebarTags = $derived(layout.library.bib ? tagCounts(rows.filter((r) => r.bib === layout.library.bib)) : tags);
+
+  /** the columns of the table: in *Recently added*, the date added too (last, unless shown already) */
+  let columns = $derived(
+    layout.library.view === "added" && !layout.columns.some((c) => c.column === "added")
+      ? [...layout.columns, { column: "added" as const, width: COLUMNS.added.width }]
+      : layout.columns,
+  );
+
+  /** The columns changed in the table: the date added, shown by *Recently added* only, is not kept. */
+  function setColumns(next: Shown[]) {
+    layout.columns = columns === layout.columns ? next : next.filter((c) => c.column !== "added");
+  }
 
   /** the filters on, as chips above the table */
   let filterChips = $derived(chips(layout.library));
@@ -253,6 +287,8 @@
       window.onFocusChanged(({ payload: focused }) => {
         if (focused) refresh();
       }),
+      // papers dated: the first time a library is read, its history takes a moment
+      listen("added", async () => (added = await invoke<Dated[]>("added"))),
       // ⌘I in the panel
       listen<string>("open", (e) => openPaper(e.payload)),
       // from the menu of the app
@@ -347,11 +383,12 @@
 
   /** The library, at start and when its files change. */
   async function loadLibrary() {
-    [rows, tags, recent, duplicates] = await Promise.all([
+    [rows, tags, recent, duplicates, added] = await Promise.all([
       invoke<Row[]>("rows"),
       invoke<TagCount[]>("tags"),
       invoke<string[]>("recent"),
       invoke<string[][]>("duplicates"),
+      invoke<Dated[]>("added"),
     ]);
     // the library tab keeps the .bib file still there; the selection and the tabs, the papers
     if (layout.library.bib && rows.length && !rows.some((r) => r.bib === layout.library.bib)) layout.library.bib = null;
@@ -1173,13 +1210,13 @@
         {:else}
           <Table
             rows={shown}
-            columns={layout.columns}
+            {columns}
             {selected}
             {focus}
             sort={layout.sort}
             scroll={table.scroll}
             onscrolled={(top) => (table.scroll = top)}
-            oncolumns={(columns) => (layout.columns = columns)}
+            oncolumns={setColumns}
             onsort={(sort) => (layout.sort = sort)}
             onselect={select}
             onclickrow={clickRow}

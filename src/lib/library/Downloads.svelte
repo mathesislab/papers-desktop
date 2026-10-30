@@ -9,7 +9,15 @@
   import { onMount } from "svelte";
   import { mac } from "$lib/keys";
   import { DRAG_DISTANCE, endPdfDrag, pdfDrag, pdfTarget } from "./drag.svelte";
-  import { folderName, formatDate, formatSize, libraryNote, type Download, type DownloadsView } from "./downloads";
+  import {
+    folderName,
+    formatDate,
+    formatSize,
+    importedLabel,
+    libraryNote,
+    type Download,
+    type DownloadsView,
+  } from "./downloads";
 
   let {
     onadd,
@@ -80,9 +88,9 @@
   }
 
   /** A PDF pressed: dragged far enough, it is dragged, to drop on the table or on the empty preview of a paper;
-   *  `Esc` cancels. */
+   *  `Esc` cancels. Not one moved into the library: it is no longer there. */
   function press(e: PointerEvent, file: Download) {
-    if (e.button !== 0 || e.ctrlKey) return;
+    if (e.button !== 0 || e.ctrlKey || file.imported) return;
     const [x, y] = [e.clientX, e.clientY];
     let started = false;
     const move = (m: PointerEvent) => {
@@ -146,15 +154,19 @@
         {#each view.files as file (file.path)}
           <li
             class:in={file.matches.length > 0}
-            title="{file.path}{file.matches.length ? '\n' + libraryNote(file.matches) : ''}\nDrag onto the table or onto a paper without a PDF; double-click to add"
+            class:imported={file.imported}
+            title={file.imported
+              ? `${file.name}, moved into the library\n${libraryNote(file.matches)}\nRight-click to show it in the library`
+              : `${file.path}${file.matches.length ? "\n" + libraryNote(file.matches) : ""}\nDrag onto the table or onto a paper without a PDF; double-click to add`}
             onpointerdown={(e) => press(e, file)}
             oncontextmenu={(e) => fileMenu(e, file)}
-            ondblclick={() => onadd(file.path, null)}
+            ondblclick={() => !file.imported && onadd(file.path, null)}
           >
             <span class="name">{file.name}</span>
             <span class="meta">
               {formatSize(file.size)} · {formatDate(file.added)}
-              {#if file.matches.length}<span class="check">✓ in the library</span>{/if}
+              {#if file.imported}<span class="check">{importedLabel(file.matches)}</span>
+              {:else if file.matches.length}<span class="check">✓ in the library</span>{/if}
             </span>
           </li>
         {/each}
@@ -247,6 +259,10 @@
   /* in the library already: muted */
   li.in .name {
     color: var(--muted);
+  }
+  /* moved into the library: lighter still, no longer a file to drag */
+  li.imported {
+    opacity: 0.55;
   }
   .check {
     margin-left: 4px;

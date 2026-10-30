@@ -664,3 +664,44 @@ fn the_links_of_a_state_are_read_as_the_library_is() {
         ["/lib/files/a.pdf"]
     );
 }
+
+#[test]
+fn the_entries_are_dated_by_the_oldest_state_of_the_head_that_has_them() {
+    let s = sandbox(json!({}));
+    let mut config = s.init("lib");
+    // there before the first command: the start state has it, from a time the history does not tell
+    fs::write(config.bibtex.as_ref().unwrap(), entry("zero2000")).unwrap();
+    add(&mut config, "one2000");
+    add(&mut config, "two2000");
+    // changed outside papers: dated by the state that records it
+    fs::write(
+        config.bibtex.as_ref().unwrap(),
+        bibtex(&config) + &entry("three2000"),
+    )
+    .unwrap();
+    add(&mut config, "four2000");
+    let history = open(&mut config);
+    let time = |n| history.project.state(&nth(&history, n)).unwrap().time();
+    let times = history.entry_times();
+    assert_eq!(times.len(), 4);
+    assert!(!times.contains_key("zero2000"));
+    assert_eq!(times["one2000"], time(2));
+    assert_eq!(times["two2000"], time(3));
+    assert_eq!(times["three2000"], time(4));
+    assert_eq!(times["four2000"], time(5));
+    // undone: no longer on the line of the head
+    undo(&mut config, 2).unwrap();
+    let mut keys: Vec<String> = open(&mut config).entry_times().into_keys().collect();
+    keys.sort();
+    assert_eq!(keys, ["one2000", "two2000"]);
+    // removed and added again: the oldest state still has it
+    command(
+        &mut config,
+        "papers rm one2000",
+        |c| fs::write(c.bibtex.as_ref().unwrap(), entry("zero2000") + &entry("two2000")).unwrap(),
+        vec![],
+    );
+    add(&mut config, "one2000");
+    let history = open(&mut config);
+    assert_eq!(history.entry_times()["one2000"], time(2));
+}

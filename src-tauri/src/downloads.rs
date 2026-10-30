@@ -1,7 +1,8 @@
 //! The Downloads panel of the main window: the PDFs of one folder outside the library (by default
 //! ~/Downloads), listed to drag into it. Only the names, sizes and dates of the files of that one
 //! folder are read (and the contents of those with the size of a file of the library, to tell that
-//! the paper is there already); nothing leaves the computer.
+//! the paper is there already); nothing leaves the computer. A PDF moved into the library stays in
+//! the list, marked, until the app quits.
 
 use std::collections::hash_map::DefaultHasher;
 use std::fs::{self, File};
@@ -9,7 +10,7 @@ use std::hash::Hasher;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, mpsc};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -23,6 +24,24 @@ use crate::settings::Settings;
 /// Wait this long after the last event before telling the page: a download is written in pieces,
 /// then renamed.
 const QUIET: Duration = Duration::from_millis(500);
+/// A PDF that left the folder is looked for in the library this long: the library is read again
+/// after the file has moved.
+const LEFT: Duration = Duration::from_secs(60);
+
+/// What tells a file apart on its disk, whatever its name: its device and inode, which a move
+/// (a rename) keeps.
+type FileId = (u64, u64);
+
+#[cfg(unix)]
+fn file_id(meta: &fs::Metadata) -> Option<FileId> {
+    use std::os::unix::fs::MetadataExt;
+    Some((meta.dev(), meta.ino()))
+}
+
+#[cfg(not(unix))]
+fn file_id(_: &fs::Metadata) -> Option<FileId> {
+    None
+}
 
 /// A PDF of the folder.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -36,6 +55,12 @@ pub struct Download {
     /// the papers of the library that link this file, or a file with the same content: empty when
     /// it is not in the library
     pub matches: Vec<Match>,
+    /// moved into the library: no longer in the folder, still listed (the papers that link it are
+    /// the matches)
+    pub imported: bool,
+    /// the file on its disk, to find it in the library once moved there
+    #[serde(skip)]
+    id: Option<FileId>,
 }
 
 /// A paper of the library that has a PDF of the folder.
@@ -111,10 +136,12 @@ pub fn list(dir: &Path) -> Result<Vec<Download>, String> {
                 size: meta.len(),
                 added,
                 matches: Vec::new(),
+                imported: false,
+                id: file_id(&meta),
             })
         })
         .collect();
-    files.sort_by(|a, b| b.added.cmp(&a.added).then_with(|| a.name.cmp(&b.name)));
+    newest_first(&mut files);
     Ok(files)
 }
 
@@ -179,6 +206,99 @@ pub fn mark_in_library(files: &mut [Download], linked: &[Linked]) {
     }
 }
 
+/// The newest first, the name of equal times in order.
+fn newest_first(files: &mut [Download]) {
+    files.sort_by(|a, b| b.added.cmp(&a.added).then_with(|| a.name.cmp(&b.name)));
+}
+
+/// What the panel listed of a folder this session: to keep the PDFs moved into the library.
+#[derive(Debug, Default)]
+pub struct Listed {
+    folder: PathBuf,
+    /// the list shown last
+    shown: Vec<Download>,
+    /// the PDFs that left the folder and are not found in the library yet, since when
+    left: Vec<(Download, Instant)>,
+}
+
+impl Listed {
+    /// The list to show: the PDFs of the folder now (`files`, marked), and those that left it for
+    /// the library this session, in their place, marked imported. A PDF that left is imported when
+    /// a paper links the same file, moved: its device and inode, which a rename keeps (a move
+    /// that copies to another disk, then deletes, is not seen), and its size; one deleted is not.
+    /// It is looked for while the library is read again (`LEFT`), then forgotten; one that comes
+    /// back (undo) is in the folder again.
+    pub fn arrange(
+        &mut self,
+        folder: &Path,
+        files: Vec<Download>,
+        linked: &[Linked],
+        now: Instant,
+    ) -> Vec<Download> {
+        if self.folder != folder {
+            *self = Listed {
+                folder: folder.to_path_buf(),
+                ..Listed::default()
+            };
+        }
+        let here: Vec<&Path> = files.iter().map(|f| f.path.as_path()).collect();
+        let shown = std::mem::take(&mut self.shown);
+        let (imported, listed): (Vec<Download>, Vec<Download>) =
+            shown.into_iter().partition(|f| f.imported);
+        self.left.extend(
+            listed
+                .into_iter()
+                .filter(|f| !here.contains(&f.path.as_path()))
+                .map(|f| (f, now)),
+        );
+        self.left.retain(|(f, since)| {
+            !here.contains(&f.path.as_path()) && now.duration_since(*since) < LEFT
+        });
+        let mut moved: Vec<Download> = Vec::new();
+        let candidates: Vec<Download> = imported
+            .into_iter()
+            .filter(|f| !here.contains(&f.path.as_path()))
+            .chain(self.left.iter().map(|(f, _)| f.clone()))
+            .collect();
+        if !candidates.is_empty() {
+            let ids = linked_ids(linked);
+            for mut file in candidates {
+                let mut matches: Vec<Match> = Vec::new();
+                let same = |(id, size, _): &&(FileId, u64, &Linked)| {
+                    file.id == Some(*id) && *size == file.size
+                };
+                for (_, _, l) in ids.iter().filter(same) {
+                    if !matches.iter().any(|m| m.id == l.id) {
+                        matches.push(l.to_match(false));
+                    }
+                }
+                if !matches.is_empty() {
+                    self.left.retain(|(f, _)| f.path != file.path);
+                    file.imported = true;
+                    file.matches = matches;
+                    moved.push(file);
+                }
+            }
+        }
+        let mut shown: Vec<Download> = files.into_iter().chain(moved).collect();
+        newest_first(&mut shown);
+        self.shown = shown.clone();
+        shown
+    }
+}
+
+/// The PDFs the papers of the library link that are there, with their file on the disk and size.
+fn linked_ids(linked: &[Linked]) -> Vec<(FileId, u64, &Linked)> {
+    linked
+        .iter()
+        .filter(|l| is_pdf(&l.file))
+        .filter_map(|l| {
+            let meta = fs::metadata(&l.file).ok()?;
+            Some((file_id(&meta)?, meta.len(), l))
+        })
+        .collect()
+}
+
 /// Watches a folder for PDFs that come, change or go, until dropped.
 pub struct DirWatch {
     _watcher: RecommendedWatcher,
@@ -215,10 +335,11 @@ impl DirWatch {
     }
 }
 
-/// The folder being watched, if the panel is shown.
+/// The folder being watched, if the panel is shown, and what was listed of it.
 #[derive(Default)]
 pub struct Downloads {
     watching: Mutex<Option<(PathBuf, DirWatch)>>,
+    listed: Mutex<Listed>,
 }
 
 impl Downloads {
@@ -289,6 +410,12 @@ pub async fn downloads_list(state: State<'_, AppState>) -> Result<DownloadsView,
                     .collect()
             };
             mark_in_library(&mut files, &linked);
+            let files = state.downloads.listed.lock().unwrap().arrange(
+                &folder,
+                files,
+                &linked,
+                Instant::now(),
+            );
             (files, None)
         }
         Err(e) => (Vec::new(), Some(e)),
@@ -520,6 +647,122 @@ mod tests {
         );
         assert_eq!(files[0].matches.len(), 1);
         assert!(!files[0].matches[0].same_contents);
+    }
+
+    /// (name, imported, keys of the matches) of each file shown, in order
+    fn shown(files: &[Download]) -> Vec<(&str, bool, Vec<&str>)> {
+        files
+            .iter()
+            .map(|f| {
+                (
+                    f.name.as_str(),
+                    f.imported,
+                    f.matches.iter().map(|m| m.key.as_str()).collect(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_pdf_moved_into_the_library_stays_listed_one_deleted_does_not() {
+        let root = tempfile::tempdir().unwrap();
+        let (downloads, library) = (root.path().join("Downloads"), root.path().join("lib"));
+        fs::create_dir_all(&downloads).unwrap();
+        fs::create_dir_all(library.join("files")).unwrap();
+        let bib = library.join("papers.bib");
+        let now = millis(SystemTime::now()) as u64 / 1000;
+        for (name, secs) in [
+            ("old.pdf", 1000),
+            ("moved.pdf", 2000),
+            ("deleted.pdf", 3000),
+        ] {
+            fs::write(downloads.join(name), name).unwrap();
+            set_time(&downloads.join(name), now + secs);
+        }
+        let mut listed = Listed::default();
+        let start = Instant::now();
+        let arrange = |listed: &mut Listed, linked: &[Linked], after: u64| {
+            let mut files = list(&downloads).unwrap();
+            mark_in_library(&mut files, linked);
+            listed.arrange(
+                &downloads,
+                files,
+                linked,
+                start + Duration::from_secs(after),
+            )
+        };
+        arrange(&mut listed, &[], 0);
+        let target = library.join("files/smith_2020.pdf");
+        fs::rename(downloads.join("moved.pdf"), &target).unwrap();
+        fs::remove_file(downloads.join("deleted.pdf")).unwrap();
+        // the library not read again yet: the PDF that left is looked for
+        assert_eq!(
+            shown(&arrange(&mut listed, &[], 1)),
+            [("old.pdf", false, vec![])]
+        );
+        // read again: in its place, marked; the one deleted is not in the library
+        let links = [linked("1", &bib, target.clone())];
+        let files = arrange(&mut listed, &links, 2);
+        assert_eq!(
+            shown(&files),
+            [
+                ("moved.pdf", true, vec!["key-1"]),
+                ("old.pdf", false, vec![])
+            ]
+        );
+        assert_eq!(files[0].matches[0].file, "files/smith_2020.pdf");
+        assert_eq!(files[0].path, downloads.join("moved.pdf"));
+        // kept while the paper links it, after the time to look for those that left
+        assert_eq!(shown(&arrange(&mut listed, &links, 200)).len(), 2);
+        // taken back (undo): in the folder again, once
+        fs::rename(&target, downloads.join("moved.pdf")).unwrap();
+        assert_eq!(
+            shown(&arrange(&mut listed, &[], 201)),
+            [("moved.pdf", false, vec![]), ("old.pdf", false, vec![])]
+        );
+        // moved again, then its paper removed: no longer listed
+        fs::rename(downloads.join("moved.pdf"), &target).unwrap();
+        assert_eq!(
+            shown(&arrange(&mut listed, &links, 202))[0],
+            ("moved.pdf", true, vec!["key-1"])
+        );
+        assert_eq!(
+            shown(&arrange(&mut listed, &[], 203)),
+            [("old.pdf", false, vec![])]
+        );
+        // another folder: nothing kept
+        fs::rename(downloads.join("old.pdf"), library.join("old.pdf")).unwrap();
+        let links = [
+            linked("1", &bib, target),
+            linked("2", &bib, library.join("old.pdf")),
+        ];
+        let other = root.path().join("Other");
+        assert!(
+            listed
+                .arrange(&other, Vec::new(), &links, start)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn a_pdf_that_left_is_looked_for_a_minute() {
+        let root = tempfile::tempdir().unwrap();
+        let downloads = root.path().join("Downloads");
+        fs::create_dir_all(&downloads).unwrap();
+        fs::write(downloads.join("a.pdf"), "a").unwrap();
+        let mut listed = Listed::default();
+        let start = Instant::now();
+        listed.arrange(&downloads, list(&downloads).unwrap(), &[], start);
+        let target = root.path().join("a_2020.pdf");
+        fs::rename(downloads.join("a.pdf"), &target).unwrap();
+        listed.arrange(&downloads, Vec::new(), &[], start);
+        let links = [linked("1", &root.path().join("refs.bib"), target)];
+        let later = start + LEFT + Duration::from_secs(1);
+        assert!(
+            listed
+                .arrange(&downloads, Vec::new(), &links, later)
+                .is_empty()
+        );
     }
 
     /// Wait for `condition`, a few seconds at most.

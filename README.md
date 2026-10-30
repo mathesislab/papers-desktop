@@ -39,7 +39,7 @@ menu-bar icon has Open Library (also `⌘O` in the panel), Settings… (also
 
 The library window (in the Dock while open) lists the papers in a table
 that the same search filters, with the `.bib` files, views (recently opened,
-no PDF, broken file links, possible duplicates) and tags in the sidebar.
+recently added, no PDF, broken file links, possible duplicates) and tags in the sidebar.
 Its columns sort, move, resize, and show or hide (right-click the headers).
 Enter or a double-click opens a paper in a tab of the sidebar: on macOS the
 PDF shows as in Preview (PDFKit), elsewhere with pdf.js. Export… writes the
