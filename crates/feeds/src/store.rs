@@ -1,4 +1,4 @@
-//! The files of a feeds folder: `config.json` (the subscriptions),
+//! The files of a feeds folder: `config.json` (the subscriptions, interests),
 //! `items.json` (the items and the aliases of merged ones), `state.json` (the
 //! triage of each item), `http.json` (the validators of each subscription's
 //! last answer). Each is read whole, and written whole through a temporary
@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::interest::Interest;
 use crate::model::{Item, Mark, Subscription};
 use crate::{Error, Result};
 
@@ -20,10 +21,30 @@ pub(crate) const STATE: &str = "state.json";
 pub(crate) const HTTP: &str = "http.json";
 
 /// `config.json`: what the user set.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Config {
     #[serde(default)]
     pub subscriptions: Vec<Subscription>,
+    #[serde(default)]
+    pub interests: Vec<Interest>,
+    /// the factor of a term's weight in a title, for every interest
+    #[serde(default = "title_boost")]
+    pub title_boost: f64,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            subscriptions: Vec::new(),
+            interests: Vec::new(),
+            title_boost: title_boost(),
+        }
+    }
+}
+
+/// paper-feeder's: a term in the title counts twice.
+fn title_boost() -> f64 {
+    2.0
 }
 
 /// `items.json`: the items, and the ids of merged items to the item they went into.

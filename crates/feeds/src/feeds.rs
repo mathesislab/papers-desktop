@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, TimeDelta, Utc};
 
 use crate::http::{FEED_ACCEPT, Http, Request};
+use crate::interest::{self, Lexicon};
 use crate::merge::Merger;
 use crate::model::{Item, Mark, SourceKind, Subscription, Triage};
 use crate::normalize::{canonical_url, feed_key, short_id};
@@ -43,12 +44,14 @@ pub enum Outcome {
 
 /// A feeds folder, loaded.
 pub struct Feeds {
-    dir: PathBuf,
-    config: Config,
-    items: Items,
-    state: State,
-    http: Validated,
-    now: Now,
+    pub(crate) dir: PathBuf,
+    pub(crate) config: Config,
+    /// the interests of `config`, compiled
+    pub(crate) lexicons: Vec<Lexicon>,
+    pub(crate) items: Items,
+    pub(crate) state: State,
+    pub(crate) http: Validated,
+    pub(crate) now: Now,
 }
 
 impl Feeds {
@@ -60,8 +63,10 @@ impl Feeds {
     /// The feeds of a folder, on another clock.
     pub fn open_with(dir: &Path, now: Now) -> Result<Feeds> {
         let dir = store::folder(dir)?;
+        let config: Config = store::read(&dir, CONFIG)?;
         Ok(Feeds {
-            config: store::read(&dir, CONFIG)?,
+            lexicons: interest::compile(&config.interests, config.title_boost)?,
+            config,
             items: store::read(&dir, ITEMS)?,
             state: store::read(&dir, STATE)?,
             http: store::read(&dir, HTTP)?,

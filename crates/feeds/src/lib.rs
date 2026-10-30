@@ -6,11 +6,13 @@
 //! Copernicus bylines, Wiley author blobs, the DOI from the guid,
 //! `prism:doi` or the link), and the entries of all sources merged into
 //! [`Item`]s: one per paper or post. [`Feeds`] keeps them in a folder of
-//! JSON files with their [`Triage`]. Nothing here knows of .bib files.
+//! JSON files with their [`Triage`]. [`Interest`]s score the items, as
+//! paper-feeder does. Nothing here knows of .bib files.
 
 mod extras;
 mod feeds;
 pub mod http;
+mod interest;
 mod merge;
 mod model;
 pub mod normalize;
@@ -21,6 +23,7 @@ use std::path::PathBuf;
 
 pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Http, Network, Reply, Request};
+pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
 pub use model::{
     Entry, Item, ItemKind, Mark, Source, SourceKind, Stage, Subscription, Triage, Version,
 };
@@ -37,6 +40,9 @@ pub enum Error {
     NoSubscription { id: String },
     #[error("{id}: no such item")]
     NoItem { id: String },
+    /// an interest whose term or pattern is no regex, or whose name is taken
+    #[error("interest {name}: {message}")]
+    Interest { name: String, message: String },
     /// a feed that does not parse
     #[error("{url}: {message}")]
     Feed { url: String, message: String },
