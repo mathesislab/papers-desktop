@@ -563,10 +563,18 @@ history. In the long run a standard both follow and change together.
   *Free* (messages, prompts, caches). The suite is its executable side: a
   case names its section and whether it checks a contract.
 
-**Done**: follows papers v3 at faeaf4d (3.0.0b7.dev91: the free PDF of an
+**Done**: follows papers v3 at e179067 (3.0.0b7.dev94: the free PDF of an
 entry, `file fetch`, `add --fetch-pdf`, `fetch --pdf`, perrette/papers#211
 to #215; the file of a broken link in the other libraries of the machine;
-`--openalex` as papers has it, #205; #207, #210). It passes all 252
+`--openalex` as papers has it, #205; #207, #210. Since faeaf4d: an accepted
+manuscript or a submitted version attached or downloaded after the
+published version was refused names the published link to open in a
+browser; a `file fetch` of several entries ends with a summary (the PDFs
+by version, those found locally, those without PDF, the links to open);
+`fetch --pdf --porcelain` prints lines for programs, `downloaded ID VERSION
+URL FILE`, `refused-published ID URL`, `refused ID URL`, `failed ID`
+(formats.md 7.2); CSL-JSON import leaves out a name whose parts are all
+null). It passes all 252
 offline cases of the suite in contract-only mode (`spec/papers`); the full
 comparison differs only in Free output (bibtexparser's warnings, PyMuPDF's
 messages). Earlier: every command of papers 3.0.0b5 but `open`, `install`,
