@@ -87,12 +87,31 @@ impl Cache {
 
     /// What the cache has for the key (`now` is the time to compare a not-found with).
     pub fn get(&self, name: &str, key: &str, now: f64, not_found: bool) -> Cached {
+        self.get_within(name, key, now, not_found, None)
+    }
+
+    /// What the cache has for the key, a value stored more than `max_age` seconds before `now`
+    /// excepted (`max_age` of `cached`: it is fetched again; a value without its time is as old
+    /// as can be).
+    pub fn get_within(
+        &self,
+        name: &str,
+        key: &str,
+        now: f64,
+        not_found: bool,
+        max_age: Option<f64>,
+    ) -> Cached {
         let file = self.file(name, key);
         let Some(Value::Object(data)) = read_file(&file) else {
             // `if data and ...`: not a dict, or an empty one, is nothing
             return Cached::Nothing;
         };
-        if let Some(value) = data.get("value") {
+        let stale = |data: &Map<String, Value>| {
+            max_age.is_some_and(|age| {
+                age > 0.0 && now - data.get("time").and_then(Value::as_f64).unwrap_or(0.0) > age
+            })
+        };
+        if let Some(value) = data.get("value").filter(|_| !stale(&data)) {
             log::debug(&format!(
                 "load from cache: ({}, {})",
                 json::py_repr_str(name),
@@ -136,6 +155,19 @@ impl Cache {
         let mut data = Map::new();
         data.insert("value".into(), value);
         self.put(name, key, Value::Object(data));
+    }
+
+    /// A value with the time it was stored (`cached` with a `max_age`).
+    pub fn put_value_at(&self, name: &str, key: &str, value: Value, time: f64) {
+        let mut data = Map::new();
+        data.insert("value".into(), value);
+        data.insert("time".into(), serde_json::json!(time));
+        self.put(name, key, Value::Object(data));
+    }
+
+    /// The content of the file of a key, whatever it holds (`_read_cache_file`).
+    pub fn read(&self, name: &str, key: &str) -> Option<Value> {
+        read_file(&self.file(name, key))
     }
 
     pub fn put_not_found(&self, name: &str, key: &str, when: f64) {

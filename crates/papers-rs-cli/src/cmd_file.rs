@@ -1,18 +1,23 @@
-//! `papers file` (rename, mv, attach, detach, rm, check, fix, clean, checksum) and the deprecated
-//! `papers filecheck`: the command line of `papers_rs::command::file_cmd`.
+//! `papers file` (rename, mv, attach, fetch, detach, rm, check, fix, clean, checksum) and the
+//! deprecated `papers filecheck`: the command line of `papers_rs::command::file_cmd` (and of
+//! `papers_rs::command::fetch_pdf` for `fetch`).
 
+use papers_rs::command::fetch_pdf::{FileFetch, PdfOptions, file_fetch};
 use papers_rs::command::file_cmd::{
     Attach, CheckOptions, MvOptions, attach_files, check_entries_files, check_entry_lines,
     checksums, clean, clean_filesdir, detach_broken_quietly, detach_entries, move_files,
     rename_entries, rm_files,
 };
 use papers_rs::command::files::{Mode, files_mode};
+use papers_rs::command::pool::push_note_lines;
 use papers_rs::command::queries::Queries;
 use papers_rs::command::report::{Notes, print_changes};
 use papers_rs::command::{Options, Session, read_selection};
 use papers_rs::config::Config;
 use papers_rs::config::paths::{abspath, short_home};
 use papers_rs::error::Error;
+use papers_rs::fetch::freepdf::Least;
+use papers_rs::fetch::openalex::OpenAlex;
 use papers_rs::log;
 
 use crate::cmd_write::{
@@ -178,6 +183,7 @@ pub fn file_cmd(command: &str, leaf: &Leaf, config: Config) -> Done {
         "file rename" => rename(leaf, config),
         "file mv" => mv(leaf, config),
         "file attach" => attach(leaf, config),
+        "file fetch" => fetch(leaf, config),
         "file detach" => detach(leaf, config),
         "file rm" => rm(leaf, config),
         "file check" => check(leaf, config, false),
@@ -241,6 +247,51 @@ fn attach(leaf: &Leaf, config: Config) -> Done {
         let committed = session.commit()?;
         report(session, leaf, &keys, &committed.notes);
         refused(placed)
+    })
+}
+
+fn fetch(leaf: &Leaf, config: Config) -> Done {
+    let entries = leaf.strings("entries");
+    let missing = leaf.flag("missing");
+    if entries.is_empty() && !missing {
+        return Err(usage("papers file fetch KEY... or --missing [KEY...]"));
+    }
+    let pdf = PdfOptions {
+        least: leaf
+            .string("least_version")
+            .and_then(|v| Least::parse(&v))
+            .unwrap_or_default(),
+        supplements: leaf.flag("supplements"),
+        again: leaf.flag("again"),
+        access: OpenAlex::from_env(),
+    };
+    let session = open(leaf, config, false, false)?;
+    run_session(session, |session| {
+        let keys = entries_or_all(session, &entries)?;
+        let request = FileFetch {
+            keys,
+            missing,
+            pdf,
+            search: leaf.strings("search"),
+            yes: leaf.flag("yes"),
+        };
+        let fetcher = Queries::default()
+            .fetcher()
+            .map_err(|e| Error::other(e.message))?;
+        let fetched = file_fetch(session, &fetcher, &request)?;
+        if let Some(committed) = &fetched.committed {
+            if leaf.flag("porcelain") {
+                report(session, leaf, &fetched.keys, &committed.notes);
+            } else {
+                for line in push_note_lines(&session.library, &committed.notes) {
+                    session.say.line(line);
+                }
+            }
+        }
+        if missing && fetched.keys.is_empty() {
+            session.say.line("every entry has a PDF");
+        }
+        refused(fetched.failed == 0)
     })
 }
 

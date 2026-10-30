@@ -5,12 +5,15 @@ use std::fs;
 use std::path::Path;
 
 use papers_rs::config::dirs::cache_dir;
+use papers_rs::config::paths::{basename, join};
 use papers_rs::config::settings::py_int;
 use papers_rs::error::Error;
 use papers_rs::extract::{Options, extract_pdf_doi, extract_pdf_metadata};
+use papers_rs::fetch::freepdf::{Found, Least, Search, discard, fetch_pdf};
 use papers_rs::fetch::openalex::{self, OpenAlex};
 use papers_rs::fetch::{ErrorKind, FetchError, Fetcher};
-use papers_rs::identity::strip_doi;
+use papers_rs::history::restore::move_path;
+use papers_rs::identity::{normalize_arxiv, strip_doi};
 use papers_rs::log;
 
 use crate::parse::Leaf;
@@ -65,8 +68,17 @@ fn fetcher() -> Result<Fetcher, Failure> {
     Fetcher::new(&cache_dir()).map_err(uncaught)
 }
 
-/// `papers fetch`: the bibtex of one or several DOIs, or of a full-text search.
+/// `papers fetch`: the bibtex of one or several DOIs, or of a full-text search (with `--pdf`: the
+/// free PDF of DOIs or arXiv ids).
 pub fn fetch(leaf: &Leaf) -> Outcome {
+    if leaf.flag("pdf") {
+        return fetch_pdfs(leaf);
+    }
+    if leaf.string("output").is_some() || leaf.string("least_version").is_some_and(|v| v != "any") {
+        return Err(Failure::Usage(
+            "-o/--output and --version go with --pdf".into(),
+        ));
+    }
     let fields = leaf.strings("doi_or_text");
     let scholar = leaf.flag("scholar");
     let openalex = leaf.flag("openalex");
@@ -100,6 +112,86 @@ pub fn fetch(leaf: &Leaf) -> Outcome {
     }
     .map_err(search_failure)?;
     log::println(&bibtex);
+    Ok(())
+}
+
+/// The file name of `papers fetch --pdf` (`_pdf_name`): that of the URL when it looks like the
+/// paper's (a digit in it), else made of the DOI or arXiv id.
+fn pdf_name(found: &Found, id: &str) -> String {
+    let name = basename(&found.path);
+    let stem = match name.trim_start_matches('.').rfind('.') {
+        Some(i) => &name[..name.len() - name.trim_start_matches('.').len() + i],
+        None => name.as_str(),
+    };
+    if stem.chars().any(|c| c.is_numeric()) {
+        return name;
+    }
+    format!("{}.pdf", id.replace('/', "_"))
+}
+
+/// `papers fetch --pdf` (`fetch_pdfs`): download the free PDF of each DOI or arXiv id into the
+/// current directory, or to `-o FILE` (an existing file is not replaced), as `papers file fetch`
+/// finds it.
+fn fetch_pdfs(leaf: &Leaf) -> Outcome {
+    if leaf.flag("scholar") || leaf.flag("openalex") {
+        return Err(Failure::Usage(
+            "--pdf does not take --scholar or --openalex".into(),
+        ));
+    }
+    let args = leaf.strings("doi_or_text");
+    let output = leaf.string("output").map(|o| file_uri_to_path(&o));
+    if output.is_some() && args.len() > 1 {
+        return Err(Failure::Usage("-o/--output FILE takes one DOI".into()));
+    }
+    let least = leaf
+        .string("least_version")
+        .and_then(|v| Least::parse(&v))
+        .unwrap_or_default();
+    let access = OpenAlex::from_env();
+    let mut failed = 0;
+    for arg in &args {
+        let doi = strip_doi(arg);
+        let arxiv = if doi.is_some() {
+            None
+        } else {
+            normalize_arxiv(arg)
+        };
+        let result = (|| -> Result<(String, Found), String> {
+            let Some(id) = doi.as_deref().or(arxiv.as_deref()) else {
+                return Err("not a DOI or arXiv id".to_string());
+            };
+            let fetcher = fetcher().map_err(|_| "the network cannot be used".to_string())?;
+            let mut search =
+                Search::new(&fetcher, &access, doi.as_deref(), arxiv.as_deref(), least);
+            let found = fetch_pdf(&mut search, None)?;
+            let mut target = output.clone().unwrap_or_else(|| pdf_name(&found, id));
+            if Path::new(&target).is_dir() {
+                target = join(&target, &pdf_name(&found, id));
+            }
+            if fs::symlink_metadata(&target).is_ok() {
+                discard(&found.path);
+                return Err(format!(
+                    "{target} exists: not replaced (-o FILE writes another file)"
+                ));
+            }
+            move_path(&found.path, &target).map_err(|e| format!("{target}: {e}"))?;
+            discard(&found.path);
+            Ok((target, found))
+        })();
+        match result {
+            Ok((target, found)) => log::println(&format!("{target} ({})", found.link.describe())),
+            Err(error) if args.len() == 1 => {
+                return Err(Error::exit(format!("{arg}: {error}")).into());
+            }
+            Err(error) => {
+                log::error(&format!("{arg}: {error}"));
+                failed += 1;
+            }
+        }
+    }
+    if failed > 0 {
+        return Err(Error::exit(format!("{failed} of {} PDFs not downloaded", args.len())).into());
+    }
     Ok(())
 }
 

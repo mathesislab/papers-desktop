@@ -15,8 +15,8 @@ pub const COMMANDS: [&str; 22] = [
 /// The deprecated commands (removed in v4): they work, with a warning, and the help does not show them.
 pub const DEPRECATED_COMMANDS: [&str; 7] = ["install", "uninstall", "filecheck", "doi", "restore-backup", "backup", "git"];
 
-pub const FILE_COMMANDS: [&str; 9] =
-    ["rename", "mv", "attach", "detach", "rm", "check", "fix", "clean", "checksum"];
+pub const FILE_COMMANDS: [&str; 10] =
+    ["rename", "mv", "attach", "fetch", "detach", "rm", "check", "fix", "clean", "checksum"];
 
 /// All the commands that papers parses.
 pub fn is_command(name: &str) -> bool {
@@ -179,6 +179,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.exclusive(&["scholar", "openalex"]);
             b.opt("attachment", &["--attach"], Nargs::Plus);
             b.opt("attachment_deprecated", &["--attachment"], Nargs::Plus);
+            b.flag("fetch_pdf", &["--fetch-pdf"]);
             files_mode(&mut b, true);
             b.flag("edit", &["-e", "--edit"]);
             b.flag("open", &["-o", "--open"]);
@@ -224,6 +225,17 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.pos("key", "KEY", Nargs::One);
             b.pos("files", "FILE", Nargs::Plus);
             files_mode(&mut b, false);
+        }
+        "file fetch" => {
+            config_options(&mut b);
+            format_options(&mut b, "name");
+            b.pos("entries", "KEY", Nargs::Star);
+            b.flag("missing", &["--missing"]);
+            b.choice("least_version", &["--version"], LEAST_VERSIONS);
+            b.flag("supplements", &["--supplements"]);
+            b.flag("again", &["--again"]);
+            b.append("search", &["--search"], Nargs::One);
+            b.flag("yes", &["-y", "--yes"]);
         }
         "file detach" => {
             config_options(&mut b);
@@ -405,6 +417,9 @@ pub fn spec(path: &str) -> Option<Spec> {
         "fetch" => {
             logging(&mut b);
             b.pos("doi_or_text", "doi_or_text", Nargs::Plus);
+            b.flag("pdf", &["--pdf"]);
+            b.opt("output", &["-o", "--output"], Nargs::One);
+            b.choice("least_version", &["--version"], LEAST_VERSIONS);
             b.flag("scholar", &["--scholar"]);
             b.flag("openalex", &["--openalex"]);
             b.exclusive(&["scholar", "openalex"]);
@@ -457,5 +472,8 @@ pub fn spec(path: &str) -> Option<Spec> {
     }
     Some(b.finish())
 }
+
+/// The choices of `--version` of `file fetch` and `fetch --pdf`.
+const LEAST_VERSIONS: &[&str] = &papers_rs::fetch::freepdf::Least::CHOICES;
 
 const LIST_FORMATS: &[&str] = &["line", "bibtex", "ris", "csl-json", "bibjson", "key"];

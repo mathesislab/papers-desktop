@@ -964,7 +964,7 @@ mod damaged {
             ok(b.run_in("lib", &["history"])),
             format!("> #2 papers add ../two2000.bib ($TIME)\n  {short} damaged: its state file in the history cannot be read\n{STORE_LINE}\n")
         );
-        assert_eq!(project(&b).damaged().iter().cloned().collect::<Vec<_>>(), [target.clone()]);
+        assert_eq!(project(&b).damaged().iter().cloned().collect::<Vec<_>>(), std::slice::from_ref(&target));
         let store = Store::new(format!("{}/store", b.root));
         store.prune_at(1, 0, false, &|_| {}, papers_rs::history::store::now() + 2.0 * papers_rs::history::store::GRACE);
         assert!(Path::new(&state_file(&b, &target)).exists()); // left as it is
