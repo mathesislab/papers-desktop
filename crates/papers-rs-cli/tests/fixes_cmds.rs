@@ -474,10 +474,14 @@ both!(
 // edit
 // ----
 
-/// `TestEditSet::test_set_refused`: `--set key=...` is refused in any case, like `ID`.
+/// `TestEditSet::test_set_refused`: `--set key=...` is refused in any case, like `ID`; a name of
+/// `--set` or `--unset` that is not a field name too.
 fn set_of_the_key_is_refused(reference: bool) {
     let p = program(reference);
-    let s = Sandbox::new(&[entry("one2000", " file = {:files/one.pdf:pdf},\n")]);
+    let s = Sandbox::new(&[entry(
+        "one2000",
+        " file = {:files/one.pdf:pdf},\n keywords = {a},\n",
+    )]);
     s.write("lib/files/one.pdf", "x");
     let before = s.read("lib/papers.bib");
     for value in [
@@ -499,6 +503,12 @@ fn set_of_the_key_is_refused(reference: bool) {
     );
     let (code, _, _) = s.run(&p, &["edit", "one2000", "--unset", "file"]);
     assert_eq!(code, 1);
+    // a name of --unset that is not a field name too (bibtex.md 7.2): nothing is removed
+    let (code, out, err) = s.run(&p, &["edit", "one2000", "--unset", "keywords", "bad.name"]);
+    assert_eq!(
+        (code, out.as_str(), err.as_str()),
+        (1, "", "papers: error: 'bad.name' is not a field name\n")
+    );
     let (code, _, _) = s.run(&p, &["edit", "one2000", "--set", "novalue"]);
     assert_eq!(code, 2);
     let (code, _, _) = s.run(&p, &["edit", "one2000", "--set", "a=b", "--key", "x"]);
