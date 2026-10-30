@@ -1,7 +1,7 @@
-//! The files of a feeds folder: `config.json` (the subscriptions, interests),
-//! `items.json` (the items and the aliases of merged ones), `state.json` (the
-//! triage of each item), `http.json` (the validators of each subscription's
-//! last answer). Each is read whole, and written whole through a temporary
+//! The files of a feeds folder: `config.json` (the subscriptions, interests,
+//! rules, the days kept), `items.json` (the items and the aliases of merged
+//! ones), `state.json` (the triage of each item), `http.json` (the
+//! validators of each subscription's last answer). Each is read whole, and written whole through a temporary
 //! file renamed over it.
 
 use std::collections::BTreeMap;
@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::interest::Interest;
 use crate::model::{Item, Mark, Subscription};
+use crate::rules::Rule;
 use crate::{Error, Result};
 
 pub(crate) const CONFIG: &str = "config.json";
@@ -30,6 +31,12 @@ pub(crate) struct Config {
     /// the factor of a term's weight in a title, for every interest
     #[serde(default = "title_boost")]
     pub title_boost: f64,
+    /// tried in order on the items a fetch brings
+    #[serde(default)]
+    pub rules: Vec<Rule>,
+    /// the days an item no feed lists is kept, unless shortlisted or added
+    #[serde(default = "keep_days")]
+    pub keep_days: u32,
 }
 
 impl Default for Config {
@@ -38,8 +45,14 @@ impl Default for Config {
             subscriptions: Vec::new(),
             interests: Vec::new(),
             title_boost: title_boost(),
+            rules: Vec::new(),
+            keep_days: keep_days(),
         }
     }
+}
+
+fn keep_days() -> u32 {
+    90
 }
 
 /// paper-feeder's: a term in the title counts twice.

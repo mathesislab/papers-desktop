@@ -7,7 +7,10 @@
 //! `prism:doi` or the link), and the entries of all sources merged into
 //! [`Item`]s: one per paper or post. [`Feeds`] keeps them in a folder of
 //! JSON files with their [`Triage`]. [`Interest`]s score the items, as
-//! paper-feeder does. Nothing here knows of .bib files.
+//! paper-feeder does; [`Rule`]s triage new items by a [`query`] (core's
+//! language over a `Record` of an item); [`Feeds::view`] gives the items a
+//! query shows and the counts of the sidebar. Nothing here knows of .bib
+//! files.
 
 mod extras;
 mod feeds;
@@ -17,7 +20,10 @@ mod merge;
 mod model;
 pub mod normalize;
 mod parse;
+pub mod query;
+mod rules;
 mod store;
+mod view;
 
 use std::path::PathBuf;
 
@@ -28,6 +34,8 @@ pub use model::{
     Entry, Item, ItemKind, Mark, Source, SourceKind, Stage, Subscription, Triage, Version,
 };
 pub use parse::{Parsed, parse};
+pub use rules::{Action, Rule};
+pub use view::{Counts, IsValues, Row, Sort, View, ViewRequest};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
