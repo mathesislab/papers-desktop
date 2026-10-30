@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { folderName, formatDate, formatSize, libraryNote } from "../src/lib/library/downloads.ts";
+import { folderName, formatDate, formatSize, importedLabel, libraryNote } from "../src/lib/library/downloads.ts";
 
 test("sizes in bytes, KB, MB", () => {
   assert.equal(formatSize(0), "0 B");
@@ -34,4 +34,10 @@ test("the note of a PDF in the library: the paper and its file, a line per paper
   assert.equal(libraryNote([a]), "in the library: rahmstorf2015 — files/rahmstorf_2015_x.pdf");
   assert.equal(libraryNote([b]), "in the library: jones2021 — same contents as jones.pdf");
   assert.equal(libraryNote([a, b]).split("\n").length, 2);
+});
+
+test("a PDF moved into the library: the keys of its papers", () => {
+  const m = (key: string) => ({ id: key, key, file: `files/${key}.pdf`, same_contents: false });
+  assert.equal(importedLabel([m("smith2020")]), "In library: smith2020");
+  assert.equal(importedLabel([m("smith2020"), m("jones2021")]), "In library: smith2020, jones2021");
 });

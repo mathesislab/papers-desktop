@@ -148,8 +148,7 @@ Finder* and *Hide*.
   most a quarter of the window's height. A `notify` watcher on the folder
   (`DirWatch`, events on PDFs only, debounced by half a second, as a download
   is written in pieces and renamed) tells the page (`downloads` event), so
-  files appear and go by themselves: a PDF moved into the library leaves the
-  folder, and the list.
+  files appear and go by themselves.
 - *Drag* a PDF onto the library table: the Add sheet with that PDF, as for a PDF
   dropped on the window; onto the empty *No PDF* preview of a paper: the sheet
   to add it to that paper. A double-click opens the sheet with the PDF as a new
@@ -168,13 +167,21 @@ Finder* and *Hide*.
   contents), a line per paper; and the right-click menu of the PDF has *Show KEY
   in the library* (one item each, when several papers have it), which selects
   the paper in the library tab with its details.
+- *Moved into the library* (`Listed` of `downloads.rs`, in memory until the app
+  quits): a PDF that leaves the folder for the library stays listed in its
+  place, lighter, with *In library: KEY* (the same menu to show the paper; no
+  drag, no double-click: it is no longer there). It is the file a paper links
+  now, moved: the same device, inode and size (a rename keeps them; a move to
+  another disk, a copy then a delete, is not seen), looked for for a minute
+  while the library is read again; a PDF deleted is not in the library, and
+  goes. Taken back (undo), it is in the folder again.
 - *Settings*: *Downloads panel* (shown by default, also for a `settings.json` from
   before it) and *Downloads folder* (`downloads_panel`, `downloads_folder`:
   `~/Downloads` by default, *Choose…* with the folder dialog). *Hide* in the
   panel's menu and *Choose Folder…* set the same settings (`set_downloads_panel`,
   `set_downloads_folder`), and the settings window follows.
-- *Privacy*: only the file names, sizes and dates of that one folder are read
-  (and the contents of a PDF of it with the size of a file of the library, to
+- *Privacy*: only the file names, sizes, dates and inodes of that one folder are
+  read (and the contents of a PDF of it with the size of a file of the library, to
   compare them); nothing is sent anywhere. Tests (`downloads.rs`) use temporary
   folders, never the real one.
 

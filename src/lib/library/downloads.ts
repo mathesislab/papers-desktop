@@ -11,6 +11,9 @@ export type Download = {
   added: number;
   /** the papers of the library that link it, or a file with the same content; none: not in the library */
   matches: Match[];
+  /** moved into the library this session: no longer in the folder, still listed (the papers that link it are the
+   *  matches) */
+  imported: boolean;
 };
 
 /** a paper of the library that has the PDF: mirrors downloads::Match */
@@ -58,6 +61,11 @@ export function formatDate(ms: number, now = Date.now(), locale?: string): strin
 /** The name of a folder: the last part of its path ("/Users/me/Downloads" → "Downloads"). */
 export function folderName(path: string): string {
   return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || path;
+}
+
+/** What a PDF moved into the library says next to its size: "In library: smith2020" (", jones2021" for more). */
+export function importedLabel(matches: Match[]): string {
+  return `In library: ${matches.map((m) => m.key).join(", ")}`;
 }
 
 /** What the tooltip of a PDF in the library says of it, a line per paper:
