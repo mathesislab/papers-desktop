@@ -175,8 +175,13 @@ fn fullness(field: &str) -> usize {
 
 /// Whether two values of a field say the same: names by [`names_compatible`],
 /// DOIs by their normal form, the other fields equal after
-/// [`normalize_text`] (case, braces, accents, LaTeX, spaces).
+/// [`normalize_text`] (case, braces, accents, LaTeX, spaces). Equal values
+/// are equivalent without being normalized.
 pub fn equivalent(name: &str, v1: &str, v2: &str) -> bool {
+    if v1 == v2 {
+        // the usual case, without normalizing (long values, e.g. abstracts)
+        return true;
+    }
     if name == "author" || name == "editor" {
         return names_compatible(v1, v2);
     }
