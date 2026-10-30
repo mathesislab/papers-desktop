@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+    <channel>
+                    <title>Earth News - Earth Science News, Earth Science, Climate Change</title>
+            <link>https://phys.org/earth-news/</link>
+            <language>en-us</language>
+            <description>Earth science research, climate change, and global warming.  The latest news and updates from Phys.org</description>
+
+                            <item>
+                    <title>Hidden erosion: Study reveals soft mountain rock erodes three times faster than hard rock—with climate implications</title>
+                    <description>A University of Massachusetts Amherst-led research team has discovered that weaker rock in mountain landscapes erodes three times faster than harder rock—even on gentler slopes—and is one of the main attributes governing mountain erosion. The finding also challenges our current understanding of the relationship between erosion and the release of carbon dioxide, and suggests that geologists and atmospheric scientists may be underestimating the CO₂ contributions coming from the Earth&#039;s rocky places.</description>
+                    <link>https://phys.org/news/2026-10-hidden-erosion-reveals-soft-mountain.html</link>
+                    <category>Earth Sciences</category>                    <pubDate>Fri, 30 Oct 2026 16:40:01 EDT</pubDate>
+                    <guid isPermaLink="false">news712583101</guid>
+                                            <media:thumbnail url="https://scx1.b-cdn.net/csz/news/tmb/2026/eyal-marder-collecting.jpg" width="90" height="90" />
+                                    </item>
+                            <item>
+                    <title>A decade of carbon dioxide data from space gets an upgrade</title>
+                    <description>Every day, two NASA space instruments known as the Orbiting Carbon Observatory-2 and -3 (OCO-2 and OCO-3) capture more than a million observations of sunlight reflecting off Earth&#039;s surface. Using the physics of how light travels through the air, an algorithm converts these raw data into atmospheric carbon dioxide (CO₂) concentrations.</description>
+                    <link>https://phys.org/news/2026-10-decade-carbon-dioxide-space.html</link>
+                    <category>Earth Sciences</category>                    <pubDate>Fri, 30 Oct 2026 14:40:08 EDT</pubDate>
+                    <guid isPermaLink="false">news712580943</guid>
+                                            <media:thumbnail url="https://scx1.b-cdn.net/csz/news/tmb/2026/this-circular-view-of-1.jpg" width="90" height="90" />
+                                    </item>
+                            <item>
+                    <title>Q&amp;A: Deep learning–enhanced air quality monitoring achieved using satellite data</title>
+                    <description>A doctoral dissertation by Andrea Porcheddu, MSc in the field of Technical Physics will be examined at the Faculty of Science, Forestry and Technology, Kuopio campus.</description>
+                    <link>https://phys.org/news/2026-10-qa-deep-learningenhanced-air-quality.html</link>
+                    <category>Environment</category>                    <pubDate>Fri, 30 Oct 2026 14:00:09 EDT</pubDate>
+                    <guid isPermaLink="false">news712579405</guid>
+                                            <media:thumbnail url="https://scx1.b-cdn.net/csz/news/tmb/2025/air-quality.jpg" width="90" height="90" />
+                                    </item>
+                        </channel>
+</rss>

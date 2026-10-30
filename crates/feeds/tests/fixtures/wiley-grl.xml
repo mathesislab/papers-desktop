@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:prism="http://prismstandard.org/namespaces/basic/2.0/"
+     version="2.0">
+   <channel>
+      <title>Wiley: Geophysical Research Letters: Table of Contents</title>
+      <link>https://agupubs.onlinelibrary.wiley.com/journal/19448007?af=R</link>
+      <description>Table of Contents for Geophysical Research Letters. List of articles from both the latest and EarlyView issues.</description>
+      <language>en-US</language>
+      <copyright/>
+      <managingEditor>wileyonlinelibrary@wiley.com (AGU Publications)</managingEditor>
+      <pubDate>Fri, 30 Oct 2026 09:34:45 +0000</pubDate>
+      <lastBuildDate>Fri, 30 Oct 2026 09:34:45 +0000</lastBuildDate>
+      <generator>Atypon® Literatum™</generator>
+      <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+      <ttl>10080</ttl>
+      <dc:title>Wiley: Geophysical Research Letters: Table of Contents</dc:title>
+      <dc:publisher>Wiley</dc:publisher>
+      <prism:publicationName>Geophysical Research Letters</prism:publicationName>
+      <atom:link href="https://agupubs.onlinelibrary.wiley.com/journal/19448007?af=R"
+                 rel="self"
+                 type="application/atom+xml"/>
+      <image>
+         <title>Wiley: Geophysical Research Letters: Table of Contents</title>
+         <url>https://agupubs.onlinelibrary.wiley.com/pb-assets/journal-banners/19448007.jpg</url>
+         <link>https://agupubs.onlinelibrary.wiley.com/journal/19448007?af=R</link>
+      </image>
+      <item>
+         <link>https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2026GL123955?af=R</link>
+         <pubDate>Thu, 29 Oct 2026 02:40:04 -0700</pubDate>
+         <dc:date>2026-10-29T02:40:04-07:00</dc:date>
+         <source url="https://agupubs.onlinelibrary.wiley.com/journal/19448007?af=R">Wiley: Geophysical Research Letters: Table of Contents</source>
+         <prism:coverDate>Mon, 16 Nov 2026 00:00:00 -0800</prism:coverDate>
+         <prism:coverDisplayDate>Mon, 16 Nov 2026 00:00:00 -0800</prism:coverDisplayDate>
+         <guid isPermaLink="false">10.1029/2026GL123955</guid>
+         <title>Evolution of Summit Magma Pressure During the 2018 Caldera Collapse at Kīlauea Volcano</title>
+         <description>Geophysical Research Letters, Volume 53, Issue 21, 16 November 2026. </description>
+         <dc:description>
+Abstract
+We utilized geodetic data from the 16 May to 4 August 2018 caldera collapse sequence to refine the geometries and pressure evolution of two summit reservoirs at Kīlauea volcano: the shallower Halema‘uma‘u (HMM) and deeper South Caldera (SC) reservoirs. We modeled magma reservoirs as pressurized spheroidal cavities and constrained reservoir geometries with Global Positioning System (GPS) and Interferometric Synthetic Aperture Radar displacements. Inverting high‐rate GPS and borehole tilt time series recovered time‐dependent reservoir pressure changes and caldera ring fault shear stress. During the collapse sequence, the HMM reservoir accommodated episodic, co‐collapse pressure increases of 1.9 MPa (median) and a net 5.8 MPa (median) decrease. Simultaneously, the SC reservoir underwent monotonic depressurization of 6.7 MPa (median). Negligible co‐collapse pressure changes in the SC reservoir imply it was not exclusively supplying magma to the eruption vent. These results provide a coherent view of magma reservoir pressure evolution during the 2018 eruption.
+</dc:description>
+         <content:encoded>
+&lt;h2&gt;Abstract&lt;/h2&gt;
+&lt;p&gt;We utilized geodetic data from the 16 May to 4 August 2018 caldera collapse sequence to refine the geometries and pressure evolution of two summit reservoirs at Kīlauea volcano: the shallower Halema‘uma‘u (HMM) and deeper South Caldera (SC) reservoirs. We modeled magma reservoirs as pressurized spheroidal cavities and constrained reservoir geometries with Global Positioning System (GPS) and Interferometric Synthetic Aperture Radar displacements. Inverting high-rate GPS and borehole tilt time series recovered time-dependent reservoir pressure changes and caldera ring fault shear stress. During the collapse sequence, the HMM reservoir accommodated episodic, co-collapse pressure increases of 1.9 MPa (median) and a net 5.8 MPa (median) decrease. Simultaneously, the SC reservoir underwent monotonic depressurization of 6.7 MPa (median). Negligible co-collapse pressure changes in the SC reservoir imply it was not exclusively supplying magma to the eruption vent. These results provide a coherent view of magma reservoir pressure evolution during the 2018 eruption.&lt;/p&gt;</content:encoded>
+         <dc:creator>
+Eric Berg, 
+Taiyi A. Wang, 
+Elizabeth Wig, 
+Paul Segall, 
+Kyle Anderson
+</dc:creator>
+         <category>Research Letter</category>
+         <dc:title>Evolution of Summit Magma Pressure During the 2018 Caldera Collapse at Kīlauea Volcano</dc:title>
+         <dc:identifier>10.1029/2026GL123955</dc:identifier>
+         <prism:publicationName>Geophysical Research Letters</prism:publicationName>
+         <prism:doi>10.1029/2026GL123955</prism:doi>
+         <prism:url>https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2026GL123955?af=R</prism:url>
+         <prism:section>Research Letter</prism:section>
+         <prism:volume>53</prism:volume>
+         <prism:number>21</prism:number>
+      </item>
+      <item>
+         <link>https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2026GL125450?af=R</link>
+         <pubDate>Thu, 29 Oct 2026 01:57:56 -0700</pubDate>
+         <dc:date>2026-10-29T01:57:56-07:00</dc:date>
+         <source url="https://agupubs.onlinelibrary.wiley.com/journal/19448007?af=R">Wiley: Geophysical Research Letters: Table of Contents</source>
+         <prism:coverDate>Mon, 16 Nov 2026 00:00:00 -0800</prism:coverDate>
+         <prism:coverDisplayDate>Mon, 16 Nov 2026 00:00:00 -0800</prism:coverDisplayDate>
+         <guid isPermaLink="false">10.1029/2026GL125450</guid>
+         <title>Reconstruction of Rock Uplift in South‐Central Germany Since Late Mesozoic Times</title>
+         <description>Geophysical Research Letters, Volume 53, Issue 21, 16 November 2026. </description>
+         <dc:description>
+Abstract
+Rock uplift and denudation act as first‐order controls on geological processes that influence atmospheric and ocean composition, and landscape‐forming processes. However, estimating rock uplift rates remains challenging due to the temporal averaging of rates calculated from individual thermo‐ or geochronologic systems. Here we extract uplift rates in a unified modeling framework by combining landscape evolution with inverse modeling of river profiles and thermo‐geochronologic data. We reconstruct Late Mesozoic to present‐day rock uplift of south‐central Germany, using a data set comprising 17 detrital cosmogenic radionuclide samples and 30 thermochronologic bedrock samples. Inversions reveal high uplift rates from 160 to 80 Ma, followed by a decline from 80 to 20 Ma and renewal of uplift until present‐day. This current uplift event is characterized by increasing uplift toward the west across southern Germany. Our results provide a framework to resolve continuous uplift histories and quantify landscape evolution processes and geodynamic controls on Earth's surface.
+</dc:description>
+         <content:encoded>
+&lt;h2&gt;Abstract&lt;/h2&gt;
+&lt;p&gt;Rock uplift and denudation act as first-order controls on geological processes that influence atmospheric and ocean composition, and landscape-forming processes. However, estimating rock uplift rates remains challenging due to the temporal averaging of rates calculated from individual thermo- or geochronologic systems. Here we extract uplift rates in a unified modeling framework by combining landscape evolution with inverse modeling of river profiles and thermo-geochronologic data. We reconstruct Late Mesozoic to present-day rock uplift of south-central Germany, using a data set comprising 17 detrital cosmogenic radionuclide samples and 30 thermochronologic bedrock samples. Inversions reveal high uplift rates from 160 to 80 Ma, followed by a decline from 80 to 20 Ma and renewal of uplift until present-day. This current uplift event is characterized by increasing uplift toward the west across southern Germany. Our results provide a framework to resolve continuous uplift histories and quantify landscape evolution processes and geodynamic controls on Earth's surface.&lt;/p&gt;</content:encoded>
+         <dc:creator>
+Thomas Bernard, 
+Alexander B. Neely, 
+Christoph Glotzbach, 
+Daniel Peifer, 
+Yanqing Shi, 
+Mirjam Schaller, 
+Alexander R. Beer, 
+Todd A. Ehlers
+</dc:creator>
+         <category>Research Letter</category>
+         <dc:title>Reconstruction of Rock Uplift in South‐Central Germany Since Late Mesozoic Times</dc:title>
+         <dc:identifier>10.1029/2026GL125450</dc:identifier>
+         <prism:publicationName>Geophysical Research Letters</prism:publicationName>
+         <prism:doi>10.1029/2026GL125450</prism:doi>
+         <prism:url>https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2026GL125450?af=R</prism:url>
+         <prism:section>Research Letter</prism:section>
+         <prism:volume>53</prism:volume>
+         <prism:number>21</prism:number>
+      </item>
+      <item>
+         <link>https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2026GL125712?af=R</link>
+         <pubDate>Wed, 28 Oct 2026 05:39:39 -0700</pubDate>
+         <dc:date>2026-10-28T05:39:39-07:00</dc:date>
+         <source url="https://agupubs.onlinelibrary.wiley.com/journal/19448007?af=R">Wiley: Geophysical Research Letters: Table of Contents</source>
+         <prism:coverDate>Mon, 16 Nov 2026 00:00:00 -0800</prism:coverDate>
+         <prism:coverDisplayDate>Mon, 16 Nov 2026 00:00:00 -0800</prism:coverDisplayDate>
+         <guid isPermaLink="false">10.1029/2026GL125712</guid>
+         <title>Spatial Distribution of Return Flows Occurrence in the Venusian Magnetotail and Its Dependence on Upstream Conditions</title>
+         <description>Geophysical Research Letters, Volume 53, Issue 21, 16 November 2026. </description>
+         <dc:description>
+Abstract
+Venus‐ward return flow can significantly influence ion escape from Venus and may therefore play an important role in atmospheric evolution. However, the mechanism driving return flow remains under debate. Here, we investigate the occurrence rate and spatial distribution of ion return flows in the Venusian induced magnetotail, and their dependence on solar extreme ultraviolet (EUV) irradiance and solar wind dynamic pressure, using 8.5 years of Venus Express observations. We find that EUV irradiance is the primary controlling factor for return flows of both H+ and O+. Under high EUV conditions, the occurrence of closed magnetic topologies and O+ return flow both increase, particularly in the downtail region. In contrast, H+ return flow occurrence decreases significantly compared with low EUV conditions, corresponding to a decrease in open magnetic field topologies. Our results provide observational evidence for understanding the driving mechanism of return flow at unmagnetized planets.
+</dc:description>
+         <content:encoded>
+&lt;h2&gt;Abstract&lt;/h2&gt;
+&lt;p&gt;Venus-ward return flow can significantly influence ion escape from Venus and may therefore play an important role in atmospheric evolution. However, the mechanism driving return flow remains under debate. Here, we investigate the occurrence rate and spatial distribution of ion return flows in the Venusian induced magnetotail, and their dependence on solar extreme ultraviolet (EUV) irradiance and solar wind dynamic pressure, using 8.5 years of Venus Express observations. We find that EUV irradiance is the primary controlling factor for return flows of both H&lt;sup&gt;+&lt;/sup&gt; and O&lt;sup&gt;+&lt;/sup&gt;. Under high EUV conditions, the occurrence of closed magnetic topologies and O&lt;sup&gt;+&lt;/sup&gt; return flow both increase, particularly in the downtail region. In contrast, H&lt;sup&gt;+&lt;/sup&gt; return flow occurrence decreases significantly compared with low EUV conditions, corresponding to a decrease in open magnetic field topologies. Our results provide observational evidence for understanding the driving mechanism of return flow at unmagnetized planets.&lt;/p&gt;</content:encoded>
+         <dc:creator>
+Emmett Shei‐House, 
+Jiawei Gao, 
+Chuanfei Dong, 
+Yoshifumi Futaana, 
+Chi Zhang, 
+Xiaodong Wang, 
+Xinmin Li
+</dc:creator>
+         <category>Research Letter</category>
+         <dc:title>Spatial Distribution of Return Flows Occurrence in the Venusian Magnetotail and Its Dependence on Upstream Conditions</dc:title>
+         <dc:identifier>10.1029/2026GL125712</dc:identifier>
+         <prism:publicationName>Geophysical Research Letters</prism:publicationName>
+         <prism:doi>10.1029/2026GL125712</prism:doi>
+         <prism:url>https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2026GL125712?af=R</prism:url>
+         <prism:section>Research Letter</prism:section>
+         <prism:volume>53</prism:volume>
+         <prism:number>21</prism:number>
+      </item>
+   </channel>
+</rss>
