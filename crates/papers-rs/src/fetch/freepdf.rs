@@ -60,6 +60,17 @@ impl Version {
         }
     }
 
+    /// The word of the version in the porcelain lines of `fetch --pdf` (`published`, `accepted`,
+    /// `submitted`; formats.md 7.2).
+    pub fn word(self) -> &'static str {
+        match self {
+            Version::Published => "published",
+            Version::Accepted => "accepted",
+            Version::Submitted => "submitted",
+            Version::Supplement => "supplement",
+        }
+    }
+
     /// The version of a location of OpenAlex (`publishedVersion`...).
     fn of_openalex(version: Option<&str>) -> Option<Version> {
         match version? {

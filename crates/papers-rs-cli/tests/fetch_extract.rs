@@ -217,6 +217,47 @@ fn a_network_error_is_an_error_of_the_doi() {
     );
 }
 
+/// `fetch --pdf --porcelain` (formats.md 7.2): the lines of each argument, in their order, on the
+/// standard output, the errors on the standard error; exit 1 when an argument gave no PDF
+/// (`TestFetchPdfPorcelain::test_several_exit_status`; the lines of the downloads are tested in
+/// the library, `crates/papers-rs/tests/file_fetch.rs`).
+#[test]
+fn fetch_pdf_porcelain_lines_and_exit_status() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = papers_with(
+        &["fetch", "--pdf", "nothing", "10.1000/nw", "--porcelain"],
+        dir.path(),
+        &NO_NETWORK,
+    );
+    assert_eq!(
+        (output.status.code(), text(&output.stdout)),
+        (
+            Some(1),
+            "failed nothing\nrefused 10.1000/nw https://doi.org/10.1000/nw\n".to_string()
+        )
+    );
+    let stderr = text(&output.stderr);
+    assert!(
+        stderr.starts_with("papers: error: nothing: not a DOI or arXiv id\npapers: error: 10.1000/nw: no free PDF found\n")
+            && stderr.ends_with("papers: error: 2 of 2 PDFs not downloaded\n"),
+        "{stderr}"
+    );
+    // one argument: its error ends the command, after its lines
+    let output = papers_with(
+        &["fetch", "--pdf", "nothing", "--porcelain"],
+        dir.path(),
+        &NO_NETWORK,
+    );
+    assert_eq!(
+        (output.status.code(), text(&output.stdout), text(&output.stderr)),
+        (
+            Some(1),
+            "failed nothing\n".to_string(),
+            "papers: error: nothing: not a DOI or arXiv id\n".to_string()
+        )
+    );
+}
+
 #[test]
 fn the_usage_of_fetch() {
     let dir = tempfile::tempdir().unwrap();

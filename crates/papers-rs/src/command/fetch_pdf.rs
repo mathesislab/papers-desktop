@@ -20,20 +20,26 @@
 //! - An accepted manuscript or a submitted version attached after the published version was
 //!   refused names the published links to open in a browser ([`Found::describe`]).
 //! - A fetch of several entries ends with a summary ([`FetchSummary`], [`Fetched::summary`]).
+//!
+//! `papers fetch --pdf` ([`fetch_free_pdf`]) writes the free PDF of a DOI or an arXiv id to a file,
+//! without a library; with `--porcelain`, its lines for programs ([`pdf_porcelain_lines`]).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use crate::config::paths::{abspath, dirname, exists, getcwd, isfile, relpath, short_home};
+use crate::config::paths::{
+    abspath, basename, dirname, exists, getcwd, isdir, isfile, join, relpath, short_home,
+};
 use crate::entry::val;
 use crate::error::{Error, Result};
 use crate::fetch::Fetcher;
 use crate::fetch::freepdf::{
-    Found, How, Known, Least, Link, Search, Version, discard, fetch_pdf, fetch_supplements,
+    Found, How, Known, Least, Link, NoPdf, Search, Version, discard, fetch_pdf, fetch_supplements,
     no_pdf_message,
 };
 use crate::fetch::openalex::OpenAlex;
 use crate::history::FilesJson;
-use crate::identity::{entry_arxiv, strip_doi};
+use crate::history::restore::move_path;
+use crate::identity::{entry_arxiv, normalize_arxiv, strip_doi};
 use crate::library::Library;
 use crate::log;
 use crate::names::Format;
@@ -737,4 +743,106 @@ pub fn file_fetch(
         committed,
         summary,
     })
+}
+
+// papers fetch --pdf
+// ------------------
+
+/// A PDF that `papers fetch --pdf` wrote: the file, as the command names it, and what gave it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Written {
+    pub target: String,
+    pub found: Found,
+}
+
+impl Written {
+    /// The line of the PDF written: `FILE (published version, from HOST)`.
+    pub fn line(&self) -> String {
+        format!("{} ({})", self.target, self.found.describe())
+    }
+}
+
+/// The file name of `papers fetch --pdf` (`_pdf_name`): that of the URL when it looks like the
+/// paper's (a digit in it), else made of the DOI or arXiv id.
+fn pdf_name(found: &Found, id: &str) -> String {
+    let name = basename(&found.path);
+    let stem = match name.trim_start_matches('.').rfind('.') {
+        Some(i) => &name[..name.len() - name.trim_start_matches('.').len() + i],
+        None => name.as_str(),
+    };
+    if stem.chars().any(|c| c.is_numeric()) {
+        return name;
+    }
+    format!("{}.pdf", id.replace('/', "_"))
+}
+
+/// `papers fetch --pdf` of one argument (`fetch_pdfs`): the free PDF of a DOI or an arXiv id,
+/// written to `output` (a directory: under the name of its URL in it), else under the name of its
+/// URL in the current directory; an existing file is not replaced. The error has the links to
+/// open in a browser when no PDF could be downloaded, none when there is no PDF to look for (not a
+/// DOI or arXiv id) or the file exists.
+pub fn fetch_free_pdf(
+    fetcher: &Fetcher,
+    access: &OpenAlex,
+    arg: &str,
+    output: Option<&str>,
+    least: Least,
+) -> std::result::Result<Written, NoPdf> {
+    let failed = |message: String| NoPdf {
+        message,
+        links: Vec::new(),
+    };
+    let doi = strip_doi(arg);
+    let arxiv = if doi.is_some() {
+        None
+    } else {
+        normalize_arxiv(arg)
+    };
+    let Some(id) = doi.as_deref().or(arxiv.as_deref()) else {
+        return Err(failed("not a DOI or arXiv id".to_string()));
+    };
+    let mut search = Search::new(fetcher, access, doi.as_deref(), arxiv.as_deref(), least);
+    let found = fetch_pdf(&mut search, None)?;
+    let mut target = output.map_or_else(|| pdf_name(&found, id), str::to_string);
+    if isdir(&target) {
+        target = join(&target, &pdf_name(&found, id));
+    }
+    if std::fs::symlink_metadata(&target).is_ok() {
+        discard(&found.path);
+        return Err(failed(format!(
+            "{target} exists: not replaced (-o FILE writes another file)"
+        )));
+    }
+    move_path(&found.path, &target).map_err(|e| failed(format!("{target}: {e}")))?;
+    discard(&found.path);
+    Ok(Written { target, found })
+}
+
+/// The porcelain lines of an argument of `papers fetch --pdf` (formats.md 7.2), `arg` as given:
+/// `downloaded ID VERSION URL FILE` and a `refused-published ID URL` per published link refused
+/// before it; else a `refused ID URL` per link to open in a browser, or `failed ID` when there is
+/// none.
+pub fn pdf_porcelain_lines(arg: &str, result: &std::result::Result<Written, NoPdf>) -> Vec<String> {
+    match result {
+        Ok(Written { target, found }) => {
+            let mut lines = vec![format!(
+                "downloaded {arg} {} {} {target}",
+                found.link.version.word(),
+                found.link.url
+            )];
+            lines.extend(
+                found
+                    .refused
+                    .iter()
+                    .map(|url| format!("refused-published {arg} {url}")),
+            );
+            lines
+        }
+        Err(error) if error.links.is_empty() => vec![format!("failed {arg}")],
+        Err(error) => error
+            .links
+            .iter()
+            .map(|url| format!("refused {arg} {url}"))
+            .collect(),
+    }
 }

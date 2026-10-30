@@ -2417,7 +2417,12 @@ options:
   --pdf                 download the free PDF of each DOI or arXiv id into the
                         current directory, under the name of its URL (or -o
                         FILE), and say which version it is and where it came
-                        from
+                        from; with --porcelain, one line per argument for
+                        programs: "downloaded ID VERSION URL FILE" (then
+                        "refused-published ID URL" for each published link
+                        refused before an accepted or submitted version), else
+                        "refused ID URL" for each link to open in a browser,
+                        or "failed ID"
   -o, --output FILE     with --pdf and one DOI: the file to write
   --version {published,accepted,any}
                         with --pdf: the least final version, as for `papers

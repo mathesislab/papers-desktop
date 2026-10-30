@@ -10,7 +10,8 @@ use std::time::Duration;
 
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::fetch_pdf::{
-    FetchSummary, Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs, file_fetch,
+    FetchSummary, Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs,
+    fetch_free_pdf, file_fetch, pdf_porcelain_lines,
 };
 use papers_rs::command::file_cmd::{CheckOptions, check_entries_files, checksums};
 use papers_rs::command::files::Mode;
@@ -1562,6 +1563,138 @@ fn fetch_pdf_published_refused() {
         format!("accepted manuscript, from repo.example.edu; the published version was refused: open {PDF} in a browser")
     );
     freepdf::discard(&found.path);
+}
+
+// TestFetchPdfPorcelain: formats.md 7.2, the porcelain lines of `papers fetch --pdf`, one group
+// per argument, in their order (the exit status: tests/fetch_extract.rs of papers-rs-cli)
+// -----------------------------------------------------------------------------------------------
+
+impl Sandbox {
+    /// The porcelain lines of `papers fetch --pdf ARG... [-o FILE]`, and whether each argument
+    /// gave a PDF.
+    fn porcelain(&self, args: &[&str], output: Option<&str>) -> (String, Vec<bool>) {
+        let mut out = String::new();
+        let mut ok = Vec::new();
+        for arg in args {
+            let result = fetch_free_pdf(&self.fetcher, &OpenAlex::default(), arg, output, Least::Any);
+            for line in pdf_porcelain_lines(arg, &result) {
+                out.push_str(&line);
+                out.push('\n');
+            }
+            ok.push(result.is_ok());
+        }
+        (out, ok)
+    }
+}
+
+#[test]
+fn porcelain_downloaded() {
+    let s = sandbox();
+    s.publisher();
+    let target = s.path("paper.pdf");
+    let (out, ok) = s.porcelain(&[DOI], Some(&target));
+    assert_eq!(out, format!("downloaded {DOI} published {PDF} {target}\n"));
+    assert_eq!(ok, [true]);
+    assert_eq!(fs::read(&target).unwrap(), pdf_bytes(PDF));
+}
+
+/// `test_downloaded_into_the_current_directory`, with `-o DIR`: the name of the URL in it (the
+/// current directory is that of the whole test process).
+#[test]
+fn porcelain_downloaded_into_a_directory() {
+    let s = sandbox();
+    s.web.file(
+        "https://arxiv.org/pdf/2101.01234",
+        File::Bytes(pdf_bytes("arxiv")),
+    );
+    let dir = s.path("lib");
+    let (out, _) = s.porcelain(&["arXiv:2101.01234"], Some(&dir));
+    assert_eq!(
+        out,
+        format!("downloaded arXiv:2101.01234 submitted https://arxiv.org/pdf/2101.01234 {dir}/2101.01234.pdf\n")
+    );
+}
+
+#[test]
+fn porcelain_refused_published() {
+    let s = sandbox();
+    s.publisher();
+    s.web.file(PDF, File::Status(403));
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://repo.example.edu/am.pdf",
+            "acceptedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    let target = s.path("paper.pdf");
+    let (out, _) = s.porcelain(&[DOI], Some(&target));
+    assert_eq!(
+        out,
+        format!(
+            "downloaded {DOI} accepted https://repo.example.edu/am.pdf {target}\nrefused-published {DOI} {PDF}\n"
+        )
+    );
+}
+
+#[test]
+fn porcelain_refused() {
+    let s = sandbox();
+    s.web.publisher(
+        DOI,
+        Some(PDF),
+        Some(b"<html>a challenge</html>".to_vec()),
+        &[],
+        &[],
+    );
+    s.web.openalex(DOI, vec![]);
+    let (out, ok) = s.porcelain(&[DOI], Some(&s.path("paper.pdf")));
+    assert_eq!(
+        out,
+        format!("refused {DOI} {PDF}\nrefused {DOI} https://doi.org/{DOI}\n")
+    );
+    assert_eq!(ok, [false]);
+}
+
+#[test]
+fn porcelain_failed() {
+    let s = sandbox();
+    s.publisher();
+    let target = s.write("paper.pdf", "x");
+    // the file exists
+    assert_eq!(s.porcelain(&[DOI], Some(&target)), (format!("failed {DOI}\n"), vec![false]));
+    assert_eq!(
+        s.porcelain(&["nothing"], None),
+        ("failed nothing\n".to_string(), vec![false])
+    );
+}
+
+#[test]
+fn porcelain_several_in_order() {
+    let s = sandbox();
+    s.publisher();
+    s.web.publisher("10.1000/other", None, None, &[], &[]);
+    s.web.openalex("10.1000/other", vec![]);
+    s.web.file(
+        "https://arxiv.org/pdf/2101.01234",
+        File::Bytes(pdf_bytes("arxiv")),
+    );
+    let dir = s.path("lib");
+    let doi = format!("doi:{DOI}");
+    let (out, ok) = s.porcelain(&["10.1000/other", &doi, "2101.01234"], Some(&dir));
+    assert_eq!(
+        out,
+        format!(
+            "refused 10.1000/other https://doi.org/10.1000/other\n\
+             downloaded doi:{DOI} published {PDF} {dir}/10.1000_ocean.pdf\n\
+             downloaded 2101.01234 submitted https://arxiv.org/pdf/2101.01234 {dir}/2101.01234.pdf\n"
+        )
+    );
+    assert_eq!(ok, [false, true, true]);
+    assert!(Path::new(&format!("{dir}/10.1000_ocean.pdf")).exists());
 }
 
 // TestPageLinks

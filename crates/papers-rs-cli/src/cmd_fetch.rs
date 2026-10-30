@@ -5,15 +5,14 @@ use std::fs;
 use std::path::Path;
 
 use papers_rs::config::dirs::cache_dir;
-use papers_rs::config::paths::{basename, join};
 use papers_rs::config::settings::py_int;
 use papers_rs::error::Error;
 use papers_rs::extract::{Options, extract_pdf_doi, extract_pdf_metadata};
-use papers_rs::fetch::freepdf::{Found, Least, Search, discard, fetch_pdf};
+use papers_rs::command::fetch_pdf::{fetch_free_pdf, pdf_porcelain_lines};
+use papers_rs::fetch::freepdf::Least;
 use papers_rs::fetch::openalex::{self, OpenAlex};
 use papers_rs::fetch::{ErrorKind, FetchError, Fetcher};
-use papers_rs::history::restore::move_path;
-use papers_rs::identity::{normalize_arxiv, strip_doi};
+use papers_rs::identity::strip_doi;
 use papers_rs::log;
 
 use crate::parse::Leaf;
@@ -115,23 +114,10 @@ pub fn fetch(leaf: &Leaf) -> Outcome {
     Ok(())
 }
 
-/// The file name of `papers fetch --pdf` (`_pdf_name`): that of the URL when it looks like the
-/// paper's (a digit in it), else made of the DOI or arXiv id.
-fn pdf_name(found: &Found, id: &str) -> String {
-    let name = basename(&found.path);
-    let stem = match name.trim_start_matches('.').rfind('.') {
-        Some(i) => &name[..name.len() - name.trim_start_matches('.').len() + i],
-        None => name.as_str(),
-    };
-    if stem.chars().any(|c| c.is_numeric()) {
-        return name;
-    }
-    format!("{}.pdf", id.replace('/', "_"))
-}
-
 /// `papers fetch --pdf` (`fetch_pdfs`): download the free PDF of each DOI or arXiv id into the
 /// current directory, or to `-o FILE` (an existing file is not replaced), as `papers file fetch`
-/// finds it.
+/// finds it. With `--porcelain`, the lines of each argument on the standard output (formats.md 7.2),
+/// the human ones on the standard error.
 fn fetch_pdfs(leaf: &Leaf) -> Outcome {
     if leaf.flag("scholar") || leaf.flag("openalex") {
         return Err(Failure::Usage(
@@ -148,38 +134,20 @@ fn fetch_pdfs(leaf: &Leaf) -> Outcome {
         .and_then(|v| Least::parse(&v))
         .unwrap_or_default();
     let access = OpenAlex::from_env();
+    let fetcher = fetcher()?;
     let mut failed = 0;
     for arg in &args {
-        let doi = strip_doi(arg);
-        let arxiv = if doi.is_some() {
-            None
-        } else {
-            normalize_arxiv(arg)
-        };
-        let result = (|| -> Result<(String, Found), String> {
-            let Some(id) = doi.as_deref().or(arxiv.as_deref()) else {
-                return Err("not a DOI or arXiv id".to_string());
-            };
-            let fetcher = fetcher().map_err(|_| "the network cannot be used".to_string())?;
-            let mut search =
-                Search::new(&fetcher, &access, doi.as_deref(), arxiv.as_deref(), least);
-            let found = fetch_pdf(&mut search, None).map_err(|e| e.message)?;
-            let mut target = output.clone().unwrap_or_else(|| pdf_name(&found, id));
-            if Path::new(&target).is_dir() {
-                target = join(&target, &pdf_name(&found, id));
+        let result = fetch_free_pdf(&fetcher, &access, arg, output.as_deref(), least);
+        if let Ok(written) = &result {
+            log::println(&written.line());
+        }
+        if log::porcelain() {
+            for line in pdf_porcelain_lines(arg, &result) {
+                log::println_data(&line);
             }
-            if fs::symlink_metadata(&target).is_ok() {
-                discard(&found.path);
-                return Err(format!(
-                    "{target} exists: not replaced (-o FILE writes another file)"
-                ));
-            }
-            move_path(&found.path, &target).map_err(|e| format!("{target}: {e}"))?;
-            discard(&found.path);
-            Ok((target, found))
-        })();
+        }
         match result {
-            Ok((target, found)) => log::println(&format!("{target} ({})", found.describe())),
+            Ok(_) => {}
             Err(error) if args.len() == 1 => {
                 return Err(Error::exit(format!("{arg}: {error}")).into());
             }
