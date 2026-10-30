@@ -265,7 +265,9 @@ modules:
   by version (`Fetcher::work_locations`, kept a month in `openalex-work/`), then arXiv; the
   supplements of the page; the checksum and size of each download kept by URL in `downloads/` of the
   cache. The downloads go through the `Transport` (the user agent is that of the transport: free),
-  with a second between two requests to a site.
+  with a second between two requests to a site. `first_pdf` and `browser_links` are **extensions of
+  papers-rs, not in papers**: `fetch_pdf` without its message, the links tried with their error and
+  the links to open in a browser, for a program that shows them (Papers Desktop).
 - `fetch::html::meta_content` and `page_doi`: **extensions of papers-rs, not in papers**: the `<meta>`
   tags that journals put in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and the DOI they give; and
   `Fetcher::openalex_free_pdf`, the link to a free PDF of a DOI that OpenAlex lists. For a program

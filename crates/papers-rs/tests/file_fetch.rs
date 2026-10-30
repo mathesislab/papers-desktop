@@ -18,7 +18,9 @@ use papers_rs::command::queries::Queries;
 use papers_rs::command::{Options, Prompt, Session};
 use papers_rs::config::{Config, MachineConfig};
 use papers_rs::fetch::Fetcher;
-use papers_rs::fetch::freepdf::{self, Least, Search, fetch_pdf};
+use papers_rs::fetch::freepdf::{
+    self, Least, Search, Version, browser_links, fetch_pdf, first_pdf,
+};
 use papers_rs::fetch::http::{Response, Transport};
 use papers_rs::fetch::openalex::{OpenAlex, WORK_SELECT};
 use papers_rs::history::History;
@@ -595,6 +597,37 @@ fn none_works_the_links_to_open_and_the_others_attached() {
     assert!(
         message.contains(&format!("open in a browser: {PDF}, https://doi.org/{DOI}")),
         "{message}"
+    );
+}
+
+/// What a program gets of a search that gave no PDF (`first_pdf`, `browser_links`; not in papers):
+/// the links tried with their error, the links to open as the message has them.
+#[test]
+fn the_links_tried_and_those_to_open() {
+    let s = sandbox();
+    s.web.publisher(
+        DOI,
+        Some(PDF),
+        Some(b"<html>a challenge</html>".to_vec()),
+        &[],
+        &[],
+    );
+    s.web.openalex(DOI, vec![]);
+    let mut search = Search::new(
+        &s.fetcher,
+        &OpenAlex::default(),
+        Some(DOI),
+        None,
+        Least::Any,
+    );
+    let tried = first_pdf(&mut search, None).unwrap_err();
+    assert_eq!(tried.len(), 1);
+    assert_eq!(tried[0].0.url, PDF);
+    assert_eq!(tried[0].0.version, Version::Published);
+    assert_eq!(freepdf::reason(&tried[0].1), "not a PDF");
+    assert_eq!(
+        browser_links(&search, &tried),
+        [PDF.to_string(), format!("https://doi.org/{DOI}")]
     );
 }
 

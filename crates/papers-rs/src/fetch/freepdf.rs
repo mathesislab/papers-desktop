@@ -540,7 +540,16 @@ pub fn discard(path: &str) {
 /// The PDF of the first link of the search that gives one (`fetch_pdf`): what `local` finds for a
 /// URL downloaded before, else the download. The error, when none does, ends with the links to
 /// open in a browser ([`no_pdf_message`]).
-pub fn fetch_pdf(search: &mut Search, mut local: Option<&mut Local>) -> Result<Found, String> {
+pub fn fetch_pdf(search: &mut Search, local: Option<&mut Local>) -> Result<Found, String> {
+    first_pdf(search, local).map_err(|tried| no_pdf_message(search, &tried))
+}
+
+/// The PDF of the first link of the search that gives one, as [`fetch_pdf`] finds it; else the
+/// links tried, each with its error.
+pub fn first_pdf(
+    search: &mut Search,
+    mut local: Option<&mut Local>,
+) -> Result<Found, Vec<(Link, String)>> {
     let fetcher = search.fetcher;
     let mut tried: Vec<(Link, String)> = Vec::new();
     // the links are read one by one: the next source only when a link failed
@@ -553,7 +562,7 @@ pub fn fetch_pdf(search: &mut Search, mut local: Option<&mut Local>) -> Result<F
             }
         }
     }
-    Err(no_pdf_message(search, &tried))
+    Err(tried)
 }
 
 /// The supplements that give a PDF (`fetch_supplements`); the others are left out with a warning.
@@ -614,18 +623,24 @@ pub fn no_pdf_message(search: &Search, tried: &[(Link, String)]) -> String {
         ));
     }
     lines.extend(search.notes.iter().map(|note| format!("  {note}")));
-    let tried_urls: Vec<&str> = tried.iter().map(|(l, _)| l.url.as_str()).collect();
-    let pages: Vec<&str> = search
-        .browser
-        .iter()
-        .map(String::as_str)
-        .filter(|url| !tried_urls.contains(url))
-        .collect();
-    if !tried.is_empty() || !pages.is_empty() {
-        let all: Vec<&str> = tried_urls.iter().copied().chain(pages).collect();
-        lines.push(format!("open in a browser: {}", all.join(", ")));
+    let browser = browser_links(search, tried);
+    if !browser.is_empty() {
+        lines.push(format!("open in a browser: {}", browser.join(", ")));
     }
     lines.join("\n")
+}
+
+/// The links to open in a browser after a search that gave no PDF: the links tried, then the
+/// pages of the paper that were not tried (the publisher's, the open-access landing pages, arXiv).
+pub fn browser_links(search: &Search, tried: &[(Link, String)]) -> Vec<String> {
+    let tried: Vec<String> = tried.iter().map(|(link, _)| link.url.clone()).collect();
+    let pages: Vec<String> = search
+        .browser
+        .iter()
+        .filter(|url| !tried.contains(url))
+        .cloned()
+        .collect();
+    [tried, pages].concat()
 }
 
 #[cfg(test)]
