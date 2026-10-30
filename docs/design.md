@@ -64,6 +64,18 @@ so a settings file that does not have it gets that). With the library in front
 *Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
 Library → paper 1 → … → Library; `⌘1` shows the library.
 
+**Library and Feeds.** A switch at the start of the toolbar, *Library |
+Feeds* (`⌘1`, `⌘2`, in the Window menu), shows one of the two tabs of the
+window (`LibraryView.svelte`, `FeedsView.svelte`; the page keeps the layout
+and passes the commands on). The papers open are tabs of the Library:
+`⌃Tab` and `⌘⇧]` go through them there only. `⌘1` from Feeds shows the Library
+as it was left (a paper in front stays), in it the library. The library
+stays behind the feeds, hidden, with its selection, scroll and edit; its
+PDF view steps aside (`Reader.cover`) and its keys are off. In Feeds `⌘W`
+closes the window, `⌘N` opens the Add sheet, and a paper opened from the
+panel (or shown after it was added) brings the Library back. The tab in
+front is kept in the layout (`view`).
+
 **The library tab is the current set**, and keeps it while papers are opened
 and closed: going back shows the same list, the selection and where it was
 scrolled to. Its sidebar row is `Library` with its count, and under it, in
@@ -96,7 +108,7 @@ and come back at the next start; a .bib file no longer in the library is
 dropped. A paper shown after it was added or merged takes the filters off if
 they would hide it.
 
-**Several papers at once** (`+page.svelte`, `Table.svelte`, `rowmenu.ts`,
+**Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
 `selection.ts`, pure and tested by `scripts/selection.test.ts`):
 
 - *Open*: Enter, a double-click, or *Open* in the context menu opens every
@@ -195,7 +207,7 @@ the page (the Add sheet, the delete question, the papers-missing notice) include
 each holds `holdModal` (`modal.svelte.ts`) while it is open, and the page has
 the reader step aside (`Reader.cover`: PDFKit's view is hidden, `pdf_cover`,
 and the keys go to the page; shown again, with the keys, when the last modal
-has closed). A pdf.js PDF is in the page, under the modals by their z-index. The library tab, the open papers, their pages, the pane widths and the
+has closed). A pdf.js PDF is in the page, under the modals by their z-index. The tab in front (Library or Feeds), the library tab, the open papers, their pages, the pane widths and the
 details shown or not are kept in the data folder of the app (`window.json`), as
 the recent papers are (`recent.json`) and the dates added (`added.json`); the window opens again at start if it was open at the end.
 
