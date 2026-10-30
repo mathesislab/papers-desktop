@@ -685,3 +685,237 @@ mod tests {
         assert_eq!(truncate("é é é", 3), "é");
     }
 }
+
+// the locations of a work (`papers file fetch`)
+// ---------------------------------------------
+
+/// The fields of a work that [`Fetcher::work_locations`] asks for (`WORK_SELECT`).
+pub const WORK_SELECT: &str = "id,doi,open_access,best_oa_location,locations";
+
+/// How long the locations of a work are kept (seconds): open access changes (an embargo ends), so
+/// they are asked again after a month.
+pub const WORK_MAX_AGE: f64 = 30.0 * 24.0 * 3600.0;
+
+/// A place where a work can be read, as kept of a location of OpenAlex (`_trim_location`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Location {
+    pub pdf_url: Option<String>,
+    pub landing_page_url: Option<String>,
+    /// `publishedVersion`, `acceptedVersion`, `submittedVersion`
+    pub version: Option<String>,
+    pub is_oa: bool,
+    /// the name of the source
+    pub source: Option<String>,
+}
+
+impl Location {
+    /// A location as OpenAlex gives it, or as the cache has it.
+    fn of(value: &Value) -> Option<Location> {
+        let map = value.as_object()?;
+        let string = |key: &str| map.get(key).and_then(Value::as_str).map(str::to_string);
+        let truthy = match map.get("is_oa") {
+            None | Some(Value::Null) | Some(Value::Bool(false)) => false,
+            Some(Value::Number(n)) => n.as_f64() != Some(0.0),
+            Some(Value::String(s)) => !s.is_empty(),
+            Some(Value::Array(a)) => !a.is_empty(),
+            Some(Value::Object(o)) => !o.is_empty(),
+            Some(Value::Bool(true)) => true,
+        };
+        let source = match map.get("source") {
+            Some(Value::Object(source)) => source
+                .get("display_name")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            // as the cache keeps it
+            Some(Value::String(name)) => Some(name.clone()),
+            _ => None,
+        };
+        Some(Location {
+            pdf_url: string("pdf_url"),
+            landing_page_url: string("landing_page_url"),
+            version: string("version"),
+            is_oa: truthy,
+            source,
+        })
+    }
+
+    fn to_value(&self) -> Value {
+        json!({
+            "pdf_url": self.pdf_url,
+            "landing_page_url": self.landing_page_url,
+            "version": self.version,
+            "is_oa": self.is_oa,
+            "source": self.source,
+        })
+    }
+}
+
+/// The error of an answer of OpenAlex (`_http_error`): its status, what it says, and for the limit
+/// of the day without a key, how to get more.
+fn work_http_error(status: u16, body: &str, access: &OpenAlex) -> FetchError {
+    let said = loads(body).ok().and_then(|b| {
+        ["message", "error"]
+            .iter()
+            .find_map(|k| b.get(k).and_then(Value::as_str).map(str::to_string))
+    });
+    let mut message = format!("OpenAlex: HTTP {status}");
+    if let Some(said) = said.filter(|s| !s.is_empty()) {
+        message.push_str(&format!(": {said}"));
+    }
+    if status == 429 && access.api_key.as_deref().is_none_or(str::is_empty) {
+        message.push_str(" (without a free API key OpenAlex allows about 100 searches a day: set OPENALEX_API_KEY)");
+    }
+    failed(redact(&message, access))
+}
+
+/// A text without the key and the e-mail address (`_redact`).
+fn redact(text: &str, access: &OpenAlex) -> String {
+    let mut text = text.to_string();
+    for secret in [&access.api_key, &access.mailto].into_iter().flatten() {
+        if !secret.is_empty() {
+            text = text.replace(secret.as_str(), "***");
+        }
+    }
+    text
+}
+
+/// The locations of a work, the best open-access location first, then the others of `locations`
+/// (those equal to it left out); `None` for an answer that is not a work.
+fn work_locations_of(work: &Value) -> Option<Vec<Value>> {
+    let work = work.as_object()?;
+    let truthy = |v: &Value| match v {
+        Value::Null | Value::Bool(false) => false,
+        Value::Object(o) => !o.is_empty(),
+        Value::Array(a) => !a.is_empty(),
+        Value::String(s) => !s.is_empty(),
+        _ => true,
+    };
+    let mut locations: Vec<Value> = Vec::new();
+    if let Some(best) = work.get("best_oa_location").filter(|b| truthy(b)) {
+        locations.push(best.clone());
+    }
+    match work.get("locations") {
+        None | Some(Value::Null) => {}
+        Some(Value::Array(all)) => {
+            for x in all {
+                if truthy(x) && !locations.contains(x) {
+                    locations.push(x.clone());
+                }
+            }
+        }
+        Some(other) if !truthy(other) => {}
+        Some(_) => return None,
+    }
+    locations.iter().all(Value::is_object).then_some(locations)
+}
+
+impl Fetcher {
+    /// The locations of the work of a DOI (`work_locations`: `GET /works/doi:<DOI>`, one
+    /// request), the best open-access location first. A DOI that OpenAlex does not have is an
+    /// error of kind `NotFound` (`WorkNotFound`), remembered for a day; the locations are kept in
+    /// the cache (`openalex-work/`, by the DOI in lower case) for [`WORK_MAX_AGE`].
+    pub fn work_locations(&self, doi: &str, access: &OpenAlex) -> Result<Vec<Location>> {
+        const NAME: &str = "openalex-work";
+        let key = doi.to_lowercase();
+        let time = now();
+        match self
+            .cache
+            .get_within(NAME, &key, time, true, Some(WORK_MAX_AGE))
+        {
+            Cached::Value(Value::Array(locations)) => {
+                return Ok(locations.iter().filter_map(Location::of).collect());
+            }
+            Cached::NotFound(when) => {
+                return Err(FetchError::new(
+                    ErrorKind::NotFound,
+                    format!(
+                        "{doi}: not found (cached until {})",
+                        super::cache::ctime(when + super::cache::NOT_FOUND_TTL)
+                    ),
+                ));
+            }
+            _ => {}
+        }
+        let mut params: Vec<(&str, String)> = vec![("select", WORK_SELECT.to_string())];
+        if let Some(mailto) = access.mailto.as_deref().filter(|m| !m.is_empty()) {
+            params.push(("mailto", mailto.to_string()));
+        }
+        if let Some(api_key) = access.api_key.as_deref().filter(|k| !k.is_empty()) {
+            params.push(("api_key", api_key.to_string()));
+        }
+        log::debug(&format!("openalex work: {doi}"));
+        self.openalex_throttle();
+        let url = with_params(
+            &format!("{API}/doi:{}", super::http::quote(doi, "/")),
+            &params,
+        );
+        let response = self
+            .get(&url, None)
+            .map_err(|e| failed(redact(&format!("OpenAlex: {}", e.message), access)))?;
+        if response.status == 404 {
+            self.cache.put_not_found(NAME, &key, now());
+            return Err(FetchError::new(
+                ErrorKind::NotFound,
+                format!("{doi}: not found on OpenAlex"),
+            ));
+        }
+        if response.status >= 400 {
+            return Err(work_http_error(response.status, &response.text(), access));
+        }
+        let unexpected = || failed("OpenAlex: unexpected answer");
+        let work = loads(&response.text()).map_err(|_| unexpected())?;
+        let locations = work_locations_of(&work).ok_or_else(unexpected)?;
+        let locations: Vec<Location> = locations.iter().filter_map(Location::of).collect();
+        let stored = Value::Array(locations.iter().map(Location::to_value).collect());
+        self.cache.put_value_at(NAME, &key, stored, now());
+        Ok(locations)
+    }
+}
+
+#[cfg(test)]
+mod work_tests {
+    use super::*;
+
+    #[test]
+    fn the_best_location_first_without_its_copy() {
+        let best = json!({"pdf_url": "https://a.org/b.pdf", "version": "publishedVersion", "is_oa": true,
+            "landing_page_url": null, "source": {"display_name": "A"}});
+        let other =
+            json!({"pdf_url": null, "version": "acceptedVersion", "is_oa": 1, "source": null});
+        let work = json!({"best_oa_location": best, "locations": [other, best, null]});
+        let locations: Vec<Location> = work_locations_of(&work)
+            .unwrap()
+            .iter()
+            .filter_map(Location::of)
+            .collect();
+        assert_eq!(locations.len(), 2);
+        assert_eq!(locations[0].source.as_deref(), Some("A"));
+        assert!(locations[1].is_oa);
+        assert_eq!(locations[1].version.as_deref(), Some("acceptedVersion"));
+        // as the cache keeps it
+        assert_eq!(
+            Location::of(&locations[0].to_value()).as_ref(),
+            Some(&locations[0])
+        );
+        assert!(work_locations_of(&json!([1])).is_none());
+        assert!(work_locations_of(&json!({"locations": ["x"]})).is_none());
+        assert_eq!(work_locations_of(&json!({"locations": null})), Some(vec![]));
+    }
+
+    #[test]
+    fn errors_without_the_key() {
+        let access = OpenAlex {
+            mailto: Some("me@x.org".into()),
+            api_key: None,
+        };
+        let error = work_http_error(429, r#"{"error": "slow down me@x.org"}"#, &access);
+        assert_eq!(
+            error.message,
+            "OpenAlex: HTTP 429: slow down *** (without a free API key OpenAlex allows about 100 searches a day: set OPENALEX_API_KEY)"
+        );
+        assert_eq!(
+            work_http_error(500, "", &access).message,
+            "OpenAlex: HTTP 500"
+        );
+    }
+}

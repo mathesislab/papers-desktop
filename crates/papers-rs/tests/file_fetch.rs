@@ -1,0 +1,1141 @@
+//! `papers file fetch`, `add --fetch-pdf`, `fetch --pdf`: the free PDF of an entry
+//! (`papers_rs::fetch::freepdf`, `papers_rs::command::fetch_pdf`), with the network mocked: the
+//! tests of papers (`tests/test_file_fetch.py`), on the API.
+
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use papers_rs::command::add::{AddRequest, add};
+use papers_rs::command::fetch_pdf::{
+    Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs, file_fetch,
+};
+use papers_rs::command::files::Mode;
+use papers_rs::command::queries::Queries;
+use papers_rs::command::{Options, Prompt, Session};
+use papers_rs::config::{Config, MachineConfig};
+use papers_rs::fetch::Fetcher;
+use papers_rs::fetch::freepdf::{self, Least, Search, fetch_pdf};
+use papers_rs::fetch::http::{Response, Transport};
+use papers_rs::fetch::openalex::{OpenAlex, WORK_SELECT};
+use papers_rs::history::History;
+use papers_rs::merge::{OnDuplicate, Resolver};
+use serde_json::{Map, Value, json};
+
+const DOI: &str = "10.1000/ocean";
+const PAGE: &str = "https://journals.example.org/article/ocean";
+const PDF: &str = "https://journals.example.org/article/ocean.pdf";
+const PDF_ACCEPT: &str = "application/pdf,*/*;q=0.8";
+
+fn pdf_bytes(name: &str) -> Vec<u8> {
+    format!("%PDF-1.4\n{name}\n%%EOF\n").into_bytes()
+}
+
+fn page(pdf: Option<&str>, links: &[(&str, &str)], meta: &[&str]) -> String {
+    let mut head = pdf
+        .map(|p| format!(r#"<meta name="citation_pdf_url" content="{p}">"#))
+        .unwrap_or_default();
+    for url in meta {
+        head.push_str(&format!(
+            r#"<meta name="citation_supplementary_material" content="{url}">"#
+        ));
+    }
+    let body: String = links
+        .iter()
+        .map(|(url, text)| format!(r#"<a href="{url}">{text}</a>"#))
+        .collect();
+    format!("<html><head>{head}</head><body>{body}</body></html>")
+}
+
+fn location(pdf_url: &str, version: &str, landing: Option<&str>, is_oa: bool) -> Value {
+    json!({"pdf_url": pdf_url, "landing_page_url": landing, "version": version, "is_oa": is_oa,
+           "source": {"display_name": "somewhere"}})
+}
+
+/// A file of the web: its content, or an HTTP status.
+#[derive(Clone)]
+enum File {
+    Bytes(Vec<u8>),
+    Status(u16),
+}
+
+/// The sites: pages `{url: (final url, html)}`, OpenAlex `{doi: locations}` (none: 404), files, and
+/// the requests made (`(kind, url)`).
+#[derive(Default)]
+struct WebState {
+    pages: HashMap<String, (String, String)>,
+    openalex: HashMap<String, Vec<Value>>,
+    files: HashMap<String, File>,
+    crossref: HashMap<String, Value>,
+    requests: Vec<(String, String)>,
+}
+
+#[derive(Clone, Default)]
+struct Web(Arc<Mutex<WebState>>);
+
+fn answer(status: u16, content_type: &str, body: Vec<u8>, url: &str) -> Response {
+    Response {
+        status,
+        reason: if status < 400 { "OK" } else { "Error" }.to_string(),
+        content_type: content_type.to_string(),
+        body,
+        url: url.to_string(),
+    }
+}
+
+impl Transport for Web {
+    fn get(&self, url: &str, accept: Option<&str>) -> Result<Response, String> {
+        let mut web = self.0.lock().unwrap();
+        if let Some(rest) = url.strip_prefix("https://api.openalex.org/works/doi:") {
+            web.requests.push(("openalex".into(), url.into()));
+            let doi = rest.split('?').next().unwrap();
+            return Ok(match web.openalex.get(doi) {
+                Some(locations) => answer(
+                    200,
+                    "application/json",
+                    json!({"id": "https://openalex.org/W1", "locations": locations})
+                        .to_string()
+                        .into_bytes(),
+                    url,
+                ),
+                None => answer(
+                    404,
+                    "application/json",
+                    br#"{"error": "not found"}"#.to_vec(),
+                    url,
+                ),
+            });
+        }
+        if let Some(doi) = url.strip_prefix("https://api.crossref.org/works/") {
+            web.requests.push(("crossref".into(), url.into()));
+            return Ok(match web.crossref.get(doi) {
+                Some(record) => answer(
+                    200,
+                    "application/json",
+                    json!({"message": record}).to_string().into_bytes(),
+                    url,
+                ),
+                None => answer(404, "text/plain", b"Resource not found.".to_vec(), url),
+            });
+        }
+        if accept == Some(PDF_ACCEPT) {
+            web.requests.push(("file".into(), url.into()));
+            return Ok(
+                match web.files.get(url).cloned().unwrap_or(File::Status(404)) {
+                    File::Status(code) => answer(code, "text/html", Vec::new(), url),
+                    File::Bytes(bytes) if bytes.starts_with(b"%PDF") => {
+                        answer(200, "application/pdf", bytes, url)
+                    }
+                    File::Bytes(bytes) => answer(200, "text/html", bytes, url),
+                },
+            );
+        }
+        web.requests.push(("page".into(), url.into()));
+        Ok(match web.pages.get(url) {
+            Some((last, html)) => answer(200, "text/html", html.clone().into_bytes(), last),
+            None => answer(404, "text/html", Vec::new(), url),
+        })
+    }
+}
+
+impl Web {
+    /// The article page of the DOI, with its PDF.
+    fn publisher(
+        &self,
+        doi: &str,
+        pdf: Option<&str>,
+        content: Option<Vec<u8>>,
+        links: &[(&str, &str)],
+        meta: &[&str],
+    ) {
+        let mut web = self.0.lock().unwrap();
+        web.pages.insert(
+            format!("https://doi.org/{doi}"),
+            (format!("{PAGE}{doi}"), page(pdf, links, meta)),
+        );
+        if let Some(pdf) = pdf {
+            web.files.insert(
+                pdf.to_string(),
+                File::Bytes(content.unwrap_or_else(|| pdf_bytes(pdf))),
+            );
+        }
+    }
+
+    fn file(&self, url: &str, file: File) {
+        self.0.lock().unwrap().files.insert(url.to_string(), file);
+    }
+
+    fn openalex(&self, doi: &str, locations: Vec<Value>) {
+        self.0
+            .lock()
+            .unwrap()
+            .openalex
+            .insert(doi.to_string(), locations);
+    }
+
+    fn downloads(&self) -> Vec<String> {
+        self.requests("file")
+    }
+
+    fn requests(&self, kind: &str) -> Vec<String> {
+        self.0
+            .lock()
+            .unwrap()
+            .requests
+            .iter()
+            .filter(|(k, _)| k == kind)
+            .map(|(_, u)| u.clone())
+            .collect()
+    }
+
+    fn clear(&self) {
+        self.0.lock().unwrap().requests.clear();
+    }
+}
+
+struct Sandbox {
+    _tmp: tempfile::TempDir,
+    root: String,
+    web: Web,
+    fetcher: Fetcher,
+}
+
+fn entry(key: &str, files: &[&str], doi: Option<&str>) -> String {
+    let file: Vec<String> = files.iter().map(|f| format!(":{f}:pdf")).collect();
+    format!(
+        "@article{{{key},\n author = {{Some One}},\n{}{} title = {{Title of {key}}},\n year = {{2000}}\n}}\n\n",
+        doi.map(|d| format!(" doi = {{{d}}},\n"))
+            .unwrap_or_default(),
+        if files.is_empty() {
+            String::new()
+        } else {
+            format!(" file = {{{}}},\n", file.join(";"))
+        }
+    )
+}
+
+fn sandbox() -> Sandbox {
+    freepdf::set_interval(Duration::ZERO);
+    let tmp = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(tmp.path())
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let web = Web::default();
+    let cache = format!("{root}/cache");
+    let fetcher = Fetcher::with_transport(Box::new(web.clone()), &cache);
+    let s = Sandbox {
+        _tmp: tmp,
+        root,
+        web,
+        fetcher,
+    };
+    s.write(
+        "lib/.papers/config.json",
+        "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    );
+    fs::create_dir_all(s.path("lib/files")).unwrap();
+    s.bib(&[]);
+    s
+}
+
+impl Sandbox {
+    fn path(&self, rel: &str) -> String {
+        format!("{}/{rel}", self.root)
+    }
+
+    fn write(&self, rel: &str, text: &str) -> String {
+        let path = self.path(rel);
+        fs::create_dir_all(Path::new(&path).parent().unwrap()).unwrap();
+        fs::write(&path, text).unwrap();
+        path
+    }
+
+    fn bib(&self, entries: &[String]) {
+        fs::write(self.path("lib/papers.bib"), entries.concat()).unwrap();
+    }
+
+    fn bibtext(&self) -> String {
+        fs::read_to_string(self.path("lib/papers.bib")).unwrap()
+    }
+
+    fn config(&self) -> Config {
+        let mut machine = Map::new();
+        machine.insert("history-dir".into(), json!(self.path("history")));
+        machine.insert("files".into(), json!("link"));
+        Config::load(
+            &self.path("lib/.papers/config.json"),
+            MachineConfig::new(None, machine),
+            None,
+        )
+        .unwrap()
+    }
+
+    fn session(&self, dry_run: bool) -> Session {
+        self.session_with(dry_run, Box::new(papers_rs::command::NoPrompt))
+    }
+
+    fn session_with(&self, dry_run: bool, prompt: Box<dyn Prompt>) -> Session {
+        Session::open(
+            self.config(),
+            Options {
+                message: "papers file fetch".to_string(),
+                dry_run,
+                prompt,
+                ..Options::default()
+            },
+        )
+        .unwrap()
+    }
+
+    /// `papers file fetch` of these keys (`--missing` without keys: all of them): the lines, and
+    /// the number of entries without PDF.
+    fn fetch(
+        &self,
+        keys: &[&str],
+        missing: bool,
+        pdf: PdfOptions,
+        dry_run: bool,
+    ) -> (Vec<String>, usize) {
+        let mut session = self.session(dry_run);
+        let keys: Vec<String> = if keys.is_empty() {
+            session.library.entries().map(|e| e.key.clone()).collect()
+        } else {
+            keys.iter().map(|k| k.to_string()).collect()
+        };
+        let request = FileFetch {
+            keys,
+            missing,
+            pdf,
+            yes: false,
+        };
+        let Fetched { failed, .. } = file_fetch(&mut session, &self.fetcher, &request).unwrap();
+        (session.finish().out, failed)
+    }
+
+    fn out(&self, keys: &[&str]) -> Vec<String> {
+        self.fetch(keys, false, PdfOptions::default(), false).0
+    }
+
+    fn files(&self, key: &str) -> Vec<String> {
+        Session::open(self.config(), Options::default())
+            .unwrap()
+            .library
+            .files(key)
+    }
+
+    fn libfiles(&self) -> Vec<String> {
+        let mut names: Vec<String> = fs::read_dir(self.path("lib/files"))
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    fn publisher(&self) {
+        self.web.publisher(DOI, Some(PDF), None, &[], &[]);
+    }
+}
+
+fn joined(lines: &[String]) -> String {
+    lines.join("\n")
+}
+
+fn options(f: impl FnOnce(&mut PdfOptions)) -> PdfOptions {
+    let mut options = PdfOptions::default();
+    f(&mut options);
+    options
+}
+
+// TestVersions
+// ------------
+
+#[test]
+fn published_version_from_the_publisher() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.publisher();
+    let out = s.out(&["smith2020"]);
+    let files = s.files("smith2020");
+    assert_eq!(files.len(), 1);
+    assert!(files[0].starts_with(&s.path("lib/files/")));
+    assert_eq!(fs::read(&files[0]).unwrap(), pdf_bytes(PDF));
+    let name = Path::new(&files[0])
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    assert!(
+        joined(&out).contains(&format!("(published version, from journals.example.org)")),
+        "{out:?}"
+    );
+    assert!(joined(&out).contains(&name));
+    // OpenAlex is not needed
+    assert!(s.web.requests("openalex").is_empty());
+}
+
+#[test]
+fn the_publisher_refuses_then_openalex_published_before_accepted() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(
+        DOI,
+        Some(PDF),
+        Some(b"<html>login</html>".to_vec()),
+        &[],
+        &[],
+    );
+    s.web.openalex(
+        DOI,
+        vec![
+            location(
+                "https://repo.example.edu/am.pdf",
+                "acceptedVersion",
+                None,
+                true,
+            ),
+            location(
+                "https://pmc.example.gov/vor.pdf",
+                "publishedVersion",
+                None,
+                true,
+            ),
+            location(
+                "https://closed.example.com/x.pdf",
+                "publishedVersion",
+                None,
+                false,
+            ),
+        ],
+    );
+    s.web.file(
+        "https://repo.example.edu/am.pdf",
+        File::Bytes(pdf_bytes("am")),
+    );
+    s.web.file(
+        "https://pmc.example.gov/vor.pdf",
+        File::Bytes(pdf_bytes("vor")),
+    );
+    let out = s.out(&["smith2020"]);
+    assert!(
+        joined(&out).contains("(published version, from pmc.example.gov)"),
+        "{out:?}"
+    );
+    assert_eq!(
+        fs::read(&s.files("smith2020")[0]).unwrap(),
+        pdf_bytes("vor")
+    );
+    assert_eq!(s.web.downloads(), [PDF, "https://pmc.example.gov/vor.pdf"]);
+}
+
+#[test]
+fn accepted_then_submitted() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(DOI, None, None, &[], &[]);
+    s.web.openalex(
+        DOI,
+        vec![
+            location(
+                "https://preprints.example.org/s.pdf",
+                "submittedVersion",
+                None,
+                true,
+            ),
+            location(
+                "https://repo.example.edu/am.pdf",
+                "acceptedVersion",
+                None,
+                true,
+            ),
+        ],
+    );
+    s.web
+        .file("https://repo.example.edu/am.pdf", File::Status(403));
+    s.web.file(
+        "https://preprints.example.org/s.pdf",
+        File::Bytes(pdf_bytes("s")),
+    );
+    let out = s.out(&["smith2020"]);
+    assert!(joined(&out).contains("(submitted version, from preprints.example.org)"));
+    assert_eq!(
+        s.web.downloads(),
+        [
+            "https://repo.example.edu/am.pdf",
+            "https://preprints.example.org/s.pdf"
+        ]
+    );
+}
+
+#[test]
+fn version_published_refuses_the_others() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(DOI, None, None, &[], &[]);
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://repo.example.edu/am.pdf",
+            "acceptedVersion",
+            Some("https://repo.example.edu/am"),
+            true,
+        )],
+    );
+    s.web.file(
+        "https://repo.example.edu/am.pdf",
+        File::Bytes(pdf_bytes("am")),
+    );
+    let (_, failed) = s.fetch(
+        &["smith2020"],
+        false,
+        options(|o| o.least = Least::Published),
+        false,
+    );
+    assert_eq!(failed, 1);
+    assert!(s.files("smith2020").is_empty());
+    assert!(s.web.downloads().is_empty());
+    // the message of the error
+    let mut search = Search::new(
+        &s.fetcher,
+        &OpenAlex::default(),
+        Some(DOI),
+        None,
+        Least::Published,
+    );
+    let message = fetch_pdf(&mut search, None).unwrap_err();
+    assert!(message.starts_with("no free PDF found"), "{message}");
+    assert!(
+        message.contains(
+            "open in a browser: https://doi.org/10.1000/ocean, https://repo.example.edu/am"
+        ),
+        "{message}"
+    );
+}
+
+#[test]
+fn none_works_the_links_to_open_and_the_others_attached() {
+    let s = sandbox();
+    s.bib(&[
+        entry("smith2020", &[], Some(DOI)),
+        entry("other2020", &[], Some("10.1000/other")),
+    ]);
+    s.web.publisher(
+        DOI,
+        Some(PDF),
+        Some(b"<html>a challenge</html>".to_vec()),
+        &[],
+        &[],
+    );
+    s.web.openalex(DOI, vec![]);
+    s.web.publisher(
+        "10.1000/other",
+        Some("https://journals.example.org/other.pdf"),
+        None,
+        &[],
+        &[],
+    );
+    let (_, failed) = s.fetch(
+        &["smith2020", "other2020"],
+        false,
+        PdfOptions::default(),
+        false,
+    );
+    assert_eq!(failed, 1);
+    assert!(s.files("smith2020").is_empty());
+    assert_eq!(s.files("other2020").len(), 1); // saved
+    let mut search = Search::new(
+        &s.fetcher,
+        &OpenAlex::default(),
+        Some(DOI),
+        None,
+        Least::Any,
+    );
+    let message = fetch_pdf(&mut search, None).unwrap_err();
+    assert!(
+        message.contains(&format!("{PDF} (published version): not a PDF")),
+        "{message}"
+    );
+    assert!(
+        message.contains(&format!("open in a browser: {PDF}, https://doi.org/{DOI}")),
+        "{message}"
+    );
+}
+
+#[test]
+fn arxiv() {
+    let s = sandbox();
+    s.bib(&["@article{arx2021,\n eprint = {2101.01234},\n archiveprefix = {arXiv},\n title = {T},\n year = {2021}\n}\n".to_string()]);
+    s.web.file(
+        "https://arxiv.org/pdf/2101.01234",
+        File::Bytes(pdf_bytes("arxiv")),
+    );
+    let out = s.out(&["arx2021"]);
+    assert!(
+        joined(&out).contains("(submitted version, from arxiv.org)"),
+        "{out:?}"
+    );
+    assert_eq!(
+        fs::read(&s.files("arx2021")[0]).unwrap(),
+        pdf_bytes("arxiv")
+    );
+    assert_eq!(s.web.downloads(), ["https://arxiv.org/pdf/2101.01234"]);
+}
+
+#[test]
+fn arxiv_after_the_doi() {
+    let s = sandbox();
+    s.bib(&["@article{arx2021,\n doi = {10.1000/ocean},\n eprint = {2101.01234},\n title = {T},\n year = {2021}\n}\n".to_string()]);
+    s.web.publisher(DOI, None, None, &[], &[]);
+    s.web.openalex(DOI, vec![]);
+    s.web.file(
+        "https://arxiv.org/pdf/2101.01234",
+        File::Bytes(pdf_bytes("arxiv")),
+    );
+    assert!(joined(&s.out(&["arx2021"])).contains("(submitted version, from arxiv.org)"));
+    assert_eq!(s.web.downloads(), ["https://arxiv.org/pdf/2101.01234"]);
+}
+
+#[test]
+fn an_arxiv_doi_is_the_paper_of_arxiv() {
+    let s = sandbox();
+    s.web.file(
+        "https://arxiv.org/pdf/2101.01234",
+        File::Bytes(pdf_bytes("arxiv")),
+    );
+    let mut search = Search::new(
+        &s.fetcher,
+        &OpenAlex::default(),
+        Some("10.48550/arXiv.2101.01234"),
+        None,
+        Least::Any,
+    );
+    let found = fetch_pdf(&mut search, None).unwrap();
+    assert_eq!(found.link.describe(), "submitted version, from arxiv.org");
+    assert!(s.web.requests("page").is_empty());
+    freepdf::discard(&found.path);
+}
+
+#[test]
+fn no_identifier() {
+    let s = sandbox();
+    s.bib(&[entry("nodoi2000", &[], None)]);
+    let (_, failed) = s.fetch(&["nodoi2000"], false, PdfOptions::default(), false);
+    assert_eq!(failed, 1);
+    let mut search = Search::new(&s.fetcher, &OpenAlex::default(), None, None, Least::Any);
+    assert_eq!(
+        fetch_pdf(&mut search, None).unwrap_err(),
+        "no DOI or arXiv id to look for a PDF"
+    );
+}
+
+#[test]
+fn openalex_not_found_is_cached() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(DOI, None, None, &[], &[]);
+    for _ in 0..2 {
+        assert_eq!(
+            s.fetch(&["smith2020"], false, PdfOptions::default(), false)
+                .1,
+            1
+        );
+    }
+    assert_eq!(s.web.requests("openalex").len(), 1);
+}
+
+#[test]
+fn the_openalex_locations_are_asked_again_after_a_month() {
+    let s = sandbox();
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://x.example.org/a.pdf",
+            "publishedVersion",
+            None,
+            true,
+        )],
+    );
+    s.fetcher.work_locations(DOI, &OpenAlex::default()).unwrap();
+    s.fetcher.work_locations(DOI, &OpenAlex::default()).unwrap();
+    assert_eq!(s.web.requests("openalex").len(), 1);
+    // stored 31 days ago
+    let file = s.path("cache/openalex-work/10.1000/ocean.json");
+    let mut data: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+    let time = data["time"].as_f64().unwrap();
+    data["time"] = json!(time - 31.0 * 24.0 * 3600.0);
+    fs::write(&file, data.to_string()).unwrap();
+    s.fetcher.work_locations(DOI, &OpenAlex::default()).unwrap();
+    assert_eq!(s.web.requests("openalex").len(), 2);
+}
+
+// TestSelection
+// -------------
+
+fn selection() -> Sandbox {
+    let s = sandbox();
+    s.write("lib/files/a.pdf", "a.pdf");
+    s.bib(&[
+        entry("has2000", &["files/a.pdf"], Some("10.1000/has")),
+        entry("smith2020", &[], Some(DOI)),
+    ]);
+    s.publisher();
+    s
+}
+
+#[test]
+fn missing() {
+    let s = selection();
+    let (out, _) = s.fetch(&[], true, PdfOptions::default(), false);
+    assert_eq!(s.files("has2000"), [s.path("lib/files/a.pdf")]);
+    assert_eq!(s.files("smith2020").len(), 1);
+    assert_eq!(s.web.downloads(), [PDF]);
+    assert!(!joined(&out).contains("has2000"));
+}
+
+#[test]
+fn a_dry_run_changes_nothing() {
+    let s = selection();
+    let before = s.bibtext();
+    let (out, _) = s.fetch(&[], true, PdfOptions::default(), true);
+    assert!(
+        out.contains(&format!(
+            "DRYRUN: smith2020: would download {PDF} (published version, from journals.example.org)"
+        )),
+        "{out:?}"
+    );
+    assert_eq!(s.bibtext(), before);
+    assert!(s.web.downloads().is_empty());
+    assert_eq!(s.libfiles(), ["a.pdf"]);
+}
+
+#[test]
+fn has_a_pdf_already() {
+    let s = selection();
+    s.web.publisher(
+        "10.1000/has",
+        Some("https://journals.example.org/has.pdf"),
+        None,
+        &[],
+        &[],
+    );
+    let out = s.out(&["has2000"]);
+    assert!(out.contains(&"has2000: has a PDF already (--again to fetch it anyway)".to_string()));
+    assert!(s.web.downloads().is_empty());
+    s.fetch(&["has2000"], false, options(|o| o.again = true), false);
+    assert_eq!(s.files("has2000").len(), 2);
+}
+
+#[test]
+fn a_broken_link_is_no_pdf() {
+    let s = selection();
+    fs::remove_file(s.path("lib/files/a.pdf")).unwrap();
+    s.web.publisher(
+        "10.1000/has",
+        Some("https://journals.example.org/has.pdf"),
+        None,
+        &[],
+        &[],
+    );
+    let (out, _) = s.fetch(&[], true, PdfOptions::default(), false);
+    assert!(!joined(&out).contains("has a PDF already"));
+    assert!(
+        s.web
+            .downloads()
+            .contains(&"https://journals.example.org/has.pdf".to_string())
+    );
+}
+
+#[test]
+fn undo_and_redo() {
+    let s = selection();
+    s.out(&["smith2020"]);
+    assert_eq!(s.files("smith2020").len(), 1);
+    let mut config = s.config();
+    History::require(&mut config, false)
+        .unwrap()
+        .undo(
+            1,
+            false,
+            None,
+            "papers undo",
+            &mut Resolver::new(OnDuplicate::Skip),
+        )
+        .unwrap();
+    assert!(s.files("smith2020").is_empty());
+    let mut config = s.config();
+    History::require(&mut config, false)
+        .unwrap()
+        .redo(
+            1,
+            false,
+            None,
+            "papers redo",
+            &mut Resolver::new(OnDuplicate::Skip),
+        )
+        .unwrap();
+    assert_eq!(s.files("smith2020").len(), 1);
+}
+
+// TestConfirmation
+// ----------------
+
+/// A terminal that answers.
+struct Answers(Vec<String>, Arc<Mutex<Vec<String>>>);
+
+impl Prompt for Answers {
+    fn interactive(&self) -> bool {
+        true
+    }
+
+    fn input(&mut self, prompt: &str) -> Option<String> {
+        self.1.lock().unwrap().push(prompt.to_string());
+        (!self.0.is_empty()).then(|| self.0.remove(0))
+    }
+}
+
+fn many() -> (Sandbox, Vec<String>) {
+    let s = sandbox();
+    let entries: Vec<String> = (0..51)
+        .map(|i| entry(&format!("e{i}x"), &[], Some(&format!("10.1000/e{i}"))))
+        .collect();
+    s.bib(&entries);
+    let keys = (0..51).map(|i| format!("e{i}x")).collect();
+    (s, keys)
+}
+
+#[test]
+fn no_terminal_refuses() {
+    let (s, keys) = many();
+    let session = s.session(false);
+    let error = confirm_openalex(&session, &keys, false, &OpenAlex::default()).unwrap_err();
+    assert!(
+        error.message().starts_with("51 entries with a DOI"),
+        "{}",
+        error.message()
+    );
+    assert!(error.message().contains("OPENALEX_API_KEY, pass -y/--yes"));
+}
+
+#[test]
+fn asks_in_a_terminal() {
+    let (s, keys) = many();
+    let asked = Arc::new(Mutex::new(Vec::new()));
+    let session = s.session_with(false, Box::new(Answers(vec!["n".into()], asked.clone())));
+    let error = confirm_openalex(&session, &keys, false, &OpenAlex::default()).unwrap_err();
+    assert_eq!(error.message(), "nothing was changed");
+    drop(session);
+    let session = s.session_with(false, Box::new(Answers(vec!["y".into()], asked.clone())));
+    confirm_openalex(&session, &keys, false, &OpenAlex::default()).unwrap();
+    assert!(asked.lock().unwrap()[0].ends_with(". Continue? [y/N] "));
+}
+
+#[test]
+fn yes_key_or_fewer_entries() {
+    let (s, keys) = many();
+    let session = s.session(false);
+    confirm_openalex(&session, &keys, true, &OpenAlex::default()).unwrap();
+    let key = OpenAlex {
+        api_key: Some("key".into()),
+        mailto: None,
+    };
+    confirm_openalex(&session, &keys, false, &key).unwrap();
+    confirm_openalex(&session, &keys[..50], false, &OpenAlex::default()).unwrap();
+}
+
+// TestSupplements
+// ---------------
+
+const SUPPL: &str = "https://journals.example.org/article/ocean-supplement.pdf";
+const TAGGED: &str = "https://journals.example.org/files/si-tables.pdf";
+
+fn supplements() -> Sandbox {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(
+        DOI,
+        Some(PDF),
+        None,
+        &[
+            (SUPPL, "Supplement"),
+            ("https://journals.example.org/data.zip", "Supplement"),
+            ("https://journals.example.org/other.pdf", "Other paper"),
+            (
+                "https://journals.example.org/s2.pdf",
+                "Supplementary material",
+            ),
+        ],
+        &[TAGGED],
+    );
+    for url in [SUPPL, TAGGED] {
+        s.web.file(url, File::Bytes(pdf_bytes(url)));
+    }
+    s.web.file(
+        "https://journals.example.org/s2.pdf",
+        File::Bytes(b"<html>login</html>".to_vec()),
+    );
+    s
+}
+
+#[test]
+fn the_supplements() {
+    let s = supplements();
+    let (out, _) = s.fetch(
+        &["smith2020"],
+        false,
+        options(|o| o.supplements = true),
+        false,
+    );
+    // the tags first, then the links
+    let files = s.files("smith2020");
+    assert_eq!(files.len(), 3, "{files:?}");
+    let name = |f: &str| {
+        Path::new(f)
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
+    };
+    let stem = name(&files[0]).trim_end_matches(".pdf").to_string();
+    assert_eq!(name(&files[1]), format!("{stem}--si-tables.pdf"));
+    assert_eq!(name(&files[2]), format!("{stem}--ocean-supplement.pdf"));
+    assert!(joined(&out).contains("(supplement, from journals.example.org)"));
+    let downloads = s.web.downloads();
+    assert!(!downloads.contains(&"https://journals.example.org/other.pdf".to_string()));
+    assert!(!downloads.contains(&"https://journals.example.org/data.zip".to_string()));
+}
+
+#[test]
+fn no_supplements_without_the_option() {
+    let s = supplements();
+    s.out(&["smith2020"]);
+    assert_eq!(s.files("smith2020").len(), 1);
+}
+
+#[test]
+fn a_second_pass_with_supplements() {
+    let s = supplements();
+    s.out(&["smith2020"]);
+    s.web.clear();
+    let (out, _) = s.fetch(
+        &["smith2020"],
+        false,
+        options(|o| o.supplements = true),
+        false,
+    );
+    assert!(joined(&out).contains("smith2020: has a PDF already"));
+    assert_eq!(s.files("smith2020").len(), 3);
+    assert!(!s.web.downloads().contains(&PDF.to_string()));
+}
+
+// TestNoDuplicate
+// ---------------
+
+fn smith() -> Sandbox {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.publisher();
+    s
+}
+
+#[test]
+fn the_same_content_is_not_attached() {
+    let s = smith();
+    // a file of the entry with the content of the PDF, which this machine did not download
+    let local = s.path("lib/files/mine.pdf");
+    fs::write(&local, pdf_bytes(PDF)).unwrap();
+    s.bib(&[entry("smith2020", &["files/mine.pdf"], Some(DOI))]);
+    let (out, _) = s.fetch(&["smith2020"], false, options(|o| o.again = true), false);
+    assert!(
+        joined(&out).contains(&format!(
+            "smith2020: {PDF}: not attached, the entry has the same file: "
+        )),
+        "{out:?}"
+    );
+    assert_eq!(s.files("smith2020"), [local]);
+}
+
+#[test]
+fn cache_a_the_entry_has_it() {
+    let s = smith();
+    s.out(&["smith2020"]);
+    let file = s.files("smith2020").remove(0);
+    s.web.clear();
+    let (out, _) = s.fetch(&["smith2020"], false, options(|o| o.again = true), false);
+    let name = Path::new(&file)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    assert!(
+        joined(&out).contains(&format!("smith2020: already has "))
+            && joined(&out).contains(&format!("{name} (from journals.example.org)")),
+        "{out:?}"
+    );
+    assert!(s.web.downloads().is_empty());
+    assert_eq!(s.files("smith2020"), [file]);
+}
+
+#[test]
+fn cache_b_another_entry_has_it() {
+    let s = smith();
+    s.out(&["smith2020"]);
+    let file = s.files("smith2020").remove(0);
+    let text = s.bibtext() + &entry("copy2020", &[], Some("10.1000/copy"));
+    fs::write(s.path("lib/papers.bib"), text).unwrap();
+    s.web.publisher("10.1000/copy", Some(PDF), None, &[], &[]); // the same PDF URL
+    s.web.clear();
+    let out = s.out(&["copy2020"]);
+    assert!(s.web.downloads().is_empty());
+    assert!(
+        joined(&out).contains("same file as smith2020, not downloaded"),
+        "{out:?}"
+    );
+    assert_eq!(s.files("copy2020"), [file.clone()]); // linked, not moved
+    assert_eq!(s.files("smith2020"), [file]);
+}
+
+#[test]
+fn cache_c_a_miss_downloads() {
+    let s = smith();
+    s.out(&["smith2020"]);
+    let file = s.files("smith2020").remove(0);
+    fs::remove_file(&file).unwrap();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.clear();
+    s.out(&["smith2020"]);
+    assert_eq!(s.web.downloads(), [PDF]);
+    assert_eq!(s.files("smith2020").len(), 1);
+}
+
+#[test]
+fn the_library_does_not_record_the_url() {
+    let s = smith();
+    s.out(&["smith2020"]);
+    fn walk(dir: &Path, found: &mut Vec<std::path::PathBuf>) {
+        for e in fs::read_dir(dir).unwrap().flatten() {
+            if e.path().is_dir() {
+                walk(&e.path(), found);
+            } else {
+                found.push(e.path());
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(Path::new(&s.path("lib")), &mut files);
+    for path in files {
+        if path.extension().is_some_and(|e| e == "pdf") {
+            continue;
+        }
+        let text = String::from_utf8_lossy(&fs::read(&path).unwrap()).into_owned();
+        assert!(!text.contains("journals.example.org"), "{}", path.display());
+    }
+    assert!(s.fetcher.known_download(PDF).is_some());
+}
+
+// TestAddAndFetch
+// ---------------
+
+#[test]
+fn add_doi_fetch_pdf() {
+    let s = sandbox();
+    s.publisher();
+    s.web.0.lock().unwrap().crossref.insert(
+        DOI.to_string(),
+        json!({"DOI": DOI, "type": "journal-article", "title": ["The ocean"], "author": [{"family": "Smith", "given": "Ann"}],
+               "container-title": ["Ocean"], "issued": {"date-parts": [[2020]]}}),
+    );
+    let fetcher = Fetcher::with_transport(Box::new(s.web.clone()), &s.path("cache"));
+    let mut session = s.session(false);
+    let request = AddRequest {
+        doi: Some(DOI.to_string()),
+        mode: Mode::Link,
+        queries: Queries::with(Fetcher::with_transport(
+            Box::new(s.web.clone()),
+            &s.path("cache"),
+        )),
+        ..AddRequest::default()
+    };
+    let touched = add(
+        &mut session,
+        &request,
+        &mut Resolver::new(OnDuplicate::Skip),
+    )
+    .unwrap();
+    let failed = fetch_entry_pdfs(
+        &mut session,
+        &fetcher,
+        &touched,
+        Mode::Link,
+        &PdfOptions::default(),
+        &HashSet::new(),
+    )
+    .unwrap();
+    assert_eq!(failed, 0);
+    session.commit().unwrap();
+    let out = session.finish().out;
+    assert!(
+        joined(&out).contains("(published version, from journals.example.org)"),
+        "{out:?}"
+    );
+    let files = s.files(&touched[0]);
+    assert_eq!(fs::read(&files[0]).unwrap(), pdf_bytes(PDF));
+}
+
+// TestPageLinks
+// -------------
+
+#[test]
+fn the_openalex_request() {
+    let s = sandbox();
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://x.example.org/a.pdf",
+            "publishedVersion",
+            None,
+            true,
+        )],
+    );
+    let access = OpenAlex {
+        api_key: Some("secret".into()),
+        mailto: None,
+    };
+    let locations = s.fetcher.work_locations(DOI, &access).unwrap();
+    assert_eq!(
+        locations[0].pdf_url.as_deref(),
+        Some("https://x.example.org/a.pdf")
+    );
+    let url = s.web.requests("openalex").pop().unwrap();
+    let (base, query) = url.split_once('?').unwrap();
+    assert_eq!(base, "https://api.openalex.org/works/doi:10.1000/ocean");
+    assert!(
+        query.contains(&format!("select={}", WORK_SELECT.replace(',', "%2C"))),
+        "{query}"
+    );
+    assert!(query.contains("api_key=secret"));
+}
+
+#[test]
+fn fetch_pdf_of_a_doi() {
+    let s = sandbox();
+    s.publisher();
+    let mut search = Search::new(
+        &s.fetcher,
+        &OpenAlex::default(),
+        Some(DOI),
+        None,
+        Least::Any,
+    );
+    let found = fetch_pdf(&mut search, None).unwrap();
+    assert_eq!(fs::read(&found.path).unwrap(), pdf_bytes(PDF));
+    assert_eq!(
+        found.link.describe(),
+        "published version, from journals.example.org"
+    );
+    freepdf::discard(&found.path);
+    assert!(!Path::new(&found.path).exists());
+}

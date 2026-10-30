@@ -14,12 +14,14 @@
 //!   merge of the entries, per entry; also the revert of a pool step by undo.
 //! - [`file_cmd`]: `papers file` (rename, mv, attach, detach, rm, check, fix, clean, checksum) and the
 //!   file actions of `papers list`.
+//! - [`fetch_pdf`]: `papers file fetch` and `add --fetch-pdf`, the free PDF of the entries.
 
 pub mod add;
 pub mod add_pdf;
 pub mod check;
 pub mod edit;
 pub mod exchange;
+pub mod fetch_pdf;
 pub mod file_cmd;
 pub mod files;
 pub mod migrate;

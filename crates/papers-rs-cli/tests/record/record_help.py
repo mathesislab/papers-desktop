@@ -21,7 +21,7 @@ HOME = '/home/papers-help'
 
 PATHS = [
     '', 'status', 'init', 'config', 'migrate', 'install', 'uninstall', 'add', 'check', 'file',
-    'file rename', 'file mv', 'file attach', 'file detach', 'file rm', 'file check', 'file fix',
+    'file rename', 'file mv', 'file attach', 'file fetch', 'file detach', 'file rm', 'file check', 'file fix',
     'file clean', 'file checksum', 'filecheck', 'list', 'edit', 'rm', 'tag', 'pull', 'push', 'sync',
     'export', 'open', 'doi', 'fetch', 'extract', 'undo', 'redo', 'restore', 'restore-backup', 'git',
     'history', 'backup',

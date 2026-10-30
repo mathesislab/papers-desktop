@@ -160,10 +160,64 @@ pub fn page_doi(html: &str) -> Option<String> {
     .find_map(|content| crate::identity::strip_doi(&content))
 }
 
+/// The `content` of the `<meta>` elements whose `name` is `name` exactly, stripped, those without
+/// one left out, in order (`soup.find_all('meta', attrs={'name': name})` of `papers.freepdf`).
+pub fn meta_named(html: &str, name: &str) -> Vec<String> {
+    start_tags(html)
+        .into_iter()
+        .filter(|(tag, attrs)| tag == "meta" && attrs.iter().any(|(n, v)| n == "name" && v == name))
+        .filter_map(|(_, attrs)| {
+            attrs
+                .into_iter()
+                .find(|(n, _)| n == "content")
+                .map(|(_, v)| v.trim().to_string())
+        })
+        .filter(|content| !content.is_empty())
+        .collect()
+}
+
+/// The `<a>` elements of the page that have an `href`, in order: the `href` and the text of the
+/// element (up to its end tag, the tags in it left out: `a.get_text()`).
+pub fn anchors(html: &str) -> Vec<(String, String)> {
+    let t: Vec<char> = html.chars().collect();
+    scan_tags(&t)
+        .into_iter()
+        .filter(|(name, _, _)| name == "a")
+        .filter_map(|(_, attrs, end)| {
+            let href = attrs.into_iter().find(|(n, _)| n == "href")?.1;
+            let close = t[end..]
+                .windows(3)
+                .position(|w| w[0] == '<' && w[1] == '/' && w[2].eq_ignore_ascii_case(&'a'))
+                .map_or(t.len(), |p| end + p);
+            let inner = &t[end..close];
+            let mut text = String::new();
+            let mut in_tag = false;
+            for &c in inner {
+                match c {
+                    '<' => in_tag = true,
+                    '>' if in_tag => in_tag = false,
+                    _ if !in_tag => text.push(c),
+                    _ => {}
+                }
+            }
+            Some((href, unescape(&text)))
+        })
+        .collect()
+}
+
 /// The start tags of the page, in order, with their attributes: the scan of `html.parser`, with
 /// the comments and the text of `<script>` and `<style>` skipped.
 fn start_tags(html: &str) -> Vec<(String, Vec<(String, String)>)> {
     let t: Vec<char> = html.chars().collect();
+    scan_tags(&t)
+        .into_iter()
+        .map(|(name, attrs, _)| (name, attrs))
+        .collect()
+}
+
+/// [`start_tags`] of the characters of a page, with the index that follows each tag.
+#[allow(clippy::type_complexity)]
+fn scan_tags(t: &[char]) -> Vec<(String, Vec<(String, String)>, usize)> {
     let mut tags = Vec::new();
     let mut i = 0;
     while i < t.len() {
@@ -199,14 +253,14 @@ fn start_tags(html: &str) -> Vec<(String, Vec<(String, String)>)> {
             j += 1;
         }
         let name: String = t[i + 1..j].iter().collect::<String>().to_lowercase();
-        let Some((attrs, next)) = attributes(&t, j) else {
+        let Some((attrs, next)) = attributes(t, j) else {
             // the text ends inside the tag
             i += 1;
             continue;
         };
         i = next;
         let script = name == "script" || name == "style";
-        tags.push((name.clone(), attrs));
+        tags.push((name.clone(), attrs, i));
         if script {
             // the text up to the end tag is not markup
             let tail: String = t[i..].iter().collect::<String>().to_lowercase();

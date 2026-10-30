@@ -901,20 +901,23 @@ duplicates:
                         terminal, and skip with -y/--yes)
 "#),
     ("file", r#"usage: papers file [-h]
-                   {rename,mv,attach,detach,rm,check,fix,clean,checksum} ...
+                   {rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum}
+                   ...
 "#, r#"usage: papers file [-h]
-                   {rename,mv,attach,detach,rm,check,fix,clean,checksum} ...
+                   {rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum}
+                   ...
 
-the files of the entries: rename, move, attach, detach, remove, check them,
-and clean the files directory
+the files of the entries: rename, move, attach, fetch, detach, remove, check
+them, and clean the files directory
 
 positional arguments:
-  {rename,mv,attach,detach,rm,check,fix,clean,checksum}
+  {rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum}
     rename              place the files in the files directory under their
                         template name
     mv                  move files or folders, and update the links of the
                         entries
     attach              attach files to an entry
+    fetch               download the free PDF of entries and attach it
     detach              remove file links from the entries (the files are
                         kept)
     rm                  remove file links from the entries and delete the
@@ -1127,6 +1130,129 @@ options:
   --move                files mode move, whatever the setting
   --copy                files mode copy, whatever the setting
   --link                files mode link, whatever the setting
+
+config:
+  --filesdir FILESDIR   files directory (default: None)
+  --bibtex BIBTEX       bibtex database (default: None)
+  --dry-run             no PDF renaming/copying, no bibtex writing on disk
+                        (for testing)
+
+filename format:
+  --name-template NAME_TEMPLATE
+                        python template for renaming files (default:
+                        {authorX}_{year}_{title})
+  --name-author-num NAME_AUTHOR_NUM
+                        number of authors in the filename (not for {authorX})
+                        (default: 2)
+  --name-author-sep NAME_AUTHOR_SEP
+                        separator of the authors in the filename (default: _)
+  --name-title-word-num NAME_TITLE_WORD_NUM
+                        maximum number of title words in the filename
+                        (default: 100)
+  --name-title-word-size NAME_TITLE_WORD_SIZE
+                        minimum length of a title word: shorter words are left
+                        out of the filename (default: 1)
+  --name-title-length NAME_TITLE_LENGTH
+                        maximum length of the title in the filename (the last
+                        words are dropped until it fits; a longer first word
+                        is cut) (default: 100)
+  --name-title-sep NAME_TITLE_SEP
+                        separator of the title words in the filename (default:
+                        -)
+  --name-unknown-template NAME_UNKNOWN_TEMPLATE
+                        template of the filename of an entry without author,
+                        year or title (default: unknown_{doi_or_id})
+  --name-unknown-strict, --no-name-unknown-strict
+                        the unknown template applies when the author, the year
+                        or the title is missing; with this option, only when
+                        all three are missing (default: False)
+"#),
+    ("file fetch", r#"usage: papers file fetch [-h] [-v] [--debug] [--color {auto,always,never}]
+                         [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                         [--dry-run] [--name-template NAME_TEMPLATE]
+                         [--name-author-num NAME_AUTHOR_NUM]
+                         [--name-author-sep NAME_AUTHOR_SEP]
+                         [--name-title-word-num NAME_TITLE_WORD_NUM]
+                         [--name-title-word-size NAME_TITLE_WORD_SIZE]
+                         [--name-title-length NAME_TITLE_LENGTH]
+                         [--name-title-sep NAME_TITLE_SEP]
+                         [--name-unknown-template NAME_UNKNOWN_TEMPLATE]
+                         [--name-unknown-strict | --no-name-unknown-strict]
+                         [--missing] [--version {published,accepted,any}]
+                         [--supplements] [--again] [--search DIR] [-y]
+                         [KEY ...]
+"#, r#"usage: papers file fetch [-h] [-v] [--debug] [--color {auto,always,never}]
+                         [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                         [--dry-run] [--name-template NAME_TEMPLATE]
+                         [--name-author-num NAME_AUTHOR_NUM]
+                         [--name-author-sep NAME_AUTHOR_SEP]
+                         [--name-title-word-num NAME_TITLE_WORD_NUM]
+                         [--name-title-word-size NAME_TITLE_WORD_SIZE]
+                         [--name-title-length NAME_TITLE_LENGTH]
+                         [--name-title-sep NAME_TITLE_SEP]
+                         [--name-unknown-template NAME_UNKNOWN_TEMPLATE]
+                         [--name-unknown-strict | --no-name-unknown-strict]
+                         [--missing] [--version {published,accepted,any}]
+                         [--supplements] [--again] [--search DIR] [-y]
+                         [KEY ...]
+
+find a free (open-access) PDF of each entry from its DOI or arXiv id, download
+it and attach it as `papers file attach` does (the downloaded file goes to the
+files directory, under its template name). The links are tried in this order,
+until one gives a PDF: the published version (the citation_pdf_url of the
+publisher's article page, then the open-access locations of OpenAlex), the
+accepted manuscript, the submitted version (preprint) and arXiv. Each line
+says which version was attached and where it came from. An entry that links to
+a PDF already is skipped (--again fetches it anyway). An entry whose PDF link
+is broken first gets the repair of `papers file fix` (the file found in the
+library by checksum, the pool, the other libraries of the machine, the
+--search folders or the history), and is downloaded only if that gives it no
+PDF. A PDF with the content of a file of the entry is not attached; a URL
+downloaded before on this machine whose file the library has is not downloaded
+again. OpenAlex reads the environment variables OPENALEX_API_KEY (a free API
+key) and PAPERS_MAILTO (an email address, also given to the publishers in the
+user agent). Exit 1 if an entry got no PDF (the others are attached); the
+error gives the links to open in a browser.
+
+positional arguments:
+  KEY                   KEY: key, DOI, arXiv id or ISBN (a former key in the
+                        ids field works too); - reads them from the standard
+                        input, one per line
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         say what papers does, step by step
+  --debug               debugging messages, and the traceback of errors
+  --color {auto,always,never}
+                        colours and hyperlinks in the output: auto (default)
+                        when the output is a terminal and the NO_COLOR
+                        environment variable is not set
+  --porcelain           output for programs (as git's): the standard output
+                        has only the entries that the command added, modified,
+                        renamed or removed, or found already in the library,
+                        one per line: "added KEY", "modified KEY", "renamed
+                        OLD NEW", "removed KEY", "existing KEY"; every other
+                        message goes to the standard error (except the listing
+                        of papers list, which stays on the standard output)
+  --missing             the entries without PDF (of KEY..., or of the whole
+                        library); papers asks before more than 50 entries with
+                        a DOI when OPENALEX_API_KEY is not set
+  --version {published,accepted,any}
+                        the least final version to attach: published (the
+                        version of record only), accepted (also the accepted
+                        manuscript), any (default: also the submitted version
+                        and the arXiv preprint)
+  --supplements         also attach the supplementary PDFs that the article
+                        page links (a link with "suppl" in its URL or text, or
+                        a citation_supplementary_material tag), as other files
+                        of the entry (<name>--<label>.pdf); also for an entry
+                        that has its PDF
+  --again               fetch the PDF of an entry that links to a PDF already
+  --search DIR          for an entry whose PDF link is broken, also look for
+                        its file in DIR (recursively), by file name, else by
+                        the template name of the entry, as `papers file fix
+                        --search` (can be repeated)
+  -y, --yes             do not ask before querying OpenAlex for many entries
 
 config:
   --filesdir FILESDIR   files directory (default: None)

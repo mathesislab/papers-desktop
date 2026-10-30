@@ -133,41 +133,70 @@ pub fn download_url(url: &str, expect_pdf: bool, dest_dir: Option<&str>) -> Resu
         .timeout(TIMEOUT)
         .build()
         .map_err(|e| e.to_string())?;
-    let accept = if expect_pdf {
-        "application/pdf,*/*;q=0.8"
-    } else {
-        "*/*"
-    };
     let response = client
         .get(url)
-        .header(reqwest::header::ACCEPT, accept)
+        .header(reqwest::header::ACCEPT, accept(expect_pdf))
         .send()
-        .map_err(|e| {
-            format!(
-                "Failed to download from {url}: {}: {}. The connection failed before any HTTP response was received — this is often transient (try again), or due to TLS/network issues.",
-                error_kind(&e),
-                describe(&e)
-            )
-        })?;
+        .map_err(|e| connection_failed(url, error_kind(&e), &describe(&e)))?;
     let status = response.status();
     let ctype = response
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
-        .to_lowercase();
+        .to_string();
     let waf = response.headers().contains_key("x-amzn-waf-action");
     let body = response.bytes().map_err(|e| describe(&e))?.to_vec();
+    save_download(
+        url,
+        status.as_u16(),
+        &ctype,
+        waf,
+        body,
+        expect_pdf,
+        dest_dir,
+    )
+}
+
+/// The `Accept` header of a download.
+pub fn accept(expect_pdf: bool) -> &'static str {
+    if expect_pdf {
+        "application/pdf,*/*;q=0.8"
+    } else {
+        "*/*"
+    }
+}
+
+/// The error of a download that got no answer (`kind`: `ConnectionError`, `Timeout`).
+pub fn connection_failed(url: &str, kind: &str, detail: &str) -> String {
+    format!(
+        "Failed to download from {url}: {kind}: {detail}. The connection failed before any HTTP response was received — this is often transient (try again), or due to TLS/network issues."
+    )
+}
+
+/// The answer of a download, checked and saved as [`download_url`] does: the status (`waf`: the
+/// server asks for a challenge, the `x-amzn-waf-action` header), the content type and the body.
+/// The file is saved in `dest_dir`, else in a temporary directory of its own, under the name of
+/// the URL; its path, or papers' message.
+pub fn save_download(
+    url: &str,
+    status: u16,
+    content_type: &str,
+    waf: bool,
+    body: Vec<u8>,
+    expect_pdf: bool,
+    dest_dir: Option<&str>,
+) -> Result<String, String> {
+    let ctype = content_type.to_lowercase();
     let shown = if ctype.is_empty() { "unknown" } else { &ctype };
-    if status.as_u16() != 200 {
-        let hint = if waf || status.as_u16() == 202 {
+    if status != 200 {
+        let hint = if waf || status == 202 {
             " — server appears to require a JavaScript/CAPTCHA challenge (AWS WAF or similar); download manually in a browser and re-run with the local file path"
         } else {
             ""
         };
         return Err(format!(
-            "Failed to download from {url}: HTTP {} (content-type: {shown}){hint}",
-            status.as_u16()
+            "Failed to download from {url}: HTTP {status} (content-type: {shown}){hint}"
         ));
     }
     if expect_pdf {

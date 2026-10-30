@@ -14,6 +14,7 @@
 pub mod cache;
 pub mod crossref;
 pub mod download;
+pub mod freepdf;
 pub mod fuzz;
 pub mod html;
 pub mod http;

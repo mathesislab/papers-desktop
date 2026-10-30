@@ -203,7 +203,7 @@ fn metadata_files(metadata: &[(String, String)], relative_to: &str) -> Vec<Strin
 }
 
 /// The first of `files` with the content of `file` (same size, then same checksum).
-fn same_content(file: &str, files: &[String]) -> Option<String> {
+pub(super) fn same_content(file: &str, files: &[String]) -> Option<String> {
     let size = std::fs::metadata(file).ok()?.len();
     let digest = crate::merge::checksum_hex(file).ok()?;
     files

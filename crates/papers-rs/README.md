@@ -245,6 +245,12 @@ modules:
   published-print, published-online and issued dates is used, `0000` if none) are read as papers reads them;
   invalid JSON from doi.org is a DOI without metadata (the website is tried); the relative `.bib` links of a
   journal page are relative to the page that doi.org led to.
+- `fetch::freepdf`: the free PDF of a paper (papers v3 faeaf4d, #211; library.md "The free PDF of an
+  entry"): the `citation_pdf_url` of the publisher's page, then the open-access locations of OpenAlex
+  by version (`Fetcher::work_locations`, kept a month in `openalex-work/`), then arXiv; the
+  supplements of the page; the checksum and size of each download kept by URL in `downloads/` of the
+  cache. The downloads go through the `Transport` (the user agent is that of the transport: free),
+  with a second between two requests to a site.
 - `fetch::openalex`: **an extension of papers-rs, not in papers** (see "Extensions" below).
 - `fetch::html::meta_content` and `page_doi`: **extensions too**: the `<meta>` tags that journals put
   in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and the DOI they give; and
@@ -301,6 +307,10 @@ fields given on the command line replace those of the record, and the key is mad
 template. A folder (`-R`) is scanned in sorted order (papers: the order of the file system); the
 files `<name>--<label>.<ext>` are attachments of `<name>.pdf`. Several PDFs are looked up one by
 one: papers fetches their metadata concurrently first (the same results, faster).
+
+`papers file fetch`, `add --doi DOI --fetch-pdf` and `fetch --pdf` are `command::fetch_pdf` (on the
+free PDF of `fetch::freepdf`); `tests/file_fetch.rs` has the tests of papers (`test_file_fetch.py`),
+with the network mocked.
 
 The `papers file` commands and the file actions of `list` are `command::file_cmd`; what a command
 does with a file (`move`, `copy`, `link`, `ask`) is `command::files`, with the rules of

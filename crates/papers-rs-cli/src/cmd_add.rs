@@ -1,8 +1,10 @@
 //! `papers add`: the command line of `papers_rs::command::add`.
 
+use std::collections::HashSet;
 use std::io::IsTerminal;
 
 use papers_rs::command::add::{AddRequest, add};
+use papers_rs::command::fetch_pdf::{PdfOptions, fetch_entry_pdfs};
 use papers_rs::command::files::files_mode;
 use papers_rs::command::report::print_changes;
 use papers_rs::config::paths::isfile;
@@ -166,6 +168,21 @@ pub fn add_cmd(leaf: &Leaf, config: papers_rs::config::Config) -> Done {
             &mut request.files,
         )?;
     }
+    let fetch_pdf = leaf.flag("fetch_pdf");
+    if fetch_pdf && (!request.files.is_empty() || request.doi.as_deref().is_none_or(str::is_empty))
+    {
+        return Err(Error::exit(
+            "--fetch-pdf goes with --doi DOI, without FILE (`papers file fetch KEY` fetches the PDF of an entry of the library)",
+        )
+        .into());
+    }
+    // a shallow library places its files in its pool
+    if fetch_pdf && config.filesdir.is_none() && !config.shallow() {
+        return Err(Error::exit(
+            "--fetch-pdf: the library has no files directory, where the downloaded PDF goes (pass --filesdir, or set it with `papers config filesdir DIR`)",
+        )
+        .into());
+    }
     request.mode = files_mode(
         leaf.flag("link"),
         leaf.flag("move") || leaf.flag("rename"),
@@ -181,7 +198,7 @@ pub fn add_cmd(leaf: &Leaf, config: papers_rs::config::Config) -> Done {
     let mut no_check = leaf.flag("no_check_duplicate");
     let resolver = duplicate_resolver(leaf, &config, &mut no_check, color);
     request.check_duplicate = !no_check;
-    run(leaf, config, request, resolver)
+    run(leaf, config, request, resolver, fetch_pdf)
 }
 
 fn run(
@@ -189,6 +206,7 @@ fn run(
     config: papers_rs::config::Config,
     request: AddRequest,
     mut resolver: Box<dyn Resolve>,
+    fetch_pdf: bool,
 ) -> Done {
     let session = open_session(leaf, config, false)?;
     let open = leaf.flag("open");
@@ -196,6 +214,31 @@ fn run(
     let mut session = session;
     let result = (|| -> Done {
         let touched = add(&mut session, &request, resolver.as_mut())?;
+        // --fetch-pdf: the PDF of the entry, attached before the save
+        let mut pdf_failed = 0;
+        if fetch_pdf {
+            let added: Vec<String> = touched
+                .iter()
+                .filter(|k| session.library.get(k).is_some())
+                .cloned()
+                .collect();
+            let fetcher = request
+                .queries
+                .fetcher()
+                .map_err(|e| Error::other(e.message))?;
+            let options = PdfOptions {
+                access: crate::util::openalex_access(),
+                ..PdfOptions::default()
+            };
+            pdf_failed = fetch_entry_pdfs(
+                &mut session,
+                &fetcher,
+                &added,
+                request.mode,
+                &options,
+                &HashSet::new(),
+            )?;
+        }
         let notes = session.commit()?.notes;
         let color = session.color();
         // with the entries that the duplicates skipped were of: `existing`
@@ -215,6 +258,10 @@ fn run(
         );
         if open {
             open_entries(&session, &touched);
+        }
+        if pdf_failed > 0 {
+            // the entry is added, the error about its PDF reported: exit 1
+            return Err(Error::exit("").into());
         }
         Ok(())
     })();
