@@ -593,19 +593,17 @@ fn a_damaged_store_is_reported_as_papers_does() {
     add(&mut config, "one2000");
     add(&mut config, "two2000");
     let history = open(&mut config);
-    let piece = history
-        .project
-        .state(&nth(&history, 2))
-        .unwrap()
-        .bibtex_pieces()[0]
-        .clone();
+    let target = nth(&history, 2);
+    let piece = history.project.state(&target).unwrap().bibtex_pieces()[0].clone();
     drop(history);
     fs::remove_file(s.path(&format!("history/objects/{}/{piece}", &piece[..2]))).unwrap();
     let error = undo(&mut config, 1).unwrap_err();
+    // spec/history.md 2.9: the step whose data is damaged is named
     assert_eq!(
         error.message(),
         format!(
-            "the history of the library is damaged: 'piece {piece} is missing from the history'"
+            "step {}: its data in the history is damaged (piece {piece} is missing from the history); nothing was changed",
+            &target[..8]
         )
     );
 }
@@ -652,4 +650,17 @@ fn the_store_is_pruned_at_every_fiftieth_state() {
 /// What `papers undo` uses without a terminal for the conflicts of the revert of a pool step.
 fn skip() -> papers_rs::merge::Resolver {
     papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip)
+}
+
+#[test]
+fn the_links_of_a_state_are_read_as_the_library_is() {
+    // history.md 6.3 (test_journal.py::TestOneStep::test_capitalized_field_name): the field name is
+    // compared without case, so `File = {...}` of a bibtex written outside papers is a link too
+    let text = "@article{one2000,\n File = {:files/a.pdf:pdf},\n title = {T}\n}\n";
+    assert_eq!(
+        papers_rs::history::travel::entry_links(text, "/lib")
+            .into_iter()
+            .collect::<Vec<_>>(),
+        ["/lib/files/a.pdf"]
+    );
 }

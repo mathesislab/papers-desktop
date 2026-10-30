@@ -46,26 +46,28 @@ use crate::error::{Error, Result};
 use crate::history::ops::absolute_ops;
 use crate::history::project::{LinkedState, short};
 use crate::history::restore::{Deleter, Restore};
+use crate::history::travel::{STATE_FILE_DAMAGED, damaged};
 use crate::history::{FileOp, History, State, StateId};
 use crate::identity::{DISTINCT_FILE, Kind, Verdict};
 use crate::library::Library;
 use crate::merge::{Context, Decision, Merge, Resolve, apply_entry};
 
-/// The entries of the bibtex of a state.
-fn state_entries(history: &History, state: &State) -> Result<Vec<Entry>> {
-    let text = history.store.text(&state.bibtex_pieces())?;
+/// The entries of the bibtex of the state `n`; an error naming the step if it cannot be read.
+fn state_entries(history: &History, n: &str, state: &State) -> Result<Vec<Entry>> {
+    let text = history
+        .store
+        .text(&state.bibtex_pieces())
+        .map_err(|e| damaged(n, e))?;
     Ok(Bib::parse(&text).entries().cloned().collect())
 }
 
-/// The pairs of `distinct.json` in a state.
-fn distinct_pairs(history: &History, state: &State) -> Vec<[Value; 2]> {
+/// The pairs of `distinct.json` in the state `n`; an error naming the step if it cannot be read.
+fn distinct_pairs(history: &History, n: &str, state: &State) -> Result<Vec<[Value; 2]>> {
     let Some(pieces) = state.file(DISTINCT_FILE).filter(|p| !p.is_empty()) else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
-    let Ok(text) = history.store.text(&pieces) else {
-        return Vec::new();
-    };
-    match loads(&text) {
+    let text = history.store.text(&pieces).map_err(|e| damaged(n, e))?;
+    Ok(match loads(&text) {
         Ok(Value::Object(map)) => match map.get("distinct") {
             Some(Value::Array(pairs)) => pairs
                 .iter()
@@ -77,7 +79,7 @@ fn distinct_pairs(history: &History, state: &State) -> Vec<[Value; 2]> {
             _ => Vec::new(),
         },
         _ => Vec::new(),
-    }
+    })
 }
 
 /// The former keys of an entry, in lower case.
@@ -261,18 +263,37 @@ pub fn revert(
         )));
     }
     let parent = how.parent.clone().or_else(|| state.parent());
-    let parent_state = parent.and_then(|p| history.project.state(&p).cloned());
-    let Some(parent_state) = parent_state else {
+    if let Some(parent) = parent.as_deref().filter(|p| history.project.is_damaged(p)) {
+        return Err(damaged(parent, STATE_FILE_DAMAGED));
+    }
+    let parent_state = parent
+        .as_deref()
+        .and_then(|p| Some((p.to_string(), history.project.state(p)?.clone())));
+    let Some((parent, parent_state)) = parent_state else {
         return Err(Error::exit(format!(
             "step {} is the first step of the history: nothing before it to go back to",
             short(n)
         )));
     };
     let n_short = short(n);
+    // what the revert reads from the history, read before anything changes (spec/history.md 2.9)
     let (mut before, mut after) = (
-        state_entries(history, &parent_state)?,
-        state_entries(history, &state)?,
+        state_entries(history, &parent, &parent_state)?,
+        state_entries(history, n, &state)?,
     );
+    let (parent_pairs, pairs) = (
+        distinct_pairs(history, &parent, &parent_state)?,
+        distinct_pairs(history, n, &state)?,
+    );
+    let hashes = history.hashes(if how.forward { n } else { &parent })?;
+    if !how.forward {
+        for digest in state.deleted() {
+            history
+                .store
+                .check_file(&digest)
+                .map_err(|e| damaged(n, e))?;
+        }
+    }
     // what step n did, as the lines say it (done again: an entry added by n is taken as removed, and so on)
     let (added, removed) = if how.forward {
         ("removed", "added")
@@ -399,10 +420,6 @@ pub fn revert(
             (None, None) => {}
         }
     }
-    let (parent_pairs, pairs) = (
-        distinct_pairs(history, &parent_state),
-        distinct_pairs(history, &state),
-    );
     if how.forward {
         revert_distinct(library, &pairs, &parent_pairs);
     } else {
@@ -412,7 +429,6 @@ pub fn revert(
         return Ok(lines);
     }
     let ops = absolute_ops(&state.ops(), &libdir);
-    let hashes = history.hashes(if how.forward { &state } else { &parent_state })?;
     let goal = links(library);
     let pool_dirs: Vec<String> = history.setup.pool_files_dir.iter().cloned().collect();
     let trash = history.trash;

@@ -12,7 +12,7 @@ use super::setup::{Setup, Snapshot, library_dir, library_id, path_id, read_bibte
 use super::store::{MB, Store, now, sha256, to_system_trash};
 use crate::config::Config;
 use crate::config::paths::{abspath, basename, realpath};
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::log;
 
 /// Without files deleted, the store is pruned every this many states.
@@ -459,13 +459,5 @@ pub fn prune_store(setup: &Setup, store: &Store, trash: &dyn Fn(&str)) {
             dropped.len(),
             setup.history_size(store)
         ));
-    }
-}
-
-/// papers prints the `KeyError` of the missing piece: with its quotes (the specification
-/// leaves them out; the code is the truth).
-impl From<crate::history::store::MissingPiece> for Error {
-    fn from(m: crate::history::store::MissingPiece) -> Error {
-        Error::exit(format!("the history of the library is damaged: '{m}'"))
     }
 }

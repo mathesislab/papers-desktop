@@ -8,7 +8,7 @@ use super::project::{Project, StateId};
 use super::recorder::{History, prune_store};
 use super::setup::Setup;
 use super::store::{MB, Ref, Store};
-use super::travel::{describe, kept_size};
+use super::travel::{damaged_before, describe, kept_size};
 use crate::config::paths::{isdir, join, short_home};
 use crate::config::{config_root, dirs};
 use crate::error::{Error, Result};
@@ -37,8 +37,14 @@ pub fn history_lines(
 ) -> Vec<String> {
     let mut lines = Vec::new();
     let head = history.and_then(|h| h.head());
-    match (&head, history) {
-        (Some(head), Some(h)) => {
+    // a head on a damaged state: recorded again by the next command
+    let lost = history.filter(|_| head.is_none()).and_then(|h| {
+        let place = h.project.heads().into_iter().find(|p| p.place == h.place)?;
+        place.state.filter(|n| h.project.is_damaged(n))
+    });
+    match (&head, history, lost) {
+        (None, Some(h), Some(lost)) => lines.push(format!("> {}", describe(&h.project, &lost))),
+        (Some(head), Some(h), _) => {
             let project = &h.project;
             let line = project.line(&head.state);
             let count = if n >= 0 {
@@ -62,12 +68,31 @@ pub fn history_lines(
                     kept(r)
                 ));
             }
+            // a state one of whose pieces is missing or empty (spec/history.md 2.9, 12)
+            let mark = |n: &str| {
+                let pieces: Vec<String> = project
+                    .state(n)
+                    .map(|s| {
+                        let files = s.files().unwrap_or_default();
+                        s.bibtex_pieces()
+                            .into_iter()
+                            .chain(files.into_iter().flat_map(|(_, p)| p))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                if h.store.unreadable(&pieces).is_some() {
+                    "  (damaged: a piece of it is missing or empty in the history)"
+                } else {
+                    ""
+                }
+            };
             for s in shown {
                 lines.push(format!(
-                    "{} {}{}",
+                    "{} {}{}{}",
                     if *s == head.state { ">" } else { " " },
                     describe(project, s),
-                    kept(s)
+                    kept(s),
+                    mark(s)
                 ));
             }
             if line.len() > shown.len() {
@@ -75,6 +100,8 @@ pub fn history_lines(
                     "  ... {} older step(s) (-n 0 shows them all)",
                     line.len() - shown.len()
                 ));
+            } else if let Some(before) = line.last().and_then(|n| damaged_before(project, n)) {
+                lines.push(format!("  {}", describe(project, &before)));
             }
         }
         _ => lines.push(

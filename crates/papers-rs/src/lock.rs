@@ -23,7 +23,9 @@
 //! token (see `Lock::check`): a holder that could not refresh it in time (e.g.
 //! the computer was asleep) stops instead of writing over the command that
 //! took the lock over. The holder removes the lock at the end of the command,
-//! if it still has its token (when the `Lock` is dropped).
+//! if it still has its token (when the `Lock` is dropped): renamed aside first,
+//! then its token checked, so that a lock taken over meanwhile is put back and
+//! not removed.
 //!
 //! A command locks the library of the command line first, then its pool; a
 //! command in the pool locks the pool only. Two commands that lock two
@@ -154,30 +156,76 @@ fn take_over_with(
     stale: Option<(i64, i64, u64, u64)>,
     link: fn(&str, &str) -> std::io::Result<()>,
 ) {
-    let aside = format!("{path}.{}.stale", random_token());
-    if fs::rename(path, &aside).is_err() {
+    let Some(aside) = rename_aside(path) else {
         return; // gone already
-    }
+    };
     if signature(&aside) == stale {
         let _ = fs::remove_file(&aside);
         return;
     }
-    match link(&aside, path) {
+    put_back(path, &aside, link);
+}
+
+/// Rename the lock file to a name of this process (one step): that name, none if there is no file.
+fn rename_aside(path: &str) -> Option<String> {
+    let aside = format!("{path}.{}.stale", random_token());
+    fs::rename(path, &aside).ok()?;
+    Some(aside)
+}
+
+/// Put the lock renamed to `aside` back to `path` (unless another lock was created meanwhile), as
+/// a copy on a file system without hard links (`link` fails).
+fn put_back(path: &str, aside: &str, link: fn(&str, &str) -> std::io::Result<()>) {
+    match link(aside, path) {
         Ok(()) => {}
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {} // its holder finds another token at its check and stops
         Err(_) => {
             // no hard links (some network or FAT drives): put back as a copy, same token
-            let mut content = read(&aside).filter(|c| !c.is_empty());
+            let mut content = read(aside).filter(|c| !c.is_empty());
             if content.is_none() {
                 // still being written by its holder
                 std::thread::sleep(POLL);
-                content = read(&aside).filter(|c| !c.is_empty());
+                content = read(aside).filter(|c| !c.is_empty());
             }
-            let text = content.and_then(|_| fs::read_to_string(&aside).ok()).unwrap_or_else(|| "{}".to_string());
+            let text = content.and_then(|_| fs::read_to_string(aside).ok()).unwrap_or_else(|| "{}".to_string());
             let _ = create_text(path, &text);
         }
     }
-    let _ = fs::remove_file(&aside);
+    let _ = fs::remove_file(aside);
+}
+
+/// The token of a lock file.
+fn token_of(lock: Option<Map<String, Value>>) -> Option<String> {
+    lock?.get("token")?.as_str().map(str::to_string)
+}
+
+/// Remove the lock file if it has the token `token` (a release): renamed aside first, then its
+/// token read again, so that a lock taken over between the first read and the removal is put
+/// back, not removed.
+fn remove_own(path: &str, token: &str) {
+    remove_own_with(path, token, &read, hard_link);
+}
+
+/// [`remove_own`], with the way to read a lock file and to put one back (see [`take_over_with`]).
+fn remove_own_with(
+    path: &str,
+    token: &str,
+    read: &dyn Fn(&str) -> Option<Map<String, Value>>,
+    link: fn(&str, &str) -> std::io::Result<()>,
+) {
+    if token_of(read(path)).as_deref() != Some(token) {
+        return;
+    }
+    let Some(aside) = rename_aside(path) else {
+        return;
+    };
+    if token_of(read(&aside)).as_deref() == Some(token) {
+        if let Err(e) = fs::remove_file(&aside) {
+            log::debug(&format!("{path}: lock not removed: {e}"));
+        }
+    } else {
+        put_back(path, &aside, link);
+    }
 }
 
 /// Create the lock file if it does not exist; return whether it was created.
@@ -370,10 +418,7 @@ impl Drop for Lock {
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
         }
-        let ours = read(&self.path).and_then(|o| o.get("token").and_then(|t| t.as_str().map(str::to_string)));
-        if ours.as_deref() == Some(self.content.token.as_str()) {
-            let _ = fs::remove_file(&self.path);
-        }
+        remove_own(&self.path, &self.content.token);
     }
 }
 
@@ -464,6 +509,36 @@ mod tests {
         // nothing to take over
         fs::remove_file(&path).unwrap();
         take_over(&path, stale);
+    }
+
+    /// `test_lock.py::TestLock::test_release_after_take_over` (library.md, Release): taken over
+    /// between the token read of the release and the removal, the lock of the other command stays;
+    /// also on a file system without hard links (`test_release_without_hard_links`).
+    #[test]
+    fn a_release_leaves_a_lock_taken_over_meanwhile() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = lock_path(&library(dir.path())).unwrap();
+        let no_link: fn(&str, &str) -> std::io::Result<()> = |_, _| Err(std::io::Error::from_raw_os_error(libc::EPERM));
+        for link in [hard_link, no_link] {
+            other_lock(&path, "here", "mine");
+            let first = std::cell::Cell::new(true);
+            let read_then_take_over = |p: &str| {
+                let content = read(p);
+                if p == path && first.replace(false) {
+                    other_lock(&path, "elsewhere", "other");
+                }
+                content
+            };
+            remove_own_with(&path, "mine", &read_then_take_over, link);
+            assert_eq!(read(&path).unwrap()["token"], "other");
+            assert!(stale_files(&path).is_empty());
+            fs::remove_file(&path).unwrap();
+        }
+        // its own: removed
+        other_lock(&path, "here", "mine");
+        remove_own(&path, "mine");
+        assert!(!std::path::Path::new(&path).exists());
+        assert!(stale_files(&path).is_empty());
     }
 
     #[test]

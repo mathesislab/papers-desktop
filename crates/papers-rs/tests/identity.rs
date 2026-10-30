@@ -405,3 +405,43 @@ fn merge_as_papers() {
     }
     tally.report("merge");
 }
+
+/// `SelectIdentifiersTest::test_key_that_starts_with_a_digit`: a key of the library names its
+/// entry, though it starts with a digit (the `{doi}` key template gives such keys) or reads as an
+/// ISBN; the DOI still works.
+#[test]
+fn a_key_that_starts_with_a_digit() {
+    let entries = entries_of(
+        "@article{10.1000-xyz,\n title = {A title},\n doi = {10.1000/xyz}\n}\n\
+         @book{9780306406157,\n title = {A book}\n}\n",
+    );
+    let mut library = Library::new(
+        "/lib/papers.bib",
+        None,
+        Some("/lib"),
+        Format::name(),
+        Format::key(),
+    );
+    let mut resolver = papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip);
+    library
+        .add_entries(
+            entries,
+            None,
+            &[],
+            "bibtex",
+            &Default::default(),
+            &mut resolver,
+        )
+        .unwrap();
+    let select = |arg: &str| library.select(&[arg.to_string()]).unwrap();
+    assert_eq!(select("10.1000-xyz"), ["10.1000-xyz"]);
+    assert_eq!(select("10.1000/xyz"), ["10.1000-xyz"]);
+    assert_eq!(select("9780306406157"), ["9780306406157"]);
+    assert_eq!(
+        library
+            .select(&["2000book".to_string()])
+            .unwrap_err()
+            .message(),
+        "2000book: not a key of the library, nor a DOI, arXiv id or ISBN\n(nothing was changed)"
+    );
+}

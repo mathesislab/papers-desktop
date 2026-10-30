@@ -15,7 +15,7 @@
 //! records. The step of a pool that this command reverted is in [`Moved::links`]: papers leaves it
 //! pending for the next step of the library (the push), which records it in its `pools`.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::Path;
 
@@ -84,6 +84,65 @@ pub type Links = Vec<(String, PoolLink)>;
 /// What the revert of the steps of a pool gives: the lines of the reverts, and the new step of the pool
 /// with the link to record, when the pool changed.
 type Reverted = (Vec<String>, Option<(String, PoolLink)>);
+
+/// A step of a move in the history, whose file operations are done (or undone).
+#[derive(Debug, Clone)]
+struct Step {
+    /// The state the library is in before the step.
+    from: StateId,
+    /// The state the library is in after it.
+    to: StateId,
+    /// The state of the operations.
+    n: StateId,
+    /// The operations are undone.
+    undo: bool,
+}
+
+/// What undo, redo and restore read from the history, read before anything changes (see
+/// [`History::plan`]).
+#[derive(Debug, Clone)]
+pub struct Plan {
+    /// The move goes forward (the target is not an ancestor of the current state).
+    forward: bool,
+    steps: Vec<Step>,
+    /// The texts read: (state, none for the bibtex or the name of a kept file) -> text, none if
+    /// the state has no such file.
+    texts: HashMap<(StateId, Option<String>), Option<String>>,
+}
+
+impl Plan {
+    /// The bibtex (`name` none) or a kept file of the state `n`, read once; none if the state has
+    /// no such file. An error naming the step if it cannot be read.
+    fn read(&mut self, history: &History, n: &str, name: Option<&str>) -> Result<Option<String>> {
+        let at = (n.to_string(), name.map(str::to_string));
+        if let Some(text) = self.texts.get(&at) {
+            return Ok(text.clone());
+        }
+        let state = history.project.state(n).ok_or_else(|| no_step(n))?;
+        let pieces = match name {
+            None => Some(state.bibtex_pieces()),
+            Some(name) => state.file(name),
+        };
+        let text = match pieces {
+            Some(pieces) => Some(history.store.text(&pieces).map_err(|e| damaged(n, e))?),
+            None => None,
+        };
+        self.texts.insert(at, text.clone());
+        Ok(text)
+    }
+
+    fn bibtex(&mut self, history: &History, n: &str) -> Result<String> {
+        Ok(self.read(history, n, None)?.unwrap_or_default())
+    }
+
+    /// The checksums of the files of the state `n` (its `files.json`).
+    fn hashes(&mut self, history: &History, n: &str) -> Result<BTreeMap<String, String>> {
+        match self.read(history, n, Some(FILES_JSON))? {
+            Some(text) if !text.is_empty() => Ok(parse_files_json(&text, &history.setup.libdir)),
+            _ => Ok(BTreeMap::new()),
+        }
+    }
+}
 
 /// A pool whose steps go with those of the library.
 struct Pool {
@@ -162,28 +221,89 @@ impl History {
     }
 
     /// The identifier of the step that `reference` names: the identifier, or a unique start of
-    /// it of 4 characters or more. An error if there is none, or if several have it.
+    /// it of 4 characters or more. An error if there is none, if several have it, or if its state
+    /// file cannot be read.
     pub fn step(&self, reference: &str) -> Result<StateId> {
         match self.project.resolve(reference) {
             Err(message) => Err(Error::exit(message)),
             Ok(None) => Err(no_step(reference)),
+            Ok(Some(n)) if self.project.is_damaged(&n) => Err(damaged(&n, STATE_FILE_DAMAGED)),
             Ok(Some(n)) => Ok(n),
         }
     }
 
-    fn text(&self, state: &State) -> Result<String> {
-        Ok(self.store.text(&state.bibtex_pieces())?)
-    }
-
-    /// The checksums of the files of a state (`files.json` of the state).
-    pub(crate) fn hashes(&self, state: &State) -> Result<BTreeMap<String, String>> {
-        match state.file(FILES_JSON) {
-            Some(pieces) if !pieces.is_empty() => Ok(parse_files_json(
-                &self.store.text(&pieces)?,
-                &self.setup.libdir,
-            )),
+    /// The checksums of the files of the state `n` (its `files.json`); an error naming the step if
+    /// it cannot be read.
+    pub(crate) fn hashes(&self, n: &str) -> Result<BTreeMap<String, String>> {
+        let pieces = self.project.state(n).and_then(|s| s.file(FILES_JSON));
+        match pieces {
+            Some(pieces) if !pieces.is_empty() => {
+                let text = self.store.text(&pieces).map_err(|e| damaged(n, e))?;
+                Ok(parse_files_json(&text, &self.setup.libdir))
+            }
             _ => Ok(BTreeMap::new()),
         }
+    }
+
+    /// The steps from the state `cur` to the state `target`, and what they read from the history,
+    /// read before anything changes: the bibtex and the kept files of the states they use, and the
+    /// file objects that undo brings back. A damaged one stops the command, naming its step
+    /// (spec/history.md 2.9).
+    pub fn plan(&self, cur: &str, target: &str) -> Result<Plan> {
+        let project = &self.project;
+        let (back, forward) = project.path_between(cur, target);
+        let has_parent = |s: &State| s.parent().is_some_and(|p| project.state(&p).is_some());
+        let mut steps = Vec::new();
+        for n in &back {
+            let s = project.state(n).ok_or_else(|| no_step(n))?;
+            if !has_parent(s) {
+                break;
+            }
+            if !s.ops().is_empty() {
+                steps.push(Step {
+                    from: n.clone(),
+                    to: s.parent().unwrap_or_default(),
+                    n: n.clone(),
+                    undo: true,
+                });
+            }
+        }
+        for n in &forward {
+            let s = project.state(n).ok_or_else(|| no_step(n))?;
+            if !s.ops().is_empty() && has_parent(s) {
+                steps.push(Step {
+                    from: s.parent().unwrap_or_default(),
+                    to: n.clone(),
+                    n: n.clone(),
+                    undo: false,
+                });
+            }
+        }
+        let mut plan = Plan {
+            forward: !forward.is_empty(),
+            steps,
+            texts: HashMap::new(),
+        };
+        for i in 0..plan.steps.len() {
+            let Step { from, to, n, undo } = plan.steps[i].clone();
+            plan.read(self, &from, None)?;
+            plan.read(self, &to, None)?;
+            plan.read(self, &to, Some(FILES_JSON))?;
+            if undo {
+                for digest in project.state(&n).map(State::deleted).unwrap_or_default() {
+                    self.store.check_file(&digest).map_err(|e| damaged(&n, e))?;
+                }
+            }
+        }
+        plan.read(self, target, None)?;
+        for (name, _) in project
+            .state(target)
+            .and_then(State::files)
+            .unwrap_or_default()
+        {
+            plan.read(self, target, Some(&name))?;
+        }
+        Ok(plan)
     }
 
     /// Bring the library from the state `cur` to the state `target`: the
@@ -191,7 +311,8 @@ impl History {
     /// `.papers/` files. `pool_dirs`: the folders whose files are copied
     /// back, not moved (by default, the files directory of the pool of a
     /// shallow library); `shared`: the files that another library links to,
-    /// also copied back. The lock of the library is held by the caller and
+    /// also copied back; `plan`: what the move reads from the history (see [`History::plan`]; made
+    /// here when not given). The lock of the library is held by the caller and
     /// checked here. The lines of the report on the files.
     pub fn go_to(
         &self,
@@ -200,13 +321,16 @@ impl History {
         pool_dirs: Option<&[String]>,
         shared: &BTreeSet<String>,
         lock: Option<&Lock>,
+        plan: Option<Plan>,
     ) -> Result<Vec<String>> {
         if let Some(lock) = lock {
             lock.check()?;
         }
+        let mut plan = match plan {
+            Some(plan) => plan,
+            None => self.plan(cur, target)?,
+        };
         let libdir = self.setup.libdir.clone();
-        let project = &self.project;
-        let state = |n: &str| -> Result<&State> { project.state(n).ok_or_else(|| no_step(n)) };
         let default_dirs: Vec<String> = self.setup.pool_files_dir.iter().cloned().collect();
         let pool_dirs = pool_dirs.unwrap_or(&default_dirs);
         let deleter = Deleter {
@@ -214,10 +338,7 @@ impl History {
             store: Some(&self.store),
             trash: &self.trash,
         };
-        let (back, forward) = project.path_between(cur, target);
         let mut lines = Vec::new();
-        let links =
-            |s: &State| -> Result<BTreeSet<String>> { Ok(entry_links(&self.text(s)?, &libdir)) };
         let run = |current: &BTreeSet<String>,
                    goal: &BTreeSet<String>,
                    ops: &[super::ops::FileOp],
@@ -238,56 +359,30 @@ impl History {
             }
             .run(&mut None)
         };
-        for n in &back {
-            let s = state(n)?;
-            let Some(parent) = s.parent().and_then(|p| project.state(&p).cloned()) else {
-                break;
-            };
-            let ops = absolute_ops(&s.ops(), &libdir);
-            if !ops.is_empty() {
-                lines.extend(run(
-                    &links(s)?,
-                    &links(&parent)?,
-                    &ops,
-                    true,
-                    &self.hashes(&parent)?,
-                )?);
-            }
+        for Step { from, to, n, undo } in plan.steps.clone() {
+            let ops = absolute_ops(
+                &self.project.state(&n).map(State::ops).unwrap_or_default(),
+                &libdir,
+            );
+            let current = entry_links(&plan.bibtex(self, &from)?, &libdir);
+            let goal = entry_links(&plan.bibtex(self, &to)?, &libdir);
+            let hashes = plan.hashes(self, &to)?;
+            lines.extend(run(&current, &goal, &ops, undo, &hashes)?);
         }
-        for n in &forward {
-            let s = state(n)?;
-            let ops = absolute_ops(&s.ops(), &libdir);
-            if let Some(parent) = s.parent().and_then(|p| project.state(&p).cloned())
-                && !ops.is_empty()
-            {
-                lines.extend(run(
-                    &links(&parent)?,
-                    &links(s)?,
-                    &ops,
-                    false,
-                    &self.hashes(s)?,
-                )?);
-            }
-        }
-        let goal = state(target)?;
         let current = bibtex_links(&self.setup.bibtex, &libdir);
-        lines.extend(run(
-            &current,
-            &links(goal)?,
-            &[],
-            forward.is_empty(),
-            &self.hashes(goal)?,
-        )?);
+        let goal = entry_links(&plan.bibtex(self, target)?, &libdir);
+        let hashes = plan.hashes(self, target)?;
+        lines.extend(run(&current, &goal, &[], !plan.forward, &hashes)?);
 
-        write_atomic(&self.setup.bibtex, &self.text(goal)?)?;
-        self.write_library_files(cur, target)?;
+        write_atomic(&self.setup.bibtex, &plan.bibtex(self, target)?)?;
+        self.write_library_files(cur, target, &mut plan)?;
         Ok(lines)
     }
 
     /// The files of `.papers/` of the state `target`; those of the state
     /// `cur` that `target` has not are removed (a file no state had is left
     /// alone).
-    fn write_library_files(&self, cur: &str, target: &str) -> Result<()> {
+    fn write_library_files(&self, cur: &str, target: &str, plan: &mut Plan) -> Result<()> {
         let libdir = &self.setup.library_dir;
         // the name stays inside the library directory (as papers tests it: by its start)
         let inside = |name: &str| !relpath(&join(libdir, name), libdir).starts_with("..");
@@ -297,11 +392,12 @@ impl History {
             .and_then(State::files)
             .unwrap_or_default();
         // the names are stored with `/`, and read back with the separator of the system
-        for (name, pieces) in &files {
+        for (name, _) in &files {
             if inside(name) {
                 let path = join(libdir, name);
                 fs::create_dir_all(dirname(&path))?;
-                write_atomic(&path, &self.store.text(pieces)?)?;
+                let text = plan.read(self, target, Some(name))?.unwrap_or_default();
+                write_atomic(&path, &text)?;
             }
         }
         for (name, _) in self
@@ -520,6 +616,7 @@ impl History {
                     None,
                     &BTreeSet::new(),
                     pool.lock.as_ref(),
+                    None,
                 )?;
                 let redo: Vec<StateId> = if undo {
                     pool.taken
@@ -686,6 +783,14 @@ impl History {
             self.synced()?
         };
         let length = cur.as_ref().map_or(0, |c| self.project.line(c).len()) + usize::from(added);
+        if length <= steps
+            && let Some(before) = cur.as_ref().and_then(|c| {
+                let line = self.project.line(c);
+                damaged_before(&self.project, line.last()?)
+            })
+        {
+            return Err(damaged(&before, STATE_FILE_DAMAGED));
+        }
         if length <= steps {
             return Err(Error::exit(if length <= 1 {
                 "nothing to undo".to_string()
@@ -709,6 +814,8 @@ impl History {
                 links: vec![],
             });
         }
+        // before the pools move: a damaged step stops the undo
+        let plan = self.plan(&cur, &target)?;
         let (mut pools, missing) = if library_only {
             (vec![], vec![])
         } else {
@@ -733,7 +840,7 @@ impl History {
         } else {
             None
         };
-        let files = self.go_to(&cur, &target, pool_dirs, &shared, lock)?;
+        let files = self.go_to(&cur, &target, pool_dirs, &shared, lock, Some(plan))?;
         self.project.set_head(&self.place, &target, &redo)?;
         let pools = missing.into_iter().chain(pool_lines).collect();
         Ok(Moved {
@@ -769,6 +876,12 @@ impl History {
             )));
         }
         let target = head.redo[steps - 1].clone();
+        if let Some(n) = head.redo[..steps]
+            .iter()
+            .find(|n| self.project.is_damaged(n))
+        {
+            return Err(damaged(n, STATE_FILE_DAMAGED));
+        }
         if self.dry_run {
             return Ok(Moved {
                 target,
@@ -783,7 +896,7 @@ impl History {
             self.pool_steps(&head.redo[..steps], false, command)?
         };
         // the library first: the files the command moved to the pool are there when the pool comes back
-        let files = self.go_to(&cur, &target, None, &BTreeSet::new(), lock)?;
+        let files = self.go_to(&cur, &target, None, &BTreeSet::new(), lock, None)?;
         self.project
             .set_head(&self.place, &target, &head.redo[steps..])?;
         let (pool_lines, links) =
@@ -828,7 +941,7 @@ impl History {
                 short(&target)
             )));
         }
-        let files = self.go_to(&cur, &target, None, &BTreeSet::new(), lock)?;
+        let files = self.go_to(&cur, &target, None, &BTreeSet::new(), lock, None)?;
         let (back, forward) = self.project.path_between(&cur, &target);
         let redo: Vec<StateId> = if forward.is_empty() {
             back.into_iter().rev().collect()
@@ -972,6 +1085,23 @@ impl History {
     }
 }
 
+/// What the error of a damaged state file says.
+pub const STATE_FILE_DAMAGED: &str = "its state file cannot be read";
+
+/// The error of a command that needs the step `n`, whose data in the history cannot be read
+/// (spec/history.md 2.9): nothing was changed.
+pub fn damaged(n: &str, error: impl std::fmt::Display) -> Error {
+    Error::exit(format!(
+        "step {}: its data in the history is damaged ({error}); nothing was changed",
+        short(n)
+    ))
+}
+
+/// The parent of the state `n` if its state file cannot be read (the line of `n` stops there).
+pub fn damaged_before(project: &Project, n: &str) -> Option<StateId> {
+    project.state(n)?.parent().filter(|p| project.is_damaged(p))
+}
+
 /// The error of a step that the history does not have.
 pub fn no_step(reference: &str) -> Error {
     Error::exit(format!(
@@ -1012,10 +1142,14 @@ pub fn when(t: f64) -> String {
     )
 }
 
-/// The line of a state: `<short identifier> <message> (<local time>[, from <from>])`.
+/// The line of a state: `<short identifier> <message> (<local time>[, from <from>])`; that of a
+/// damaged state file says so.
 pub fn describe(project: &Project, n: &str) -> String {
     let Some(state) = project.state(n) else {
-        return format!("{}  (not found)", short(n));
+        return format!(
+            "{} damaged: its state file in the history cannot be read",
+            short(n)
+        );
     };
     let origin = state
         .from()

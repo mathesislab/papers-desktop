@@ -326,9 +326,10 @@ fn csl_date(value: Option<&J>) -> Vec<i128> {
 }
 
 /// The names of a CSL `author` (`format_bibtex_names`): an array of names, or one name (a text or
-/// an object); a name is a dict of parts, or a text.
+/// an object); a name is a dict of parts, or a text. A part that is null is left out (formats.md 3.4).
 fn csl_names(value: &J) -> String {
-    let part = |o: &J, k: &str| -> Option<String> { o.get(k).map(py_str) };
+    let part =
+        |o: &J, k: &str| -> Option<String> { o.get(k).filter(|v| **v != J::Null).map(py_str) };
     let names: Vec<Name> = match value {
         J::Arr(items) => items
             .iter()
@@ -498,6 +499,92 @@ pub fn csl_to_entry(item: &J) -> Entry {
     make_entry(entry_type, &key, fields, &files, true)
 }
 
+/// The parts of a CSL name object.
+const CSL_NAME_PARTS: [&str; 6] = [
+    "family",
+    "given",
+    "literal",
+    "non-dropping-particle",
+    "dropping-particle",
+    "suffix",
+];
+
+/// A CSL name: a text, or an object whose name parts are texts (or null) (`_is_csl_name`).
+fn is_csl_name(name: &J) -> bool {
+    match name {
+        J::Str(_) => true,
+        J::Obj(_) => CSL_NAME_PARTS
+            .iter()
+            .all(|part| matches!(name.get(part), None | Some(J::Null | J::Str(_)))),
+        _ => false,
+    }
+}
+
+/// An error if a name list of the item (`author`, `editor`, `translator`) is not a name or an
+/// array of names; `number` is the position of the item, from 1 (`_check_csl_names`, formats.md 3.4).
+fn check_csl_names(item: &J, number: usize) -> Result<(), String> {
+    for name in ["author", "editor", "translator"] {
+        let Some(names) = item.get(name).filter(|n| truthy(Some(n))) else {
+            continue;
+        };
+        let valid = is_csl_name(names)
+            || matches!(names, J::Arr(list)
+                if list.iter().filter(|n| truthy(Some(n))).all(is_csl_name));
+        if !valid {
+            let id = item
+                .get("id")
+                .map(|id| format!(" (id {})", json_text(id)))
+                .unwrap_or_default();
+            return Err(format!(
+                "not a CSL-JSON file: item {number}{id}: {name} is not a name or an array of names"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// `json.dumps(value, ensure_ascii=False)`: on one line, the characters other than ASCII as they are.
+fn json_text(value: &J) -> String {
+    match value {
+        J::Str(s) => json_quote(s),
+        J::Arr(items) => format!(
+            "[{}]",
+            items.iter().map(json_text).collect::<Vec<_>>().join(", ")
+        ),
+        J::Obj(items) => format!(
+            "{{{}}}",
+            items
+                .iter()
+                .map(|(k, v)| format!("{}: {}", json_quote(k), json_text(v)))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        J::Null | J::Bool(_) | J::Int(_) | J::Float(_) => value.dumps(),
+    }
+}
+
+/// A JSON string as `json.dumps(ensure_ascii=False)` writes it: only `"`, `\` and the control
+/// characters escaped.
+fn json_quote(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            '\0'..='\u{1f}' => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 fn loads_csl(text: &str) -> Result<Vec<Entry>, String> {
     let data = parse(text, "CSL-JSON", false)?;
     let items: Vec<J> = match data {
@@ -511,6 +598,9 @@ fn loads_csl(text: &str) -> Result<Vec<Entry>, String> {
     };
     if !items.iter().all(|i| matches!(i, J::Obj(_))) {
         return Err("not a CSL-JSON file: a list of items is expected".into());
+    }
+    for (number, item) in items.iter().enumerate() {
+        check_csl_names(item, number + 1)?;
     }
     Ok(items.iter().map(csl_to_entry).collect())
 }
@@ -1146,5 +1236,41 @@ mod tests {
         );
         assert_eq!(author_of(&csl("\"author\": \"\""), "author"), None);
         assert_eq!(author_of(&csl("\"author\": {}"), "author"), None);
+    }
+
+    /// `TestCSL::test_bad_names` (formats.md 3.4): a name list that is not a name or an array of
+    /// names is an error naming the item; null names and null name parts are left out.
+    #[test]
+    fn bad_names() {
+        for value in ["5", "true", "[5]", "[\"A B\", [1]]", "[{\"family\": 5}]"] {
+            let text = format!(
+                "[{{\"id\": \"y\", \"title\": \"T\"}}, {{\"id\": \"x\", \"author\": {value}}}]"
+            );
+            assert_eq!(
+                loads(&text, Format::CslJson).unwrap_err(),
+                "not a CSL-JSON file: item 2 (id \"x\"): author is not a name or an array of names",
+                "{value}"
+            );
+        }
+        assert_eq!(
+            loads("[{\"editor\": 5}]", Format::CslJson).unwrap_err(),
+            "not a CSL-JSON file: item 1: editor is not a name or an array of names"
+        );
+        assert_eq!(
+            loads(
+                "[{\"id\": [\"é\\n\", 1.0, null], \"author\": [[1]]}]",
+                Format::CslJson
+            )
+            .unwrap_err(),
+            "not a CSL-JSON file: item 1 (id [\"é\\n\", 1.0, null]): author is not a name or an array of names"
+        );
+        assert_eq!(
+            author_of(
+                "[{\"id\": \"x\", \"author\": [null, \"A B\", {\"family\": \"C\", \"given\": null}]}]",
+                "author"
+            )
+            .as_deref(),
+            Some("{A B} and C")
+        );
     }
 }

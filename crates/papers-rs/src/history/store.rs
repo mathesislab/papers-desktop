@@ -15,7 +15,6 @@ use std::io::{Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use flate2::Compression;
-use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use sha2::{Digest, Sha256};
 
@@ -161,13 +160,40 @@ fn is_empty(j: &J) -> bool {
     }
 }
 
-/// A missing or unreadable piece of text: the history is damaged.
+/// A file of the store that cannot be read as written (spec/history.md 2.9): a piece missing,
+/// empty or not a zlib stream of UTF-8 text, a file object whose content does not have its
+/// checksum (e.g. after a power loss: no file of the store is synced to the disk). What it says.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MissingPiece(pub String);
+pub struct Damaged(pub String);
 
-impl std::fmt::Display for MissingPiece {
+impl std::fmt::Display for Damaged {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "piece {} is missing from the history", self.0)
+        f.write_str(&self.0)
+    }
+}
+
+/// The data of a zlib stream, complete (`zlib.decompress`): none if it is empty, truncated or not
+/// zlib. What follows the end of the stream is left out.
+fn decompress(compressed: &[u8]) -> Option<Vec<u8>> {
+    let mut z = flate2::Decompress::new(true);
+    let mut out = Vec::with_capacity(compressed.len() * 4 + 64);
+    loop {
+        let consumed = z.total_in() as usize;
+        let produced = z.total_out();
+        let status = z
+            .decompress_vec(
+                &compressed[consumed..],
+                &mut out,
+                flate2::FlushDecompress::None,
+            )
+            .ok()?;
+        match status {
+            flate2::Status::StreamEnd => return Some(out),
+            _ if out.len() == out.capacity() => out.reserve(out.capacity().max(64)),
+            // no progress with room to write: the stream is cut short
+            _ if z.total_in() as usize == consumed && z.total_out() == produced => return None,
+            _ => {}
+        }
     }
 }
 
@@ -253,20 +279,37 @@ impl Store {
         Ok(pieces)
     }
 
-    /// The text of a list of pieces.
-    pub fn text(&self, pieces: &[String]) -> std::result::Result<String, MissingPiece> {
-        let mut data = Vec::new();
+    /// The text of a list of pieces; an error for a piece missing or that cannot be read (empty,
+    /// not zlib, not UTF-8: e.g. after a power loss).
+    pub fn text(&self, pieces: &[String]) -> std::result::Result<String, Damaged> {
+        let mut text = String::new();
         for digest in pieces {
-            let missing = || MissingPiece(digest.clone());
             if digest.len() < 2 || !digest.is_char_boundary(2) {
-                return Err(missing());
+                return Err(Damaged(format!(
+                    "piece {digest} is missing from the history"
+                )));
             }
-            let compressed = fs::read(self.object(digest)).map_err(|_| missing())?;
-            ZlibDecoder::new(compressed.as_slice())
-                .read_to_end(&mut data)
-                .map_err(|_| missing())?;
+            let compressed = fs::read(self.object(digest))
+                .map_err(|_| Damaged(format!("piece {digest} is missing from the history")))?;
+            let piece = decompress(&compressed)
+                .and_then(|data| String::from_utf8(data).ok())
+                .ok_or_else(|| Damaged(format!("piece {digest} cannot be read")))?;
+            text.push_str(&piece);
         }
-        String::from_utf8(data).map_err(|_| MissingPiece("(not UTF-8)".into()))
+        Ok(text)
+    }
+
+    /// The first of these pieces that is missing or empty, if any: a check without reading them
+    /// (a damaged piece that is not empty is found when it is read, see [`Store::text`]).
+    pub fn unreadable<'a>(&self, pieces: &'a [String]) -> Option<&'a str> {
+        pieces
+            .iter()
+            .find(|digest| {
+                digest.len() < 2
+                    || !digest.is_char_boundary(2)
+                    || fs::metadata(self.object(digest)).map_or(true, |m| m.len() == 0)
+            })
+            .map(String::as_str)
     }
 
     // files deleted by the commands
@@ -287,6 +330,43 @@ impl Store {
             }
         }
         None
+    }
+
+    /// The stored file of this checksum, if any; an error if its content does not have the
+    /// checksum (e.g. emptied by a power loss).
+    pub fn check_file(&self, digest: &str) -> std::result::Result<Option<String>, Damaged> {
+        let Some(found) = self.file_object(digest) else {
+            return Ok(None);
+        };
+        let hash = || -> std::io::Result<String> {
+            let mut file = fs::File::open(&found)?;
+            let mut hasher = Sha256::new();
+            let mut block = vec![0u8; 1 << 20];
+            loop {
+                match file.read(&mut block)? {
+                    0 => break,
+                    n => hasher.update(&block[..n]),
+                }
+            }
+            Ok(hasher
+                .finalize()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect())
+        };
+        let Ok(hex) = hash() else {
+            return Err(Damaged(format!("deleted file {digest} cannot be read")));
+        };
+        if hex != digest {
+            return Err(Damaged(format!("deleted file {digest} is damaged")));
+        }
+        Ok(Some(found))
+    }
+
+    /// The stored file of this checksum, none if there is none or it is damaged (see
+    /// [`Store::check_file`]).
+    pub fn intact_file(&self, digest: &str) -> Option<String> {
+        self.check_file(digest).ok().flatten()
     }
 
     /// Move a file into the store (named by its checksum `digest`); its path
@@ -736,6 +816,69 @@ mod tests {
         assert_eq!(pieces.concat(), text);
     }
 
+    /// `TestPieces::test_damaged_piece` (spec/history.md 2.9): a piece empty or truncated (a power
+    /// loss) is damaged; `unreadable` finds the empty one without reading it.
+    #[test]
+    fn a_damaged_piece() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::new(dir.path().to_string_lossy().into_owned());
+        let pieces = store.put_text("@article{k,\n title = {T},\n}\n").unwrap();
+        let path = store.object(&pieces[0]);
+        let data = fs::read(&path).unwrap();
+        assert_eq!(store.unreadable(&pieces), None);
+        fs::write(&path, &data[..data.len() / 2]).unwrap();
+        assert_eq!(
+            store.text(&pieces).unwrap_err().0,
+            format!("piece {} cannot be read", pieces[0])
+        );
+        fs::write(&path, b"").unwrap();
+        assert!(store.text(&pieces).is_err());
+        assert_eq!(store.unreadable(&pieces), Some(pieces[0].as_str()));
+        // not UTF-8
+        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(6));
+        encoder.write_all(b"\xff").unwrap();
+        fs::write(&path, encoder.finish().unwrap()).unwrap();
+        assert!(store.text(&pieces).is_err());
+    }
+
+    /// `zlib.decompress`: what follows the stream is left out; a stream cut short, even of its
+    /// checksum, is not read.
+    #[test]
+    fn a_zlib_stream_is_read_in_full() {
+        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(6));
+        encoder.write_all(&b"hello ".repeat(10_000)).unwrap();
+        let data = encoder.finish().unwrap();
+        assert_eq!(decompress(&data).unwrap(), b"hello ".repeat(10_000));
+        assert_eq!(
+            decompress(&[&data[..], b"xx"].concat()).unwrap(),
+            b"hello ".repeat(10_000)
+        );
+        assert_eq!(decompress(&data[..data.len() - 1]), None);
+        assert_eq!(decompress(b""), None);
+        assert_eq!(decompress(b"not zlib"), None);
+    }
+
+    /// `TestPieces::test_damaged_file`: a file object whose content does not have its checksum is
+    /// damaged; none is not.
+    #[test]
+    fn a_damaged_file_object() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().to_string_lossy().into_owned();
+        let store = Store::new(join(&root, "store"));
+        let path = join(&root, "a.pdf");
+        fs::write(&path, "pdf").unwrap();
+        let digest = sha256(b"pdf");
+        let kept = store.put_file(&path, &digest).unwrap();
+        assert_eq!(store.check_file(&digest).unwrap(), Some(kept.clone()));
+        fs::write(&kept, b"").unwrap();
+        assert_eq!(
+            store.check_file(&digest).unwrap_err().0,
+            format!("deleted file {digest} is damaged")
+        );
+        assert_eq!(store.intact_file(&digest), None);
+        assert_eq!(store.check_file(&"0".repeat(64)).unwrap(), None);
+    }
+
     #[test]
     fn objects_files_and_retention() {
         let dir = tempfile::tempdir().unwrap();
@@ -747,7 +890,7 @@ mod tests {
         assert_eq!(store.text(&pieces).unwrap(), text);
         assert_eq!(
             store.text(&["ab".repeat(32)]).unwrap_err().0,
-            "ab".repeat(32)
+            format!("piece {} is missing from the history", "ab".repeat(32))
         );
         assert_eq!(store.put_text(&text).unwrap(), pieces);
         assert_eq!(
