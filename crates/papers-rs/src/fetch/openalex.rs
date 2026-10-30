@@ -1,58 +1,40 @@
-//! A full-text search on OpenAlex (<https://api.openalex.org>): an extension of papers-rs, not in
-//! papers (the option `--openalex`; the standard has nothing of it).
+//! A full-text search on OpenAlex (<https://api.openalex.org>), the open alternative to Google
+//! Scholar (`papers.openalex`, papers v3 faeaf4d, #205: the option `--openalex` of `add`,
+//! `extract` and `fetch`).
 //!
-//! papers has `--scholar`, a full-text search on Google Scholar (HTML scraping with the
-//! `scholarly` package, often blocked), for a PDF that has no DOI and that crossref's search does
-//! not find. This is the same step with OpenAlex, an open catalogue with an API, in the chain of
-//! papers where `--scholar` sits and with the same input (the query that `extract::query_text`
-//! makes of the text of the PDF):
+//! OpenAlex is an open catalogue (CC0 data) with an API, where Google Scholar is scraped (and
+//! often blocks it). The search takes the text query that papers makes of a PDF
+//! (`extract::doi::query_text`) and works like the crossref search:
 //!
 //! 1. `GET /works?search.semantic=QUERY`: the works whose title and abstract are closest in
-//!    meaning to the query (OpenAlex's semantic search, made for long texts: a request without
-//!    a paid key may have at most 1500 characters, the query is cut there at a word; at most 50
-//!    works are found). The keyword search (`search=`) cannot
-//!    be used: it requires every word of the query, so a query of 200 words finds nothing. The
-//!    answers are cached under `openalex/` in the cache directory, by the query (not by the
-//!    number of works asked for, a larger answer serves a smaller request; nor by the e-mail
-//!    address or the key, which do not change the answer).
-//! 2. Each work is read as a crossref record ([`work_record`]), so that papers' own score applies
-//!    ([`super::crossref::crossref_score`]: `token_set_ratio` of the family names, the title and the
-//!    abstract with the text; the first of equal scores wins), and the hits are ranked by it.
-//! 3. The text of the PDF must have the title of the hit (`title_in_text`, as for every result
-//!    of papers; but a title of less than 20 letters and digits does not count, where papers lets
-//!    those of less than ten pass as too short to tell: OpenAlex has hits whose title is garbled,
-//!    or is the name of a journal or a word that any text has). The first hit in the order of the
-//!    score that passes is taken, those that are copies of another work (a preprint, the abstract
-//!    of a conference: OpenAlex has them with the title of the paper) after the others; if none
-//!    passes, the best one is returned, and the caller's own check rejects it (as papers does
-//!    for crossref).
-//!    Without a text to check (`papers fetch`), the best hit is taken, as papers does.
-//! 4. A hit with a DOI gives its BibTeX by papers' usual way (`Fetcher::fetch_bibtex_by_doi`:
-//!    crossref, doi.org, arXiv), so the entry is the one that papers makes of that DOI. A DOI that
-//!    no registry knows gives the entry made of the OpenAlex work (below), with the DOI.
-//! 5. A hit without DOI gives the entry made of the OpenAlex work: the record of [`work_record`]
-//!    written by `crossref_to_entry`, as papers writes a crossref record.
+//!    meaning to the query. The plain `search=` needs every word of the query, so a query of 200
+//!    words finds nothing. A request without a paid key may have at most 1500 characters (HTTP 400
+//!    above): the query is cut there at a word ([`truncate`]). A semantic search is limited to one
+//!    request per second ([`INTERVAL`]).
+//! 2. Each work is read as a crossref record ([`work_record`]), so that the score of papers
+//!    applies ([`super::crossref::crossref_score`]: family names, title and abstract with the
+//!    text), and the works are ranked by it (the first of equal scores first).
+//! 3. With a check of the title (`accept`: the text of the PDF has it, as for every result of
+//!    papers), the first work in score order that passes is taken; the copies of a work
+//!    ([`is_copy`]: a preprint, the abstract of a conference... that OpenAlex has with the title
+//!    of the paper) come after the published works. If none passes, the best one is returned, and
+//!    the caller's own check rejects it.
+//! 4. A work with a DOI gives its BibTeX the usual way (`Fetcher::fetch_bibtex_by_doi`:
+//!    crossref, doi.org, arXiv). A work without DOI, or whose DOI has no metadata, gives an entry
+//!    made of the OpenAlex record, as papers makes it of a crossref record (the key is the DOI,
+//!    else the OpenAlex id: [`work_bibtex`]).
 //!
-//! The entry of a work ([`work_record`]):
+//! Without a key, OpenAlex allows about 100 searches a day (shared by the network); a free key
+//! (<https://openalex.org/settings/api>) has ten times as many. papers reads the key from the
+//! environment variable `OPENALEX_API_KEY`, and the email address that identifies the user (the
+//! "polite pool") from `PAPERS_MAILTO`, when they are set: the command line does
+//! ([`OpenAlex::from_env`]); the library takes them as a parameter ([`OpenAlex`]), so that a
+//! program gives its own (Papers Desktop: those of its settings). They are never in a message
+//! (`OpenAlexError`). The answers are cached (`openalex/` in the cache
+//! directory), by the query, trimmed to what is read ([`trim`]).
 //!
-//! | BibTeX | OpenAlex |
-//! |---|---|
-//! | type | `type_crossref`, else the `type` with the type of the source: `article` of a journal `journal-article` (`article`), of a conference `proceedings-article` (`inproceedings`), `book` `book`, `book-chapter` `incollection`, `dissertation` `phdthesis`, `report` `techreport`, the others `misc` |
-//! | key | the DOI; the OpenAlex id (`W2741809807`) without one (the key template of the library replaces it in `add`) |
-//! | title | `title` |
-//! | author | `raw_author_name` of the authorships (the name as printed), else the `display_name` of the author, as `Family, Given`: a name with a comma is read as `Family, Given`, otherwise the last word and the particles before it (`van`, `de`...) are the family name |
-//! | year | `publication_year` (`0000` if unknown, as for crossref) |
-//! | journal, booktitle | the name of the source (`primary_location`), of a journal article and of a proceedings article |
-//! | volume, number, pages | `biblio`: volume, issue, `first_page-last_page` |
-//! | publisher | the host organization of the source, for a book |
-//! | url | `landing_page_url` of the primary location, else the OpenAlex page |
-//! | doi | the DOI without its `https://doi.org/` |
-//!
-//! OpenAlex needs no key; the e-mail address (`mailto`) is sent when there is one (the "polite
-//! pool"), and a key (`api_key`) when there is one. Without a key the use is limited to a small
-//! daily budget per IP address (a search costs a hundredth of it: about 100 searches a day, shared
-//! with the others on the network), with the free key to ten times as much. A semantic search is
-//! limited to one request per second, which is what the requests keep to.
+//! The wait between two requests is kept by each [`Fetcher`] (papers: by the process; the command
+//! line has one fetcher).
 
 use std::time::{Duration, Instant};
 
@@ -60,11 +42,12 @@ use serde_json::{Map, Value, json};
 
 use super::cache::{Cached, hashed_key, now};
 use super::crossref::{crossref_score, crossref_to_entry};
-use super::http::with_params;
+use super::http::{Response, quote_plus, with_params};
 use super::{ErrorKind, FetchError, Fetcher};
 use crate::bib::{Bib, Block};
-use crate::config::json::{dumps_compact, loads, py_repr_str};
-use crate::extract::doi::title_in_text_strict;
+use crate::config::json::{
+    dumps_compact, loads, py_float_repr, py_repr, py_repr_str, py_str, py_truthy,
+};
 use crate::log;
 
 type Result<T> = std::result::Result<T, FetchError>;
@@ -74,87 +57,226 @@ pub const API: &str = "https://api.openalex.org/works";
 /// The fields of a work that are asked for.
 pub const SELECT: &str = "id,doi,title,display_name,type,type_crossref,publication_year,biblio,primary_location,authorships,abstract_inverted_index";
 
-/// How many works are asked for and scored (papers asks crossref for 5; a search costs the same
-/// whatever the number, up to the 50 that a semantic search finds).
+/// The works scored (crossref: 5; a search costs the same up to 50).
 pub const ROWS: usize = 10;
 
-/// The longest query that a semantic search uses, in characters.
-const QUERY_LENGTH: usize = 1500;
+/// The longest query, in characters.
+pub const QUERY_LENGTH: usize = 1500;
 
-/// The least time between two requests (a semantic search is limited to one per second).
-const INTERVAL: Duration = Duration::from_millis(1100);
+/// The time between two requests (the limit of a semantic search is one a second).
+pub const INTERVAL: Duration = Duration::from_millis(1100);
 
-/// How the queries identify themselves to OpenAlex.
+/// The environment variable of the API key.
+pub const API_KEY_ENV: &str = "OPENALEX_API_KEY";
+/// The environment variable of the email address of the user.
+pub const MAILTO_ENV: &str = "PAPERS_MAILTO";
+
+/// How the requests identify the user to OpenAlex.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct OpenAlex {
-    /// `mailto`: the e-mail address of the user, for the polite pool.
+    /// `mailto`: the email address of the user, for the polite pool.
     pub mailto: Option<String>,
-    /// `api_key`: a key of OpenAlex (free), for a larger daily budget.
+    /// `api_key`: a key of OpenAlex (free), for more searches a day.
     pub api_key: Option<String>,
 }
 
 impl OpenAlex {
-    pub fn with_mailto(mailto: impl Into<String>) -> OpenAlex {
+    /// As papers has them: `PAPERS_MAILTO` and `OPENALEX_API_KEY`, when they are set (not empty).
+    pub fn from_env() -> OpenAlex {
+        let var = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());
         OpenAlex {
-            mailto: Some(mailto.into()),
-            api_key: None,
+            mailto: var(MAILTO_ENV),
+            api_key: var(API_KEY_ENV),
         }
+    }
+
+    fn mailto(&self) -> Option<&str> {
+        self.mailto.as_deref().filter(|m| !m.is_empty())
+    }
+
+    fn api_key(&self) -> Option<&str> {
+        self.api_key.as_deref().filter(|k| !k.is_empty())
+    }
+
+    /// The parameters of a request: `mailto` and `api_key`, those that are set.
+    fn params(&self) -> Vec<(&'static str, String)> {
+        let mut params = Vec::new();
+        if let Some(mailto) = self.mailto() {
+            params.push(("mailto", mailto.to_string()));
+        }
+        if let Some(api_key) = self.api_key() {
+            params.push(("api_key", api_key.to_string()));
+        }
+        params
+    }
+
+    /// `_redact`: the text without the key and the email address (as they are, and as a URL
+    /// has them).
+    fn redact(&self, text: &str) -> String {
+        let mut text = text.to_string();
+        for secret in [self.api_key(), self.mailto()].into_iter().flatten() {
+            text = text
+                .replace(secret, "***")
+                .replace(&quote_plus(secret), "***");
+        }
+        text
     }
 }
 
-/// An answer that is an error (an HTTP error status: an `OSError` in papers).
-fn failed(message: impl Into<String>) -> FetchError {
+/// `OpenAlexError`: an answer of OpenAlex that is an error, or no answer (the message without the
+/// key). An `OSError` in papers, as the errors of the network: a clean exit of the commands.
+fn openalex_error(message: impl Into<String>) -> FetchError {
     FetchError::new(ErrorKind::Network, message)
 }
 
-// the work as a record
-// --------------------
+/// `_http_error`: the status, what OpenAlex says of it (`message`, else `error`), and for a
+/// request without key that is over the limit of the day, the key.
+fn http_error(response: &Response, access: &OpenAlex) -> FetchError {
+    let body = loads(&response.text()).ok();
+    let said = body
+        .as_ref()
+        .and_then(|b| ["message", "error"].iter().find_map(|k| b.get(k)?.as_str()))
+        .unwrap_or("");
+    let mut message = format!("OpenAlex: HTTP {}", response.status);
+    if !said.is_empty() {
+        message.push_str(&format!(": {said}"));
+    }
+    if response.status == 429 && access.api_key().is_none() {
+        message.push_str(&format!(
+            " (without a free API key OpenAlex allows about 100 searches a day: set {API_KEY_ENV})"
+        ));
+    }
+    openalex_error(access.redact(&message))
+}
 
-fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+// the query
+// ---------
+
+/// The first `length` characters of a text, up to a space (a word is not cut).
+pub fn truncate(text: &str, length: usize) -> &str {
+    let Some((end, next)) = text.char_indices().nth(length) else {
+        return text;
+    };
+    let head = &text[..end];
+    if next.is_whitespace() {
+        return head.trim_end();
+    }
+    match head.rfind([' ', '\n', '\t']) {
+        Some(cut) if cut > 0 => head[..cut].trim_end(),
+        _ => head,
+    }
+}
+
+/// The wait before a request, `INTERVAL` after the last one.
+fn wait(last: Option<Instant>, now: Instant) -> Option<Duration> {
+    INTERVAL
+        .checked_sub(now.duration_since(last?))
+        .filter(|w| !w.is_zero())
+}
+
+// the works
+// ---------
+
+/// A value that Python takes as true, as a string (what papers reads of a field).
+fn truthy_str<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value
         .get(key)
         .and_then(Value::as_str)
-        .map(str::trim)
         .filter(|s| !s.is_empty())
 }
 
-/// The DOI of a work, without its URL.
-pub fn work_doi(work: &Value) -> Option<String> {
-    let doi = text(work, "doi")?;
-    let doi = [
-        "https://doi.org/",
-        "http://doi.org/",
-        "https://dx.doi.org/",
-        "doi:",
-    ]
-    .iter()
-    .find_map(|prefix| doi.strip_prefix(prefix))
-    .unwrap_or(doi);
-    (!doi.is_empty()).then(|| doi.to_string())
+/// A value that Python takes as true.
+fn truthy<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
+    value.get(key).filter(|v| py_truthy(v))
 }
 
-/// The OpenAlex id of a work: `W2741809807`.
-pub fn work_id(work: &Value) -> Option<String> {
-    let id = text(work, "id")?;
-    Some(id.rsplit('/').next().unwrap_or(id).to_string())
-}
-
-/// The title of a work.
-pub fn work_title(work: &Value) -> Option<&str> {
-    text(work, "title").or_else(|| text(work, "display_name"))
-}
-
-/// The abstract of a work, from its inverted index (word to positions).
-pub fn work_abstract(work: &Value) -> Option<String> {
-    let index = work.get("abstract_inverted_index")?.as_object()?;
-    let mut words: Vec<(u64, &str)> = Vec::new();
-    for (word, positions) in index {
-        for position in positions.as_array()?.iter().filter_map(Value::as_u64) {
-            words.push((position, word));
+/// The work as it is kept and read (`_trim`): the abstract as text, no affiliations and other
+/// pages of the record. `None` for what is not a work (an unexpected answer).
+pub fn trim(work: &Value) -> Option<Value> {
+    let object = work.as_object()?;
+    let mut out = Map::new();
+    for key in [
+        "id",
+        "doi",
+        "title",
+        "display_name",
+        "type",
+        "type_crossref",
+        "publication_year",
+        "biblio",
+    ] {
+        if let Some(v) = object.get(key).filter(|v| !v.is_null()) {
+            out.insert(key.into(), v.clone());
         }
     }
-    if words.is_empty() {
-        return None;
+    let abstract_ = abstract_text(object.get("abstract_inverted_index"))?;
+    if !abstract_.is_empty() {
+        out.insert("abstract".into(), json!(abstract_));
+    }
+    let mut authorships = Vec::new();
+    for a in iterate(object.get("authorships"))? {
+        a.as_object()?;
+        let author = match truthy(a, "author") {
+            Some(author) => Some(author.as_object()?),
+            None => None,
+        };
+        let mut kept = Map::new();
+        if let Some(name) = truthy_str(a, "raw_author_name") {
+            kept.insert("raw_author_name".into(), json!(name));
+        }
+        if let Some(name) = author
+            .and_then(|a| a.get("display_name")?.as_str())
+            .filter(|s| !s.is_empty())
+        {
+            kept.insert("display_name".into(), json!(name));
+        }
+        authorships.push(Value::Object(kept));
+    }
+    out.insert("authorships".into(), Value::Array(authorships));
+    let empty = Value::Object(Map::new());
+    let location = match truthy(work, "primary_location") {
+        Some(location) => location.as_object().map(|_| location)?,
+        None => &empty,
+    };
+    let source = match truthy(location, "source") {
+        Some(source) => source.as_object().map(|_| source)?,
+        None => &empty,
+    };
+    let field = |v: &Value, key: &str| v.get(key).cloned().unwrap_or(Value::Null);
+    out.insert(
+        "primary_location".into(),
+        json!({
+            "landing_page_url": field(location, "landing_page_url"),
+            "source": {
+                "display_name": field(source, "display_name"),
+                "type": field(source, "type"),
+                "host_organization_name": field(source, "host_organization_name"),
+            },
+        }),
+    );
+    Some(Value::Object(out))
+}
+
+/// The items of a list of an answer (`x or []`); `None` for what is not one.
+fn iterate(value: Option<&Value>) -> Option<&[Value]> {
+    match value {
+        Some(Value::Array(items)) => Some(items),
+        Some(v) if py_truthy(v) => None,
+        _ => Some(&[]),
+    }
+}
+
+/// `_abstract`: the abstract from its inverted index (word to positions); empty without one,
+/// `None` for an index that is not one.
+fn abstract_text(index: Option<&Value>) -> Option<String> {
+    let Some(Value::Object(index)) = index else {
+        return Some(String::new());
+    };
+    let mut words: Vec<(i64, &str)> = Vec::new();
+    for (word, positions) in index {
+        for position in positions.as_array()? {
+            words.push((position.as_i64()?, word));
+        }
     }
     words.sort();
     Some(
@@ -166,16 +288,56 @@ pub fn work_abstract(work: &Value) -> Option<String> {
     )
 }
 
+/// The DOI of a work, without its URL.
+pub fn work_doi(work: &Value) -> Option<String> {
+    let doi = work.get("doi").and_then(Value::as_str).unwrap_or("").trim();
+    let lower = doi.to_ascii_lowercase();
+    let prefix = [
+        "https://doi.org/",
+        "http://doi.org/",
+        "https://dx.doi.org/",
+        "http://dx.doi.org/",
+        "doi:",
+    ]
+    .iter()
+    .find(|p| lower.starts_with(*p))
+    .map_or(0, |p| p.len());
+    let doi = &doi[prefix..];
+    (!doi.is_empty()).then(|| doi.to_string())
+}
+
+/// The title of a work (its `display_name` without one).
+pub fn work_title(work: &Value) -> &str {
+    truthy_str(work, "title")
+        .or_else(|| truthy_str(work, "display_name"))
+        .unwrap_or("")
+        .trim()
+}
+
+/// A work that is a copy of another, as OpenAlex has them with the same title: a preprint, the
+/// abstract of a conference, a review, a data set...
+pub fn is_copy(work: &Value) -> bool {
+    matches!(
+        work.get("type").and_then(Value::as_str),
+        Some(
+            "preprint"
+                | "conference-abstract"
+                | "peer-review"
+                | "paratext"
+                | "dataset"
+                | "supplementary-materials"
+        )
+    )
+}
+
 const PARTICLES: [&str; 19] = [
     "van", "von", "der", "den", "de", "del", "della", "di", "da", "dos", "du", "la", "le", "ten",
     "ter", "bin", "ibn", "al", "el",
 ];
 
-/// A name as (given, family): `Family, Given` is read as it is written, otherwise the family
-/// name is the last word with the particles before it. A name of one word is a given name only
-/// (it is written as it is: the name of an organization).
+/// (given, family) of a name: `Family, Given` as it is written, else the family name is the last
+/// word with the particles before it; a name of one word (an organization) is a given name.
 pub fn split_name(name: &str) -> (String, String) {
-    // the hyphens of the unicode block of punctuation that OpenAlex has in some names
     let name = name.replace(['\u{2010}', '\u{2011}'], "-");
     let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
     if let Some((family, given)) = name.split_once(',') {
@@ -192,15 +354,16 @@ pub fn split_name(name: &str) -> (String, String) {
     (words[..start].join(" "), words[start..].join(" "))
 }
 
-/// The type of a work as crossref names it.
+/// `_crossref_type`: the type of a work as crossref names it.
 fn crossref_type(work: &Value) -> String {
-    if let Some(t) = text(work, "type_crossref") {
-        return t.to_string();
+    if let Some(t) = truthy(work, "type_crossref") {
+        return py_str(t);
     }
+    let kind = truthy_str(work, "type").unwrap_or("");
     let source_type = work
         .pointer("/primary_location/source/type")
         .and_then(Value::as_str);
-    match text(work, "type").unwrap_or("") {
+    match kind {
         "article" | "review" | "letter" | "editorial" | "erratum" => match source_type {
             None | Some("journal") => "journal-article",
             Some("conference") => "proceedings-article",
@@ -208,57 +371,42 @@ fn crossref_type(work: &Value) -> String {
         },
         "preprint" => "posted-content",
         "dissertation" => "thesis",
-        "book" => "book",
-        "book-chapter" => "book-chapter",
-        "report" => "report",
-        other => return other.to_string(),
+        other => other,
     }
     .to_string()
 }
 
-/// A work that is a copy of another, as OpenAlex has them with the same title: a preprint, an
-/// abstract of a conference, a review of a paper, a data set...
-fn is_copy(work: &Value) -> bool {
-    matches!(
-        text(work, "type"),
-        Some(
-            "preprint"
-                | "conference-abstract"
-                | "peer-review"
-                | "paratext"
-                | "dataset"
-                | "supplementary-materials"
-        )
-    )
-}
-
-/// The work as a record of crossref (what `crossref_to_bibtex` and the score read).
+/// The work as a crossref record (what `crossref_to_bibtex` and the score read).
 pub fn work_record(work: &Value) -> Value {
+    let empty = Value::Object(Map::new());
     let mut record = Map::new();
-    let kind = crossref_type(work);
-    record.insert("type".into(), json!(kind));
+    record.insert("type".into(), json!(crossref_type(work)));
+    let location = truthy(work, "primary_location").unwrap_or(&empty);
+    let source = truthy(location, "source").unwrap_or(&empty);
     if let Some(doi) = work_doi(work) {
         record.insert("URL".into(), json!(format!("https://doi.org/{doi}")));
         record.insert("DOI".into(), json!(doi));
-    } else if let Some(url) = work
-        .pointer("/primary_location/landing_page_url")
-        .and_then(Value::as_str)
-        .filter(|s| !s.is_empty())
-        .or_else(|| text(work, "id"))
-    {
-        record.insert("URL".into(), json!(url));
+    } else {
+        let url = truthy(location, "landing_page_url")
+            .or_else(|| truthy(work, "id"))
+            .cloned()
+            .unwrap_or_else(|| json!(""));
+        record.insert("URL".into(), url);
     }
-    if let Some(title) = work_title(work) {
+    let title = work_title(work);
+    if !title.is_empty() {
         record.insert("title".into(), json!([title]));
     }
-    let authors: Vec<Value> = work
+    let mut authors = Vec::new();
+    for authorship in work
         .get("authorships")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter_map(|a| {
-            let name = text(a, "raw_author_name")
-                .or_else(|| a.get("author").and_then(|a| text(a, "display_name")))?;
+    {
+        let name = truthy_str(authorship, "raw_author_name")
+            .or_else(|| truthy_str(authorship, "display_name"));
+        if let Some(name) = name {
             let (given, family) = split_name(name);
             let mut author = Map::new();
             if !given.is_empty() {
@@ -267,53 +415,48 @@ pub fn work_record(work: &Value) -> Value {
             if !family.is_empty() {
                 author.insert("family".into(), json!(family));
             }
-            Some(Value::Object(author))
-        })
-        .collect();
+            authors.push(Value::Object(author));
+        }
+    }
     if !authors.is_empty() {
         record.insert("author".into(), Value::Array(authors));
     }
-    if let Some(year) = work.get("publication_year").and_then(Value::as_i64) {
+    if let Some(year) = work.get("publication_year").filter(|v| !v.is_null()) {
         record.insert("issued".into(), json!({"date-parts": [[year]]}));
     }
-    let source = work.pointer("/primary_location/source");
-    if let Some(name) = source.and_then(|s| text(s, "display_name")) {
+    if let Some(name) = truthy(source, "display_name") {
         record.insert("container-title".into(), json!([name]));
     }
-    if let Some(name) = source.and_then(|s| text(s, "host_organization_name")) {
-        record.insert("publisher".into(), json!(name));
+    if let Some(name) = truthy(source, "host_organization_name") {
+        record.insert("publisher".into(), name.clone());
     }
-    if let Some(biblio) = work.get("biblio") {
-        if let Some(volume) = text(biblio, "volume") {
-            record.insert("volume".into(), json!(volume));
-        }
-        if let Some(issue) = text(biblio, "issue") {
-            record.insert("issue".into(), json!(issue));
-        }
-        match (text(biblio, "first_page"), text(biblio, "last_page")) {
-            (Some(first), Some(last)) if first != last => {
-                record.insert("page".into(), json!(format!("{first}-{last}")));
-            }
-            (Some(first), _) => {
-                record.insert("page".into(), json!(first));
-            }
-            _ => {}
-        }
+    let biblio = truthy(work, "biblio").unwrap_or(&empty);
+    if let Some(volume) = truthy(biblio, "volume") {
+        record.insert("volume".into(), volume.clone());
     }
-    if let Some(abstract_) = work_abstract(work) {
-        record.insert("abstract".into(), json!(abstract_));
+    if let Some(issue) = truthy(biblio, "issue") {
+        record.insert("issue".into(), issue.clone());
+    }
+    if let Some(first) = truthy(biblio, "first_page") {
+        let page = match truthy(biblio, "last_page") {
+            Some(last) if last != first => json!(format!("{}-{}", py_str(first), py_str(last))),
+            _ => first.clone(),
+        };
+        record.insert("page".into(), page);
+    }
+    if let Some(abstract_) = truthy(work, "abstract") {
+        record.insert("abstract".into(), abstract_.clone());
     }
     Value::Object(record)
 }
 
-/// The BibTeX made of a work alone: as papers writes a crossref record, the key being the
-/// DOI, or the OpenAlex id without one.
+/// The BibTeX made of a work alone: the key is its DOI, else its OpenAlex id (`W2741809807`).
 pub fn work_bibtex(work: &Value) -> Result<String> {
     let mut entry = crossref_to_entry(&work_record(work))?;
-    if work_doi(work).is_none()
-        && let Some(id) = work_id(work)
-    {
-        entry.key = id;
+    let id = work.get("id").and_then(Value::as_str).unwrap_or("");
+    let key = id.rsplit('/').next().unwrap_or("");
+    if work_doi(work).is_none() && !key.is_empty() {
+        entry.key = key.to_string();
     }
     Ok(Bib {
         blocks: vec![Block::Entry(entry)],
@@ -321,71 +464,13 @@ pub fn work_bibtex(work: &Value) -> Result<String> {
     .format())
 }
 
-/// The works with the score of papers, best first (the first of equal scores first): the score
-/// is that of a crossref record (the family names, the title and the abstract).
-pub fn rank_works<'a>(txt: &str, works: &'a [Value]) -> Result<Vec<(f64, &'a Value)>> {
-    let mut ranked = Vec::with_capacity(works.len());
-    for work in works {
-        let (score, _) = crossref_score(txt, &work_record(work))?;
-        ranked.push((score, work));
-    }
-    ranked.sort_by(|a, b| b.0.total_cmp(&a.0));
-    Ok(ranked)
-}
-
-/// What the cache keeps of a work: the fields that are read, not the affiliations and
-/// the other pages of the record.
-fn trim(work: &Value) -> Value {
-    let mut out = Map::new();
-    for key in [
-        "id",
-        "doi",
-        "title",
-        "display_name",
-        "type",
-        "type_crossref",
-        "publication_year",
-        "biblio",
-        "abstract_inverted_index",
-    ] {
-        if let Some(v) = work.get(key).filter(|v| !v.is_null()) {
-            out.insert(key.into(), v.clone());
-        }
-    }
-    let authorships: Vec<Value> = work
-        .get("authorships")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .map(|a| {
-            let mut author = Map::new();
-            if let Some(name) = text(a, "raw_author_name") {
-                author.insert("raw_author_name".into(), json!(name));
-            }
-            if let Some(name) = a.get("author").and_then(|a| text(a, "display_name")) {
-                author.insert("author".into(), json!({"display_name": name}));
-            }
-            Value::Object(author)
-        })
-        .collect();
-    out.insert("authorships".into(), Value::Array(authorships));
-    if let Some(location) = work.get("primary_location").filter(|v| v.is_object()) {
-        let mut loc = Map::new();
-        if let Some(url) = text(location, "landing_page_url") {
-            loc.insert("landing_page_url".into(), json!(url));
-        }
-        if let Some(source) = location.get("source").filter(|v| v.is_object()) {
-            let mut s = Map::new();
-            for key in ["display_name", "type", "host_organization_name"] {
-                if let Some(v) = text(source, key) {
-                    s.insert(key.into(), json!(v));
-                }
-            }
-            loc.insert("source".into(), Value::Object(s));
-        }
-        out.insert("primary_location".into(), Value::Object(loc));
-    }
-    Value::Object(out)
+/// A string field, trimmed, if it is not empty.
+fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
 }
 
 /// The fields of a work that the lookup of a free PDF asks for.
@@ -412,96 +497,70 @@ pub fn open_pdf_url(work: &Value) -> Option<String> {
         })
 }
 
-// the queries
-// -----------
+// the search
+// ----------
 
-/// The first `length` characters of a text, up to a space (a word is not cut).
-fn truncate(text: &str, length: usize) -> &str {
-    match text.char_indices().nth(length) {
-        None => text,
-        Some((end, _)) => match text[..end].rfind(char::is_whitespace) {
-            Some(space) => text[..space].trim_end(),
-            None => &text[..end],
-        },
+/// The works of an answer, trimmed; `None` if it is not an answer of a search.
+fn answer_works(body: &Value) -> Option<Vec<Value>> {
+    let results = body.as_object()?.get("results")?;
+    match results {
+        Value::Array(works) => works.iter().map(trim).collect(),
+        // what Python iterates to nothing
+        Value::Object(m) if m.is_empty() => Some(Vec::new()),
+        Value::String(s) if s.is_empty() => Some(Vec::new()),
+        _ => None,
     }
 }
 
 impl Fetcher {
-    /// Wait until the last request to OpenAlex is `INTERVAL` ago.
+    /// `_throttle`: wait until the last request to OpenAlex is `INTERVAL` ago.
     fn openalex_throttle(&self) {
         let mut last = self
             .openalex_last
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if let Some(when) = *last {
-            let since = when.elapsed();
-            if since < INTERVAL {
-                std::thread::sleep(INTERVAL - since);
-            }
+        if let Some(wait) = wait(*last, Instant::now()) {
+            std::thread::sleep(wait);
         }
         *last = Some(Instant::now());
     }
 
-    /// The works that a semantic search finds (at most `rows`, the closest first), trimmed to
-    /// what is read. The cache has them by the query: an answer of at least `rows` works serves.
+    /// `_search`: the works of a semantic search of the query (at most `rows`), trimmed
+    /// ([`trim`]). The cache has them by the query and the number of works (not by the email
+    /// address or the key, which do not change the answer); an error is not cached.
     pub fn openalex_search(
         &self,
         query: &str,
-        access: &OpenAlex,
         rows: usize,
+        access: &OpenAlex,
     ) -> Result<Vec<Value>> {
-        let query = truncate(query, QUERY_LENGTH);
-        let key = hashed_key(&dumps_compact(
-            &json!({"search.semantic": query, "select": SELECT}),
-        ));
-        if let Cached::Value(Value::Object(cached)) = self.cache.get("openalex", &key, now(), false)
-            && cached.get("per-page").and_then(Value::as_u64) >= Some(rows as u64)
-            && let Some(Value::Array(works)) = cached.get("works")
-        {
-            return Ok(works.iter().take(rows).cloned().collect());
+        let params = json!({"search.semantic": query, "per-page": rows, "select": SELECT});
+        let key = hashed_key(&dumps_compact(&params));
+        if let Cached::Value(Value::Array(works)) = self.cache.get("openalex", &key, now(), false) {
+            return Ok(works);
         }
-        let mut params: Vec<(&str, String)> = vec![
-            ("search.semantic", query.to_string()),
+        let mut request: Vec<(&str, String)> = vec![
             ("per-page", rows.to_string()),
+            ("search.semantic", query.to_string()),
             ("select", SELECT.to_string()),
         ];
-        log::debug(&format!("openalex search: {}", with_params(API, &params)));
-        if let Some(mailto) = access.mailto.as_deref().filter(|m| !m.is_empty()) {
-            params.push(("mailto", mailto.to_string()));
-        }
-        if let Some(api_key) = access.api_key.as_deref().filter(|k| !k.is_empty()) {
-            params.push(("api_key", api_key.to_string()));
-        }
+        request.extend(access.params());
+        log::debug(&format!("openalex search: {}", py_repr(&params)));
         self.openalex_throttle();
-        let response = self.get(&with_params(API, &params), None)?;
+        let response = self
+            .get(&with_params(API, &request), None)
+            .map_err(|error| {
+                openalex_error(access.redact(&format!("OpenAlex: {}", error.message)))
+            })?;
         if response.status >= 400 {
-            // the answer says what is wrong (the budget of the day, a key that is not active)
-            let body = loads(&response.text()).ok();
-            let said = body.as_ref().and_then(|b| {
-                ["message", "error"]
-                    .iter()
-                    .find_map(|k| b.get(k).and_then(Value::as_str))
-            });
-            return Err(failed(match said {
-                Some(said) => format!("OpenAlex: HTTP {}: {said}", response.status),
-                None => format!(
-                    "OpenAlex: HTTP {} {}",
-                    response.status,
-                    py_repr_str(&response.reason)
-                ),
-            }));
+            return Err(http_error(&response, access));
         }
-        let body = loads(&response.text())
-            .map_err(|e| FetchError::new(ErrorKind::Value, format!("OpenAlex: {}", e.message)))?;
-        let works: Vec<Value> = body
-            .get("results")
-            .and_then(Value::as_array)
-            .ok_or_else(|| failed("OpenAlex: no 'results' in the answer"))?
-            .iter()
-            .map(trim)
-            .collect();
+        let works = loads(&response.text())
+            .ok()
+            .and_then(|body| answer_works(&body))
+            .ok_or_else(|| openalex_error("OpenAlex: unexpected answer"))?;
         self.cache
-            .put_value("openalex", &key, json!({"per-page": rows, "works": works}));
+            .put_value("openalex", &key, Value::Array(works.clone()));
         Ok(works)
     }
 
@@ -526,7 +585,7 @@ impl Fetcher {
             return Ok(None);
         }
         if response.status >= 400 {
-            return Err(failed(format!(
+            return Err(openalex_error(format!(
                 "OpenAlex: HTTP {} {}",
                 response.status,
                 py_repr_str(&response.reason)
@@ -537,8 +596,8 @@ impl Fetcher {
         Ok(open_pdf_url(&work))
     }
 
-    /// The BibTeX of a work: that of its DOI, as papers makes it (crossref, doi.org, arXiv), or,
-    /// for a work without DOI or whose DOI no registry has metadata of, made of the work.
+    /// The BibTeX of the DOI of a work, as papers makes it (crossref, doi.org, arXiv), else made
+    /// of the work (a work without DOI, or whose DOI has no metadata).
     pub fn bibtex_of_work(&self, work: &Value) -> Result<String> {
         if let Some(doi) = work_doi(work) {
             match self.fetch_bibtex_by_doi(&doi) {
@@ -552,41 +611,62 @@ impl Fetcher {
         work_bibtex(work)
     }
 
-    /// `fetch_bibtex_by_fulltext_scholar` with OpenAlex: the best match of a search of the
-    /// query, as BibTeX. With `text` (the text of the PDF, of which the query is a part), the
-    /// best of the hits whose title is in the text; if none has, the best one.
+    /// The best match of an OpenAlex search of the text, as BibTeX (the query is the text cut at
+    /// [`QUERY_LENGTH`] characters, the score is that of the whole text).
+    ///
+    /// `accept`: the check of a title (true if it is that of the paper of the text): the best
+    /// work that passes is taken, the published ones before their copies.
     pub fn fetch_bibtex_by_fulltext_openalex(
         &self,
-        query: &str,
+        txt: &str,
         access: &OpenAlex,
+        accept: Option<&dyn Fn(&str) -> bool>,
         rows: usize,
-        text: Option<&str>,
     ) -> Result<String> {
-        let works = self.openalex_search(query, access, rows)?;
+        let query = truncate(txt, QUERY_LENGTH);
+        let works = self.openalex_search(query, rows, access)?;
         if works.is_empty() {
             return Err(FetchError::new(
                 ErrorKind::Value,
                 "openalex fulltext: no results",
             ));
         }
-        let ranked = rank_works(query, &works)?;
-        let (score, best) = ranked[0];
-        // the hits with their title in the text, the published works before the copies of them
-        let chosen = text
-            .and_then(|txt| {
-                let accepted: Vec<&(f64, &Value)> = ranked
+        let scores = works
+            .iter()
+            .map(|work| crossref_score(txt, &work_record(work)))
+            .collect::<Result<Vec<_>>>()?;
+        // the first of equal scores first
+        let mut order: Vec<usize> = (0..works.len()).collect();
+        order.sort_by(|&a, &b| scores[b].0.total_cmp(&scores[a].0));
+        let mut chosen = order[0];
+        if let Some(accept) = accept {
+            let accepted: Vec<usize> = order
+                .iter()
+                .copied()
+                .filter(|&i| {
+                    let title = work_title(&works[i]);
+                    !title.is_empty() && accept(title)
+                })
+                .collect();
+            if let Some(&first) = accepted.first() {
+                chosen = accepted
                     .iter()
-                    .filter(|(_, w)| work_title(w).is_some_and(|t| title_in_text_strict(t, txt)))
-                    .collect();
-                accepted
-                    .iter()
-                    .find(|(_, w)| !is_copy(w))
-                    .or(accepted.first())
-                    .map(|hit| **hit)
-            })
-            .unwrap_or((score, best));
-        log::debug(&format!("score: {}", chosen.0));
-        self.bibtex_of_work(chosen.1).map(|b| b.trim().to_string())
+                    .copied()
+                    .find(|&i| !is_copy(&works[i]))
+                    .unwrap_or(first);
+            }
+        }
+        let (score, float) = scores[chosen];
+        log::debug(&format!(
+            "score: {}",
+            if float {
+                py_float_repr(score)
+            } else {
+                "0".to_string()
+            }
+        ));
+        self.bibtex_of_work(&works[chosen])
+            .map(|b| b.trim().to_string())
     }
 }
 
@@ -620,41 +700,28 @@ mod tests {
     }
 
     #[test]
-    fn types_as_crossref_names_them() {
-        let kind = |w: Value| crossref_type(&w);
-        assert_eq!(
-            kind(json!({"type_crossref": "book-chapter", "type": "article"})),
-            "book-chapter"
-        );
-        assert_eq!(kind(json!({"type": "article"})), "journal-article");
-        let source =
-            |t: &str| json!({"type": "article", "primary_location": {"source": {"type": t}}});
-        assert_eq!(kind(source("journal")), "journal-article");
-        assert_eq!(kind(source("conference")), "proceedings-article");
-        assert_eq!(kind(source("repository")), "posted-content");
-        assert_eq!(kind(json!({"type": "preprint"})), "posted-content");
-        assert_eq!(kind(json!({"type": "dissertation"})), "thesis");
-        assert_eq!(kind(json!({"type": "book"})), "book");
-        assert_eq!(kind(json!({"type": "dataset"})), "dataset");
-    }
-
-    #[test]
     fn dois_without_their_url() {
         let doi = |d: &str| work_doi(&json!({"doi": d}));
         assert_eq!(doi("https://doi.org/10.1/x"), Some("10.1/x".to_string()));
+        assert_eq!(doi("HTTP://DX.DOI.ORG/10.1/x"), Some("10.1/x".to_string()));
+        assert_eq!(doi("doi:10.1/x"), Some("10.1/x".to_string()));
         assert_eq!(doi("10.1/x"), Some("10.1/x".to_string()));
         assert_eq!(doi(""), None);
+        assert_eq!(doi("https://doi.org/"), None);
         assert_eq!(work_doi(&json!({"doi": null})), None);
     }
 
     #[test]
     fn the_abstract_from_its_inverted_index() {
-        let work = json!({"abstract_inverted_index": {"is": [1], "This": [0], "it": [2, 3]}});
-        assert_eq!(work_abstract(&work).as_deref(), Some("This is it it"));
+        let index = json!({"is": [1], "This": [0], "it": [2, 3]});
         assert_eq!(
-            work_abstract(&json!({"abstract_inverted_index": null})),
-            None
+            abstract_text(Some(&index)).as_deref(),
+            Some("This is it it")
         );
+        assert_eq!(abstract_text(None).as_deref(), Some(""));
+        assert_eq!(abstract_text(Some(&Value::Null)).as_deref(), Some(""));
+        // not an index: an unexpected answer
+        assert_eq!(abstract_text(Some(&json!({"is": 1}))), None);
     }
 
     #[test]
@@ -681,7 +748,39 @@ mod tests {
     fn queries_are_cut_at_a_word() {
         assert_eq!(truncate("one two three", 100), "one two three");
         assert_eq!(truncate("one two three", 9), "one two");
+        assert_eq!(truncate("one two three", 7), "one two"); // the word ends there
         assert_eq!(truncate("onetwothree", 5), "onetw");
-        assert_eq!(truncate("é é é", 3), "é");
+        assert_eq!(truncate("é é é", 2), "é");
+        assert_eq!(truncate(" onetwo", 4), " one"); // a space at the start does not count
+    }
+
+    #[test]
+    fn one_request_a_second() {
+        let start = Instant::now();
+        // the first request does not wait
+        assert_eq!(wait(None, start), None);
+        // 0.3 s later
+        let later = start + Duration::from_millis(300);
+        assert_eq!(
+            wait(Some(start), later),
+            Some(INTERVAL - Duration::from_millis(300))
+        );
+        // long after
+        assert_eq!(wait(Some(start), start + Duration::from_secs(5)), None);
+        assert!(INTERVAL >= Duration::from_secs(1));
+    }
+
+    #[test]
+    fn the_key_and_the_address_are_not_in_a_message() {
+        let access = OpenAlex {
+            mailto: Some("me@example.org".into()),
+            api_key: Some("secret".into()),
+        };
+        assert_eq!(
+            access.redact("url: /works?api_key=secret&mailto=me@example.org"),
+            "url: /works?api_key=***&mailto=***"
+        );
+        assert_eq!(access.redact("mailto=me%40example.org"), "mailto=***");
+        assert_eq!(OpenAlex::default().redact("api_key="), "api_key=");
     }
 }

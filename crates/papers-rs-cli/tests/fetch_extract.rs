@@ -237,7 +237,7 @@ fn the_usage_of_fetch() {
     );
     assert_eq!(output.status.code(), Some(2));
     assert!(text(&output.stderr).ends_with(
-        "papers fetch: error: Fetching from DOI does not support Google Scholar option\n"
+        "papers fetch: error: Fetching from DOI does not support the options --scholar and --openalex\n"
     ));
     // a search by Google Scholar is not ported
     let output = papers(&["fetch", "some", "words", "--scholar"], dir.path());
@@ -256,17 +256,37 @@ fn doi_is_the_deprecated_extract_doi_only() {
     );
 }
 
-/// `--openalex` is an extension of papers-rs (not in papers): where it is not used, nothing changes.
+/// `--openalex` (papers #205): a DOI has no search.
 #[test]
-fn openalex_is_not_for_a_doi() {
+fn fetch_a_doi_takes_neither_scholar_nor_openalex() {
     let dir = tempfile::tempdir().unwrap();
-    let output = papers(&["fetch", "10.1000/abc", "--openalex"], dir.path());
-    assert_eq!(output.status.code(), Some(2));
-    assert!(
-        text(&output.stderr).ends_with("papers fetch: error: Fetching from DOI does not support the OpenAlex option\n"),
-        "{}",
-        text(&output.stderr)
-    );
+    for option in ["--scholar", "--openalex"] {
+        let output = papers(&["fetch", "10.1000/abc", option], dir.path());
+        assert_eq!(output.status.code(), Some(2));
+        assert!(
+            text(&output.stderr).ends_with(
+                "papers fetch: error: Fetching from DOI does not support the options --scholar and --openalex\n"
+            ),
+            "{}",
+            text(&output.stderr)
+        );
+    }
+}
+
+#[test]
+fn openalex_is_not_with_scholar() {
+    let dir = tempfile::tempdir().unwrap();
+    for args in [vec!["fetch", "Climate", "sensitivity"], vec!["extract", "a.pdf"], vec!["add", "a.pdf"]] {
+        let mut args = args.clone();
+        args.extend(["--scholar", "--openalex"]);
+        let output = papers(&args, dir.path());
+        assert_eq!(output.status.code(), Some(2), "{args:?}");
+        assert!(
+            text(&output.stderr).ends_with(": error: argument --openalex: not allowed with argument --scholar\n"),
+            "{}",
+            text(&output.stderr)
+        );
+    }
 }
 
 #[test]
@@ -283,13 +303,18 @@ fn openalex_changes_nothing_before_the_search() {
     }
 }
 
-/// Google Scholar is still not ported, with or without the option of papers-rs.
+/// A search that fails is a clean error, without the key and the email address of the user.
 #[test]
-fn scholar_is_still_not_ported_with_openalex() {
+fn a_failed_search_of_openalex_is_a_clean_error_without_the_key() {
     let dir = tempfile::tempdir().unwrap();
-    let output = papers(&["fetch", "some", "words", "--scholar", "--openalex"], dir.path());
-    assert_eq!(output.status.code(), Some(1));
-    assert!(text(&output.stderr).contains("not implemented in papers-rs yet"));
+    let mut env = NO_NETWORK.to_vec();
+    env.extend([("OPENALEX_API_KEY", "secret-key"), ("PAPERS_MAILTO", "me@example.org")]);
+    let output = papers_with(&["fetch", "Climate", "sensitivity", "revisited", "--openalex"], dir.path(), &env);
+    let stderr = text(&output.stderr);
+    assert_eq!(output.status.code(), Some(1), "{stderr}");
+    assert!(stderr.starts_with("papers: error: OpenAlex: "), "{stderr}");
+    assert!(!stderr.contains("secret-key") && !stderr.contains("example.org"), "{stderr}");
+    assert!(text(&output.stdout).is_empty());
 }
 
 /// The network: `cargo test -- --ignored`

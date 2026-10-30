@@ -1,6 +1,6 @@
-//! What the search of OpenAlex (`--openalex`, an extension of papers-rs) adds to the chain of
-//! papers, measured on a set of PDFs (read only: nothing is written next to them). For each PDF
-//! of a random sample, in this order:
+//! What the search of OpenAlex (`--openalex`) adds to the default chain of papers (crossref),
+//! measured on a set of PDFs (read only: nothing is written next to them). For each PDF of a
+//! random sample, in this order:
 //!
 //! 1. papers' chain: the DOI of the PDF metadata or of the text, and else crossref's full-text
 //!    search (`extract_pdf_metadata` as `papers extract`): found, or not (no hit, or a hit whose
@@ -19,7 +19,8 @@
 //!
 //! `--cache` is a folder of the cache of the queries, not that of papers (the answers of crossref
 //! and OpenAlex are kept there, so that a second run asks for nothing). `--budget` is the most
-//! searches of OpenAlex (a keyless use has about 100 a day).
+//! searches of OpenAlex (a keyless use has about 100 a day; a PDF asked costs two: the search of
+//! 50 works, then that of the chain, of 10).
 
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -131,10 +132,7 @@ fn main() {
         last: Mutex::new(Instant::now()),
     };
     let fetcher = Fetcher::with_transport(Box::new(transport), &cache);
-    let access = OpenAlex {
-        mailto: std::env::var("PAPERS_MAILTO").ok(),
-        api_key: std::env::var("OPENALEX_API_KEY").ok(),
-    };
+    let access = OpenAlex::from_env();
 
     let (mut n, mut unreadable, mut found, mut missed) = (0, 0, 0, 0);
     let (mut gained, mut with_doi, mut agreed_asked, mut agreed) = (0, 0, 0, 0);
@@ -183,7 +181,11 @@ fn main() {
                     "no query",
                 ))
             } else {
-                fetcher.openalex_search(&query, &access, 50)
+                fetcher.openalex_search(
+                    openalex::truncate(&query, openalex::QUERY_LENGTH),
+                    50,
+                    &access,
+                )
             };
             let mut oa = json!({});
             match &works {
@@ -192,7 +194,8 @@ fn main() {
                         .iter()
                         .enumerate()
                         .filter(|(_, w)| {
-                            work_title(w).is_some_and(|t| title_in_text_strict(t, &head))
+                            let title = work_title(w);
+                            !title.is_empty() && title_in_text_strict(title, &head)
                         })
                         .map(|(i, _)| i)
                         .collect();

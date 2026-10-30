@@ -8,12 +8,13 @@ use papers_rs::config::dirs::cache_dir;
 use papers_rs::config::settings::py_int;
 use papers_rs::error::Error;
 use papers_rs::extract::{Options, extract_pdf_doi, extract_pdf_metadata};
-use papers_rs::fetch::{ErrorKind, FetchError, Fetcher, openalex};
+use papers_rs::fetch::openalex::{self, OpenAlex};
+use papers_rs::fetch::{ErrorKind, FetchError, Fetcher};
 use papers_rs::identity::strip_doi;
 use papers_rs::log;
 
 use crate::parse::Leaf;
-use crate::util::{file_uri_to_path, openalex_access};
+use crate::util::file_uri_to_path;
 
 /// What ends the command other than a result.
 pub enum Failure {
@@ -72,14 +73,9 @@ pub fn fetch(leaf: &Leaf) -> Outcome {
     // either one or several DOIs
     let dois: Vec<Option<String>> = fields.iter().map(|f| strip_doi(f)).collect();
     if dois.iter().all(|d| d.is_some()) {
-        if scholar {
+        if scholar || openalex {
             return Err(Failure::Usage(
-                "Fetching from DOI does not support Google Scholar option".into(),
-            ));
-        }
-        if openalex {
-            return Err(Failure::Usage(
-                "Fetching from DOI does not support the OpenAlex option".into(),
+                "Fetching from DOI does not support the options --scholar and --openalex".into(),
             ));
         }
         let fetcher = fetcher()?;
@@ -98,9 +94,7 @@ pub fn fetch(leaf: &Leaf) -> Outcome {
     }
     let text = fields.join(" ");
     let bibtex = if openalex {
-        // papers-rs, not in papers: the search of OpenAlex instead of crossref's
-        let access = openalex_access();
-        fetcher()?.fetch_bibtex_by_fulltext_openalex(&text, &access, openalex::ROWS, None)
+        fetcher()?.fetch_bibtex_by_fulltext_openalex(&text, &OpenAlex::from_env(), None, openalex::ROWS)
     } else {
         fetcher()?.fetch_bibtex_by_fulltext_crossref(&text, None, None, 5)
     }
@@ -240,7 +234,7 @@ pub fn extract(leaf: &Leaf) -> Outcome {
         minwords: word_count,
         max_query_words: word_count,
         scholar: leaf.flag("scholar"),
-        openalex: leaf.flag("openalex").then(openalex_access),
+        openalex: leaf.flag("openalex").then(OpenAlex::from_env),
         image: leaf.flag("image"),
         ..Options::default()
     };

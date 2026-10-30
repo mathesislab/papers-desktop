@@ -45,7 +45,7 @@ pub(super) struct Job<'a> {
     pub search_doi: bool,
     pub search_fulltext: bool,
     pub scholar: bool,
-    /// papers-rs: the search of OpenAlex instead of crossref's (`--openalex`).
+    /// `--openalex`: the search of OpenAlex instead of crossref's.
     pub openalex: Option<&'a OpenAlex>,
     /// `--doi`: the metadata of the DOI, not of the PDF.
     pub doi: Option<&'a str>,
