@@ -1,7 +1,9 @@
 <script lang="ts" module>
   import type { Row } from "$lib/types";
 
-  export type Column = "authors" | "year" | "title" | "container" | "tags" | "key" | "kind" | "doi" | "bib";
+  import { formatDate } from "./downloads";
+
+  export type Column = "authors" | "year" | "title" | "container" | "tags" | "key" | "kind" | "doi" | "bib" | "added";
   /** a column shown, and its width in pixels */
   export type Shown = { column: Column; width: number };
   /** a column and its direction; none: the order of the library (newest first) */
@@ -18,6 +20,7 @@
     kind: { name: "Type", width: 90 },
     doi: { name: "DOI", width: 190 },
     bib: { name: "Library", width: 120 },
+    added: { name: "Added", width: 90 },
   };
 
   export const DEFAULT_COLUMNS: Shown[] = (["authors", "year", "title", "container", "tags"] as Column[]).map(
@@ -33,9 +36,17 @@
         return row.tags.join(", ");
       case "bib":
         return fileName(row.bib);
+      case "added":
+        return row.added ?? null;
       default:
         return row[column];
     }
+  }
+
+  /** What a cell shows: its value, a date as the Downloads panel writes it. */
+  export function text(row: Row, column: Column): string {
+    if (column === "added") return row.added ? formatDate(row.added) : "";
+    return String(value(row, column) ?? "");
   }
 </script>
 
@@ -188,9 +199,9 @@
   }
 
   /** A click: ascending, descending, then the order of the library. Years
-   *  start with the newest. */
+   *  and dates added start with the newest. */
   function sortBy(column: Column) {
-    const firstDescending = column === "year";
+    const firstDescending = column === "year" || column === "added";
     if (sort?.column !== column) onsort({ column, descending: firstDescending });
     else if (sort.descending === firstDescending) onsort({ column, descending: !firstDescending });
     else onsort(null);
@@ -348,7 +359,7 @@
             {/if}
           </span>
           {#each columns as { column } (column)}
-            <span class:muted={column === "tags" || column === "kind" || column === "bib"}>{value(row, column) ?? ""}</span>
+            <span class:muted={column === "tags" || column === "kind" || column === "bib" || column === "added"}>{text(row, column)}</span>
           {/each}
         </div>
       {/each}

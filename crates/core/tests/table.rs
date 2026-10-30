@@ -166,3 +166,16 @@ fn export() {
     std::fs::remove_file(&path).unwrap();
     assert_eq!(again.unwrap().len(), 2);
 }
+
+#[test]
+fn identity() {
+    let lib = library();
+    let identity = |id: &str| lib.get(id).unwrap().identity();
+    // the DOI in lower case; the words of the title, with the year
+    assert_eq!(identity("same2020").doi.as_deref(), Some("10.1000/abc"));
+    assert_eq!(identity("twin2019").title.as_deref(), Some("a twin title (2019)"));
+    assert!(identity("same2020").same_paper(&identity("preprint2020")));
+    assert!(identity("twin2019").same_paper(&identity("twin2019b")));
+    // the same title, another year
+    assert!(!identity("twin2019").same_paper(&identity("twin2018")));
+}

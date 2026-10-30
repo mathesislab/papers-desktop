@@ -1,3 +1,4 @@
+mod added;
 mod cli_tool;
 mod compare;
 mod downloads;
@@ -23,6 +24,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
+use added::{Dated, DatesAdded};
 use main_window::{Layout, MAIN};
 use papers_core::{BibWatch, Cite, Found, Incoming, Item, Library, Matching, Row, TagCount};
 use recent::Recent;
@@ -91,6 +93,8 @@ struct AppState {
     /// the menu item that tells about an update
     update_item: Mutex<Option<MenuItem<Wry>>>,
     recent: Recent,
+    /// when the papers came into the library
+    added: DatesAdded,
     layout: Layout,
     writers: Writers,
     /// the text size, the zoom of every window
@@ -180,6 +184,12 @@ fn recent(state: State<AppState>) -> Vec<String> {
     let library = state.library.read().unwrap();
     let hits = state.recent.hits(&library);
     hits.into_iter().map(|h| h.item.id).collect()
+}
+
+/// The papers with the date they came into the library, the newest first.
+#[tauri::command]
+fn added(state: State<AppState>) -> Vec<Dated> {
+    state.added.dated(&state.library.read().unwrap())
 }
 
 /// A paper opened in the main window: one of the recent papers.
@@ -627,6 +637,7 @@ fn load(app: &AppHandle) {
             );
             *state.library.write().unwrap() = library;
             watch(app, &bibs);
+            date_added(app);
             Status::Ready { count }
         }
         Err(error) => {
@@ -635,6 +646,20 @@ fn load(app: &AppHandle) {
         }
     };
     set_status(app, status);
+}
+
+/// Date the papers that came into the library since it was last read, on a thread of its own: the
+/// history of a large library takes a moment to read the first time. The page is told (`added`)
+/// when the dates change.
+fn date_added(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let state = app.state::<AppState>();
+        let current = || added::current(&state.library.read().unwrap());
+        if state.added.update(current, added::from_history) {
+            let _ = app.emit("added", ());
+        }
+    });
 }
 
 /// Watch the .bib files of the library, unless they are watched already.
@@ -901,6 +926,7 @@ pub fn run() {
                 search_item: Mutex::new(None),
                 update_item: Mutex::new(None),
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
+                added: DatesAdded::load(app.path().app_data_dir()?.join("added.json")),
                 layout: Layout::new(app.path().app_data_dir()?.join("window.json")),
                 writers: Writers::default(),
                 text_size: RwLock::new(settings.text_size),
@@ -984,6 +1010,7 @@ pub fn run() {
             input::classify_input,
             input::merge_fetched,
             recent,
+            added,
             opened,
             export_bib,
             item,

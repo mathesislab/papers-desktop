@@ -41,7 +41,9 @@
 //!   `History::for_travel`: they leave no trace when they have nothing to do), with the steps of
 //!   a pool;
 //! - [`report`]: what undo, redo and restore print;
-//! - [`listing`]: the lines of `papers history`, the removal of a history.
+//! - [`listing`]: the lines of `papers history`, the removal of a history;
+//! - [`added`]: when the entries came into a library (`History::entry_times`), for a program
+//!   that lists the papers added last.
 //!
 //! How a command uses it (the library model calls these):
 //!
@@ -76,6 +78,7 @@
 //!
 //! Not here: the commands (`papers undo`, `history --revert`, in `command` and the program).
 
+pub mod added;
 pub mod files_json;
 pub mod listing;
 pub mod ojson;

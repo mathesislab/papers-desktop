@@ -58,6 +58,15 @@ export type Row = {
   /** whether the item links a file, and whether the files are there */
   file: "none" | "found" | "missing";
   bib: string;
+  /** when the paper came into the library, ms since the epoch: set by the window from `added`, not by the core */
+  added?: number;
+};
+
+/** mirrors added::Dated of src-tauri: a paper with the date it came into the library */
+export type Dated = {
+  id: string;
+  /** ms since the epoch */
+  added: number;
 };
 
 /** mirrors papers_core::TagCount: a tag of the library, or a parent of one ("climate" for "climate/amoc") */

@@ -394,7 +394,7 @@ impl Writers {
 
 /// The folder of the papers library of a .bib file: its folder, when that
 /// holds `.papers/config.json` whose `bibtex` names the file.
-fn papers_folder(bib: &Path) -> Option<PathBuf> {
+pub(crate) fn papers_folder(bib: &Path) -> Option<PathBuf> {
     let folder = bib.parent()?;
     let config = fs::read_to_string(folder.join(".papers/config.json")).ok()?;
     let config: Value = serde_json::from_str(&config).ok()?;
@@ -1126,6 +1126,7 @@ mod tests {
     use super::*;
     use crate::Status;
     use crate::main_window::Layout;
+    use crate::added::DatesAdded;
     use crate::recent::Recent;
 
     /// Texts written at the same moment, as by two writes at once, each in a
@@ -1186,6 +1187,7 @@ mod tests {
             search_item: Mutex::new(None),
             update_item: Mutex::new(None),
             recent: Recent::load(dir.join("recent.json")),
+            added: DatesAdded::load(dir.join("added.json")),
             layout: Layout::new(dir.join("window.json")),
             writers,
             text_size: Default::default(),

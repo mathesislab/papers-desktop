@@ -6,7 +6,7 @@ import type { Row, TagCount } from "../types.ts";
 import { tagTerm } from "../query.ts";
 import { foldTag, movedTag, parentsOf, sameTag } from "../tags.ts";
 
-export type View = "all" | "recent" | "nopdf" | "broken" | "duplicates";
+export type View = "all" | "recent" | "added" | "nopdf" | "broken" | "duplicates";
 
 /** The four filters of the library tab; what the window keeps of it between sessions. */
 export type Filters = {
@@ -24,12 +24,41 @@ export const NO_FILTERS: Filters = { bib: null, view: "all", tags: [], query: ""
 export const VIEWS: { view: View; name: string }[] = [
   { view: "all", name: "All papers" },
   { view: "recent", name: "Recently opened" },
+  { view: "added", name: "Recently added" },
   { view: "nopdf", name: "No PDF" },
   { view: "broken", name: "Broken file links" },
   { view: "duplicates", name: "Possible duplicates" },
 ];
 
 const viewName = (view: View) => VIEWS.find((v) => v.view === view)?.name ?? "";
+
+/** How many papers *Recently added* shows: the last ones added to the library chosen. */
+export const ADDED_SHOWN = 100;
+
+/** The papers of the views that the app gives in their order (ids). */
+export type Lists = {
+  /** the papers opened last, the last first */
+  recent: string[];
+  /** the papers with a date added, the newest first */
+  added: string[];
+  /** the groups of papers that may be the same */
+  duplicates: string[][];
+};
+
+export const NO_LISTS: Lists = { recent: [], added: [], duplicates: [] };
+
+/** Those of `ids` within a library (none: all libraries). */
+function within(rows: Row[], ids: string[], bib: string | null): string[] {
+  if (bib === null) {
+    const known = new Set(rows.map((r) => r.id));
+    return ids.filter((id) => known.has(id));
+  }
+  const inBib = new Set(rows.filter((r) => r.bib === bib).map((r) => r.id));
+  return ids.filter((id) => inBib.has(id));
+}
+
+/** The papers *Recently added* shows, before tags and search: the last `ADDED_SHOWN` added to the library. */
+const lastAdded = (rows: Row[], added: string[], bib: string | null) => within(rows, added, bib).slice(0, ADDED_SHOWN);
 
 export const fileName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
@@ -50,10 +79,11 @@ export function searchOf(f: Filters): string {
 
 /**
  * The papers of the current set. `matched` are the ids the core found for `searchOf(f)` (none yet: no papers); the
- * library and the view narrow them. Recent papers come in the order they were opened, duplicates in their groups,
- * the rest in the order of `rows`.
+ * library and the view narrow them. Recent papers come in the order they were opened, the papers added newest first
+ * (the last `ADDED_SHOWN` of the library, then the tags and search), duplicates in their groups, the rest in the order
+ * of `rows`.
  */
-export function currentSet(rows: Row[], matched: Set<string> | null, f: Filters, recent: string[], duplicates: string[][]): Row[] {
+export function currentSet(rows: Row[], matched: Set<string> | null, f: Filters, lists: Lists): Row[] {
   if (!matched) return [];
   const keep = (r: Row) => matched.has(r.id) && (f.bib === null || r.bib === f.bib);
   const pick = (ids: string[]) => {
@@ -62,9 +92,11 @@ export function currentSet(rows: Row[], matched: Set<string> | null, f: Filters,
   };
   switch (f.view) {
     case "recent":
-      return pick(recent);
+      return pick(lists.recent);
+    case "added":
+      return pick(lastAdded(rows, lists.added, f.bib));
     case "duplicates":
-      return pick(duplicates.flat());
+      return pick(lists.duplicates.flat());
     case "nopdf":
       return rows.filter((r) => keep(r) && r.file === "none");
     case "broken":
@@ -75,16 +107,16 @@ export function currentSet(rows: Row[], matched: Set<string> | null, f: Filters,
 }
 
 /** The papers of each view within a library (none: all libraries), before tags and search. */
-export function viewCounts(rows: Row[], recent: string[], duplicates: string[][], bib: string | null): Record<View, number> {
-  const inBib = new Set(rows.filter((r) => bib === null || r.bib === bib).map((r) => r.id));
-  const within = (ids: string[]) => ids.filter((id) => inBib.has(id)).length;
-  const files = (state: Row["file"]) => rows.filter((r) => inBib.has(r.id) && r.file === state).length;
+export function viewCounts(rows: Row[], lists: Lists, bib: string | null): Record<View, number> {
+  const inBib = rows.filter((r) => bib === null || r.bib === bib);
+  const files = (state: Row["file"]) => inBib.filter((r) => r.file === state).length;
   return {
-    all: inBib.size,
-    recent: within(recent),
+    all: inBib.length,
+    recent: within(rows, lists.recent, bib).length,
+    added: lastAdded(rows, lists.added, bib).length,
     nopdf: files("none"),
     broken: files("missing"),
-    duplicates: within(duplicates.flat()),
+    duplicates: within(rows, lists.duplicates.flat(), bib).length,
   };
 }
 

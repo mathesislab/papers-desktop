@@ -3,7 +3,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  ADDED_SHOWN,
   NO_FILTERS,
+  NO_LISTS,
   chips,
   currentSet,
   hasTag,
@@ -16,6 +18,7 @@ import {
   viewCounts,
   without,
   type Filters,
+  type Lists,
 } from "../src/lib/library/filters.ts";
 import type { Row } from "../src/lib/types.ts";
 
@@ -29,12 +32,12 @@ const rows = [
   row("b2", "/x/b.bib", [], "found"),
 ];
 const all = new Set(rows.map((r) => r.id));
-const ids = (f: Filters, matched = all, recent: string[] = [], dups: string[][] = []) =>
-  currentSet(rows, matched, f, recent, dups).map((r) => r.id);
+const ids = (f: Filters, matched = all, lists: Partial<Lists> = {}) =>
+  currentSet(rows, matched, f, { ...NO_LISTS, ...lists }).map((r) => r.id);
 
 test("no filters: everything the search found; nothing before the first answer", () => {
   assert.deepEqual(ids(NO_FILTERS), ["a1", "a2", "b1", "b2"]);
-  assert.deepEqual(currentSet(rows, null, NO_FILTERS, [], []), []);
+  assert.deepEqual(currentSet(rows, null, NO_FILTERS, NO_LISTS), []);
 });
 
 test("library, view and search combine", () => {
@@ -48,11 +51,28 @@ test("library, view and search combine", () => {
 
 test("recent keeps the order of opening, duplicates their groups; both within the library", () => {
   const f: Filters = { ...NO_FILTERS, view: "recent" };
-  assert.deepEqual(ids(f, all, ["b2", "a1", "gone", "b1"]), ["b2", "a1", "b1"]);
-  assert.deepEqual(ids({ ...f, bib: "/x/b.bib" }, all, ["b2", "a1", "b1"]), ["b2", "b1"]);
+  assert.deepEqual(ids(f, all, { recent: ["b2", "a1", "gone", "b1"] }), ["b2", "a1", "b1"]);
+  assert.deepEqual(ids({ ...f, bib: "/x/b.bib" }, all, { recent: ["b2", "a1", "b1"] }), ["b2", "b1"]);
   const dups: Filters = { ...NO_FILTERS, view: "duplicates" };
-  assert.deepEqual(ids(dups, all, [], [["b1", "a2"], ["a1", "b2"]]), ["b1", "a2", "a1", "b2"]);
-  assert.deepEqual(ids({ ...dups, bib: "/x/a.bib" }, all, [], [["b1", "a2"], ["a1", "b2"]]), ["a2", "a1"]);
+  const duplicates = [["b1", "a2"], ["a1", "b2"]];
+  assert.deepEqual(ids(dups, all, { duplicates }), ["b1", "a2", "a1", "b2"]);
+  assert.deepEqual(ids({ ...dups, bib: "/x/a.bib" }, all, { duplicates }), ["a2", "a1"]);
+});
+
+test("recently added: newest first, the last ones of the library, then the search", () => {
+  const f: Filters = { ...NO_FILTERS, view: "added" };
+  assert.deepEqual(ids(f, all, { added: ["b2", "gone", "a1"] }), ["b2", "a1"]);
+  assert.deepEqual(ids({ ...f, bib: "/x/a.bib" }, all, { added: ["b2", "a1"] }), ["a1"]);
+  assert.deepEqual(ids(f, new Set(["a1"]), { added: ["b2", "a1"] }), ["a1"]);
+  // only the last ADDED_SHOWN of the library, before the search narrows them
+  const many = Array.from({ length: ADDED_SHOWN + 5 }, (_, i) => row(`n${i}`, "/x/n.bib"));
+  const added = many.map((r) => r.id);
+  const shown = currentSet([...rows, ...many], new Set(added), f, { ...NO_LISTS, added });
+  assert.equal(shown.length, ADDED_SHOWN);
+  assert.equal(shown[0].id, "n0");
+  const last = new Set([added.at(-1)!]);
+  assert.deepEqual(currentSet([...rows, ...many], last, f, { ...NO_LISTS, added }), []);
+  assert.equal(viewCounts([...rows, ...many], { ...NO_LISTS, added }, null).added, ADDED_SHOWN);
 });
 
 test("the search sent to the core: the text, then a term per tag", () => {
@@ -62,9 +82,10 @@ test("the search sent to the core: the text, then a term per tag", () => {
 });
 
 test("counts of the views are within the library", () => {
-  const counts = (bib: string | null) => viewCounts(rows, ["a1", "b1"], [["a2", "b2"]], bib);
-  assert.deepEqual(counts(null), { all: 4, recent: 2, nopdf: 2, broken: 1, duplicates: 2 });
-  assert.deepEqual(counts("/x/a.bib"), { all: 2, recent: 1, nopdf: 1, broken: 1, duplicates: 1 });
+  const lists: Lists = { recent: ["a1", "b1"], added: ["b2", "a2", "a1"], duplicates: [["a2", "b2"]] };
+  const counts = (bib: string | null) => viewCounts(rows, lists, bib);
+  assert.deepEqual(counts(null), { all: 4, recent: 2, added: 3, nopdf: 2, broken: 1, duplicates: 2 });
+  assert.deepEqual(counts("/x/a.bib"), { all: 2, recent: 1, added: 2, nopdf: 1, broken: 1, duplicates: 1 });
 });
 
 test("tag counts as the core counts them", () => {
