@@ -5,12 +5,46 @@
 //! filter. A leading `-` excludes the papers that match the term. `tag:` takes
 //! a whole tag, in which `*` stands for any run of characters; it finds the
 //! tags under it too (`tag:climate` finds `climate/amoc`).
+//!
+//! Besides the fields of the library, a [`Schema`] declares facets, which
+//! take a whole value as `tag:` does (`kind:paper`, `src:"The Cryosphere"`),
+//! and numbers, which take a range (`score:2-5`, `score:3-`, `score:-2`).
 
 use crate::tag::branch;
 use crate::text::{fold, words};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A parsed query, for [`Record::check`](crate::Record::check).
+#[derive(Debug, Clone, Default)]
+pub struct Query {
+    pub(crate) terms: Vec<Term>,
+}
+
+/// The field names a query takes besides those of the library: facets
+/// (`kind:paper`) and numbers (`score:3-`). The library declares none, and
+/// an undeclared name is no filter.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Schema<'a> {
+    pub facets: &'a [&'a str],
+    pub numbers: &'a [&'a str],
+}
+
+impl Query {
+    /// The terms of a query, the facets and numbers it takes declared.
+    pub fn parse(query: &str, schema: Schema) -> Query {
+        let terms = tokens(query, schema).iter().flat_map(terms).collect();
+        Query { terms }
+    }
+
+    /// Whether the query has no term: it matches everything.
+    pub fn is_empty(&self) -> bool {
+        self.terms.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Field {
+    /// title, authors, journal, keywords, key, year, DOI: not the abstract,
+    /// which only `abs:` searches (the library would find more otherwise)
     Any,
     Author,
     /// the first author only
@@ -19,32 +53,42 @@ pub(crate) enum Field {
     Year,
     /// journal or book title
     Journal,
+    Abstract,
     Key,
     Doi,
     /// keywords
     Tag,
     /// a field the entry has: `has:abstract`, or `has:pdf` for a linked file
     Has,
+    /// a facet the schema declares, by its lowercase name
+    Facet(String),
+    /// a number the schema declares, by its lowercase name
+    Number(String),
 }
 
 impl Field {
-    fn named(name: &str) -> Option<Field> {
-        Some(match name.to_ascii_lowercase().as_str() {
+    fn named(name: &str, schema: Schema) -> Option<Field> {
+        let name = name.to_ascii_lowercase();
+        let declared = |names: &[&str]| names.iter().any(|n| n.eq_ignore_ascii_case(&name));
+        Some(match name.as_str() {
             "author" | "a" => Field::Author,
             "first" | "f" => Field::First,
             "title" | "t" => Field::Title,
             "year" | "y" => Field::Year,
             "journal" | "j" => Field::Journal,
+            "abstract" | "abs" => Field::Abstract,
             "key" | "k" => Field::Key,
             "doi" => Field::Doi,
             "tag" => Field::Tag,
             "has" => Field::Has,
+            _ if declared(schema.facets) => Field::Facet(name),
+            _ if declared(schema.numbers) => Field::Number(name),
             _ => return None,
         })
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Pattern {
     Word(String),
     /// consecutive words
@@ -55,8 +99,11 @@ pub(crate) enum Pattern {
     Years(Option<i32>, Option<i32>),
     /// the first digits of a year: "201" for the 2010s
     YearStart(String),
-    /// a whole tag, as the pieces between its `*` wildcards: one piece, no wildcard
+    /// a whole tag or facet value, as the pieces between its `*` wildcards:
+    /// one piece, no wildcard
     Tag(Vec<String>),
+    /// the numbers from..=to, open-ended without a bound
+    Numbers(Option<f64>, Option<f64>),
 }
 
 impl Pattern {
@@ -71,6 +118,16 @@ impl Pattern {
         }
     }
 
+    /// Whether a number pattern takes `number`; the other patterns take none.
+    pub fn matches_number(&self, number: f64) -> bool {
+        match self {
+            Pattern::Numbers(from, to) => {
+                from.is_none_or(|f| number >= f) && to.is_none_or(|t| number <= t)
+            }
+            _ => false,
+        }
+    }
+
     /// Whether a tag pattern takes a folded `tag`: the tag as a whole, or one
     /// of its parents (`climate` takes `climate/amoc`); the other patterns
     /// take none.
@@ -78,8 +135,8 @@ impl Pattern {
         branch(tag).any(|name| self.matches_whole(name))
     }
 
-    /// Whether a tag pattern takes a folded tag name, as a whole.
-    fn matches_whole(&self, tag: &str) -> bool {
+    /// Whether a tag pattern takes a folded tag name or facet value, as a whole.
+    pub fn matches_whole(&self, tag: &str) -> bool {
         let Pattern::Tag(pieces) = self else {
             return false;
         };
@@ -99,7 +156,7 @@ impl Pattern {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Term {
     pub field: Field,
     pub pattern: Pattern,
@@ -114,11 +171,12 @@ struct Token {
     quoted: bool,
 }
 
+/// The terms of a query of the library: no facet, no number.
 pub(crate) fn parse(query: &str) -> Vec<Term> {
-    tokens(query).iter().flat_map(terms).collect()
+    Query::parse(query, Schema::default()).terms
 }
 
-fn tokens(query: &str) -> Vec<Token> {
+fn tokens(query: &str, schema: Schema) -> Vec<Token> {
     let chars: Vec<char> = query.chars().collect();
     let mut tokens = Vec::new();
     let mut i = 0;
@@ -138,7 +196,7 @@ fn tokens(query: &str) -> Vec<Token> {
             .count();
         if chars.get(name_end) == Some(&':') {
             let name: String = chars[i..name_end].iter().collect();
-            if let Some(named) = Field::named(&name) {
+            if let Some(named) = Field::named(&name, schema) {
                 field = named;
                 i = name_end + 1;
             }
@@ -166,14 +224,14 @@ fn tokens(query: &str) -> Vec<Token> {
 fn terms(token: &Token) -> Vec<Term> {
     let Token {
         negated,
-        field,
+        ref field,
         quoted,
         ..
     } = *token;
     let folded = fold(&token.value);
     let value = folded.trim();
     let term = |pattern| Term {
-        field,
+        field: field.clone(),
         pattern,
         negated,
     };
@@ -184,9 +242,10 @@ fn terms(token: &Token) -> Vec<Term> {
         Field::Year => vec![term(years(value))],
         Field::Key | Field::Has => vec![term(Pattern::Word(value.to_string()))],
         Field::Doi => vec![term(Pattern::Doi(doi(value).to_string()))],
-        Field::Tag => vec![term(Pattern::Tag(
+        Field::Tag | Field::Facet(_) => vec![term(Pattern::Tag(
             value.split('*').map(String::from).collect(),
         ))],
+        Field::Number(_) => numbers(value).map(term).into_iter().collect(),
         Field::Any if !quoted && is_doi(value) => vec![term(Pattern::Doi(doi(value).to_string()))],
         _ => {
             let words = words(value);
@@ -219,6 +278,23 @@ fn years(value: &str) -> Pattern {
             _ => Pattern::YearStart(value.to_string()),
         },
     }
+}
+
+/// `2-5`, `3-`, `-2`, or `3`, which is `3-`: a threshold, as a number is
+/// seldom exactly one; decimals as `2.5`. Anything else is no filter.
+fn numbers(value: &str) -> Option<Pattern> {
+    let bound = |s: &str| {
+        if s.is_empty() {
+            Some(None)
+        } else {
+            s.parse().ok().map(Some)
+        }
+    };
+    let (from, to) = match value.split_once('-') {
+        Some((from, to)) => (bound(from)?, bound(to)?),
+        None => (Some(value.parse().ok()?), None),
+    };
+    Some(Pattern::Numbers(from, to))
 }
 
 fn is_doi(value: &str) -> bool {
@@ -397,5 +473,96 @@ mod tests {
         assert!(tag("clim*", "climate/amoc") && tag("*amoc", "ocean/amoc/tipping"));
         assert!(tag("climate/*", "climate/amoc"));
         assert!(!tag("climate/*", "climate"));
+    }
+
+    const SCHEMA: Schema = Schema {
+        facets: &["kind", "is", "src"],
+        numbers: &["score"],
+    };
+
+    fn parse_with(query: &str) -> Vec<Term> {
+        Query::parse(query, SCHEMA).terms
+    }
+
+    #[test]
+    fn abstracts() {
+        assert_eq!(
+            parse(r#"abs:Hysteresis abstract:"ice sheet""#),
+            [
+                word(Field::Abstract, "hysteresis"),
+                Term {
+                    field: Field::Abstract,
+                    pattern: Pattern::Phrase(vec!["ice".into(), "sheet".into()]),
+                    negated: false,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn facets() {
+        let facet = |name: &str, pieces: &[&str], negated| Term {
+            field: Field::Facet(name.into()),
+            pattern: Pattern::Tag(pieces.iter().map(|p| p.to_string()).collect()),
+            negated,
+        };
+        assert_eq!(
+            parse_with(r#"Kind:paper -is:dismissed src:"The Cryosphere" src:*sphere is:"#),
+            [
+                facet("kind", &["paper"], false),
+                facet("is", &["dismissed"], true),
+                facet("src", &["the cryosphere"], false),
+                facet("src", &["", "sphere"], false),
+            ]
+        );
+        // undeclared: plain words, as in the library
+        assert_eq!(
+            parse("kind:paper score:3"),
+            [
+                word(Field::Any, "kind"),
+                word(Field::Any, "paper"),
+                word(Field::Any, "score"),
+                word(Field::Any, "3"),
+            ]
+        );
+        assert_eq!(
+            parse_with("prof:ice"),
+            [word(Field::Any, "prof"), word(Field::Any, "ice")]
+        );
+        // the fields of the library come first
+        assert_eq!(
+            Query::parse(
+                "tag:amoc",
+                Schema {
+                    facets: &["tag"],
+                    numbers: &[]
+                }
+            )
+            .terms,
+            parse("tag:amoc")
+        );
+    }
+
+    #[test]
+    fn numbers() {
+        let score = |from, to, negated| Term {
+            field: Field::Number("score".into()),
+            pattern: Pattern::Numbers(from, to),
+            negated,
+        };
+        assert_eq!(
+            parse_with("score:3- score:-2 score:2-5 -score:3 score:2.5- score:high score:1-x"),
+            [
+                score(Some(3.0), None, false),
+                score(None, Some(2.0), false),
+                score(Some(2.0), Some(5.0), false),
+                score(Some(3.0), None, true),
+                score(Some(2.5), None, false),
+            ]
+        );
+        assert!(Pattern::Numbers(Some(2.0), Some(5.0)).matches_number(5.0));
+        assert!(!Pattern::Numbers(Some(2.0), Some(5.0)).matches_number(5.5));
+        assert!(Pattern::Numbers(None, Some(2.0)).matches_number(-1.0));
+        assert!(!Pattern::Years(Some(2000), None).matches_number(2012.0));
     }
 }

@@ -94,6 +94,7 @@ Filters limit a word to one field, and quotes match a phrase:
 | `title:hysteresis` | `t:` | the title |
 | `year:2012` | `y:` | the year: `2010-2015`, `2020-`, `-1990`, or its first digits (`201`) |
 | `journal:cryosphere` | `j:` | the journal or book |
+| `abstract:threshold` | `abs:` | the abstract (plain words leave it out) |
 | `key:robinson2012` | `k:` | the citation key |
 | `doi:10.5194` | | the DOI |
 | `tag:greenland` | | a whole keyword, and the keywords under it (`tag:climate` finds `climate/amoc`); `*` is a wildcard: `tag:amoc*`, `tag:*amoc`, `tag:*amoc*`; `tag:"mass balance"` |
