@@ -7,7 +7,8 @@
 //! Operations on a [`Session`]: the command line selects the entries, calls one, commits the
 //! session and prints what changed. In a shallow library the files go to the pool (the command calls
 //! [`Session::use_pool_files`]) and the links that change are updated in the pool entries (the automatic
-//! push at the commit); `check` and `fix` also look in the libraries of `--pool PATH`.
+//! push at the commit); `check` and `fix` also look in the libraries of `--pool PATH`, and by checksum
+//! in the library, its pool and the other libraries of the machine ([`super::otherlibs`]).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -30,6 +31,7 @@ use crate::names::{Format, fit_name};
 use crate::pools::PoolIx;
 
 use super::files::{Mode, Placement, PolicyOptions, files_mode, files_policy_with};
+use super::otherlibs::{self, Lookup};
 use super::pool::push_note_lines;
 use super::queries::Queries;
 use super::session::Session;
@@ -157,6 +159,8 @@ pub struct Attach {
     pub copied: Vec<String>,
     /// Files of pool entries: never moved (linked, in a shallow library).
     pub pool_files: Vec<String>,
+    /// Files linked where they are (a file of another entry that `fix` found by its checksum).
+    pub keep: Vec<String>,
 }
 
 impl Attach {
@@ -166,6 +170,7 @@ impl Attach {
             replace: Vec::new(),
             copied: Vec::new(),
             pool_files: Vec::new(),
+            keep: Vec::new(),
         }
     }
 }
@@ -206,6 +211,7 @@ pub fn attach_files(
     let kept: Vec<String> = old
         .iter()
         .filter(|f| !replace.iter().any(|(link, _)| link == *f))
+        .chain(&options.keep)
         .cloned()
         .collect();
     let added: Vec<&String> = replace.iter().flat_map(|(_, fs)| fs).chain(&new).collect();
@@ -1201,8 +1207,10 @@ fn search_names(nameformat: &Format, e: &Entry, link: &str, rest: &[String]) -> 
 /// Where the file found for a broken link comes from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Source {
-    /// the pool of the library
+    /// the pool of the library (the pool entry of the same paper)
     Pool,
+    /// the library, its pool or another library of the machine, by checksum
+    Checksum(otherlibs::Found),
     /// a library given with `--pool PATH` (how it is shown)
     Library(String),
     /// a `--search` folder
@@ -1213,6 +1221,14 @@ impl Source {
     pub(crate) fn describe(&self) -> String {
         match self {
             Source::Pool => "from the pool".to_string(),
+            Source::Checksum(otherlibs::Found::Own(Some(key))) => {
+                format!("same content as the file of {key}")
+            }
+            Source::Checksum(otherlibs::Found::Own(None)) => "same content, in the library".to_string(),
+            Source::Checksum(otherlibs::Found::Pool) => "from the pool, same content".to_string(),
+            Source::Checksum(otherlibs::Found::Other(place)) => {
+                format!("found in {}", short_home(&dirname(place)))
+            }
             Source::Library(shown) => format!("from the library {shown}"),
             Source::Folder(folder) => format!("found in {}", short_home(folder)),
         }
@@ -1228,11 +1244,13 @@ pub(crate) struct Plan {
     pub(crate) sources: HashMap<String, Source>,
 }
 
-/// The files found for the broken links of the entries, without parsing any file: the pool of the
-/// library first, then the libraries of `--pool PATH` (`others`, see [`Exchange::pool_relinks`]), then
-/// the `--search` folders (by the link's file name, else by the template name of the entry). Returns the
-/// plans, the links that several files match (`(key, link, reason)`), and the number of broken links
-/// (`plan_relinks`).
+/// The files found for the broken links of the entries, without parsing any file, in this order:
+/// the library itself (a file with the checksum that `.papers/files.json` has for the link), the
+/// pool of the library (the files of the pool entry, see [`Exchange::pool_relinks`], then by
+/// checksum), the libraries of `--pool PATH` (`others`), the other libraries of the machine by
+/// checksum (see [`otherlibs`]), then the `--search` folders (by the link's file name, else by the
+/// template name of the entry). Returns the plans, the links that several files match (`(key, link,
+/// reason)`), and the number of broken links (`plan_relinks`).
 #[allow(clippy::type_complexity)]
 fn plan_relinks(
     session: &mut Session,
@@ -1257,6 +1275,8 @@ fn plan_relinks(
             }
         }
     }
+    // the searches by checksum (made when a broken link is first met)
+    let mut lookup: Option<Lookup> = None;
     // real path of a file found in a --search folder: [(plan, link)]
     let mut claims: Vec<(String, Vec<(usize, String)>)> = Vec::new();
     for key in keys {
@@ -1268,10 +1288,50 @@ fn plan_relinks(
             continue;
         }
         count += broken.len();
+        if lookup.is_none() {
+            let exchange = session.exchange();
+            let pool = own.map(|p| exchange.pools.at(p).config.clone());
+            let searched: Vec<String> = pools
+                .iter()
+                .filter_map(|(p, _)| exchange.pools.at(*p).config.bibtex.clone())
+                .collect();
+            lookup = Some(Lookup::new(
+                &session.config,
+                &session.library,
+                pool.as_ref(),
+                &searched,
+            ));
+        }
+        let lookup = lookup.as_mut().expect("the lookup");
         let mut plan = Plan {
             key: e.key.clone(),
             ..Plan::default()
         };
+        // the files linked or found for the entry (real paths): not found again
+        let taken = |plan: &Plan| -> HashSet<String> {
+            session
+                .library
+                .files(&e.key)
+                .into_iter()
+                .chain(plan.found.iter().flat_map(|(_, fs)| fs.clone()))
+                .filter(|f| exists(f))
+                .map(|f| realpath(&f))
+                .collect()
+        };
+        type Search<'a> =
+            &'a mut dyn FnMut(&mut Lookup, &str, &HashSet<String>) -> Option<(String, otherlibs::Found)>;
+        let by_checksum = |plan: &mut Plan, lookup: &mut Lookup, find: Search| {
+            for link in &broken {
+                if plan.found.iter().any(|(l, _)| l == link) {
+                    continue;
+                }
+                if let Some((file, found)) = find(lookup, link, &taken(plan)) {
+                    plan.sources.insert(link.clone(), Source::Checksum(found));
+                    plan.found.push((link.clone(), vec![file]));
+                }
+            }
+        };
+        by_checksum(&mut plan, lookup, &mut |l, link, exclude| l.own(link, exclude));
         for (pool, source) in &pools {
             let todo: Vec<String> = broken
                 .iter()
@@ -1283,15 +1343,12 @@ fn plan_relinks(
                 plan.sources.insert(link.clone(), source.clone());
                 plan.found.push((link, files));
             }
+            if *source == Source::Pool {
+                by_checksum(&mut plan, lookup, &mut |l, link, exclude| l.in_pool(link, exclude));
+            }
         }
-        let linked: HashSet<String> = session
-            .library
-            .files(&e.key)
-            .into_iter()
-            .chain(plan.found.iter().flat_map(|(_, fs)| fs.clone()))
-            .filter(|f| exists(f))
-            .map(|f| realpath(&f))
-            .collect();
+        by_checksum(&mut plan, lookup, &mut |l, link, exclude| l.in_others(link, exclude));
+        let linked: HashSet<String> = taken(&plan);
         let rest: Vec<String> = broken
             .iter()
             .filter(|f| !plan.found.iter().any(|(l, _)| l == *f))
@@ -1398,9 +1455,10 @@ pub(crate) struct Relinked {
 
 /// The repair of the broken links of the entries by `papers file fix` (also `papers file fetch`,
 /// before it downloads; `relink_broken_links`): the links to pool files repaired when a shallow
-/// library was loaded, the files found by [`plan_relinks`] (the pool, the libraries `others` of
-/// `--pool PATH`, the folders `search` of `--search`), then the files that a command deleted from
-/// the place of the link, kept by the history. With `place`, the files found are placed as `papers
+/// library was loaded, the files found by [`plan_relinks`] (the library by checksum, the pool, the
+/// libraries `others` of `--pool PATH`, the other libraries of the machine, the folders `search` of
+/// `--search`), then the files that a command deleted from the place of the link, kept by the
+/// history. With `place`, the files found are placed as `papers
 /// file attach` does (with the files mode `mode`; `move_`: the files of the `--search` folders are
 /// moved), and those of the history copied back.
 #[allow(clippy::too_many_arguments)]
@@ -1448,27 +1506,14 @@ pub(crate) fn relink_broken_links(
                 positions.insert(f.clone(), (i, i + n));
                 i += n;
             }
-            let from_pool = |link: &String| plan.sources.get(link) == Some(&Source::Pool);
-            let pool_files: Vec<String> = plan
-                .found
-                .iter()
-                .filter(|(l, _)| from_pool(l))
-                .flat_map(|(_, fs)| fs.clone())
-                .collect();
-            let copied: Vec<String> = plan
-                .found
-                .iter()
-                .filter(|(l, _)| {
-                    !from_pool(l)
-                        && !(move_ && matches!(plan.sources.get(l), Some(Source::Folder(_))))
-                })
-                .flat_map(|(_, fs)| fs.clone())
-                .collect();
+            let filesdir = session.config.filesdir.clone();
+            let (pool_files, keep, copied) = placement(&plan, filesdir.as_deref(), move_);
             let attach = Attach {
                 mode: mode.unwrap_or(Mode::Move),
                 replace: plan.found.clone(),
                 copied,
                 pool_files,
+                keep,
             };
             attach_files(session, &plan.key, &[], &attach)?;
             let newfiles = session.library.files(&plan.key);
@@ -1535,6 +1580,35 @@ pub(crate) fn relink_broken_links(
         restores,
         count,
     })
+}
+
+/// How the files found for the broken links of an entry are placed (`_placement`): `(pool_files,
+/// keep, copied)`, see [`Attach`]. The files of the pool are pool files; a file of another entry of
+/// the library (found by checksum) is linked where it is; an unlinked file of the files directory
+/// `filesdir` is placed as the files setting says (renamed in place); the files of other libraries,
+/// of `--pool PATH` and of the `--search` folders (unless `move_`) are copied.
+#[allow(clippy::type_complexity)]
+fn placement(
+    plan: &Plan,
+    filesdir: Option<&str>,
+    move_: bool,
+) -> (Vec<String>, Vec<String>, Vec<String>) {
+    let (mut pool_files, mut keep, mut copied) = (Vec::new(), Vec::new(), Vec::new());
+    for (link, files) in &plan.found {
+        let source = plan.sources.get(link);
+        for f in files {
+            match source {
+                Some(Source::Pool | Source::Checksum(otherlibs::Found::Pool)) => {
+                    pool_files.push(f.clone())
+                }
+                Some(Source::Checksum(otherlibs::Found::Own(Some(_)))) => keep.push(f.clone()),
+                Some(Source::Checksum(found)) if otherlibs::is_own_unlinked(found, f, filesdir) => {}
+                Some(Source::Folder(_)) if move_ => {}
+                _ => copied.push(f.clone()),
+            }
+        }
+    }
+    (pool_files, keep, copied)
 }
 
 /// `papers file check` (`fix` false: report the problems of the file links, change nothing) and

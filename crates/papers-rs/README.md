@@ -309,8 +309,13 @@ files `<name>--<label>.<ext>` are attachments of `<name>.pdf`. Several PDFs are 
 one: papers fetches their metadata concurrently first (the same results, faster).
 
 `papers file fetch`, `add --doi DOI --fetch-pdf` and `fetch --pdf` are `command::fetch_pdf` (on the
-free PDF of `fetch::freepdf`); `tests/file_fetch.rs` has the tests of papers (`test_file_fetch.py`),
-with the network mocked.
+free PDF of `fetch::freepdf`); `tests/file_fetch.rs` has the tests of papers (`test_file_fetch.py`,
+`test_file_other_libraries.py`), with the network mocked. `file check`, `file fix` and the repair
+that `file fetch` makes first look for the file of a broken link by the checksum of `.papers/files.json`
+in the library itself, in its pool and in the other libraries of the machine (`command::otherlibs`: the
+`files.json` kept in the head state of each place of the history stores; papers keeps an index of them
+in `<cache dir>/file-index/`, private to papers, which papers-rs neither reads nor writes: it reads the
+head states when a broken link with a checksum is first searched).
 
 The `papers file` commands and the file actions of `list` are `command::file_cmd`; what a command
 does with a file (`move`, `copy`, `link`, `ask`) is `command::files`, with the rules of

@@ -12,7 +12,7 @@ use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::fetch_pdf::{
     Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs, file_fetch,
 };
-use papers_rs::command::file_cmd::checksums;
+use papers_rs::command::file_cmd::{CheckOptions, check_entries_files, checksums};
 use papers_rs::command::files::Mode;
 use papers_rs::command::queries::Queries;
 use papers_rs::command::{Options, Prompt, Session};
@@ -277,11 +277,16 @@ impl Sandbox {
     }
 
     fn config(&self) -> Config {
+        self.config_of("lib")
+    }
+
+    /// The configuration of the library of the folder `dir`, with the history of the sandbox.
+    fn config_of(&self, dir: &str) -> Config {
         let mut machine = Map::new();
         machine.insert("history-dir".into(), json!(self.path("history")));
         machine.insert("files".into(), json!("link"));
         Config::load(
-            &self.path("lib/.papers/config.json"),
+            &self.path(&format!("{dir}/.papers/config.json")),
             MachineConfig::new(None, machine),
             None,
         )
@@ -398,7 +403,7 @@ fn published_version_from_the_publisher() {
         .to_string_lossy()
         .into_owned();
     assert!(
-        joined(&out).contains(&format!("(published version, from journals.example.org)")),
+        joined(&out).contains("(published version, from journals.example.org)"),
         "{out:?}"
     );
     assert!(joined(&out).contains(&name));
@@ -967,7 +972,7 @@ fn one_step_with_the_downloads() {
         false,
     );
     assert_eq!(s.web.downloads(), ["https://journals.example.org/b.pdf"]);
-    assert_eq!(s.files("smith2020"), [found.clone()]);
+    assert_eq!(s.files("smith2020"), std::slice::from_ref(&found));
     assert_eq!(s.libfiles().len(), 1);
     // the relink and the download together
     let mut config = s.config();
@@ -1189,7 +1194,7 @@ fn cache_a_the_entry_has_it() {
         .to_string_lossy()
         .into_owned();
     assert!(
-        joined(&out).contains(&format!("smith2020: already has "))
+        joined(&out).contains("smith2020: already has ")
             && joined(&out).contains(&format!("{name} (from journals.example.org)")),
         "{out:?}"
     );
@@ -1212,7 +1217,7 @@ fn cache_b_another_entry_has_it() {
         joined(&out).contains("same file as smith2020, not downloaded"),
         "{out:?}"
     );
-    assert_eq!(s.files("copy2020"), [file.clone()]); // linked, not moved
+    assert_eq!(s.files("copy2020"), std::slice::from_ref(&file)); // linked, not moved
     assert_eq!(s.files("smith2020"), [file]);
 }
 
@@ -1356,4 +1361,409 @@ fn fetch_pdf_of_a_doi() {
     );
     freepdf::discard(&found.path);
     assert!(!Path::new(&found.path).exists());
+}
+
+// the file of a broken link in the library, its pool and the other libraries of the machine
+// (tests/test_file_other_libraries.py)
+// ------------------------------------------------------------------------------------------
+
+/// The files under a folder, with their content and time (to see that nothing changed).
+fn tree(top: &str) -> Vec<(String, Vec<u8>, std::time::SystemTime)> {
+    fn walk(dir: &Path, found: &mut Vec<(String, Vec<u8>, std::time::SystemTime)>) {
+        for e in fs::read_dir(dir).unwrap().flatten() {
+            let path = e.path();
+            if path.is_dir() {
+                walk(&path, found);
+            } else {
+                let modified = fs::metadata(&path).unwrap().modified().unwrap();
+                found.push((
+                    path.display().to_string(),
+                    fs::read(&path).unwrap(),
+                    modified,
+                ));
+            }
+        }
+    }
+    let mut found = Vec::new();
+    walk(Path::new(top), &mut found);
+    found.sort();
+    found
+}
+
+fn author_entry(key: &str, file: &str, doi: &str, author: &str, title: &str) -> String {
+    format!(
+        "@article{{{key},\n author = {{{author}}},\n doi = {{{doi}}},\n file = {{:{file}:pdf}},\n title = {{{title}}},\n year = {{2000}}\n}}\n\n"
+    )
+}
+
+/// lib/ (files: copy), and the library other/, which the history of the machine knows: its entry
+/// doe2020 (DOI 10.1000/doe) links to other/files/doe.pdf, whose checksum its files.json has.
+struct Others {
+    s: Sandbox,
+    other_pdf: String,
+    before: Vec<(String, Vec<u8>, std::time::SystemTime)>,
+}
+
+fn others() -> Others {
+    let s = sandbox();
+    s.files_setting("copy");
+    s.write(
+        "other/.papers/config.json",
+        "{\n  \"bibtex\": \"papers.bib\",\n  \"filesdir\": \"files\",\n  \"pool\": \"none\",\n  \"version\": 3\n}",
+    );
+    let other_pdf = s.write("other/files/doe.pdf", "pdf doe");
+    s.write(
+        "other/papers.bib",
+        &author_entry(
+            "doe2020",
+            "files/doe.pdf",
+            "10.1000/doe",
+            "Doe, Jane",
+            "Ice",
+        ),
+    );
+    // a step: other/ is a place of the history
+    s.checksum_in("other");
+    let before = tree(&s.path("other"));
+    Others {
+        s,
+        other_pdf,
+        before,
+    }
+}
+
+impl Sandbox {
+    /// `papers file checksum` in the library of the folder `dir`.
+    fn checksum_in(&self, dir: &str) {
+        let mut session = Session::open(self.config_of(dir), Options::default()).unwrap();
+        let keys: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
+        checksums(&mut session, &keys, false).unwrap();
+        session.finish();
+    }
+
+    /// `papers file check` (`fix`: `papers file fix`) of the whole library: its lines.
+    fn check(&self, fix: bool, dry_run: bool) -> Vec<String> {
+        let mut session = self.session(!fix || dry_run);
+        if fix && !dry_run {
+            session.use_pool_files().unwrap();
+        }
+        let keys: Vec<String> = session.library.entries().map(|e| e.key.clone()).collect();
+        let options = CheckOptions {
+            fix_command: "papers file fix".to_string(),
+            ..CheckOptions::default()
+        };
+        check_entries_files(&mut session, &options, fix, &keys, &Queries::default()).unwrap();
+        session.finish().out
+    }
+}
+
+impl Others {
+    fn assert_other_unchanged(&self) {
+        assert!(tree(&self.s.path("other")) == self.before, "other/ changed");
+    }
+
+    fn found_in_other(&self) -> String {
+        format!("(found in {})", self.s.path("other"))
+    }
+
+    /// An entry of lib/ whose file lib/files/<key>.pdf had `content`, its checksum recorded, then
+    /// deleted.
+    fn lost(&self, key: &str, content: &str, doi: Option<&str>) -> String {
+        let path = self.s.write(&format!("lib/files/{key}.pdf"), content);
+        self.s
+            .bib(&[entry(key, &[&format!("files/{key}.pdf")], doi)]);
+        self.s.checksum_in("lib");
+        fs::remove_file(&path).unwrap();
+        path
+    }
+}
+
+#[test]
+fn own_files_directory_by_checksum() {
+    // renamed by hand in the files directory: found by its checksum, renamed in place (files: copy)
+    let o = others();
+    let old = o.lost("one2000", "pdf one", None);
+    o.s.write("lib/files/renamed.pdf", "pdf one");
+    let out = o.s.check(true, false);
+    assert!(
+        joined(&out).contains("(same content, in the library)"),
+        "{out:?}"
+    );
+    let files = o.s.files("one2000");
+    assert_eq!(files.len(), 1);
+    assert_eq!(fs::read_to_string(&files[0]).unwrap(), "pdf one");
+    let name = Path::new(&files[0])
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    assert_eq!(o.s.libfiles(), [name]);
+    assert_ne!(files[0], old);
+}
+
+#[test]
+fn own_file_of_another_entry_by_checksum() {
+    let o = others();
+    let shared = o.s.write("lib/files/shared.pdf", "pdf one");
+    let old = o.s.write("lib/files/one.pdf", "pdf one");
+    o.s.bib(&[
+        entry("one2000", &["files/one.pdf"], None),
+        author_entry(
+            "two2000",
+            "files/shared.pdf",
+            "10.1000/two",
+            "Some One",
+            "Other",
+        ),
+    ]);
+    o.s.checksum_in("lib");
+    fs::remove_file(&old).unwrap();
+    let out = o.s.check(true, false);
+    assert!(joined(&out).contains("one2000: relinked to"), "{out:?}");
+    assert!(joined(&out).contains("(same content as the file of two2000)"));
+    // linked where it is
+    assert_eq!(o.s.files("one2000"), [shared]);
+}
+
+#[test]
+fn other_library_by_checksum() {
+    let o = others();
+    let old = o.lost("one2000", "pdf doe", None); // another title, no DOI: by checksum
+    let out = o.s.check(false, false);
+    assert!(
+        out.contains(&format!(
+            "one2000: broken link: {old} -> {} {}",
+            o.other_pdf,
+            o.found_in_other()
+        )),
+        "{out:?}"
+    );
+    let out = o.s.check(true, false);
+    assert!(joined(&out).contains(&o.found_in_other()), "{out:?}");
+    let file = o.s.files("one2000").remove(0);
+    assert_eq!(
+        Path::new(&file).parent().unwrap(),
+        Path::new(&o.s.path("lib/files"))
+    );
+    assert_eq!(fs::read_to_string(&file).unwrap(), "pdf doe");
+    o.assert_other_unchanged();
+}
+
+#[test]
+fn same_paper_without_checksum_not_taken() {
+    // the same DOI as doe2020 of other/, no checksum recorded for the link: other/ is not searched
+    let o = others();
+    let gone = o.s.path("gone/ice.pdf");
+    o.s.bib(&[entry("doe2020a", &[&gone], Some("10.1000/doe"))]);
+    let out = o.s.check(true, false);
+    assert!(
+        out.contains(
+            &"0 links relinked, 1 still broken (papers file detach --broken removes them)"
+                .to_string()
+        ),
+        "{out:?}"
+    );
+}
+
+#[test]
+fn other_content_not_taken() {
+    let o = others();
+    o.lost("one2000", "pdf other", None);
+    assert!(joined(&o.s.check(true, false)).contains("0 links relinked, 1 still broken"));
+}
+
+#[test]
+fn move_setting_copies() {
+    let o = others();
+    o.s.files_setting("move");
+    o.lost("one2000", "pdf doe", None);
+    o.s.check(true, false);
+    let file = o.s.files("one2000").remove(0);
+    assert_eq!(
+        Path::new(&file).parent().unwrap(),
+        Path::new(&o.s.path("lib/files"))
+    );
+    assert!(Path::new(&o.other_pdf).exists());
+    o.assert_other_unchanged();
+}
+
+#[test]
+fn gone_library_skipped() {
+    let o = others();
+    fs::rename(o.s.path("other"), o.s.path("moved")).unwrap();
+    o.lost("one2000", "pdf doe", None);
+    assert!(joined(&o.s.check(true, false)).contains("0 links relinked, 1 still broken"));
+}
+
+#[test]
+fn dry_run_of_a_fix_from_another_library() {
+    let o = others();
+    let old = o.lost("one2000", "pdf doe", None);
+    let before = o.s.bibtext();
+    let out = o.s.check(true, true);
+    assert!(
+        out.contains(&format!(
+            "DRYRUN: one2000: relink {old} -> {} {}",
+            o.other_pdf,
+            o.found_in_other()
+        )),
+        "{out:?}"
+    );
+    assert_eq!(o.s.bibtext(), before);
+}
+
+/// lib/ is a shallow library of other/: other/ is its pool, searched once (as the pool), not again
+/// as another library.
+fn pool_of_others() -> Others {
+    let o = others();
+    let path = o.s.path("lib/.papers/config.json");
+    let text = fs::read_to_string(&path).unwrap();
+    fs::write(
+        &path,
+        text.replace("\"pool\": \"none\"", "\"pool\": \"../other\""),
+    )
+    .unwrap();
+    o
+}
+
+#[test]
+fn the_pool_by_the_same_paper() {
+    let o = pool_of_others();
+    let gone = o.s.path("gone/ice.pdf");
+    o.s.bib(&[entry("doe2020a", &[&gone], Some("10.1000/doe"))]);
+    let out = o.s.check(true, false);
+    assert!(
+        out.contains(&format!(
+            "doe2020a: relinked to {} (from the pool)",
+            o.other_pdf
+        )),
+        "{out:?}"
+    );
+}
+
+#[test]
+fn the_pool_by_checksum() {
+    let o = pool_of_others();
+    let old = o.lost("one2000", "pdf doe", None);
+    let out = o.s.check(false, false);
+    assert!(
+        out.contains(&format!(
+            "one2000: broken link: {old} -> {} (from the pool, same content)",
+            o.other_pdf
+        )),
+        "{out:?}"
+    );
+}
+
+#[test]
+fn missing_without_pdf_link_downloads() {
+    // the same paper in other/ with a PDF: not looked for, downloaded
+    let o = others();
+    o.s.web.publisher("10.1000/doe", Some(PDF), None, &[], &[]);
+    o.s.bib(&[entry("doe2020a", &[], Some("10.1000/doe"))]);
+    o.s.fetch(&[], true, PdfOptions::default(), false);
+    assert_eq!(o.s.web.downloads().len(), 1);
+    let file = o.s.files("doe2020a").remove(0);
+    assert!(fs::read(&file).unwrap().starts_with(b"%PDF"));
+    o.assert_other_unchanged();
+}
+
+#[test]
+fn missing_broken_link_by_checksum() {
+    let o = others();
+    o.s.web.publisher("10.1000/doe", Some(PDF), None, &[], &[]);
+    o.lost("doe2020a", "pdf doe", Some("10.1000/doe"));
+    let (out, _) = o.s.fetch(&[], true, PdfOptions::default(), false);
+    assert!(joined(&out).contains("not downloaded"), "{out:?}");
+    assert!(o.s.web.downloads().is_empty());
+    assert_eq!(
+        fs::read_to_string(&o.s.files("doe2020a")[0]).unwrap(),
+        "pdf doe"
+    );
+    o.assert_other_unchanged();
+}
+
+#[test]
+fn a_key_still_downloads() {
+    let o = others();
+    o.s.web.publisher("10.1000/doe", Some(PDF), None, &[], &[]);
+    o.s.bib(&[entry("doe2020a", &[], Some("10.1000/doe"))]);
+    o.s.out(&["doe2020a"]);
+    assert_eq!(o.s.web.downloads().len(), 1);
+    let file = o.s.files("doe2020a").remove(0);
+    assert!(fs::read(&file).unwrap().starts_with(b"%PDF"));
+}
+
+/// A new file in other/, its entry new2020.
+fn new_in_other(o: &Others) -> String {
+    let new = o.s.write("other/files/new.pdf", "pdf new");
+    o.s.write(
+        "other/papers.bib",
+        &(author_entry(
+            "doe2020",
+            "files/doe.pdf",
+            "10.1000/doe",
+            "Doe, Jane",
+            "Ice",
+        ) + &entry("new2020", &["files/new.pdf"], None)),
+    );
+    new
+}
+
+#[test]
+fn a_new_head_is_read() {
+    let o = others();
+    o.lost("one2000", "pdf doe", None);
+    o.s.check(false, false);
+    // a new file in other/, recorded by a command there: found at the next search
+    let new = new_in_other(&o);
+    o.s.checksum_in("other");
+    o.lost("two2000", "pdf new", None);
+    let out = o.s.check(false, false);
+    assert!(
+        joined(&out).contains(&format!("-> {new} {}", o.found_in_other())),
+        "{out:?}"
+    );
+}
+
+#[test]
+fn an_edit_outside_papers_is_seen_after_a_command() {
+    let o = others();
+    let new = new_in_other(&o);
+    o.lost("two2000", "pdf new", None);
+    // not in the head state
+    assert!(joined(&o.s.check(true, true)).contains("0 links relinked, 1 still broken"));
+    o.s.checksum_in("other");
+    let out = o.s.check(false, false);
+    assert!(
+        joined(&out).contains(&format!("-> {new} {}", o.found_in_other())),
+        "{out:?}"
+    );
+}
+
+#[test]
+fn a_missing_file_is_skipped() {
+    let o = others();
+    o.lost("one2000", "pdf doe", None);
+    o.s.check(false, false);
+    fs::remove_file(&o.other_pdf).unwrap();
+    assert!(joined(&o.s.check(true, false)).contains("0 links relinked, 1 still broken"));
+}
+
+#[test]
+fn a_changed_content_is_skipped() {
+    let o = others();
+    o.lost("one2000", "pdf doe", None);
+    o.s.check(false, false);
+    fs::write(&o.other_pdf, "pdf changed").unwrap();
+    assert!(joined(&o.s.check(true, false)).contains("0 links relinked, 1 still broken"));
+}
+
+#[test]
+fn a_gone_place_is_skipped() {
+    let o = others();
+    o.lost("one2000", "pdf doe", None);
+    o.s.check(false, false);
+    fs::rename(o.s.path("other"), o.s.path("moved")).unwrap();
+    assert!(joined(&o.s.check(true, false)).contains("0 links relinked, 1 still broken"));
 }

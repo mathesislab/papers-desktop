@@ -1449,12 +1449,14 @@ config:
 apply the safe repairs that `papers file check` reports: repair the paths
 saved by Mendeley, remove the second link of a file linked twice or of
 identical files (the files are kept), and relink the broken links to the files
-found in the pool or the libraries of --pool PATH (same paper), or in the
---search folders. A file found is never moved: it is copied (a hard link when
-possible) into the files directory, named as `papers file attach` names it (in
-a shallow library, into the files directory of its pool; a file of its pool is
-linked where it is); in link mode or without files directory, it is linked
-where it is. With --dry-run, list the repairs and change nothing.
+found in the library by checksum (.papers/files.json), in the pool or the
+libraries of --pool PATH (same paper), in the other libraries of the machine
+(those of `papers history --all`, by checksum), or in the --search folders. A
+file found is never moved: it is copied (a hard link when possible) into the
+files directory, named as `papers file attach` names it (in a shallow library,
+into the files directory of its pool; a file of its pool is linked where it
+is); in link mode or without files directory, it is linked where it is. With
+--dry-run, list the repairs and change nothing.
 
 positional arguments:
   KEY                   KEY: key, DOI, arXiv id or ISBN (a former key in the
