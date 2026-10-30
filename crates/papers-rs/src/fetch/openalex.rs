@@ -45,9 +45,7 @@ use super::crossref::{crossref_score, crossref_to_entry};
 use super::http::{Response, quote_plus, with_params};
 use super::{ErrorKind, FetchError, Fetcher};
 use crate::bib::{Bib, Block};
-use crate::config::json::{
-    dumps_compact, loads, py_float_repr, py_repr, py_repr_str, py_str, py_truthy,
-};
+use crate::config::json::{dumps_compact, loads, py_float_repr, py_repr, py_str, py_truthy};
 use crate::log;
 
 type Result<T> = std::result::Result<T, FetchError>;
@@ -464,39 +462,6 @@ pub fn work_bibtex(work: &Value) -> Result<String> {
     .format())
 }
 
-/// A string field, trimmed, if it is not empty.
-fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
-    value
-        .get(key)
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-}
-
-/// The fields of a work that the lookup of a free PDF asks for.
-const OPEN_SELECT: &str = "id,doi,open_access,best_oa_location,locations";
-
-/// A link to a free PDF of a work, if OpenAlex lists one: the `pdf_url` of its best open-access
-/// location, else of another open one, else the `oa_url` of its `open_access` (which may be the
-/// page of the article, not the PDF: a download checks).
-pub fn open_pdf_url(work: &Value) -> Option<String> {
-    let pdf = |location: &Value| text(location, "pdf_url").map(str::to_string);
-    work.get("best_oa_location")
-        .and_then(pdf)
-        .or_else(|| {
-            work.get("locations")
-                .and_then(Value::as_array)?
-                .iter()
-                .filter(|l| l.get("is_oa").and_then(Value::as_bool).unwrap_or(false))
-                .find_map(pdf)
-        })
-        .or_else(|| {
-            work.get("open_access")
-                .and_then(|o| text(o, "oa_url"))
-                .map(str::to_string)
-        })
-}
-
 // the search
 // ----------
 
@@ -562,38 +527,6 @@ impl Fetcher {
         self.cache
             .put_value("openalex", &key, Value::Array(works.clone()));
         Ok(works)
-    }
-
-    /// The link to a free PDF of the work with this DOI, if OpenAlex has the work and lists one
-    /// ([`open_pdf_url`]). One request; a DOI that OpenAlex does not know has none.
-    pub fn openalex_free_pdf(&self, doi: &str, access: &OpenAlex) -> Result<Option<String>> {
-        let mut params: Vec<(&str, String)> = vec![("select", OPEN_SELECT.to_string())];
-        if let Some(mailto) = access.mailto.as_deref().filter(|m| !m.is_empty()) {
-            params.push(("mailto", mailto.to_string()));
-        }
-        if let Some(api_key) = access.api_key.as_deref().filter(|k| !k.is_empty()) {
-            params.push(("api_key", api_key.to_string()));
-        }
-        let url = with_params(
-            &format!("{API}/doi:{}", super::http::quote(doi, "/")),
-            &params,
-        );
-        log::debug(&format!("openalex work: {url}"));
-        self.openalex_throttle();
-        let response = self.get(&url, None)?;
-        if response.status == 404 {
-            return Ok(None);
-        }
-        if response.status >= 400 {
-            return Err(openalex_error(format!(
-                "OpenAlex: HTTP {} {}",
-                response.status,
-                py_repr_str(&response.reason)
-            )));
-        }
-        let work = loads(&response.text())
-            .map_err(|e| FetchError::new(ErrorKind::Value, format!("OpenAlex: {}", e.message)))?;
-        Ok(open_pdf_url(&work))
     }
 
     /// The BibTeX of the DOI of a work, as papers makes it (crossref, doi.org, arXiv), else made
@@ -722,26 +655,6 @@ mod tests {
         assert_eq!(abstract_text(Some(&Value::Null)).as_deref(), Some(""));
         // not an index: an unexpected answer
         assert_eq!(abstract_text(Some(&json!({"is": 1}))), None);
-    }
-
-    #[test]
-    fn the_free_pdf_of_a_work() {
-        let url = |w: Value| open_pdf_url(&w);
-        let best = json!({"best_oa_location": {"pdf_url": "https://a.org/best.pdf"},
-            "open_access": {"oa_url": "https://a.org/page"}});
-        assert_eq!(url(best).as_deref(), Some("https://a.org/best.pdf"));
-        // another open location, then the open-access link
-        let other = json!({"best_oa_location": {"pdf_url": null}, "locations": [
-            {"is_oa": false, "pdf_url": "https://a.org/closed.pdf"},
-            {"is_oa": true, "pdf_url": "https://a.org/open.pdf"}]});
-        assert_eq!(url(other).as_deref(), Some("https://a.org/open.pdf"));
-        let landing =
-            json!({"best_oa_location": null, "open_access": {"oa_url": "https://a.org/page"}});
-        assert_eq!(url(landing).as_deref(), Some("https://a.org/page"));
-        assert_eq!(
-            url(json!({"open_access": {"oa_url": null}, "locations": []})),
-            None
-        );
     }
 
     #[test]

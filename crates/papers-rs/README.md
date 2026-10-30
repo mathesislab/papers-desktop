@@ -269,9 +269,8 @@ modules:
   papers-rs, not in papers**: `fetch_pdf` without its message, the links tried with their error and
   the links to open in a browser, for a program that shows them (Papers Desktop).
 - `fetch::html::meta_content` and `page_doi`: **extensions of papers-rs, not in papers**: the `<meta>`
-  tags that journals put in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and the DOI they give; and
-  `Fetcher::openalex_free_pdf`, the link to a free PDF of a DOI that OpenAlex lists. For a program
-  that adds a paper from the link of its article (Papers Desktop).
+  tags that journals put in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and
+  the DOI they give. For a program that adds a paper from the link of its article (Papers Desktop).
 
 The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
 

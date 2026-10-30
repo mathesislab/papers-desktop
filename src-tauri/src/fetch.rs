@@ -1,9 +1,9 @@
 //! What the sheet that adds a paper reads from PDFs and from the network, all of it read-only,
 //! whatever writes the library: the DOI of a PDF, the entry of a DOI, the DOI of a journal
-//! article's page, a free PDF of an article, and the download of that PDF. The network is only
-//! used when asked (Add…), and always through papers-rs: the same queries and cache as `papers
-//! add`, with the app's user agent and the e-mail address and OpenAlex key of the settings, which
-//! are sent when set, to the services that take them.
+//! article's page, the free PDF of an article (as `papers fetch --pdf` finds it), and the download
+//! of a PDF's link. The network is only used when asked (Add…), and always through papers-rs: the
+//! same queries and cache as `papers add`, with the app's user agent and the e-mail address and
+//! OpenAlex key of the settings, which are sent when set, to the services that take them.
 
 use std::path::{Path, PathBuf};
 
@@ -12,11 +12,12 @@ use papers_rs::config::dirs::cache_dir;
 use papers_rs::extract::doi::parse_dois;
 use papers_rs::extract::{Options, PdfFile, confirm_doi, extract_txt_metadata};
 use papers_rs::fetch::download::download_url;
+use papers_rs::fetch::freepdf::{Least, Link, Search, Version, browser_links, first_pdf, reason};
 use papers_rs::fetch::html::page_doi;
 use papers_rs::fetch::http::{Network, Transport};
 use papers_rs::fetch::openalex::OpenAlex;
 use papers_rs::fetch::{ErrorKind, FetchError, Fetcher};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use tauri::State;
 
 use crate::AppState;
@@ -60,9 +61,20 @@ fn user_agent(mailto: Option<&str>) -> String {
     }
 }
 
+/// How the app identifies itself to the publishers' pages, which answer programs less than
+/// browsers: as a program, compatible with them.
+fn page_agent(mailto: Option<&str>) -> String {
+    format!("Mozilla/5.0 (compatible; {})", user_agent(mailto))
+}
+
 /// The queries of papers, with the user agent of the app, and papers' own cache.
 fn fetcher(mailto: Option<&str>) -> Result<Fetcher, String> {
-    let network = Network::with_user_agent(&user_agent(mailto))?;
+    fetcher_as(&user_agent(mailto))
+}
+
+/// The queries of papers, with this user agent, and papers' own cache.
+fn fetcher_as(agent: &str) -> Result<Fetcher, String> {
+    let network = Network::with_user_agent(agent)?;
     Ok(Fetcher::with_transport(Box::new(network), &cache_dir()))
 }
 
@@ -237,29 +249,115 @@ pub fn read_page(transport: &dyn Transport, url: &str) -> Result<Page, String> {
     })
 }
 
-/// The DOI of the article a page is, for the sheet. Publishers answer programs less than
-/// browsers: the user agent says it is a program, and what it is.
+/// The DOI of the article a page is, for the sheet.
 #[tauri::command]
 pub async fn journal_page(state: State<'_, AppState>, url: String) -> Result<Page, String> {
     let access = Access::of(&state)?;
     blocking(move || {
-        let agent = format!(
-            "Mozilla/5.0 (compatible; {})",
-            user_agent(access.mailto.as_deref())
-        );
+        let agent = page_agent(access.mailto.as_deref());
         read_page(&Network::with_user_agent(&agent)?, &url)
     })
     .await
 }
 
-/// A link to a free PDF of the article with this DOI, if OpenAlex has the work and lists one.
+/// The free PDF of an article, as `papers fetch --pdf` finds it.
+#[derive(Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum FreePdf {
+    /// downloaded into a folder of its own in the temporary folder, as [`download_pdf`] does
+    Found {
+        path: PathBuf,
+        /// `published`, `accepted` (the accepted manuscript) or `submitted` (a preprint)
+        #[serde(serialize_with = "version_word")]
+        version: Version,
+        /// the site it came from
+        site: String,
+    },
+    /// none: the links to open in a browser, and why the links tried gave no PDF (none tried: no
+    /// free PDF is known)
+    Browser {
+        links: Vec<String>,
+        refused: Option<String>,
+    },
+}
+
+/// A version of a paper as the sheet names it.
+fn version_word<S: Serializer>(version: &Version, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(match version {
+        Version::Published => "published",
+        Version::Accepted => "accepted",
+        Version::Submitted => "submitted",
+        Version::Supplement => "supplement",
+    })
+}
+
+/// The free PDF of a DOI, downloaded (papers-rs' `fetch::freepdf`): the `citation_pdf_url` of
+/// the publisher's page, else the open-access locations of OpenAlex, the published version first,
+/// then the accepted manuscript, then the preprint; else arXiv for an arXiv DOI. When none gives a
+/// PDF (a challenge, a login page), the links to open in a browser: those tried, then the pages of
+/// the paper, the publisher's first when no published version was tried, where the user may have
+/// access.
+pub fn find_free_pdf(fetcher: &Fetcher, access: &OpenAlex, doi: &str) -> FreePdf {
+    let mut search = Search::new(fetcher, access, Some(doi), None, Least::Any);
+    let tried = match first_pdf(&mut search, None) {
+        Ok(found) => {
+            return FreePdf::Found {
+                path: PathBuf::from(found.path),
+                version: found.link.version,
+                site: found.link.host(),
+            };
+        }
+        Err(tried) => tried,
+    };
+    let mut links = browser_links(&search, &tried);
+    let published = tried
+        .iter()
+        .any(|(link, _)| link.version == Version::Published);
+    if !published && let Some(doi) = search.doi.as_deref() {
+        let page = format!("https://doi.org/{doi}");
+        if let Some(i) = links.iter().position(|link| *link == page) {
+            links.remove(i);
+            links.insert(0, page);
+        }
+    }
+    FreePdf::Browser {
+        links,
+        refused: refused(&tried),
+    }
+}
+
+/// Why the links tried gave no PDF: `example.org (published version): HTTP 403`, one after the
+/// other.
+fn refused(tried: &[(Link, String)]) -> Option<String> {
+    if tried.is_empty() {
+        return None;
+    }
+    let reasons: Vec<String> = tried
+        .iter()
+        .map(|(link, error)| {
+            format!(
+                "{} ({}): {}",
+                link.host(),
+                link.version.name(),
+                reason(error)
+            )
+        })
+        .collect();
+    Some(format!(
+        "No PDF could be downloaded: {}",
+        reasons.join("; ")
+    ))
+}
+
+/// The free PDF of the article with this DOI, for the sheet. The publisher's page is read as
+/// [`journal_page`] reads it.
 #[tauri::command]
-pub async fn free_pdf(state: State<'_, AppState>, doi: String) -> Result<Option<String>, String> {
+pub async fn fetch_free_pdf(state: State<'_, AppState>, doi: String) -> Result<FreePdf, String> {
     let access = Access::of(&state)?;
     blocking(move || {
-        fetcher(access.mailto.as_deref())?
-            .openalex_free_pdf(&doi, &access.openalex)
-            .map_err(|e| failed(&e, &doi))
+        let doi = doi_of(&doi).ok_or_else(|| format!("{}: not a DOI", doi.trim()))?;
+        let fetcher = fetcher_as(&page_agent(access.mailto.as_deref()))?;
+        Ok(find_free_pdf(&fetcher, &access.openalex, &doi))
     })
     .await
 }
@@ -527,23 +625,35 @@ mod tests {
         assert!(error.starts_with("The page cannot be read: 403"), "{error}");
     }
 
-    #[test]
-    fn a_free_pdf_from_openalex_with_the_address_and_the_key() {
-        let work = r#"{"id": "https://openalex.org/W1", "best_oa_location": {"pdf_url": "https://example.org/free.pdf"}}"#;
-        let canned = Canned::default().with(
-            "https://api.openalex.org/works/doi:10.1234/ice.2020.1",
-            200,
-            "application/json",
-            work,
-        );
-        let cache = tempfile::tempdir().unwrap();
-        let canned = std::sync::Arc::new(canned);
-        struct Shared(std::sync::Arc<Canned>);
-        impl Transport for Shared {
-            fn get(&self, url: &str, accept: Option<&str>) -> Result<Response, String> {
-                self.0.get(url, accept)
-            }
+    /// The answer of OpenAlex for the work of a DOI: its open-access locations.
+    fn work(locations: &[(&str, &str, &str)]) -> String {
+        let locations: Vec<serde_json::Value> = locations
+            .iter()
+            .map(|(pdf, landing, version)| {
+                serde_json::json!({"is_oa": true, "pdf_url": pdf, "landing_page_url": landing,
+                    "version": version})
+            })
+            .collect();
+        serde_json::json!({"id": "https://openalex.org/W1", "doi": "https://doi.org/10.1234/ice.2020.1",
+            "best_oa_location": locations.first(), "locations": locations})
+        .to_string()
+    }
+
+    /// A transport the test keeps, to see what was asked.
+    struct Shared(std::sync::Arc<Canned>);
+
+    impl Transport for Shared {
+        fn get(&self, url: &str, accept: Option<&str>) -> Result<Response, String> {
+            self.0.get(url, accept)
         }
+    }
+
+    /// The free PDF of the DOI of the tests, over canned answers, with the address and the key;
+    /// what was asked.
+    fn free_pdf(canned: Canned) -> (FreePdf, Vec<String>) {
+        papers_rs::fetch::freepdf::set_interval(std::time::Duration::ZERO);
+        let canned = std::sync::Arc::new(canned);
+        let cache = tempfile::tempdir().unwrap();
         let fetcher = Fetcher::with_transport(
             Box::new(Shared(canned.clone())),
             cache.path().to_str().unwrap(),
@@ -552,23 +662,176 @@ mod tests {
             mailto: Some("me@example.org".into()),
             api_key: Some("KEY".into()),
         };
-        let found = fetcher
-            .openalex_free_pdf("10.1234/ice.2020.1", &access)
-            .unwrap();
-        assert_eq!(found.as_deref(), Some("https://example.org/free.pdf"));
-        let asked = canned.asked();
-        assert_eq!(asked.len(), 1);
-        assert!(
-            asked[0].contains("mailto=me%40example.org") && asked[0].contains("api_key=KEY"),
-            "{}",
-            asked[0]
-        );
-        // a work OpenAlex does not have has no free PDF
+        let found = find_free_pdf(&fetcher, &access, "10.1234/ice.2020.1");
+        if let FreePdf::Found { path, .. } = &found {
+            assert!(std::fs::read(path).unwrap().starts_with(b"%PDF"));
+            papers_rs::fetch::freepdf::discard(&path.to_string_lossy());
+        }
+        (found, canned.asked())
+    }
+
+    const ARTICLE: &str = "https://doi.org/10.1234/ice.2020.1";
+    const OPENALEX: &str = "https://api.openalex.org/works/doi:10.1234/ice.2020.1";
+
+    #[test]
+    fn the_free_pdf_of_the_publisher_first() {
+        let canned = Canned::default()
+            .with(ARTICLE, 200, "text/html", PAGE)
+            .with(
+                "https://example.org/ice.pdf",
+                200,
+                "application/pdf",
+                "%PDF-1.4",
+            );
+        let (found, asked) = free_pdf(canned);
+        let FreePdf::Found { version, site, .. } = found else {
+            panic!("{found:?}");
+        };
         assert_eq!(
-            fetcher
-                .openalex_free_pdf("10.9999/none", &OpenAlex::default())
-                .unwrap(),
-            None
+            (version, site.as_str()),
+            (Version::Published, "example.org")
+        );
+        // OpenAlex is not asked
+        assert_eq!(asked, [ARTICLE, "https://example.org/ice.pdf"]);
+    }
+
+    #[test]
+    fn an_accepted_manuscript_from_openalex_when_the_publisher_refuses() {
+        let locations = [
+            (
+                "https://repo.example.edu/am.pdf",
+                "https://repo.example.edu/am",
+                "acceptedVersion",
+            ),
+            (
+                "https://arxiv.org/pdf/2001.1",
+                "https://arxiv.org/abs/2001.1",
+                "submittedVersion",
+            ),
+        ];
+        let canned = Canned::default()
+            .with(ARTICLE, 200, "text/html", PAGE)
+            .with(
+                "https://example.org/ice.pdf",
+                403,
+                "text/html",
+                "a challenge",
+            )
+            .with(OPENALEX, 200, "application/json", &work(&locations))
+            .with(
+                "https://repo.example.edu/am.pdf",
+                200,
+                "application/pdf",
+                "%PDF-1.5",
+            );
+        let (found, asked) = free_pdf(canned);
+        let FreePdf::Found { version, site, .. } = found else {
+            panic!("{found:?}");
+        };
+        assert_eq!(
+            (version, site.as_str()),
+            (Version::Accepted, "repo.example.edu")
+        );
+        // OpenAlex with the address and the key of the settings
+        let openalex = asked.iter().find(|url| url.starts_with(OPENALEX)).unwrap();
+        assert!(
+            openalex.contains("mailto=me%40example.org") && openalex.contains("api_key=KEY"),
+            "{openalex}"
+        );
+        assert!(
+            !asked.iter().any(|url| url.contains("arxiv.org")),
+            "{asked:?}"
+        );
+    }
+
+    #[test]
+    fn refused_the_links_to_open_the_publishers_first() {
+        // no PDF on the publisher's page; the accepted manuscript is a login page
+        let page =
+            r#"<html><head><meta name="citation_doi" content="10.1234/ice.2020.1"></head></html>"#;
+        let locations = [(
+            "https://repo.example.edu/am.pdf",
+            "https://repo.example.edu/am",
+            "acceptedVersion",
+        )];
+        let canned = Canned::default()
+            .with(ARTICLE, 200, "text/html", page)
+            .with(OPENALEX, 200, "application/json", &work(&locations))
+            .with(
+                "https://repo.example.edu/am.pdf",
+                200,
+                "text/html",
+                "<html>log in</html>",
+            );
+        let (found, _) = free_pdf(canned);
+        let FreePdf::Browser { links, refused } = found else {
+            panic!("{found:?}");
+        };
+        assert_eq!(
+            links,
+            [
+                ARTICLE,
+                "https://repo.example.edu/am.pdf",
+                "https://repo.example.edu/am"
+            ]
+        );
+        assert_eq!(
+            refused.as_deref(),
+            Some("No PDF could be downloaded: repo.example.edu (accepted manuscript): not a PDF")
+        );
+    }
+
+    #[test]
+    fn refused_the_published_version_first() {
+        let canned = Canned::default()
+            .with(ARTICLE, 200, "text/html", PAGE)
+            .with(
+                "https://example.org/ice.pdf",
+                403,
+                "text/html",
+                "a challenge",
+            );
+        let (found, _) = free_pdf(canned);
+        let FreePdf::Browser { links, refused } = found else {
+            panic!("{found:?}");
+        };
+        assert_eq!(links, ["https://example.org/ice.pdf", ARTICLE]);
+        let refused = refused.unwrap();
+        assert!(
+            refused.ends_with("example.org (published version): HTTP 403"),
+            "{refused}"
+        );
+    }
+
+    #[test]
+    fn no_free_pdf_the_article_to_open() {
+        let (found, _) =
+            free_pdf(Canned::default().with(ARTICLE, 200, "text/html", "<html></html>"));
+        let FreePdf::Browser { links, refused } = found else {
+            panic!("{found:?}");
+        };
+        assert_eq!((links, refused), (vec![ARTICLE.to_string()], None));
+    }
+
+    #[test]
+    fn the_sheet_reads_the_free_pdf() {
+        let found = FreePdf::Found {
+            path: PathBuf::from("/tmp/a.pdf"),
+            version: Version::Submitted,
+            site: "arxiv.org".into(),
+        };
+        assert_eq!(
+            serde_json::to_value(&found).unwrap(),
+            serde_json::json!({"kind": "found", "path": "/tmp/a.pdf", "version": "submitted",
+                "site": "arxiv.org"})
+        );
+        let none = FreePdf::Browser {
+            links: vec![ARTICLE.into()],
+            refused: None,
+        };
+        assert_eq!(
+            serde_json::to_value(&none).unwrap(),
+            serde_json::json!({"kind": "browser", "links": [ARTICLE], "refused": null})
         );
     }
 

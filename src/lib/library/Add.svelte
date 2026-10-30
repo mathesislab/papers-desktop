@@ -13,8 +13,21 @@
   import { onMount, untrack } from "svelte";
   import { holdModal } from "./modal.svelte";
   import { label } from "$lib/keys";
+  import { origin } from "$lib/library/freepdf";
   import { defaultFiles, writers } from "$lib/library/writes";
-  import type { AddOptions, Comparison, FilesMode, Incoming, Input, Item, Page, PdfRead, Row, Writer } from "$lib/types";
+  import type {
+    AddOptions,
+    Comparison,
+    FilesMode,
+    FreePdf,
+    Incoming,
+    Input,
+    Item,
+    Page,
+    PdfRead,
+    Row,
+    Writer,
+  } from "$lib/types";
 
   let {
     bib: preferred = null,
@@ -66,12 +79,13 @@
   let input = $state<HTMLInputElement>();
   /** the BibTeX of the entry */
   let text = $state("");
-  /** the PDF, and whether the app downloaded it (papers always places a download in the library) */
-  let pdf = $state<{ path: string; downloaded: boolean } | null>(null);
+  /** the PDF, whether the app downloaded it (papers always places a download in the library), and what a free PDF
+   *  found is and where it came from */
+  let pdf = $state<{ path: string; downloaded: boolean; origin?: string } | null>(null);
   /** where the DOI in the field came from */
   let source = $state<"pdf" | "search" | "typed" | "page" | "entry" | "none" | null>(null);
-  /** the article the entry is of, to open in a browser; whether a free PDF is known (undefined: being looked for) */
-  let article = $state<{ page: string; free: string | null | undefined } | null>(null);
+  /** the article the entry is of, the link to open in a browser; whether its free PDF is being looked for */
+  let article = $state<{ page: string; looking: boolean } | null>(null);
   /** the .bib files of the library, and their writers; the one to add to */
   let bibs = $state<Writer[]>([]);
   let target = $state("");
@@ -400,19 +414,30 @@
     }
   }
 
-  /** Whether OpenAlex lists a free PDF of the article. */
+  /** The free PDF of the article, as `papers fetch --pdf` finds it, downloaded into a folder of the temporary files
+   *  and made the PDF of the sheet; else the link to open in the browser (the published version's first), the
+   *  highlighted button when the downloads were refused. */
   async function lookup(doi: string, page: string, n: number) {
     if (pdf) return;
-    article = { page, free: undefined };
+    article = { page, looking: true };
     try {
-      const free = await invoke<string | null>("free_pdf", { doi });
-      if (n === seq && article) article = { page, free };
+      const found = await invoke<FreePdf>("fetch_free_pdf", { doi });
+      if (n !== seq) return;
+      if (found.kind === "found") {
+        article = { page, looking: false };
+        return await usePdf(found.path, n, origin(found));
+      }
+      article = { page: found.links[0] ?? page, looking: false };
+      if (found.refused) {
+        failed = true;
+        message = { text: `${found.refused}: open it in the browser`, error: true };
+      }
     } catch {
-      if (n === seq && article) article = { page, free: null };
+      if (n === seq && article) article = { page, looking: false };
     }
   }
 
-  /** The free PDF, downloaded into a folder of the temporary files, and made the PDF of the sheet. */
+  /** The PDF of a link, downloaded into a folder of the temporary files, and made the PDF of the sheet. */
   async function download(url: string, n: number) {
     busy = "Downloading the PDF…";
     message = null;
@@ -427,15 +452,15 @@
         fail(e);
         // the browser may get what the app cannot: the link is made to open
         failed = true;
-        article ??= { page: url, free: null };
+        article ??= { page: url, looking: false };
       }
     } finally {
       if (n === seq) busy = null;
     }
   }
 
-  async function usePdf(path: string, n: number) {
-    pdf = { path, downloaded: true };
+  async function usePdf(path: string, n: number, origin?: string) {
+    pdf = { path, downloaded: true, origin };
     failed = false;
     if (text.trim() === "") await read(n);
   }
@@ -449,7 +474,7 @@
       if (n !== seq) return;
       if (page.pdf) return await download(url, n);
       if (!page.doi) {
-        article = { page: page.url, free: null };
+        article = { page: page.url, looking: false };
         source = "none";
         message = { text: "Journal article, no DOI found on its page: open it in the browser, or type the DOI" };
         return;
@@ -620,10 +645,8 @@
       {/if}
       <span class="spacer"></span>
       {#if article && !pdf}
-        {#if article.free === undefined}
+        {#if article.looking}
           <span class="muted">looking for a free PDF…</span>
-        {:else if article.free}
-          <button disabled={!!busy} onclick={() => download(article!.free!, ++seq)}>Download free PDF</button>
         {/if}
         <button class:primary={failed} onclick={() => openUrl(article!.page)} title={article.page}>Open in browser</button>
       {/if}
@@ -632,6 +655,9 @@
       {/if}
       <button disabled={!!busy} onclick={chooseFile}>{pdf ? "Change…" : "Choose…"}</button>
     </div>
+    {#if pdf?.origin}
+      <p class="source">{pdf.origin}</p>
+    {/if}
 
     <div class="row">
       <span class="label">DOI</span>

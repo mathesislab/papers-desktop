@@ -311,13 +311,24 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
     browser: no browser User-Agent).
   - *A journal article's link*: `journal_page` reads the DOI from the
     `citation_doi`, `prism.doi` and `dc.identifier` tags of the page
-    (`papers_rs::fetch::html::page_doi`); with a DOI (typed or from the page)
-    and no PDF, OpenAlex is asked for a free PDF (`free_pdf`,
-    `Fetcher::openalex_free_pdf`: `best_oa_location.pdf_url`, else an open
-    location, else `open_access.oa_url`): *Download free PDF* (`download_pdf`,
-    into a temporary folder papers knows as a download, always placed in the
-    library) and *Open in browser* (the article's page, to download there and
-    drop the file).
+    (`papers_rs::fetch::html::page_doi`).
+  - *The free PDF*: with a DOI (typed or from the page) and no PDF, the sheet
+    looks for the free PDF as `papers fetch --pdf` does and downloads it
+    (`fetch_free_pdf`, papers-rs' `fetch::freepdf`: the `citation_pdf_url` of
+    the publisher's page, else the open-access locations of OpenAlex, the
+    published version, then the accepted manuscript, then the submitted
+    version, else arXiv for an arXiv DOI; a link that does not give a PDF
+    moves to the next; the download is remembered by URL in papers' cache).
+    The file goes into a temporary folder papers knows as a download, always
+    placed in the library, as `download_pdf` places a link to a PDF typed in
+    the field; a line under the PDF says what it is and where it came from
+    (*Accepted manuscript, from repo.example.edu*). The publisher's page is
+    read with the user agent of `journal_page`, OpenAlex with the address and
+    the key of the settings. When no link gives a PDF (a challenge, a login
+    page): *Open in browser* opens the first of the links to open (those
+    tried, the publisher's page first when no published version was tried,
+    where the user may have access), to download there and drop the file; it
+    is the highlighted button, and the error says what each link answered.
   - *The file*: *Move*, *Copy*, *Leave in place* (papers' `--move`, `--copy`,
     `--link`), by default the `files` setting of the library (`default_files_mode`;
     move without one). papers 3.0.0b5 has no separate *rename*: `--rename` is
@@ -554,8 +565,8 @@ kept in the PDF.
 
 Done in the main window (*Add paper*, above): a DOI or an article URL pasted
 in the sheet, the metadata from the DOI (the `citation_doi` tags of the page),
-the free PDF from OpenAlex, else the page in the browser and the PDF dropped
-on the window. Left:
+the free PDF as `papers fetch --pdf` finds it, else the page in the browser
+and the PDF dropped on the window. Left:
 
 1. *Add current page* in the panel (Safari and Brave tell their current URL
    through AppleScript; paste on Linux and Windows).

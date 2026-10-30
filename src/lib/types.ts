@@ -150,6 +150,13 @@ export type Page = {
   pdf: boolean;
 };
 
+/** mirrors fetch::FreePdf: the free PDF of an article, as `papers fetch --pdf` finds it */
+export type FreePdf =
+  /** downloaded into a temporary folder; its version (never a supplement) and the site it came from */
+  | { kind: "found"; path: string; version: "published" | "accepted" | "submitted"; site: string }
+  /** none: the links to open in a browser, and why the links tried gave no PDF (none tried: no free PDF is known) */
+  | { kind: "browser"; links: string[]; refused: string | null };
+
 /** mirrors papers_core::Incoming: an entry of BibTeX to add */
 export type Incoming = {
   key: string;
