@@ -538,8 +538,9 @@ options:
                   [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]
                   [--journal JOURNAL] [--year YEAR]
                   [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]
-                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]
-                  [--move] [-r] [-c] [--link] [-e] [-o]
+                  [--no-query-fulltext] [--scholar | --openalex]
+                  [--attach FILE [FILE ...]] [--move] [-r] [-c] [--link] [-e]
+                  [-o]
                   [file ...]
 "#, r#"usage: papers add [-h] [-v] [--debug] [--color {auto,always,never}]
                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
@@ -568,8 +569,9 @@ options:
                   [--title TITLE] [--author AUTHOR] [-a NAME [NAME ...]]
                   [--journal JOURNAL] [--year YEAR]
                   [--metadata FIELD=VALUE [FIELD=VALUE ...]] [--no-query-doi]
-                  [--no-query-fulltext] [--scholar] [--attach FILE [FILE ...]]
-                  [--move] [-r] [-c] [--link] [-e] [-o]
+                  [--no-query-fulltext] [--scholar | --openalex]
+                  [--attach FILE [FILE ...]] [--move] [-r] [-c] [--link] [-e]
+                  [-o]
                   [file ...]
 
 add PDF(s), bibtex(s), RIS (.ris) or CSL-JSON (.json) file(s) to library. In a
@@ -737,6 +739,10 @@ metadata:
   --no-query-fulltext   do not attempt to query fulltext in case doi query
                         fails
   --scholar             use google scholar instead of crossref
+  --openalex            use OpenAlex (open API, CC0 data) instead of crossref;
+                        without a free API key (environment variable
+                        OPENALEX_API_KEY) OpenAlex allows about 100 searches a
+                        day
 
 files:
   What happens to the added PDF, the files of an added bibtex, and the
@@ -2248,10 +2254,10 @@ options:
                         pdftotext
 "#),
     ("fetch", r#"usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]
-                    [--porcelain] [--scholar]
+                    [--porcelain] [--scholar | --openalex]
                     doi_or_text [doi_or_text ...]
 "#, r#"usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]
-                    [--porcelain] [--scholar]
+                    [--porcelain] [--scholar | --openalex]
                     doi_or_text [doi_or_text ...]
 
 fetch bibtex from DOI or full-text
@@ -2276,14 +2282,18 @@ options:
                         of papers list, which stays on the standard output)
   --scholar             use google scholar instead of default crossref for
                         fulltext search
+  --openalex            use OpenAlex (open API, CC0 data) instead of crossref;
+                        without a free API key (environment variable
+                        OPENALEX_API_KEY) OpenAlex allows about 100 searches a
+                        day
 "#),
     ("extract", r#"usage: papers extract [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--doi-only] [-R] [-n WORD_COUNT]
-                      [--fulltext] [--scholar] [--image]
+                      [--fulltext] [--scholar | --openalex] [--image]
                       pdf [pdf ...]
 "#, r#"usage: papers extract [-h] [-v] [--debug] [--color {auto,always,never}]
                       [--porcelain] [--doi-only] [-R] [-n WORD_COUNT]
-                      [--fulltext] [--scholar] [--image]
+                      [--fulltext] [--scholar | --openalex] [--image]
                       pdf [pdf ...]
 
 print the bibtex of PDFs, from the DOI found in the PDF (metadata or text) or
@@ -2315,6 +2325,10 @@ options:
   --fulltext            fulltext only (otherwise DOI-based)
   --scholar             use google scholar instead of default crossref for
                         fulltext search
+  --openalex            use OpenAlex (open API, CC0 data) instead of crossref;
+                        without a free API key (environment variable
+                        OPENALEX_API_KEY) OpenAlex allows about 100 searches a
+                        day
   --image               convert to image and use tesseract instead of
                         pdftotext
 "#),

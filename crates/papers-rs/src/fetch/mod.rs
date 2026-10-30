@@ -2,8 +2,8 @@
 //! bibliographic search), doi.org content negotiation, arXiv, and the journal website, with
 //! the results cached as papers caches them (`cache`).
 //!
-//! Not ported: Google Scholar (`scholarly`). An extension of papers-rs instead: the search of
-//! OpenAlex (`openalex`).
+//! Not ported: Google Scholar (`scholarly`). The search of OpenAlex (`--openalex`) is in
+//! `openalex` (`papers.openalex`).
 //!
 //! Where papers raises an exception, a [`FetchError`] has its message and what papers
 //! does with it: `NotFound` and `Request` are its `DOINotFoundError` and `DOIRequestError`,

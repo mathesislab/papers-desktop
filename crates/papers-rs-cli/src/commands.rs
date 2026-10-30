@@ -176,6 +176,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.flag("no_query_fulltext", &["--no-query-fulltext"]);
             b.flag("scholar", &["--scholar"]);
             b.flag("openalex", &["--openalex"]);
+            b.exclusive(&["scholar", "openalex"]);
             b.opt("attachment", &["--attach"], Nargs::Plus);
             b.opt("attachment_deprecated", &["--attachment"], Nargs::Plus);
             files_mode(&mut b, true);
@@ -406,6 +407,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.pos("doi_or_text", "doi_or_text", Nargs::Plus);
             b.flag("scholar", &["--scholar"]);
             b.flag("openalex", &["--openalex"]);
+            b.exclusive(&["scholar", "openalex"]);
         }
         "extract" => {
             logging(&mut b);
@@ -416,6 +418,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.flag("fulltext", &["--fulltext"]);
             b.flag("scholar", &["--scholar"]);
             b.flag("openalex", &["--openalex"]);
+            b.exclusive(&["scholar", "openalex"]);
             b.flag("image", &["--image"]);
         }
         "undo" | "redo" => {

@@ -61,8 +61,8 @@ pub struct AddRequest {
     pub no_query_fulltext: bool,
     /// `--scholar`: Google Scholar (not ported).
     pub scholar: bool,
-    /// `--openalex` (papers-rs, not in papers): the full-text search on OpenAlex, with how it is
-    /// reached (the e-mail address, a key).
+    /// `--openalex`: the full-text search on OpenAlex instead of crossref, with how the requests
+    /// identify the user (the email address, a key).
     pub openalex: Option<OpenAlex>,
     pub no_pool: bool,
     pub pool: Option<String>,
@@ -600,12 +600,7 @@ pub fn add(
         let many = request.files.len() > 1 || (isdir(file) && request.recursive);
         let added = if isdir(file) && request.recursive {
             // the PDFs of a folder: their own DOI, never the one given
-            let scan = Job {
-                doi: None,
-                scholar: false,
-                openalex: None,
-                ..job
-            };
+            let scan = Job { doi: None, ..job };
             add_pdf::scan_dir(session, file, &scan, &mut watch)
         } else if !isdir(file) && file.to_lowercase().ends_with(".pdf") {
             add_pdf::add_pdf(session, file, &attachments, &job, &mut watch)

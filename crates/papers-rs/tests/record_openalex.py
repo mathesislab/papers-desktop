@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Record answers of OpenAlex into `tests/fixtures/openalex.json`, once, for the tests of
-`fetch::openalex` (an extension of papers-rs, not in papers). Two searches go to the network
+`fetch::openalex` (`--openalex`, papers #205). Two searches go to the network
 (10 credits each of the daily budget of OpenAlex); the texts are made of the public metadata
 of two works (title, authors, the start of the abstract), as the start of a PDF would be.
 

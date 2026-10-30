@@ -6,9 +6,8 @@
 //! (AGPL), papers-rs with `pdf-extract` (`pdf`), see there.
 //!
 //! Not ported: the search by Google Scholar (`scholar`), and the PDF metadata through
-//! `pdfinfo` that papers falls back on when PyMuPDF is not installed. An extension of papers-rs
-//! takes its place in the chain: the search of OpenAlex (`Options::openalex`, see
-//! `fetch::openalex`).
+//! `pdfinfo` that papers falls back on when PyMuPDF is not installed. The search of OpenAlex
+//! (`--openalex`, `Options::openalex`) is in `fetch::openalex`.
 
 pub mod doi;
 pub mod pdf;
@@ -48,7 +47,8 @@ pub struct Options {
     pub minwords: i64,
     pub max_query_words: i64,
     pub scholar: bool,
-    /// papers-rs: the full-text search on OpenAlex, where `scholar` would sit (not in papers).
+    /// `openalex`: the full-text search on OpenAlex instead of crossref, with how the requests
+    /// identify the user.
     pub openalex: Option<OpenAlex>,
     pub image: bool,
 }
@@ -308,7 +308,13 @@ pub fn extract_txt_metadata(
                         "scholarly (Google Scholar) is not implemented in papers-rs yet",
                     ))
                 } else if let Some(access) = &options.openalex {
-                    fetcher.fetch_bibtex_by_fulltext_openalex(&query, access, openalex::ROWS, Some(txt))
+                    let accept = |title: &str| title_in_text_strict(title, txt);
+                    fetcher.fetch_bibtex_by_fulltext_openalex(
+                        &query,
+                        access,
+                        Some(&accept),
+                        openalex::ROWS,
+                    )
                 } else {
                     fetcher.fetch_bibtex_by_fulltext_crossref(&query, None, None, 5)
                 }
@@ -317,13 +323,7 @@ pub fn extract_txt_metadata(
             Err(error) => log::warning(&format!("fulltext query failed: {error}")),
             Ok(bibtex) => {
                 let title = bibtex_title(&bibtex);
-                // a hit of OpenAlex is accepted only by a title that is long enough to tell
-                let accepted = if options.openalex.is_some() {
-                    title_in_text_strict(&title, txt)
-                } else {
-                    !title.is_empty() && title_in_text(&title, txt)
-                };
-                if accepted {
+                if !title.is_empty() && title_in_text(&title, txt) {
                     log::debug("fulltext query successful");
                     return Ok(bibtex);
                 }

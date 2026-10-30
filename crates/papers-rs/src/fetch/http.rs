@@ -152,7 +152,7 @@ pub fn quote(text: &str, safe: &str) -> String {
 }
 
 /// `urllib.parse.quote_plus(text)`
-fn quote_plus(text: &str) -> String {
+pub(crate) fn quote_plus(text: &str) -> String {
     quote(text, " ").replace(' ', "+")
 }
 

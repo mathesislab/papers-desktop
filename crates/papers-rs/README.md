@@ -181,7 +181,10 @@ rules of the specification on the API. The cases in
 `crates/papers-rs-cli/tests/fixtures/cases` were recorded by running papers-cli
 (`tests/record/record_cases.py`), and the help of the commands by
 `tests/record/record_help.py` (both run with a `papers` executable; they use
-temporary home directories).
+temporary home directories). The help and the usage cases of `add`, `extract` and `fetch` have the
+`--openalex` of papers #205 (df2d81d): recorded with papers ed8b4dc with the change of #205 to its
+`papers/cli/parser.py` applied (`git show df2d81d -- papers/cli/parser.py | patch -p1` in a copy),
+until they are recorded again from a papers that has it.
 
 The library model (`names`, `entry`, `identity`, `merge`, `library`) is tested
 against papers-cli: `tests/gen_library_expected.py` runs the reference (names, keys,
@@ -248,9 +251,19 @@ modules:
   published-print, published-online and issued dates is used, `0000` if none) are read as papers reads them;
   invalid JSON from doi.org is a DOI without metadata (the website is tried); the relative `.bib` links of a
   journal page are relative to the page that doi.org led to.
-- `fetch::openalex`: **an extension of papers-rs, not in papers** (see "Extensions" below).
-- `fetch::html::meta_content` and `page_doi`: **extensions too**: the `<meta>` tags that journals put
-  in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and the DOI they give; and
+- `fetch::openalex`: `--openalex` of `add`, `extract` and `fetch` (papers v3 faeaf4d, #205: `papers.openalex`
+  up to `fetch_bibtex_by_fulltext_openalex`), a full-text search on [OpenAlex](https://openalex.org) where
+  papers has `--scholar`: the semantic search of the query (cut at 1500 characters), one request a second,
+  the works scored as crossref records, the first whose title (20 letters or digits at least) is in the
+  text, published works before their copies; the entry of the DOI, else made of the OpenAlex record (key
+  `W...`). The answers are cached as papers caches them (`openalex/`, the same keys and content). The command
+  line reads `PAPERS_MAILTO` and `OPENALEX_API_KEY` as papers does (`OpenAlex::from_env`); the library takes
+  them as a parameter (`fetch::openalex::OpenAlex`, `extract::Options::openalex`, `AddRequest::openalex`), so
+  that a program gives its own; they are never in a message. `tests/openalex.rs` has the tests of papers'
+  `tests/test_openalex.py` and recorded answers (no network); `examples/measure_openalex.rs` measures what
+  it adds on a set of PDFs.
+- `fetch::html::meta_content` and `page_doi`: **extensions of papers-rs, not in papers**: the `<meta>`
+  tags that journals put in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and the DOI they give; and
   `Fetcher::openalex_free_pdf`, the link to a free PDF of a DOI that OpenAlex lists. For a program
   that adds a paper from the link of its article (Papers Desktop).
 
@@ -274,26 +287,6 @@ The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
   network are marked `requires: network` (`design/cases/run.py --with network`).
 - `crates/papers-rs-cli/tests/fetch_extract.rs`: the command where it needs no network (a network error is
   made with a proxy that refuses the connection); `cargo test -- --ignored` has two that ask crossref.
-
-### Extensions
-
-papers-rs has options that papers has not. Where one is not used, papers-rs does what papers does
-(the conformance suite passes without it); its help is marked "(papers-rs)", and the help tests
-expect exactly that option and nothing else (`tests/fixtures/help-openalex`).
-
-- `--openalex` of `add`, `extract` and `fetch`: a full-text search on [OpenAlex](https://openalex.org)
-  (open API, no key needed), in place of crossref's, where papers has `--scholar` (Google Scholar by
-  scraping, often blocked: not ported). Same inputs as papers' chain: the query that papers makes of the
-  text of a PDF (`query_text`), the result accepted only if its title is in the text. The hits of OpenAlex's
-  semantic search are scored as papers scores crossref's (`token_set_ratio` of the authors, title and
-  abstract), the best that has its title in the text is taken, and its DOI gives the entry by papers' own
-  path (crossref, doi.org, arXiv); a hit without DOI gives an entry made of the OpenAlex work (the types,
-  the names, the pages, the key `W...`). The answers are cached under `openalex/` in the cache directory.
-  `PAPERS_MAILTO` (an e-mail address, the "polite pool") and `OPENALEX_API_KEY` (a free key: without it
-  OpenAlex allows about 100 searches a day per IP address) are sent when set; the library takes them as
-  a parameter (`fetch::openalex::OpenAlex`, `extract::Options::openalex`, `AddRequest::openalex`). The module
-  documentation has the details, `tests/openalex.rs` (recorded answers, no network) the tests, and
-  `examples/measure_openalex.rs` measures what it adds on a set of PDFs.
 
 ## Adding PDFs and folders, the file commands
 
