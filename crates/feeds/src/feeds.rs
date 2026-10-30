@@ -1,11 +1,14 @@
 //! The feeds of a folder: subscribing, fetching every subscription into the
-//! items, the triage of items, and the pruning of old ones.
+//! items (the rules triaging the new ones), the triage of items, and the
+//! pruning of old ones.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, TimeDelta, Utc};
 
 use crate::http::{FEED_ACCEPT, Http, Request};
+use crate::interest::{self, Lexicon};
 use crate::merge::Merger;
 use crate::model::{Item, Mark, SourceKind, Subscription, Triage};
 use crate::normalize::{canonical_url, feed_key, short_id};
@@ -43,12 +46,14 @@ pub enum Outcome {
 
 /// A feeds folder, loaded.
 pub struct Feeds {
-    dir: PathBuf,
-    config: Config,
-    items: Items,
-    state: State,
-    http: Validated,
-    now: Now,
+    pub(crate) dir: PathBuf,
+    pub(crate) config: Config,
+    /// the interests of `config`, compiled
+    pub(crate) lexicons: Vec<Lexicon>,
+    pub(crate) items: Items,
+    pub(crate) state: State,
+    pub(crate) http: Validated,
+    pub(crate) now: Now,
 }
 
 impl Feeds {
@@ -60,14 +65,18 @@ impl Feeds {
     /// The feeds of a folder, on another clock.
     pub fn open_with(dir: &Path, now: Now) -> Result<Feeds> {
         let dir = store::folder(dir)?;
-        Ok(Feeds {
-            config: store::read(&dir, CONFIG)?,
+        let config: Config = store::read(&dir, CONFIG)?;
+        let mut feeds = Feeds {
+            lexicons: interest::compile(&config.interests, config.title_boost)?,
+            config,
             items: store::read(&dir, ITEMS)?,
             state: store::read(&dir, STATE)?,
             http: store::read(&dir, HTTP)?,
             dir,
             now,
-        })
+        };
+        feeds.prune()?;
+        Ok(feeds)
     }
 
     pub fn subscriptions(&self) -> &[Subscription] {
@@ -119,6 +128,7 @@ impl Feeds {
     /// Fetches every subscription, one after the other, into the items; a
     /// feed that fails is reported and the others go on.
     pub fn fetch(&mut self, http: &dyn Http) -> Result<FetchReport> {
+        let known: BTreeSet<String> = self.items().iter().map(|i| i.id.clone()).collect();
         let mut report = FetchReport::default();
         for i in 0..self.config.subscriptions.len() {
             let outcome = self.fetch_one(i, http);
@@ -128,6 +138,8 @@ impl Feeds {
                 outcome,
             });
         }
+        self.apply_rules(&known);
+        self.drop_old();
         store::write(&self.dir, CONFIG, &self.config)?;
         store::write(&self.dir, ITEMS, &self.items)?;
         store::write(&self.dir, STATE, &self.state)?;
@@ -250,10 +262,31 @@ impl Feeds {
         store::write(&self.dir, STATE, &self.state)
     }
 
-    /// Drops the items first seen more than `days` ago that no feed lists any
-    /// more, unless shortlisted or added; the number dropped.
-    pub fn prune(&mut self, days: u32) -> Result<usize> {
-        let before = (self.now)() - TimeDelta::days(days.into());
+    /// The days an item no feed lists is kept, unless shortlisted or added.
+    pub fn keep_days(&self) -> u32 {
+        self.config.keep_days
+    }
+
+    pub fn set_keep_days(&mut self, days: u32) -> Result<()> {
+        self.config.keep_days = days;
+        store::write(&self.dir, CONFIG, &self.config)
+    }
+
+    /// Drops the items first seen more than `keep_days` ago that no feed
+    /// lists any more, unless shortlisted or added; the number dropped. On
+    /// opening and after a fetch too.
+    pub fn prune(&mut self) -> Result<usize> {
+        let dropped = self.drop_old();
+        if dropped > 0 {
+            store::write(&self.dir, ITEMS, &self.items)?;
+            store::write(&self.dir, STATE, &self.state)?;
+        }
+        Ok(dropped)
+    }
+
+    /// [`Feeds::prune`], not written.
+    fn drop_old(&mut self) -> usize {
+        let before = (self.now)() - TimeDelta::days(self.config.keep_days.into());
         let state = &self.state;
         let old = |item: &Item| {
             let triage = state.get(&item.id).map_or(Triage::New, |m| m.triage);
@@ -270,8 +303,6 @@ impl Feeds {
         self.items
             .aliases
             .retain(|_, kept| !dropped_ids.contains(&&*kept));
-        store::write(&self.dir, ITEMS, &self.items)?;
-        store::write(&self.dir, STATE, &self.state)?;
-        Ok(dropped.len())
+        dropped.len()
     }
 }

@@ -3269,6 +3269,7 @@ dependencies = [
  "chrono",
  "feed-rs",
  "html-escape",
+ "papers-core",
  "percent-encoding",
  "quick-xml 0.42.0",
  "regex",

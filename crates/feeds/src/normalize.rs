@@ -102,14 +102,19 @@ pub fn jaccard(a: &BTreeSet<String>, b: &BTreeSet<String>) -> f64 {
     a.intersection(b).count() as f64 / union as f64
 }
 
-/// The family name of an author, folded: before the comma of "Family, Given",
-/// else the last word of "Given Family".
+/// The family name of an author, folded: see [`family_name`].
 pub fn family(author: &str) -> Option<String> {
+    let name = fold(family_name(author)?);
+    (!name.is_empty()).then_some(name)
+}
+
+/// The family name of an author, as written: before the comma of "Family,
+/// Given", else the last word of "Given Family".
+pub fn family_name(author: &str) -> Option<&str> {
     let name = match author.split_once(',') {
-        Some((family, _)) => family.to_string(),
-        None => author.split_whitespace().last()?.to_string(),
+        Some((family, _)) => family.trim(),
+        None => author.split_whitespace().last()?,
     };
-    let name = fold(&name);
     (!name.is_empty()).then_some(name)
 }
 

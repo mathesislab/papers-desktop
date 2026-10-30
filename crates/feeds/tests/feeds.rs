@@ -313,8 +313,11 @@ fn prune_drops_old_items_no_feed_lists() {
     clock.advance(10);
     // the feed now lists the fourth post only
     feeds.fetch(&http).unwrap();
-    assert_eq!(feeds.prune(30).unwrap(), 0, "not old enough");
-    assert_eq!(feeds.prune(7).unwrap(), 2);
+    assert_eq!(feeds.keep_days(), 90);
+    feeds.set_keep_days(30).unwrap();
+    assert_eq!(feeds.prune().unwrap(), 0, "not old enough");
+    feeds.set_keep_days(7).unwrap();
+    assert_eq!(feeds.prune().unwrap(), 2);
     let left: Vec<&str> = feeds.items().iter().map(|i| i.title.as_str()).collect();
     assert_eq!(
         left,

@@ -691,7 +691,30 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 
 **Interests**: named profiles of weighted terms (paper-feeder's: a term in
 the title counts twice, `ice sheet` matches `ice-sheet`, an exclude vetoes),
-each a view sorted by score; rules (condition → shortlist, dismiss, mute).
+each a view sorted by score. In `config.json`: `interests` (`name`,
+`include` of `{term|pattern, weight, label}`, `exclude` of
+`{term|pattern}`, `min_score` 3) and `title_boost` (2). Scores are
+computed when asked, not stored (a `RegexSet` per interest, one pass per
+text): an edited interest or an enriched abstract counts at once.
+
+**Rules**: `{when, then}`, a query of the feeds and `shortlist`,
+`dismiss` or `seen` (`prof:amoc score:6-` → shortlist, `t:editorial` →
+dismiss). They act on the items a fetch brings, the first that matches
+deciding, never on an item with a triage.
+
+**The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
+`is:` (new or unread, seen, shortlisted, dismissed, added, editorial, and
+the app's, such as `inlibrary`), `src:` (a subscription's title or id),
+`prof:` (the interests whose `min_score` the item reaches), and the number
+`score:` (its best score); an item's record is its title, the family names
+of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
+`has:doi`. `Feeds::view` gives the rows a query and the kinds pass, sorted
+newest or by score, each with its scores, the terms that matched and its
+title, authors and abstract marked (the query's words and the interests'
+terms), and the counts of the sidebar: as the library's, over every live
+item (not dismissed) whatever the query, by `is:`, kind, interest and
+subscription. Dismissed items are rows only if asked (`-is:dismissed` by
+the app).
 
 **When**: on opening the Feeds tab and on ⌘R; polling in the background is
 a setting (off by default: the app sends nothing unless asked). The page of
@@ -699,9 +722,9 @@ a post is fetched when the post is selected or on `f`, or at fetch time for
 a subscription marked so.
 
 **Store**: JSON in the app data folder, `feeds/` (the subscriptions and
-interests, the items, the triage state, the ETags), never the .bib. Seen and
-dismissed items go after a number of days (a setting); shortlisted and
-added stay.
+interests, the items, the triage state, the ETags), never the .bib. An item
+no feed lists goes after `keep_days` (90), on opening and after a fetch;
+shortlisted and added stay.
 
 **Settings**: a *Feeds* section: the subscriptions (a URL, OPML import, a
 list of suggested journals), the interests and rules, background polling,
