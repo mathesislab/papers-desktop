@@ -17,6 +17,9 @@
 //!   repair.
 //! - The entries that got a file, relinked or downloaded, are saved in one step; the number of the
 //!   entries that got no PDF is returned (an error is reported for each).
+//! - An accepted manuscript or a submitted version attached after the published version was
+//!   refused names the published links to open in a browser ([`Found::describe`]).
+//! - A fetch of several entries ends with a summary ([`FetchSummary`], [`Fetched::summary`]).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -25,7 +28,8 @@ use crate::entry::val;
 use crate::error::{Error, Result};
 use crate::fetch::Fetcher;
 use crate::fetch::freepdf::{
-    Found, How, Known, Least, Link, Search, discard, fetch_pdf, fetch_supplements, no_pdf_message,
+    Found, How, Known, Least, Link, Search, Version, discard, fetch_pdf, fetch_supplements,
+    no_pdf_message,
 };
 use crate::fetch::openalex::OpenAlex;
 use crate::history::FilesJson;
@@ -104,13 +108,7 @@ impl LibraryChecksums {
 
     /// The `local` of [`fetch_pdf`] for the entry `key`.
     fn local(&mut self, library: &Library, key: &str, link: &Link, known: &Known) -> Option<Found> {
-        let found = |path: &str, how: How| {
-            Some(Found {
-                path: path.to_string(),
-                link: link.clone(),
-                how,
-            })
-        };
+        let found = |path: &str, how: How| Some(Found::new(path, link.clone(), how));
         for f in library.files(key) {
             if self.matches(&f, known) {
                 return found(&f, How::Has);
@@ -147,14 +145,101 @@ fn found_line(key: &str, path: &str, found: &Found) -> String {
         How::Linked(other) => format!(
             "{key}: {} ({}; same file as {other}, not downloaded)",
             show(path),
-            found.link.describe()
+            found.describe()
         ),
         How::Known => format!(
             "{key}: {} ({}; a file of the library, not downloaded)",
             show(path),
-            found.link.describe()
+            found.describe()
         ),
-        _ => format!("{key}: {} ({})", show(path), found.link.describe()),
+        _ => format!("{key}: {} ({})", show(path), found.describe()),
+    }
+}
+
+/// Links to open in a browser for an entry, in the summary of `papers file fetch`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToOpen {
+    pub key: String,
+    pub links: Vec<String>,
+    /// The version found after the published one was refused; none: no PDF.
+    pub found: Option<Version>,
+}
+
+/// What `papers file fetch` did, entry by entry, for the summary printed at the end of a fetch of
+/// several entries (`FetchSummary`).
+#[derive(Debug, Clone, Default)]
+pub struct FetchSummary {
+    /// The main PDFs attached, by version.
+    pub attached: BTreeMap<Version, usize>,
+    pub supplements: usize,
+    /// The entries repaired from a local file (not downloaded).
+    pub repaired: usize,
+    /// The entries that had the PDF already.
+    pub had: usize,
+    /// The links to open in a browser, entry by entry.
+    pub browser: Vec<ToOpen>,
+}
+
+impl FetchSummary {
+    /// The summary of a fetch of `count` entries (`FetchSummary.print`).
+    pub fn lines(&self, count: usize) -> Vec<String> {
+        let plural = |n: usize| if n > 1 { "s" } else { "" };
+        let mut lines = vec![format!("summary of {count} entries:")];
+        let attached: usize = self.attached.values().sum();
+        if attached > 0 {
+            let versions: Vec<String> = self
+                .attached
+                .iter()
+                .map(|(version, n)| format!("{n} {}", version.name()))
+                .collect();
+            lines.push(format!(
+                "  {attached} PDF{} attached: {}",
+                plural(attached),
+                versions.join(", ")
+            ));
+        }
+        if self.repaired > 0 {
+            lines.push(format!(
+                "  {} found locally (repaired, not downloaded)",
+                self.repaired
+            ));
+        }
+        if self.had > 0 {
+            lines.push(format!("  {} had the PDF already", self.had));
+        }
+        if self.supplements > 0 {
+            lines.push(format!(
+                "  {} supplement{} attached",
+                self.supplements,
+                plural(self.supplements)
+            ));
+        }
+        let failed = self.browser.iter().filter(|b| b.found.is_none()).count();
+        if failed > 0 {
+            lines.push(format!("  {failed} without PDF"));
+        }
+        if lines.len() == 1 {
+            lines.push("  nothing attached".to_string());
+        }
+        let links: Vec<String> = self
+            .browser
+            .iter()
+            .filter(|b| !b.links.is_empty())
+            .map(|b| {
+                let what = match b.found {
+                    None => "no PDF".to_string(),
+                    Some(version) => {
+                        format!("published version refused; {} found", version.name())
+                    }
+                };
+                format!("  {}: {} ({what})", b.key, b.links.join(", "))
+            })
+            .collect();
+        if !links.is_empty() {
+            lines.push("open in a browser:".to_string());
+            lines.extend(links);
+        }
+        lines
     }
 }
 
@@ -234,8 +319,8 @@ fn dry_run_lines(
 /// `again`; with `supplements`, the supplements are fetched too. A PDF with the content of a file
 /// of the entry is not attached; one that this machine downloaded before (same URL) and that the
 /// library has is attached without a download. `repaired`: the entries whose broken PDF link was
-/// repaired (no main PDF fetched unless `again`, without message). The number of the entries whose
-/// PDF was not found (the errors are reported).
+/// repaired (no main PDF fetched unless `again`, without message). `summary`: what was done, filled
+/// entry by entry. The number of the entries whose PDF was not found (the errors are reported).
 pub fn fetch_entry_pdfs(
     session: &mut Session,
     fetcher: &Fetcher,
@@ -243,6 +328,7 @@ pub fn fetch_entry_pdfs(
     mode: Mode,
     options: &PdfOptions,
     repaired: &HashSet<String>,
+    summary: &mut FetchSummary,
 ) -> Result<usize> {
     let dry_run = session.dry_run();
     let mut library = LibraryChecksums::new(session);
@@ -257,6 +343,7 @@ pub fn fetch_entry_pdfs(
             session.say.line(format!(
                 "{key}: has a PDF already (--again to fetch it anyway)"
             ));
+            summary.had += 1;
             if !options.supplements {
                 continue;
             }
@@ -266,6 +353,11 @@ pub fn fetch_entry_pdfs(
         if doi.is_none() && arxiv.is_empty() {
             if main {
                 log::error(&format!("{key}: no DOI or arXiv id to look for a PDF"));
+                summary.browser.push(ToOpen {
+                    key: key.clone(),
+                    links: Vec::new(),
+                    found: None,
+                });
                 failed += 1;
             }
             continue;
@@ -295,9 +387,23 @@ pub fn fetch_entry_pdfs(
         let mut found = Vec::new();
         if main {
             match fetch_pdf(&mut search, Some(&mut local)) {
-                Ok(f) => found.push(f),
-                Err(message) => {
-                    log::error(&format!("{key}: {message}"));
+                Ok(f) => {
+                    if !f.refused.is_empty() {
+                        summary.browser.push(ToOpen {
+                            key: key.clone(),
+                            links: f.refused.clone(),
+                            found: Some(f.link.version),
+                        });
+                    }
+                    found.push(f);
+                }
+                Err(error) => {
+                    log::error(&format!("{key}: {error}"));
+                    summary.browser.push(ToOpen {
+                        key: key.clone(),
+                        links: error.links,
+                        found: None,
+                    });
                     failed += 1;
                 }
             }
@@ -319,6 +425,7 @@ pub fn fetch_entry_pdfs(
                         show(&f.path),
                         f.link.host()
                     ));
+                    summary.had += usize::from(f.link.version != Version::Supplement);
                     continue;
                 }
                 How::Downloaded => {
@@ -330,6 +437,7 @@ pub fn fetch_entry_pdfs(
                             f.link.url,
                             show(&same)
                         ));
+                        summary.had += usize::from(f.link.version != Version::Supplement);
                         discard(&f.path);
                         continue;
                     }
@@ -365,6 +473,11 @@ pub fn fetch_entry_pdfs(
         let paths = &all[all.len().saturating_sub(count)..];
         for (path, f) in paths.iter().zip(linked.iter().chain(&placed)) {
             session.say.line(found_line(&key, path, f));
+            if f.link.version == Version::Supplement {
+                summary.supplements += 1;
+            } else {
+                *summary.attached.entry(f.link.version).or_default() += 1;
+            }
         }
     }
     Ok(failed)
@@ -546,6 +659,17 @@ pub struct Fetched {
     pub failed: usize,
     /// The save (none with a dry run).
     pub committed: Option<Committed>,
+    /// What was done, entry by entry.
+    pub summary: FetchSummary,
+}
+
+impl Fetched {
+    /// The summary printed at the end of a fetch of more than one entry (none for one entry or a
+    /// dry run; papers prints none with `--porcelain` either).
+    pub fn summary(&self) -> Option<Vec<String>> {
+        (self.keys.len() > 1 && self.committed.is_some())
+            .then(|| self.summary.lines(self.keys.len()))
+    }
 }
 
 /// `papers file fetch` (`file_fetchcmd`): the free PDF of the entries, attached and saved in one
@@ -589,7 +713,19 @@ pub fn file_fetch(
         .filter(|k| !repaired.contains(*k) || pdf.again || pdf.supplements)
         .cloned()
         .collect();
-    let failed = fetch_entry_pdfs(session, fetcher, &fetched, mode, pdf, &repaired)?;
+    let mut summary = FetchSummary {
+        repaired: if pdf.again { 0 } else { repaired.len() },
+        ..FetchSummary::default()
+    };
+    let failed = fetch_entry_pdfs(
+        session,
+        fetcher,
+        &fetched,
+        mode,
+        pdf,
+        &repaired,
+        &mut summary,
+    )?;
     let committed = if dry_run {
         None
     } else {
@@ -599,5 +735,6 @@ pub fn file_fetch(
         keys,
         failed,
         committed,
+        summary,
     })
 }

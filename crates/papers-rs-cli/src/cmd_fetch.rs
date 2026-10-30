@@ -163,7 +163,7 @@ fn fetch_pdfs(leaf: &Leaf) -> Outcome {
             let fetcher = fetcher().map_err(|_| "the network cannot be used".to_string())?;
             let mut search =
                 Search::new(&fetcher, &access, doi.as_deref(), arxiv.as_deref(), least);
-            let found = fetch_pdf(&mut search, None)?;
+            let found = fetch_pdf(&mut search, None).map_err(|e| e.message)?;
             let mut target = output.clone().unwrap_or_else(|| pdf_name(&found, id));
             if Path::new(&target).is_dir() {
                 target = join(&target, &pdf_name(&found, id));
@@ -179,7 +179,7 @@ fn fetch_pdfs(leaf: &Leaf) -> Outcome {
             Ok((target, found))
         })();
         match result {
-            Ok((target, found)) => log::println(&format!("{target} ({})", found.link.describe())),
+            Ok((target, found)) => log::println(&format!("{target} ({})", found.describe())),
             Err(error) if args.len() == 1 => {
                 return Err(Error::exit(format!("{arg}: {error}")).into());
             }

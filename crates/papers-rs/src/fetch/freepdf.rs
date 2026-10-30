@@ -13,9 +13,10 @@
 //!
 //! The publisher's page is read first, and OpenAlex only when the publisher gives no PDF. A
 //! download that is refused (an HTTP error, a network error, not a PDF) moves to the next link;
-//! when none is left, the error gives the links to open in a browser. The supplements are the PDFs
-//! that the article page links with "suppl" in the URL or the text of the link, and its
-//! `citation_supplementary_material` tags.
+//! when none is left, the error gives the links to open in a browser. When an accepted or submitted
+//! version is found after the published version was refused, the published links are given too
+//! ([`Found::refused`]). The supplements are the PDFs that the article page links with "suppl" in
+//! the URL or the text of the link, and its `citation_supplementary_material` tags.
 //!
 //! The checksum (sha256) and size of each PDF downloaded are kept in the cache of the machine, by
 //! URL ([`Fetcher::known_download`]): before a URL is downloaded again, the caller looks for a file
@@ -218,6 +219,8 @@ pub struct Search<'a> {
     versions: &'static [Version],
     pub notes: Vec<String>,
     pub browser: Vec<String>,
+    /// The URL of the publisher's page, when it gave an HTTP or network error.
+    pub page_refused: Option<String>,
     page: Option<(Option<String>, Vec<String>)>,
 }
 
@@ -248,6 +251,7 @@ impl<'a> Search<'a> {
             versions: least.versions(),
             notes: Vec::new(),
             browser: Vec::new(),
+            page_refused: None,
             page: None,
         }
     }
@@ -263,6 +267,7 @@ impl<'a> Search<'a> {
                 match self.fetcher.get(&url, None) {
                     Ok(response) => {
                         if let Some(code) = response.status_error().map(|_| response.status) {
+                            self.page_refused = Some(url.clone());
                             self.notes.push(format!("{url}: HTTP {code}"));
                         } else {
                             let found = page_links(&response.text(), &response.url);
@@ -275,9 +280,11 @@ impl<'a> Search<'a> {
                             self.page = Some(found);
                         }
                     }
-                    Err(error) => self
-                        .notes
-                        .push(format!("{url}: {}", reason(&error.message))),
+                    Err(error) => {
+                        self.page_refused = Some(url.clone());
+                        self.notes
+                            .push(format!("{url}: {}", reason(&error.message)));
+                    }
                 }
             }
         }
@@ -453,6 +460,46 @@ pub struct Found {
     pub path: String,
     pub link: Link,
     pub how: How,
+    /// The links of the published version that were refused before this one, an accepted or
+    /// submitted version, was found (to open in a browser).
+    pub refused: Vec<String>,
+}
+
+impl Found {
+    pub fn new(path: impl Into<String>, link: Link, how: How) -> Found {
+        Found {
+            path: path.into(),
+            link,
+            how,
+            refused: Vec::new(),
+        }
+    }
+
+    /// e.g. `accepted manuscript, from repo.example.org; the published version was refused: open
+    /// URL in a browser`
+    pub fn describe(&self) -> String {
+        if self.refused.is_empty() {
+            return self.link.describe();
+        }
+        format!(
+            "{}; the published version was refused: open {} in a browser",
+            self.link.describe(),
+            self.refused.join(", ")
+        )
+    }
+}
+
+/// No PDF could be had (`NoPDF`): the message ends with the links to open in a browser (`links`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoPdf {
+    pub message: String,
+    pub links: Vec<String>,
+}
+
+impl std::fmt::Display for NoPdf {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
 }
 
 /// What the caller has for a URL downloaded before (see [`fetch_pdf`]).
@@ -524,11 +571,11 @@ impl Fetcher {
         {
             return Ok(found);
         }
-        Ok(Found {
-            path: self.download_pdf(link)?,
-            link: link.clone(),
-            how: How::Downloaded,
-        })
+        Ok(Found::new(
+            self.download_pdf(link)?,
+            link.clone(),
+            How::Downloaded,
+        ))
     }
 }
 
@@ -539,13 +586,18 @@ pub fn discard(path: &str) {
 
 /// The PDF of the first link of the search that gives one (`fetch_pdf`): what `local` finds for a
 /// URL downloaded before, else the download. The error, when none does, ends with the links to
-/// open in a browser ([`no_pdf_message`]).
-pub fn fetch_pdf(search: &mut Search, local: Option<&mut Local>) -> Result<Found, String> {
-    first_pdf(search, local).map_err(|tried| no_pdf_message(search, &tried))
+/// open in a browser ([`no_pdf_message`], [`browser_links`]).
+pub fn fetch_pdf(search: &mut Search, local: Option<&mut Local>) -> Result<Found, NoPdf> {
+    first_pdf(search, local).map_err(|tried| NoPdf {
+        message: no_pdf_message(search, &tried),
+        links: browser_links(search, &tried),
+    })
 }
 
-/// The PDF of the first link of the search that gives one, as [`fetch_pdf`] finds it; else the
-/// links tried, each with its error.
+/// The PDF of the first link of the search that gives one, as [`fetch_pdf`] finds it (an accepted
+/// or submitted version with the published links refused before it: the links of the published
+/// version tried, then the publisher's page when it gave an error); else the links tried, each with
+/// its error.
 pub fn first_pdf(
     search: &mut Search,
     mut local: Option<&mut Local>,
@@ -553,16 +605,35 @@ pub fn first_pdf(
     let fetcher = search.fetcher;
     let mut tried: Vec<(Link, String)> = Vec::new();
     // the links are read one by one: the next source only when a link failed
+    let mut found = None;
     for link in search.links() {
         match fetcher.get_link(&link, local.as_deref_mut()) {
-            Ok(found) => return Ok(found),
+            Ok(f) => {
+                found = Some(f);
+                break;
+            }
             Err(error) => {
                 log::info(&format!("{} ({}): {error}", link.url, link.version.name()));
                 tried.push((link, error));
             }
         }
     }
-    Err(tried)
+    let Some(mut found) = found else {
+        return Err(tried);
+    };
+    if found.link.version != Version::Published {
+        found.refused = tried
+            .iter()
+            .filter(|(link, _)| link.version == Version::Published)
+            .map(|(link, _)| link.url.clone())
+            .collect();
+        if let Some(page) = &search.page_refused
+            && !found.refused.contains(page)
+        {
+            found.refused.push(page.clone());
+        }
+    }
+    Ok(found)
 }
 
 /// The supplements that give a PDF (`fetch_supplements`); the others are left out with a warning.

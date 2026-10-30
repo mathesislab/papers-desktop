@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::fetch_pdf::{
-    Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs, file_fetch,
+    FetchSummary, Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs, file_fetch,
 };
 use papers_rs::command::file_cmd::{CheckOptions, check_entries_files, checksums};
 use papers_rs::command::files::Mode;
@@ -203,6 +203,7 @@ struct Sandbox {
     root: String,
     web: Web,
     fetcher: Fetcher,
+    summary: Mutex<Option<Vec<String>>>,
 }
 
 fn entry(key: &str, files: &[&str], doi: Option<&str>) -> String {
@@ -234,6 +235,7 @@ fn sandbox() -> Sandbox {
         root,
         web,
         fetcher,
+        summary: Mutex::new(None),
     };
     s.write(
         "lib/.papers/config.json",
@@ -346,8 +348,15 @@ impl Sandbox {
             search: search.iter().map(|d| d.to_string()).collect(),
             yes: false,
         };
-        let Fetched { failed, .. } = file_fetch(&mut session, &self.fetcher, &request).unwrap();
+        let fetched = file_fetch(&mut session, &self.fetcher, &request).unwrap();
+        self.summary.lock().unwrap().clone_from(&fetched.summary());
+        let Fetched { failed, .. } = fetched;
         (session.finish().out, failed)
+    }
+
+    /// The summary of the last [`Sandbox::fetch`] (none for one entry or a dry run).
+    fn summary(&self) -> Option<Vec<String>> {
+        self.summary.lock().unwrap().clone()
     }
 
     fn out(&self, keys: &[&str]) -> Vec<String> {
@@ -541,7 +550,7 @@ fn version_published_refuses_the_others() {
         None,
         Least::Published,
     );
-    let message = fetch_pdf(&mut search, None).unwrap_err();
+    let message = fetch_pdf(&mut search, None).unwrap_err().message;
     assert!(message.starts_with("no free PDF found"), "{message}");
     assert!(
         message.contains(
@@ -589,7 +598,7 @@ fn none_works_the_links_to_open_and_the_others_attached() {
         None,
         Least::Any,
     );
-    let message = fetch_pdf(&mut search, None).unwrap_err();
+    let message = fetch_pdf(&mut search, None).unwrap_err().message;
     assert!(
         message.contains(&format!("{PDF} (published version): not a PDF")),
         "{message}"
@@ -629,6 +638,75 @@ fn the_links_tried_and_those_to_open() {
         browser_links(&search, &tried),
         [PDF.to_string(), format!("https://doi.org/{DOI}")]
     );
+}
+
+/// library.md "The free PDF of an entry": an accepted version attached after the published one
+/// was refused: the message gives the published link to open in a browser.
+#[test]
+fn published_refused_gives_its_link() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(DOI, Some(PDF), None, &[], &[]);
+    s.web.file(PDF, File::Status(403));
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://repo.example.edu/am.pdf",
+            "acceptedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    let out = s.out(&["smith2020"]);
+    let files = s.files("smith2020");
+    let name = Path::new(&files[0]).file_name().unwrap().to_string_lossy().into_owned();
+    assert!(
+        joined(&out).contains(&format!(
+            "/files/{name} (accepted manuscript, from repo.example.edu; the published version was refused: open {PDF} in a browser)"
+        )),
+        "{out:?}"
+    );
+}
+
+/// The publisher's page itself refused (no PDF link): the page is the link to open.
+#[test]
+fn publisher_page_refused_gives_its_link() {
+    let s = sandbox();
+    s.bib(&["@article{arx2021,\n doi = {10.1000/ocean},\n eprint = {2101.01234},\n title = {T},\n year = {2021}\n}\n".to_string()]);
+    s.web.openalex(DOI, vec![]);
+    s.web.file(
+        "https://arxiv.org/pdf/2101.01234",
+        File::Bytes(pdf_bytes("arxiv")),
+    );
+    let out = s.out(&["arx2021"]);
+    assert!(
+        joined(&out).contains(&format!(
+            "(submitted version, from arxiv.org; the published version was refused: open https://doi.org/{DOI} in a browser)"
+        )),
+        "{out:?}"
+    );
+}
+
+/// The page gave no PDF link and OpenAlex no published location: nothing was refused.
+#[test]
+fn no_published_link_says_nothing() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(DOI, None, None, &[], &[]);
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://repo.example.edu/am.pdf",
+            "acceptedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    let out = joined(&s.out(&["smith2020"]));
+    assert!(out.contains("(accepted manuscript, from repo.example.edu)"), "{out}");
+    assert!(!out.contains("refused"), "{out}");
 }
 
 #[test]
@@ -693,7 +771,7 @@ fn no_identifier() {
     assert_eq!(failed, 1);
     let mut search = Search::new(&s.fetcher, &OpenAlex::default(), None, None, Least::Any);
     assert_eq!(
-        fetch_pdf(&mut search, None).unwrap_err(),
+        fetch_pdf(&mut search, None).unwrap_err().message,
         "no DOI or arXiv id to look for a PDF"
     );
 }
@@ -844,6 +922,112 @@ fn undo_and_redo() {
         )
         .unwrap();
     assert_eq!(s.files("smith2020").len(), 1);
+}
+
+// TestSummary: library.md "The free PDF of an entry", a fetch of several entries ends with a
+// summary
+// -----------------------------------------------------------------------------------------------
+
+fn several() -> Sandbox {
+    let s = sandbox();
+    s.write("lib/files/a.pdf", "a.pdf");
+    s.write("downloads/old.pdf", "pdf old");
+    s.bib(&[
+        entry("pub2020", &[], Some("10.1000/pub")),
+        entry("acc2020", &[], Some("10.1000/acc")),
+        entry("none2020", &[], Some("10.1000/none")),
+        entry("old2020", &["files/old.pdf"], Some("10.1000/old")),
+        entry("has2000", &["files/a.pdf"], Some("10.1000/has")),
+    ]);
+    s.web.publisher(
+        "10.1000/pub",
+        Some("https://journals.example.org/pub.pdf"),
+        None,
+        &[],
+        &[],
+    );
+    s.web.publisher(
+        "10.1000/acc",
+        Some("https://journals.example.org/acc.pdf"),
+        None,
+        &[],
+        &[],
+    );
+    s.web
+        .file("https://journals.example.org/acc.pdf", File::Status(403));
+    s.web.openalex(
+        "10.1000/acc",
+        vec![location(
+            "https://repo.example.edu/acc.pdf",
+            "acceptedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file("https://repo.example.edu/acc.pdf", File::Bytes(pdf_bytes("acc")));
+    s.web.publisher(
+        "10.1000/none",
+        Some("https://journals.example.org/none.pdf"),
+        Some(b"<html></html>".to_vec()),
+        &[],
+        &[],
+    );
+    s.web.openalex("10.1000/none", vec![]);
+    s
+}
+
+#[test]
+fn summary_of_missing() {
+    let s = several();
+    let downloads = s.path("downloads");
+    let (_, failed) = s.fetch_with(&[], true, PdfOptions::default(), &[&downloads], false);
+    assert_eq!(failed, 1);
+    assert_eq!(
+        s.summary().unwrap(),
+        [
+            "summary of 4 entries:",
+            "  2 PDFs attached: 1 published version, 1 accepted manuscript",
+            "  1 found locally (repaired, not downloaded)",
+            "  1 without PDF",
+            "open in a browser:",
+            "  acc2020: https://journals.example.org/acc.pdf (published version refused; accepted manuscript found)",
+            "  none2020: https://journals.example.org/none.pdf, https://doi.org/10.1000/none (no PDF)",
+        ]
+    );
+}
+
+#[test]
+fn no_summary_for_one_entry_or_a_dry_run() {
+    let s = several();
+    s.out(&["pub2020"]);
+    assert_eq!(s.summary(), None);
+    let downloads = s.path("downloads");
+    s.fetch_with(&[], true, PdfOptions::default(), &[&downloads], true);
+    assert_eq!(s.summary(), None);
+}
+
+/// The other lines of the summary: the entries that had the PDF, the supplements, nothing attached.
+#[test]
+fn summary_lines() {
+    let summary = FetchSummary {
+        had: 2,
+        supplements: 1,
+        attached: [(Version::Submitted, 1)].into_iter().collect(),
+        ..FetchSummary::default()
+    };
+    assert_eq!(
+        summary.lines(3),
+        [
+            "summary of 3 entries:",
+            "  1 PDF attached: 1 submitted version",
+            "  2 had the PDF already",
+            "  1 supplement attached",
+        ]
+    );
+    assert_eq!(
+        FetchSummary::default().lines(2),
+        ["summary of 2 entries:", "  nothing attached"]
+    );
 }
 
 // TestBrokenLinkRepair
@@ -1328,6 +1512,7 @@ fn add_doi_fetch_pdf() {
         Mode::Link,
         &PdfOptions::default(),
         &HashSet::new(),
+        &mut FetchSummary::default(),
     )
     .unwrap();
     assert_eq!(failed, 0);
@@ -1339,6 +1524,44 @@ fn add_doi_fetch_pdf() {
     );
     let files = s.files(&touched[0]);
     assert_eq!(fs::read(&files[0]).unwrap(), pdf_bytes(PDF));
+}
+
+/// `fetch --pdf` of an accepted manuscript after the published version was refused (a challenge):
+/// its description gives the published link (`test_fetch_pdf_published_refused`).
+#[test]
+fn fetch_pdf_published_refused() {
+    let s = sandbox();
+    s.web.publisher(
+        DOI,
+        Some(PDF),
+        Some(b"<html>Just a moment...</html>".to_vec()),
+        &[],
+        &[],
+    );
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://repo.example.edu/am.pdf",
+            "acceptedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    let mut search = Search::new(
+        &s.fetcher,
+        &OpenAlex::default(),
+        Some(DOI),
+        None,
+        Least::Any,
+    );
+    let found = fetch_pdf(&mut search, None).unwrap();
+    assert_eq!(found.refused, [PDF]);
+    assert_eq!(
+        found.describe(),
+        format!("accepted manuscript, from repo.example.edu; the published version was refused: open {PDF} in a browser")
+    );
+    freepdf::discard(&found.path);
 }
 
 // TestPageLinks

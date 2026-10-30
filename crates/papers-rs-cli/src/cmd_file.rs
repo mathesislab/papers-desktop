@@ -291,6 +291,13 @@ fn fetch(leaf: &Leaf, config: Config) -> Done {
         if missing && fetched.keys.is_empty() {
             session.say.line("every entry has a PDF");
         }
+        if !leaf.flag("porcelain")
+            && let Some(summary) = fetched.summary()
+        {
+            for line in summary {
+                session.say.line(line);
+            }
+        }
         refused(fetched.failed == 0)
     })
 }

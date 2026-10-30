@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::io::IsTerminal;
 
 use papers_rs::command::add::{AddRequest, add};
-use papers_rs::command::fetch_pdf::{PdfOptions, fetch_entry_pdfs};
+use papers_rs::command::fetch_pdf::{FetchSummary, PdfOptions, fetch_entry_pdfs};
 use papers_rs::command::files::files_mode;
 use papers_rs::command::report::print_changes;
 use papers_rs::config::paths::isfile;
@@ -237,6 +237,7 @@ fn run(
                 request.mode,
                 &options,
                 &HashSet::new(),
+                &mut FetchSummary::default(),
             )?;
         }
         let notes = session.commit()?.notes;
