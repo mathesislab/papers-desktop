@@ -1191,6 +1191,8 @@ mod tests {
             text_size: Default::default(),
             preview: Default::default(),
             downloads: Default::default(),
+            settings_on_main: Default::default(),
+            settings_after_main: Default::default(),
         }
     }
 
