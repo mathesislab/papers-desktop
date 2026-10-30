@@ -271,6 +271,7 @@ fn fetch(leaf: &Leaf, config: Config) -> Done {
             keys,
             missing,
             pdf,
+            search: leaf.strings("search"),
             yes: leaf.flag("yes"),
         };
         let fetcher = Queries::default()

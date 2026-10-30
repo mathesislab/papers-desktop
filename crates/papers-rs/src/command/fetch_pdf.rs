@@ -11,8 +11,12 @@
 //!   file of the entry with that content means nothing to attach; a file of another entry, or of
 //!   `.papers/files.json`, with it is attached without a download (the file of another entry is
 //!   linked where it is); else the URL is downloaded.
-//! - The entries that got a file are saved in one step; the number of the entries that got no PDF
-//!   is returned (an error is reported for each).
+//! - `file fetch`: the local repair first. An entry without PDF that has a broken link ending in
+//!   `.pdf` first gets the repair of its broken links that `file fix` makes ([`repair_pdf_links`]);
+//!   an entry that has a PDF after it is not downloaded (unless `again`). `add --fetch-pdf` makes no
+//!   repair.
+//! - The entries that got a file, relinked or downloaded, are saved in one step; the number of the
+//!   entries that got no PDF is returned (an error is reported for each).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -28,9 +32,10 @@ use crate::history::FilesJson;
 use crate::identity::{entry_arxiv, strip_doi};
 use crate::library::Library;
 use crate::log;
+use crate::names::Format;
 
 use super::add::same_content;
-use super::file_cmd::{Attach, attach_files};
+use super::file_cmd::{Attach, Relinked, attach_files, broken_links, relink_broken_links};
 use super::files::{Mode, files_mode};
 use super::session::{Committed, Session};
 
@@ -365,6 +370,124 @@ pub fn fetch_entry_pdfs(
     Ok(failed)
 }
 
+/// `papers file fetch`, before it downloads (`repair_pdf_links`): the entries whose PDF link is
+/// broken get the repair of `papers file fix` ([`relink_broken_links`]: the pool, the folders `search`
+/// of `--search`, the history), the files placed with the files mode `mode`; with a dry run, what it
+/// would relink. The keys of the entries that have a PDF after the repair: their PDF is not
+/// downloaded (unless `again`).
+pub fn repair_pdf_links(
+    session: &mut Session,
+    keys: &[String],
+    search: &[String],
+    nameformat: &Format,
+    mode: Mode,
+    again: bool,
+) -> Result<HashSet<String>> {
+    let dry_run = session.dry_run();
+    let broken: Vec<String> = keys
+        .iter()
+        .filter(|k| {
+            !has_pdf(&session.library, k)
+                && session.library.get(k).is_some_and(|e| {
+                    broken_links(&session.library, e)
+                        .iter()
+                        .any(|f| f.to_lowercase().ends_with(".pdf"))
+                })
+        })
+        .cloned()
+        .collect();
+    if broken.is_empty() {
+        return Ok(HashSet::new());
+    }
+    let Relinked {
+        relinks,
+        unclear,
+        restores,
+        ..
+    } = relink_broken_links(
+        session,
+        &broken,
+        search,
+        nameformat,
+        &[],
+        Some(mode),
+        !dry_run,
+        false,
+    )?;
+    let is_pdf = |f: &String| f.to_lowercase().ends_with(".pdf");
+    let mut repaired: HashSet<String> = relinks
+        .iter()
+        .filter(|p| p.found.iter().any(|(_, files)| files.iter().any(is_pdf)))
+        .map(|p| p.key.clone())
+        .collect();
+    repaired.extend(
+        restores
+            .iter()
+            .filter(|(_, link, _)| is_pdf(link))
+            .map(|(key, _, _)| key.clone()),
+    );
+    let end = |key: &str| {
+        if repaired.contains(key) && !again {
+            ", not downloaded"
+        } else {
+            ""
+        }
+    };
+    let shown = |files: &[String]| files.iter().map(|f| show(f)).collect::<Vec<_>>().join(", ");
+    for plan in &relinks {
+        let found: Vec<&(String, Vec<String>)> = plan
+            .found
+            .iter()
+            .filter(|(_, files)| !files.is_empty())
+            .collect();
+        if dry_run {
+            for (link, files) in found {
+                session.say.line(format!(
+                    "DRYRUN: {}: would relink {} -> {} ({})",
+                    plan.key,
+                    show(link),
+                    shown(files),
+                    plan.sources[link].describe()
+                ));
+            }
+        } else if !found.is_empty() {
+            let parts: Vec<String> = found
+                .iter()
+                .map(|(link, files)| {
+                    format!("{} ({})", shown(files), plan.sources[link].describe())
+                })
+                .collect();
+            session.say.line(format!(
+                "{}: relinked {}{}",
+                plan.key,
+                parts.join("; "),
+                end(&plan.key)
+            ));
+        }
+    }
+    for (key, link, reason) in &unclear {
+        session.say.line(format!(
+            "{key}: broken link: {}: {reason} (not relinked)",
+            show(link)
+        ));
+    }
+    for (key, link, when) in &restores {
+        session.say.line(if dry_run {
+            format!(
+                "DRYRUN: {key}: would restore {} from the history ({when})",
+                show(link)
+            )
+        } else {
+            format!(
+                "{key}: {}: restored from the history ({when}){}",
+                show(link),
+                end(key)
+            )
+        });
+    }
+    Ok(repaired)
+}
+
 /// `--missing`: ask before more than [`OPENALEX_ASK`] entries with a DOI may query OpenAlex without
 /// an API key (`yes` does not ask); without a terminal, an error (`_confirm_openalex`).
 pub fn confirm_openalex(
@@ -408,6 +531,8 @@ pub struct FileFetch {
     /// `--missing`: the entries without PDF.
     pub missing: bool,
     pub pdf: PdfOptions,
+    /// `--search DIR`: where to look for the file of a broken PDF link.
+    pub search: Vec<String>,
     /// `-y/--yes`: no question before many entries.
     pub yes: bool,
 }
@@ -431,6 +556,8 @@ pub fn file_fetch(
     request: &FileFetch,
 ) -> Result<Fetched> {
     let dry_run = session.dry_run();
+    // the library's own name template, as for `papers file fix`
+    let nameformat = session.own_nameformat();
     if !dry_run {
         session.use_pool_files()?;
     }
@@ -447,7 +574,22 @@ pub fn file_fetch(
     if request.missing {
         confirm_openalex(session, &keys, request.yes, &request.pdf.access)?;
     }
-    let failed = fetch_entry_pdfs(session, fetcher, &keys, mode, &request.pdf, &HashSet::new())?;
+    // the repair of `papers file fix` first: the download, only if it gives no PDF (one step for both)
+    let pdf = &request.pdf;
+    let repaired = repair_pdf_links(
+        session,
+        &keys,
+        &request.search,
+        &nameformat,
+        mode,
+        pdf.again,
+    )?;
+    let fetched: Vec<String> = keys
+        .iter()
+        .filter(|k| !repaired.contains(*k) || pdf.again || pdf.supplements)
+        .cloned()
+        .collect();
+    let failed = fetch_entry_pdfs(session, fetcher, &fetched, mode, pdf, &repaired)?;
     let committed = if dry_run {
         None
     } else {

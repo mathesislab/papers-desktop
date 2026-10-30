@@ -12,6 +12,7 @@ use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::fetch_pdf::{
     Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs, file_fetch,
 };
+use papers_rs::command::file_cmd::checksums;
 use papers_rs::command::files::Mode;
 use papers_rs::command::queries::Queries;
 use papers_rs::command::{Options, Prompt, Session};
@@ -261,6 +262,20 @@ impl Sandbox {
         fs::read_to_string(self.path("lib/papers.bib")).unwrap()
     }
 
+    /// The files setting of the library (the tests of papers link by default).
+    fn files_setting(&self, mode: &str) {
+        let path = self.path("lib/.papers/config.json");
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(
+            &path,
+            text.replace(
+                "\"filesdir\"",
+                &format!("\"files\": \"{mode}\",\n  \"filesdir\""),
+            ),
+        )
+        .unwrap();
+    }
+
     fn config(&self) -> Config {
         let mut machine = Map::new();
         machine.insert("history-dir".into(), json!(self.path("history")));
@@ -299,6 +314,18 @@ impl Sandbox {
         pdf: PdfOptions,
         dry_run: bool,
     ) -> (Vec<String>, usize) {
+        self.fetch_with(keys, missing, pdf, &[], dry_run)
+    }
+
+    /// [`Sandbox::fetch`] with the folders of `--search`.
+    fn fetch_with(
+        &self,
+        keys: &[&str],
+        missing: bool,
+        pdf: PdfOptions,
+        search: &[&str],
+        dry_run: bool,
+    ) -> (Vec<String>, usize) {
         let mut session = self.session(dry_run);
         let keys: Vec<String> = if keys.is_empty() {
             session.library.entries().map(|e| e.key.clone()).collect()
@@ -309,6 +336,7 @@ impl Sandbox {
             keys,
             missing,
             pdf,
+            search: search.iter().map(|d| d.to_string()).collect(),
             yes: false,
         };
         let Fetched { failed, .. } = file_fetch(&mut session, &self.fetcher, &request).unwrap();
@@ -778,6 +806,196 @@ fn undo_and_redo() {
         )
         .unwrap();
     assert_eq!(s.files("smith2020").len(), 1);
+}
+
+// TestBrokenLinkRepair
+// --------------------
+
+/// smith2020 links to lib/files/old.pdf, which is gone; downloads/old.pdf has its name.
+fn broken() -> (Sandbox, String, String) {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &["files/old.pdf"], Some(DOI))]);
+    s.publisher();
+    let found = s.write("downloads/old.pdf", "pdf old");
+    let old = s.path("lib/files/old.pdf");
+    (s, old, found)
+}
+
+fn repair(
+    s: &Sandbox,
+    keys: &[&str],
+    missing: bool,
+    pdf: PdfOptions,
+    dry_run: bool,
+) -> Vec<String> {
+    let downloads = s.path("downloads");
+    s.fetch_with(keys, missing, pdf, &[downloads.as_str()], dry_run)
+        .0
+}
+
+#[test]
+fn found_in_a_search_folder() {
+    // the files setting of the tests is link: linked where it is, as file fix does
+    let (s, _, found) = broken();
+    let out = repair(&s, &["smith2020"], false, PdfOptions::default(), false);
+    assert!(
+        out.contains(&format!(
+            "smith2020: relinked {found} (found in {}), not downloaded",
+            s.path("downloads")
+        )),
+        "{out:?}"
+    );
+    assert_eq!(s.files("smith2020"), [found]);
+    assert!(s.web.downloads().is_empty());
+}
+
+#[test]
+fn copied_into_the_files_directory() {
+    let (s, _, found) = broken();
+    s.files_setting("copy");
+    let out = repair(&s, &["smith2020"], false, PdfOptions::default(), false);
+    let file = s.files("smith2020").remove(0);
+    assert!(
+        joined(&out).contains(&format!("smith2020: relinked {file} (found in ")),
+        "{out:?}"
+    );
+    assert_eq!(fs::read_to_string(&file).unwrap(), "pdf old");
+    assert_eq!(
+        Path::new(&file).parent().unwrap(),
+        Path::new(&s.path("lib/files"))
+    );
+    assert!(Path::new(&found).exists());
+    assert!(s.web.downloads().is_empty());
+}
+
+#[test]
+fn missing_with_a_search_folder() {
+    let (s, _, _) = broken();
+    let out = repair(&s, &[], true, PdfOptions::default(), false);
+    assert!(joined(&out).contains("not downloaded"), "{out:?}");
+    assert!(s.web.downloads().is_empty());
+}
+
+#[test]
+fn restored_by_checksum() {
+    // deleted outside papers: its checksum in files.json, a copy of the same content in the history
+    let (s, old, _) = broken();
+    fs::write(&old, "pdf a").unwrap();
+    let mut session = s.session(false);
+    checksums(&mut session, &["smith2020".to_string()], false).unwrap();
+    session.finish();
+    let copy = s.write("copy.pdf", "pdf a");
+    let digest = papers_rs::merge::checksum_hex(&old).unwrap();
+    papers_rs::history::Store::new(s.path("history"))
+        .put_file(&copy, &digest)
+        .unwrap();
+    fs::remove_file(&old).unwrap();
+    let out = s.out(&["smith2020"]);
+    assert!(
+        out.contains(&format!(
+            "smith2020: {old}: restored from the history (deleted, its checksum known), not downloaded"
+        )),
+        "{out:?}"
+    );
+    assert_eq!(fs::read_to_string(&old).unwrap(), "pdf a");
+    assert_eq!(s.files("smith2020"), [old]);
+    assert!(s.web.downloads().is_empty());
+}
+
+#[test]
+fn not_found_downloads() {
+    let (s, _, found) = broken();
+    fs::remove_file(&found).unwrap();
+    let out = repair(&s, &["smith2020"], false, PdfOptions::default(), false);
+    assert!(!joined(&out).contains("relinked"));
+    assert_eq!(s.web.downloads(), [PDF]);
+    // the broken link stays, as file fix leaves it
+    assert_eq!(s.files("smith2020").len(), 2);
+}
+
+#[test]
+fn a_dry_run_of_the_repair() {
+    let (s, old, found) = broken();
+    let before = s.bibtext();
+    let out = repair(&s, &["smith2020"], false, PdfOptions::default(), true);
+    assert!(
+        out.contains(&format!(
+            "DRYRUN: smith2020: would relink {old} -> {found} (found in {})",
+            s.path("downloads")
+        )),
+        "{out:?}"
+    );
+    assert!(!joined(&out).contains("would download"));
+    assert_eq!(s.bibtext(), before);
+    assert!(s.libfiles().is_empty());
+}
+
+#[test]
+fn again_downloads_too() {
+    let (s, _, _) = broken();
+    let out = repair(
+        &s,
+        &["smith2020"],
+        false,
+        options(|o| o.again = true),
+        false,
+    );
+    assert!(!joined(&out).contains("not downloaded"));
+    assert_eq!(s.web.downloads(), [PDF]);
+    assert_eq!(s.files("smith2020").len(), 2);
+}
+
+#[test]
+fn one_step_with_the_downloads() {
+    let (s, old, found) = broken();
+    s.bib(&[
+        entry("smith2020", &["files/old.pdf"], Some(DOI)),
+        entry("other2001", &["files/gone.pdf"], Some("10.1000/b")),
+    ]);
+    s.web.publisher(
+        "10.1000/b",
+        Some("https://journals.example.org/b.pdf"),
+        None,
+        &[],
+        &[],
+    );
+    repair(
+        &s,
+        &["smith2020", "other2001"],
+        false,
+        PdfOptions::default(),
+        false,
+    );
+    assert_eq!(s.web.downloads(), ["https://journals.example.org/b.pdf"]);
+    assert_eq!(s.files("smith2020"), [found.clone()]);
+    assert_eq!(s.libfiles().len(), 1);
+    // the relink and the download together
+    let mut config = s.config();
+    History::require(&mut config, false)
+        .unwrap()
+        .undo(
+            1,
+            false,
+            None,
+            "papers undo",
+            &mut Resolver::new(OnDuplicate::Skip),
+        )
+        .unwrap();
+    assert_eq!(s.files("smith2020"), [old]);
+    assert_eq!(s.files("other2001"), [s.path("lib/files/gone.pdf")]);
+    let mut config = s.config();
+    History::require(&mut config, false)
+        .unwrap()
+        .redo(
+            1,
+            false,
+            None,
+            "papers redo",
+            &mut Resolver::new(OnDuplicate::Skip),
+        )
+        .unwrap();
+    assert_eq!(s.files("smith2020"), [found]);
+    assert_eq!(s.files("other2001").len(), 2);
 }
 
 // TestConfirmation
