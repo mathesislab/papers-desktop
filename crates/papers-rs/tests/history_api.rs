@@ -651,3 +651,16 @@ fn the_store_is_pruned_at_every_fiftieth_state() {
 fn skip() -> papers_rs::merge::Resolver {
     papers_rs::merge::Resolver::new(papers_rs::merge::OnDuplicate::Skip)
 }
+
+#[test]
+fn the_links_of_a_state_are_read_as_the_library_is() {
+    // history.md 6.3 (test_journal.py::TestOneStep::test_capitalized_field_name): the field name is
+    // compared without case, so `File = {...}` of a bibtex written outside papers is a link too
+    let text = "@article{one2000,\n File = {:files/a.pdf:pdf},\n title = {T}\n}\n";
+    assert_eq!(
+        papers_rs::history::travel::entry_links(text, "/lib")
+            .into_iter()
+            .collect::<Vec<_>>(),
+        ["/lib/files/a.pdf"]
+    );
+}
