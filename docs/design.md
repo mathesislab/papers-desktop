@@ -96,7 +96,7 @@ and come back at the next start; a .bib file no longer in the library is
 dropped. A paper shown after it was added or merged takes the filters off if
 they would hide it.
 
-**Several papers at once** (`+page.svelte`, `Table.svelte`, `rowmenu.ts`,
+**Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
 `selection.ts`, pure and tested by `scripts/selection.test.ts`):
 
 - *Open*: Enter, a double-click, or *Open* in the context menu opens every
