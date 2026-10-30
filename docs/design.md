@@ -623,27 +623,79 @@ and the PDF dropped on the window. Left:
    (downloaded in the browser, with its login), checks its DOI, and opens the
    sheet with it.
 
-## Later: feeds
+## Feeds (P1, branch `feed-reader`)
 
-The new papers of the journals followed, as Feedly lists them: most
-journals have an RSS feed of their contents (Copernicus, Nature, Wiley and
-AGU, Science, Elsevier), arXiv too, and for a journal without one Crossref
-lists its new DOIs by ISSN. A Feeds view: title, authors, journal,
-abstract; mark as read; *Add* takes the metadata from the DOI.
+The new papers of the journals, preprint servers, news sites and blogs
+followed, in a *Feeds* tab beside the *Library* tab (⌘1, ⌘2): every item
+comes in, filters and scores distil them, and a paper goes to the Add sheet
+without its website (which stays one key away). Proposals and the checks
+behind them: `docs/drafts/feeds-proposals.md`; mockup:
+`docs/mockups/feeds.html`.
 
-The PDF, the simplest way first:
+**Crates.** As papers-rs and core: a library, a program, the app.
 
-1. Open access: Unpaywall (by DOI, free) gives the link of the PDF.
-2. The article's page: its `citation_pdf_url` meta tag (most publishers
-   have it, for Google Scholar), fetched on the institute's network or VPN,
-   kept if it is a PDF.
-3. Otherwise the article opens in the browser, and the app waits for the
-   next PDF in `~/Downloads` (as above): logins, viewers and checks happen
-   in the browser.
+- `crates/feeds` (UI-free, no .bib): subscriptions, fetching (conditional
+  GET, one request at a time per host), parsing (`feed-rs`, with the fixes
+  of paper-feeder: Copernicus bylines, Wiley author blobs, the DOI from the
+  guid, `prism:doi` or the link), sweeps (Crossref by ISSN, OpenAlex
+  queries, arXiv), merging, abstracts from Crossref or OpenAlex by DOI,
+  the paper behind a post, interests, rules, scores, triage, the store.
+- `crates/feeds-cli` (`feeds`): subscribe, fetch, list, show, resolve,
+  mark, export (RSS digest, OPML): paper-feeder's job, which it replaces.
+- The app (`src-tauri/src/feeds.rs`, `src/lib/feeds/`): the tab, *In
+  library* (core's `Identity`), the Add sheet, the settings.
 
-A browser tab in the app (a webview that catches downloads) only if 3 is
-too clumsy. One paper at a time, when asked: no downloads in the
-background, which publishers block.
+**The query language** of the library works on feed items too: the parser
+and the matcher take a `Record` (the searchable texts of anything: title,
+authors, year, journal, abstract, keywords, DOI, the `has:` names, and named
+facets such as `kind:`, `src:`, `is:`, `prof:` and number ranges such as
+`score:3-`), which a library entry and a feed item each make. A module of
+core with no .bib types.
+
+**An item** is one paper or post, from every source that listed it. Merged
+by the DOI, then the arXiv id, then Crossref's `has-preprint` /
+`is-preprint-of` (EGUsphere → TC; the review comments `-RC1`, `-AC1` left
+out), then the title (Jaccard ≥ 0.9 among the same first author and year
+±1). Its kind is the subscription's (journal, preprint server, news &
+press, blog), corrected per item. A post links to its paper: a labelled
+block of the feed or of its page first (Futurity "Original Study DOI",
+ScienceDaily "Journal Reference", phys.org "More information", Eos), else
+the DOIs and publisher links of the first paragraphs (not the references,
+sidebars or the site's own DOI), else the title in Crossref; up to 3, marked
+low confidence when none wins. The paper then shows *Covered by*.
+
+**Triage**: new → seen → shortlisted, dismissed or added. Keys: `j`/`k`,
+`s` shortlist, `x` dismiss, `m` read, `o` open, `a` add, `f` find the
+paper of a post. *Review* steps through the shortlist one paper at a time:
+the abstract, why it is there, free PDF or not, the versions, the closest
+library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
+
+**Interests**: named profiles of weighted terms (paper-feeder's: a term in
+the title counts twice, `ice sheet` matches `ice-sheet`, an exclude vetoes),
+each a view sorted by score; rules (condition → shortlist, dismiss, mute).
+
+**When**: on opening the Feeds tab and on ⌘R; polling in the background is
+a setting (off by default: the app sends nothing unless asked). The page of
+a post is fetched when the post is selected or on `f`, or at fetch time for
+a subscription marked so.
+
+**Store**: JSON in the app data folder, `feeds/` (the subscriptions and
+interests, the items, the triage state, the ETags), never the .bib. Seen and
+dismissed items go after a number of days (a setting); shortlisted and
+added stay.
+
+**Settings**: a *Feeds* section: the subscriptions (a URL, OPML import, a
+list of suggested journals), the interests and rules, background polling,
+the days kept.
+
+**PDF**: the Add sheet's (OpenAlex locations, `citation_pdf_url`, arXiv);
+one paper at a time, when asked.
+
+**Commits**, in order: the plan (this); core: the query over a `Record`;
+the main window as `LibraryView` under a tab bar; feeds: items, parsing,
+merging, store; feeds: sweeps, abstracts, the paper of a post; feeds:
+interests, rules, scores; feeds-cli; the app's commands and settings; the
+Feeds tab; Review.
 
 ## Later, optional: Spotlight add-on
 
