@@ -1,1 +1,0 @@
-papers: error: keep-deleted-files is a setting of the machine, not of a library (a library received from someone cannot set it): `papers config --global keep-deleted-files VALUE`

@@ -1,5 +1,5 @@
 //! The history of the libraries: undo, redo, restore, in the store that
-//! papers (Python), papers-rs and the app share (`spec/history.md` of
+//! papers (Python), papers-rs and the app share (`design/history.md` of
 //! Mahé Perrette's specification; `papers.history`, `papers.backup`,
 //! `papers.journal`, `papers.checksums` are the reference).
 //!

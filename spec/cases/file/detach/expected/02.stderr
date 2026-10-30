@@ -1,6 +1,0 @@
-usage: papers file detach [-h] [-v] [--debug] [--color {auto,always,never}]
-                          [--porcelain] [--filesdir FILESDIR]
-                          [--bibtex BIBTEX] [--dry-run] [-k KEY [KEY ...]]
-                          [-y] [-r] [--broken]
-                          [FILE ...]
-papers file detach: error: --broken takes no FILE (--key limits it to entries)

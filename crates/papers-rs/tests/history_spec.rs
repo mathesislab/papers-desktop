@@ -1,4 +1,4 @@
-//! The rules of `spec/history.md` (3.0.0b6) about the identifier of a state, the upgrade of numbered states, what
+//! The rules of `design/history.md` (3.0.0b6) about the identifier of a state, the upgrade of numbered states, what
 //! is recorded and the retention: the tests of papers' `tests/test_spec_history.py` and `test_history.py` for them,
 //! ported to `papers_rs::history`. Each test names its section of the specification.
 

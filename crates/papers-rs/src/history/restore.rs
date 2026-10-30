@@ -1,5 +1,5 @@
 //! Bringing the files from one state of a library to another: undo, redo,
-//! restore, and the files of a revert (spec/history.md, section 6.4;
+//! restore, and the files of a revert (design/history.md, section 6.4;
 //! `papers.journal.restore`).
 //!
 //! The operations say what the commands did (moved or copied, deleted or

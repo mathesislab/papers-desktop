@@ -1,5 +1,0 @@
-papers library: $WORK/project
-* bibtex: papers.bib (empty)
-* files:  in the pool, $WORK/lib/files
-* pool:   ../lib (not pulled from yet)
-`papers pull` takes the entries shared with the pool

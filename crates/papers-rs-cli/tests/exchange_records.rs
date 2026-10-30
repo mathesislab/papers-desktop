@@ -2,7 +2,7 @@
 //! pool id (the identifier of the pool's library, or the path of the pool), the origin files named after the pool
 //! folder, the records that move from a path id to the identifier, the rules of reading and writing them, the
 //! keys renamed, and what `status` sees and does not write. (`tests/pools.rs` of papers-rs has the rules without
-//! the command line; `spec/cases/exchange/*` the cases recorded from papers.)
+//! the command line; `design/cases/exchange/*` the cases recorded from papers.)
 
 use std::fs;
 use std::path::Path;

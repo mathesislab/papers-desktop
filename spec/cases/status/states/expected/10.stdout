@@ -1,4 +1,0 @@
-papers library: $WORK/corrupted
-* bibtex: papers.bib (corrupted)
-* files:  files (the files directory of the library, empty)
-`papers config` lists and sets the settings

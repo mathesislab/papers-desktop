@@ -1,4 +1,4 @@
-//! Recording the states of a library (spec/history.md, sections 5 and 9.2):
+//! Recording the states of a library (design/history.md, sections 5 and 9.2):
 //! the head of a place and the changes made outside papers, the state after
 //! a save, the operations after the save, the retention, the guard before a
 //! command deletes files.

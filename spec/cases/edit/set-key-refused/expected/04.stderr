@@ -1,1 +1,0 @@
-papers: error: KEY: the key is changed by `papers edit KEY --key NEW`, not --set

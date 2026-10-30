@@ -500,11 +500,14 @@ history. In the long run a standard both follow and change together.
 - `crates/latexenc-rs` (library `latexenc`): a port of pylatexenc 2.11 (the
   LaTeX parser, LaTeX to text, Unicode to LaTeX), with all its options; on
   its own, for anyone. Started from tex2word-latexwalker (yfyang86).
-- `spec/`: the conformance suite. A case is a library before, commands, and
-  what they print and leave after; recorded by running papers
-  (`record.py`), checked on any implementation (`run.py --papers CMD`).
-- **The standard**: Mahé's specification (perrette/papers, branch
-  `design-spec`, `design/`: library, bibtex, formats, exchange, history)
+- `spec/papers`: papers itself (a git submodule of perrette/papers, pinned
+  at the commit papers-rs follows), for its conformance suite
+  (`design/cases`, upstream since perrette/papers#206). A case is a library
+  before, commands, and what they print and leave after; recorded by
+  running papers (`record.py`), checked on any implementation (`run.py
+  --papers CMD`). See `spec/README.md`.
+- **The standard**: Mahé's specification (perrette/papers, `design/`:
+  library, bibtex, formats, exchange, history)
   marks each rule *Contract* (files, keys, formats on disk: identical) or
   *Free* (messages, prompts, caches). The suite is its executable side: a
   case names its section and whether it checks a contract.

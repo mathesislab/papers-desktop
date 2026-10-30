@@ -3,7 +3,7 @@
 A Rust port of [papers-cli](https://github.com/perrette/papers). papers-cli is
 the reference: papers-rs does what it does, with the same output and the same
 files, so that both can work on the same library. The conformance suite
-(`spec/`) checks it.
+(`design/cases` of papers, in `spec/papers`) checks it.
 
 - `papers-rs`: the library.
 - `papers-rs-cli`: the command line, `papers-rs`.
@@ -267,8 +267,8 @@ The tests (`cargo test -p papers-rs -p papers-rs-cli`, none needs the network):
   of the website, the errors of `add --doi`), with answers made in the test.
 - `tests/record_network.py` recorded eight real answers (crossref, doi.org, arXiv) once, into
   `tests/fixtures/network.json` (the list of references of the crossref record removed).
-- `spec/cases/fetch`, `spec/cases/extract`: cases for the conformance suite; those that need the
-  network are marked `requires: network` (`spec/run.py --with network`).
+- `design/cases/fetch`, `design/cases/extract`: cases for the conformance suite; those that need the
+  network are marked `requires: network` (`design/cases/run.py --with network`).
 - `crates/papers-rs-cli/tests/fetch_extract.rs`: the command where it needs no network (a network error is
   made with a proxy that refuses the connection); `cargo test -- --ignored` has two that ask crossref.
 
@@ -305,7 +305,7 @@ one: papers fetches their metadata concurrently first (the same results, faster)
 The `papers file` commands and the file actions of `list` are `command::file_cmd`; what a command
 does with a file (`move`, `copy`, `link`, `ask`) is `command::files`, with the rules of
 `library.md` (a downloaded file is always moved, a file of another library is copied). The tests
-are the cases `file/*`, `add/pdf-*`, `add/folder*`, `add/*doi*`, `list/file-actions` of `spec/` (those
+are the cases `file/*`, `add/pdf-*`, `add/folder*`, `add/*doi*`, `list/file-actions` of `design/cases` (those
 that need the network or a PDF say so), and `tests/command_files.rs`; `tests/interop.rs` has papers
 undo what papers-rs did and the reverse (`PAPERS_REFERENCE`).
 
@@ -333,7 +333,7 @@ changed, `(removed)`, the `origin` line, the additions in `f`).
   exchange with the same pool: what one records the other reads (the origin records, the times, `exchanges.json`),
   the same commands by both print the same and leave the same records, and one undoes what the other pushed.
 - `tests/revert.rs`: the tests of papers for `history --revert` (`test_revert.py`), on the API.
-  `spec/cases/history/revert-*` and `undo-pool-moved-on` are the cases recorded from papers, and
+  `design/cases/history/revert-*` and `undo-pool-moved-on` are the cases recorded from papers, and
   `crates/papers-rs-cli/tests/revert_interop.rs` (with `PAPERS_REFERENCE`) has papers and papers-rs
   revert, undo and redo each other's steps, and a library with a pool (built by papers) whose pool moved
   on: `undo` and `redo` by both leave the same libraries and history, and print the same.

@@ -1,6 +1,6 @@
 //! The file commands (`papers_rs::command::file_cmd`) and what `add` does with PDFs, folders and URLs,
 //! on libraries made in a temporary folder. The output of the commands is checked against papers by
-//! the cases of `spec/` (`file/*`, `add/pdf-*`, `add/folder*`, `list/file-actions`).
+//! the cases of `design/cases` (`file/*`, `add/pdf-*`, `add/folder*`, `list/file-actions`).
 
 use std::fs;
 use std::io::{Read, Write};

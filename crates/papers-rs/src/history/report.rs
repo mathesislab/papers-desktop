@@ -1,4 +1,4 @@
-//! What the commands that move in the history print (spec/history.md, 6.5):
+//! What the commands that move in the history print (design/history.md, 6.5):
 //! the state restored, the files that moved, the pools that followed, and the
 //! files of the files directory that no entry links to any more.
 

@@ -1,2 +1,0 @@
-papers: error: $WORK/files/c.txt: destination exists (-f/--force replaces it)
-nothing was moved

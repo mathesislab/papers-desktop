@@ -1,6 +1,6 @@
 //! `papers history --revert N` (`papers_rs::command::revert`, `Session::revert`) on libraries made in a
 //! temporary folder: the tests of papers (`test_revert.py`) ported to the library, step by step.
-//! `spec/cases/history/revert-*` and `tests/revert_interop.rs` (cli) compare it with papers itself.
+//! `design/cases/history/revert-*` and `tests/revert_interop.rs` (cli) compare it with papers itself.
 
 use std::fs;
 use std::path::Path;

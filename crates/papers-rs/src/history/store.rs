@@ -1,6 +1,6 @@
 //! The store of the history: the objects (pieces of text, zlib), the file
 //! objects (files deleted by the commands), the size and the retention
-//! (spec/history.md, sections 2.2 to 2.4 and 9).
+//! (design/history.md, sections 2.2 to 2.4 and 9).
 //!
 //! ```text
 //! objects/ab/ab12…          a piece of text, compressed (zlib), named by the sha256 of its bytes

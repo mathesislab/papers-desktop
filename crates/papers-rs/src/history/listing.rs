@@ -1,4 +1,4 @@
-//! What `papers history` shows (spec/history.md, sections 9.3 and 12), as
+//! What `papers history` shows (design/history.md, sections 9.3 and 12), as
 //! lines, and the removal of a history.
 
 use std::collections::{BTreeSet, HashMap};

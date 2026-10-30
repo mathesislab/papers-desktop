@@ -684,7 +684,7 @@ def write_pdfs(directory):
         'info-doi.pdf': pdf([[ice, 'Nothing else here.']], info={'Title': 'Ice sheet', 'Subject': 'Journal of Things, doi:10.1234/ice.2020.1', 'Keywords': 'ice'}),
         'no-doi.pdf': pdf([['No identifier in this document at all, only some words to read.']], info={'Title': 'Untitled'}),
         'two-pages.pdf': pdf([[ice] + body[:2], ['Second page text', 'references: 10.1234/cited.2019.7'], ['Last page: https://doi.org/10.1234/ice.2020.1']]),
-        # a real paper's title and DOI, for the cases that use the network (spec/cases)
+        # a real paper's title and DOI, for the cases that use the network (design/cases)
         'real-text-doi.pdf': pdf([['The Cryosphere, 11, 1015-1033, 2017', 'doi:10.5194/tc-11-1015-2017',
                                    'Reconstructions of the 1900-2015 Greenland ice sheet surface mass', 'balance using the regional climate MAR model',
                                    'Xavier Fettweis, Jason E. Box, Cecile Agosta and others']]),

@@ -1,5 +1,5 @@
 //! Moving in the history: undo, redo, restore, with the steps of the pool
-//! that went with the library's (spec/history.md, sections 6 and 7).
+//! that went with the library's (design/history.md, sections 6 and 7).
 //!
 //! A pool still where the command left it takes its step back (does it again). A pool that
 //! moved on since gets a new step that *reverts* the step of the command (for redo, when the
@@ -113,7 +113,7 @@ impl History {
     }
 
     /// The history of the library of `config` for undo, redo and restore, which leave no trace
-    /// when they have nothing to do (spec/history.md 5.3, 6.2): no identifier is made, and nothing
+    /// when they have nothing to do (design/history.md 5.3, 6.2): no identifier is made, and nothing
     /// is written. A library without identifier has no history yet: its project is empty, and
     /// every one of the three stops with an error before it writes anything (`nothing to undo`,
     /// `nothing to redo`, `no history: nothing to restore`, no step named), so that the identifier

@@ -1,7 +1,0 @@
-{
-  "bibtex": "refs.bib",
-  "filesdir": "files",
-  "pool": "none",
-  "version": 3,
-  "nameformat": {"template": "{author}_{year}"}
-}

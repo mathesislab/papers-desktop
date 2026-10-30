@@ -1,2 +1,0 @@
-papers: error: a2020: invalid name template '{year.real}': 'str' object has no attribute 'real'
-papers: error: b2021: invalid name template '{year.real}': 'str' object has no attribute 'real'

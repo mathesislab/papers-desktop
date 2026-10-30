@@ -1,1 +1,0 @@
-papers: error: $WORK/b/.papers/config.json: invalid value "big" for the setting history-size (expected an integer): correct the file

@@ -1,9 +1,0 @@
-{
-  "bibtex": "papers.bib",
-  "filesdir": "files",
-  "nameformat": {
-    "template": "{author}"
-  },
-  "pool": "none",
-  "version": 3
-}

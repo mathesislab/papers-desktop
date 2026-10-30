@@ -1,5 +1,0 @@
-papers library: $WORK/lib
-* bibtex: papers.bib (1 entries, 0 file links)
-* files:  in the pool, $WORK/pool/files
-* pool:   ../pool (pool changed)
-`papers pull --dry-run` shows the changes, `papers pull` takes them

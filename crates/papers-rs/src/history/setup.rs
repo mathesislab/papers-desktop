@@ -1,5 +1,5 @@
 //! What the history needs to know of a library: where its store is, which
-//! project and place it is (spec/history.md, sections 2.1, 5.1 and 9.1), and
+//! project and place it is (design/history.md, sections 2.1, 5.1 and 9.1), and
 //! the texts that a state keeps.
 
 use std::fs;

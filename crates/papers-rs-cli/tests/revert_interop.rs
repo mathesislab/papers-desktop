@@ -9,7 +9,7 @@
 //! - a library with a pool, built by papers, whose pool moved on: `undo` and `redo` by papers-rs and by papers
 //!   leave the same libraries, the same history store (the times aside) and print the same.
 //!
-//! (`spec/cases/history/revert-*` has the cases of the revert of a library, recorded from papers.)
+//! (`design/cases/history/revert-*` has the cases of the revert of a library, recorded from papers.)
 
 use std::collections::BTreeMap;
 use std::fs;

@@ -1,7 +1,7 @@
 //! `papers-rs undo`, `redo`, `restore`, `history` and `status`: what they print and leave on histories
 //! that the library model records (through the API of `papers_rs::history`, as a command does), the
 //! questions on a terminal, and, with the reference papers (ignored by default), the same sequences run
-//! by papers (spec/cases has the cases recorded from papers).
+//! by papers (design/cases has the cases recorded from papers).
 
 use std::fs;
 use std::fs::File;

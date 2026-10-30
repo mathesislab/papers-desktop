@@ -1,4 +1,4 @@
-//! A project: the history of one library in a store (spec/history.md,
+//! A project: the history of one library in a store (design/history.md,
 //! sections 2.5 to 2.7 and 3): its states, a tree, and the heads of its
 //! places. A state is named by its identifier, the sha256 of what it is
 //! ([`state_id`]); the numbered states of papers 3.0.0b5 and earlier are

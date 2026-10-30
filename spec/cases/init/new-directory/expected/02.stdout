@@ -1,4 +1,0 @@
-papers library: $WORK/projects/sealevel
-* bibtex: papers.bib (empty)
-* files:  files (the files directory of the library, empty)
-`papers config` lists and sets the settings

@@ -1,5 +1,5 @@
 //! `.papers/files.json`: the checksums of the files that the entries link to
-//! (spec/history.md, section 10). It is one of the files that a state keeps,
+//! (design/history.md, section 10). It is one of the files that a state keeps,
 //! so that undo finds a file by its content.
 
 use std::collections::{BTreeMap, BTreeSet};

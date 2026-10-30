@@ -1,5 +1,5 @@
 //! `papers-rs fetch` and `papers-rs extract` where they need no network: the options and the
-//! errors, the DOI of the PDF metadata. The cases of `spec/cases/fetch` and `extract` check them
+//! errors, the DOI of the PDF metadata. The cases of `design/cases/fetch` and `extract` check them
 //! (and, with `--with network`, the queries) against papers itself; the queries and the
 //! extraction are tested in the library (`crates/papers-rs/tests/fetch.rs`) with the answers
 //! of the network replayed.

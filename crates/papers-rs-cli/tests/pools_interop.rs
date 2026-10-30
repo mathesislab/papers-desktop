@@ -11,7 +11,7 @@
 //! - the same commands by both on copies of the same libraries print the same and leave the same records;
 //! - an undo by one takes back the exchange that the other made, in the library and in its pool.
 //!
-//! (`spec/cases/exchange/*` has the cases of the exchanges, recorded from papers.)
+//! (`design/cases/exchange/*` has the cases of the exchanges, recorded from papers.)
 
 use std::collections::BTreeMap;
 use std::fs;

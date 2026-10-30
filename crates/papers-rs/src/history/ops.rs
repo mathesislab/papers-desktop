@@ -1,4 +1,4 @@
-//! The file operations of a command (spec/history.md, section 4): what it
+//! The file operations of a command (design/history.md, section 4): what it
 //! moved, copied, deleted. A state keeps them, so that undo can put the
 //! files back.
 
