@@ -99,6 +99,11 @@ struct AppState {
     preview: AtomicBool,
     /// the folder of the Downloads panel, watched while the panel is shown
     downloads: downloads::Downloads,
+    /// the settings window was made over the main window: it closes with it
+    settings_on_main: AtomicBool,
+    /// the settings tell of the update just installed once the main window,
+    /// reopened at start, shows
+    settings_after_main: AtomicBool,
 }
 
 impl AppState {
@@ -673,6 +678,8 @@ pub(crate) fn show_update(app: &AppHandle, available: Option<&Available>) {
 
 /// Show the settings window, or a section of it ("updates"). The window is
 /// made hidden the first time: its page shows it once drawn, at the section.
+/// Made while the main window is open, it is a child of it: above it, moving
+/// and closing with it; otherwise it stands alone.
 fn settings_window(app: &AppHandle, section: Option<&str>) {
     hide_window(app);
     if let Some(window) = app.get_webview_window(SETTINGS) {
@@ -687,14 +694,21 @@ fn settings_window(app: &AppHandle, section: Option<&str>) {
         Some(section) => format!("settings#{section}"),
         None => "settings".to_string(),
     };
-    let window = WebviewWindowBuilder::new(app, SETTINGS, WebviewUrl::App(url.into()))
+    let main = app.get_webview_window(MAIN);
+    let builder = WebviewWindowBuilder::new(app, SETTINGS, WebviewUrl::App(url.into()))
         .title("Papers Desktop Settings")
         .inner_size(SETTINGS_WIDTH, SETTINGS_HEIGHT)
         .resizable(false)
         .minimizable(false)
         .center()
-        .visible(false)
-        .build();
+        .visible(false);
+    let window = match &main {
+        Some(main) => builder.parent(main).and_then(|builder| builder.build()),
+        None => builder.build(),
+    };
+    app.state::<AppState>()
+        .settings_on_main
+        .store(main.is_some() && window.is_ok(), Ordering::Relaxed);
     match window {
         Ok(window) => {
             text_size::prepare(app, &window);
@@ -892,6 +906,8 @@ pub fn run() {
                 text_size: RwLock::new(settings.text_size),
                 preview: AtomicBool::new(false),
                 downloads: downloads::Downloads::default(),
+                settings_on_main: AtomicBool::new(false),
+                settings_after_main: AtomicBool::new(false),
             });
             app.state::<AppState>()
                 .downloads
@@ -907,9 +923,16 @@ pub fn run() {
             reload(app.handle());
             update::watch(app.handle());
             main_window::reopen(app.handle());
-            // after an update, the settings tell of it
+            // after an update, the settings tell of it: over the main window
+            // once it shows, when it opens again
             if app.state::<Updates>().installed().is_some() {
-                settings_window(app.handle(), Some("updates"));
+                if app.get_webview_window(MAIN).is_some() {
+                    app.state::<AppState>()
+                        .settings_after_main
+                        .store(true, Ordering::Relaxed);
+                } else {
+                    settings_window(app.handle(), Some("updates"));
+                }
             }
             Ok(())
         })
@@ -918,9 +941,20 @@ pub fn run() {
                 let _ = window.hide();
             }
             if window.label() == MAIN {
+                let state = window.state::<AppState>();
                 match event {
+                    WindowEvent::Focused(true) => {
+                        if state.settings_after_main.swap(false, Ordering::Relaxed) {
+                            settings_window(window.app_handle(), Some("updates"));
+                        }
+                    }
                     WindowEvent::CloseRequested { .. } => main_window::closing(window.app_handle()),
                     WindowEvent::Destroyed => {
+                        if state.settings_on_main.load(Ordering::Relaxed)
+                            && let Some(settings) = window.get_webview_window(SETTINGS)
+                        {
+                            let _ = settings.destroy();
+                        }
                         #[cfg(target_os = "macos")]
                         if let Some(mtm) = objc2::MainThreadMarker::new() {
                             pdf_view::close(mtm);
