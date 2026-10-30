@@ -326,40 +326,45 @@ fn csl_date(value: Option<&J>) -> Vec<i128> {
 }
 
 /// The names of a CSL `author` (`format_bibtex_names`): an array of names, or one name (a text or
-/// an object); a name is a dict of parts, or a text. A part that is null is left out (formats.md 3.4).
+/// an object); a name is a dict of parts, or a text. A part that is null is left out, and so is a
+/// name with no part left (formats.md 3.3, 3.4).
 fn csl_names(value: &J) -> String {
-    let part =
-        |o: &J, k: &str| -> Option<String> { o.get(k).filter(|v| **v != J::Null).map(py_str) };
     let names: Vec<Name> = match value {
         J::Arr(items) => items
             .iter()
             .filter(|n| truthy(Some(n)))
-            .map(|n| csl_name(n, &part))
+            .filter_map(csl_name)
             .collect(),
         J::Str(_) | J::Obj(_) => [value]
             .into_iter()
             .filter(|n| truthy(Some(n)))
-            .map(|n| csl_name(n, &part))
+            .filter_map(csl_name)
             .collect(),
         _ => Vec::new(),
     };
     format_bibtex_names(&names)
 }
 
-fn csl_name(n: &J, part: &dyn Fn(&J, &str) -> Option<String>) -> Name {
+/// A CSL name without its null parts (`_csl_name_parts`); none for an object with no name part
+/// left.
+fn csl_name(n: &J) -> Option<Name> {
+    let part = |k: &str| n.get(k).filter(|v| **v != J::Null).map(py_str);
     match n {
-        J::Obj(_) => Name {
-            literal: part(n, "literal"),
-            family: part(n, "family"),
-            given: part(n, "given"),
-            non_dropping_particle: part(n, "non-dropping-particle"),
-            dropping_particle: part(n, "dropping-particle"),
-            suffix: part(n, "suffix"),
-        },
-        other => Name {
+        J::Obj(_) => {
+            let name = Name {
+                literal: part("literal"),
+                family: part("family"),
+                given: part("given"),
+                non_dropping_particle: part("non-dropping-particle"),
+                dropping_particle: part("dropping-particle"),
+                suffix: part("suffix"),
+            };
+            (name != Name::default()).then_some(name)
+        }
+        other => Some(Name {
             literal: Some(py_str(other)),
             ..Name::default()
-        },
+        }),
     }
 }
 
@@ -1272,5 +1277,16 @@ mod tests {
             .as_deref(),
             Some("{A B} and C")
         );
+    }
+
+    /// `TestCSL::test_null_name_parts` (formats.md 3.3): null name parts are left out, and so is a
+    /// name with no part left; no name left gives no field.
+    #[test]
+    fn null_name_parts() {
+        let csl = r#"[{"id": "x", "author": [{"family": null, "given": "Ann"}, {"family": "Doe", "given": "J", "suffix": null, "non-dropping-particle": null, "literal": null}], "editor": [{"family": null}, {"family": null, "given": null}, {"literal": "WHO"}]}]"#;
+        assert_eq!(author_of(csl, "author").as_deref(), Some(", Ann and Doe, J"));
+        assert_eq!(author_of(csl, "editor").as_deref(), Some("{WHO}"));
+        let csl = r#"[{"id": "x", "title": "T", "author": [{"family": null}]}]"#;
+        assert_eq!(author_of(csl, "author"), None);
     }
 }
