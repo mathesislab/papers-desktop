@@ -400,6 +400,23 @@ fn cite_and_link() {
 }
 
 #[test]
+fn abstracts() {
+    let lib = Library::load(&[fixture("abstract.bib")]).unwrap();
+    assert_eq!(keys(&lib, "abs:greenland"), ["levermann2013"]);
+    assert_eq!(keys(&lib, r#"abstract:"ice sheets""#), ["levermann2013"]);
+    assert_eq!(keys(&lib, "-abs:greenland"), ["winkelmann2015"]);
+    // plain words do not search the abstract
+    assert!(keys(&lib, "greenland").is_empty());
+    assert_eq!(keys(&lib, "has:abstract"), ["levermann2013"]);
+    // the abstract is not shown in a hit
+    let found = lib.search("abs:millennia", Matching::WordStart, 1);
+    assert_eq!(
+        marked(&found.hits[0].title),
+        "The multimillennial sea-level commitment of global warming"
+    );
+}
+
+#[test]
 fn several_files() {
     let lib = Library::load(&[fixture("library.bib"), fixture("other.bib")]).unwrap();
     assert_eq!(lib.len(), 10);

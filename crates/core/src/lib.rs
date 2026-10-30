@@ -9,6 +9,7 @@ mod bib;
 mod fields;
 mod item;
 mod query;
+mod record;
 mod reference;
 mod search;
 mod table;
@@ -20,6 +21,8 @@ mod write;
 use std::path::PathBuf;
 
 pub use item::{Cite, Item};
+pub use query::{Query, Schema};
+pub use record::{Marks, Record};
 pub use search::{Found, Hit, Library, YearCount};
 pub use table::{FileState, Identity, Incoming, Row, TagCount};
 pub use tag::{same_tag, under};

@@ -3,15 +3,17 @@
 //! closest to a reference. Each hit marks the words that matched, to show them.
 
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
 use crate::bib::{self, BibEntry, Snapshot};
-use crate::query::{self, Field, Pattern, Term};
+use crate::fields::field;
+use crate::query::{self, Field, Query, Schema, Term};
+use crate::record::{Marks, Record, mark};
 use crate::reference::Reference;
-use crate::text::{Matching, Span, Text, fold};
+use crate::text::{Matching, Span, fold};
 use crate::{Item, Result};
 
 /// What a word of a reference counts for, in the entry most like it.
@@ -26,7 +28,7 @@ const CLOSE: f32 = 3.0;
 #[derive(Default)]
 pub struct Library {
     items: Vec<Item>,
-    fields: Vec<Fields>,
+    records: Vec<Record>,
     /// the items newest first, then by first author and title
     order: Vec<usize>,
     by_id: HashMap<String, usize>,
@@ -62,16 +64,6 @@ pub struct Hit {
     pub subtitle: Vec<Span>,
     /// for each author, whether it matched
     pub authors: Vec<bool>,
-}
-
-/// The words of an item that matched, as indices of the words of its texts.
-#[derive(Debug, Default)]
-pub(crate) struct Marks {
-    pub title: BTreeSet<usize>,
-    /// (author, word)
-    pub authors: BTreeSet<(usize, usize)>,
-    pub year: bool,
-    pub container: BTreeSet<usize>,
 }
 
 impl Library {
@@ -113,7 +105,7 @@ impl Library {
         bibs: Vec<PathBuf>,
         snapshots: HashMap<PathBuf, Snapshot>,
     ) -> Library {
-        let fields = items.iter().zip(&entries).map(Fields::new).collect();
+        let records = items.iter().zip(&entries).map(record).collect();
         let mut order: Vec<usize> = (0..items.len()).collect();
         order.sort_by_cached_key(|&i| {
             let it = &items[i];
@@ -127,7 +119,7 @@ impl Library {
             .collect();
         Library {
             items,
-            fields,
+            records,
             order,
             by_id,
             entries,
@@ -212,15 +204,10 @@ impl Library {
     /// The ids of the items that match a query, newest first: all the items
     /// for an empty query.
     pub fn matching(&self, query: &str, matching: Matching) -> Vec<String> {
-        let terms = query::parse(query);
+        let query = Query::parse(query, Schema::default());
         self.order
             .iter()
-            .filter(|&&i| {
-                let mut marks = Marks::default();
-                terms
-                    .iter()
-                    .all(|t| self.fields[i].check(t, matching, &mut marks))
-            })
+            .filter(|&&i| self.records[i].check(&query, matching).is_some())
             .map(|&i| self.items[i].id.clone())
             .collect()
     }
@@ -236,9 +223,9 @@ impl Library {
         let mut counts = BTreeMap::new();
         let mut found = Vec::new();
         for &i in &self.order {
-            let fields = &self.fields[i];
+            let record = &self.records[i];
             let mut marks = Marks::default();
-            if !terms.iter().all(|t| fields.check(t, matching, &mut marks)) {
+            if !terms.iter().all(|t| record.passes(t, matching, &mut marks)) {
                 continue;
             }
             if let Some(year) = self.items[i].year {
@@ -246,7 +233,7 @@ impl Library {
             }
             if year_terms
                 .iter()
-                .all(|t| fields.check(t, matching, &mut marks))
+                .all(|t| record.passes(t, matching, &mut marks))
             {
                 found.push((i, marks));
             }
@@ -282,8 +269,8 @@ impl Library {
     pub fn closest(&self, reference: &str, limit: usize) -> Found {
         let reference = Reference::parse(reference);
         let entry_of_doi = reference.doi.as_ref().and_then(|doi| {
-            let mut fields = self.fields.iter();
-            fields.position(|f| f.doi == *doi || f.key == *doi)
+            let mut records = self.records.iter();
+            records.position(|r| r.doi == *doi || r.key == *doi)
         });
         let mut close: Vec<(f32, usize, Marks)> = match entry_of_doi {
             Some(i) => vec![(0.0, i, Marks::default())],
@@ -292,7 +279,7 @@ impl Library {
                 .iter()
                 .map(|&i| {
                     let mut marks = Marks::default();
-                    (self.fields[i].likeness(&reference, &mut marks), i, marks)
+                    (likeness(&self.records[i], &reference, &mut marks), i, marks)
                 })
                 .collect(),
         };
@@ -314,10 +301,10 @@ impl Library {
     }
 
     fn marked_hit(&self, i: usize, marks: &Marks) -> Hit {
-        let (item, fields) = (&self.items[i], &self.fields[i]);
+        let (item, record) = (&self.items[i], &self.records[i]);
         let authors = (0..item.authors.len()).map(|a| marks.authors.iter().any(|&(x, _)| x == a));
         Hit {
-            title: fields.title.spans(&marks.title),
+            title: record.title_spans(marks),
             subtitle: item.subtitle_spans(marks),
             authors: authors.collect(),
             item: item.clone(),
@@ -325,154 +312,49 @@ impl Library {
     }
 }
 
-/// The searchable texts of an item.
-struct Fields {
-    title: Text,
-    /// the family name of each author
-    authors: Vec<Text>,
-    year: Option<i32>,
-    container: Text,
-    keywords: Vec<Text>,
-    /// the keywords, folded, to match as whole tags
-    tags: Vec<String>,
-    key: String,
-    key_words: Text,
-    doi: String,
-    /// the names of the fields of the entry, and "pdf" with a linked file
-    has: BTreeSet<String>,
+/// The record of an item, its abstract from its entry, and what it has: the
+/// fields of the entry, and "pdf" with a linked file.
+fn record((item, entry): (&Item, &BibEntry)) -> Record {
+    let pdf = (!item.files.is_empty()).then_some("pdf");
+    Record::new(&item.title)
+        .authors(&item.families)
+        .year(item.year)
+        .container(item.container.as_deref().unwrap_or_default())
+        .r#abstract(&field(&entry.entry, &["abstract"]).unwrap_or_default())
+        .keywords(&item.keywords)
+        .key(&item.key)
+        .doi(item.doi.as_deref().unwrap_or_default())
+        .has(entry.entry.fields.keys().map(String::as_str).chain(pdf))
 }
 
-impl Fields {
-    fn new((item, entry): (&Item, &BibEntry)) -> Fields {
-        let mut has: BTreeSet<String> = entry.entry.fields.keys().map(|f| fold(f)).collect();
-        if !item.files.is_empty() {
-            has.insert("pdf".into());
+/// How much a record is like a reference: each word of the reference counts
+/// once, for what it is in the record (an author, a word of the title or
+/// journal), and so does the year.
+fn likeness(record: &Record, reference: &Reference, marks: &mut Marks) -> f32 {
+    let matching = Matching::WordStart;
+    let mut score = 0.0;
+    for w in &reference.words {
+        let mut counts: f32 = 0.0;
+        for (a, author) in record.authors.iter().enumerate() {
+            let words = author.find(w, matching);
+            if !words.is_empty() {
+                counts = counts.max(if a == 0 { FIRST_AUTHOR } else { AUTHOR });
+                marks
+                    .authors
+                    .extend(words.into_iter().map(|word| (a, word)));
+            }
         }
-        Fields {
-            title: Text::new(&item.title),
-            authors: item.families.iter().map(|f| Text::new(f)).collect(),
-            year: item.year,
-            container: Text::new(item.container.as_deref().unwrap_or_default()),
-            keywords: item.keywords.iter().map(|k| Text::new(k)).collect(),
-            tags: item.keywords.iter().map(|k| fold(k)).collect(),
-            key: fold(&item.key),
-            key_words: Text::new(&item.key),
-            doi: fold(item.doi.as_deref().unwrap_or_default()),
-            has,
+        if mark(&mut marks.title, record.title.find(w, matching)) {
+            counts = counts.max(TITLE);
         }
+        if mark(&mut marks.container, record.container.find(w, matching)) {
+            counts = counts.max(JOURNAL);
+        }
+        score += counts;
     }
-
-    /// Whether an item passes a term: matches it, or does not match an
-    /// excluded term (whose words are not marked).
-    fn check(&self, term: &Term, matching: Matching, marks: &mut Marks) -> bool {
-        if term.negated {
-            !self.matches(term, matching, &mut Marks::default())
-        } else {
-            self.matches(term, matching, marks)
-        }
+    if record.year.is_some_and(|y| reference.years.contains(&y)) {
+        marks.year = true;
+        score += YEAR;
     }
-
-    /// Whether a term matches, marking the words it matched.
-    fn matches(&self, term: &Term, matching: Matching, marks: &mut Marks) -> bool {
-        let find = |text: &Text| match &term.pattern {
-            Pattern::Word(w) => text.find(w, matching),
-            Pattern::Phrase(ws) => text.find_phrase(ws, matching),
-            _ => Vec::new(),
-        };
-        match (&term.pattern, term.field) {
-            (Pattern::Doi(doi), _) => {
-                self.doi.contains(doi.as_str()) || self.key.contains(doi.as_str())
-            }
-            (Pattern::Years(..) | Pattern::YearStart(_), _) => {
-                let matched = self.year.is_some_and(|y| term.pattern.matches_year(y));
-                self.mark_year(marks, matched)
-            }
-            (Pattern::Tag(_), _) => self.tags.iter().any(|t| term.pattern.matches_tag(t)),
-            (Pattern::Word(w), Field::Key) => {
-                self.key.starts_with(w.as_str()) || !self.key_words.find(w, matching).is_empty()
-            }
-            (_, Field::Title) => mark(&mut marks.title, find(&self.title)),
-            (_, Field::Journal) => mark(&mut marks.container, find(&self.container)),
-            (Pattern::Word(w), Field::Has) => self.has.contains(w),
-            (_, Field::Author) => self.mark_authors(marks, self.authors.len(), find),
-            (_, Field::First) => self.mark_authors(marks, 1, find),
-            (pattern, Field::Any) => {
-                // every field, to mark every match
-                let mut found = mark(&mut marks.title, find(&self.title));
-                found |= mark(&mut marks.container, find(&self.container));
-                found |= self.mark_authors(marks, self.authors.len(), find);
-                found |= self.keywords.iter().any(|k| !find(k).is_empty());
-                if let Pattern::Word(w) = pattern {
-                    found |= self.key.starts_with(w.as_str());
-                    found |= !self.key_words.find(w, matching).is_empty();
-                    found |= self.mark_year(marks, self.year.is_some_and(|y| y.to_string() == *w));
-                    // a DOI fragment like "nclimate1449", not a word like "climate"
-                    found |= w.len() >= 5
-                        && w.bytes().any(|b| b.is_ascii_digit())
-                        && self.doi.contains(w.as_str());
-                }
-                found
-            }
-            _ => false,
-        }
-    }
-
-    /// How much the entry is like a reference: each word of the reference
-    /// counts once, for what it is in the entry (an author, a word of the
-    /// title or journal), and so does the year.
-    fn likeness(&self, reference: &Reference, marks: &mut Marks) -> f32 {
-        let matching = Matching::WordStart;
-        let mut score = 0.0;
-        for w in &reference.words {
-            let mut counts: f32 = 0.0;
-            for (a, author) in self.authors.iter().enumerate() {
-                let words = author.find(w, matching);
-                if !words.is_empty() {
-                    counts = counts.max(if a == 0 { FIRST_AUTHOR } else { AUTHOR });
-                    marks
-                        .authors
-                        .extend(words.into_iter().map(|word| (a, word)));
-                }
-            }
-            if mark(&mut marks.title, self.title.find(w, matching)) {
-                counts = counts.max(TITLE);
-            }
-            if mark(&mut marks.container, self.container.find(w, matching)) {
-                counts = counts.max(JOURNAL);
-            }
-            score += counts;
-        }
-        if self.year.is_some_and(|y| reference.years.contains(&y)) {
-            marks.year = true;
-            score += YEAR;
-        }
-        score
-    }
-
-    fn mark_year(&self, marks: &mut Marks, matched: bool) -> bool {
-        marks.year |= matched;
-        matched
-    }
-
-    /// Match the first `n` authors.
-    fn mark_authors(
-        &self,
-        marks: &mut Marks,
-        n: usize,
-        find: impl Fn(&Text) -> Vec<usize>,
-    ) -> bool {
-        let mut found = false;
-        for (a, author) in self.authors.iter().take(n).enumerate() {
-            let words = find(author);
-            found |= !words.is_empty();
-            marks.authors.extend(words.into_iter().map(|w| (a, w)));
-        }
-        found
-    }
-}
-
-fn mark(marked: &mut BTreeSet<usize>, words: Vec<usize>) -> bool {
-    let found = !words.is_empty();
-    marked.extend(words);
-    found
+    score
 }

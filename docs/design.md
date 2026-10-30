@@ -650,7 +650,14 @@ and the matcher take a `Record` (the searchable texts of anything: title,
 authors, year, journal, abstract, keywords, DOI, the `has:` names, and named
 facets such as `kind:`, `src:`, `is:`, `prof:` and number ranges such as
 `score:3-`), which a library entry and a feed item each make. A module of
-core with no .bib types.
+core with no .bib types: `Record::new(title)` and its builder methods
+(`.authors`, `.abstract`, `.facet(name, values)`, `.number(name, x)`, ...),
+`Query::parse(text, Schema { facets, numbers })` (an undeclared name is a
+word, as in the library), and `record.check(&query, matching)`, the
+`Marks` to highlight when it matches. `abs:` searches the abstract (the
+library's too); plain words do not, which would change the library's hits.
+A facet takes a whole value, with `*` wildcards; a number takes `2-5`,
+`3-`, `-2`, and `3` is `3-`.
 
 **An item** is one paper or post, from every source that listed it. Merged
 by the DOI, then the arXiv id, then Crossref's `has-preprint` /
