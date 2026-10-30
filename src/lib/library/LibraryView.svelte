@@ -8,7 +8,7 @@
   import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { ask, save } from "@tauri-apps/plugin-dialog";
-  import { onMount, tick, untrack } from "svelte";
+  import { onMount, tick, untrack, type Snippet } from "svelte";
   import { commands } from "$lib/commands";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import type { Layout } from "$lib/layout";
@@ -87,8 +87,21 @@
     WriteError,
   } from "$lib/types";
 
-  /** the layout of the window, which the library changes and the window keeps */
-  let { layout = $bindable() }: { layout: Layout } = $props();
+  let {
+    layout = $bindable(),
+    visible,
+    tabs,
+    onfront,
+  }: {
+    /** the layout of the window, which the library changes and the window keeps */
+    layout: Layout;
+    /** whether the Library tab of the window is in front */
+    visible: boolean;
+    /** the switch of the tabs of the window, at the start of the toolbar */
+    tabs: Snippet;
+    /** the Library tab to the front: a paper opened from the panel, a paper shown after it was added */
+    onfront: () => void;
+  } = $props();
 
   let status = $state<Status>({ state: "loading" });
   let rows = $state<Row[]>([]);
@@ -200,8 +213,8 @@
     return untrack(() => new Kind(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
   });
 
-  // a modal of the page (the Add sheet, the delete question) has the PDF step aside
-  $effect(() => reader?.cover(modalOpen()));
+  // a modal of the page (the Add sheet, the delete question), or the Feeds tab in front, has the PDF step aside
+  $effect(() => reader?.cover(modalOpen() || !visible));
 
   /** what the search found, next to it */
   let summary = $derived(
@@ -642,6 +655,7 @@
     if (!ids.length || !(await leave(front))) return;
     layout.open = [...layout.open, ...ids.filter((id, i) => !layout.open.includes(id) && ids.indexOf(id) === i)];
     layout.active = front;
+    onfront();
     Promise.all(ids.map((id) => invoke("opened", { id }))).then(refresh);
   }
 
@@ -787,12 +801,18 @@
   /** ⌘W: the paper in front, else the window. */
   async function closeActive() {
     if (layout.active) closePaper(layout.active);
-    else if (await leave(null)) getCurrentWindow().close();
+    else closeWindow();
+  }
+
+  /** ⌘W with no paper in front: the window closes, after asking about the BibTeX edited if it has changes. */
+  export async function closeWindow() {
+    if (await leave(null)) getCurrentWindow().close();
   }
 
   async function showLibrary() {
     if (!(await leave(focus))) return;
     layout.active = null;
+    onfront();
     tick().then(() => input?.focus());
   }
 
@@ -985,7 +1005,7 @@
   </div>
 {/if}
 
-<main>
+<main class:hidden={!visible}>
   {#if layout.showSidebar}
     <aside class="sidebar" style:width="{layout.sidebar}px">
       <Sidebar
@@ -1024,6 +1044,7 @@
   {/if}
   <div class="right">
     <header>
+      {@render tabs()}
       {#if reader}
         <ReaderBar {reader} onclose={closeActive} />
       {:else}
@@ -1140,6 +1161,10 @@
   main {
     display: flex;
     height: 100vh;
+  }
+  /* the Feeds tab is in front: the library keeps its state (the selection, the scroll, the edit) */
+  main.hidden {
+    display: none;
   }
 
   .sidebar {

@@ -4,11 +4,14 @@
 import { NO_FILTERS, restored, type Filters } from "$lib/library/filters";
 import { DEFAULT_COLUMNS, type Shown, type Sort } from "$lib/library/Table.svelte";
 
-/** What the window keeps between sessions: the widths of the side panes,
- *  whether the details show, the columns and order of the table, the library
- *  tab (its library, view, tags and search), the papers open and the page of
- *  each, the parent tags unfolded in the sidebar. */
+/** What the window keeps between sessions: the tab in front (Library or
+ *  Feeds), the widths of the side panes, whether the details show, the
+ *  columns and order of the table, the library tab (its library, view, tags
+ *  and search), the papers open and the page of each, the parent tags
+ *  unfolded in the sidebar. */
 export type Layout = {
+  /** the tab of the window in front: the library (with the papers open), or the feeds */
+  view: "library" | "feeds";
   sidebar: number;
   details: number;
   showSidebar: boolean;
@@ -26,6 +29,7 @@ export type Layout = {
 };
 
 const DEFAULTS: Layout = {
+  view: "library",
   sidebar: 230,
   details: 340,
   showSidebar: true,

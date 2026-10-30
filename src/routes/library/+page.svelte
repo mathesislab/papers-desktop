@@ -1,6 +1,6 @@
 <script lang="ts">
-  // The main window: its layout, kept between sessions; the commands of the menu and the keys, the window's own or
-  // passed on to the library (LibraryView).
+  // The main window: its two tabs, Library (LibraryView, with the papers open) and Feeds (FeedsView); its layout,
+  // kept between sessions; the commands of the menu and the keys, the window's own or passed on to the tab in front.
 
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -8,7 +8,8 @@
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { commands } from "$lib/commands";
-  import { mac, matches, zoomStep } from "$lib/keys";
+  import FeedsView from "$lib/feeds/FeedsView.svelte";
+  import { label, mac, matches, zoomStep } from "$lib/keys";
   import { restore, type Layout } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
 
@@ -34,7 +35,16 @@
     const window = getCurrentWindow();
     await window.show();
     await window.setFocus();
-    library?.focusSearch();
+    if (layout.view === "library") library?.focusSearch();
+  }
+
+  /** A tab of the window to the front. The focus does not stay in the one that goes; the library's search field
+   *  takes it, unless a paper is in front (its PDF has the keys). */
+  function showView(view: Layout["view"]) {
+    if (layout.view === view) return;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    layout.view = view;
+    if (view === "library") tick().then(() => library?.focusSearch());
   }
 
   // saved a moment after a change: a pane dragged changes it many times
@@ -45,9 +55,14 @@
     timer = setTimeout(() => invoke("save_layout", { layout: snapshot }), 300);
   });
 
-  /** A command of the window, from the menu of the app or its keys: the window's own, else the library's. */
+  /** A command of the window, from the menu of the app or its keys: the window's own, else the tab's in front. */
   function command(name: string) {
     switch (name) {
+      // from the Feeds tab, the Library tab as it was left; in it, the library in front of the papers
+      case "library":
+        return layout.view === "library" ? library?.command(name) : showView("library");
+      case "feeds":
+        return showView("feeds");
       // the PDF in front has the keys; else they set the text size
       case "zoom-in":
         return zoom(1);
@@ -69,22 +84,33 @@
       case "redo":
         return undo(false);
       default:
+        return layout.view === "library" ? library?.command(name) : feedsCommand(name);
+    }
+  }
+
+  /** A command in the Feeds tab: ⌘W closes the window, ⌘N opens the Add sheet of the library; the papers open
+   *  and their keys are the Library tab's. */
+  function feedsCommand(name: string) {
+    switch (name) {
+      case "close":
+        return library?.closeWindow();
+      case "add":
         return library?.command(name);
     }
   }
 
   function zoom(steps: number) {
-    if (!library?.zoom(steps)) invoke("text_size_step", { steps });
+    if (layout.view !== "library" || !library?.zoom(steps)) invoke("text_size_step", { steps });
   }
 
-  /** ⌘Z, ⌘⇧Z: in a field, the field's own undo; elsewhere the library's. */
+  /** ⌘Z, ⌘⇧Z: in a field, the field's own undo; elsewhere the library's, in the Library tab. */
   function undo(back: boolean) {
     const el = document.activeElement;
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable)) {
       document.execCommand(back ? "undo" : "redo");
       return;
     }
-    library?.stepLibrary(back);
+    if (layout.view === "library") library?.stepLibrary(back);
   }
 
   function onkeydown(e: KeyboardEvent) {
@@ -120,13 +146,48 @@
         return;
       }
     }
-    library?.key(e);
+    if (layout.view === "library") library?.key(e);
   }
 </script>
 
 <svelte:window {onkeydown} />
 
-<LibraryView bind:this={library} bind:layout />
+{#snippet tabs()}
+  <div class="tabs" role="tablist">
+    <button
+      role="tab"
+      aria-selected={layout.view === "library"}
+      class:on={layout.view === "library"}
+      title="Library ({label(commands.library)})"
+      onclick={() => showView("library")}>Library</button
+    >
+    <button
+      role="tab"
+      aria-selected={layout.view === "feeds"}
+      class:on={layout.view === "feeds"}
+      title="Feeds ({label(commands.feeds)})"
+      onclick={() => showView("feeds")}>Feeds</button
+    >
+  </div>
+{/snippet}
+
+<!-- the library stays, hidden behind the feeds: its selection, scroll and edit are there when it comes back -->
+<LibraryView
+  bind:this={library}
+  bind:layout
+  visible={layout.view === "library"}
+  {tabs}
+  onfront={() => showView("library")}
+/>
+{#if layout.view === "feeds"}
+  <FeedsView
+    {tabs}
+    bind:sidebar={layout.sidebar}
+    bind:details={layout.details}
+    showSidebar={layout.showSidebar}
+    showDetails={layout.showDetails}
+  />
+{/if}
 
 <style>
   :global(html, body) {
@@ -138,5 +199,32 @@
     cursor: default;
     -webkit-user-select: none;
     user-select: none;
+  }
+
+  /* Library | Feeds, at the start of the toolbar of either tab */
+  .tabs {
+    flex: none;
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .tabs button {
+    /* a width of its own: the bold of the tab in front does not move the other */
+    width: 64px;
+    padding: 3px 0;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+  }
+  .tabs button + button {
+    border-left: 1px solid var(--border);
+  }
+  .tabs button.on {
+    background: var(--line);
+    color: var(--fg);
+    font-weight: 600;
   }
 </style>
