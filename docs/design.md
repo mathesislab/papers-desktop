@@ -322,10 +322,16 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
     The file goes into a temporary folder papers knows as a download, always
     placed in the library, as `download_pdf` places a link to a PDF typed in
     the field; a line under the PDF says what it is and where it came from
-    (*Accepted manuscript, from repo.example.edu*). The publisher's page is
-    read with the user agent of `journal_page`, OpenAlex with the address and
-    the key of the settings. When no link gives a PDF (a challenge, a login
-    page): *Open in browser* opens the first of the links to open (those
+    (*Accepted manuscript, from repo.example.edu*), with *Open published
+    version in browser* (the doi.org page of the DOI) for an accepted
+    manuscript or a preprint. The publisher's page is read with the user
+    agent of `journal_page`, OpenAlex with the address and the key of the
+    settings. While the search runs (*looking for a free PDF…*), the paper
+    is not added (the main button is disabled); *skip* goes on without it.
+    A PDF found after a skip, after the user went on to something else, or
+    after the sheet closed, is attached to nothing: its temporary folder is
+    removed (`discard_download`, a download of papers only). When no link
+    gives a PDF (a challenge, a login page): *Open in browser* opens the first of the links to open (those
     tried, the publisher's page first when no published version was tried,
     where the user may have access), to download there and drop the file; it
     is the highlighted button, and the error says what each link answered.

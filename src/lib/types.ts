@@ -152,8 +152,15 @@ export type Page = {
 
 /** mirrors fetch::FreePdf: the free PDF of an article, as `papers fetch --pdf` finds it */
 export type FreePdf =
-  /** downloaded into a temporary folder; its version (never a supplement) and the site it came from */
-  | { kind: "found"; path: string; version: "published" | "accepted" | "submitted"; site: string }
+  /** downloaded into a temporary folder; its version (never a supplement), the site it came from, and for an accepted
+   *  manuscript or a preprint the publisher's page of the published version */
+  | {
+      kind: "found";
+      path: string;
+      version: "published" | "accepted" | "submitted";
+      site: string;
+      published: string | null;
+    }
   /** none: the links to open in a browser, and why the links tried gave no PDF (none tried: no free PDF is known) */
   | { kind: "browser"; links: string[]; refused: string | null };
 

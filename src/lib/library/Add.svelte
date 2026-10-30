@@ -10,10 +10,10 @@
   import { downloadDir } from "@tauri-apps/api/path";
   import { open as pickFile } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
-  import { onMount, untrack } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { holdModal } from "./modal.svelte";
   import { label } from "$lib/keys";
-  import { origin } from "$lib/library/freepdf";
+  import { sheetPdf, type SheetPdf } from "$lib/library/freepdf";
   import { defaultFiles, writers } from "$lib/library/writes";
   import type {
     AddOptions,
@@ -79,12 +79,12 @@
   let input = $state<HTMLInputElement>();
   /** the BibTeX of the entry */
   let text = $state("");
-  /** the PDF, whether the app downloaded it (papers always places a download in the library), and what a free PDF
-   *  found is and where it came from */
-  let pdf = $state<{ path: string; downloaded: boolean; origin?: string } | null>(null);
+  /** the PDF */
+  let pdf = $state<SheetPdf | null>(null);
   /** where the DOI in the field came from */
   let source = $state<"pdf" | "search" | "typed" | "page" | "entry" | "none" | null>(null);
-  /** the article the entry is of, the link to open in a browser; whether its free PDF is being looked for */
+  /** the article the entry is of, the link to open in a browser; whether its free PDF is being looked for (the
+   *  paper is not added meanwhile, unless the user skips the wait) */
   let article = $state<{ page: string; looking: boolean } | null>(null);
   /** the .bib files of the library, and their writers; the one to add to */
   let bibs = $state<Writer[]>([]);
@@ -152,10 +152,11 @@
   /** the fields to take from the entry: those with the new value chosen */
   let taken = $derived(comparison ? comparison.differences.filter((d) => (choices[d.field] ?? d.default) === "new") : []);
   let attaching = $derived(pdf !== null && attach);
+  let looking = $derived(article?.looking ?? false);
   let canAdd = $derived(
     duplicate
-      ? comparison !== null && !adding && !busy && (taken.length > 0 || attaching)
-      : entries.length > 0 && !adding && !busy && target !== "" && (forId === null || pdf !== null),
+      ? comparison !== null && !adding && !busy && !looking && (taken.length > 0 || attaching)
+      : entries.length > 0 && !adding && !busy && !looking && target !== "" && (forId === null || pdf !== null),
   );
   /** what the PDF becomes in the library */
   let placed = $derived(native || mode === "link" ? "linked where it is" : mode === "move" ? "moved" : "copied");
@@ -202,6 +203,9 @@
   });
 
   onMount(holdModal);
+
+  // what the sheet was waiting for when it closed is dropped: a free PDF found then is discarded
+  onDestroy(() => ++seq);
 
   onMount(async () => {
     input?.focus();
@@ -416,16 +420,20 @@
 
   /** The free PDF of the article, as `papers fetch --pdf` finds it, downloaded into a folder of the temporary files
    *  and made the PDF of the sheet; else the link to open in the browser (the published version's first), the
-   *  highlighted button when the downloads were refused. */
+   *  highlighted button when the downloads were refused. A PDF found for a search that was skipped, or after the user
+   *  went on to something else, is discarded. */
   async function lookup(doi: string, page: string, n: number) {
     if (pdf) return;
     article = { page, looking: true };
     try {
       const found = await invoke<FreePdf>("fetch_free_pdf", { doi });
-      if (n !== seq) return;
+      if (n !== seq) {
+        if (found.kind === "found") invoke("discard_download", { path: found.path }).catch(() => {});
+        return;
+      }
       if (found.kind === "found") {
         article = { page, looking: false };
-        return await usePdf(found.path, n, origin(found));
+        return await usePdf(sheetPdf(found), n);
       }
       article = { page: found.links[0] ?? page, looking: false };
       if (found.refused) {
@@ -437,6 +445,12 @@
     }
   }
 
+  /** The sheet goes on without the free PDF being looked for. */
+  function skip() {
+    ++seq;
+    if (article) article = { ...article, looking: false };
+  }
+
   /** The PDF of a link, downloaded into a folder of the temporary files, and made the PDF of the sheet. */
   async function download(url: string, n: number) {
     busy = "Downloading the PDF…";
@@ -446,7 +460,7 @@
       const path = await invoke<string>("download_pdf", { url });
       if (n !== seq) return;
       busy = null;
-      await usePdf(path, n);
+      await usePdf({ path, downloaded: true }, n);
     } catch (e) {
       if (n === seq) {
         fail(e);
@@ -459,8 +473,8 @@
     }
   }
 
-  async function usePdf(path: string, n: number, origin?: string) {
-    pdf = { path, downloaded: true, origin };
+  async function usePdf(next: SheetPdf, n: number) {
+    pdf = next;
     failed = false;
     if (text.trim() === "") await read(n);
   }
@@ -647,6 +661,7 @@
       {#if article && !pdf}
         {#if article.looking}
           <span class="muted">looking for a free PDF…</span>
+          <button class="link" title="Go on without the free PDF" onclick={skip}>skip</button>
         {/if}
         <button class:primary={failed} onclick={() => openUrl(article!.page)} title={article.page}>Open in browser</button>
       {/if}
@@ -656,7 +671,12 @@
       <button disabled={!!busy} onclick={chooseFile}>{pdf ? "Change…" : "Choose…"}</button>
     </div>
     {#if pdf?.origin}
-      <p class="source">{pdf.origin}</p>
+      <p class="source">
+        {pdf.origin}
+        {#if pdf.published}
+          <button onclick={() => openUrl(pdf!.published!)} title={pdf.published}>Open published version in browser</button>
+        {/if}
+      </p>
     {/if}
 
     <div class="row">
@@ -990,6 +1010,9 @@
   }
   .source.ok {
     color: var(--fg);
+  }
+  .source button {
+    margin-left: 8px;
   }
   .said {
     color: var(--muted);

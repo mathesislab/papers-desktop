@@ -11,8 +11,10 @@ use papers_rs::bib::Bib;
 use papers_rs::config::dirs::cache_dir;
 use papers_rs::extract::doi::parse_dois;
 use papers_rs::extract::{Options, PdfFile, confirm_doi, extract_txt_metadata};
-use papers_rs::fetch::download::download_url;
-use papers_rs::fetch::freepdf::{Least, Link, Search, Version, browser_links, first_pdf, reason};
+use papers_rs::fetch::download::{download_url, is_download};
+use papers_rs::fetch::freepdf::{
+    Least, Link, Search, Version, browser_links, discard, first_pdf, reason,
+};
 use papers_rs::fetch::html::page_doi;
 use papers_rs::fetch::http::{Network, Transport};
 use papers_rs::fetch::openalex::OpenAlex;
@@ -272,6 +274,9 @@ pub enum FreePdf {
         version: Version,
         /// the site it came from
         site: String,
+        /// for an accepted manuscript or a preprint: the publisher's page of the published
+        /// version, to open in a browser
+        published: Option<String>,
     },
     /// none: the links to open in a browser, and why the links tried gave no PDF (none tried: no
     /// free PDF is known)
@@ -301,10 +306,15 @@ pub fn find_free_pdf(fetcher: &Fetcher, access: &OpenAlex, doi: &str) -> FreePdf
     let mut search = Search::new(fetcher, access, Some(doi), None, Least::Any);
     let tried = match first_pdf(&mut search, None) {
         Ok(found) => {
+            let published = match (found.link.version, search.doi.as_deref()) {
+                (Version::Published, _) | (_, None) => None,
+                (_, Some(doi)) => Some(format!("https://doi.org/{doi}")),
+            };
             return FreePdf::Found {
                 path: PathBuf::from(found.path),
                 version: found.link.version,
                 site: found.link.host(),
+                published,
             };
         }
         Err(tried) => tried,
@@ -360,6 +370,18 @@ pub async fn fetch_free_pdf(state: State<'_, AppState>, doi: String) -> Result<F
         Ok(find_free_pdf(&fetcher, &access.openalex, &doi))
     })
     .await
+}
+
+/// Remove a PDF that the sheet downloaded and no longer wants (a free PDF found after the search
+/// was skipped), with its temporary folder; only a download of papers.
+#[tauri::command]
+pub fn discard_download(path: PathBuf) -> Result<(), String> {
+    let path = path.to_string_lossy();
+    if !is_download(&path) {
+        return Err(format!("{path}: not a download"));
+    }
+    discard(&path);
+    Ok(())
 }
 
 /// Download a PDF into a folder of its own in the temporary folder (where papers knows a
@@ -665,7 +687,7 @@ mod tests {
         let found = find_free_pdf(&fetcher, &access, "10.1234/ice.2020.1");
         if let FreePdf::Found { path, .. } = &found {
             assert!(std::fs::read(path).unwrap().starts_with(b"%PDF"));
-            papers_rs::fetch::freepdf::discard(&path.to_string_lossy());
+            discard(&path.to_string_lossy());
         }
         (found, canned.asked())
     }
@@ -684,13 +706,20 @@ mod tests {
                 "%PDF-1.4",
             );
         let (found, asked) = free_pdf(canned);
-        let FreePdf::Found { version, site, .. } = found else {
+        let FreePdf::Found {
+            version,
+            site,
+            published,
+            ..
+        } = found
+        else {
             panic!("{found:?}");
         };
         assert_eq!(
             (version, site.as_str()),
             (Version::Published, "example.org")
         );
+        assert_eq!(published, None);
         // OpenAlex is not asked
         assert_eq!(asked, [ARTICLE, "https://example.org/ice.pdf"]);
     }
@@ -725,13 +754,21 @@ mod tests {
                 "%PDF-1.5",
             );
         let (found, asked) = free_pdf(canned);
-        let FreePdf::Found { version, site, .. } = found else {
+        let FreePdf::Found {
+            version,
+            site,
+            published,
+            ..
+        } = found
+        else {
             panic!("{found:?}");
         };
         assert_eq!(
             (version, site.as_str()),
             (Version::Accepted, "repo.example.edu")
         );
+        // the published version, to open in a browser
+        assert_eq!(published.as_deref(), Some(ARTICLE));
         // OpenAlex with the address and the key of the settings
         let openalex = asked.iter().find(|url| url.starts_with(OPENALEX)).unwrap();
         assert!(
@@ -814,16 +851,39 @@ mod tests {
     }
 
     #[test]
+    fn only_a_download_is_discarded() {
+        let dir = tempfile::tempdir().unwrap();
+        let mine = dir.path().join("mine.pdf");
+        std::fs::write(&mine, "%PDF-1.4").unwrap();
+        assert!(discard_download(mine.clone()).is_err());
+        assert!(mine.exists());
+        let downloaded = papers_rs::fetch::download::save_download(
+            "https://example.org/a.pdf",
+            200,
+            "application/pdf",
+            false,
+            b"%PDF-1.4".to_vec(),
+            true,
+            None,
+        )
+        .unwrap();
+        let folder = Path::new(&downloaded).parent().unwrap().to_path_buf();
+        discard_download(PathBuf::from(&downloaded)).unwrap();
+        assert!(!folder.exists());
+    }
+
+    #[test]
     fn the_sheet_reads_the_free_pdf() {
         let found = FreePdf::Found {
             path: PathBuf::from("/tmp/a.pdf"),
             version: Version::Submitted,
             site: "arxiv.org".into(),
+            published: Some(ARTICLE.into()),
         };
         assert_eq!(
             serde_json::to_value(&found).unwrap(),
             serde_json::json!({"kind": "found", "path": "/tmp/a.pdf", "version": "submitted",
-                "site": "arxiv.org"})
+                "site": "arxiv.org", "published": ARTICLE})
         );
         let none = FreePdf::Browser {
             links: vec![ARTICLE.into()],

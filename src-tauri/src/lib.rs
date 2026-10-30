@@ -980,6 +980,7 @@ pub fn run() {
             fetch::read_pdf_doi,
             fetch::journal_page,
             fetch::fetch_free_pdf,
+            fetch::discard_download,
             fetch::download_pdf,
             input::classify_input,
             input::merge_fetched,
