@@ -45,7 +45,8 @@ use crate::names::ascii;
 // -------------
 
 /// A text normalized for comparison: LaTeX as unicode ([`latex_to_unicode`]),
-/// ASCII, without braces, lower case, single spaces (`normalize_text`).
+/// ASCII, without braces, lower case, single spaces (`normalize_text`):
+/// `Ice--ocean` and `Ice–ocean` give the same text.
 ///
 /// ```
 /// use papers_rs::identity::normalize_text;
@@ -55,7 +56,8 @@ pub fn normalize_text(s: &str) -> String {
     if s.is_empty() {
         return String::new();
     }
-    let s = if s.is_ascii() && !s.contains(['\\', '{', '}']) {
+    let s = if s.is_ascii() && !has_latex_signs(s) {
+        // the LaTeX decoding leaves it as it is
         s.to_string()
     } else {
         latex_to_unicode(s, true)
@@ -67,6 +69,15 @@ pub fn normalize_text(s: &str) -> String {
         .filter(|w| !w.is_empty())
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// What the LaTeX decoding changes in an ASCII text: `\ { } $ ~`, `--`, ``` `` ```, `''`
+/// (`_LATEX_SIGNS`, bibtex.md 4.1, 9.1).
+fn has_latex_signs(s: &str) -> bool {
+    s.contains(['\\', '{', '}', '$', '~'])
+        || s.contains("--")
+        || s.contains("``")
+        || s.contains("''")
 }
 
 /// The names of an `author` field, split at `and` between spaces (`\s+and\s+`)
@@ -1024,6 +1035,67 @@ pub fn entry_identifiers(entry: &Entry) -> Vec<(IdKind, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `TestNormalization::test_normalize_text` (bibtex.md 9.1): `--`, `~`, `$`, ``` `` ``` and `''`
+    /// are LaTeX even in an ASCII text (`test_ascii_with_latex_signs_decoded`).
+    #[test]
+    fn norm() {
+        for (text, norm) in [
+            ("", ""),
+            ("Sea  {Level}\n rise ", "sea level rise"),
+            ("M{\\\"u}ller", "muller"),
+            ("Müller", "muller"),
+            ("Straße", "strasse"),
+            ("Ångström", "angstrom"),
+            ("{\\AA}ngstr{\\\"o}m", "angstrom"),
+            ("T\\^ete", "tete"),
+            ("\\'Ecole", "ecole"),
+            ("\\textit{Ice} sheets", "ice sheets"),
+            ("Ice--ocean", "ice-ocean"),
+            ("Ice–ocean", "ice-ocean"),
+            ("a~b", "a b"),
+            ("CO$_2$", "co_2"),
+            ("Sea -- rise", "sea - rise"),
+            ("``x''", "\"x\""),
+            ("  Sea   LEVEL - rise ", "sea level - rise"),
+        ] {
+            assert_eq!(normalize_text(text), norm, "{text}");
+        }
+    }
+
+    /// `TestFastNormalization::test_normalize_same_text`: the shortcut for a plain ASCII text gives
+    /// the text of every step done (bibtex.md 9.1).
+    #[test]
+    fn norm_shortcut_same_text() {
+        let slow = |s: &str| -> String {
+            if s.is_empty() {
+                return String::new();
+            }
+            let s = ascii(&latex_to_unicode(s, true)).replace(['{', '}'], "");
+            s.to_lowercase()
+                .split(is_space)
+                .filter(|w| !w.is_empty())
+                .collect::<Vec<_>>()
+                .join(" ")
+        };
+        let pieces = [
+            "a", "Z", " ", "  ", "\n", "\\", "{", "}", "$", "~", "-", "--", "`", "'", "\"", "ü",
+            "é", "中", "\\\"", "\\'", "\\c", "\\ss", "\\emph", "\\i", "text", "1", ",", "\u{301}",
+            "\t", "\u{1f}",
+        ];
+        let mut seed: u64 = 2;
+        let mut next = |n: usize| {
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (seed >> 33) as usize % n
+        };
+        for _ in 0..3000 {
+            let len = next(26);
+            let text: String = (0..len).map(|_| pieces[next(pieces.len())]).collect();
+            assert_eq!(normalize_text(&text), slow(&text), "{text:?}");
+        }
+    }
 
     fn entry(key: &str, ty: &str, fields: &[(&str, &str)]) -> Entry {
         let mut e = Entry::new(ty, key);
