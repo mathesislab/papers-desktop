@@ -7,13 +7,12 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use serde_json::Value;
 
 use crate::bib::{self, BibEntry, Snapshot};
 use crate::query::{self, Field, Pattern, Term};
 use crate::reference::Reference;
 use crate::text::{Matching, Span, Text, fold};
-use crate::{Item, Result, to_csl};
+use crate::{Item, Result};
 
 /// What a word of a reference counts for, in the entry most like it.
 const FIRST_AUTHOR: f32 = 4.0;
@@ -170,11 +169,6 @@ impl Library {
         self.by_id
             .get(id)
             .map(|&i| self.marked_hit(i, &Marks::default()))
-    }
-
-    /// The CSL-JSON of an item, for a citation processor.
-    pub fn csl(&self, id: &str) -> Option<Value> {
-        self.entry(id).map(|e| to_csl::entry_to_csl(&e.entry))
     }
 
     /// The BibTeX of an item, formatted.

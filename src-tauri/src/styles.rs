@@ -1,9 +1,37 @@
 //! The CSL styles of the citations: a few bundled ones (see styles/README.md),
-//! or any .csl file.
+//! or any .csl file; and the CSL-JSON of a paper, as papers exports it.
 
 use std::fs;
 
+use papers_rs::formats::csl::entry_to_csl;
+use papers_rs::history::ojson::J;
 use serde::Serialize;
+use serde_json::{Map, Value};
+
+use crate::input::entry_of;
+
+/// The CSL-JSON item of the BibTeX of a paper, as `papers export --format csl` writes it
+/// (without the file links), for the citation processor.
+pub fn item(bibtex: &str) -> Result<Value, String> {
+    Ok(value(&entry_to_csl(&entry_of(bibtex, "The paper")?, &[])))
+}
+
+fn value(j: &J) -> Value {
+    match j {
+        J::Null => Value::Null,
+        J::Bool(b) => Value::Bool(*b),
+        J::Int(n) => Value::from(*n),
+        J::Float(x) => Value::from(*x),
+        J::Str(s) => Value::String(s.clone()),
+        J::Arr(items) => Value::Array(items.iter().map(value).collect()),
+        J::Obj(pairs) => Value::Object(
+            pairs
+                .iter()
+                .map(|(k, v)| (k.clone(), value(v)))
+                .collect::<Map<_, _>>(),
+        ),
+    }
+}
 
 pub const DEFAULT: &str = "copernicus-publications";
 
@@ -66,5 +94,26 @@ impl Style {
             style,
             locale: LOCALE.to_string(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn item_as_papers_exports_it() {
+        let csl = item(
+            "@article{robinson2012,\n author = {Robinson, Alexander and Calov, Reinhard},\n doi = {https://doi.org/10.1038/nclimate1449},\n title = {Ice -- sheet model},\n journal = {Ice -- {\\textendash} sheets},\n year = {2012},\n file = {:files/r.pdf:pdf}\n}",
+        )
+        .unwrap();
+        assert_eq!(csl["id"], "robinson2012");
+        assert_eq!(csl["DOI"], "10.1038/nclimate1449");
+        assert_eq!(csl["author"][1]["family"], "Calov");
+        assert_eq!(csl["issued"]["date-parts"][0][0], 2012);
+        // papers keeps `--` in a value without LaTeX, else reads it as a dash
+        assert_eq!(csl["title"], "Ice -- sheet model");
+        assert_eq!(csl["container-title"], "Ice – – sheets");
+        assert!(csl.get("file").is_none());
     }
 }

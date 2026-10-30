@@ -540,9 +540,10 @@ fn bibtex(state: State<AppState>, id: String, raw: bool) -> Result<String, Strin
 #[tauri::command]
 fn csl(state: State<AppState>, id: String) -> Result<Value, String> {
     let library = state.library.read().unwrap();
-    library
-        .csl(&id)
-        .ok_or_else(|| format!("{id}: not in the library"))
+    let bibtex = library
+        .raw(&id)
+        .ok_or_else(|| format!("{id}: not in the library"))?;
+    styles::item(bibtex)
 }
 
 /// The CSL style of the settings.
