@@ -835,9 +835,15 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   without PDF, `o` open, `l` later (stays shortlisted), `x` dismiss, `j`/`k`,
   `Esc` leaves. The facts are the details' (`Facts`), *Like in your
   library* among them.
-- *Subscribe* (the button): a feed URL, a Crossref ISSN or an OpenAlex
-  filter, with the kind of its items, or one of the suggested subscriptions
-  in their groups (those followed marked); fetched when the sheet closes.
+- *Subscribe* (the button): a feed URL, a Crossref ISSN, an OpenAlex
+  filter or *Words*, with the kind of its items (the user's choice, Journal
+  by default), or one of the suggested subscriptions in their groups (those
+  followed marked); fetched when the sheet closes. *Words* (`ice sheet AND
+  (tipping OR collapse)`) are the OpenAlex filter
+  `title_and_abstract.search:<words>` (`wordsFilter`: their commas, which
+  would end the filter, and runs of white space as one space; OpenAlex's
+  AND, OR, NOT, quotes and parentheses work), a sweep as any filter's (its
+  key needed), titled as the words.
   *From your library*, the first group of *Suggested*: the journals of the
   library's papers (below), each with its count (*23 papers*), shown at
   once and filled in as their lookups come (*looking up…*, one at a time

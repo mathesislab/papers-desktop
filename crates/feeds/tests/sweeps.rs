@@ -230,6 +230,27 @@ fn openalex_sweep_page_by_page() {
 }
 
 #[test]
+fn openalex_sweep_of_words_in_titles_and_abstracts() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Clock::new().open(dir.path());
+    let words = Feed::OpenAlex {
+        filter: "title_and_abstract.search:ice sheet AND (tipping OR \"tipping point\")"
+            .to_string(),
+    };
+    feeds.subscribe(words, SourceKind::Journal).unwrap();
+    let access = Access {
+        mailto: None,
+        openalex_key: Some("KEY".to_string()),
+    };
+    let http = Recorded::new();
+    feeds.fetch(&http, &access).unwrap();
+    let url = &http.requests()[0].url;
+    let filter = "filter=title_and_abstract.search:ice%20sheet%20AND%20(tipping%20OR%20%22tipping%20point%22),\
+        from_created_date:2026-10-17,type:article&";
+    assert!(url.contains(filter), "{url}");
+}
+
+#[test]
 fn subscriptions_of_three_kinds_in_config_json() {
     let dir = tempfile::tempdir().unwrap();
     // as written before sweeps: a plain url

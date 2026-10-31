@@ -26,6 +26,7 @@ import {
   shelfCounts,
   sourceGroups,
   withoutChip,
+  wordsFilter,
   type FeedFilters,
 } from "../src/lib/feeds/filters.ts";
 import {
@@ -172,6 +173,10 @@ test("the feed of the Subscribe sheet, and the same feed", () => {
   assert.deepEqual(feedOf("rss", " https://x.org/feed "), { rss: "https://x.org/feed" });
   assert.deepEqual(feedOf("crossref", "1994-0424"), { crossref: "1994-0424" });
   assert.equal(feedOf("openalex", "  "), null);
+  assert.deepEqual(feedOf("words", " ice sheet AND (tipping OR collapse) "), {
+    openalex: "title_and_abstract.search:ice sheet AND (tipping OR collapse)",
+  });
+  assert.equal(wordsFilter("AMOC,  collapse,\ttipping"), "title_and_abstract.search:AMOC collapse tipping");
   assert.ok(sameFeed({ rss: "https://x.org/feed/" }, { rss: "http://X.org/feed" }));
   assert.ok(sameFeed({ crossref: "1994-0424" }, { crossref: "19940424" }));
   assert.ok(!sameFeed({ rss: "x" }, { crossref: "x" }));

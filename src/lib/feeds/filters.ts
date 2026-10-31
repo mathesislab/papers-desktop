@@ -304,9 +304,9 @@ export function sourceGroups(subscriptions: SubscriptionInfo[], counts: Record<s
 
 /** What a subscription follows, as the Subscribe sheet asks it: a feed's URL, a journal's ISSN for Crossref, a
  *  filter of OpenAlex. */
-export type FeedType = "rss" | "crossref" | "openalex";
+export type FeedType = "rss" | "crossref" | "openalex" | "words";
 
-/** The feed of what was typed; none for an empty field. */
+/** The feed of what was typed; none for an empty field. Words are an OpenAlex filter (`wordsFilter`). */
 export function feedOf(type: FeedType, text: string): Feed | null {
   const value = text.trim();
   if (!value) return null;
@@ -317,7 +317,16 @@ export function feedOf(type: FeedType, text: string): Feed | null {
       return { crossref: value };
     case "openalex":
       return { openalex: value };
+    case "words":
+      return { openalex: wordsFilter(value) };
   }
+}
+
+/** The OpenAlex filter of the works whose title or abstract has words (with OpenAlex's AND, OR, NOT, quotes and
+ *  parentheses): `title_and_abstract.search:` and the words, their commas (which would end the filter) and runs of
+ *  white space as one space. */
+export function wordsFilter(words: string): string {
+  return `title_and_abstract.search:${words.replace(/[,\s]+/g, " ").trim()}`;
 }
 
 /** Whether two subscriptions follow the same: the URL without its scheme and a last slash, the ISSN without its

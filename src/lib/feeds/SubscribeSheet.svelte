@@ -1,6 +1,7 @@
 <script lang="ts">
-  // Subscribe: a feed's URL (RSS or Atom), a journal's ISSN swept in Crossref, or a filter of OpenAlex, with the kind
-  // of its items; or one of the suggested subscriptions, in their groups, those followed already marked. At the top of
+  // Subscribe: a feed's URL (RSS or Atom), a journal's ISSN swept in Crossref, a filter of OpenAlex, or words (an
+  // OpenAlex sweep of the works whose title or abstract has them, titled as the words), with the kind of its items;
+  // or one of the suggested subscriptions, in their groups, those followed already marked. At the top of
   // them, *From your library*: the journals of the library's papers, each by the suggested subscription of it, else
   // by its ISSN, those without one looked up in OpenAlex one after another while the sheet is open. *Search journals*
   // (or Enter in the filter) lists OpenAlex's journals of the text. A journal of these two groups is followed by the
@@ -40,6 +41,11 @@
     { type: "rss", name: "Feed URL", placeholder: "https://… the RSS or Atom feed of a journal, a site, a blog" },
     { type: "crossref", name: "Crossref ISSN", placeholder: "1994-0424: the works of a journal, as Crossref indexes them" },
     { type: "openalex", name: "OpenAlex filter", placeholder: "topics.id:T10017: a filter of OpenAlex works (needs its key)" },
+    {
+      type: "words",
+      name: "Words",
+      placeholder: "ice sheet AND (tipping OR collapse): new papers whose title or abstract has them (OpenAlex's key)",
+    },
   ];
   const KINDS: { kind: SourceKind; name: string }[] = [
     { kind: "journal", name: "Journal" },
@@ -172,7 +178,7 @@
 
   function subscribeTyped() {
     const feed = feedOf(type, text);
-    if (feed) subscribe(feed, kind);
+    if (feed) subscribe(feed, kind, type === "words" ? text.trim() : undefined);
   }
 
   function onkeydown(e: KeyboardEvent) {
