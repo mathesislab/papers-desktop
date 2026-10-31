@@ -20,7 +20,10 @@
 //! *From your library*: the journals of the library's papers, each followed
 //! by the suggested list's subscription, else by its ISSN, from the papers
 //! or looked up in OpenAlex by its name (kept in the folder's
-//! `journals.json`, opened at the first ask).
+//! `journals.json`, opened at the first ask). A journal of the library or of
+//! a search of OpenAlex is followed by the feed its home page links to, read
+//! with the page user agent of the Add sheet (`fetch::page_agent`), else, if
+//! the user chooses, by its ISSN.
 //!
 //! *Like in your library*: the index of the library's papers (core's
 //! `Likeness`) is built on a thread of its own whenever the library is read
@@ -38,14 +41,14 @@ use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, Journal, Journals,
-    LOOKUP, Network, Outcome, Pdf, Rule, Score, Search, Sort, SourceKind, Stage, Subscription,
-    Triage, Via, ViewRequest as CrateRequest, paragraphs,
+    LOOKUP, Network, Outcome, Pdf, Rule, Score, Search, SiteFeed, Sort, SourceKind, Stage,
+    Subscription, Triage, Via, ViewRequest as CrateRequest, paragraphs,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::AppState;
-use crate::fetch::blocking;
+use crate::fetch::{blocking, page_agent};
 use crate::settings::Settings;
 
 /// The events of the page: the items changed; a fetch started (true) or ended.
@@ -98,7 +101,8 @@ struct Live {
 #[derive(Debug, Clone)]
 pub enum Change {
     Triage(Vec<String>, Triage),
-    Subscribe(Feed, SourceKind),
+    /// a feed, the kind of its items, the title it is given (else the feed's own)
+    Subscribe(Feed, SourceKind, Option<String>),
     Unsubscribe(String),
     Update(String, SubscriptionPatch),
     Settings(Box<Configured>),
@@ -135,8 +139,13 @@ impl Change {
                 }
                 Applied::Done
             }
-            Change::Subscribe(feed, kind) => {
-                Applied::Subscription(feeds.subscribe(feed.clone(), *kind)?)
+            Change::Subscribe(feed, kind, title) => {
+                let subscription = feeds.subscribe(feed.clone(), *kind)?;
+                Applied::Subscription(match title {
+                    Some(title) => feeds
+                        .edit_subscription(&subscription.id, |s| s.title = Some(title.clone()))?,
+                    None => subscription,
+                })
             }
             Change::Unsubscribe(id) => {
                 feeds.unsubscribe(id)?;
@@ -791,6 +800,14 @@ impl From<papers_feeds::Follow> for Follow {
     }
 }
 
+/// What a journal's site gives: its home page, and what it links to (none
+/// without a home page).
+#[derive(Debug, Serialize)]
+pub struct JournalSite {
+    homepage: Option<String>,
+    feed: Option<SiteFeed>,
+}
+
 /// The journals of the library's papers: the `journal` field of each (or
 /// `journaltitle`), with its `issn`.
 fn library_journals(library: &Library) -> Vec<papers_feeds::LibraryJournal> {
@@ -1181,14 +1198,19 @@ pub async fn feeds_subscriptions(app: AppHandle) -> Result<Vec<SubscriptionInfo>
     .await
 }
 
+/// Subscribes to a feed, with the title given (a blank one is none: the feed's own, at the next fetch).
 #[tauri::command]
 pub async fn feeds_subscribe(
     app: AppHandle,
     feed: FeedOf,
     kind: SourceKind,
+    title: Option<String>,
 ) -> Result<SubscriptionInfo, String> {
+    let title = title
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty());
     blocking(move || {
-        let applied = change(&app, Change::Subscribe(feed.into(), kind))?;
+        let applied = change(&app, Change::Subscribe(feed.into(), kind, title))?;
         subscription_of(&app, applied)
     })
     .await
@@ -1237,6 +1259,40 @@ pub async fn feeds_library_suggested(app: AppHandle) -> Result<Vec<LibraryJourna
                     papers: j.papers,
                 })
                 .collect()
+        })
+    })
+    .await
+}
+
+/// The journals OpenAlex finds for a text, the best first, 10 at most.
+#[tauri::command]
+pub async fn feeds_search_journals(app: AppHandle, text: String) -> Result<Vec<Journal>, String> {
+    blocking(move || {
+        let (network, access) = network(&app.state::<AppState>())?;
+        papers_feeds::search_journals(&network, &access, text.trim())
+    })
+    .await
+}
+
+/// The feed a journal's site links to, read to tell it is the journal's:
+/// its home page (OpenAlex's, else looked up by its ISSN) and its feeds read
+/// with the page user agent.
+#[tauri::command]
+pub async fn feeds_journal_feed(app: AppHandle, journal: Journal) -> Result<JournalSite, String> {
+    blocking(move || {
+        let state = app.state::<AppState>();
+        let (network, access) = network(&state)?;
+        let journal = state
+            .feeds
+            .journals(|journals| journals.with_homepage(journal, &network, &access))??;
+        let page = Network::with_user_agent(&page_agent(access.mailto.as_deref()))?;
+        let feed = journal
+            .homepage
+            .as_deref()
+            .map(|homepage| papers_feeds::site_feed(&page, homepage, &journal.title));
+        Ok(JournalSite {
+            homepage: journal.homepage,
+            feed,
         })
     })
     .await
@@ -1401,7 +1457,7 @@ mod tests {
     fn subscribe(state: &FeedsState, url: &str) -> String {
         let feed = Feed::Rss { url: url.into() };
         match state
-            .change(Change::Subscribe(feed, SourceKind::Journal))
+            .change(Change::Subscribe(feed, SourceKind::Journal, None))
             .unwrap()
         {
             Applied::Subscription(s) => s.id,
@@ -1656,6 +1712,54 @@ mod tests {
             tc["suggested"]["feed"],
             serde_json::json!({"rss": "https://tc.copernicus.org/xml/rss2_0.xml"})
         );
+    }
+
+    #[test]
+    fn a_subscription_given_a_title_and_a_site_as_the_page_reads_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = opened(dir.path());
+        let feed = Feed::Crossref {
+            issn: "0022-1430".into(),
+        };
+        let title = Some("Journal of Glaciology".to_string());
+        let Applied::Subscription(s) = state
+            .change(Change::Subscribe(feed, SourceKind::Journal, title.clone()))
+            .unwrap()
+        else {
+            unreachable!()
+        };
+        assert_eq!(s.title, title);
+        assert_eq!(
+            state.read(|f| f.subscriptions()[0].title.clone()).unwrap(),
+            title
+        );
+
+        let site = |feed| {
+            let site = JournalSite {
+                homepage: Some("https://j.example.org/".into()),
+                feed,
+            };
+            serde_json::to_value(site).unwrap()
+        };
+        let found = SiteFeed::Found {
+            url: "https://j.example.org/rss".into(),
+            title: None,
+        };
+        assert_eq!(
+            site(Some(found)),
+            serde_json::json!({"homepage": "https://j.example.org/",
+                "feed": {"site": "found", "url": "https://j.example.org/rss", "title": null}})
+        );
+        let refused = SiteFeed::FeedRefused {
+            url: "https://j.example.org/rss".into(),
+            reason: "HTTP 403".into(),
+        };
+        assert_eq!(site(Some(refused))["feed"]["site"], "feedrefused");
+        assert_eq!(
+            site(Some(SiteFeed::NoFeed))["feed"],
+            serde_json::json!({"site": "nofeed"})
+        );
+        assert_eq!(site(None)["feed"], serde_json::Value::Null);
     }
 
     #[test]

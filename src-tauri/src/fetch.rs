@@ -66,7 +66,7 @@ fn user_agent(mailto: Option<&str>) -> String {
 
 /// How the app identifies itself to the publishers' pages, which answer programs less than
 /// browsers: as a program, compatible with them.
-fn page_agent(mailto: Option<&str>) -> String {
+pub(crate) fn page_agent(mailto: Option<&str>) -> String {
     format!("Mozilla/5.0 (compatible; {})", user_agent(mailto))
 }
 

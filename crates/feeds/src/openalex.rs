@@ -141,6 +141,15 @@ pub(crate) fn work_url(doi: &str, access: &Access) -> String {
     with_query(&base, &access_pairs(vec![("select", SELECT)], access))
 }
 
+/// The journal of an ISSN.
+pub(crate) fn journal_url(issn: &str, access: &Access) -> String {
+    let base = format!("{SOURCES}/issn:{issn}");
+    with_query(
+        &base,
+        &access_pairs(vec![("select", SOURCE_SELECT)], access),
+    )
+}
+
 /// The journals of a search, the best first.
 pub(crate) fn journals_url(search: &str, access: &Access) -> String {
     let per_page = JOURNALS_PER_SEARCH.to_string();

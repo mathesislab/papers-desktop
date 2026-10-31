@@ -18,8 +18,9 @@
 //! [`Feeds::view`] gives the items a query shows and the counts of the
 //! sidebar, those of the saved [`Search`]es too. The subscriptions go out and come in as OPML; [`suggested`]
 //! lists some to start with, [`library_journals`] the journals of the
-//! library's papers, which [`Journals`] looks up in OpenAlex; [`pdf`] tells
-//! the free copy of a paper. Nothing here knows of .bib files.
+//! library's papers, which [`Journals`] looks up in OpenAlex, as
+//! [`search_journals`] finds others; [`site_feed`] the feed a journal's site
+//! links to; [`pdf`] tells the free copy of a paper. Nothing here knows of .bib files.
 
 mod crossref;
 mod enrich;
@@ -51,8 +52,8 @@ pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
 pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
 pub use journals::{
-    Follow, Journal, Journals, LEAST_PAPERS, LibraryJournal, MOST_JOURNALS, journal_key,
-    library_journals,
+    Follow, Journal, Journals, LEAST_PAPERS, LibraryJournal, MOST_JOURNALS, SiteFeed, journal_key,
+    library_journals, search_journals, site_feed,
 };
 pub use links::{Found, paragraphs};
 pub use model::{

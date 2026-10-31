@@ -6,7 +6,17 @@
 // scripts/feeds.test.ts (npm test).
 
 import { FIELDS, anyOf, queryTerms } from "../query.ts";
-import type { Feed, FeedCounts, ItemKind, Sort, SourceKind, SubscriptionInfo, ViewRequest } from "./api.ts";
+import type {
+  Feed,
+  FeedCounts,
+  ItemKind,
+  Journal,
+  JournalSite,
+  Sort,
+  SourceKind,
+  SubscriptionInfo,
+  ViewRequest,
+} from "./api.ts";
 
 /** the views of the sidebar: the items by their triage */
 export type Shelf = "unread" | "shortlist" | "added" | "all";
@@ -320,6 +330,61 @@ export function sameFeed(a: Feed, b: Feed): boolean {
         ? "crossref " + f.crossref.trim().toLowerCase().replace(/-/g, "")
         : "openalex " + f.openalex.trim().toLowerCase();
   return key(a) === key(b);
+}
+
+/** Whether a journal is followed: a sweep of one of its ISSNs. */
+export function journalFollowed(journal: Journal, subscriptions: SubscriptionInfo[]): boolean {
+  return journal.issns.some((issn) => subscriptions.some((s) => sameFeed(s.feed, { crossref: issn })));
+}
+
+/** A journal of a search, in a line: "Cambridge University Press · ISSN 0022-1430 · 6886 works". */
+export function journalFacts(journal: Journal): string {
+  const facts = [
+    journal.publisher,
+    journal.issn && `ISSN ${journal.issn}`,
+    journal.works !== null && `${journal.works} works`,
+  ];
+  return facts.filter(Boolean).join(" · ");
+}
+
+/** What subscribing to a journal comes to, from what its site gave: the journal's feed; else why not, and its home
+ *  page to open (the user finds the feed there), for the choice of following it in Crossref instead, or of a feed
+ *  that may not be the journal's (`other`). */
+export type JournalChoice =
+  | { feed: string }
+  | { reason: string; homepage: string | null; other: { url: string; title: string | null } | null };
+
+export function journalChoice(site: JournalSite): JournalChoice {
+  const not = (reason: string, other: { url: string; title: string | null } | null = null) => ({
+    reason,
+    homepage: site.homepage,
+    other,
+  });
+  if (!site.feed) return { reason: "No site known", homepage: null, other: null };
+  const feed = site.feed;
+  switch (feed.site) {
+    case "found":
+      return { feed: feed.url };
+    case "other":
+      return not(`A feed that may not be the journal's: ${feed.title ?? feed.url}`, {
+        url: feed.url,
+        title: feed.title,
+      });
+    case "refused":
+      return not(`Its site refused: ${feed.reason}`);
+    case "feedrefused":
+      return not(`Its feed refused: ${feed.reason}`);
+    case "notafeed":
+      return not("Its site links to a feed that is none");
+    case "nofeed":
+      return not("No feed on its site's page");
+  }
+}
+
+/** The feed a journal's row shows followed when it is: the journal's feed, or the other one offered. */
+export function choiceFeed(choice: JournalChoice | { reading: true } | undefined): string | null {
+  if (!choice || "reading" in choice) return null;
+  return "feed" in choice ? choice.feed : (choice.other?.url ?? null);
 }
 
 /** The colours of the interests, in the order of their names. */

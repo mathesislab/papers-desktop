@@ -1,17 +1,21 @@
 //! The journals to subscribe to: those of the library's papers, counted by
-//! their titles folded; OpenAlex's journals, searched by name, those looked
-//! up kept in `journals.json`; and what follows each.
+//! their titles folded; OpenAlex's journals, searched by name or found by
+//! ISSN, those looked up kept in `journals.json`; what follows each; and the
+//! feed a journal's site links to.
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 use regex::Regex;
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
-use crate::http::{Access, Http, get_json};
+use crate::http::{Access, FEED_ACCEPT, Http, PAGE_ACCEPT, Request, failure, get_json};
 use crate::normalize::{canonical_issn, fold};
 use crate::openalex::{self, Source, Sources};
+use crate::parse::plain;
 use crate::store::{self, JOURNALS};
 use crate::suggested::{Suggested, suggested_journal};
 
@@ -20,6 +24,9 @@ pub const LEAST_PAPERS: usize = 3;
 
 /// The most journals of the library suggested.
 pub const MOST_JOURNALS: usize = 15;
+
+/// The links of a page's head.
+static LINKS: LazyLock<Selector> = LazyLock::new(|| Selector::parse("link[href]").unwrap());
 
 /// An ISSN in a text, with or without its hyphen.
 static ISSN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b\d{4}-?\d{3}[\dXx]\b").unwrap());
@@ -163,6 +170,29 @@ fn search(http: &dyn Http, access: &Access, text: &str) -> Result<Vec<Source>, S
     Ok(sources.unwrap_or_default().results)
 }
 
+/// The journals OpenAlex finds for a text (a title, words of it), the best
+/// first, 10 at most.
+pub fn search_journals(
+    http: &dyn Http,
+    access: &Access,
+    text: &str,
+) -> Result<Vec<Journal>, String> {
+    Ok(search(http, access, text)?
+        .into_iter()
+        .map(Journal::from)
+        .collect())
+}
+
+/// The journal of an ISSN in OpenAlex, none if it has none.
+fn journal_of_issn(
+    http: &dyn Http,
+    access: &Access,
+    issn: &str,
+) -> Result<Option<Journal>, String> {
+    let source: Option<Source> = get_json(http, &openalex::journal_url(issn, access))?;
+    Ok(source.map(Journal::from))
+}
+
 /// The journal of a name in OpenAlex: of its search, the first whose title
 /// or an alternate title folds to the name's, one with an ISSN before one
 /// without; none if no title is the name.
@@ -202,9 +232,9 @@ impl Follow {
     }
 }
 
-/// `journals.json` of a feeds folder: the journals looked up in OpenAlex by
-/// name, under the name folded ([`journal_key`]); null for none found. A
-/// journal is asked for once.
+/// `journals.json` of a feeds folder: the journals looked up in OpenAlex, by
+/// name under the name folded ([`journal_key`]), by ISSN under `issn:` and
+/// the ISSN; null for none found. A journal is asked for once.
 pub struct Journals {
     dir: PathBuf,
     known: BTreeMap<String, Option<Journal>>,
@@ -247,16 +277,198 @@ impl Journals {
         http: &dyn Http,
         access: &Access,
     ) -> Result<Follow, String> {
-        let key = journal_key(name);
-        let found = match self.known.get(&key) {
-            Some(found) => found.clone(),
-            None => {
-                let found = journal_named(http, access, name)?;
-                self.known.insert(key, found.clone());
-                store::write(&self.dir, JOURNALS, &self.known).map_err(|e| e.to_string())?;
-                found
-            }
-        };
+        let found = self.kept(journal_key(name), || journal_named(http, access, name))?;
         Ok(found.as_ref().map_or(Follow::Unknown, Follow::of))
     }
+
+    /// A journal with its home page: OpenAlex's journal of its ISSN gives it
+    /// when it has none (looked up once, as [`Journals::look_up`]).
+    pub fn with_homepage(
+        &mut self,
+        journal: Journal,
+        http: &dyn Http,
+        access: &Access,
+    ) -> Result<Journal, String> {
+        let Some(issn) = journal.issn.clone().filter(|_| journal.homepage.is_none()) else {
+            return Ok(journal);
+        };
+        let found = self.kept(format!("issn:{issn}"), || {
+            journal_of_issn(http, access, &issn)
+        })?;
+        Ok(Journal {
+            homepage: found.and_then(|found| found.homepage),
+            ..journal
+        })
+    }
+
+    /// The journal kept under a key, else asked for and kept.
+    fn kept(
+        &mut self,
+        key: String,
+        ask: impl FnOnce() -> Result<Option<Journal>, String>,
+    ) -> Result<Option<Journal>, String> {
+        if let Some(found) = self.known.get(&key) {
+            return Ok(found.clone());
+        }
+        let found = ask()?;
+        self.known.insert(key, found.clone());
+        store::write(&self.dir, JOURNALS, &self.known).map_err(|e| e.to_string())?;
+        Ok(found)
+    }
+}
+
+/// The most feeds of a page read to find the journal's.
+const FEEDS_READ: usize = 3;
+
+/// What a journal's site gives to follow.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "site", rename_all = "lowercase")]
+pub enum SiteFeed {
+    /// the journal's feed, read: its link or its own title names the journal
+    Found { url: String, title: Option<String> },
+    /// a feed that may not be the journal's (a publisher's, a news feed): of
+    /// those its page links to, none names the journal
+    Other { url: String, title: Option<String> },
+    /// its home page did not answer, or with an error status
+    Refused { reason: String },
+    /// the feed it links to did not answer, or with an error status
+    FeedRefused { url: String, reason: String },
+    /// what it links to as a feed is none
+    NotAFeed { url: String },
+    /// its home page links to no feed
+    NoFeed,
+}
+
+/// A feed a page links to.
+struct FeedLink {
+    url: String,
+    /// the `title` of the link
+    title: Option<String>,
+}
+
+/// Whether a text names a journal: its title folded is among the text's words.
+fn names(text: Option<&str>, journal: &str) -> bool {
+    let journal = journal_key(journal);
+    let text = text.map(journal_key).unwrap_or_default();
+    !journal.is_empty() && format!(" {text} ").contains(&format!(" {journal} "))
+}
+
+/// The feed of a journal's home page (`<link rel="alternate"
+/// type="application/rss+xml">`, or Atom's, resolved against the page's
+/// address), read to tell that it is one: the one whose link names the
+/// journal; else, of the first three, the first whose own title names it;
+/// else the first read, as one that may not be the journal's; else why none
+/// could be read.
+pub fn site_feed(http: &dyn Http, homepage: &str, journal: &str) -> SiteFeed {
+    let request = Request {
+        url: homepage.to_string(),
+        accept: Some(PAGE_ACCEPT.to_string()),
+        ..Request::default()
+    };
+    let reply = match http.get(&request) {
+        Ok(reply) if (200..=299).contains(&reply.status) => reply,
+        Ok(reply) => {
+            return SiteFeed::Refused {
+                reason: failure(&reply),
+            };
+        }
+        Err(reason) => return SiteFeed::Refused { reason },
+    };
+    let base = Some(reply.url.as_str()).filter(|url| !url.is_empty());
+    let links = feed_links(
+        &String::from_utf8_lossy(&reply.body),
+        base.unwrap_or(homepage),
+    );
+    let found = |url: &str, title: Option<String>| SiteFeed::Found {
+        url: url.to_string(),
+        title,
+    };
+    if let Some(link) = links.iter().find(|l| names(l.title.as_deref(), journal)) {
+        return match read_feed(http, &link.url) {
+            Ok(title) => found(&link.url, title.or_else(|| link.title.clone())),
+            Err(refused) => refused,
+        };
+    }
+    let (mut other, mut refused) = (None, None);
+    for link in links.iter().take(FEEDS_READ) {
+        match read_feed(http, &link.url) {
+            Ok(title) if names(title.as_deref(), journal) => return found(&link.url, title),
+            Ok(title) => {
+                other = other.or_else(|| {
+                    let title = title.or_else(|| link.title.clone());
+                    Some(SiteFeed::Other {
+                        url: link.url.clone(),
+                        title,
+                    })
+                })
+            }
+            Err(failed) => refused = refused.or(Some(failed)),
+        }
+    }
+    other.or(refused).unwrap_or(SiteFeed::NoFeed)
+}
+
+/// The title of a feed (none if it has none), or why it is no feed that can
+/// be read.
+fn read_feed(http: &dyn Http, url: &str) -> Result<Option<String>, SiteFeed> {
+    let request = Request {
+        url: url.to_string(),
+        accept: Some(FEED_ACCEPT.to_string()),
+        ..Request::default()
+    };
+    let refused = |reason: String| SiteFeed::FeedRefused {
+        url: url.to_string(),
+        reason,
+    };
+    let reply = http.get(&request).map_err(refused)?;
+    if !(200..=299).contains(&reply.status) {
+        return Err(refused(failure(&reply)));
+    }
+    let feed = feed_rs::parser::parse(reply.body.as_slice()).map_err(|_| SiteFeed::NotAFeed {
+        url: url.to_string(),
+    })?;
+    let title = feed.title.map(|t| plain(&t.content));
+    Ok(title.filter(|t| !t.is_empty()))
+}
+
+/// The feeds a page links to as alternates of it, in its order, resolved
+/// against its address.
+fn feed_links(html: &str, base: &str) -> Vec<FeedLink> {
+    let Ok(base) = Url::parse(base) else {
+        return Vec::new();
+    };
+    let document = Html::parse_document(html);
+    let mut links: Vec<FeedLink> = Vec::new();
+    for link in document.select(&LINKS) {
+        let link = link.value();
+        let rel = link.attr("rel").unwrap_or_default();
+        let alternate = rel
+            .split_ascii_whitespace()
+            .any(|r| r.eq_ignore_ascii_case("alternate"));
+        let kind = link
+            .attr("type")
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase();
+        let feed = matches!(
+            kind.as_str(),
+            "application/rss+xml" | "application/atom+xml"
+        );
+        let Some(href) = link.attr("href").and_then(|h| base.join(h.trim()).ok()) else {
+            continue;
+        };
+        let url = href.to_string();
+        if alternate
+            && feed
+            && matches!(href.scheme(), "http" | "https")
+            && !links.iter().any(|l| l.url == url)
+        {
+            let title = link.attr("title").map(str::trim).filter(|t| !t.is_empty());
+            links.push(FeedLink {
+                url,
+                title: title.map(String::from),
+            });
+        }
+    }
+    links
 }

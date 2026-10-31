@@ -243,6 +243,23 @@ export type Follow =
   | { by: "unknown" }
   | { by: "pending" };
 
+/** What a journal's home page links to, its feeds read: the journal's feed (its link or its title names the
+ *  journal); a feed that may not be the journal's (none names it); or its page or its feed refused (an error status,
+ *  no answer), what it links to is no feed, or it links to none. */
+export type SiteFeed =
+  | { site: "found"; url: string; title: string | null }
+  | { site: "other"; url: string; title: string | null }
+  | { site: "refused"; reason: string }
+  | { site: "feedrefused"; url: string; reason: string }
+  | { site: "notafeed"; url: string }
+  | { site: "nofeed" };
+
+/** A journal's home page (OpenAlex's, else that of its ISSN), and what it links to; none without a home page. */
+export interface JournalSite {
+  homepage: string | null;
+  feed: SiteFeed | null;
+}
+
 /** A journal of the library's papers (3 or more), and what follows it. */
 export interface LibraryJournal {
   title: string;
@@ -261,8 +278,9 @@ export const findPapers = (id: string) => invoke<Linked[]>("feeds_find_papers", 
 export const pdfStatus = (id: string) => invoke<PdfStatus>("feeds_pdf", { id });
 
 export const subscriptions = () => invoke<SubscriptionInfo[]>("feeds_subscriptions");
-export const subscribe = (feed: Feed, kind: SourceKind) =>
-  invoke<SubscriptionInfo>("feeds_subscribe", { feed, kind });
+/** With a title (else the feed's own, at the next fetch). */
+export const subscribe = (feed: Feed, kind: SourceKind, title?: string) =>
+  invoke<SubscriptionInfo>("feeds_subscribe", { feed, kind, title: title ?? null });
 export const unsubscribe = (id: string) => invoke<void>("feeds_unsubscribe", { id });
 export const updateSubscription = (id: string, patch: SubscriptionPatch) =>
   invoke<SubscriptionInfo>("feeds_update_subscription", { id, patch });
@@ -271,6 +289,10 @@ export const suggested = () => invoke<Suggested[]>("feeds_suggested");
 export const librarySuggested = () => invoke<LibraryJournal[]>("feeds_library_suggested");
 /** Looked up in OpenAlex by its title, once: what it answers is kept. */
 export const lookupJournal = (title: string) => invoke<Follow>("feeds_lookup_journal", { title });
+/** OpenAlex's journals of a text, the best first, 10 at most. */
+export const searchJournals = (text: string) => invoke<Journal[]>("feeds_search_journals", { text });
+/** Its home page read, for the feed it links to. */
+export const journalFeed = (journal: Journal) => invoke<JournalSite>("feeds_journal_feed", { journal });
 export const importOpml = (path: string) => invoke<number>("feeds_import_opml", { path });
 export const exportOpml = (path: string) => invoke<void>("feeds_export_opml", { path });
 

@@ -1120,6 +1120,8 @@ pub fn run() {
             feeds::feeds_suggested,
             feeds::feeds_library_suggested,
             feeds::feeds_lookup_journal,
+            feeds::feeds_search_journals,
+            feeds::feeds_journal_feed,
             feeds::feeds_import_opml,
             feeds::feeds_export_opml,
             feeds::feeds_settings,

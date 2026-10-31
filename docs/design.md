@@ -842,7 +842,28 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   library's papers (below), each with its count (*23 papers*), shown at
   once and filled in as their lookups come (*looking up…*, one at a time
   while the sheet is open); one without an ISSN found says so, without a
-  Subscribe.
+  Subscribe. *Search journals* beside the filter of *Suggested* (and Enter
+  in it): OpenAlex's journals of the text (`search_journals`, 10 at most),
+  each with its publisher, ISSN and works, as a group *Journals matching
+  "…"* at the top. A journal of these two groups (not of the suggested
+  list, which has its feeds) is subscribed to by the feed its home page
+  links to (`site_feed`: the page, OpenAlex's `homepage_url`, else that of
+  the journal of its ISSN, `sources/issn:`, looked up once as the names
+  are, read with the page user agent of the Add sheet; its `<link
+  rel="alternate" type="application/rss+xml">`s and Atom's, resolved
+  against the page's address after its redirects), titled as the journal,
+  and the sheet says so. The journal's feed is read before it is
+  subscribed to: the one whose link's `title` names the journal (its title
+  folded, as `journal_key`, among the words), else, of the first 3 in the
+  page's order, the first whose own title names it (AMS's page links to its
+  news first). When its site or that feed refuses (an error status, no
+  answer: *Its feed refused: HTTP 403*, Cambridge's), what it links to is
+  no feed, or it links to none, nothing is subscribed: the journal's row
+  says why, with *Open its site* (in the browser: the user finds the feed
+  and pastes it as a Feed URL) and *Follow in Crossref* (its ISSN swept);
+  without a home page, *Follow in Crossref* alone. When feeds were read but
+  none names the journal, the first is offered as *a feed that may not be
+  the journal's* (its title), with *Subscribe to it* beside the other two.
 
 **Interests**: named profiles of weighted terms (paper-feeder's: a term in
 the title counts twice, `ice sheet` matches `ice-sheet`, an exclude vetoes),
@@ -982,19 +1003,26 @@ OpenAlex), the first result whose `display_name` or one of its
 (else its first ISSN), every ISSN, `host_organization_name`,
 `homepage_url`, `works_count` (`Journal`); the suggested list's
 subscription again if one of those ISSNs or the title is the list's. What
-OpenAlex answers, found or not (null), is kept by the folded name in the
-feeds folder's `journals.json`, so a journal is asked for once; a request
-without an answer is not kept.
+OpenAlex answers, found or not (null), is kept by the folded name (the
+journal of an ISSN by `issn:` and the ISSN) in the feeds folder's
+`journals.json`, so a journal is asked for once; a request without an
+answer is not kept.
 
 **The app's commands** (`src-tauri/src/feeds.rs`, the contract
 `src/lib/feeds/api.ts`): `feeds_fetch`, `feeds_last_fetch`, `feeds_view`,
 `feeds_item`, `feeds_triage`, `feeds_find_papers`, `feeds_pdf`,
-`feeds_subscriptions`, `feeds_subscribe`, `feeds_unsubscribe`,
+`feeds_subscriptions`, `feeds_unsubscribe`,
 `feeds_update_subscription`, `feeds_suggested`,
 `feeds_library_suggested` (the journals of the library, `{title, papers,
 follow}`, at once: `follow` is `{by: "suggested", suggested}`, `{by:
 "journal", journal}`, `{by: "unknown"}` or `{by: "pending"}`),
-`feeds_lookup_journal(title)` (the `follow` of a pending one), `feeds_import_opml`,
+`feeds_lookup_journal(title)` (the `follow` of a pending one),
+`feeds_search_journals(text)`, `feeds_journal_feed(journal)` (`{homepage,
+feed}`: `feed` `{site: "found", url, title}`, `{site: "other", url,
+title}`, `{site: "refused", reason}`, `{site: "feedrefused", url,
+reason}`, `{site: "notafeed", url}`, `{site: "nofeed"}`, or null without a
+home page; nothing subscribed),
+`feeds_subscribe(feed, kind, title?)`, `feeds_import_opml`,
 `feeds_export_opml`, `feeds_settings`, `feeds_set_settings`,
 `feeds_searches`, `feeds_set_searches` (refused for a blank name or one
 given twice; a change of the journal, as the others); the events

@@ -1,10 +1,11 @@
 //! The journals of the library's papers, counted; OpenAlex's journals of a
-//! name (October 2026, recorded without a key), kept; and what follows each.
+//! name or a search (October 2026, recorded without a key), kept; what
+//! follows each; and the feed a journal's site links to (pages written here).
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Feed, Follow, Journal, Journals, LibraryJournal, MOST_JOURNALS, Reply, journal_key,
-    library_journals,
+    Access, Feed, Follow, Journal, Journals, LibraryJournal, MOST_JOURNALS, Reply, SiteFeed,
+    journal_key, library_journals, search_journals, site_feed,
 };
 
 fn fixture(name: &str) -> Vec<u8> {
@@ -221,6 +222,240 @@ fn a_journal_of_the_suggested_list_found_by_its_lookup() {
         suggested.feed,
         Feed::Crossref {
             issn: "0022-1430".to_string()
+        }
+    );
+}
+
+#[test]
+fn journals_searched() {
+    let url = search_url("glaciology");
+    let http = Recorded::new().reply(
+        &url,
+        Reply::ok(&url, fixture("openalex-sources-glaciology.json")),
+    );
+    let found = search_journals(&http, &polite(), "glaciology").unwrap();
+    // as the sheet shows them: title, publisher, ISSN, works
+    let rows: Vec<String> = found
+        .iter()
+        .map(|j| {
+            format!(
+                "{} | {:?} | {:?} | {:?}",
+                j.title, j.publisher, j.issn, j.works
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            r#"Journal of Glaciology | Some("Cambridge University Press") | Some("0022-1430") | Some(6886)"#,
+            r#"Journal of Glaciology and Geocryology | Some("Science Press") | Some("1000-0240") | Some(1699)"#,
+        ]
+    );
+    assert_eq!(found[0].issns, ["0022-1430", "1727-5652"]);
+    let failed = search_url("ice");
+    let http = Recorded::new().reply(&failed, Reply::status(&failed, 503));
+    assert_eq!(
+        search_journals(&http, &polite(), "ice"),
+        Err("HTTP 503".to_string())
+    );
+}
+
+#[test]
+fn the_home_page_of_a_journal_by_its_issn_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut journals = Journals::open(dir.path()).unwrap();
+    let url = format!(
+        "https://api.openalex.org/sources/issn:0022-1430?{SELECT}&mailto=papers-desktop@example.org"
+    );
+    let source = r#"{"id":"https://openalex.org/S140216511","display_name":"Journal of Glaciology",
+        "alternate_titles":[],"issn_l":"0022-1430","issn":["0022-1430","1727-5652"],
+        "host_organization_name":"Cambridge University Press",
+        "homepage_url":"https://www.cambridge.org/core/journals/journal-of-glaciology","works_count":6886}"#;
+    let http = Recorded::new().reply(&url, Reply::ok(&url, source));
+    // as the library's papers give it
+    let journal = Journal {
+        title: "J. Glaciol.".to_string(),
+        issn: Some("0022-1430".to_string()),
+        issns: vec!["0022-1430".to_string()],
+        publisher: None,
+        homepage: None,
+        works: None,
+    };
+    let homepage = Some("https://www.cambridge.org/core/journals/journal-of-glaciology");
+    for _ in 0..2 {
+        let found = journals
+            .with_homepage(journal.clone(), &http, &polite())
+            .unwrap();
+        assert_eq!(found.homepage.as_deref(), homepage);
+        assert_eq!(found.title, "J. Glaciol.");
+    }
+    assert_eq!(http.requests().len(), 1);
+    // one with a home page, or without an ISSN, is not asked for
+    let none = Journal {
+        issn: None,
+        issns: Vec::new(),
+        ..journal
+    };
+    assert_eq!(
+        journals.with_homepage(none.clone(), &http, &polite()),
+        Ok(none)
+    );
+}
+
+const HOME: &str = "https://journal.example.org/home/";
+
+fn page(head: &str) -> String {
+    format!(
+        "<!doctype html><html><head><title>J</title>{head}</head><body><p>Welcome</p></body></html>"
+    )
+}
+
+/// An RSS feed of a title, with one item.
+fn rss(title: &str) -> String {
+    format!(
+        "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>{title}</title>\
+         <link>https://journal.example.org/</link><item><title>A paper</title>\
+         <link>https://journal.example.org/a</link></item></channel></rss>"
+    )
+}
+
+/// A link of a page to a feed.
+fn link(title: &str, href: &str) -> String {
+    format!(r#"<link rel="alternate" type="application/rss+xml" title="{title}" href="{href}">"#)
+}
+
+const CLIMATE: &str = "Journal of Climate";
+
+#[test]
+fn the_feed_a_site_links_to() {
+    let site = |reply: Reply| site_feed(&Recorded::new().reply(HOME, reply), HOME, CLIMATE);
+    // no feed: none linked, or another kind of alternate
+    let other = r#"<link rel="alternate" hreflang="de" href="/de/">
+        <link rel="alternate" type="application/json" href="/oembed">"#;
+    assert_eq!(site(Reply::ok(HOME, page(other))), SiteFeed::NoFeed);
+    assert_eq!(site(Reply::ok(HOME, page(""))), SiteFeed::NoFeed);
+    // refused
+    assert_eq!(
+        site(Reply::status(HOME, 403)),
+        SiteFeed::Refused {
+            reason: "HTTP 403".to_string()
+        }
+    );
+    let unreachable = Recorded::new().fail(HOME, "dns error: no such host");
+    assert_eq!(
+        site_feed(&unreachable, HOME, CLIMATE),
+        SiteFeed::Refused {
+            reason: "dns error: no such host".to_string()
+        }
+    );
+}
+
+#[test]
+fn the_feed_whose_link_names_the_journal_read() {
+    // the second link names it: read, the first not
+    let feed = "https://journal.example.org/clim.xml";
+    let head = [
+        link("AMS News", "https://journal.example.org/newsrss"),
+        r#"<link rel="stylesheet" href="/s.css">"#.to_string(),
+        link("Journal of Climate: Latest issue", "/clim.xml"),
+    ];
+    let http = Recorded::new()
+        .reply(HOME, Reply::ok(HOME, page(&head.concat())))
+        .reply(feed, Reply::ok(feed, rss("J Clim")));
+    assert_eq!(
+        site_feed(&http, HOME, CLIMATE),
+        SiteFeed::Found {
+            url: feed.to_string(),
+            title: Some("J Clim".to_string())
+        }
+    );
+    let urls: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
+    assert_eq!(urls, [HOME, feed]);
+    // refused, or not a feed: said so, no other read
+    let refused = || {
+        Recorded::new().reply(
+            HOME,
+            Reply::ok(HOME, page(&link("journal of climate", "/clim.xml"))),
+        )
+    };
+    assert_eq!(
+        site_feed(
+            &refused().reply(feed, Reply::status(feed, 403)),
+            HOME,
+            CLIMATE
+        ),
+        SiteFeed::FeedRefused {
+            url: feed.to_string(),
+            reason: "HTTP 403".to_string()
+        }
+    );
+    let html = Reply::ok(feed, page(""));
+    assert_eq!(
+        site_feed(&refused().reply(feed, html), HOME, CLIMATE),
+        SiteFeed::NotAFeed {
+            url: feed.to_string()
+        }
+    );
+}
+
+#[test]
+fn the_feed_whose_own_title_names_the_journal() {
+    // relative to where the page was, after its redirects; Atom, in any case
+    let moved = "https://journal.example.org/j/current/";
+    let head = [
+        link("Latest", "https://feeds.example.org/latest.xml"),
+        r#"<LINK REL="Alternate" TYPE="Application/Atom+XML" HREF="../feed/atom">"#.to_string(),
+    ];
+    let latest = "https://feeds.example.org/latest.xml";
+    let atom = "https://journal.example.org/j/feed/atom";
+    let atom_feed = "<?xml version=\"1.0\"?><feed xmlns=\"http://www.w3.org/2005/Atom\">\
+        <title>{The} Journal of Climate</title><id>j</id></feed>";
+    let http = Recorded::new()
+        .reply(HOME, Reply::ok(moved, page(&head.concat())))
+        .reply(latest, Reply::status(latest, 404))
+        .reply(atom, Reply::ok(atom, atom_feed));
+    assert_eq!(
+        site_feed(&http, HOME, CLIMATE),
+        SiteFeed::Found {
+            url: atom.to_string(),
+            title: Some("{The} Journal of Climate".to_string())
+        }
+    );
+}
+
+#[test]
+fn a_feed_that_may_not_be_the_journal_s() {
+    // AMS: its news first, then others, none naming the journal; 3 read at most
+    let feeds =
+        ["newsrss", "a.xml", "b.xml", "c.xml"].map(|f| format!("https://journal.example.org/{f}"));
+    let head: String = feeds.iter().map(|f| link("", f)).collect();
+    let http = Recorded::new()
+        .reply(HOME, Reply::ok(HOME, page(&head)))
+        .reply(&feeds[0], Reply::ok(&feeds[0], rss("AMS News")))
+        .reply(&feeds[1], Reply::status(&feeds[1], 403))
+        .reply(
+            &feeds[2],
+            Reply::ok(&feeds[2], rss("Weather and Forecasting")),
+        )
+        .reply(&feeds[3], Reply::ok(&feeds[3], rss(CLIMATE)));
+    assert_eq!(
+        site_feed(&http, HOME, CLIMATE),
+        SiteFeed::Other {
+            url: feeds[0].clone(),
+            title: Some("AMS News".to_string())
+        }
+    );
+    assert_eq!(http.requests().len(), 4, "the page and three feeds");
+    // none read: the first failure
+    let http = Recorded::new()
+        .reply(HOME, Reply::ok(HOME, page(&head)))
+        .fail(&feeds[0], "timed out")
+        .reply(&feeds[1], Reply::status(&feeds[1], 403));
+    assert_eq!(
+        site_feed(&http, HOME, CLIMATE),
+        SiteFeed::FeedRefused {
+            url: feeds[0].clone(),
+            reason: "timed out".to_string()
         }
     );
 }

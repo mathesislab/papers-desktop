@@ -2,14 +2,28 @@
   // Subscribe: a feed's URL (RSS or Atom), a journal's ISSN swept in Crossref, or a filter of OpenAlex, with the kind
   // of its items; or one of the suggested subscriptions, in their groups, those followed already marked. At the top of
   // them, *From your library*: the journals of the library's papers, each by the suggested subscription of it, else
-  // by its ISSN, those without one looked up in OpenAlex one after another while the sheet is open. What is
-  // subscribed to is fetched when the sheet closes.
+  // by its ISSN, those without one looked up in OpenAlex one after another while the sheet is open. *Search journals*
+  // (or Enter in the filter) lists OpenAlex's journals of the text. A journal of these two groups is followed by the
+  // feed its home page links to, read first (the journal's: its link or its own title names the journal); when its
+  // site or its feed refuses, it links to none, or only to feeds that do not name the journal, nothing is subscribed:
+  // the sheet says why, and offers its site (to find the feed and paste it above), a sweep of its ISSN in Crossref,
+  // or the feed that may not be the journal's. What is subscribed to is fetched when the sheet closes.
 
   import { onMount } from "svelte";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import { holdModal } from "$lib/library/modal.svelte";
   import * as api from "./api";
-  import type { Follow, LibraryJournal, SourceKind, Suggested, SubscriptionInfo } from "./api";
-  import { feedOf, sameFeed, type FeedType } from "./filters";
+  import type { Follow, Journal, LibraryJournal, SourceKind, Suggested, SubscriptionInfo } from "./api";
+  import {
+    choiceFeed,
+    feedOf,
+    journalChoice,
+    journalFacts,
+    journalFollowed,
+    sameFeed,
+    type FeedType,
+    type JournalChoice,
+  } from "./filters";
 
   let {
     subscriptions,
@@ -45,8 +59,13 @@
     [],
   );
   let open = true;
+  /** the journals of the last search, null while it runs */
+  let found = $state<{ text: string; journals: Journal[] | null; error?: string } | null>(null);
+  /** what subscribing to a journal came to, by its ISSN (else title): its site read, then its feed or the choice */
+  let chosen = $state<Record<string, { reading: true } | JournalChoice>>({});
   let filter = $state("");
   let input = $state<HTMLInputElement>();
+  let filterInput = $state<HTMLInputElement>();
 
   let words = $derived(filter.trim().toLowerCase());
   let groups = $derived.by(() => {
@@ -97,7 +116,42 @@
     }
   }
 
-  async function subscribe(feed: api.Feed, as: SourceKind) {
+  /** OpenAlex's journals of the text of the filter. */
+  async function searchJournals() {
+    const text = filter.trim();
+    if (!text) return;
+    found = { text, journals: null };
+    try {
+      const journals = await api.searchJournals(text);
+      if (found?.text === text) found.journals = journals;
+    } catch (e) {
+      if (found?.text === text) found = { text, journals: [], error: String(e) };
+    }
+  }
+
+  const journalKey = (journal: Journal) => journal.issn ?? journal.title;
+
+  /** A journal by the feed its site links to; else nothing, and the choice is shown. */
+  async function subscribeJournal(journal: Journal, title: string) {
+    if (busy) return;
+    const key = journalKey(journal);
+    busy = true;
+    message = null;
+    chosen[key] = { reading: true };
+    let choice: JournalChoice;
+    try {
+      choice = journalChoice(await api.journalFeed(journal));
+    } catch (e) {
+      choice = { reason: String(e), homepage: journal.homepage, other: null };
+    }
+    chosen[key] = choice;
+    busy = false;
+    if ("feed" in choice) {
+      await subscribe({ rss: choice.feed }, "journal", title, `by the feed of its site, ${choice.feed}`);
+    }
+  }
+
+  async function subscribe(feed: api.Feed, as: SourceKind, title?: string, how?: string) {
     if (busy) return;
     if (subscriptions.some((s) => sameFeed(s.feed, feed))) {
       message = { text: "Subscribed already" };
@@ -106,9 +160,9 @@
     busy = true;
     message = null;
     try {
-      const info = await api.subscribe(feed, as);
+      const info = await api.subscribe(feed, as, title);
       onsubscribed(info);
-      message = { text: `Subscribed to ${info.title}: fetched when the sheet closes` };
+      message = { text: `Subscribed to ${info.title}${how ? ` ${how}` : ""}: fetched when the sheet closes` };
       text = "";
     } catch (e) {
       message = { text: String(e), error: true };
@@ -130,6 +184,9 @@
     } else if (e.key === "Enter" && e.target === input) {
       e.preventDefault();
       subscribeTyped();
+    } else if (e.key === "Enter" && e.target === filterInput) {
+      e.preventDefault();
+      searchJournals();
     }
   }
 </script>
@@ -139,6 +196,46 @@
     <span class="on">✓ Subscribed</span>
   {:else}
     <button disabled={busy} onclick={() => subscribe(feed, as)}>Subscribe</button>
+  {/if}
+{/snippet}
+
+<!-- a journal of the library or of a search: by the feed of its site, else the choice of its site or Crossref -->
+{#snippet journalRow(title: string, facts: string, journal: Journal)}
+  {@const state = chosen[journalKey(journal)]}
+  {@const shown = choiceFeed(state)}
+  {@const on = journalFollowed(journal, subscriptions) || (!!shown && followed({ rss: shown }))}
+  <div class="suggestion">
+    <span class="title" title={title}>{title}</span>
+    <span class="muted">{facts}</span>
+    {#if on}
+      <span class="on">✓ Subscribed</span>
+    {:else if !journal.issn}
+      <span class="muted">no ISSN found</span>
+    {:else if state && "reading" in state}
+      <span class="muted">reading its site…</span>
+    {:else}
+      <button disabled={busy} onclick={() => subscribeJournal(journal, title)}>Subscribe</button>
+    {/if}
+  </div>
+  {#if !on && journal.issn && state && "reason" in state}
+    {@const issn = journal.issn}
+    <div class="choice">
+      <span class="muted">{state.reason}</span>
+      <span class="spacer"></span>
+      {#if state.other}
+        {@const other = state.other.url}
+        <button disabled={busy} onclick={() => subscribe({ rss: other }, "journal")}>Subscribe to it</button>
+      {/if}
+      {#if state.homepage}
+        {@const homepage = state.homepage}
+        <button onclick={() => openUrl(homepage).catch((e) => (message = { text: String(e), error: true }))}>
+          Open its site
+        </button>
+      {/if}
+      <button disabled={busy} onclick={() => subscribe({ crossref: issn }, "journal", title)}>
+        Follow in Crossref
+      </button>
+    </div>
   {/if}
 {/snippet}
 
@@ -179,28 +276,52 @@
       <div class="row">
         <h3>Suggested</h3>
         <span class="spacer"></span>
-        <input class="filter" bind:value={filter} type="search" placeholder="Filter" spellcheck="false" autocomplete="off" />
+        <input
+          class="filter"
+          bind:this={filterInput}
+          bind:value={filter}
+          type="search"
+          placeholder="Filter, or a journal to search"
+          spellcheck="false"
+          autocomplete="off"
+        />
+        <button disabled={!filter.trim()} onclick={searchJournals}>Search journals</button>
       </div>
       <div class="list">
+        {#if found}
+          <h4>Journals matching "{found.text}"</h4>
+          {#if found.journals === null}
+            <p class="muted">Searching…</p>
+          {:else if found.error}
+            <p class="muted error">{found.error}</p>
+          {:else if !found.journals.length}
+            <p class="muted">None</p>
+          {/if}
+          {#each found.journals ?? [] as journal}
+            {@render journalRow(journal.title, journalFacts(journal), journal)}
+          {/each}
+        {/if}
         {#if fromLibrary.length}
           <h4>From your library</h4>
           {#each fromLibrary as j (j.title)}
             {@const f = j.follow}
-            <div class="suggestion">
-              <span class="title" title={j.title}>{j.title}</span>
-              <span class="muted">{j.papers} papers</span>
-              {#if f.by === "suggested"}
-                {@render follow(f.suggested.feed, f.suggested.kind)}
-              {:else if f.by === "journal" && f.journal.issn}
-                {@render follow({ crossref: f.journal.issn }, "journal")}
-              {:else if f.by === "pending"}
-                <span class="muted">looking up…</span>
-              {:else if f.by === "failed"}
-                <span class="muted" title={f.message}>not looked up</span>
-              {:else}
-                <span class="muted">no ISSN found</span>
-              {/if}
-            </div>
+            {#if f.by === "journal"}
+              {@render journalRow(j.title, `${j.papers} papers`, f.journal)}
+            {:else}
+              <div class="suggestion">
+                <span class="title" title={j.title}>{j.title}</span>
+                <span class="muted">{j.papers} papers</span>
+                {#if f.by === "suggested"}
+                  {@render follow(f.suggested.feed, f.suggested.kind)}
+                {:else if f.by === "pending"}
+                  <span class="muted">looking up…</span>
+                {:else if f.by === "failed"}
+                  <span class="muted" title={f.message}>not looked up</span>
+                {:else}
+                  <span class="muted">no ISSN found</span>
+                {/if}
+              </div>
+            {/if}
           {/each}
         {/if}
         {#if suggestions === null}
@@ -343,6 +464,17 @@
     gap: 10px;
     min-height: 26px;
   }
+  .choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 26px;
+    padding-left: 12px;
+  }
+  .choice .muted {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .suggestion .title {
     flex: 1;
     min-width: 0;
@@ -353,6 +485,9 @@
   .muted {
     color: var(--muted);
     font-size: 12px;
+  }
+  .muted.error {
+    color: var(--error);
   }
   .on {
     color: #2f9e6e;

@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import type { FeedRow, SubscriptionInfo, Triage } from "../src/lib/feeds/api.ts";
+import type { FeedRow, Journal, SubscriptionInfo, Triage } from "../src/lib/feeds/api.ts";
 import {
   NO_FEED_FILTERS,
   chooseInterest,
@@ -11,7 +11,11 @@ import {
   chooseSegment,
   chooseSource,
   feedChips,
+  choiceFeed,
   feedOf,
+  journalChoice,
+  journalFacts,
+  journalFollowed,
   nextSort,
   live,
   queryOf,
@@ -171,6 +175,55 @@ test("the feed of the Subscribe sheet, and the same feed", () => {
   assert.ok(sameFeed({ rss: "https://x.org/feed/" }, { rss: "http://X.org/feed" }));
   assert.ok(sameFeed({ crossref: "1994-0424" }, { crossref: "19940424" }));
   assert.ok(!sameFeed({ rss: "x" }, { crossref: "x" }));
+});
+
+const glaciology: Journal = {
+  title: "Journal of Glaciology",
+  issn: "0022-1430",
+  issns: ["0022-1430", "1727-5652"],
+  publisher: "Cambridge University Press",
+  homepage: "https://www.cambridge.org/core/journals/journal-of-glaciology",
+  works: 6886,
+};
+
+test("a journal of the Subscribe sheet: its facts, followed or not, what its site gives", () => {
+  assert.equal(journalFacts(glaciology), "Cambridge University Press · ISSN 0022-1430 · 6886 works");
+  assert.equal(journalFacts({ ...glaciology, publisher: null, works: null }), "ISSN 0022-1430");
+  const sweep = (issn: string) => ({ feed: { crossref: issn } }) as SubscriptionInfo;
+  assert.ok(journalFollowed(glaciology, [sweep("17275652")]), "by any of its ISSNs");
+  assert.ok(!journalFollowed(glaciology, [sweep("1994-0424")]));
+  const homepage = glaciology.homepage;
+  const url = "https://j.example.org/rss";
+  const found = journalChoice({ homepage, feed: { site: "found", url, title: null } });
+  assert.deepEqual(found, { feed: url });
+  assert.equal(choiceFeed(found), url);
+  assert.deepEqual(journalChoice({ homepage, feed: { site: "refused", reason: "HTTP 403" } }), {
+    reason: "Its site refused: HTTP 403",
+    homepage,
+    other: null,
+  });
+  assert.equal(
+    (journalChoice({ homepage, feed: { site: "feedrefused", url, reason: "HTTP 403" } }) as { reason: string }).reason,
+    "Its feed refused: HTTP 403",
+  );
+  const other = journalChoice({ homepage, feed: { site: "other", url, title: "AMS News" } });
+  assert.deepEqual(other, {
+    reason: "A feed that may not be the journal's: AMS News",
+    homepage,
+    other: { url, title: "AMS News" },
+  });
+  assert.equal(choiceFeed(other), url);
+  assert.deepEqual(journalChoice({ homepage, feed: { site: "nofeed" } }), {
+    reason: "No feed on its site's page",
+    homepage,
+    other: null,
+  });
+  assert.equal(choiceFeed(journalChoice({ homepage, feed: { site: "nofeed" } })), null);
+  assert.deepEqual(journalChoice({ homepage: null, feed: null }), {
+    reason: "No site known",
+    homepage: null,
+    other: null,
+  });
 });
 
 const it = (id: string, triage: Triage) => ({ id, triage });
