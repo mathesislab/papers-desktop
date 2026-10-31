@@ -675,7 +675,12 @@ word, as in the library), and `record.check(&query, matching)`, the
 `Marks` to highlight when it matches. `abs:` searches the abstract (the
 library's too); plain words do not, which would change the library's hits.
 A facet takes a whole value, with `*` wildcards; a number takes `2-5`,
-`3-`, `-2`, and `3` is `3-`.
+`3-`, `-2`, and `3` is `3-`. Any filter takes alternatives between commas
+(`src:tc,"Nature Geosci"`, `y:1990-2000,2015`, `-kind:news,blog`), not a
+plain word: a `Term` holds its patterns, any of which matches (each one
+that matched marked), no OR node; without a comma a term is as before, and
+the words of an alternative are a phrase. `anyOf` (`src/lib/query.ts`)
+writes such a filter.
 
 **A subscription** follows a `Feed`: an RSS/Atom `url`, a Crossref `issn`
 (works indexed since the last sweep, created at most the lookback, 14 days,
@@ -717,8 +722,8 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 - *Sidebar*: Views (Unread `is:new`, Shortlist, Added, All), Kinds,
   Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
   apart; a group folds), each with its count (`counts`: every item not
-  dismissed, whatever the search). One choice per group (the query has no
-  OR): a click chooses, a second lets go. As the library's tags, the choices
+  dismissed, whatever the search). One choice per group: a click chooses,
+  a second lets go. As the library's tags, the choices
   are filters of their own, shown as chips with an ×; the backend is asked
   for the typed text followed by a term per choice (`is:new kind:preprint
   prof:"Ice sheets" src:"The Cryosphere"`), and `-is:dismissed` unless the

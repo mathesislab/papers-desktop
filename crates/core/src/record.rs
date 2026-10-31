@@ -173,30 +173,46 @@ impl Record {
         }
     }
 
-    /// Whether a term matches, marking the words it matched.
+    /// Whether a term matches, any of its patterns, marking the words of every
+    /// one that matched.
     fn matches(&self, term: &Term, matching: Matching, marks: &mut Marks) -> bool {
-        let find = |text: &Text| match &term.pattern {
+        let mut found = false;
+        for pattern in &term.patterns {
+            found |= self.takes(&term.field, pattern, matching, marks);
+        }
+        found
+    }
+
+    /// Whether a pattern of a field matches, marking the words it matched.
+    fn takes(
+        &self,
+        field: &Field,
+        pattern: &Pattern,
+        matching: Matching,
+        marks: &mut Marks,
+    ) -> bool {
+        let find = |text: &Text| match pattern {
             Pattern::Word(w) => text.find(w, matching),
             Pattern::Phrase(ws) => text.find_phrase(ws, matching),
             _ => Vec::new(),
         };
-        match (&term.pattern, &term.field) {
+        match (pattern, field) {
             (Pattern::Doi(doi), _) => {
                 self.doi.contains(doi.as_str()) || self.key.contains(doi.as_str())
             }
             (Pattern::Years(..) | Pattern::YearStart(_), _) => {
-                let matched = self.year.is_some_and(|y| term.pattern.matches_year(y));
+                let matched = self.year.is_some_and(|y| pattern.matches_year(y));
                 self.mark_year(marks, matched)
             }
             (Pattern::Tag(_), Field::Facet(name)) => self
                 .facets
                 .get(name)
-                .is_some_and(|values| values.iter().any(|v| term.pattern.matches_whole(v))),
-            (Pattern::Tag(_), _) => self.tags.iter().any(|t| term.pattern.matches_tag(t)),
+                .is_some_and(|values| values.iter().any(|v| pattern.matches_whole(v))),
+            (Pattern::Tag(_), _) => self.tags.iter().any(|t| pattern.matches_tag(t)),
             (Pattern::Numbers(..), Field::Number(name)) => self
                 .numbers
                 .get(name)
-                .is_some_and(|&n| term.pattern.matches_number(n)),
+                .is_some_and(|&n| pattern.matches_number(n)),
             (Pattern::Word(w), Field::Key) => {
                 self.key.starts_with(w.as_str()) || !self.key_words.find(w, matching).is_empty()
             }

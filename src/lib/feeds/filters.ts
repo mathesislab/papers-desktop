@@ -1,8 +1,8 @@
 // The Feeds tab shows the items that the choices of its sidebar, the segment and the search select. As the library's
 // (library/filters.ts), the choices are filters of their own, shown as chips, not text of the search field; the
 // backend is asked for one query: the text typed followed by a term per choice (`is:new`, `kind:preprint`,
-// `prof:"Ice sheets"`, `src:"The Cryosphere"`), all of which must hold. The query language has no OR: one choice per
-// group of the sidebar. Pure functions, tested by scripts/feeds.test.ts (npm test).
+// `prof:"Ice sheets"`, `src:"The Cryosphere"`), all of which must hold. One choice per group of the sidebar. Pure
+// functions, tested by scripts/feeds.test.ts (npm test).
 
 import type { Feed, FeedCounts, ItemKind, Sort, SourceKind, SubscriptionInfo, ViewRequest } from "./api.ts";
 

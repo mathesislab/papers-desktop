@@ -241,7 +241,7 @@ impl Library {
         let selected = |year| {
             year_terms
                 .iter()
-                .all(|t| t.pattern.matches_year(year) != t.negated)
+                .all(|t| t.patterns.iter().any(|p| p.matches_year(year)) != t.negated)
         };
         let years = match (counts.keys().next(), counts.keys().next_back()) {
             (Some(&first), Some(&last)) => (first..=last)

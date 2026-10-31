@@ -112,3 +112,53 @@ fn undeclared_names() {
     assert!(check("greenland:ice").is_some());
     assert!(library("").is_empty());
 }
+
+#[test]
+fn alternatives() {
+    // any of them
+    assert!(matches("src:grl,tc,*sphere kind:post,paper"));
+    assert!(!matches(r#"src:grl,"Nature Geoscience" "#));
+    assert!(matches(r#"src:grl,"The Cryosphere""#));
+    assert!(matches("score:-1,3- score:5-,2-4"));
+    assert!(!matches("score:-1,4-"));
+    assert!(matches("y:1990-2000,2024 year:201,202"));
+    assert!(!matches("y:1990-2000,2015"));
+    assert!(matches("a:calov,broeke f:calov,robinson"));
+    assert!(!matches("f:calov,broeke"));
+    assert!(matches(r#"a:calov,"van den""#) && !matches("a:calov,den-van"));
+    // tags whole, with wildcards and the tags under them
+    assert!(matches("tag:amoc,climate tag:ice,ice-sh*"));
+    assert!(!matches("tag:amoc,ice"));
+    assert!(matches("has:pdf,abstract doi:10.1038,tc-18"));
+    // excluded when any matches
+    assert!(matches("-src:grl,esd -is:dismissed,new"));
+    assert!(!matches("-src:grl,*sphere"));
+    assert!(!matches("-y:2012,2024"));
+    // still being typed
+    assert!(matches("src:*sphere, kind:,") && !matches("src:tc,"));
+}
+
+#[test]
+fn alternatives_marked() {
+    let marks = |query: &str| {
+        let query = Query::parse(query, SCHEMA);
+        item().check(&query, Matching::WordStart).unwrap()
+    };
+    // every alternative that matched
+    let m = marks("t:tipping,greenland,ocean");
+    assert_eq!(
+        marked(&item().title_spans(&m)),
+        "*Tipping* points of the *Greenland* ice sheet"
+    );
+    let m = marks(r#"a:calov,robinson,"van den" abs:"ice sheet",ocean"#);
+    let author = |a| marked(&item().author_spans(a, &m));
+    assert_eq!(
+        (author(0), author(1)),
+        ("*Robinson*".into(), "*van* *den* Broeke".into())
+    );
+    assert_eq!(
+        marked(&item().abstract_spans(&m)),
+        "We find a threshold of warming for the *ice* *sheet*."
+    );
+    assert!(marks("y:2024,2010").year);
+}
