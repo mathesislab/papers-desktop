@@ -329,7 +329,8 @@ read, a thread of its own (the library shows at once; the page is told,
   - *Opened by*: a PDF dropped on the main window (Tauri drag-drop events,
     anywhere; dropped on the empty page of the paper in the details it is that
     paper's; or dragged from the Downloads panel, below), *Add…* / ⌘N, then *Choose…*, or a text pasted or typed in the
-    field, which `classify_input` takes for a DOI or doi.org link, the path of
+    field, which `classify_input` takes for a DOI or doi.org link (an arXiv id
+    or the link of its page on arXiv or a mirror (ar5iv, alphaXiv) is first made its DOI, `arxivDoi` of `src/lib/arxiv.ts`), the path of
     a PDF (quoted, with escaped spaces, `file://`, `~`), a link to a PDF
     (downloaded), a link to a page, or BibTeX (the entry).
   - *A PDF*: `read_pdf_doi` reads its DOI as `papers add FILE.pdf` does (the

@@ -14,6 +14,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount, untrack } from "svelte";
   import { holdModal } from "./modal.svelte";
+  import { arxivDoi } from "$lib/arxiv";
   import { addField } from "$lib/feeds/items";
   import { label } from "$lib/keys";
   import { sheetPdf, type SheetPdf } from "$lib/library/freepdf";
@@ -526,12 +527,13 @@
     }
   }
 
-  /** What is in the field: a DOI is fetched, a PDF read, a link followed, BibTeX taken as the entry. */
+  /** What is in the field: a DOI is fetched (an arXiv id or link as its DOI), a PDF read, a link followed, BibTeX
+   *  taken as the entry. */
   async function go() {
     const n = ++seq;
     let found: Input;
     try {
-      found = await invoke<Input>("classify_input", { text: field });
+      found = await invoke<Input>("classify_input", { text: arxivDoi(field) ?? field });
     } catch (e) {
       return fail(e);
     }

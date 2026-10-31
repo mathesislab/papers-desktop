@@ -1,6 +1,7 @@
 // The items of the Feeds tab: their triage by the keys, the list kept in place while they are triaged, what an item
 // adds to the library, how old things are said to be. Pure functions, tested by scripts/feeds.test.ts (npm test).
 
+import { arxivDoi } from "../arxiv.ts";
 import type { FeedDetail, FeedRow, FetchSummary, Linked, Triage } from "./api.ts";
 
 /** the keys that change the triage of the items selected */
@@ -64,12 +65,6 @@ export function mergeRows(old: FeedRow[], fresh: FeedRow[], sticky: Set<string>)
     out.splice(before ? out.findIndex((o) => o.id === before.id) + 1 : 0, 0, row);
   }
   return out;
-}
-
-/** An arXiv id (2410.01234, 2410.01234v2, hep-th/9901001): its DOI, which DataCite gives (10.48550/arXiv.2410.01234). */
-export function arxivDoi(id: string): string | null {
-  const m = /^(?:arxiv:)?((?:\d{4}\.\d{4,5})|(?:[a-z-]+(?:\.[A-Z]{2})?\/\d{7}))(?:v\d+)?$/i.exec(id.trim());
-  return m ? `10.48550/arXiv.${m[1]}` : null;
 }
 
 /** What the field of the Add sheet starts with, for a DOI or an arXiv id: the arXiv id as its DOI. */

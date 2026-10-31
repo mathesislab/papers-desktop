@@ -28,7 +28,6 @@ import {
   addField,
   addTarget,
   ago,
-  arxivDoi,
   badges,
   fetchLine,
   likeText,
@@ -241,9 +240,7 @@ test("what an item adds", () => {
   ];
   assert.deepEqual(addTarget({ ...d, kind: "news", links }), { id: "10.1/high", item: "p" });
   assert.equal(addTarget({ ...d, kind: "blog" }), null);
-  assert.equal(arxivDoi("2410.01234v2"), "10.48550/arXiv.2410.01234");
-  assert.equal(arxivDoi("arXiv:hep-th/9901001"), "10.48550/arXiv.hep-th/9901001");
-  assert.equal(arxivDoi("10.1/x"), null);
+  assert.equal(addField("2410.01234v2"), "10.48550/arXiv.2410.01234");
   assert.equal(addField(" 10.1/x "), "10.1/x");
 });
 
