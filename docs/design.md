@@ -770,23 +770,23 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 `FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
 `filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`):
 
-- *Sidebar*: Views (Unread `is:new`, Shortlist, Added, All), Kinds,
+- *Sidebar*: Views (Unread `is:new`, Starred, Snoozed, Added, All), Kinds,
   Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
   apart; a group folds), each with its count (`counts`: every item not
-  dismissed, whatever the search). A click chooses one of a group, a second
+  dismissed, whatever the search). A source's menu (right-click) sets its
+  kind (*Source Is*), fetches it alone (*Fetch This Source*) or ends it
+  (*Unsubscribe…*, asked first; its items stay until they are old); the
+  *Sources* header opens the Subscribe sheet. A click chooses one of a group, a second
   lets go; `⌘`-click (Ctrl elsewhere) adds one to the choices of its group,
   or takes it out (the views: one). As the library's tags, the choices
   are filters of their own, a chip per group with an × (`Source: TC, GRL`
   with several); the backend is asked for a term per group, any of its
   choices (`is:new kind:preprint prof:"Ice sheets" src:"The
-  Cryosphere",GRL`), the segment's kinds when no kind is chosen
-  (`kind:paper,preprint`: the query is the whole of the tab's choices,
+  Cryosphere",GRL`; the query is the whole of the tab's choices,
   `queryOf`), then the typed text, and `-is:dismissed` unless the query has
-  an `is:` term on `dismissed`. *Papers
-  | Posts | All* above the list picks the kinds (`kinds` of the request too;
-  Papers by default); kinds chosen that the segment does not show move it
-  (to All for papers and posts together), another segment lets go of those
-  it does not show. The choices, the segment,
+  an `is:` term on `dismissed`. No kind chosen: every kind (papers and posts
+  together; the *Papers | Posts | All* of before is gone, a source of posts
+  chosen showing nothing under *Papers*). The choices,
   the sort, the search and the groups unfolded are kept in the layout
   (`feeds`; a file without it takes the defaults; the single `kind`,
   `interest` and `source` of before become groups of one).
@@ -796,8 +796,7 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   (`feeds_set_searches`, in the feeds' `config.json`, so the CLI's `--saved`
   takes them too). A click takes the query apart (`decompose`, pure and
   tested: its first `is:` of a view, `kind:`, `prof:` and `src:` terms, not
-  excluding, become the choices, a `kind:` of a segment's kinds that
-  segment, no `kind:` All, the rest the text typed; `queryOf` of it is the
+  excluding, become the choices, the rest the text typed; `queryOf` of it is the
   same query) and shows it with its sort; the one shown is selected
   (`sameQuery` and the sort).
 - *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
@@ -819,8 +818,10 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 - *Held updates*: a fetch in the background (polling) does not change the
   list: the items first fetched after the list was last brought up to date
   (`shown`, the layout's `feedsShown`) are neither listed nor counted, and
-  wait behind *N new · Show*; a fetch asked for (⌘R, *Fetch*, a
-  subscription) shows them at once.
+  wait behind *N new · Show*; a fetch asked for (⇧⌘R, *Fetch*, a
+  subscription) shows them at once. ⌘R brings the list up to date without
+  fetching: what was held back, the items triaged here gone from where they
+  no longer belong, sorted again.
 - *Reminders*: `z` (*⏰ Later*) snoozes items 1, 3, 7 or 30 days (out of
   *Unread*, in *Snoozed*, back as new at the start of that day); `u` keeps
   them unread (a reminder due now). A due reminder is first in the list,
@@ -856,7 +857,10 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   in the Library tab, as before) and the item becomes *added*. A post adds
   its linked paper.
 - *Fetch*: on opening the tab when the last fetch is older than 15 minutes,
-  and on `⌘R` or ↻; the `feeds-fetching` event shows the progress, the
+  and on `⇧⌘R` or ↻, in two phases: the feeds read (the list shown at
+  once), then the lookups of Crossref and OpenAlex (*Looking up in Crossref
+  and OpenAlex…*), the rules applied at their end; the `feeds-fetching`
+  event says the phase (`reading`, `looking-up`, `done`), the
   status line the last fetch (*fetched 8 min ago · 12 new · 3 not modified ·
   1 failed*, the failures listed on hover and click); `feeds-changed` reads
   the list again.
@@ -869,7 +873,10 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN, an OpenAlex
   filter or *Words*, with the kind of its items (the user's choice, Journal
   by default), or one of the suggested subscriptions in their groups (those
-  followed marked); fetched when the sheet closes. *Words* (`ice sheet AND
+  followed marked ✓, a − next to it to unsubscribe at once); fetched when
+  the sheet closes. *Subscribed* lists the subscriptions in the sidebar's
+  groups, each with its feed and −; one ended in the sheet stays listed, to
+  subscribe to again as it was (title, kind, journal, pages, boost). *Words* (`ice sheet AND
   (tipping OR collapse)`) are the OpenAlex filter
   `title_and_abstract.search:<words>` (`wordsFilter`: their commas, which
   would end the filter, and runs of white space as one space; OpenAlex's
@@ -982,7 +989,8 @@ the app).
 
 **When**: on opening the Feeds tab (the tab calls `feeds_fetch` when shown
 and the last fetch, `feeds_last_fetch`, is older than 15 minutes) and on
-⌘R; polling in the background is a setting (off by default: the app sends
+⇧⌘R (`feeds_fetch` with `only`: one subscription, which leaves the last
+fetch's summary as it was); polling in the background is a setting (off by default: the app sends
 nothing unless asked): a thread looks each minute, the settings read each
 time, and fetches when the last fetch is older than `feeds_poll_minutes`. The page of
 a post is fetched when the post is selected or on `f`, or at fetch time for

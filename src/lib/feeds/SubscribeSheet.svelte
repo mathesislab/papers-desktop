@@ -8,7 +8,9 @@
   // feed its home page links to, read first (the journal's: its link or its own title names the journal); when its
   // site or its feed refuses, it links to none, or only to feeds that do not name the journal, nothing is subscribed:
   // the sheet says why, and offers its site (to find the feed and paste it above), a sweep of its ISSN in Crossref,
-  // or the feed that may not be the journal's. What is subscribed to is fetched when the sheet closes.
+  // or the feed that may not be the journal's. What is subscribed to is fetched when the sheet closes. *Subscribed*
+  // lists the subscriptions, in their groups; − next to a ✓ ends one at once (its items stay until they are old),
+  // which can be subscribed to again while the sheet is open.
 
   import { onMount } from "svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
@@ -18,10 +20,13 @@
   import {
     choiceFeed,
     feedOf,
+    SOURCE_GROUPS,
+    groupOf,
     journalChoice,
     journalFacts,
-    journalFollowed,
+    journalSubscription,
     sameFeed,
+    subscriptionOf,
     type FeedType,
     type JournalChoice,
   } from "./filters";
@@ -29,11 +34,14 @@
   let {
     subscriptions,
     onsubscribed,
+    onunsubscribed,
     onclose,
   }: {
     /** the subscriptions already there */
     subscriptions: SubscriptionInfo[];
     onsubscribed: (info: SubscriptionInfo) => void;
+    /** a subscription ended, by its id */
+    onunsubscribed: (id: string) => void;
     onclose: () => void;
   } = $props();
 
@@ -72,6 +80,10 @@
   /** what subscribing to a journal came to, by its ISSN (else title): its site read, then its feed or the choice */
   let chosen = $state<Record<string, { reading: true } | JournalChoice>>({});
   let filter = $state("");
+  /** the list below: the suggestions, or the subscriptions */
+  let listing = $state<"suggested" | "subscribed">("suggested");
+  /** the subscriptions ended in the sheet: listed still, to subscribe to again */
+  let ended = $state<SubscriptionInfo[]>([]);
   let input = $state<HTMLInputElement>();
   let filterInput = $state<HTMLInputElement>();
 
@@ -85,8 +97,17 @@
     return [...byGroup];
   });
   let fromLibrary = $derived(library.filter((j) => !words || j.title.toLowerCase().includes(words)));
+  /** the subscriptions and those ended here, in the groups of the sidebar, by title */
+  let mine = $derived.by(() => {
+    const all = [...subscriptions, ...ended.filter((e) => !subscriptionOf(e.feed, subscriptions))];
+    const shown = all.filter((s) => !words || `${s.title} ${feedText(s.feed)}`.toLowerCase().includes(words));
+    const byTitle = (a: SubscriptionInfo, b: SubscriptionInfo) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+    return SOURCE_GROUPS.map((g) => ({ ...g, list: shown.filter((s) => groupOf(s) === g.group).sort(byTitle) })).filter(
+      (g) => g.list.length,
+    );
+  });
 
-  const followed = (feed: api.Feed) => subscriptions.some((sub) => sameFeed(sub.feed, feed));
+  const feedText = (feed: api.Feed) => ("rss" in feed ? feed.rss : "crossref" in feed ? `Crossref ISSN ${feed.crossref}` : `OpenAlex ${feed.openalex}`);
 
   onMount(holdModal);
 
@@ -159,7 +180,30 @@
     }
   }
 
-  async function subscribe(feed: api.Feed, as: SourceKind, title?: string, how?: string) {
+  /** A subscription ended at once: listed still, to subscribe to again. */
+  async function unsubscribe(info: SubscriptionInfo) {
+    if (busy) return;
+    busy = true;
+    message = null;
+    try {
+      await api.unsubscribe(info.id);
+      onunsubscribed(info.id);
+      ended = [...ended.filter((e) => !sameFeed(e.feed, info.feed)), info];
+      message = { text: `Unsubscribed from ${info.title}: its items stay until they are old` };
+    } catch (e) {
+      message = { text: String(e), error: true };
+    }
+    busy = false;
+  }
+
+  /** A subscription ended here, subscribed to again as it was: its title, kind, journal, pages and boost. */
+  async function resubscribe(old: SubscriptionInfo) {
+    const { journal, fetchPages, boost } = old;
+    await subscribe(old.feed, old.kind, old.title, undefined, { journal, fetchPages, boost });
+  }
+
+  /** With `patch`, set on the subscription made. */
+  async function subscribe(feed: api.Feed, as: SourceKind, title?: string, how?: string, patch?: api.SubscriptionPatch) {
     if (busy) return;
     if (subscriptions.some((s) => sameFeed(s.feed, feed))) {
       message = { text: "Subscribed already" };
@@ -168,7 +212,9 @@
     busy = true;
     message = null;
     try {
-      const info = await api.subscribe(feed, as, title);
+      let info = await api.subscribe(feed, as, title);
+      if (patch) info = await api.updateSubscription(info.id, patch);
+      ended = ended.filter((e) => !sameFeed(e.feed, feed));
       onsubscribed(info);
       message = { text: `Subscribed to ${info.title}${how ? ` ${how}` : ""}: fetched when the sheet closes` };
       text = "";
@@ -215,9 +261,18 @@
   }
 </script>
 
+<!-- ✓ and − for a subscription there; else Subscribe -->
+{#snippet subscribed(sub: SubscriptionInfo)}
+  <span class="on">✓ Subscribed</span>
+  <button class="minus" disabled={busy} title="Unsubscribe from {sub.title}" aria-label="Unsubscribe from {sub.title}" onclick={() => unsubscribe(sub)}>
+    −
+  </button>
+{/snippet}
+
 {#snippet follow(feed: api.Feed, as: SourceKind)}
-  {#if followed(feed)}
-    <span class="on">✓ Subscribed</span>
+  {@const sub = subscriptionOf(feed, subscriptions)}
+  {#if sub}
+    {@render subscribed(sub)}
   {:else}
     <button disabled={busy} onclick={() => subscribe(feed, as)}>Subscribe</button>
   {/if}
@@ -227,12 +282,13 @@
 {#snippet journalRow(title: string, facts: string, journal: Journal)}
   {@const state = chosen[journalKey(journal)]}
   {@const shown = choiceFeed(state)}
-  {@const on = journalFollowed(journal, subscriptions) || (!!shown && followed({ rss: shown }))}
+  {@const sub = journalSubscription(journal, subscriptions) ?? (shown ? subscriptionOf({ rss: shown }, subscriptions) : undefined)}
+  {@const on = !!sub}
   <div class="suggestion">
     <span class="title" title={title}>{title}</span>
     <span class="muted">{facts}</span>
-    {#if on}
-      <span class="on">✓ Subscribed</span>
+    {#if sub}
+      {@render subscribed(sub)}
     {:else if !journal.issn}
       <span class="muted">no ISSN found</span>
     {:else if state && "reading" in state}
@@ -299,20 +355,46 @@
 
     <div class="suggested">
       <div class="row">
-        <h3>Suggested</h3>
+        <span class="modes" role="group" aria-label="What to list">
+          <button class:active={listing === "suggested"} onclick={() => (listing = "suggested")}>Suggested</button>
+          <button class:active={listing === "subscribed"} onclick={() => (listing = "subscribed")}>
+            Subscribed ({subscriptions.length})
+          </button>
+        </span>
         <span class="spacer"></span>
         <input
           class="filter"
           bind:this={filterInput}
           bind:value={filter}
           type="search"
-          placeholder="Filter, or a journal to search"
+          placeholder={listing === "suggested" ? "Filter, or a journal to search" : "Filter"}
           spellcheck="false"
           autocomplete="off"
         />
-        <button disabled={!filter.trim()} onclick={searchJournals}>Search journals</button>
+        {#if listing === "suggested"}
+          <button disabled={!filter.trim()} onclick={searchJournals}>Search journals</button>
+        {/if}
       </div>
       <div class="list">
+        {#if listing === "subscribed"}
+          {#each mine as g (g.group)}
+            <h4>{g.name}</h4>
+            {#each g.list as s (s.id)}
+              {@const sub = subscriptionOf(s.feed, subscriptions)}
+              <div class="suggestion">
+                <span class="title" title={s.title}>{s.title}</span>
+                <span class="muted feed" title={feedText(s.feed)}>{feedText(s.feed)}</span>
+                {#if sub}
+                  {@render subscribed(sub)}
+                {:else}
+                  <button disabled={busy} onclick={() => resubscribe(s)}>Subscribe</button>
+                {/if}
+              </div>
+            {/each}
+          {:else}
+            <p class="muted">{subscriptions.length ? "None" : "No subscriptions yet"}</p>
+          {/each}
+        {:else}
         {#if found}
           <h4>Journals matching "{found.text}"</h4>
           {#if found.journals === null}
@@ -364,6 +446,7 @@
             </div>
           {/each}
         {/each}
+        {/if}
       </div>
     </div>
 
@@ -403,11 +486,6 @@
   h2 {
     margin: 0 0 10px;
     font-size: 14px;
-    font-weight: 600;
-  }
-  h3 {
-    margin: 0;
-    font-size: 12px;
     font-weight: 600;
   }
   h4 {
@@ -517,6 +595,24 @@
   .on {
     color: #2f9e6e;
     font-size: 12px;
+  }
+  /* the end of a subscription, next to its ✓ */
+  button.minus {
+    width: 22px;
+    margin-left: -4px;
+    padding: 1px 0;
+    color: var(--muted);
+    line-height: 1;
+  }
+  button.minus:hover:not(:disabled) {
+    border-color: var(--error);
+    color: var(--error);
+  }
+  .muted.feed {
+    max-width: 40%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .actions {
     display: flex;

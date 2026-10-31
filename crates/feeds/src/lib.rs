@@ -52,7 +52,7 @@ use std::path::PathBuf;
 pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
 pub use guess::{Guess, guess_kind};
 pub use html::safe_html;
-pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
+pub use feeds::{FeedReport, Feeds, FetchReport, FollowUp, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
 pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
 pub use journals::{

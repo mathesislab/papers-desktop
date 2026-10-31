@@ -76,8 +76,6 @@ export interface FeedView {
 export interface ViewRequest {
   query: string;
   sort: Sort;
-  /** none: every kind */
-  kinds: ItemKind[];
   /** when the list was last brought up to date (ISO): what was fetched since is held back; none: every item */
   shown?: string | null;
 }
@@ -282,7 +280,9 @@ export interface LibraryJournal {
   follow: Follow;
 }
 
-export const fetchFeeds = () => invoke<FetchSummary>("feeds_fetch");
+/** Every subscription fetched, or the one of id `only`: the summary once the feeds are read; the lookups that follow
+ *  go on (`EVENTS.fetching`). */
+export const fetchFeeds = (only?: string) => invoke<FetchSummary>("feeds_fetch", { only: only ?? null });
 export const lastFetch = () => invoke<FetchSummary | null>("feeds_last_fetch");
 export const view = (request: ViewRequest) => invoke<FeedView>("feeds_view", { request });
 export const detail = (id: string, query: string) =>
@@ -335,11 +335,14 @@ export const savedSearches = () => invoke<SavedSearch[]>("feeds_searches");
 /** Refused for a blank name, or one given twice. */
 export const setSavedSearches = (searches: SavedSearch[]) => invoke<void>("feeds_set_searches", { searches });
 
+/** Where a fetch is: reading the feeds, looking up what they brought (Crossref, OpenAlex), done. */
+export type FetchPhase = "reading" | "looking-up" | "done";
+
 /** The events the page listens to. */
 export const EVENTS = {
   /** the items changed: a fetch, a triage from elsewhere, papers found, the library indexed again */
   changed: "feeds-changed",
-  /** a fetch started (true) or ended (false) */
+  /** where a fetch is (`FetchPhase`) */
   fetching: "feeds-fetching",
   /** the Feeds tab shown (true) or hidden (false) */
   tab: "feeds-tab",

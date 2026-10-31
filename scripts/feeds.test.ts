@@ -8,14 +8,13 @@ import {
   NO_FEED_FILTERS,
   chooseInterest,
   chooseKind,
-  chooseSegment,
   chooseSource,
   feedChips,
   choiceFeed,
   feedOf,
   journalChoice,
   journalFacts,
-  journalFollowed,
+  journalSubscription,
   nextSort,
   live,
   queryOf,
@@ -49,34 +48,28 @@ import { Dwell, decide, progressOf, reviewed, startReview, stepReview, summaryOf
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
 
-test("the query: a term per group of choices, the segment's kinds, then the text typed; dismissed left out unless asked", () => {
-  assert.equal(searchOf(f()), "is:new kind:paper,preprint -is:dismissed");
-  assert.equal(searchOf(f({ view: "all", segment: "all" })), "-is:dismissed");
+test("the query: a term per group of choices, then the text typed; dismissed left out unless asked", () => {
+  assert.equal(searchOf(f()), "is:new -is:dismissed", "every kind");
+  assert.equal(searchOf(f({ view: "all" })), "-is:dismissed");
   assert.equal(
     searchOf(f({ query: " greenland ", view: "shortlist", kinds: ["preprint"], interests: ["Ice sheets"], sources: ["The Cryosphere", "GRL"] })),
     'is:shortlisted kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL greenland -is:dismissed',
   );
-  assert.equal(queryOf(f({ segment: "posts", interests: ['say "hi"'] })), 'is:new kind:news,blog prof:"say hi"');
-  assert.equal(searchOf(f({ view: "all", segment: "all", query: "is:dismissed" })), "is:dismissed");
-  assert.equal(searchOf(f({ view: "all", segment: "all", query: "-is:seen,dismissed x" })), "-is:seen,dismissed x");
+  assert.equal(queryOf(f({ kinds: ["news", "blog"], interests: ['say "hi"'] })), 'is:new kind:news,blog prof:"say hi"');
+  assert.equal(searchOf(f({ view: "all", query: "is:dismissed" })), "is:dismissed");
+  assert.equal(searchOf(f({ view: "all", query: "-is:seen,dismissed x" })), "-is:seen,dismissed x");
+  assert.deepEqual(requestOf(f({ kinds: ["news"], sort: "newest" })), { query: "is:new kind:news -is:dismissed", sort: "newest" });
   assert.equal(live("x"), "x -is:dismissed");
   assert.equal(live(""), "-is:dismissed");
 });
 
-test("a click chooses one of a group, ⌘-click several; the segment follows the kinds", () => {
-  assert.deepEqual(requestOf(f()).kinds, ["paper", "preprint"]);
-  assert.deepEqual(requestOf(f({ segment: "posts" })).kinds, ["news", "blog"]);
-  assert.deepEqual(requestOf(f({ segment: "all" })).kinds, []);
-  assert.deepEqual(chooseKind(f(), "news"), f({ kinds: ["news"], segment: "posts" }));
-  assert.deepEqual(chooseKind(f({ segment: "all" }), "news"), f({ kinds: ["news"], segment: "all" }));
-  assert.deepEqual(chooseKind(f({ kinds: ["news"], segment: "posts" }), "news").kinds, []);
-  assert.deepEqual(chooseKind(f({ kinds: ["news", "blog"], segment: "posts" }), "news").kinds, ["news"]);
-  // ⌘: added, or taken out; papers and posts together: All
-  assert.deepEqual(chooseKind(f({ kinds: ["paper"] }), "preprint", true), f({ kinds: ["paper", "preprint"] }));
-  assert.deepEqual(chooseKind(f({ kinds: ["paper"] }), "news", true), f({ kinds: ["paper", "news"], segment: "all" }));
-  assert.deepEqual(chooseKind(f({ kinds: ["paper", "news"], segment: "all" }), "paper", true).kinds, ["news"]);
-  assert.deepEqual(chooseSegment(f({ kinds: ["news"], segment: "posts" }), "papers").kinds, []);
-  assert.deepEqual(chooseSegment(f({ kinds: ["paper", "news"], segment: "all" }), "posts").kinds, ["news"]);
+test("a click chooses one of a group, ⌘-click several", () => {
+  assert.deepEqual(chooseKind(f(), "news"), f({ kinds: ["news"] }));
+  assert.deepEqual(chooseKind(f({ kinds: ["news"] }), "news").kinds, []);
+  assert.deepEqual(chooseKind(f({ kinds: ["news", "blog"] }), "news").kinds, ["news"]);
+  // ⌘: added, or taken out
+  assert.deepEqual(chooseKind(f({ kinds: ["paper"] }), "news", true), f({ kinds: ["paper", "news"] }));
+  assert.deepEqual(chooseKind(f({ kinds: ["paper", "news"] }), "paper", true).kinds, ["news"]);
   assert.deepEqual(chooseInterest(chooseInterest(f(), "AMOC"), "AMOC").interests, []);
   assert.deepEqual(chooseInterest(f({ interests: ["AMOC", "Ice"] }), "AMOC").interests, ["AMOC"]);
   assert.deepEqual(chooseInterest(f({ interests: ["AMOC"] }), "Ice", true).interests, ["AMOC", "Ice"]);
@@ -111,13 +104,10 @@ test("restored: what is missing or wrong takes the default; a single choice of b
     sort: "newest",
     open: ["news"],
   });
-  assert.deepEqual(restoredFeeds({ kind: "news", interest: "AMOC", source: "Eos", segment: "posts" }), {
-    ...NO_FEED_FILTERS,
-    kinds: ["news"],
-    interests: ["AMOC"],
-    sources: ["Eos"],
-    segment: "posts",
-  });
+  // the segment of before is let go: every kind
+  const before = { kind: "news", interest: "AMOC", source: "Eos", segment: "posts" };
+  assert.deepEqual(restoredFeeds(before), { ...NO_FEED_FILTERS, kinds: ["news"], interests: ["AMOC"], sources: ["Eos"] });
+  assert.deepEqual(restoredFeeds({ segment: "papers" } as never), NO_FEED_FILTERS);
   assert.deepEqual(restoredFeeds({ kind: null, interest: null, source: null }), NO_FEED_FILTERS);
   assert.deepEqual(restoredFeeds({ kinds: ["blog", "nope" as never, "blog"], sources: ["A", 2 as never] }), {
     ...NO_FEED_FILTERS,
@@ -198,8 +188,8 @@ test("a journal of the Subscribe sheet: its facts, followed or not, what its sit
   assert.equal(journalFacts(glaciology), "Cambridge University Press · ISSN 0022-1430 · 6886 works");
   assert.equal(journalFacts({ ...glaciology, publisher: null, works: null }), "ISSN 0022-1430");
   const sweep = (issn: string) => ({ feed: { crossref: issn } }) as SubscriptionInfo;
-  assert.ok(journalFollowed(glaciology, [sweep("17275652")]), "by any of its ISSNs");
-  assert.ok(!journalFollowed(glaciology, [sweep("1994-0424")]));
+  assert.deepEqual(journalSubscription(glaciology, [sweep("17275652")])?.feed, { crossref: "17275652" }, "by any of its ISSNs");
+  assert.equal(journalSubscription(glaciology, [sweep("1994-0424")]), undefined);
   const homepage = glaciology.homepage;
   const url = "https://j.example.org/rss";
   const found = journalChoice({ homepage, feed: { site: "found", url, title: null } });

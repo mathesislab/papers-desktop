@@ -45,14 +45,10 @@ test("a query of the feeds taken apart into the choices, and put together again"
     kinds: ["preprint"],
     interests: ["Ice sheets"],
     sources: ["The Cryosphere", "GRL"],
-    segment: "papers",
     query: "greenland",
   });
-  // the kinds of a segment: that segment, no kind chosen; no kind: All
-  assert.deepEqual(decompose("kind:news,blog is:unread"), { ...decompose(""), view: "unread", segment: "posts" });
-  assert.deepEqual(decompose("melt"), { view: "all", kinds: [], interests: [], sources: [], segment: "all", query: "melt" });
-  assert.deepEqual(decompose("kind:paper,news").kinds, ["paper", "news"]);
-  assert.equal(decompose("kind:paper,news").segment, "all");
+  assert.deepEqual(decompose("kind:news,blog is:unread"), { ...decompose(""), view: "unread", kinds: ["news", "blog"] });
+  assert.deepEqual(decompose("melt"), { view: "all", kinds: [], interests: [], sources: [], query: "melt" });
   // what the sidebar does not choose stays text: an excluding term, a second of a group, another `is:`, a facet value no kind
   assert.equal(
     decompose('-src:Eos is:new is:shortlisted kind:podcast src:a src:b "is:new" score:3-').query,
@@ -73,12 +69,12 @@ test("a query of the feeds taken apart into the choices, and put together again"
     assert.deepEqual(termsOf(back), termsOf(q), `${q} → ${back}`);
     assert.ok(sameQuery(q, back));
   }
-  // the choices of the tab come back as they were (the kinds of a segment as the segment)
+  // the choices of the tab come back as they were
   const choices = [
     f(),
-    f({ view: "all", segment: "all", query: "melt y:2020-" }),
-    f({ view: "added", kinds: ["news"], segment: "posts", interests: ["A b", "C"], sources: ["Eos"] }),
-    f({ kinds: ["paper", "news"], segment: "all" }),
+    f({ view: "all", query: "melt y:2020-" }),
+    f({ view: "added", kinds: ["news"], interests: ["A b", "C"], sources: ["Eos"] }),
+    f({ kinds: ["paper", "news"] }),
   ];
   for (const c of choices) assert.deepEqual({ ...c, ...decompose(queryOf(c)) }, c);
   assert.ok(sameQuery("prof:A is:new melt", "is:new melt prof:A"));
@@ -88,7 +84,7 @@ test("a query of the feeds taken apart into the choices, and put together again"
 test("a saved search applied, and the one the tab shows", () => {
   const search = { name: "x", query: "is:shortlisted kind:news,blog prof:AMOC", sort: "newest" as const };
   const shown = applied(f({ open: ["blog"], query: "old", sources: ["TC"] }), search);
-  assert.deepEqual(shown, f({ view: "shortlist", segment: "posts", interests: ["AMOC"], sort: "newest", open: ["blog"] }));
+  assert.deepEqual(shown, f({ view: "shortlist", kinds: ["news", "blog"], interests: ["AMOC"], sort: "newest", open: ["blog"] }));
   assert.ok(isShown(shown, search));
   assert.ok(!isShown({ ...shown, sort: "score" }, search));
   assert.ok(!isShown({ ...shown, query: "melt" }, search));

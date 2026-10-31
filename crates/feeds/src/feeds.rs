@@ -34,6 +34,15 @@ pub struct FetchReport {
     pub pages: usize,
 }
 
+/// What followed reading the feeds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct FollowUp {
+    /// the requests of Crossref and OpenAlex for works by DOI, title or PII
+    pub lookups: usize,
+    /// the posts looked for on the web (their page, then their title)
+    pub pages: usize,
+}
+
 /// What the fetch of a subscription did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeedReport {
@@ -199,29 +208,70 @@ impl Feeds {
         store::write(&self.dir, CONFIG, &self.config)
     }
 
-    /// Fetches every subscription, one after the other, into the items, then
-    /// what follows (the papers of posts, the lookups by DOI); a feed that
-    /// fails is reported and the others go on. The APIs are asked with
-    /// `access`. The rules then triage the new items (their abstracts looked
-    /// up), and old items go.
+    /// Fetches every subscription ([`Feeds::read_feeds`]), then what follows
+    /// ([`Feeds::follow_up`]).
     pub fn fetch(&mut self, http: &dyn Http, access: &Access) -> Result<FetchReport> {
-        let known: BTreeSet<String> = self.items().iter().map(|i| i.id.clone()).collect();
+        let known = self.ids();
+        let mut report = self.read_feeds(None, http, access)?;
+        let followed = self.follow_up(&known, http, access)?;
+        report.lookups = followed.lookups;
+        report.pages = followed.pages;
+        Ok(report)
+    }
+
+    /// The ids of the items, to tell those a fetch brings.
+    pub fn ids(&self) -> BTreeSet<String> {
+        self.items().iter().map(|i| i.id.clone()).collect()
+    }
+
+    /// Reads every subscription, or the one of id `only`, one after the
+    /// other, into the items: the feeds' own text, written. A feed that fails
+    /// is reported and the others go on; the APIs of the sweeps are asked
+    /// with `access`.
+    pub fn read_feeds(
+        &mut self,
+        only: Option<&str>,
+        http: &dyn Http,
+        access: &Access,
+    ) -> Result<FetchReport> {
+        if let Some(id) = only
+            && !self.subscriptions().iter().any(|s| s.id == id)
+        {
+            return Err(Error::NoSubscription { id: id.to_string() });
+        }
         let mut report = FetchReport::default();
         for i in 0..self.config.subscriptions.len() {
-            let outcome = self.fetch_subscription(i, http, access);
             let subscription = self.config.subscriptions[i].id.clone();
+            if only.is_some_and(|id| id != subscription) {
+                continue;
+            }
+            let outcome = self.fetch_subscription(i, http, access);
             report.feeds.push(FeedReport {
                 subscription,
                 outcome,
             });
         }
-        let budget = self.complete(http, access);
-        report.lookups = budget.lookups_used();
-        report.pages = budget.pages_used();
-        self.apply_rules(&known);
-        self.drop_old();
         self.save()?;
         Ok(report)
+    }
+
+    /// What follows reading the feeds: the papers of posts, the lookups by
+    /// DOI. The rules then triage the items not `known` before (their
+    /// abstracts looked up), and old items go; written.
+    pub fn follow_up(
+        &mut self,
+        known: &BTreeSet<String>,
+        http: &dyn Http,
+        access: &Access,
+    ) -> Result<FollowUp> {
+        let budget = self.complete(http, access);
+        self.apply_rules(known);
+        self.drop_old();
+        self.save()?;
+        Ok(FollowUp {
+            lookups: budget.lookups_used(),
+            pages: budget.pages_used(),
+        })
     }
 
     /// Every file of the folder.

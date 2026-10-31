@@ -1,7 +1,7 @@
 <script lang="ts">
   // The Feeds tab of the main window (docs/design.md, Feeds; the mockup docs/mockups/feeds.html): the sidebar (the
-  // views, kinds, interests and sources), the list of the items its choices, the segment and the search select, the
-  // details of the one selected, beside the list or in place of it (the setting `feeds_beside`: a click or Enter opens
+  // views, kinds, interests and sources), the list of the items its choices and the search select, the details of
+  // the one selected, beside the list or in place of it (the setting `feeds_beside`: a click or Enter opens
   // the item over the list, its row pinned at the top; Esc or the row goes back to the list, where it was); the keys
   // of the triage; the Review of the starred items, over the list and the details; the Subscribe sheet.
   // The window (src/routes/library/+page.svelte) keeps the
@@ -29,13 +29,11 @@
   import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
-    SEGMENTS,
     SOURCE_KINDS,
     SORTS,
     applied,
     chooseInterest,
     chooseKind,
-    chooseSegment,
     chooseSource,
     feedChips,
     interestColours,
@@ -99,7 +97,8 @@
     onentry: (id: string) => void;
   } = $props();
 
-  const FETCH: Shortcut = { key: "r", mod: true };
+  const REFRESH: Shortcut = { key: "r", mod: true };
+  const FETCH: Shortcut = { key: "r", mod: true, shift: true };
   const ALL: Shortcut = { key: "a", mod: true };
   const REVIEW: Shortcut = { key: "Enter", mod: true };
 
@@ -124,7 +123,9 @@
   /** the post whose papers are being looked for */
   let finding = $state<string | null>(null);
   let last = $state<FetchSummary | null>(null);
+  /** a fetch reads the feeds; then looks up what they brought */
   let fetching = $state(false);
+  let lookingUp = $state(false);
   /** the failures of the last fetch, listed */
   let failures = $state(false);
   let input = $state<HTMLInputElement>();
@@ -176,9 +177,10 @@
   onMount(() => {
     const unlisten = [
       // a fetch in the background (polling) or from here
-      listen<boolean>(api.EVENTS.fetching, (e) => {
-        fetching = e.payload;
-        if (!e.payload) refresh();
+      listen<api.FetchPhase>(api.EVENTS.fetching, (e) => {
+        fetching = e.payload === "reading";
+        lookingUp = e.payload === "looking-up";
+        if (!fetching) refresh();
       }),
       // a fetch, a triage from elsewhere, papers found
       listen(api.EVENTS.changed, () => {
@@ -208,14 +210,15 @@
     if (stale(last) && subscriptions.length) fetchNow(false);
   }
 
-  /** ⌘R, ↻: every subscription fetched, then the list again. */
-  async function fetchNow(show = true) {
+  /** ⇧⌘R, ↻: every subscription fetched, or the one of id `only`; the list again once the feeds are read (the
+   *  lookups that follow go on, the list again when they end). */
+  async function fetchNow(show = true, only?: string) {
     if (fetching) return;
     fetching = true;
     failures = false;
     try {
-      last = await api.fetchFeeds();
-      const failed = last.failed.length;
+      const summary = await api.fetchFeeds(only);
+      const failed = summary.failed.length;
       if (failed) say(`${failed} ${failed === 1 ? "subscription" : "subscriptions"} failed`);
     } catch (e) {
       say(String(e));
@@ -230,6 +233,14 @@
   function showHeld() {
     shown = new Date().toISOString();
     load(true);
+  }
+
+  /** ⌘R: the list brought up to date, nothing fetched: what was held back in, the items triaged here gone from
+   *  where they no longer belong, sorted again. */
+  function refreshList() {
+    sticky.clear();
+    shown = new Date().toISOString();
+    load(false);
   }
 
   /** After a fetch: the subscriptions, the summary of the fetch, the list. */
@@ -613,6 +624,75 @@
     await menu.popup();
   }
 
+  /** Right-click on a source of the sidebar (the subscriptions of that title): its kind, a fetch of it alone, the
+   *  end of it. */
+  async function sourceMenu(title: string) {
+    const subs = subscriptions.filter((s) => s.title === title);
+    if (!subs.length) return;
+    const feeds = subs.filter((s) => "rss" in s.feed);
+    const menu = await Menu.new({
+      items: [
+        ...(feeds.length
+          ? [
+              await Submenu.new({
+                text: "Source Is",
+                items: await Promise.all(
+                  SOURCE_KINDS.map((k) =>
+                    CheckMenuItem.new({
+                      text: k.name,
+                      checked: feeds.every((s) => s.kind === k.kind),
+                      action: async () => {
+                        for (const s of feeds) await setKind(s.id, s.title, k.kind);
+                      },
+                    }),
+                  ),
+                ),
+              }),
+            ]
+          : []),
+        await MenuItem.new({
+          text: "Fetch This Source",
+          enabled: !fetching,
+          action: async () => {
+            for (const s of subs) await fetchNow(true, s.id);
+          },
+        }),
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        await MenuItem.new({ text: "Unsubscribe…", action: () => unsubscribe(title, subs) }),
+      ],
+    });
+    await menu.popup();
+  }
+
+  /** The subscriptions of a source ended, once asked: their items stay until they are old. */
+  async function unsubscribe(title: string, subs: SubscriptionInfo[]) {
+    const sure = await ask(`Its items stay until they are older than the days the settings keep them.`, {
+      title: `Unsubscribe from ${title}?`,
+      kind: "warning",
+      okLabel: "Unsubscribe",
+    });
+    if (!sure) return;
+    try {
+      for (const s of subs) {
+        await api.unsubscribe(s.id);
+        unsubscribed(s.id);
+      }
+      say(`Unsubscribed from ${title}`);
+    } catch (e) {
+      say(String(e));
+    }
+    load(true);
+  }
+
+  /** A subscription ended, here or in the Subscribe sheet. */
+  function unsubscribed(id: string) {
+    const gone = subscriptions.find((s) => s.id === id);
+    subscriptions = subscriptions.filter((s) => s.id !== id);
+    if (gone && !subscriptions.some((s) => s.title === gone.title)) {
+      filters.sources = filters.sources.filter((t) => t !== gone.title);
+    }
+  }
+
   /** A subscription set to another kind, from the row menu: its items move at once. */
   async function setKind(id: string, title: string, kind: api.SourceKind) {
     try {
@@ -629,6 +709,7 @@
   function closeSubscribe() {
     subscribing = false;
     if (subscribed) fetchNow();
+    else load(true);
     subscribed = false;
   }
 
@@ -647,7 +728,8 @@
   /** the rows a page key moves: about those in view */
   const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 160) / 26));
 
-  /** A key of the window while the tab is in front (none while a sheet is open): ⌘R fetches, ⌘↩ starts the Review
+  /** A key of the window while the tab is in front (none while a sheet is open): ⌘R brings the list up to date,
+   *  ⇧⌘R fetches, ⌘↩ starts the Review
    *  (which then has the keys); the arrows, j and k, the page keys, Home and End move (⇧ extends the selection with
    *  the arrows); s, x, m, u (keep unread), z (later), o, a, f act on the selection; ⇧Space marks all above as
    *  seen; Enter reads the item in place of the list, Esc goes back; / goes to the search, Esc leaves it. */
@@ -663,6 +745,7 @@
       e.preventDefault();
       action();
     };
+    if (matches(e, REFRESH)) return act(refreshList);
     if (matches(e, FETCH)) return act(() => fetchNow());
     if (matches(e, REVIEW)) return act(toggleReview);
     if (reviewing && !typing) return reviewer?.key(e);
@@ -754,6 +837,7 @@
       subscriptions = [...subscriptions, info];
       subscribed = true;
     }}
+    onunsubscribed={unsubscribed}
     onclose={closeSubscribe}
   />
 {/if}
@@ -769,6 +853,8 @@
         onkind={(kind, toggle) => (filters = chooseKind(filters, kind, toggle))}
         oninterest={(name, toggle) => (filters = chooseInterest(filters, name, toggle))}
         onsource={(title, toggle) => (filters = chooseSource(filters, title, toggle))}
+        onsourcemenu={sourceMenu}
+        onsubscribe={() => (subscribing = true)}
         onfold={fold}
       >
         {#snippet saved()}
@@ -811,7 +897,7 @@
       <span class="notice">{notice ?? ""}</span>
       <span class="spacer"></span>
       {#if held}
-        <button class="tool held" title="Show what was fetched since the list was brought up to date" onclick={showHeld}>
+        <button class="tool held" title="Show what was fetched since the list was brought up to date ({label(REFRESH)} also sorts it again)" onclick={showHeld}>
           {held} new · Show
         </button>
       {/if}
@@ -819,8 +905,8 @@
         <span class="spin">↻</span>
         {fetching ? "Fetching…" : "Fetch"}
       </button>
-      <button class="tool" title="Subscribe to a journal, a preprint server, a news site or a blog" onclick={() => (subscribing = true)}>
-        + Subscribe…
+      <button class="tool" title="Subscribe to a journal, a preprint server, a news site or a blog, or unsubscribe" onclick={() => (subscribing = true)}>
+        Subscribe…
       </button>
       <button class="tool primary" class:on={reviewing} title="Review the starred items, one at a time ({label(REVIEW)})" onclick={toggleReview}>
         {reviewing ? "Leave review" : `Review starred (${shortlisted})`}
@@ -845,11 +931,6 @@
       {:else}
         <section class="list">
           <div class="filters">
-            <span class="segment" role="group" aria-label="Kinds">
-              {#each SEGMENTS as s (s.segment)}
-                <button class:on={filters.segment === s.segment} onclick={() => (filters = chooseSegment(filters, s.segment))}>{s.name}</button>
-              {/each}
-            </span>
             {#each chips as chip (chip.kind)}
               <span class="chip">
                 <span class="text" title={chip.text}>{chip.text}</span>
@@ -938,7 +1019,7 @@
     </div>
     <footer class="status">
       <span>
-        {fetching ? "Fetching…" : fetchLine(last, now)}
+        {fetching ? "Fetching…" : lookingUp ? "Looking up in Crossref and OpenAlex…" : fetchLine(last, now)}
         {#if !fetching && last?.failed.length}
           <button
             class="failed"
@@ -1195,7 +1276,7 @@
     }
   }
 
-  /* Papers | Posts | All, the choices as chips, the count and the sort */
+  /* the choices as chips, the count and the sort */
   .filters {
     flex: none;
     display: flex;
@@ -1205,28 +1286,6 @@
     padding: 6px 12px;
     border-bottom: 1px solid var(--line);
     font-size: 12px;
-  }
-  .segment {
-    display: inline-flex;
-    margin-right: 6px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .segment button {
-    padding: 2px 10px;
-    border: none;
-    background: none;
-    color: var(--muted);
-    font: inherit;
-  }
-  .segment button + button {
-    border-left: 1px solid var(--border);
-  }
-  .segment button.on {
-    background: var(--line);
-    color: var(--fg);
-    font-weight: 600;
   }
   .chip {
     display: inline-flex;

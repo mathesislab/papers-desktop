@@ -2,7 +2,8 @@
   // The sidebar of the Feeds tab: the views (the items by their triage), the kinds, the interests, the sources in
   // their groups (folded or not). A click chooses one of a group, a second click lets it go (*All* for the views);
   // ⌘-click (Ctrl elsewhere) adds one to the choices of its group, or takes it out. The choices are filters of the
-  // list, a chip per group above it. The counts are over every item not dismissed, whatever the search.
+  // list, a chip per group above it. The counts are over every item not dismissed, whatever the search. A source's
+  // menu (right-click) sets its kind, fetches it or unsubscribes; the Sources header opens the Subscribe sheet.
 
   import { invoke } from "@tauri-apps/api/core";
   import type { Snippet } from "svelte";
@@ -19,6 +20,8 @@
     onkind,
     oninterest,
     onsource,
+    onsourcemenu,
+    onsubscribe,
     onfold,
   }: {
     /** the Saved section, at the top */
@@ -33,6 +36,10 @@
     onkind: (kind: ItemKind, toggle: boolean) => void;
     oninterest: (name: string, toggle: boolean) => void;
     onsource: (title: string, toggle: boolean) => void;
+    /** a source right-clicked, by its title */
+    onsourcemenu: (title: string) => void;
+    /** the Sources header clicked: the Subscribe sheet */
+    onsubscribe: () => void;
     /** a group of the sources unfolded or folded */
     onfold: (group: string, open: boolean) => void;
   } = $props();
@@ -73,8 +80,10 @@
       {/each}
     {/if}
 
+    <h4>
+      <button class="heading" title="Subscribe, or unsubscribe" onclick={onsubscribe}>Sources <span class="plus">+</span></button>
+    </h4>
     {#if groups.length}
-      <h4>Sources</h4>
       {#each groups as g (g.group)}
         {@const open = filters.open.includes(g.group) || g.sources.some((s) => filters.sources.includes(s.title))}
         <button class="item group" aria-expanded={open} onclick={() => onfold(g.group, !open)}>
@@ -90,6 +99,10 @@
               class:selected={filters.sources.includes(source.title)}
               title={source.title}
               onclick={(e) => onsource(source.title, modClick(e))}
+              oncontextmenu={(e) => {
+                e.preventDefault();
+                onsourcemenu(source.title);
+              }}
             >
               <span class="name">{source.title}</span><span class="count">{source.count}</span>
             </button>
@@ -153,6 +166,31 @@
     color: var(--muted);
     font-size: 11px;
     font-weight: 600;
+  }
+  /* the Sources header: the Subscribe sheet, its + on hover */
+  .heading {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: default;
+  }
+  .heading .plus {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 400;
+    opacity: 0;
+  }
+  .heading:hover {
+    color: var(--fg);
+  }
+  .heading:hover .plus {
+    opacity: 1;
   }
   .item {
     display: flex;

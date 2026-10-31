@@ -44,8 +44,8 @@ export type Outcome = "added" | "dismissed" | "later";
  *  are through), and what was done with each. */
 export type Review = { ids: string[]; at: number; done: Record<string, Outcome> };
 
-/** What the review asks the backend for: the shortlist, by score, every kind. */
-export const REVIEW_REQUEST: ViewRequest = { query: "is:shortlisted", sort: "score", kinds: [] };
+/** What the review asks the backend for: the shortlist, by score. */
+export const REVIEW_REQUEST: ViewRequest = { query: "is:shortlisted", sort: "score" };
 
 export const startReview = (ids: string[]): Review => ({ ids, at: 0, done: {} });
 

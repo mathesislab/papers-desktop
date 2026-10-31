@@ -1,4 +1,4 @@
-// The Feeds tab shows the items that the choices of its sidebar, the segment and the search select. As the library's
+// The Feeds tab shows the items that the choices of its sidebar and the search select. As the library's
 // (library/filters.ts), the choices are filters of their own, shown as chips, not text of the search field; the
 // backend is asked for one query: a term per group of choices (`is:new`, `kind:paper,preprint`, `prof:"Ice sheets"`,
 // `src:"The Cryosphere",GRL`) followed by the text typed, all of which must hold, an item being any of the choices
@@ -20,8 +20,6 @@ import type {
 
 /** the views of the sidebar: the items by their triage */
 export type Shelf = "unread" | "shortlist" | "snoozed" | "added" | "all";
-/** Papers | Posts | All, above the list: the kinds asked for */
-export type Segment = "papers" | "posts" | "all";
 
 /** What the Feeds tab keeps between sessions (the layout's `feeds`). */
 export type FeedFilters = {
@@ -30,7 +28,6 @@ export type FeedFilters = {
   kinds: ItemKind[];
   interests: string[];
   sources: string[];
-  segment: Segment;
   sort: Sort;
   /** the text of the search field, in the feeds' query language */
   query: string;
@@ -43,7 +40,6 @@ export const NO_FEED_FILTERS: FeedFilters = {
   kinds: [],
   interests: [],
   sources: [],
-  segment: "papers",
   sort: "score",
   query: "",
   open: ["journal"],
@@ -71,24 +67,6 @@ export const KINDS: { kind: ItemKind; name: string }[] = [
   { kind: "news", name: "News & press" },
   { kind: "blog", name: "General" },
 ];
-
-export const SEGMENTS: { segment: Segment; name: string; kinds: ItemKind[] }[] = [
-  { segment: "papers", name: "Papers", kinds: ["paper", "preprint"] },
-  { segment: "posts", name: "Posts", kinds: ["news", "blog"] },
-  { segment: "all", name: "All", kinds: [] },
-];
-
-const kindsOf = (segment: Segment) => SEGMENTS.find((s) => s.segment === segment)?.kinds ?? [];
-
-/** The segment that shows the kinds: Papers, Posts, else All. */
-const segmentOf = (kinds: ItemKind[]): Segment =>
-  kinds.every((k) => !isPost(k)) ? "papers" : kinds.every(isPost) ? "posts" : "all";
-
-/** Whether the segment shows items of a kind. */
-export const segmentHas = (segment: Segment, kind: ItemKind) => {
-  const kinds = kindsOf(segment);
-  return kinds.length === 0 || kinds.includes(kind);
-};
 
 /** A post: news or a blog; the rest are papers. */
 export const isPost = (kind: ItemKind) => kind === "news" || kind === "blog";
@@ -124,7 +102,6 @@ export function restoredFeeds(
     kinds: values(saved?.kinds, saved?.kind, isKind),
     interests: values(saved?.interests, saved?.interest, text),
     sources: values(saved?.sources, saved?.source, text),
-    segment: SEGMENTS.find((s) => s.segment === saved?.segment)?.segment ?? d.segment,
     sort: SORTS.find((s) => s.sort === saved?.sort)?.sort ?? d.sort,
     query: text(saved?.query) ? saved.query : d.query,
     open: Array.isArray(saved?.open) ? saved.open.filter(text) : d.open,
@@ -138,13 +115,13 @@ const FEED_FIELDS = [...FIELDS, "kind", "is", "src", "prof", "score", "like"];
 const asksDismissed = (query: string) =>
   queryTerms(query, FEED_FIELDS).some((t) => t.field === "is" && t.values.some((v) => v.trim().toLowerCase() === "dismissed"));
 
-/** The query of the choices: a term per group of the sidebar, the segment's kinds when no kind is chosen, then the
- *  text typed (`is:new kind:paper,preprint prof:AMOC melt`). The whole query of the tab, its segment too: what a saved
- *  search keeps (see `decompose`, which takes the choices back: they come first). */
+/** The query of the choices: a term per group of the sidebar, then the text typed (`is:new kind:paper,preprint
+ *  prof:AMOC melt`). The whole query of the tab: what a saved search keeps (see `decompose`, which takes the choices
+ *  back: they come first). */
 export function queryOf(f: FeedFilters): string {
   return [
     SHELVES.find((s) => s.view === f.view)?.term ?? "",
-    anyOf("kind", f.kinds.length ? f.kinds : kindsOf(f.segment)),
+    anyOf("kind", f.kinds),
     anyOf("prof", f.interests),
     anyOf("src", f.sources),
     f.query.trim(),
@@ -162,7 +139,7 @@ export const searchOf = (f: FeedFilters): string => live(queryOf(f));
 
 /** What `view` is asked for. */
 export function requestOf(f: FeedFilters): ViewRequest {
-  return { query: searchOf(f), sort: f.sort, kinds: kindsOf(f.segment) };
+  return { query: searchOf(f), sort: f.sort };
 }
 
 /** A value of a group clicked: that one alone, or none when it was so already; with ⌘ (`toggle`), added to the
@@ -172,18 +149,11 @@ function chosen<T>(values: T[], value: T, toggle: boolean): T[] {
   return values.length === 1 && values[0] === value ? [] : [value];
 }
 
-/** A kind clicked in the sidebar (see `chosen`); the segment follows when it does not show them. */
-export function chooseKind(f: FeedFilters, kind: ItemKind, toggle = false): FeedFilters {
-  const kinds = chosen(f.kinds, kind, toggle);
-  return { ...f, kinds, segment: kinds.every((k) => segmentHas(f.segment, k)) ? f.segment : segmentOf(kinds) };
-}
-
-/** Another segment: the kinds chosen that it does not show are let go. */
-export function chooseSegment(f: FeedFilters, segment: Segment): FeedFilters {
-  return { ...f, segment, kinds: f.kinds.filter((k) => segmentHas(segment, k)) };
-}
-
-/** An interest or a subscription clicked (see `chosen`). */
+/** A kind, an interest or a subscription clicked (see `chosen`). */
+export const chooseKind = (f: FeedFilters, kind: ItemKind, toggle = false): FeedFilters => ({
+  ...f,
+  kinds: chosen(f.kinds, kind, toggle),
+});
 export const chooseInterest = (f: FeedFilters, interest: string, toggle = false): FeedFilters => ({
   ...f,
   interests: chosen(f.interests, interest, toggle),
@@ -194,13 +164,13 @@ export const chooseSource = (f: FeedFilters, source: string, toggle = false): Fe
 });
 
 /** What a query of the tab chooses. */
-type Choices = Pick<FeedFilters, "view" | "kinds" | "interests" | "sources" | "segment" | "query">;
+type Choices = Pick<FeedFilters, "view" | "kinds" | "interests" | "sources" | "query">;
 
-/** The choices of a query, as the sidebar, the segment and the field show them: its first `is:` term of a view,
- *  `kind:`, `prof:` and `src:` terms (not excluding) become the choices of their groups, a `kind:` of a segment's
- *  kinds that segment, the rest the text typed, in its order. `queryOf` gives an equivalent query back. */
+/** The choices of a query, as the sidebar and the field show them: its first `is:` term of a view, `kind:`, `prof:`
+ *  and `src:` terms (not excluding) become the choices of their groups, the rest the text typed, in its order.
+ *  `queryOf` gives an equivalent query back. */
 export function decompose(query: string): Choices {
-  const f: Choices = { view: "all", kinds: [], interests: [], sources: [], segment: "all", query: "" };
+  const f: Choices = { view: "all", kinds: [], interests: [], sources: [], query: "" };
   const taken = new Set<string>();
   const rest: string[] = [];
   for (const term of queryTerms(query, FEED_FIELDS)) {
@@ -212,10 +182,7 @@ export function decompose(query: string): Choices {
     if (free && field === "is" && vals.length === 1 && shelf) {
       f.view = shelf.view;
     } else if (free && field === "kind" && lower.every(isKind)) {
-      const kinds = [...new Set(lower)] as ItemKind[];
-      const segment = SEGMENTS.find((s) => s.kinds.length === kinds.length && s.kinds.every((k) => kinds.includes(k)));
-      if (segment) f.segment = segment.segment;
-      else [f.kinds, f.segment] = [kinds, segmentOf(kinds)];
+      f.kinds = [...new Set(lower)] as ItemKind[];
     } else if (free && field === "prof") {
       f.interests = vals;
     } else if (free && field === "src") {
@@ -296,7 +263,7 @@ export function shelfCounts(counts: FeedCounts | null): Record<Shelf, number> {
 /** A group of the sources in the sidebar: the subscriptions of a kind, the sweeps of Crossref and OpenAlex apart. */
 export type SourceGroup = { group: SourceKind | "sweeps"; name: string; count: number; sources: { title: string; count: number }[] };
 
-const GROUPS: { group: SourceGroup["group"]; name: string }[] = [
+export const SOURCE_GROUPS: { group: SourceGroup["group"]; name: string }[] = [
   { group: "journal", name: "Journals" },
   { group: "preprints", name: "Preprint servers" },
   { group: "sweeps", name: "Sweeps (Crossref, OpenAlex)" },
@@ -306,11 +273,13 @@ const GROUPS: { group: SourceGroup["group"]; name: string }[] = [
 
 const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 
+/** The group of a subscription: its kind, or a sweep. */
+export const groupOf = (s: SubscriptionInfo): SourceGroup["group"] => ("rss" in s.feed ? s.kind : "sweeps");
+
 /** The subscriptions in their groups, by title, each with the number of its items (`counts.sources`); the groups
  *  without any are left out. */
 export function sourceGroups(subscriptions: SubscriptionInfo[], counts: Record<string, number>): SourceGroup[] {
-  const groupOf = (s: SubscriptionInfo): SourceGroup["group"] => ("rss" in s.feed ? s.kind : "sweeps");
-  return GROUPS.map(({ group, name }) => {
+  return SOURCE_GROUPS.map(({ group, name }) => {
     const titles = [...new Set(subscriptions.filter((s) => groupOf(s) === group).map((s) => s.title))].sort(collator.compare);
     const sources = titles.map((title) => ({ title, count: counts[title] ?? 0 }));
     return { group, name, sources, count: sources.reduce((n, s) => n + s.count, 0) };
@@ -356,9 +325,16 @@ export function sameFeed(a: Feed, b: Feed): boolean {
   return key(a) === key(b);
 }
 
-/** Whether a journal is followed: a sweep of one of its ISSNs. */
-export function journalFollowed(journal: Journal, subscriptions: SubscriptionInfo[]): boolean {
-  return journal.issns.some((issn) => subscriptions.some((s) => sameFeed(s.feed, { crossref: issn })));
+/** The subscription of a feed, if there is one. */
+export const subscriptionOf = (feed: Feed, subscriptions: SubscriptionInfo[]) =>
+  subscriptions.find((s) => sameFeed(s.feed, feed));
+
+/** The subscription that follows a journal by a sweep of one of its ISSNs, if there is one. */
+export function journalSubscription(journal: Journal, subscriptions: SubscriptionInfo[]): SubscriptionInfo | undefined {
+  for (const issn of journal.issns) {
+    const found = subscriptionOf({ crossref: issn }, subscriptions);
+    if (found) return found;
+  }
 }
 
 /** A journal of a search, in a line: "Cambridge University Press · ISSN 0022-1430 · 6886 works". */
