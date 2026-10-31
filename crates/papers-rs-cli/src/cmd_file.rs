@@ -12,6 +12,7 @@ use papers_rs::command::files::{Mode, files_mode};
 use papers_rs::command::pool::push_note_lines;
 use papers_rs::command::queries::Queries;
 use papers_rs::command::report::{Notes, print_changes};
+use papers_rs::command::session::Committed;
 use papers_rs::command::{Options, Session, read_selection};
 use papers_rs::config::Config;
 use papers_rs::config::paths::{abspath, short_home};
@@ -299,13 +300,7 @@ fn fetch(leaf: &Leaf, config: Config) -> Done {
             .map_err(|e| Error::other(e.message))?;
         let fetched = file_fetch(session, &fetcher, &request)?;
         if let Some(committed) = &fetched.committed {
-            if leaf.flag("porcelain") {
-                report(session, leaf, &fetched.keys, &committed.notes);
-            } else {
-                for line in push_note_lines(&session.library, &committed.notes) {
-                    session.say.line(line);
-                }
-            }
+            report_fetched(session, leaf, &fetched.keys, committed);
         }
         if missing && fetched.keys.is_empty() {
             session.say.line("every entry has a PDF");
@@ -319,6 +314,18 @@ fn fetch(leaf: &Leaf, config: Config) -> Done {
         }
         refused(fetched.failed == 0)
     })
+}
+
+/// After the save of `papers file fetch` (`_save_fetched`): the changes of the entries with
+/// `--porcelain`, else the push notes.
+fn report_fetched(session: &Session, leaf: &Leaf, keys: &[String], committed: &Committed) {
+    if leaf.flag("porcelain") {
+        report(session, leaf, keys, &committed.notes);
+    } else {
+        for line in push_note_lines(&session.library, &committed.notes) {
+            session.say.line(line);
+        }
+    }
 }
 
 /// `papers file fetch --upgrade [KEY...]` (`file_upgradecmd`).
@@ -341,13 +348,7 @@ fn upgrade(leaf: &Leaf, config: Config) -> Done {
             .map_err(|e| Error::other(e.message))?;
         let upgraded = file_upgrade(session, &fetcher, &request)?;
         if let Some(committed) = &upgraded.committed {
-            if leaf.flag("porcelain") {
-                report(session, leaf, &upgraded.keys, &committed.notes);
-            } else {
-                for line in push_note_lines(&session.library, &committed.notes) {
-                    session.say.line(line);
-                }
-            }
+            report_fetched(session, leaf, &upgraded.keys, committed);
         }
         if entries.is_empty() && upgraded.keys.is_empty() {
             session.say.line(

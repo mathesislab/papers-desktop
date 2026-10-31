@@ -352,9 +352,7 @@ fn dry_run_lines(
     if main {
         let links: Vec<Link> = search.links().collect();
         for (i, link) in links.iter().enumerate() {
-            let found = fetcher
-                .known_download(&link.url)
-                .and_then(|known| local(link, &known));
+            let found = fetcher.local_copy(link, Some(&mut *local));
             let has = found.as_ref().is_some_and(|f| f.how == How::Has);
             let mut what = match &found {
                 Some(found) if found.how == How::Has => {
@@ -509,82 +507,93 @@ pub fn fetch_entry_pdfs(
 
     // the downloads are done: the files are attached
     for (key, found, refused) in plans {
-        let mut new: Vec<Found> = Vec::new();
-        for f in found {
-            let same = || {
-                let mut files = session.library.files(&key);
-                files.extend(new.iter().map(|g| g.path.clone()));
-                same_content(&f.path, &files)
-            };
-            if f.how == How::Has {
-                session.say.line(format!(
-                    "{key}: already has {} (from {})",
-                    show(&f.path),
-                    f.link.host()
-                ));
-            } else if let Some(same) = (f.how == How::Downloaded).then(same).flatten() {
-                session.say.line(format!(
-                    "{key}: {}: not attached, the entry has the same file: {}",
-                    f.link.url,
-                    show(&same)
-                ));
-                discard(&f.path);
-            } else {
-                new.push(f);
-                continue;
-            }
-            // not attached: the entry had the PDF already (counted once, not as refused)
-            if f.link.version != Version::Supplement {
-                summary.had += 1;
-                if let Some(i) = summary
-                    .browser
-                    .iter()
-                    .position(|b| Some(b) == refused.as_ref())
-                {
-                    summary.browser.remove(i);
-                }
-            }
-        }
-        if new.is_empty() {
-            continue;
-        }
-        // a file of another entry is linked where it is (shared, as add does); the others are placed
-        let (linked, placed): (Vec<Found>, Vec<Found>) = new
-            .into_iter()
-            .partition(|f| matches!(f.how, How::Linked(_)));
-        let mut files = session.library.files(&key);
-        files.extend(linked.iter().map(|f| f.path.clone()));
-        session.library.set_files(&key, &files)?;
-        if !placed.is_empty() {
-            let paths: Vec<String> = placed.iter().map(|f| f.path.clone()).collect();
-            if !attach_files(session, &key, &paths, &Attach::new(mode))? {
-                failed += 1;
-            }
-        }
-        for f in &placed {
-            // the temporary folder of a download, now empty
-            if f.how == How::Downloaded && !exists(&f.path) {
-                discard(&f.path);
-            }
-        }
-        let all = session.library.files(&key);
-        let count = linked.len() + placed.len();
-        let paths = &all[all.len().saturating_sub(count)..];
-        for (path, f) in paths.iter().zip(linked.iter().chain(&placed)) {
-            session.say.line(found_line(&key, path, f));
-            if f.link.version == Version::Supplement {
-                summary.supplements += 1;
-            } else {
-                *summary.attached.entry(f.link.version).or_default() += 1;
-                // in .papers/files.json, by checksum
-                session
-                    .library
-                    .pdf_versions
-                    .insert(path.clone(), f.link.version.word().to_string());
-            }
+        if !attach_fetched(session, &key, found, refused.as_ref(), mode, summary)? {
+            failed += 1;
         }
     }
     Ok(failed)
+}
+
+/// Attach the PDFs found for the entry `key` as [`fetch_entry_pdfs`] says, and count them in the
+/// summary (`_attach_fetched`; `refused`: the summary line of a refused published version). False
+/// when the files could not be placed ([`attach_files`]).
+fn attach_fetched(
+    session: &mut Session,
+    key: &str,
+    found: Vec<Found>,
+    refused: Option<&ToOpen>,
+    mode: Mode,
+    summary: &mut FetchSummary,
+) -> Result<bool> {
+    let mut new: Vec<Found> = Vec::new();
+    for f in found {
+        let same = || {
+            let mut files = session.library.files(key);
+            files.extend(new.iter().map(|g| g.path.clone()));
+            same_content(&f.path, &files)
+        };
+        if f.how == How::Has {
+            session.say.line(format!(
+                "{key}: already has {} (from {})",
+                show(&f.path),
+                f.link.host()
+            ));
+        } else if let Some(same) = (f.how == How::Downloaded).then(same).flatten() {
+            session.say.line(format!(
+                "{key}: {}: not attached, the entry has the same file: {}",
+                f.link.url,
+                show(&same)
+            ));
+            discard(&f.path);
+        } else {
+            new.push(f);
+            continue;
+        }
+        // not attached: the entry had the PDF already (counted once, not as refused)
+        if f.link.version != Version::Supplement {
+            summary.had += 1;
+            if let Some(i) = summary.browser.iter().position(|b| Some(b) == refused) {
+                summary.browser.remove(i);
+            }
+        }
+    }
+    if new.is_empty() {
+        return Ok(true);
+    }
+    // a file of another entry is linked where it is (shared, as add does); the others are placed
+    let (linked, placed): (Vec<Found>, Vec<Found>) = new
+        .into_iter()
+        .partition(|f| matches!(f.how, How::Linked(_)));
+    let mut files = session.library.files(key);
+    files.extend(linked.iter().map(|f| f.path.clone()));
+    session.library.set_files(key, &files)?;
+    let ok = placed.is_empty() || {
+        let paths: Vec<String> = placed.iter().map(|f| f.path.clone()).collect();
+        attach_files(session, key, &paths, &Attach::new(mode))?
+    };
+    for f in &placed {
+        // the temporary folder of a download, now empty
+        if f.how == How::Downloaded && !exists(&f.path) {
+            discard(&f.path);
+        }
+    }
+    let all = session.library.files(key);
+    let count = linked.len() + placed.len();
+    let paths = &all[all.len().saturating_sub(count)..];
+    for (path, f) in paths.iter().zip(linked.iter().chain(&placed)) {
+        session.say.line(found_line(key, path, f));
+        if f.link.version == Version::Supplement {
+            summary.supplements += 1;
+        } else {
+            *summary.attached.entry(f.link.version).or_default() += 1;
+            // in .papers/files.json, by checksum
+            session
+                .library
+                .pdf_versions
+                .insert(path.clone(), f.link.version.word().to_string());
+        }
+    }
+    Ok(ok)
 }
 
 /// The versions lower than the published one, that `--upgrade` replaces (`LOWER_VERSIONS`).
@@ -706,51 +715,65 @@ pub fn upgrade_entry_pdfs(
 
     // the downloads are done: the files are replaced
     for (key, file, version, found) in plans {
-        let same = if found.how == How::Has {
-            Some(found.path.clone())
-        } else {
-            same_content(&found.path, &session.library.files(&key))
-        };
-        if let Some(same) = same {
-            // the entry has the published version already: it is now known
-            session.say.line(format!(
-                "{key}: already has {} ({})",
-                show(&same),
-                found.describe()
-            ));
-            if found.how == How::Downloaded {
-                discard(&found.path);
-            }
-            session
-                .library
-                .pdf_versions
-                .insert(same, Version::Published.word().to_string());
-            summary.had += 1;
-            continue;
-        }
-        session.replace_file(&file, &found.path, found.how != How::Downloaded)?;
+        replace_by_published(session, &key, &file, version, &found, summary)?;
+    }
+    Ok(looked)
+}
+
+/// Replace the PDF `file` of the entry `key` (of version `version`) by the published version found,
+/// unless the entry has it already; count it in the summary (`_replace_by_published`).
+fn replace_by_published(
+    session: &mut Session,
+    key: &str,
+    file: &str,
+    version: Version,
+    found: &Found,
+    summary: &mut FetchSummary,
+) -> Result<()> {
+    let same = if found.how == How::Has {
+        Some(found.path.clone())
+    } else {
+        same_content(&found.path, &session.library.files(key))
+    };
+    if let Some(same) = same {
+        // the entry has the published version already: it is now known
+        session.say.line(format!(
+            "{key}: already has {} ({})",
+            show(&same),
+            found.describe()
+        ));
         if found.how == How::Downloaded {
-            // the temporary folder of the download, now empty
             discard(&found.path);
         }
         session
             .library
             .pdf_versions
-            .insert(file.clone(), Version::Published.word().to_string());
-        session.say.line(format!(
-            "{key}: {}: {} replaced by the {}{}",
-            show(&file),
-            version.name(),
-            found.describe(),
-            if session.keeps_deleted() {
-                ""
-            } else {
-                " (the old file went to the trash of the system)"
-            }
-        ));
-        summary.upgraded += 1;
+            .insert(same, Version::Published.word().to_string());
+        summary.had += 1;
+        return Ok(());
     }
-    Ok(looked)
+    session.replace_file(file, &found.path, found.how != How::Downloaded)?;
+    if found.how == How::Downloaded {
+        // the temporary folder of the download, now empty
+        discard(&found.path);
+    }
+    session
+        .library
+        .pdf_versions
+        .insert(file.to_string(), Version::Published.word().to_string());
+    session.say.line(format!(
+        "{key}: {}: {} replaced by the {}{}",
+        show(file),
+        version.name(),
+        found.describe(),
+        if session.keeps_deleted() {
+            ""
+        } else {
+            " (the old file went to the trash of the system)"
+        }
+    ));
+    summary.upgraded += 1;
+    Ok(())
 }
 
 /// `papers file fetch`, before it downloads (`repair_pdf_links`): the entries whose PDF link is

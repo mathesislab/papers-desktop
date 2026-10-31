@@ -478,6 +478,33 @@ fn answer_works(body: &Value) -> Option<Vec<Value>> {
 }
 
 impl Fetcher {
+    /// The answer of OpenAlex to a GET of `url` with `params` and the email address and the key of
+    /// `access`, when set (`_get`): an HTTP error is an error, a 404 `not_found` when given.
+    fn openalex_get(
+        &self,
+        url: &str,
+        params: &[(&str, String)],
+        access: &OpenAlex,
+        not_found: Option<FetchError>,
+    ) -> Result<Response> {
+        let mut request = params.to_vec();
+        request.extend(access.params());
+        self.openalex_throttle();
+        // the errors of the request may show the url, with the key
+        let response = self
+            .get(&with_params(url, &request), None)
+            .map_err(|e| openalex_error(access.redact(&format!("OpenAlex: {}", e.message))))?;
+        if response.status == 404
+            && let Some(error) = not_found
+        {
+            return Err(error);
+        }
+        if response.status >= 400 {
+            return Err(http_error(&response, access));
+        }
+        Ok(response)
+    }
+
     /// `_throttle`: wait until the last request to OpenAlex is `INTERVAL` ago.
     fn openalex_throttle(&self) {
         let mut last = self
@@ -504,22 +531,13 @@ impl Fetcher {
         if let Cached::Value(Value::Array(works)) = self.cache.get("openalex", &key, now(), false) {
             return Ok(works);
         }
-        let mut request: Vec<(&str, String)> = vec![
+        let request: Vec<(&str, String)> = vec![
             ("per-page", rows.to_string()),
             ("search.semantic", query.to_string()),
             ("select", SELECT.to_string()),
         ];
-        request.extend(access.params());
         log::debug(&format!("openalex search: {}", py_repr(&params)));
-        self.openalex_throttle();
-        let response = self
-            .get(&with_params(API, &request), None)
-            .map_err(|error| {
-                openalex_error(access.redact(&format!("OpenAlex: {}", error.message)))
-            })?;
-        if response.status >= 400 {
-            return Err(http_error(&response, access));
-        }
+        let response = self.openalex_get(API, &request, access, None)?;
         let works = loads(&response.text())
             .ok()
             .and_then(|body| answer_works(&body))
@@ -819,27 +837,21 @@ impl Fetcher {
             }
             _ => {}
         }
-        let mut params: Vec<(&str, String)> = vec![("select", WORK_SELECT.to_string())];
-        params.extend(access.params());
         log::debug(&format!("openalex work: {doi}"));
-        self.openalex_throttle();
-        let url = with_params(
-            &format!("{API}/doi:{}", super::http::quote(doi, "/")),
-            &params,
-        );
+        let not_found =
+            FetchError::new(ErrorKind::NotFound, format!("{doi}: not found on OpenAlex"));
         let response = self
-            .get(&url, None)
-            .map_err(|e| openalex_error(access.redact(&format!("OpenAlex: {}", e.message))))?;
-        if response.status == 404 {
-            self.cache.put_not_found(NAME, &key, now());
-            return Err(FetchError::new(
-                ErrorKind::NotFound,
-                format!("{doi}: not found on OpenAlex"),
-            ));
-        }
-        if response.status >= 400 {
-            return Err(http_error(&response, access));
-        }
+            .openalex_get(
+                &format!("{API}/doi:{}", super::http::quote(doi, "/")),
+                &[("select", WORK_SELECT.to_string())],
+                access,
+                Some(not_found),
+            )
+            .inspect_err(|error| {
+                if error.kind == ErrorKind::NotFound {
+                    self.cache.put_not_found(NAME, &key, now());
+                }
+            })?;
         let unexpected = || openalex_error("OpenAlex: unexpected answer");
         let work = loads(&response.text()).map_err(|_| unexpected())?;
         let locations = work_locations_of(&work).ok_or_else(unexpected)?;

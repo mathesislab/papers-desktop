@@ -636,8 +636,10 @@ impl std::fmt::Display for NoPdf {
 pub type Local<'l> = dyn FnMut(&Link, &Known) -> Option<Found> + 'l;
 
 impl Fetcher {
-    /// GET a URL, and again once after the wait that an HTTP 429 asks (`_once_more_if_429`).
-    fn once_more_if_429(&self, url: &str, accept: Option<&str>) -> super::Result<Response> {
+    /// GET a URL after the wait for its site, and again once after the wait that an HTTP 429
+    /// asks (`_request`).
+    fn request(&self, url: &str, accept: Option<&str>) -> super::Result<Response> {
+        wait(url);
         let response = self.get(url, accept)?;
         if response.status != 429 {
             return Ok(response);
@@ -658,8 +660,7 @@ impl Fetcher {
 
     /// A page and its URL after the redirections, as papers asks for it (`_fetch_page`).
     fn fetch_page(&self, url: &str) -> super::Result<Response> {
-        wait(url);
-        self.once_more_if_429(url, None)
+        self.request(url, None)
     }
 
     /// What the URL gave the last time it was downloaded on this machine (`known_download`).
@@ -695,9 +696,8 @@ impl Fetcher {
     /// Download a link into a temporary folder (`download`): the path, or the error (an HTTP
     /// error, no answer, an answer that is not a PDF). Its checksum is remembered.
     pub fn download_pdf(&self, link: &Link) -> Result<String, String> {
-        wait(&link.url);
         let response = self
-            .once_more_if_429(&link.url, Some(accept(true)))
+            .request(&link.url, Some(accept(true)))
             .map_err(|e| connection_failed(&link.url, "ConnectionError", &e.message))?;
         let path = save_download(
             &link.url,
@@ -720,11 +720,16 @@ impl Fetcher {
     }
 
     /// The PDF of a link: what `local` finds for a URL downloaded before, else the download (`get`).
+    /// What `local` finds for a URL downloaded before ([`Fetcher::known_download`]), or none
+    /// (`local_copy`).
+    pub fn local_copy(&self, link: &Link, local: Option<&mut Local>) -> Option<Found> {
+        let local = local?;
+        let known = self.known_download(&link.url)?;
+        local(link, &known)
+    }
+
     fn get_link(&self, link: &Link, local: Option<&mut Local>) -> Result<Found, String> {
-        if let Some(local) = local
-            && let Some(known) = self.known_download(&link.url)
-            && let Some(found) = local(link, &known)
-        {
+        if let Some(found) = self.local_copy(link, local) {
             return Ok(found);
         }
         Ok(Found::new(
