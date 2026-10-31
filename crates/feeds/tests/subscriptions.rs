@@ -1,51 +1,14 @@
-//! The subscriptions as the settings edit them: a patch, OPML out and in,
-//! and the suggested list.
+//! The subscriptions as the settings edit them: OPML out and in, and the
+//! suggested list.
 
 use std::collections::HashSet;
 
-use papers_feeds::{Error, Feed, Feeds, Patch, SourceKind, suggested};
+use papers_feeds::{Error, Feed, Feeds, SourceKind, suggested};
 
 fn rss(url: &str) -> Feed {
     Feed::Rss {
         url: url.to_string(),
     }
-}
-
-#[test]
-fn a_patch_changes_what_it_sets() {
-    let dir = tempfile::tempdir().unwrap();
-    let mut feeds = Feeds::open(dir.path()).unwrap();
-    let id = feeds
-        .subscribe(rss("https://eos.org/feed"), SourceKind::Journal)
-        .unwrap()
-        .id;
-    let patch = Patch {
-        title: Some(" Eos ".into()),
-        kind: Some(SourceKind::News),
-        journal: Some(Some("Eos".into())),
-        fetch_pages: Some(true),
-    };
-    let changed = feeds.update_subscription(&id, patch).unwrap();
-    assert_eq!(changed.title.as_deref(), Some("Eos"));
-    assert_eq!(changed.kind, SourceKind::News);
-    assert_eq!(changed.journal.as_deref(), Some("Eos"));
-    assert!(changed.fetch_pages);
-    // what it does not set stays; blank is none
-    let patch = Patch {
-        title: Some("  ".into()),
-        journal: Some(None),
-        ..Patch::default()
-    };
-    let changed = feeds.update_subscription(&id, patch).unwrap();
-    assert_eq!((changed.title, changed.journal), (None, None));
-    assert_eq!(changed.kind, SourceKind::News);
-    // written
-    let again = Feeds::open(dir.path()).unwrap();
-    assert_eq!(again.subscriptions()[0].kind, SourceKind::News);
-    assert!(matches!(
-        feeds.update_subscription("none", Patch::default()),
-        Err(Error::NoSubscription { .. })
-    ));
 }
 
 #[test]
@@ -55,11 +18,10 @@ fn opml_out_and_back_in() {
     let eos = feeds
         .subscribe(rss("https://eos.org/feed?a=1&b=2"), SourceKind::News)
         .unwrap();
-    let patch = Patch {
-        title: Some("Eos & \"friends\"".into()),
-        ..Patch::default()
-    };
-    feeds.update_subscription(&eos.id, patch).unwrap();
+    let title = Some("Eos & \"friends\"".to_string());
+    feeds
+        .edit_subscription(&eos.id, |s| s.title = title)
+        .unwrap();
     let issn = Feed::Crossref {
         issn: "0022-1430".into(),
     };

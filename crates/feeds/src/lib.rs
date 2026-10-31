@@ -42,7 +42,7 @@ mod view;
 use std::path::PathBuf;
 
 pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
-pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome, Patch};
+pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
 pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
 pub use links::{Found, paragraphs};

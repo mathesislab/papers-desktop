@@ -10,7 +10,7 @@ use quick_xml::escape::escape;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, XmlVersion};
 
-use crate::feeds::{Feeds, Patch};
+use crate::feeds::Feeds;
 use crate::model::{Feed, SourceKind, Subscription};
 use crate::{Error, Result};
 
@@ -173,11 +173,7 @@ impl Feeds {
                 Err(e) => return Err(e),
             };
             if let Some(title) = outline.title {
-                let patch = Patch {
-                    title: Some(title),
-                    ..Patch::default()
-                };
-                self.update_subscription(&subscription.id, patch)?;
+                self.edit_subscription(&subscription.id, |s| s.title = Some(title))?;
             }
             added += 1;
         }
