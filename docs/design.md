@@ -802,7 +802,7 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   (`sameQuery` and the sort).
 - *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
   added, the kind of a post or preprint), the score, the likeness to the
-  library (*Like*, 0–100; – before the library is indexed), the title (bold
+  library (*Similar*, 0–100; – before the library is indexed), the title (bold
   while new, muted once seen), authors, journal or source, age, badges (*in
   library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
   reached). Sorted by score, likeness or newest (the headers, or the count
@@ -810,7 +810,26 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a dismissed item goes, the next
-  selected.
+  selected. A ☆ at the start of a row stars it (*Starred*: the shortlist),
+  or unstars it. With several rows selected, a bar above the list marks them
+  read or unread, stars, dismisses or snoozes them; *Mark read ▾* marks the
+  list, the items older than 1, 3 or 7 days, or those above. The row menu's
+  *Source Is* sets the kind of its subscription (Journal, Preprint Server,
+  News & Press, General), which its items take at once.
+- *Held updates*: a fetch in the background (polling) does not change the
+  list: the items first fetched after the list was last brought up to date
+  (`shown`, the layout's `feedsShown`) are neither listed nor counted, and
+  wait behind *N new · Show*; a fetch asked for (⌘R, *Fetch*, a
+  subscription) shows them at once.
+- *Reminders*: `z` (*⏰ Later*) snoozes items 1, 3, 7 or 30 days (out of
+  *Unread*, in *Snoozed*, back as new at the start of that day); `u` keeps
+  them unread (a reminder due now). A due reminder is first in the list,
+  with ⏰, and is not seen by being shown; marking it read (or any triage)
+  clears it. The triage's `remind` (`is:snoozed`, `is:reminder`).
+- *Reading*: by default a click or Enter opens the item over the list, its
+  row pinned at the top; Esc or the row goes back to the list, where it was,
+  and ↑↓ go through the items. *Details beside the list* (the settings,
+  Window → Feeds Details Beside the List) shows them beside it instead.
 - *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
   passed over faster (j held down) stays new: its title went by, its
   details were not read. `⇧Space` (and the row menu's *Mark All Above as
@@ -825,7 +844,8 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   would replace it*), *Covered by*, *Seen in*, and last, set apart and
   quieter, *Similar in your library* (the likeness and the 3 nearest papers
   of the library, each with its authors, year, journal and cosine, shown in
-  the Library tab on a click). A post's text, then its linked papers as
+  the Library tab on a click). A post's HTML (`safe_html`, ammonia: its
+  text, links and images, an image's title under it), then its linked papers as
   cards (Add by the DOI, Shortlist, Show paper), *Find linked paper*
   (`findPapers`). The list's columns are resized by their headers' edges
   (the window's layout keeps the widths).
