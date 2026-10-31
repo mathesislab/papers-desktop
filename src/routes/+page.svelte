@@ -113,6 +113,7 @@
     ["doi:", ""],
     ["tag:", ""],
     ["has:", "pdf, a field"],
+    ["j:a,b", "any of"],
     ['"…"', "phrase"],
     ["-", "exclude"],
   ];

@@ -120,9 +120,10 @@ Filters limit a word to one field, and quotes match a phrase:
 | `tag:greenland` | | a whole keyword, and the keywords under it (`tag:climate` finds `climate/amoc`); `*` is a wildcard: `tag:amoc*`, `tag:*amoc`, `tag:*amoc*`; `tag:"mass balance"` |
 | `has:pdf`, `has:abstract` | | a linked file, or any field of the entry |
 | `"ice sheet"`, `t:"ice sheet"` | | consecutive words |
+| `j:cryosphere,"Nature Geoscience"` | | any of the values, in any filter: `a:robinson,calov`, `y:1990-2000,2015`, `tag:amoc,ice*` |
 
 A leading `-` excludes the papers that match a term: `-review`,
-`-a:smith`, `-y:2012`, `-has:pdf`.
+`-a:smith`, `-y:2012`, `-has:pdf`, `-tag:review,draft` (either tag).
 
 The year of each paper stands in a column on the left. Clicking a year
 keeps that year only (click again to undo), `⇧`-click stretches the year

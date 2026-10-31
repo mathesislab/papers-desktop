@@ -20,6 +20,7 @@ import {
   type Filters,
   type Lists,
 } from "../src/lib/library/filters.ts";
+import { alternatives, anyOf, renameTagFilter, tagTerm } from "../src/lib/query.ts";
 import type { Row } from "../src/lib/types.ts";
 
 const row = (id: string, bib: string, tags: string[] = [], file: Row["file"] = "found"): Row =>
@@ -144,4 +145,23 @@ test("filters restored from what was saved", () => {
   });
   // a .bib no longer there, a view not known, a wrong type
   assert.deepEqual(restored({ bib: "/x/gone.bib", view: "nope" as never, tags: "a" as never }, ["/x/a.bib"]), NO_FILTERS);
+});
+
+test("a filter of any of several values, quoted as the core reads them", () => {
+  assert.equal(anyOf("src", ["tc", "Nature Geosci"]), 'src:tc,"Nature Geosci"');
+  assert.equal(anyOf("src", ["The Cryosphere", "Nature, Geosci"]), 'src:"The Cryosphere","Nature, Geosci"');
+  assert.equal(anyOf("tag", ["amoc", "ice*", "climate/amoc"]), "tag:amoc,ice*,climate/amoc");
+  assert.equal(anyOf("prof", ['say "hi"', "", "  "]), 'prof:"say hi"');
+  assert.equal(anyOf("kind", []), "");
+  assert.equal(tagTerm("mass balance"), 'tag:"mass balance"');
+  assert.equal(tagTerm("a,b"), 'tag:"a,b"');
+  assert.deepEqual(alternatives('tc,"Nature, Geosci",'), ["tc", "Nature, Geosci", ""]);
+  assert.deepEqual(alternatives('"mass balance"'), ["mass balance"]);
+});
+
+test("a typed tag filter follows a rename, any of its values", () => {
+  assert.equal(renameTagFilter("ice tag:amoc -tag:x", "amoc", "AMOC"), "ice tag:AMOC -tag:x");
+  assert.equal(renameTagFilter('tag:x,"climate/amoc",ice', "climate", "clim"), "tag:x,clim/amoc,ice");
+  assert.equal(renameTagFilter("tag:mb,ice", "mb", "mass balance"), 'tag:"mass balance",ice');
+  assert.equal(renameTagFilter('tag:"a b",c', "x", "y"), 'tag:"a b",c');
 });

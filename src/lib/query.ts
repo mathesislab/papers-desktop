@@ -48,19 +48,34 @@ export function toggleExcluded(query: string, year: number): string {
   return tidy(`${query} -y:${year}`);
 }
 
-/** The filter of a tag: tag:amoc, or tag:"mass balance". */
-export const tagTerm = (tag: string) => (/\s/.test(tag) ? `tag:"${tag}"` : `tag:${tag}`);
+/** A field filter that takes any of the values: `anyOf("src", ["tc", "Nature Geosci"])` is `src:tc,"Nature Geosci"`;
+ *  a value with a space or a comma is quoted, a quote dropped (a filter cannot have one), an empty value left out.
+ *  None: no filter, "". */
+export function anyOf(name: string, values: string[]): string {
+  const written = values
+    .map((v) => v.replace(/"/g, ""))
+    .filter((v) => v.trim())
+    .map((v) => (/[\s,]/.test(v) ? `"${v}"` : v));
+  return written.length ? `${name}:${written.join(",")}` : "";
+}
 
-/** A filter on a tag, negated or not: tag:amoc, -tag:amoc, tag:"mass balance". */
-const TAG_TERM = /(^|\s)(-?)tag:(?:"([^"]*)"|(\S+))(?=\s|$)/gi;
+/** The values of a field filter, its alternatives between commas: `tc,"Nature Geosci"` is tc and Nature Geosci. */
+export const alternatives = (values: string) =>
+  [...values.matchAll(/(?:^|,)(?:"([^"]*)"|([^,]*))/g)].map((m) => m[1] ?? m[2]);
+
+/** The filter of a tag: tag:amoc, or tag:"mass balance". */
+export const tagTerm = (tag: string) => anyOf("tag", [tag]);
+
+/** A filter on tags, negated or not: tag:amoc, -tag:amoc, tag:"mass balance", tag:amoc,ice. */
+const TAG_TERM = /(^|\s)(-?)tag:((?:"[^"]*"|[^\s,]*)(?:,(?:"[^"]*"|[^\s,]*))*)(?=\s|$)/gi;
 
 /** A tag renamed: the filters in the query on it, and on the tags under it, follow. */
 export function renameTagFilter(query: string, old: string, name: string): string {
   return tidy(
-    query.replace(TAG_TERM, (term, space, minus, quoted, bare) => {
-      const tag: string = quoted ?? bare;
-      const moved = movedTag(tag, old, name);
-      return moved === tag ? term : `${space}${minus}${tagTerm(moved)}`;
+    query.replace(TAG_TERM, (term, space, minus, values) => {
+      const tags = alternatives(values);
+      const moved = tags.map((tag) => movedTag(tag, old, name));
+      return moved.every((tag, i) => tag === tags[i]) ? term : `${space}${minus}${anyOf("tag", moved)}`;
     }),
   );
 }

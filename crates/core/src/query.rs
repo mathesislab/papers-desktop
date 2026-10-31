@@ -9,6 +9,12 @@
 //! Besides the fields of the library, a [`Schema`] declares facets, which
 //! take a whole value as `tag:` does (`kind:paper`, `src:"The Cryosphere"`),
 //! and numbers, which take a range (`score:2-5`, `score:3-`, `score:-2`).
+//!
+//! A filter takes alternatives between commas, any of which matches:
+//! `src:tc,"Nature Geosci"`, `year:1990-2000,2015`, `-tag:review,draft*`
+//! (excludes the papers that match any). A comma inside quotes is part of the
+//! value, an empty alternative is none; the words of an alternative are a
+//! phrase. A plain word takes no alternatives.
 
 use crate::tag::branch;
 use crate::text::{fold, words};
@@ -159,7 +165,8 @@ impl Pattern {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Term {
     pub field: Field,
-    pub pattern: Pattern,
+    /// any of them: one, but for the alternatives of a filter
+    pub patterns: Vec<Pattern>,
     /// the papers that match are excluded
     pub negated: bool,
 }
@@ -167,7 +174,13 @@ pub(crate) struct Term {
 struct Token {
     negated: bool,
     field: Field,
-    value: String,
+    /// the alternatives of a filter: one without a comma
+    values: Vec<Value>,
+}
+
+/// A word, or the text of a "phrase".
+struct Value {
+    text: String,
     quoted: bool,
 }
 
@@ -201,58 +214,94 @@ fn tokens(query: &str, schema: Schema) -> Vec<Token> {
                 i = name_end + 1;
             }
         }
-        let quoted = chars.get(i) == Some(&'"');
-        let (start, end) = if quoted {
-            let close = chars[i + 1..].iter().position(|&c| c == '"');
-            (i + 1, close.map_or(chars.len(), |p| i + 1 + p))
-        } else {
-            let space = chars[i..].iter().position(|c| c.is_whitespace());
-            (i, space.map_or(chars.len(), |p| i + p))
-        };
-        let value = chars[start..end].iter().collect();
+        let commas = field != Field::Any;
+        let mut values = Vec::new();
+        loop {
+            let (value, end) = value(&chars, i, commas);
+            values.push(value);
+            i = end;
+            if !(commas && chars.get(i) == Some(&',')) {
+                break;
+            }
+            i += 1;
+        }
         tokens.push(Token {
             negated,
             field,
-            value,
-            quoted,
+            values,
         });
-        i = if quoted { end + 1 } else { end };
     }
     tokens
 }
 
-fn terms(token: &Token) -> Vec<Term> {
-    let Token {
-        negated,
-        ref field,
-        quoted,
-        ..
-    } = *token;
-    let folded = fold(&token.value);
-    let value = folded.trim();
-    let term = |pattern| Term {
-        field: field.clone(),
-        pattern,
-        negated,
+/// The word or "phrase" at `i`, and where it ends: a word ends at a space,
+/// and at a comma too with `commas` (between the alternatives of a filter).
+fn value(chars: &[char], i: usize, commas: bool) -> (Value, usize) {
+    let quoted = chars.get(i) == Some(&'"');
+    let (start, end) = if quoted {
+        let close = chars[i + 1..].iter().position(|&c| c == '"');
+        (i + 1, close.map_or(chars.len(), |p| i + 1 + p))
+    } else {
+        let stop = |c: &char| c.is_whitespace() || commas && *c == ',';
+        let end = chars[i..].iter().position(stop);
+        (i, end.map_or(chars.len(), |p| i + p))
     };
+    let text = chars[start..end].iter().collect();
+    let next = if quoted { end + 1 } else { end };
+    (Value { text, quoted }, next.min(chars.len()))
+}
+
+/// A term per word of a value; a single term of the alternatives of a filter
+/// with commas.
+fn terms(token: &Token) -> Vec<Term> {
+    let term = |patterns| Term {
+        field: token.field.clone(),
+        patterns,
+        negated: token.negated,
+    };
+    match token.values.as_slice() {
+        [value] => patterns(&token.field, value, false)
+            .into_iter()
+            .map(|p| term(vec![p]))
+            .collect(),
+        values => {
+            let any: Vec<Pattern> = values
+                .iter()
+                .flat_map(|v| patterns(&token.field, v, true))
+                .collect();
+            if any.is_empty() {
+                Vec::new()
+            } else {
+                vec![term(any)]
+            }
+        }
+    }
+}
+
+/// The patterns of a value, each to match: the words of a value, but a single
+/// pattern of an `alternative`, its words a phrase.
+fn patterns(field: &Field, value: &Value, alternative: bool) -> Vec<Pattern> {
+    let quoted = value.quoted;
+    let folded = fold(&value.text);
+    let value = folded.trim();
     if value.is_empty() {
         return Vec::new(); // a filter still being typed
     }
     match field {
-        Field::Year => vec![term(years(value))],
-        Field::Key | Field::Has => vec![term(Pattern::Word(value.to_string()))],
-        Field::Doi => vec![term(Pattern::Doi(doi(value).to_string()))],
-        Field::Tag | Field::Facet(_) => vec![term(Pattern::Tag(
-            value.split('*').map(String::from).collect(),
-        ))],
-        Field::Number(_) => numbers(value).map(term).into_iter().collect(),
-        Field::Any if !quoted && is_doi(value) => vec![term(Pattern::Doi(doi(value).to_string()))],
+        Field::Year => vec![years(value)],
+        Field::Key | Field::Has => vec![Pattern::Word(value.to_string())],
+        Field::Doi => vec![Pattern::Doi(doi(value).to_string())],
+        Field::Tag | Field::Facet(_) => {
+            vec![Pattern::Tag(value.split('*').map(String::from).collect())]
+        }
+        Field::Number(_) => numbers(value).into_iter().collect(),
+        Field::Any if !quoted && is_doi(value) => vec![Pattern::Doi(doi(value).to_string())],
         _ => {
             let words = words(value);
-            if quoted && words.len() > 1 {
-                vec![term(Pattern::Phrase(words))]
+            if (quoted || alternative) && words.len() > 1 {
+                vec![Pattern::Phrase(words)]
             } else {
-                words.into_iter().map(|w| term(Pattern::Word(w))).collect()
+                words.into_iter().map(Pattern::Word).collect()
             }
         }
     }
@@ -313,7 +362,7 @@ mod tests {
     fn word(field: Field, w: &str) -> Term {
         Term {
             field,
-            pattern: Pattern::Word(w.into()),
+            patterns: vec![Pattern::Word(w.into())],
             negated: false,
         }
     }
@@ -341,7 +390,7 @@ mod tests {
     fn phrases() {
         let phrase = |field| Term {
             field,
-            pattern: Pattern::Phrase(vec!["ice".into(), "sheet".into()]),
+            patterns: vec![Pattern::Phrase(vec!["ice".into(), "sheet".into()])],
             negated: false,
         };
         assert_eq!(
@@ -357,7 +406,7 @@ mod tests {
     fn years_and_dois() {
         let y = |pattern| Term {
             field: Field::Year,
-            pattern,
+            patterns: vec![pattern],
             negated: false,
         };
         assert_eq!(parse("y:2012"), [y(Pattern::Years(Some(2012), Some(2012)))]);
@@ -370,7 +419,7 @@ mod tests {
         assert_eq!(parse("y:201"), [y(Pattern::YearStart("201".into()))]);
         let doi = |field, d: &str| Term {
             field,
-            pattern: Pattern::Doi(d.into()),
+            patterns: vec![Pattern::Doi(d.into())],
             negated: false,
         };
         assert_eq!(
@@ -387,7 +436,7 @@ mod tests {
     fn tags() {
         let tag = |pieces: &[&str], negated| Term {
             field: Field::Tag,
-            pattern: Pattern::Tag(pieces.iter().map(|p| p.to_string()).collect()),
+            patterns: vec![Pattern::Tag(pieces.iter().map(|p| p.to_string()).collect())],
             negated,
         };
         assert_eq!(
@@ -406,7 +455,7 @@ mod tests {
     fn negation() {
         let not = |field, pattern| Term {
             field,
-            pattern,
+            patterns: vec![pattern],
             negated: true,
         };
         assert_eq!(
@@ -421,7 +470,7 @@ mod tests {
                 not(Field::Year, Pattern::Years(Some(2012), Some(2012))),
                 Term {
                     field: Field::Year,
-                    pattern: Pattern::Years(None, Some(1990)),
+                    patterns: vec![Pattern::Years(None, Some(1990))],
                     negated: false,
                 },
             ]
@@ -440,7 +489,7 @@ mod tests {
     fn tags_match() {
         let tag = |pattern: &str, tag: &str| {
             let terms = parse(&format!("tag:{pattern}"));
-            terms[0].pattern.matches_tag(tag)
+            terms[0].patterns[0].matches_tag(tag)
         };
         // the whole tag, not the start of a word
         assert!(tag("amoc", "amoc"));
@@ -492,7 +541,7 @@ mod tests {
                 word(Field::Abstract, "hysteresis"),
                 Term {
                     field: Field::Abstract,
-                    pattern: Pattern::Phrase(vec!["ice".into(), "sheet".into()]),
+                    patterns: vec![Pattern::Phrase(vec!["ice".into(), "sheet".into()])],
                     negated: false,
                 },
             ]
@@ -503,7 +552,7 @@ mod tests {
     fn facets() {
         let facet = |name: &str, pieces: &[&str], negated| Term {
             field: Field::Facet(name.into()),
-            pattern: Pattern::Tag(pieces.iter().map(|p| p.to_string()).collect()),
+            patterns: vec![Pattern::Tag(pieces.iter().map(|p| p.to_string()).collect())],
             negated,
         };
         assert_eq!(
@@ -547,7 +596,7 @@ mod tests {
     fn numbers() {
         let score = |from, to, negated| Term {
             field: Field::Number("score".into()),
-            pattern: Pattern::Numbers(from, to),
+            patterns: vec![Pattern::Numbers(from, to)],
             negated,
         };
         assert_eq!(
@@ -564,5 +613,133 @@ mod tests {
         assert!(!Pattern::Numbers(Some(2.0), Some(5.0)).matches_number(5.5));
         assert!(Pattern::Numbers(None, Some(2.0)).matches_number(-1.0));
         assert!(!Pattern::Years(Some(2000), None).matches_number(2012.0));
+    }
+
+    #[test]
+    fn alternatives() {
+        let any = |field: Field, patterns: Vec<Pattern>, negated| Term {
+            field,
+            patterns,
+            negated,
+        };
+        let src = |v: &str| Pattern::Tag(vec![v.into()]);
+        let facet = || Field::Facet("src".into());
+        // quoted, mixed; a comma inside quotes is part of the value
+        assert_eq!(
+            parse_with(
+                r#"src:tc,grl src:"The Cryosphere","Nature Geoscience" src:tc,"Nature, Geosci""#
+            ),
+            [
+                any(facet(), vec![src("tc"), src("grl")], false),
+                any(
+                    facet(),
+                    vec![src("the cryosphere"), src("nature geoscience")],
+                    false
+                ),
+                any(facet(), vec![src("tc"), src("nature, geosci")], false),
+            ]
+        );
+        // an empty alternative is none: still being typed
+        assert_eq!(
+            parse_with("src:tc, src:,grl src:, x"),
+            [
+                any(facet(), vec![src("tc")], false),
+                any(facet(), vec![src("grl")], false),
+                word(Field::Any, "x"),
+            ]
+        );
+        // excluded: any of them
+        assert_eq!(
+            parse_with("-kind:paper,preprint"),
+            [any(
+                Field::Facet("kind".into()),
+                vec![src("paper"), src("preprint")],
+                true
+            )]
+        );
+        // the words of an alternative are a phrase
+        let phrase = |ws: &[&str]| Pattern::Phrase(ws.iter().map(|w| w.to_string()).collect());
+        assert_eq!(
+            parse(r#"a:robinson,van-der first:"van der",calov"#),
+            [
+                any(
+                    Field::Author,
+                    vec![Pattern::Word("robinson".into()), phrase(&["van", "der"])],
+                    false
+                ),
+                any(
+                    Field::First,
+                    vec![phrase(&["van", "der"]), Pattern::Word("calov".into())],
+                    false
+                ),
+            ]
+        );
+        // years, numbers (one that is no number left out), tags, DOIs, has:
+        assert_eq!(
+            parse("year:1990-2000,2015,201"),
+            [any(
+                Field::Year,
+                vec![
+                    Pattern::Years(Some(1990), Some(2000)),
+                    Pattern::Years(Some(2015), Some(2015)),
+                    Pattern::YearStart("201".into()),
+                ],
+                false
+            )]
+        );
+        assert_eq!(
+            parse_with("score:-1,4-,high score:x,y"),
+            [any(
+                Field::Number("score".into()),
+                vec![
+                    Pattern::Numbers(None, Some(1.0)),
+                    Pattern::Numbers(Some(4.0), None),
+                ],
+                false
+            )]
+        );
+        assert_eq!(
+            parse("tag:amoc,ice* doi:10.5194,nclimate has:pdf,abstract"),
+            [
+                any(
+                    Field::Tag,
+                    vec![
+                        Pattern::Tag(vec!["amoc".into()]),
+                        Pattern::Tag(vec!["ice".into(), "".into()]),
+                    ],
+                    false
+                ),
+                any(
+                    Field::Doi,
+                    vec![
+                        Pattern::Doi("10.5194".into()),
+                        Pattern::Doi("nclimate".into()),
+                    ],
+                    false
+                ),
+                any(
+                    Field::Has,
+                    vec![
+                        Pattern::Word("pdf".into()),
+                        Pattern::Word("abstract".into()),
+                    ],
+                    false
+                ),
+            ]
+        );
+        // no comma: as before; plain words take none
+        assert_eq!(
+            parse("first:van-der robinson,calov foo:a,b"),
+            [
+                word(Field::First, "van"),
+                word(Field::First, "der"),
+                word(Field::Any, "robinson"),
+                word(Field::Any, "calov"),
+                word(Field::Any, "foo"),
+                word(Field::Any, "a"),
+                word(Field::Any, "b"),
+            ]
+        );
+        assert_eq!(parse(r#""ice, sheet""#), parse(r#""ice sheet""#));
     }
 }
