@@ -609,6 +609,7 @@ pub struct SubscriptionInfo {
     feed: FeedOf,
     journal: Option<String>,
     fetch_pages: bool,
+    boost: f64,
     last: Option<Last>,
 }
 
@@ -622,6 +623,7 @@ pub struct SubscriptionPatch {
     #[serde(default, deserialize_with = "present")]
     journal: Option<Option<String>>,
     fetch_pages: Option<bool>,
+    boost: Option<f64>,
 }
 
 impl SubscriptionPatch {
@@ -640,6 +642,9 @@ impl SubscriptionPatch {
         }
         if let Some(fetch_pages) = self.fetch_pages {
             subscription.fetch_pages = fetch_pages;
+        }
+        if let Some(boost) = self.boost {
+            subscription.boost = boost;
         }
     }
 }
@@ -856,6 +861,7 @@ fn info(subscription: Subscription, lasts: &BTreeMap<String, Last>) -> Subscript
         kind: subscription.kind,
         journal: subscription.journal,
         fetch_pages: subscription.fetch_pages,
+        boost: subscription.boost,
     }
 }
 
@@ -1357,14 +1363,19 @@ mod tests {
             kind: SourceKind::Journal,
             journal: Some("Eos".into()),
             fetch_pages: false,
+            boost: 0.0,
         };
         let patch: SubscriptionPatch =
             serde_json::from_str(r#"{"title": " ", "kind": "news", "journal": null}"#).unwrap();
         patch.apply(&mut eos);
         assert_eq!(
-            (eos.title, eos.kind, eos.journal),
+            (eos.title.clone(), eos.kind, eos.journal.clone()),
             (None, SourceKind::News, None)
         );
         assert!(!eos.fetch_pages);
+        assert_eq!(eos.boost, 0.0, "left out stays");
+        let patch: SubscriptionPatch = serde_json::from_str(r#"{"boost": 2.5}"#).unwrap();
+        patch.apply(&mut eos);
+        assert_eq!(eos.boost, 2.5);
     }
 }

@@ -109,7 +109,7 @@ impl std::fmt::Display for Feed {
 }
 
 /// A feed followed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Subscription {
     pub id: String,
     #[serde(flatten)]
@@ -123,6 +123,15 @@ pub struct Subscription {
     /// fetch the page of each item at fetch time (the paper of a post)
     #[serde(default)]
     pub fetch_pages: bool,
+    /// added to each interest's score of the items it lists (paper-feeder's
+    /// `score_boost`: "cites my work" is partial credit); the strongest counts
+    /// for an item several list
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub boost: f64,
+}
+
+fn is_zero(x: &f64) -> bool {
+    *x == 0.0
 }
 
 /// One item of one feed, as the feed gives it.

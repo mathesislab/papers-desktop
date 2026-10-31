@@ -43,13 +43,12 @@ fn sources_become_subscriptions_and_the_lexicon_one_interest() {
         "subscriptions: 9 added, 1 there already, 1 failed\n\
          lookback: 21 days\n\
          interest Interests: 4 terms, 3 vetoes, from score 4, title boost 3\n\
+         boost: openalex:cites-me (2)\n\
+         rules: 2 added, shortlisting the items of rss:tc, openalex:cites-me (always_include)\n\
          mailto me@example.org: not stored; set FEEDS_MAILTO or pass --mailto\n"
     );
     // the look-around of Python's `re` is no regex here (the message is the regex crate's)
-    let (skipped, rest) = ran
-        .err
-        .split_once("feeds: warning: always_include")
-        .unwrap();
+    let (skipped, rest) = ran.err.split_once("feeds: warning: lookback_days").unwrap();
     assert!(skipped.starts_with(
         "feeds: warning: skipped ftp://example.org/feed: ftp://example.org/feed: not a feed address: \
          not an http(s) URL\n\
@@ -61,9 +60,7 @@ fn sources_become_subscriptions_and_the_lexicon_one_interest() {
     );
     assert_eq!(
         rest,
-        " has no equivalent yet, skipped for rss:tc, openalex:cites-me\n\
-         feeds: warning: score_boost has no equivalent yet, skipped for openalex:cites-me (2)\n\
-         feeds: warning: lookback_days of a query has no equivalent yet, skipped for openalex:cites-me (180 days)\n\
+        " of a query has no equivalent yet, skipped for openalex:cites-me (180 days)\n\
          feeds: warning: not used: window_days, retention_days, render, serendipity_count, llm_rerank\n"
     );
     let rows = subscriptions(&s);
@@ -101,9 +98,25 @@ fn sources_become_subscriptions_and_the_lexicon_one_interest() {
         ]
     );
     // the query is named by its name
+    let json = s.json(&["subscriptions", "--json"]);
+    assert_eq!(json[4]["title"], "cryosphere");
+    // score_boost is the boost of the subscription; the rest have none
+    assert_eq!(json[5]["boost"], 2.0);
     assert_eq!(
-        s.json(&["subscriptions", "--json"])[4]["title"],
-        "cryosphere"
+        json.as_array()
+            .unwrap()
+            .iter()
+            .filter(|j| j.get("boost").is_some())
+            .count(),
+        1
+    );
+    // always_include is a rule on the subscription's title, or its id if it has none
+    assert_eq!(
+        s.json(&["rules", "--json"]),
+        serde_json::json!([
+            {"when": "src:\"The Cryosphere\"", "then": "shortlist"},
+            {"when": "src:\"cites-me\"", "then": "shortlist"},
+        ])
     );
     assert_eq!(
         s.ok(&["interests"]),
@@ -162,6 +175,55 @@ fn an_import_again_adds_nothing_and_replaces_the_interest() {
         .map(|i| i["name"].as_str().unwrap().to_string())
         .collect();
     assert_eq!(names, ["Interests", "Ice"]);
+}
+
+#[test]
+fn a_second_import_keeps_the_boosts_and_rules_as_they_are() {
+    let s = Sandbox::new(Recorded::new());
+    s.config(r#"{"rules":[{"when":"kind:news","then":"seen"}]}"#);
+    import(&s, &[]);
+    let rules = s.json(&["rules", "--json"]);
+    assert_eq!(rules.as_array().unwrap().len(), 3, "after the user's own");
+    assert_eq!(rules[0]["when"], "kind:news");
+    // edited since: not set again, and no rule twice
+    let cites = s.json(&["subscriptions", "--json"])[5]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    s.ok(&["edit", &cites, "--boost", "5"]);
+    let again = import(&s, &[]);
+    assert!(
+        !again.out.contains("boost:") && !again.out.contains("rules:"),
+        "{}",
+        again.out
+    );
+    assert_eq!(s.json(&["rules", "--json"]), rules);
+    assert_eq!(s.json(&["subscriptions", "--json"])[5]["boost"], 5.0);
+}
+
+#[test]
+fn always_include_of_a_source_with_no_title_is_a_rule_on_its_id() {
+    let s = Sandbox::new(Recorded::new());
+    let sources = s.path("sources.yaml");
+    std::fs::write(
+        &sources,
+        "rss:\n  - {url: \"https://example.org/feed.xml\", always_include: true, score_boost: -1}\n",
+    )
+    .unwrap();
+    let scoring = own("pf-scoring.yaml");
+    let ran = s.run(&[
+        "import-paper-feeder",
+        sources.to_str().unwrap(),
+        scoring.to_str().unwrap(),
+    ]);
+    assert_eq!(ran.code, 0, "{}", ran.err);
+    let json = s.json(&["subscriptions", "--json"]);
+    let id = json[0]["id"].as_str().unwrap();
+    assert_eq!(json[0]["boost"], -1.0);
+    assert_eq!(
+        s.json(&["rules", "--json"]),
+        serde_json::json!([{"when": format!("src:\"{id}\""), "then": "shortlist"}])
+    );
 }
 
 #[test]

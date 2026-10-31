@@ -41,7 +41,7 @@
 
   /** the subscription being edited, and its fields */
   let editing = $state<string | null>(null);
-  let edit = $state({ title: "", kind: "journal" as SourceKind, journal: "", fetchPages: false });
+  let edit = $state({ title: "", kind: "journal" as SourceKind, journal: "", fetchPages: false, boost: 0 as number | null });
 
   /** an include or exclude as the editor shows it */
   type Line = { pattern: boolean; text: string; weight: number; label: string };
@@ -126,7 +126,7 @@
 
   function startEdit(s: SubscriptionInfo) {
     editing = s.id;
-    edit = { title: s.title, kind: s.kind, journal: s.journal ?? "", fetchPages: s.fetchPages };
+    edit = { title: s.title, kind: s.kind, journal: s.journal ?? "", fetchPages: s.fetchPages, boost: s.boost };
   }
 
   function saveEdit(id: string) {
@@ -136,6 +136,7 @@
         kind: edit.kind,
         journal: edit.journal.trim() || null,
         fetchPages: edit.fetchPages,
+        boost: edit.boost ?? 0,
       });
       editing = null;
       await loadSubscriptions();
@@ -263,7 +264,7 @@
         <div class="sub">
           <span class="main">
             <span class="title" title={s.title}>{s.title}</span>
-            <span class="hint" title={feedText(s.feed)}>{kindName(s.kind)} · {feedText(s.feed)}</span>
+            <span class="hint" title={feedText(s.feed)}>{kindName(s.kind)} · {feedText(s.feed)}{s.boost ? ` · boost ${s.boost > 0 ? "+" : ""}${s.boost}` : ""}</span>
             <span class="hint" class:error={!!s.last?.error}>{lastText(s)}</span>
           </span>
           <button class="small" onclick={() => (editing === s.id ? (editing = null) : startEdit(s))}>Edit</button>
@@ -278,6 +279,7 @@
               </select>
             </label>
             <label>Journal <input class="text" type="text" bind:value={edit.journal} placeholder="As the feed says" /></label>
+            <label title="Added to the score of its items in each interest (a veto stays 0); 2 for “cites my work”, so that a weak match is enough">Boost <input class="num" type="number" step="0.5" bind:value={edit.boost} /></label>
             <label class="check"><input type="checkbox" bind:checked={edit.fetchPages} /> Read each item's page at fetch time (the paper of a post)</label>
             <span class="buttons">
               <button class="small" onclick={() => (editing = null)}>Cancel</button>

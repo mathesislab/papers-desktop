@@ -102,6 +102,7 @@ test("the counts of the views, and the sources in their groups", () => {
     feed,
     journal: null,
     fetchPages: false,
+    boost: 0,
     last: null,
   });
   const groups = sourceGroups(

@@ -22,6 +22,8 @@ pub struct Cli {
 pub enum Command {
     /// Follow a feed (a URL), a journal's Crossref sweep (--issn) or an OpenAlex filter (--openalex)
     Subscribe(SubscribeArgs),
+    /// Change a subscription
+    Edit(EditArgs),
     /// Stop following a subscription (its items stay until pruned)
     Unsubscribe(IdArg),
     /// The subscriptions
@@ -45,8 +47,10 @@ pub enum Command {
     Interests(JsonArg),
     /// The rules that triage new items
     Rules(JsonArg),
-    /// The folder and the settings
-    Config,
+    /// The folder and the settings; `keep-days` and `lookback-days` change one
+    Config(ConfigArgs),
+    /// The subscriptions as OPML, the list feed readers exchange
+    Opml(OpmlArgs),
     /// Migrate a paper-feeder setup (sources.yaml and scoring.yaml)
     ImportPaperFeeder(ImportArgs),
     /// Write the items of the last days that reach an interest as an RSS feed or an HTML page
@@ -99,6 +103,45 @@ impl From<KindArg> for SourceKind {
     }
 }
 
+/// `feeds config`.
+#[derive(Debug, Args)]
+pub struct ConfigArgs {
+    /// A setting to change; none: show them all
+    #[command(subcommand)]
+    pub set: Option<ConfigSet>,
+}
+
+/// The settings `feeds config` changes.
+#[derive(Debug, Subcommand)]
+pub enum ConfigSet {
+    /// The days an item no feed lists is kept, unless shortlisted or added
+    KeepDays {
+        #[arg(value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+        days: u32,
+    },
+    /// The days a sweep of Crossref or OpenAlex looks back the first time
+    LookbackDays {
+        #[arg(value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+        days: u32,
+    },
+}
+
+/// `feeds opml`.
+#[derive(Debug, Args)]
+pub struct OpmlArgs {
+    #[command(subcommand)]
+    pub command: OpmlCommand,
+}
+
+/// What `feeds opml` does.
+#[derive(Debug, Subcommand)]
+pub enum OpmlCommand {
+    /// Follow the feeds and sweeps of an OPML file (those followed already are passed over)
+    Import { file: PathBuf },
+    /// Write the subscriptions as OPML to a file, else to the standard output
+    Export { file: Option<PathBuf> },
+}
+
 /// `feeds subscribe`.
 #[derive(Debug, Args)]
 #[command(group(ArgGroup::new("feed").required(true).args(["url", "issn", "openalex"])))]
@@ -123,6 +166,20 @@ pub struct SubscribeArgs {
     /// Fetch the page of each item at fetch time (to find the paper of a post)
     #[arg(long)]
     pub fetch_pages: bool,
+    /// Added to the score of its items, e.g. 2 for "cites my work" (paper-feeder's score_boost)
+    #[arg(long, value_name = "N", allow_negative_numbers = true)]
+    pub boost: Option<f64>,
+}
+
+/// `feeds edit`.
+#[derive(Debug, Args)]
+pub struct EditArgs {
+    /// The id of the subscription
+    pub id: String,
+    /// Added to the score of its items in each interest (0 for none); the strongest of the
+    /// subscriptions that list an item counts
+    #[arg(long, value_name = "N", allow_negative_numbers = true)]
+    pub boost: f64,
 }
 
 /// The order of `feeds list`.

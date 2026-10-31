@@ -162,6 +162,7 @@ pub fn run(args: Vec<String>, host: &Host, out: &mut dyn Write, err: &mut dyn Wr
 fn dispatch(ctx: &mut Ctx, command: Command) -> Result<()> {
     match command {
         Command::Subscribe(a) => subs::subscribe(ctx, a),
+        Command::Edit(a) => subs::edit(ctx, a),
         Command::Unsubscribe(a) => subs::unsubscribe(ctx, a),
         Command::Subscriptions(a) => subs::subscriptions(ctx, a),
         Command::Fetch(a) => subs::fetch(ctx, a),
@@ -172,7 +173,8 @@ fn dispatch(ctx: &mut Ctx, command: Command) -> Result<()> {
         Command::Prune => items::prune(ctx),
         Command::Interests(a) => settings::interests(ctx, a),
         Command::Rules(a) => settings::rules(ctx, a),
-        Command::Config => settings::config(ctx),
+        Command::Config(a) => settings::config(ctx, a),
+        Command::Opml(a) => subs::opml(ctx, a),
         Command::ImportPaperFeeder(a) => paperfeeder::import(ctx, a),
         Command::Digest(a) => digest::digest(ctx, a),
     }

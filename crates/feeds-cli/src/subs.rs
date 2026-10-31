@@ -2,9 +2,9 @@
 
 use papers_feeds::{Feed, Outcome, SourceKind};
 
-use crate::cli::{AccessArgs, IdArg, JsonArg, SubscribeArgs};
+use crate::cli::{AccessArgs, EditArgs, IdArg, JsonArg, OpmlArgs, OpmlCommand, SubscribeArgs};
 use crate::text::{label, table};
-use crate::{Ctx, Result, fail};
+use crate::{Ctx, Error, Result, fail};
 /// The kind of a feed's items when none is said: preprints for arXiv and the preprint servers,
 /// else journal.
 pub fn guess_kind(feed: &Feed) -> SourceKind {
@@ -30,11 +30,12 @@ pub fn subscribe(ctx: &mut Ctx, a: SubscribeArgs) -> Result<()> {
     let mut feeds = ctx.open()?;
     let kind = a.kind.map_or_else(|| guess_kind(&feed), SourceKind::from);
     let mut subscription = feeds.subscribe(feed, kind)?;
-    if a.title.is_some() || a.journal.is_some() || a.fetch_pages {
+    if a.title.is_some() || a.journal.is_some() || a.fetch_pages || a.boost.is_some() {
         subscription = feeds.edit_subscription(&subscription.id, |s| {
             s.title = a.title.or(s.title.take());
             s.journal = a.journal.or(s.journal.take());
             s.fetch_pages |= a.fetch_pages;
+            s.boost = a.boost.unwrap_or(s.boost);
         })?;
     }
     let (id, feed) = (&subscription.id, &subscription.feed);
@@ -43,6 +44,14 @@ pub fn subscribe(ctx: &mut Ctx, a: SubscribeArgs) -> Result<()> {
         "subscribed {id} ({}) {feed}",
         kind_name(subscription.kind)
     )?;
+    Ok(())
+}
+
+/// `feeds edit`: sets what the options say.
+pub fn edit(ctx: &mut Ctx, a: EditArgs) -> Result<()> {
+    let mut feeds = ctx.open()?;
+    let s = feeds.edit_subscription(&a.id, |s| s.boost = a.boost)?;
+    writeln!(ctx.out, "edited {} {}: boost {}", s.id, s.feed, s.boost)?;
     Ok(())
 }
 
@@ -79,21 +88,53 @@ pub fn subscriptions(ctx: &mut Ctx, a: JsonArg) -> Result<()> {
         )?;
         return Ok(());
     }
+    // the column of boosts, if any subscription has one
+    let boosted = feeds.subscriptions().iter().any(|s| s.boost != 0.0);
     let row = |s: &papers_feeds::Subscription| {
         let name = s
             .title
             .clone()
             .or_else(|| s.journal.clone())
             .unwrap_or_default();
-        vec![
-            s.id.clone(),
-            kind_name(s.kind).to_string(),
-            name,
-            s.feed.to_string(),
-        ]
+        let mut row = vec![s.id.clone(), kind_name(s.kind).to_string(), name];
+        if boosted {
+            row.push(match s.boost {
+                0.0 => String::new(),
+                boost => format!("boost {boost:+}"),
+            });
+        }
+        row.push(s.feed.to_string());
+        row
     };
     let rows: Vec<Vec<String>> = feeds.subscriptions().iter().map(row).collect();
     write!(ctx.out, "{}", table(&rows))?;
+    Ok(())
+}
+
+/// `feeds opml`: follows what a file lists, or writes the subscriptions.
+pub fn opml(ctx: &mut Ctx, a: OpmlArgs) -> Result<()> {
+    let file_error = |path: &std::path::Path| {
+        let path = path.to_path_buf();
+        move |source| Error::File { path, source }
+    };
+    match a.command {
+        OpmlCommand::Import { file } => {
+            let text = std::fs::read_to_string(&file).map_err(file_error(&file))?;
+            let added = ctx.open()?.import_opml(&text)?;
+            writeln!(ctx.out, "subscribed to {added} new")?;
+        }
+        OpmlCommand::Export { file } => {
+            let feeds = ctx.open()?;
+            match file {
+                Some(file) => {
+                    std::fs::write(&file, feeds.opml()).map_err(file_error(&file))?;
+                    let n = feeds.subscriptions().len();
+                    writeln!(ctx.out, "exported {n} to {}", file.display())?;
+                }
+                None => write!(ctx.out, "{}", feeds.opml())?,
+            }
+        }
+    }
     Ok(())
 }
 

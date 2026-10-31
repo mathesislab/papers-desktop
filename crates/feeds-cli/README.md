@@ -20,14 +20,17 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 
 | Command | |
 | --- | --- |
-| `subscribe <url> \| --issn <issn> \| --openalex <filter>` | `--kind journal\|preprints\|news\|blog` (arXiv and preprint servers: preprints, else journal), `--title`, `--journal`, `--fetch-pages` |
+| `subscribe <url> \| --issn <issn> \| --openalex <filter>` | `--kind journal\|preprints\|news\|blog` (arXiv and preprint servers: preprints, else journal), `--title`, `--journal`, `--fetch-pages`, `--boost N` (added to the score of its items, e.g. 2 for "cites my work") |
+| `edit <id> --boost N` | change the boost of a subscription (0 for none); the strongest of the subscriptions that list an item counts |
 | `unsubscribe <id>`, `subscriptions [--json]` | |
 | `fetch` | `--mailto <address>` (env `FEEDS_MAILTO`), `--openalex-key <key>` (env `OPENALEX_KEY`); one request at a time per host; a feed that fails is reported, the others go on |
 | `list [QUERY]...` | `--sort score\|newest`, `--kind paper,preprint,news,blog`, `--limit N`, `--dismissed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `abs:`, ...) |
 | `show <id> [--json]`, `find <id>` | everything known of an item; the papers behind a post (needs the network) |
 | `mark <state> <id>...` | `new`, `seen`, `shortlisted`, `dismissed`, `added` |
 | `prune` | the old items no feed lists go (done on opening too) |
+| `opml import <file>`, `opml export [file]` | the subscriptions as OPML, as the app's settings read and write it (to the standard output without a file); import passes over those followed already |
 | `interests`, `rules`, `config` | what is set; `--json` for the first two |
+| `config keep-days <N>`, `config lookback-days <N>` | the days an item no feed lists is kept (90), the days a first sweep looks back (14); at least 1 |
 | `import-paper-feeder <sources.yaml> <scoring.yaml>` | `--interest <name>` (default `Interests`), `--issn-via crossref\|openalex` |
 | `digest --rss <file> --html <file>` | `--query` (default `score:3-`), `--days` (7), `--title`, `--link` |
 
@@ -42,11 +45,14 @@ writes over the other.
 `crossref:` ISSNs (the ISSNs under `openalex:` are Crossref sweeps, which need no key, or with
 `--issn-via openalex` the filter `primary_location.source.issn:<issn>`); sets the lookback; and
 turns the lexicon into one interest (`publish_min_score` is its minimum, `title_boost` the
-boost). Importing again changes nothing but the interest. Warnings on the error stream list what
-has no equivalent yet and is skipped: `always_include` and `score_boost` of a source, the
-`lookback_days` of a query, a pattern that is no Rust regex (look-around), and the settings not
-used (`window_days`, `retention_days`, `render`, `serendipity_count`, `llm_rerank`). The `mailto`
-is not stored: set `FEEDS_MAILTO`.
+boost). The `score_boost` of a source is the boost of its subscription; its `always_include` is a
+rule that shortlists the new items of the subscription (`src:"<its title>"` → shortlist, by its id
+if it has no title), added after the rules there are. Unlike `always_include`, the rule does not
+yield to the exclusions of the interest. Importing again changes nothing but the interest: the
+boost and rule of a subscription there already stay as they are. Warnings on the error stream
+list what has no equivalent yet and is skipped: the `lookback_days` of a query, a pattern that is
+no Rust regex (look-around), and the settings not used (`window_days`, `retention_days`,
+`render`, `serendipity_count`, `llm_rerank`). The `mailto` is not stored: set `FEEDS_MAILTO`.
 
 `feeds digest` is `render.py`: the RSS has the DOI (else the link) as guid, the authors as
 `dc:creator`, the journal as category, and "journal — matched: terms" before the abstract; the

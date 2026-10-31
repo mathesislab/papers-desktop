@@ -137,6 +137,8 @@ export interface SubscriptionInfo {
   feed: Feed;
   journal: string | null;
   fetchPages: boolean;
+  /** added to the score of its items in each interest */
+  boost: number;
   /** the last fetch of it: when, and its error if it failed */
   last: { at: string; error: string | null } | null;
 }
@@ -146,6 +148,7 @@ export interface SubscriptionPatch {
   kind?: SourceKind;
   journal?: string | null;
   fetchPages?: boolean;
+  boost?: number;
 }
 
 export interface Weighted {
