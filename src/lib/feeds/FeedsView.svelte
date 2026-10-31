@@ -563,9 +563,9 @@
         {counts}
         {groups}
         onview={(view) => (filters.view = view)}
-        onkind={(kind) => (filters = chooseKind(filters, kind))}
-        oninterest={(name) => (filters = chooseInterest(filters, name))}
-        onsource={(title) => (filters = chooseSource(filters, title))}
+        onkind={(kind, toggle) => (filters = chooseKind(filters, kind, toggle))}
+        oninterest={(name, toggle) => (filters = chooseInterest(filters, name, toggle))}
+        onsource={(title, toggle) => (filters = chooseSource(filters, title, toggle))}
         onfold={fold}
       />
     </aside>

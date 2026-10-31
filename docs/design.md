@@ -688,7 +688,9 @@ A facet takes a whole value, with `*` wildcards; a number takes `2-5`,
 plain word: a `Term` holds its patterns, any of which matches (each one
 that matched marked), no OR node; without a comma a term is as before, and
 the words of an alternative are a phrase. `anyOf` (`src/lib/query.ts`)
-writes such a filter.
+writes such a filter, a value of anything but letters, digits, `_`, `.` and
+`-` quoted (a quoted tag or facet value is the same value, its `*` a
+wildcard); `queryTerms` reads a query's terms as the core's tokens do.
 
 **A subscription** follows a `Feed`: an RSS/Atom `url`, a Crossref `issn`
 (works indexed since the last sweep, created at most the lookback, 14 days,
@@ -730,16 +732,22 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 - *Sidebar*: Views (Unread `is:new`, Shortlist, Added, All), Kinds,
   Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
   apart; a group folds), each with its count (`counts`: every item not
-  dismissed, whatever the search). One choice per group: a click chooses,
-  a second lets go. As the library's tags, the choices
-  are filters of their own, shown as chips with an ×; the backend is asked
-  for the typed text followed by a term per choice (`is:new kind:preprint
-  prof:"Ice sheets" src:"The Cryosphere"`), and `-is:dismissed` unless the
-  query asks for `is:dismissed`. *Papers | Posts | All* above the list picks
-  the kinds (`kinds` of the request; Papers by default); a kind chosen that
-  the segment does not show moves the segment. The choices, the segment,
+  dismissed, whatever the search). A click chooses one of a group, a second
+  lets go; `⌘`-click (Ctrl elsewhere) adds one to the choices of its group,
+  or takes it out (the views: one). As the library's tags, the choices
+  are filters of their own, a chip per group with an × (`Source: TC, GRL`
+  with several); the backend is asked for the typed text followed by a term
+  per group, any of its choices (`is:new kind:preprint prof:"Ice sheets"
+  src:"The Cryosphere",GRL`), the segment's kinds when no kind is chosen
+  (`kind:paper,preprint`: the query is the whole of the tab's choices), and
+  `-is:dismissed` unless the query has an `is:` term on `dismissed`. *Papers
+  | Posts | All* above the list picks the kinds (`kinds` of the request too;
+  Papers by default); kinds chosen that the segment does not show move it
+  (to All for papers and posts together), another segment lets go of those
+  it does not show. The choices, the segment,
   the sort, the search and the groups unfolded are kept in the layout
-  (`feeds`; a file without it takes the defaults).
+  (`feeds`; a file without it takes the defaults; the single `kind`,
+  `interest` and `source` of before become groups of one).
 - *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
   added, the kind of a post or preprint), the score, the title (bold while
   new, muted once seen), authors, journal or source, age, badges (*in

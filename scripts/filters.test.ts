@@ -21,7 +21,7 @@ import {
   type Filters,
   type Lists,
 } from "../src/lib/library/filters.ts";
-import { alternatives, anyOf, renameTagFilter, tagTerm } from "../src/lib/query.ts";
+import { FIELDS, alternatives, anyOf, queryTerms, renameTagFilter, tagTerm } from "../src/lib/query.ts";
 import type { Row } from "../src/lib/types.ts";
 
 const row = (id: string, bib: string, tags: string[] = [], file: Row["file"] = "found"): Row =>
@@ -83,7 +83,7 @@ test("recently added: newest first, the last ones of the library, then the searc
 test("the search sent to the core: the text, then a term per group of tags", () => {
   assert.equal(searchOf(NO_FILTERS), "");
   assert.equal(searchOf({ ...NO_FILTERS, query: "  ice  tag:x ", tags: [["amoc"], ["mass balance"]] }), 'ice  tag:x tag:amoc tag:"mass balance"');
-  assert.equal(searchOf({ ...NO_FILTERS, tags: [["amoc", "ice"], ["climate/amoc"]] }), "tag:amoc,ice tag:climate/amoc");
+  assert.equal(searchOf({ ...NO_FILTERS, tags: [["amoc", "ice"], ["climate/amoc"]] }), 'tag:amoc,ice tag:"climate/amoc"');
 });
 
 test("libraries: a click chooses one, ⌘-click adds or takes out", () => {
@@ -184,7 +184,9 @@ test("filters restored from what was saved", () => {
 test("a filter of any of several values, quoted as the core reads them", () => {
   assert.equal(anyOf("src", ["tc", "Nature Geosci"]), 'src:tc,"Nature Geosci"');
   assert.equal(anyOf("src", ["The Cryosphere", "Nature, Geosci"]), 'src:"The Cryosphere","Nature, Geosci"');
-  assert.equal(anyOf("tag", ["amoc", "ice*", "climate/amoc"]), "tag:amoc,ice*,climate/amoc");
+  // anything but letters, digits, _ . - quoted (the core reads a quoted tag as the same tag, its * a wildcard)
+  assert.equal(anyOf("tag", ["amoc", "ice*", "climate/amoc", "a_b.c-d"]), 'tag:amoc,"ice*","climate/amoc",a_b.c-d');
+  assert.equal(anyOf("src", ["EGUsphere", "Glaciología"]), 'src:EGUsphere,"Glaciología"');
   assert.equal(anyOf("prof", ['say "hi"', "", "  "]), 'prof:"say hi"');
   assert.equal(anyOf("kind", []), "");
   assert.equal(tagTerm("mass balance"), 'tag:"mass balance"');
@@ -195,7 +197,26 @@ test("a filter of any of several values, quoted as the core reads them", () => {
 
 test("a typed tag filter follows a rename, any of its values", () => {
   assert.equal(renameTagFilter("ice tag:amoc -tag:x", "amoc", "AMOC"), "ice tag:AMOC -tag:x");
-  assert.equal(renameTagFilter('tag:x,"climate/amoc",ice', "climate", "clim"), "tag:x,clim/amoc,ice");
+  assert.equal(renameTagFilter('tag:x,"climate/amoc",ice', "climate", "clim"), 'tag:x,"clim/amoc",ice');
   assert.equal(renameTagFilter("tag:mb,ice", "mb", "mass balance"), 'tag:"mass balance",ice');
   assert.equal(renameTagFilter('tag:"a b",c', "x", "y"), 'tag:"a b",c');
+});
+
+test("the terms of a query, as the core reads them", () => {
+  const t = (q: string) => queryTerms(q, [...FIELDS, "src"]).map((x) => [x.text, x.negated, x.field, x.values]);
+  assert.deepEqual(t(' ice  "mass balance" -src:tc,"Nature, Geosci" t:"a b" foo:"x y'), [
+    ["ice", false, null, ["ice"]],
+    ['"mass balance"', false, null, ["mass balance"]],
+    ['-src:tc,"Nature, Geosci"', true, "src", ["tc", "Nature, Geosci"]],
+    ['t:"a b"', false, "t", ["a b"]],
+    // an unknown name is part of a word, which ends at a space
+    ['foo:"x', false, null, ['foo:"x']],
+    ["y", false, null, ["y"]],
+  ]);
+  assert.deepEqual(t('Src:a, b "open'), [
+    ["Src:a,", false, "src", ["a", ""]],
+    ["b", false, null, ["b"]],
+    ['"open', false, null, ["open"]],
+  ]);
+  assert.deepEqual(t(""), []);
 });
