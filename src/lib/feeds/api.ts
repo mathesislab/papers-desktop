@@ -222,6 +222,34 @@ export interface Suggested {
   group: string;
 }
 
+/** A journal, as OpenAlex knows it, or as the library's papers give its ISSN. */
+export interface Journal {
+  title: string;
+  /** the ISSN its works are swept by in Crossref */
+  issn: string | null;
+  /** every ISSN of it, print and electronic */
+  issns: string[];
+  publisher: string | null;
+  homepage: string | null;
+  /** its works in OpenAlex */
+  works: number | null;
+}
+
+/** What follows a journal of the library: a suggested subscription, a sweep of its ISSN (none if none was found),
+ *  nothing found in OpenAlex, or not looked up yet. */
+export type Follow =
+  | { by: "suggested"; suggested: Suggested }
+  | { by: "journal"; journal: Journal }
+  | { by: "unknown" }
+  | { by: "pending" };
+
+/** A journal of the library's papers (3 or more), and what follows it. */
+export interface LibraryJournal {
+  title: string;
+  papers: number;
+  follow: Follow;
+}
+
 export const fetchFeeds = () => invoke<FetchSummary>("feeds_fetch");
 export const lastFetch = () => invoke<FetchSummary | null>("feeds_last_fetch");
 export const view = (request: ViewRequest) => invoke<FeedView>("feeds_view", { request });
@@ -239,6 +267,10 @@ export const unsubscribe = (id: string) => invoke<void>("feeds_unsubscribe", { i
 export const updateSubscription = (id: string, patch: SubscriptionPatch) =>
   invoke<SubscriptionInfo>("feeds_update_subscription", { id, patch });
 export const suggested = () => invoke<Suggested[]>("feeds_suggested");
+/** At once: those to look up are pending, for `lookupJournal`. */
+export const librarySuggested = () => invoke<LibraryJournal[]>("feeds_library_suggested");
+/** Looked up in OpenAlex by its title, once: what it answers is kept. */
+export const lookupJournal = (title: string) => invoke<Follow>("feeds_lookup_journal", { title });
 export const importOpml = (path: string) => invoke<number>("feeds_import_opml", { path });
 export const exportOpml = (path: string) => invoke<void>("feeds_export_opml", { path });
 

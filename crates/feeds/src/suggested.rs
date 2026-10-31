@@ -6,8 +6,10 @@
 
 use serde::Serialize;
 
+use crate::journals::journal_key;
 use crate::model::SourceKind::{Blog, Journal, News, Preprints};
 use crate::model::{Feed, SourceKind};
+use crate::normalize::canonical_issn;
 
 /// A subscription offered.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -83,16 +85,40 @@ impl Of {
             },
         }
     }
+
+    /// The ISSN it shows: a sweep's, the electronic one of Wiley's feeds.
+    fn issn(&self) -> Option<String> {
+        match self {
+            Of::Issn(issn) | Of::Wiley(issn) => canonical_issn(issn),
+            _ => None,
+        }
+    }
+}
+
+/// The suggestion of a journal: the same title (folded as [`journal_key`]),
+/// or one of its ISSNs (canonical).
+pub fn suggested_journal(title: &str, issns: &[String]) -> Option<Suggested> {
+    let key = journal_key(title);
+    let found = LIST.iter().find(|(_, title, _, of)| {
+        journal_key(title) == key || of.issn().is_some_and(|issn| issns.contains(&issn))
+    })?;
+    let (group, title, kind, of) = found;
+    Some(suggestion(group, title, *kind, of))
+}
+
+/// A suggestion of the list.
+fn suggestion(group: &str, title: &str, kind: SourceKind, of: &Of) -> Suggested {
+    Suggested {
+        title: title.to_string(),
+        kind,
+        feed: of.feed(),
+        group: group.to_string(),
+    }
 }
 
 /// The subscriptions offered, in their groups.
 pub fn suggested() -> Vec<Suggested> {
     LIST.iter()
-        .map(|(group, title, kind, of)| Suggested {
-            title: title.to_string(),
-            kind: *kind,
-            feed: of.feed(),
-            group: group.to_string(),
-        })
+        .map(|(group, title, kind, of)| suggestion(group, title, *kind, of))
         .collect()
 }

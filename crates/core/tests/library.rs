@@ -520,6 +520,23 @@ fn bibtex() {
 }
 
 #[test]
+fn fields_by_name() {
+    let lib = library();
+    let journal = ["journal", "journaltitle"];
+    assert_eq!(
+        lib.field("feldmann2017", &journal).as_deref(),
+        Some("The Cryosphere")
+    );
+    assert_eq!(
+        lib.field("feldmann2017", &["title"]).as_deref(),
+        Some("From cyclic ice streaming to Heinrich-like events"),
+        "without its braces"
+    );
+    assert_eq!(lib.field("feldmann2017", &["issn"]), None);
+    assert_eq!(lib.field("nobody", &journal), None);
+}
+
+#[test]
 fn errors() {
     let missing = Library::load(&[fixture("missing.bib")]);
     assert!(matches!(missing, Err(Error::Read { .. })));

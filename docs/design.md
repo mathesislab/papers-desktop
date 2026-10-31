@@ -838,6 +838,11 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN or an OpenAlex
   filter, with the kind of its items, or one of the suggested subscriptions
   in their groups (those followed marked); fetched when the sheet closes.
+  *From your library*, the first group of *Suggested*: the journals of the
+  library's papers (below), each with its count (*23 papers*), shown at
+  once and filled in as their lookups come (*looking up…*, one at a time
+  while the sheet is open); one without an ISSN found says so, without a
+  Subscribe.
 
 **Interests**: named profiles of weighted terms (paper-feeder's: a term in
 the title counts twice, `ice sheet` matches `ice-sheet`, an exclude vetoes),
@@ -927,7 +932,7 @@ a subscription marked so.
 
 **Store**: JSON in the app data folder, `feeds/` (the subscriptions and
 interests, the items, the triage state, the ETags and the last sweeps, the
-lookups made), never the .bib. An item no feed lists goes after `keep_days`
+lookups made, the journals looked up in OpenAlex), never the .bib. An item no feed lists goes after `keep_days`
 (90), on opening and after a fetch; shortlisted and added stay.
 
 **Settings**: a *Feeds* section of the settings window
@@ -961,11 +966,35 @@ Carbon Brief, RealClimate. Each answered one GET with a browser's user
 agent (October 2026); left out: PNAS (its feed answers 403), ESSOAr (no
 feed, no ISSN, not a source of OpenAlex), Futurity's categories (404).
 
+**The journals of the library** (`papers_feeds::library_journals`): the
+`journal` field (else `journaltitle`; core's `Library::field`, braces and
+LaTeX commands out) of the library's papers, counted by the title folded
+(`journal_key`: braces, case, accents, punctuation, spaces), each written
+as most of its papers write it, with the ISSNs of their `issn` fields; those
+of 3 papers or more, the most papers first, 15 at most. Each is followed
+(`Journals::follow`) by the suggested list's subscription of the same title
+(folded) or ISSN (a sweep's, the electronic ISSN of Wiley's feeds), else by
+a Crossref sweep of the ISSN its papers give, else it is looked up
+(`Journals::look_up`): OpenAlex's `sources?search=NAME&filter=type:journal`
+(10 at most, with the key and address when set, as every request of
+OpenAlex), the first result whose `display_name` or one of its
+`alternate_titles` folds to the name, one with an ISSN first: its ISSN-L
+(else its first ISSN), every ISSN, `host_organization_name`,
+`homepage_url`, `works_count` (`Journal`); the suggested list's
+subscription again if one of those ISSNs or the title is the list's. What
+OpenAlex answers, found or not (null), is kept by the folded name in the
+feeds folder's `journals.json`, so a journal is asked for once; a request
+without an answer is not kept.
+
 **The app's commands** (`src-tauri/src/feeds.rs`, the contract
 `src/lib/feeds/api.ts`): `feeds_fetch`, `feeds_last_fetch`, `feeds_view`,
 `feeds_item`, `feeds_triage`, `feeds_find_papers`, `feeds_pdf`,
 `feeds_subscriptions`, `feeds_subscribe`, `feeds_unsubscribe`,
-`feeds_update_subscription`, `feeds_suggested`, `feeds_import_opml`,
+`feeds_update_subscription`, `feeds_suggested`,
+`feeds_library_suggested` (the journals of the library, `{title, papers,
+follow}`, at once: `follow` is `{by: "suggested", suggested}`, `{by:
+"journal", journal}`, `{by: "unknown"}` or `{by: "pending"}`),
+`feeds_lookup_journal(title)` (the `follow` of a pending one), `feeds_import_opml`,
 `feeds_export_opml`, `feeds_settings`, `feeds_set_settings`,
 `feeds_searches`, `feeds_set_searches` (refused for a blank name or one
 given twice; a change of the journal, as the others); the events

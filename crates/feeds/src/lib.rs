@@ -17,8 +17,9 @@
 //! how like them an item is (`like:`);
 //! [`Feeds::view`] gives the items a query shows and the counts of the
 //! sidebar, those of the saved [`Search`]es too. The subscriptions go out and come in as OPML; [`suggested`]
-//! lists some to start with; [`pdf`] tells the free copy of a paper. Nothing
-//! here knows of .bib files.
+//! lists some to start with, [`library_journals`] the journals of the
+//! library's papers, which [`Journals`] looks up in OpenAlex; [`pdf`] tells
+//! the free copy of a paper. Nothing here knows of .bib files.
 
 mod crossref;
 mod enrich;
@@ -26,6 +27,7 @@ mod extras;
 mod feeds;
 pub mod http;
 mod interest;
+mod journals;
 mod links;
 mod merge;
 mod model;
@@ -48,6 +50,10 @@ pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
 pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
 pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
+pub use journals::{
+    Follow, Journal, Journals, LEAST_PAPERS, LibraryJournal, MOST_JOURNALS, journal_key,
+    library_journals,
+};
 pub use links::{Found, paragraphs};
 pub use model::{
     Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Source, SourceKind, Stage,

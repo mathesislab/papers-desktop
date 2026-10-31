@@ -1118,6 +1118,8 @@ pub fn run() {
             feeds::feeds_unsubscribe,
             feeds::feeds_update_subscription,
             feeds::feeds_suggested,
+            feeds::feeds_library_suggested,
+            feeds::feeds_lookup_journal,
             feeds::feeds_import_opml,
             feeds::feeds_export_opml,
             feeds::feeds_settings,

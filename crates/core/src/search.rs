@@ -181,6 +181,12 @@ impl Library {
         self.entry(id).map(|e| e.raw.as_str())
     }
 
+    /// The text of the first non-empty field of an item among `keys`
+    /// (`journal`, `issn`, …): braces and LaTeX commands are gone.
+    pub fn field(&self, id: &str, keys: &[&str]) -> Option<String> {
+        field(&self.entry(id)?.entry, keys)
+    }
+
     /// The entry of an item, as parsed and as written.
     pub(crate) fn entry(&self, id: &str) -> Option<&BibEntry> {
         self.by_id.get(id).map(|&i| &self.entries[i])

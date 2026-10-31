@@ -1,12 +1,14 @@
 <script lang="ts">
   // Subscribe: a feed's URL (RSS or Atom), a journal's ISSN swept in Crossref, or a filter of OpenAlex, with the kind
-  // of its items; or one of the suggested subscriptions, in their groups, those followed already marked. What is
+  // of its items; or one of the suggested subscriptions, in their groups, those followed already marked. At the top of
+  // them, *From your library*: the journals of the library's papers, each by the suggested subscription of it, else
+  // by its ISSN, those without one looked up in OpenAlex one after another while the sheet is open. What is
   // subscribed to is fetched when the sheet closes.
 
   import { onMount } from "svelte";
   import { holdModal } from "$lib/library/modal.svelte";
   import * as api from "./api";
-  import type { SourceKind, Suggested, SubscriptionInfo } from "./api";
+  import type { Follow, LibraryJournal, SourceKind, Suggested, SubscriptionInfo } from "./api";
   import { feedOf, sameFeed, type FeedType } from "./filters";
 
   let {
@@ -38,11 +40,16 @@
   let busy = $state(false);
   let message = $state<{ text: string; error?: boolean } | null>(null);
   let suggestions = $state<Suggested[] | null>(null);
+  /** the journals of the library; a lookup that got no answer is `failed` */
+  let library = $state<(Omit<LibraryJournal, "follow"> & { follow: Follow | { by: "failed"; message: string } })[]>(
+    [],
+  );
+  let open = true;
   let filter = $state("");
   let input = $state<HTMLInputElement>();
 
+  let words = $derived(filter.trim().toLowerCase());
   let groups = $derived.by(() => {
-    const words = filter.trim().toLowerCase();
     const byGroup = new Map<string, Suggested[]>();
     for (const s of suggestions ?? []) {
       if (words && !`${s.title} ${s.group}`.toLowerCase().includes(words)) continue;
@@ -50,8 +57,9 @@
     }
     return [...byGroup];
   });
+  let fromLibrary = $derived(library.filter((j) => !words || j.title.toLowerCase().includes(words)));
 
-  const followed = (s: Suggested) => subscriptions.some((sub) => sameFeed(sub.feed, s.feed));
+  const followed = (feed: api.Feed) => subscriptions.some((sub) => sameFeed(sub.feed, feed));
 
   onMount(holdModal);
 
@@ -64,6 +72,30 @@
       message = { text: String(e), error: true };
     }
   });
+
+  onMount(() => {
+    lookUpLibrary();
+    return () => (open = false);
+  });
+
+  /** The journals of the library, then those pending looked up, one at a time, while the sheet is open. */
+  async function lookUpLibrary() {
+    try {
+      library = await api.librarySuggested();
+    } catch (e) {
+      message = { text: String(e), error: true };
+      return;
+    }
+    for (const journal of library) {
+      if (!open) return;
+      if (journal.follow.by !== "pending") continue;
+      try {
+        journal.follow = await api.lookupJournal(journal.title);
+      } catch (e) {
+        journal.follow = { by: "failed", message: String(e) };
+      }
+    }
+  }
 
   async function subscribe(feed: api.Feed, as: SourceKind) {
     if (busy) return;
@@ -101,6 +133,14 @@
     }
   }
 </script>
+
+{#snippet follow(feed: api.Feed, as: SourceKind)}
+  {#if followed(feed)}
+    <span class="on">✓ Subscribed</span>
+  {:else}
+    <button disabled={busy} onclick={() => subscribe(feed, as)}>Subscribe</button>
+  {/if}
+{/snippet}
 
 <div class="backdrop" role="presentation" {onkeydown}>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="subscribe-title">
@@ -142,23 +182,39 @@
         <input class="filter" bind:value={filter} type="search" placeholder="Filter" spellcheck="false" autocomplete="off" />
       </div>
       <div class="list">
+        {#if fromLibrary.length}
+          <h4>From your library</h4>
+          {#each fromLibrary as j (j.title)}
+            {@const f = j.follow}
+            <div class="suggestion">
+              <span class="title" title={j.title}>{j.title}</span>
+              <span class="muted">{j.papers} papers</span>
+              {#if f.by === "suggested"}
+                {@render follow(f.suggested.feed, f.suggested.kind)}
+              {:else if f.by === "journal" && f.journal.issn}
+                {@render follow({ crossref: f.journal.issn }, "journal")}
+              {:else if f.by === "pending"}
+                <span class="muted">looking up…</span>
+              {:else if f.by === "failed"}
+                <span class="muted" title={f.message}>not looked up</span>
+              {:else}
+                <span class="muted">no ISSN found</span>
+              {/if}
+            </div>
+          {/each}
+        {/if}
         {#if suggestions === null}
           <p class="muted">Loading…</p>
-        {:else if !groups.length}
+        {:else if !groups.length && !fromLibrary.length}
           <p class="muted">None</p>
         {/if}
         {#each groups as [group, list] (group)}
           <h4>{group}</h4>
           {#each list as s (s.title)}
-            {@const on = followed(s)}
             <div class="suggestion">
               <span class="title" title={s.title}>{s.title}</span>
               <span class="muted">{KINDS.find((k) => k.kind === s.kind)?.name ?? s.kind}</span>
-              {#if on}
-                <span class="on">✓ Subscribed</span>
-              {:else}
-                <button disabled={busy} onclick={() => subscribe(s.feed, s.kind)}>Subscribe</button>
-              {/if}
+              {@render follow(s.feed, s.kind)}
             </div>
           {/each}
         {/each}

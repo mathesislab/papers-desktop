@@ -17,6 +17,11 @@
 //! each sent only when set. The last fetch's summary, and how each
 //! subscription's last fetch ended, are kept in `feeds-fetched.json`.
 //!
+//! *From your library*: the journals of the library's papers, each followed
+//! by the suggested list's subscription, else by its ISSN, from the papers
+//! or looked up in OpenAlex by its name (kept in the folder's
+//! `journals.json`, opened at the first ask).
+//!
 //! *Like in your library*: the index of the library's papers (core's
 //! `Likeness`) is built on a thread of its own whenever the library is read
 //! (at the start, after a change of its files or a write), then given to the
@@ -32,9 +37,9 @@ use chrono::{DateTime, Datelike, TimeDelta, Utc};
 use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
-    Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, LOOKUP, Network,
-    Outcome, Pdf, Rule, Score, Search, Sort, SourceKind, Stage, Subscription, Triage, Via,
-    ViewRequest as CrateRequest, paragraphs,
+    Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, Journal, Journals,
+    LOOKUP, Network, Outcome, Pdf, Rule, Score, Search, Sort, SourceKind, Stage, Subscription,
+    Triage, Via, ViewRequest as CrateRequest, paragraphs,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -70,6 +75,8 @@ pub struct FeedsState {
     fetched: Mutex<Option<Fetched>>,
     /// the free copy of each DOI asked for, this session
     pdfs: Mutex<HashMap<String, Pdf>>,
+    /// the journals looked up in OpenAlex, opened at the first ask
+    journals: Mutex<Option<Journals>>,
     open: Opener,
     /// counts the builds of the index of the library: one that ends after a
     /// newer one is dropped
@@ -255,6 +262,7 @@ impl FeedsState {
             running: Mutex::new(()),
             fetched: Mutex::new(None),
             pdfs: Mutex::new(HashMap::new()),
+            journals: Mutex::new(None),
             open,
             builds: AtomicU64::new(0),
         }
@@ -295,6 +303,15 @@ impl FeedsState {
             feeds.set_likeness(likeness);
         }
         true
+    }
+
+    /// Something done with the journals looked up, opened if they are not yet.
+    pub fn journals<T>(&self, work: impl FnOnce(&mut Journals) -> T) -> Result<T, String> {
+        let mut journals = self.journals.lock().unwrap();
+        if journals.is_none() {
+            *journals = Some(Journals::open(&self.dir).map_err(|e| e.to_string())?);
+        }
+        Ok(work(journals.as_mut().expect("opened")))
     }
 
     /// Something read of the feeds.
@@ -731,6 +748,63 @@ pub struct Suggested {
     group: String,
 }
 
+impl From<papers_feeds::Suggested> for Suggested {
+    fn from(s: papers_feeds::Suggested) -> Suggested {
+        Suggested {
+            feed: FeedOf::from(&s.feed),
+            title: s.title,
+            kind: s.kind,
+            group: s.group,
+        }
+    }
+}
+
+/// A journal of the library's papers, and what follows it.
+#[derive(Debug, Serialize)]
+pub struct LibraryJournal {
+    title: String,
+    papers: usize,
+    follow: Follow,
+}
+
+/// What follows a journal of the library: a suggested subscription, a sweep
+/// of its ISSN (none if none was found), nothing found, or not looked up yet.
+#[derive(Debug, Serialize)]
+#[serde(tag = "by", rename_all = "lowercase")]
+pub enum Follow {
+    Suggested { suggested: Suggested },
+    Journal { journal: Journal },
+    Unknown,
+    Pending,
+}
+
+impl From<papers_feeds::Follow> for Follow {
+    fn from(follow: papers_feeds::Follow) -> Follow {
+        match follow {
+            papers_feeds::Follow::Suggested(s) => Follow::Suggested {
+                suggested: s.into(),
+            },
+            papers_feeds::Follow::Journal(journal) => Follow::Journal { journal },
+            papers_feeds::Follow::Unknown => Follow::Unknown,
+            papers_feeds::Follow::Pending => Follow::Pending,
+        }
+    }
+}
+
+/// The journals of the library's papers: the `journal` field of each (or
+/// `journaltitle`), with its `issn`.
+fn library_journals(library: &Library) -> Vec<papers_feeds::LibraryJournal> {
+    let fields: Vec<(String, Option<String>)> = library
+        .items()
+        .iter()
+        .filter_map(|item| {
+            let journal = library.field(&item.id, &["journal", "journaltitle"])?;
+            Some((journal, library.field(&item.id, &["issn"])))
+        })
+        .collect();
+    papers_feeds::library_journals(fields.iter().map(|(j, issn)| (j.as_str(), issn.as_deref())))
+}
+
 /// The settings of the feeds: those of their folder and the polling of the app's.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1140,15 +1214,47 @@ pub async fn feeds_update_subscription(
 
 #[tauri::command]
 pub async fn feeds_suggested() -> Vec<Suggested> {
-    let suggested = papers_feeds::suggested().into_iter();
-    suggested
-        .map(|s| Suggested {
-            feed: FeedOf::from(&s.feed),
-            title: s.title,
-            kind: s.kind,
-            group: s.group,
-        })
+    papers_feeds::suggested()
+        .into_iter()
+        .map(Suggested::from)
         .collect()
+}
+
+/// The journals of the library's papers, each with what follows it as far
+/// as known, at once: those to look up are pending.
+#[tauri::command]
+pub async fn feeds_library_suggested(app: AppHandle) -> Result<Vec<LibraryJournal>, String> {
+    blocking(move || {
+        let state = app.state::<AppState>();
+        let journals = library_journals(&state.library.read().unwrap());
+        state.feeds.journals(|known| {
+            let follow = |j: &papers_feeds::LibraryJournal| Follow::from(known.follow(j));
+            journals
+                .iter()
+                .map(|j| LibraryJournal {
+                    follow: follow(j),
+                    title: j.title.clone(),
+                    papers: j.papers,
+                })
+                .collect()
+        })
+    })
+    .await
+}
+
+/// What follows a journal of the library, looked up in OpenAlex by its name
+/// (once: what it answers is kept).
+#[tauri::command]
+pub async fn feeds_lookup_journal(app: AppHandle, title: String) -> Result<Follow, String> {
+    blocking(move || {
+        let state = app.state::<AppState>();
+        let (network, access) = network(&state)?;
+        let follow = state
+            .feeds
+            .journals(|journals| journals.look_up(&title, &network, &access))??;
+        Ok(follow.into())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1499,6 +1605,57 @@ mod tests {
         assert!(like("Firn densification").is_some_and(|l| l > 99.9));
         assert!(state.set_likeness(state.next_build(), None));
         assert_eq!(like("Firn densification"), None);
+    }
+
+    #[test]
+    fn the_journals_of_the_library_and_what_follows_them() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = dir.path().join("refs.bib");
+        let entries = [
+            "@article{a, title = {A}, journal = {The {Cryosphere}}}",
+            "@article{b, title = {B}, journal = {The Cryosphere}}",
+            "@article{c, title = {C}, journaltitle = {the cryosphere}}",
+            "@article{d, title = {D}, journal = {Polar Science}, issn = {1873-9652}}",
+            "@article{e, title = {E}, journal = {Polar Science}}",
+            "@article{f, title = {F}, journal = {Polar Science}}",
+            "@inproceedings{g, title = {G}, booktitle = {Polar Science}}",
+            "@article{h, title = {H}, journal = {Ice}}",
+            "@article{i, title = {I}, journal = {Ice}}",
+            "@article{j, title = {J}, journal = {Ice}}",
+        ];
+        std::fs::write(&bib, entries.join("\n")).unwrap();
+        let library = Library::load(&[bib]).unwrap();
+        let journals = library_journals(&library);
+        let counted: Vec<(&str, usize, &[String])> = journals
+            .iter()
+            .map(|j| (j.title.as_str(), j.papers, j.issns.as_slice()))
+            .collect();
+        let polar = ["1873-9652".to_string()];
+        assert_eq!(
+            counted,
+            [
+                ("Ice", 3, &[][..]),
+                ("Polar Science", 3, &polar[..]),
+                ("The Cryosphere", 3, &[][..])
+            ],
+            "a book title is no journal"
+        );
+
+        let state = opened(dir.path());
+        let follow = |j| {
+            state
+                .journals(|known| Follow::from(known.follow(j)))
+                .unwrap()
+        };
+        let json = |j| serde_json::to_value(follow(j)).unwrap();
+        assert_eq!(json(&journals[0]), serde_json::json!({"by": "pending"}));
+        assert_eq!(json(&journals[1])["journal"]["issn"], "1873-9652");
+        let tc = json(&journals[2]);
+        assert_eq!(tc["by"], "suggested");
+        assert_eq!(
+            tc["suggested"]["feed"],
+            serde_json::json!({"rss": "https://tc.copernicus.org/xml/rss2_0.xml"})
+        );
     }
 
     #[test]

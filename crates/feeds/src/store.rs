@@ -2,7 +2,8 @@
 //! rules, saved searches, the days kept), `items.json` (the items and the aliases of merged
 //! ones), `state.json` (the triage of each item), `http.json` (the
 //! validators of each subscription's last answer, the time of its last
-//! sweep), `lookups.json` (what was looked up, and when). Each is read whole,
+//! sweep), `lookups.json` (what was looked up, and when), `journals.json`
+//! (the journals looked up in OpenAlex, [`crate::Journals`]). Each is read whole,
 //! and written whole through a temporary
 //! file renamed over it.
 
@@ -25,6 +26,7 @@ pub(crate) const ITEMS: &str = "items.json";
 pub(crate) const STATE: &str = "state.json";
 pub(crate) const HTTP: &str = "http.json";
 pub(crate) const LOOKUPS: &str = "lookups.json";
+pub(crate) const JOURNALS: &str = "journals.json";
 
 /// The days a sweep looks back the first time.
 pub const LOOKBACK_DAYS: u32 = 14;

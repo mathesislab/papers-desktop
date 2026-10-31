@@ -1,6 +1,7 @@
 //! OpenAlex's works: the requests (the articles of a filter created since a
 //! day, a work by its DOI; each with the key), their JSON, and a work as an
-//! entry, its abstract rebuilt from the inverted index.
+//! entry, its abstract rebuilt from the inverted index. And its journals: a
+//! search by name, the journal of an ISSN.
 
 use std::collections::BTreeMap;
 
@@ -13,13 +14,21 @@ use crate::normalize::{arxiv_id, canonical_doi, is_preprint_doi};
 use crate::parse::{EDITORIAL, plain};
 
 const WORKS: &str = "https://api.openalex.org/works";
+const SOURCES: &str = "https://api.openalex.org/sources";
 
 /// The fields of a work asked for.
 const SELECT: &str =
     "id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type";
 
+/// The fields of a source asked for.
+const SOURCE_SELECT: &str =
+    "id,display_name,alternate_titles,issn_l,issn,host_organization_name,homepage_url,works_count";
+
 /// The works of a page of a list.
 pub(crate) const PER_PAGE: usize = 100;
+
+/// The journals a search ranks.
+pub(crate) const JOURNALS_PER_SEARCH: usize = 10;
 
 /// A page of a list of works.
 #[derive(Debug, Default, Deserialize)]
@@ -77,6 +86,27 @@ pub(crate) struct Location {
     pub landing_page_url: Option<String>,
 }
 
+/// A page of a search of sources.
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+pub(crate) struct Sources {
+    pub results: Vec<Source>,
+}
+
+/// A source (a journal, a repository), with the fields used.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub(crate) struct Source {
+    pub display_name: String,
+    pub alternate_titles: Option<Vec<String>>,
+    /// the linking ISSN
+    pub issn_l: Option<String>,
+    pub issn: Option<Vec<String>>,
+    pub host_organization_name: Option<String>,
+    pub homepage_url: Option<String>,
+    pub works_count: Option<u64>,
+}
+
 /// The parameters of every request: the key, and the address, if set.
 fn access_pairs<'a>(
     mut pairs: Vec<(&'a str, &'a str)>,
@@ -109,6 +139,18 @@ pub(crate) fn list_url(filter: &str, created: NaiveDate, cursor: &str, access: &
 pub(crate) fn work_url(doi: &str, access: &Access) -> String {
     let base = format!("{WORKS}/doi:{}", doi_path(doi));
     with_query(&base, &access_pairs(vec![("select", SELECT)], access))
+}
+
+/// The journals of a search, the best first.
+pub(crate) fn journals_url(search: &str, access: &Access) -> String {
+    let per_page = JOURNALS_PER_SEARCH.to_string();
+    let pairs = vec![
+        ("search", search),
+        ("filter", "type:journal"),
+        ("select", SOURCE_SELECT),
+        ("per-page", &per_page),
+    ];
+    with_query(SOURCES, &access_pairs(pairs, access))
 }
 
 impl Work {
