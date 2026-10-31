@@ -131,6 +131,32 @@ fn review_comments_and_supplements_are_not_papers() {
 }
 
 #[test]
+fn news_dois() {
+    for doi in [
+        "10.1029/2026eo260345",
+        "10.64628/aa.abc123",
+        "10.1038/d41586-026-01234-5",
+    ] {
+        assert!(is_news_doi(doi), "{doi}");
+    }
+    for doi in [
+        "10.1029/2026ea005360",
+        "10.1029/2021av000469",
+        "10.1038/s41561-026-02107-w",
+    ] {
+        assert!(!is_news_doi(doi), "{doi}");
+    }
+}
+
+#[test]
+fn dois_of_a_text() {
+    assert_eq!(
+        dois_in("DOI: 10.1126/sciadv.aei1213. See also (doi:10.1029/2026GL1)."),
+        ["10.1126/sciadv.aei1213", "10.1029/2026gl1"]
+    );
+}
+
+#[test]
 fn issns_with_their_check_digit() {
     assert_eq!(canonical_issn("1994-0424").as_deref(), Some("1994-0424"));
     assert_eq!(canonical_issn(" 19940424 ").as_deref(), Some("1994-0424"));

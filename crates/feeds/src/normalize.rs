@@ -66,10 +66,27 @@ static ATTACHMENT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^10\.5194/.+-(?:(?:rc|ac|cc|ec)\d+(?:-supplement)?|supplement)$").unwrap()
 });
 
+/// The DOIs of news and magazine articles: Eos (`10.1029/2026EO260345`), The
+/// Conversation (`10.64628/…`), Nature's news (`10.1038/d41586-…`).
+static NEWS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:10\.1029/\d{4}eo\d+$|10\.64628/|10\.1038/d41586-)").unwrap());
+
 /// Whether a canonical DOI is of a paper's review comment, reply or
 /// supplement, not of a paper.
 pub fn is_attachment_doi(doi: &str) -> bool {
     ATTACHMENT.is_match(doi)
+}
+
+/// Whether a canonical DOI is of a news article, not of a paper.
+pub fn is_news_doi(doi: &str) -> bool {
+    NEWS.is_match(doi)
+}
+
+/// Every DOI in a text, canonical, in order.
+pub fn dois_in(text: &str) -> Vec<String> {
+    DOI.find_iter(text)
+        .filter_map(|m| canonical_doi(m.as_str()))
+        .collect()
 }
 
 /// An ISSN as `NNNN-NNNC` (C a digit or X), if its check digit is right.

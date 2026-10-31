@@ -40,6 +40,13 @@ pub enum ItemKind {
     Blog,
 }
 
+impl ItemKind {
+    /// A post (news or blog), about papers rather than one.
+    pub fn is_post(self) -> bool {
+        matches!(self, ItemKind::News | ItemKind::Blog)
+    }
+}
+
 /// What a subscription follows: a feed, or a sweep of Crossref or OpenAlex.
 /// In `config.json` as the subscription's `url`, `issn` or `openalex`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -198,9 +205,38 @@ pub struct Item {
     pub sources: Vec<Source>,
     /// every DOI of its sources and of their relations in Crossref, preprint or published
     pub versions: Vec<Version>,
-    /// the DOIs of the papers a post is about (found later)
+    /// the papers a post is about, best first
     #[serde(default)]
-    pub linked: Vec<String>,
+    pub links: Vec<Linked>,
+}
+
+/// A paper a post is about.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Linked {
+    pub doi: String,
+    pub confidence: Confidence,
+    pub via: Via,
+}
+
+/// Whether a linked paper is the one: high when it is labelled or wins
+/// clearly, low when it is one of several candidates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Confidence {
+    High,
+    Low,
+}
+
+/// Where a linked paper was found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Via {
+    /// the post's text in its feed
+    Feed,
+    /// the post's page
+    Page,
+    /// the post's title in Crossref
+    Search,
 }
 
 impl Item {

@@ -23,6 +23,9 @@ pub const FEED_ACCEPT: &str = "application/rss+xml, application/atom+xml, applic
 /// What a request of an API accepts.
 pub const JSON_ACCEPT: &str = "application/json";
 
+/// What a request of a page accepts.
+pub const PAGE_ACCEPT: &str = "text/html, application/xhtml+xml;q=0.9, */*;q=0.8";
+
 /// What the APIs are asked with: set by the user, never filled in, and sent
 /// only when set.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

@@ -671,17 +671,32 @@ library's too); plain words do not, which would change the library's hits.
 A facet takes a whole value, with `*` wildcards; a number takes `2-5`,
 `3-`, `-2`, and `3` is `3-`.
 
+**A subscription** follows a `Feed`: an RSS/Atom `url`, a Crossref `issn`
+(works indexed since the last sweep, created at most the lookback, 14 days,
+before it: Crossref re-indexes old works), or an `openalex` filter
+(`from_created_date`, `type:article`; needs the key). The APIs are asked
+with an `Access { mailto, openalex_key }` from the settings, each sent only
+if set; Crossref is paced to 3 requests a second with an address.
+
 **An item** is one paper or post, from every source that listed it. Merged
 by the DOI, then the arXiv id, then Crossref's `has-preprint` /
-`is-preprint-of` (EGUsphere → TC; the review comments `-RC1`, `-AC1` left
-out), then the title (Jaccard ≥ 0.9 among the same first author and year
-±1). Its kind is the subscription's (journal, preprint server, news &
-press, blog), corrected per item. A post links to its paper: a labelled
-block of the feed or of its page first (Futurity "Original Study DOI",
-ScienceDaily "Journal Reference", phys.org "More information", Eos), else
-the DOIs and publisher links of the first paragraphs (not the references,
-sidebars or the site's own DOI), else the title in Crossref; up to 3, marked
-low confidence when none wins. The paper then shows *Covered by*.
+`is-preprint-of` / `is-version-of` (EGUsphere → TC; the review comments
+`-RC1`, `-AC1` and supplements dropped), then the title (Jaccard ≥ 0.9
+among the same first author and year ±1; never a post with a paper). Its
+kind is the subscription's (journal, preprint server, news & press, blog),
+corrected per item. After a fetch, each paper's DOI is looked up once in
+Crossref (abstract, authors, relations), and in OpenAlex for an abstract
+Crossref lacks, if a key is set: those without an abstract or with a teaser
+(< 300 characters) first, 50 per fetch. A post links to its papers
+(`links: [Linked { doi, confidence: high|low, via: feed|page|search }]`): a
+labelled block of the feed or of its page first (Futurity "Original Study
+DOI", ScienceDaily "Journal Reference", phys.org "More information", Eos's
+closing "(Journal, doi)"), else the DOIs and publisher links of the first
+paragraphs (not the references, sidebars or the page's own or a news DOI),
+else the title in Crossref; up to 3, marked low confidence when none wins.
+A linked DOI that is not an item becomes a paper of the post's source; it
+then shows *Covered by*. phys.org answers a program with a Cloudflare
+challenge (403), so its pages give nothing.
 
 **Triage**: new → seen → shortlisted, dismissed or added. Keys: `j`/`k`,
 `s` shortlist, `x` dismiss, `m` read, `o` open, `a` add, `f` find the
@@ -699,7 +714,8 @@ a post is fetched when the post is selected or on `f`, or at fetch time for
 a subscription marked so.
 
 **Store**: JSON in the app data folder, `feeds/` (the subscriptions and
-interests, the items, the triage state, the ETags), never the .bib. Seen and
+interests, the items, the triage state, the ETags and the last sweeps, the
+lookups made), never the .bib. Seen and
 dismissed items go after a number of days (a setting); shortlisted and
 added stay.
 

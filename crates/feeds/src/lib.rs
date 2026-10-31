@@ -9,7 +9,8 @@
 //! an [`Http`] (paced per host), the APIs' with an [`Access`]. The entries of
 //! all sources are merged into [`Item`]s, one per paper or post; the works of
 //! DOIs are looked up in Crossref (abstracts, authors, a preprint and its
-//! paper as one item). [`Feeds`] keeps them in a folder of JSON files with their [`Triage`].
+//! paper as one item), and the papers behind posts found ([`Linked`]).
+//! [`Feeds`] keeps them in a folder of JSON files with their [`Triage`].
 //! Nothing here knows of .bib files.
 
 mod crossref;
@@ -17,6 +18,7 @@ mod enrich;
 mod extras;
 mod feeds;
 pub mod http;
+mod links;
 mod merge;
 mod model;
 pub mod normalize;
@@ -27,12 +29,13 @@ mod sweep;
 
 use std::path::PathBuf;
 
-pub use enrich::{LOOKUPS_PER_FETCH, TEASER};
+pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
 pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
+pub use links::Found;
 pub use model::{
-    Entry, Feed, Item, ItemKind, LOOKUP, Mark, Source, SourceKind, Stage, Subscription, Triage,
-    Version,
+    Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Source, SourceKind, Stage,
+    Subscription, Triage, Version, Via,
 };
 pub use parse::{Parsed, parse};
 pub use store::LOOKBACK_DAYS;
@@ -54,6 +57,9 @@ pub enum Error {
     NoSubscription { id: String },
     #[error("{id}: no such item")]
     NoItem { id: String },
+    /// the paper behind an item that is not a post (news or blog)
+    #[error("{id}: not a post")]
+    NotAPost { id: String },
     /// a feed that does not parse
     #[error("{url}: {message}")]
     Feed { url: String, message: String },

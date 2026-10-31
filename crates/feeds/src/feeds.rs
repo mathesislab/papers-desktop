@@ -1,6 +1,6 @@
 //! The feeds of a folder: subscribing, fetching every subscription into the
-//! items (and the lookups by DOI that follow), the triage of items, and the
-//! pruning of old ones.
+//! items (and what follows: the papers of posts, the lookups by DOI), the
+//! triage of items, and the pruning of old ones.
 
 use std::path::{Path, PathBuf};
 
@@ -23,8 +23,10 @@ pub type Now = Box<dyn Fn() -> DateTime<Utc> + Send + Sync>;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FetchReport {
     pub feeds: Vec<FeedReport>,
-    /// the requests of Crossref and OpenAlex for works by DOI
+    /// the requests of Crossref and OpenAlex for works by DOI, title or PII
     pub lookups: usize,
+    /// the posts looked for on the web (their page, then their title)
+    pub pages: usize,
 }
 
 /// What the fetch of a subscription did.
@@ -131,8 +133,8 @@ impl Feeds {
     }
 
     /// Fetches every subscription, one after the other, into the items, then
-    /// looks up the DOIs of papers; a feed that fails is reported and the
-    /// others go on. The APIs are asked with
+    /// what follows (the papers of posts, the lookups by DOI); a feed that
+    /// fails is reported and the others go on. The APIs are asked with
     /// `access`.
     pub fn fetch(&mut self, http: &dyn Http, access: &Access) -> Result<FetchReport> {
         let mut report = FetchReport::default();
@@ -146,6 +148,7 @@ impl Feeds {
         }
         let budget = self.complete(http, access);
         report.lookups = budget.lookups_used();
+        report.pages = budget.pages_used();
         self.save()?;
         Ok(report)
     }

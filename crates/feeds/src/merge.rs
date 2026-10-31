@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use chrono::{DateTime, Datelike, Utc};
 
-use crate::model::{Entry, Item, Source, Stage, Version};
+use crate::model::{Entry, Item, Linked, Source, Stage, Version};
 use crate::normalize::{family, is_preprint_doi, jaccard, short_id, title_words};
 
 /// The least Jaccard index of the title words of one paper.
@@ -131,7 +131,7 @@ impl<'a> Merger<'a> {
     /// Moves an item's sources into another; its id becomes an alias.
     fn absorb(&mut self, target: usize, other: usize) {
         let sources = std::mem::take(&mut self.items[other].sources);
-        let linked = std::mem::take(&mut self.items[other].linked);
+        let links = std::mem::take(&mut self.items[other].links);
         self.gone[other] = true;
         let old = self.items[other].id.clone();
         let new = self.items[target].id.clone();
@@ -142,11 +142,7 @@ impl<'a> Merger<'a> {
         self.merged.push((old, new));
         let item = &mut self.items[target];
         item.sources.extend(sources);
-        for doi in linked {
-            if !item.linked.contains(&doi) {
-                item.linked.push(doi);
-            }
-        }
+        item.links = join_links(std::mem::take(&mut item.links), links);
     }
 
     /// The item of a title of the same words, by the same first author, within
@@ -186,8 +182,12 @@ fn first_family(entry: &Entry) -> Option<String> {
     entry.authors.first().and_then(|a| family(a))
 }
 
-/// Whether an entry and an item are two works: another DOI, another arXiv id.
+/// Whether an entry and an item are two works: another DOI, another arXiv
+/// id, a post and a paper.
 fn conflicts(entry: &Entry, item: &Item) -> bool {
+    if entry.kind.is_post() != item.kind.is_post() {
+        return true;
+    }
     let entries = || item.sources.iter().map(|s| &s.entry);
     let differs = |mine: &Option<String>, theirs: Vec<&String>| {
         mine.as_ref()
@@ -205,14 +205,28 @@ fn conflicts(entry: &Entry, item: &Item) -> bool {
 /// An item's fields again, from its sources.
 fn refresh(item: &mut Item) {
     let sources = std::mem::take(&mut item.sources);
-    let linked = std::mem::take(&mut item.linked);
-    *item = assemble(std::mem::take(&mut item.id), sources, linked);
+    let links = std::mem::take(&mut item.links);
+    *item = assemble(std::mem::take(&mut item.id), sources, links);
+}
+
+/// The links of two merged posts: each paper once, at its best confidence,
+/// the high ones first.
+pub(crate) fn join_links(mut links: Vec<Linked>, more: Vec<Linked>) -> Vec<Linked> {
+    for link in more {
+        match links.iter_mut().find(|l| l.doi == link.doi) {
+            Some(known) if link.confidence < known.confidence => *known = link,
+            Some(_) => {}
+            None => links.push(link),
+        }
+    }
+    links.sort_by_key(|l| l.confidence);
+    links
 }
 
 /// An item of its sources: the fields of the published version's entry (the
 /// preprint's if none, the first seen of a kind), the longest abstract and
 /// text, every DOI (of a stage as Crossref relates them, else by its prefix).
-fn assemble(id: String, sources: Vec<Source>, linked: Vec<String>) -> Item {
+fn assemble(id: String, sources: Vec<Source>, links: Vec<Linked>) -> Item {
     let best = &sources
         .iter()
         .min_by_key(|s| (s.entry.kind, s.first_seen))
@@ -265,7 +279,7 @@ fn assemble(id: String, sources: Vec<Source>, linked: Vec<String>) -> Item {
         content: longest(|e| &e.content),
         editorial: entries().any(|e| e.editorial),
         versions,
-        linked,
+        links,
         sources,
     }
 }
@@ -450,6 +464,15 @@ mod tests {
         assert_eq!(items[0].title, "Snow modelling, final");
         assert_eq!(items[0].kind, ItemKind::Paper);
         assert_eq!(merged.len(), 1);
+    }
+
+    #[test]
+    fn a_post_and_a_paper_of_one_title_stay_two() {
+        let paper = entry("journal", "p", TITLE, "A. Robinson");
+        let mut post = entry("blog", "b", TITLE, "A. Robinson");
+        post.kind = ItemKind::Blog;
+        let Merged { items, .. } = merge(vec![paper, post]);
+        assert_eq!(items.len(), 2);
     }
 
     #[test]

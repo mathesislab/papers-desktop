@@ -1,6 +1,6 @@
 //! Crossref's works: the requests (a journal's works by ISSN, a work by its
-//! DOI), their JSON, and a work as an entry: its abstract (JATS) as plain
-//! text, its relations as versions.
+//! DOI, a title searched, a ScienceDirect PII), their JSON, and a work as an
+//! entry: its abstract (JATS) as plain text, its relations as versions.
 
 use std::collections::BTreeMap;
 
@@ -19,6 +19,9 @@ const SELECT: &str = "DOI,title,author,container-title,abstract,URL,issued,type,
 
 /// The works of a page of a list.
 pub(crate) const ROWS: usize = 100;
+
+/// The works a title search ranks.
+const SEARCH_ROWS: usize = 5;
 
 /// An answer of the API.
 #[derive(Debug, Deserialize)]
@@ -120,6 +123,28 @@ pub(crate) fn work_url(doi: &str, access: &Access) -> String {
         &format!("{WORKS}/{}", doi_path(doi)),
         &polite(vec![], access),
     )
+}
+
+/// The works best matching a title.
+pub(crate) fn search_url(title: &str, access: &Access) -> String {
+    let rows = SEARCH_ROWS.to_string();
+    let pairs = vec![
+        ("query.bibliographic", title),
+        ("rows", &rows),
+        ("select", SELECT),
+    ];
+    with_query(WORKS, &polite(pairs, access))
+}
+
+/// The work of a ScienceDirect PII (Elsevier deposits it as an alternative id).
+pub(crate) fn pii_url(pii: &str, access: &Access) -> String {
+    let filter = format!("alternative-id:{pii}");
+    let pairs = vec![
+        ("filter", filter.as_str()),
+        ("rows", "1"),
+        ("select", SELECT),
+    ];
+    with_query(WORKS, &polite(pairs, access))
 }
 
 impl Work {
