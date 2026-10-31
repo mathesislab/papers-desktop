@@ -40,12 +40,13 @@ Two windows with different jobs:
 Three panes, each resized by dragging, the right one hidden on demand:
 
 - **Sidebar**: *Libraries* (with several .bib files: *All libraries*, then
-  one row per .bib, as the accounts of Mail); *Views* (all papers, recently
+  one row per .bib, as the accounts of Mail; a click shows one, `⌘`-click,
+  Ctrl-click elsewhere, adds one or takes it out); *Views* (all papers, recently
   opened, recently added, no PDF, broken file links, possible duplicates: the
   same DOI, or the same title and year); the tags with their counts (a click filters by
-  the tag, a second click takes the filter off); *Open*: the library tab,
+  the tag, a second click takes the filter off; `⌘`-click: below); *Open*: the library tab,
   then the open papers. The counts of the views and the tags are those
-  within the library chosen.
+  within the libraries chosen.
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
   missing file), multi-select. Only the rows on screen are drawn. A line
@@ -87,18 +88,25 @@ a second line (indented, smaller, muted, ellipsized), the filters it shows
 product of four filters (`src/lib/library/filters.ts`, a pure function of the
 rows, tested by `scripts/filters.test.ts`, `npm test`):
 
-- **Library**: all libraries, or one .bib (a click on its row).
+- **Library**: all libraries, or some .bib files (a click on a row chooses
+  it alone, `⌘`-click adds it or takes it out); one chip, `Library: a.bib,
+  b.bib` with several.
 - **View**: all papers, recently opened, recently added, no PDF, broken file
   links, possible duplicates. *All papers* takes the view filter off, and only
   that.
-- **Tags**: any number, clicked in the sidebar (or in the details); a paper
-  must have all of them (a tag counts the tags under it: `climate` finds
-  `climate/amoc`). They are filters of their own, shown as chips and
-  highlighted in the sidebar, not text of the search field: the field keeps
+- **Tags**: any number, clicked in the sidebar (or in the details), in
+  groups of alternatives: a click adds a tag as a group of its own, which a
+  paper must have too; `⌘`-click adds it to the last group (a paper may have
+  it instead: `Tag: amoc, ice`), a group of its own when there is none, or
+  takes it out. A paper must have a tag of every group (a tag counts the tags
+  under it: `climate` finds `climate/amoc`). They are filters of their own, a
+  chip per group, highlighted in the sidebar, not text of the search field: the field keeps
   what was typed, and a click on a tag does not change it. A `tag:` typed in
   the field works as before, as part of the search (`tag:`, `-tag:` and the
   rest of the syntax); the core is asked for the search text followed by a
-  `tag:` term per tag filter.
+  `tag:` term per group (`tag:amoc,ice`). The filters of a layout from before
+  the groups (`bib`, `tags` of strings) are read as one library and a group
+  per tag.
 - **Search**: the text of the field. It stays when the view, library or tags
   change and when papers are opened, until it is cleared: the × in the field,
   or `⌘⌫` (Ctrl+Backspace elsewhere) in the field, where it clears it;

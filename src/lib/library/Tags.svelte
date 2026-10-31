@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { modClick } from "$lib/keys";
   import { foldTag, lastSegment, parentPart, sameTag } from "$lib/tags";
   import type { Row, TagCount } from "$lib/types";
 
@@ -16,8 +17,8 @@
     tags: TagCount[];
     /** whether the search filters a tag */
     filtered: (tag: string) => boolean;
-    /** a click on the name of a tag */
-    ontoggle: (tag: string) => void;
+    /** a click on the name of a tag; with ⌘, `alternative` */
+    ontoggle: (tag: string, alternative: boolean) => void;
     /** add and remove tags on the papers; whether it was written */
     onset: (add: string[], remove: string[]) => Promise<boolean>;
   } = $props();
@@ -143,7 +144,7 @@
   <div class="chips">
     {#each chips as { tag, count } (foldTag(tag))}
       <span class="chip" class:some={count < rows.length} class:on={filtered(tag)}>
-        <button class="name" title="Filter by {tag}" onclick={() => ontoggle(tag)}>
+        <button class="name" title="Filter by {tag}" onclick={(e) => ontoggle(tag, modClick(e))}>
           {@render path(tag)}{#if count < rows.length}<span class="count">{count}/{rows.length}</span>{/if}
         </button>
         <button

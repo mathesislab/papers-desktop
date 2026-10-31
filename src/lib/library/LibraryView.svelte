@@ -52,6 +52,7 @@
   import ReaderView from "$lib/library/ReaderView.svelte";
   import {
     VIEWS,
+    chooseLibrary,
     chips,
     currentSet,
     fileName,
@@ -187,12 +188,14 @@
 
   /** the views, with their numbers within the library chosen */
   let views = $derived.by(() => {
-    const counts = viewCounts(rows, lists, layout.library.bib);
+    const counts = viewCounts(rows, lists, layout.library.bibs);
     return VIEWS.map(({ view, name }) => ({ view, name, count: counts[view] }));
   });
 
-  /** the tags of the sidebar, counted within the library chosen */
-  let sidebarTags = $derived(layout.library.bib ? tagCounts(rows.filter((r) => r.bib === layout.library.bib)) : tags);
+  /** the tags of the sidebar, counted within the libraries chosen */
+  let sidebarTags = $derived(
+    layout.library.bibs.length ? tagCounts(rows.filter((r) => layout.library.bibs.includes(r.bib))) : tags,
+  );
 
   /** the columns of the table: in *Recently added*, the date added too (last, unless shown already) */
   let columns = $derived(
@@ -350,8 +353,9 @@
       invoke<string[][]>("duplicates"),
       invoke<Dated[]>("added"),
     ]);
-    // the library tab keeps the .bib file still there; the selection and the tabs, the papers
-    if (layout.library.bib && rows.length && !rows.some((r) => r.bib === layout.library.bib)) layout.library.bib = null;
+    // the library tab keeps the .bib files still there; the selection and the tabs, the papers
+    if (rows.length && layout.library.bibs.some((b) => !rows.some((r) => r.bib === b)))
+      layout.library.bibs = layout.library.bibs.filter((b) => rows.some((r) => r.bib === b));
     selected = new Set([...selected].filter((id) => byId.has(id)));
     if (focus && !byId.has(focus)) focus = null;
     layout.open = layout.open.filter((id) => byId.has(id));
@@ -649,10 +653,13 @@
     remove: askDelete,
   };
 
+  /** the one library the library tab shows; none with all or several */
+  let onlyLibrary = $derived(layout.library.bibs.length === 1 ? layout.library.bibs[0] : null);
+
   /** ⌘Z, ⌘⇧Z out of a field: the last change of the .bib of the paper shown (of the one the app wrote last, after a
-   *  delete, copy or move), else of the library tab's, else the only one. */
+   *  delete, copy or move), else of the library tab's when it shows one, else the only one. */
   export async function stepLibrary(back: boolean) {
-    const bib = lastWrite ?? byId.get(layout.active ?? focus ?? "")?.bib ?? layout.library.bib ?? (libraries.length === 1 ? libraries[0].bib : null);
+    const bib = lastWrite ?? byId.get(layout.active ?? focus ?? "")?.bib ?? onlyLibrary ?? (libraries.length === 1 ? libraries[0].bib : null);
     if (!bib) return say("Choose a paper or a library to " + (back ? "undo" : "redo") + " in");
     if (await write(() => (back ? undo(bib) : redo(bib)))) say(`${back ? "Undid" : "Redid"} the last change of ${fileName(bib)}`);
   }
@@ -973,9 +980,9 @@
     }
   }
 
-  /** Click on a tag: filter by it too, or not any more. */
-  function filterByTag(tag: string) {
-    layout.library.tags = toggleTag(layout.library.tags, tag);
+  /** Click on a tag: filter by it too, or not any more; ⌘-click: as an alternative to the last tag filter. */
+  function filterByTag(tag: string, alternative: boolean) {
+    layout.library.tags = toggleTag(layout.library.tags, tag, alternative);
     showLibrary();
   }
 
@@ -1010,7 +1017,7 @@
 {#if adding}
   <Add
     bind:this={sheet}
-    bib={(focus ? byId.get(focus)?.bib : null) ?? layout.library.bib}
+    bib={(focus ? byId.get(focus)?.bib : null) ?? layout.library.bibs[0] ?? null}
     rows={byId}
     forId={adding.id}
     pdf={adding.pdf}
@@ -1047,7 +1054,7 @@
     <aside class="sidebar" style:width="{layout.sidebar}px">
       <Sidebar
         {libraries}
-        bib={layout.library.bib}
+        bibs={layout.library.bibs}
         {views}
         tags={sidebarTags}
         view={layout.library.view}
@@ -1057,8 +1064,8 @@
         tab={{ filters: tabFilters(layout.library), count: shown.length }}
         {papers}
         active={layout.active}
-        onlibrary={(bib) => {
-          layout.library.bib = bib;
+        onlibrary={(bib, toggle) => {
+          layout.library.bibs = chooseLibrary(layout.library.bibs, bib, toggle);
           showLibrary();
         }}
         onview={(v) => {
