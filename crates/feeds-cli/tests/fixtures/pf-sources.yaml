@@ -1,0 +1,29 @@
+# a paper-feeder sources.yaml, as examples/consumer/config/sources.yaml
+title: "Paper Feeder"
+link: ""
+mailto: me@example.org
+lookback_days: 21
+window_days: 7
+retention_days: 180
+render:
+  subtitle: "New papers in my field"
+
+rss:
+  - {name: ngeo, url: "https://www.nature.com/ngeo.rss", journal: "Nature Geoscience"}
+  - {name: tc, url: "https://tc.copernicus.org/xml/rss2_0.xml", journal: "The Cryosphere", always_include: true}
+  - {name: arxiv-ao-ph, url: "http://arxiv.org/rss/physics.ao-ph", journal: "arXiv physics.ao-ph"}
+  - {name: grl, url: "https://agupubs.onlinelibrary.wiley.com/feed/19448007/most-recent"}
+  - {name: broken, url: "ftp://example.org/feed"}
+
+openalex:
+  queries:
+    - {name: cryosphere, filter: "primary_topic.id:T10644"}
+    - {name: cites-me, filter: "cites:W123|W456", score_boost: 2, always_include: true, lookback_days: 180}
+  issns:
+    - "0022-1430"
+    - 0894-8755
+
+crossref:
+  issns:
+    - "0022-1430"   # the same journal as under openalex
+    - "1994-0424"

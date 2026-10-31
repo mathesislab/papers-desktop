@@ -130,6 +130,28 @@ impl Feeds {
         Ok(subscription)
     }
 
+    /// Changes what the user names or sets on a subscription (its title,
+    /// journal, kind, `fetch_pages`); its id and feed stay as they are.
+    pub fn edit_subscription(
+        &mut self,
+        id: &str,
+        edit: impl FnOnce(&mut Subscription),
+    ) -> Result<Subscription> {
+        let subscription = self
+            .config
+            .subscriptions
+            .iter_mut()
+            .find(|s| s.id == id)
+            .ok_or_else(|| Error::NoSubscription { id: id.to_string() })?;
+        let feed = subscription.feed.clone();
+        edit(subscription);
+        subscription.id = id.to_string();
+        subscription.feed = feed;
+        let edited = subscription.clone();
+        store::write(&self.dir, CONFIG, &self.config)?;
+        Ok(edited)
+    }
+
     /// The days a sweep looks back the first time.
     pub fn lookback_days(&self) -> u32 {
         self.config.lookback_days

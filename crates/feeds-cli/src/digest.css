@@ -1,0 +1,28 @@
+:root {
+  color-scheme: light dark;
+  --maxw: 52rem;           /* content width */
+  --font: 16px/1.5 -apple-system, system-ui, sans-serif;
+  --accent: #2a7;          /* "matched" text + "new" badge */
+  --muted: #888;           /* meta / secondary text */
+  --title-size: 0.85rem;   /* same as meta; bold + link keeps it distinct */
+  --title-dark: #b5b5b5;   /* article title colour in dark mode */
+}
+body { font: var(--font); max-width: var(--maxw); margin: 2rem auto; padding: 0 1rem; }
+h1 { font-size: 1.5rem; }
+.subtitle { color: var(--muted); margin: -0.4rem 0 1rem; }
+.meta { color: var(--muted); font-size: 0.85rem; }
+article { border-top: 1px solid #8884; padding: 0.8rem 0; }
+article h2 { font-size: var(--title-size); margin: 0 0 0.2rem; }
+a { color: inherit; }
+article h2 a { color: inherit; }
+@media (prefers-color-scheme: dark) { article h2 a { color: var(--title-dark); } }
+.why { color: var(--accent); font-size: 0.85rem; }
+.score { color: var(--muted); font-variant-numeric: tabular-nums; }
+.editorial { color: #a70; }
+.pin { color: var(--accent); }
+.rss { color: var(--accent); }
+.new { background: var(--accent); color: #fff; font-size: 0.7rem; font-weight: 600;
+       padding: 0.05rem 0.35rem; border-radius: 0.6rem; vertical-align: middle; }
+details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+details p { color: #ccc9; font-size: 0.92rem; }
+.section-note { color: var(--muted); font-size: 0.85rem; font-style: italic; }
