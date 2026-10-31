@@ -9,6 +9,7 @@
   // library's: it opens over this tab, which stays in front after the paper is added.
 
   import { listen } from "@tauri-apps/api/event";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
@@ -167,6 +168,8 @@
   let shortlisted = $derived(counts?.is.shortlisted ?? 0);
   /** the saved searches of the sidebar; the one the tab shows */
   let searches = $state<api.SavedSearch[]>([]);
+  /** how many days the feeds keep an item (the setting): what *All* reaches back */
+  let keepDays = $state<number | null>(null);
   let shownSearch = $derived(searches.find((s) => isShown(filters, s))?.name ?? null);
 
   /** An item becomes seen once it has stayed selected a moment (`Dwell`); one passed over stays new. */
@@ -188,10 +191,15 @@
         load(true);
       }),
       listen<boolean>(api.EVENTS.beside, (e) => (beside = e.payload)),
+      // back from the settings: the days kept again
+      getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+        if (focused) readKeepDays();
+      }),
     ];
     api.besideShown().then((b) => (beside = b), (e) => say(String(e)));
     const clock = setInterval(() => (now = Date.now()), 30000);
     start();
+    readKeepDays();
     return () => {
       clearInterval(clock);
       unlisten.forEach((u) => u.then((f) => f()));
@@ -208,6 +216,14 @@
       failure = String(e);
     }
     if (stale(last) && subscriptions.length) fetchNow(false);
+  }
+
+  async function readKeepDays() {
+    try {
+      keepDays = (await api.settings()).keepDays;
+    } catch {
+      // *All* says no days
+    }
   }
 
   /** ⇧⌘R, ↻: every subscription fetched, or the one of id `only`; the list again once the feeds are read (the
@@ -849,6 +865,7 @@
         {filters}
         {counts}
         {groups}
+        {keepDays}
         onview={(view) => (filters.view = view)}
         onkind={(kind, toggle) => (filters = chooseKind(filters, kind, toggle))}
         oninterest={(name, toggle) => (filters = chooseInterest(filters, name, toggle))}
@@ -990,7 +1007,9 @@
             {#if reading && !beside && focusRow}
               <div class="reader">
                 <button class="pinned" title="Back to the list (Esc)" onclick={() => (reading = false)}>
-                  <span class="caret">▾</span>
+                  <svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+                    <path d="M1.5 3.5h9L6 9.5z" fill="currentColor" />
+                  </svg>
                   <span class="title"><Marked spans={focusRow.title} /></span>
                   <span class="muted">{focusRow.journal ?? focusRow.sources[0] ?? ""}</span>
                   <span class="muted keys">↑ ↓ previous, next · Esc the list</span>
@@ -1063,6 +1082,7 @@
     onlater={() => laterMenu(targets().length ? targets() : [d.id])}
     onitem={showItem}
     {onentry}
+    onback={wide ? () => (reading = false) : undefined}
   />
 {/snippet}
 
@@ -1142,6 +1162,8 @@
     text-align: left;
   }
   .pinned .caret {
+    flex: none;
+    display: block;
     color: var(--feeds);
   }
   .pinned .title {
@@ -1292,8 +1314,9 @@
     align-items: center;
     max-width: 260px;
     padding: 1px 2px 1px 8px;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--feeds) 40%, transparent);
     border-radius: 10px;
+    background: color-mix(in srgb, var(--feeds) 14%, transparent);
     color: var(--fg);
   }
   .chip .text {

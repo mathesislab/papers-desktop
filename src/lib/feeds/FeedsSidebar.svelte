@@ -16,6 +16,7 @@
     filters,
     counts,
     groups,
+    keepDays,
     onview,
     onkind,
     oninterest,
@@ -31,6 +32,8 @@
     counts: FeedCounts | null;
     /** the subscriptions, in their groups */
     groups: SourceGroup[];
+    /** how many days the feeds keep an item: what *All* reaches back; none until read */
+    keepDays: number | null;
     onview: (view: Shelf) => void;
     /** a kind, interest or subscription clicked; with ⌘, to add it to the choices or take it out (`toggle`) */
     onkind: (kind: ItemKind, toggle: boolean) => void;
@@ -48,6 +51,7 @@
 
   let shelves = $derived(shelfCounts(counts));
   let colours = $derived(interestColours(Object.keys(counts?.interests ?? {})));
+  let days = $derived(keepDays === null ? null : `${keepDays} ${keepDays === 1 ? "day" : "days"}`);
 </script>
 
 <div class="box">
@@ -56,9 +60,16 @@
 
     <h4>Views</h4>
     {#each SHELVES as shelf (shelf.view)}
-      <button class="item" class:selected={filters.view === shelf.view} onclick={() => onview(shelf.view)}>
+      <button
+        class="item"
+        class:selected={filters.view === shelf.view}
+        title={shelf.view === "all" && days ? `Items of the last ${days}: older ones go once no feed lists them, unless starred or added` : null}
+        onclick={() => onview(shelf.view)}
+      >
         {#if shelf.view === "shortlist"}<span class="star">★</span>{/if}
-        <span class="name">{shelf.name}</span><span class="count">{shelves[shelf.view]}</span>
+        <span class="name"
+          >{shelf.name}{#if shelf.view === "all" && days}<span class="days"> · {days}</span>{/if}</span
+        ><span class="count">{shelves[shelf.view]}</span>
       </button>
     {/each}
 
@@ -232,6 +243,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
+  .days,
   .count {
     color: var(--muted);
     font-size: 12px;

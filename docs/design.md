@@ -776,7 +776,8 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 `FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
 `filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`):
 
-- *Sidebar*: Views (Unread `is:new`, Starred, Snoozed, Added, All), Kinds,
+- *Sidebar*: Views (Unread `is:new`, Starred, Snoozed, Added, All · *N days*:
+  the keep-days of the settings), Kinds,
   Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
   apart; a group folds), each with its count (`counts`: every item not
   dismissed, whatever the search). A source's menu (right-click) sets its
@@ -834,7 +835,8 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   with ⏰, and is not seen by being shown; marking it read (or any triage)
   clears it. The triage's `remind` (`is:snoozed`, `is:reminder`).
 - *Reading*: by default a click or Enter opens the item over the list, its
-  row pinned at the top; Esc or the row goes back to the list, where it was,
+  row pinned at the top (▾); Esc, the row or *Back to the list* at the end of
+  the item goes back to the list, where it was,
   and ↑↓ go through the items. *Details beside the list* (the settings,
   Window → Feeds Details Beside the List) shows them beside it instead.
 - *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
@@ -854,8 +856,10 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   the Library tab on a click). A post's HTML (`safe_html`, ammonia: its
   text, links and images, an image's title under it), then its linked papers as
   cards (Add by the DOI, Shortlist, Show paper), *Find linked paper*
-  (`findPapers`). The list's columns are resized by their headers' edges
-  (the window's layout keeps the widths).
+  (`findPapers`). The list's columns are resized by their headers' edges,
+  the edge following the pointer (the title gives or takes the room; each
+  header has a least width that fits its name and sort arrow; the window's
+  layout keeps the widths).
 - *Add*: the library's Add sheet, opened over the Feeds tab with the item's
   DOI (an arXiv id as its DataCite DOI, `10.48550/arXiv.…`) fetched at once
   (`initial`), its free PDF looked for unless added without one. After

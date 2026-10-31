@@ -28,6 +28,7 @@
     onlater,
     onitem,
     onentry,
+    onback,
   }: {
     detail: FeedDetail;
     /** read in place of the list: the texts a size up */
@@ -53,6 +54,8 @@
     onlater: () => void;
     onitem: (id: string) => void;
     onentry: (id: string) => void;
+    /** read in place of the list: back to it, as Esc */
+    onback?: () => void;
   } = $props();
 
   let post = $derived(isPost(detail.kind));
@@ -151,6 +154,10 @@
   {/if}
 
   <Facts {detail} {colours} {pdfOf} {onitem} {onentry} />
+
+  {#if onback}
+    <button class="back" onclick={onback}>Back to the list <kbd>Esc</kbd></button>
+  {/if}
 </div>
 
 <style>
@@ -262,6 +269,17 @@
   }
   button.open:hover:not(:disabled) {
     background: color-mix(in srgb, var(--feeds) 24%, transparent);
+  }
+  /* at the end of the item read: the list again */
+  button.back {
+    flex: none;
+    align-self: center;
+    width: min(100%, 420px);
+    margin-top: 8px;
+    padding: 7px 12px;
+  }
+  button.back:hover {
+    background: var(--line);
   }
   button.link {
     padding: 0;
