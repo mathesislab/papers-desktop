@@ -1,5 +1,5 @@
 //! OpenAlex's works: the requests (the articles of a filter created since a
-//! day, with the key), their JSON, and a work as an
+//! day, a work by its DOI; each with the key), their JSON, and a work as an
 //! entry, its abstract rebuilt from the inverted index.
 
 use std::collections::BTreeMap;
@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use serde::Deserialize;
 
-use crate::http::{Access, with_query};
+use crate::http::{Access, doi_path, with_query};
 use crate::model::{Entry, ItemKind};
 use crate::normalize::{arxiv_id, canonical_doi, is_preprint_doi};
 use crate::parse::{EDITORIAL, plain};
@@ -105,6 +105,12 @@ pub(crate) fn list_url(filter: &str, created: NaiveDate, cursor: &str, access: &
     with_query(WORKS, &access_pairs(pairs, access))
 }
 
+/// The work of a DOI.
+pub(crate) fn work_url(doi: &str, access: &Access) -> String {
+    let base = format!("{WORKS}/doi:{}", doi_path(doi));
+    with_query(&base, &access_pairs(vec![("select", SELECT)], access))
+}
+
 impl Work {
     /// The abstract, its words put back in their places.
     pub fn abstract_text(&self) -> Option<String> {
@@ -154,6 +160,7 @@ impl Work {
                 ItemKind::Paper if preprint => ItemKind::Preprint,
                 kind => kind,
             },
+            versions: Vec::new(),
             doi,
         }
     }

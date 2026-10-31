@@ -1,14 +1,15 @@
-//! Crossref's works: the requests (a journal's works by ISSN), their JSON,
-//! and a work as an entry: its abstract (JATS) as plain text.
+//! Crossref's works: the requests (a journal's works by ISSN, a work by its
+//! DOI), their JSON, and a work as an entry: its abstract (JATS) as plain
+//! text, its relations as versions.
 
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use serde::Deserialize;
 
-use crate::http::{Access, with_query};
-use crate::model::{Entry, ItemKind};
-use crate::normalize::{arxiv_id, canonical_doi, is_preprint_doi};
+use crate::http::{Access, doi_path, with_query};
+use crate::model::{Entry, ItemKind, Stage, Version};
+use crate::normalize::{arxiv_id, canonical_doi, is_attachment_doi, is_preprint_doi};
 use crate::parse::{EDITORIAL, abstract_text, plain};
 
 const WORKS: &str = "https://api.crossref.org/works";
@@ -113,6 +114,14 @@ pub(crate) fn list_url(
     with_query(WORKS, &polite(pairs, access))
 }
 
+/// The work of a DOI.
+pub(crate) fn work_url(doi: &str, access: &Access) -> String {
+    with_query(
+        &format!("{WORKS}/{}", doi_path(doi)),
+        &polite(vec![], access),
+    )
+}
+
 impl Work {
     /// The canonical DOI.
     pub fn doi(&self) -> Option<String> {
@@ -130,6 +139,38 @@ impl Work {
             || self.subtype.as_deref() == Some("preprint")
             || self.relation.contains_key("is-preprint-of")
             || is_preprint_doi(doi)
+    }
+
+    /// Its DOI and those of its other versions, with their stages.
+    fn versions(&self, doi: &str, preprint: bool) -> Vec<Version> {
+        let stage = |preprint: bool| match preprint {
+            true => Stage::Preprint,
+            false => Stage::Published,
+        };
+        let mut versions = vec![Version {
+            doi: doi.to_string(),
+            stage: stage(preprint),
+        }];
+        let related = [
+            ("has-preprint", Some(Stage::Preprint)),
+            ("is-preprint-of", Some(Stage::Published)),
+            ("is-version-of", None),
+            ("has-version", None),
+        ];
+        for (name, known) in related {
+            let ids = self.relation.get(name).into_iter().flatten();
+            for id in ids.filter(|r| r.id_type == "doi") {
+                let Some(other) = canonical_doi(&id.id) else {
+                    continue;
+                };
+                if is_attachment_doi(&other) || versions.iter().any(|v| v.doi == other) {
+                    continue;
+                }
+                let stage = known.unwrap_or_else(|| stage(is_preprint_doi(&other)));
+                versions.push(Version { doi: other, stage });
+            }
+        }
+        versions
     }
 
     /// The date it was issued (online or in print, the earlier).
@@ -185,6 +226,7 @@ impl Work {
             summary,
             content: None,
             kind,
+            versions: self.versions(&doi, preprint),
             doi: Some(doi),
         })
     }

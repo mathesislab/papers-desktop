@@ -7,11 +7,13 @@
 //! `prism:doi` or the link), or a sweep of Crossref (a journal's ISSN) or
 //! OpenAlex (a filter) for the works new since the last. Requests go through
 //! an [`Http`] (paced per host), the APIs' with an [`Access`]. The entries of
-//! all sources are merged into [`Item`]s, one per paper or post. [`Feeds`]
-//! keeps them in a folder of JSON files with their [`Triage`].
+//! all sources are merged into [`Item`]s, one per paper or post; the works of
+//! DOIs are looked up in Crossref (abstracts, authors, a preprint and its
+//! paper as one item). [`Feeds`] keeps them in a folder of JSON files with their [`Triage`].
 //! Nothing here knows of .bib files.
 
 mod crossref;
+mod enrich;
 mod extras;
 mod feeds;
 pub mod http;
@@ -25,10 +27,12 @@ mod sweep;
 
 use std::path::PathBuf;
 
+pub use enrich::{LOOKUPS_PER_FETCH, TEASER};
 pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
 pub use model::{
-    Entry, Feed, Item, ItemKind, Mark, Source, SourceKind, Stage, Subscription, Triage, Version,
+    Entry, Feed, Item, ItemKind, LOOKUP, Mark, Source, SourceKind, Stage, Subscription, Triage,
+    Version,
 };
 pub use parse::{Parsed, parse};
 pub use store::LOOKBACK_DAYS;

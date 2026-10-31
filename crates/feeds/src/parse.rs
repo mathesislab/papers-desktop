@@ -148,6 +148,7 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
         content: content.filter(|_| post),
         editorial,
         kind,
+        versions: Vec::new(),
     }
 }
 

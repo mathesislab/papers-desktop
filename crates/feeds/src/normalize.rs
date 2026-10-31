@@ -60,6 +60,18 @@ pub fn is_preprint_doi(doi: &str) -> bool {
     PREPRINT_DOIS.iter().any(|p| doi.starts_with(p))
 }
 
+/// The review comments, replies and supplements of Copernicus's papers and
+/// discussions: `-RC1`, `-AC2`, `-CC1`, `-EC1`, `-RC1-supplement`, `-supplement`.
+static ATTACHMENT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^10\.5194/.+-(?:(?:rc|ac|cc|ec)\d+(?:-supplement)?|supplement)$").unwrap()
+});
+
+/// Whether a canonical DOI is of a paper's review comment, reply or
+/// supplement, not of a paper.
+pub fn is_attachment_doi(doi: &str) -> bool {
+    ATTACHMENT.is_match(doi)
+}
+
 /// An ISSN as `NNNN-NNNC` (C a digit or X), if its check digit is right.
 pub fn canonical_issn(text: &str) -> Option<String> {
     let chars: Vec<char> = text

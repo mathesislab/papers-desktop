@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, TimeZone, Utc};
 use papers_feeds::http::{CROSSREF, Pacing, Recorded};
-use papers_feeds::{Access, Error, Feed, Feeds, ItemKind, Outcome, Reply, SourceKind};
+use papers_feeds::{Access, Error, Feed, Feeds, ItemKind, Outcome, Reply, SourceKind, Stage};
 
 fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(format!(
@@ -82,6 +82,7 @@ fn crossref_sweep_of_an_issn_since_the_last() {
         report.feeds[0].outcome,
         Outcome::Fetched { entries: 3, new: 3 }
     );
+    assert_eq!(report.lookups, 0, "Crossref's works are whole");
     assert_eq!(http.requests().len(), 1);
     assert_eq!(
         feeds.subscriptions()[0].title.as_deref(),
@@ -103,6 +104,19 @@ fn crossref_sweep_of_an_issn_since_the_last() {
         "{summary}"
     );
     assert!(!summary.contains("jats"));
+    let stages: Vec<(&str, Stage)> = item
+        .versions
+        .iter()
+        .map(|v| (v.doi.as_str(), v.stage))
+        .collect();
+    assert_eq!(
+        stages,
+        [
+            ("10.5194/tc-20-5813-2026", Stage::Published),
+            ("10.5194/egusphere-2026-2612", Stage::Preprint)
+        ],
+        "the review comments are no versions"
+    );
 
     let report = feeds.fetch(&http, &polite()).unwrap();
     assert_eq!(
@@ -187,7 +201,14 @@ fn openalex_sweep_page_by_page() {
         Outcome::Fetched { entries: 3, new: 3 }
     );
     let urls: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
-    assert_eq!(urls, [page1, page2]);
+    assert_eq!(urls[..2], [page1, page2]);
+    // then the DOIs in Crossref, which does not answer here
+    assert!(urls[2].starts_with("https://api.crossref.org/works/10.1029/2026gl120001?"));
+    assert_eq!(
+        urls.len(),
+        3,
+        "the lookups stop at the first that gets no answer"
+    );
 
     let items = feeds.items();
     assert_eq!(

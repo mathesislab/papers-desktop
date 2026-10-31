@@ -18,6 +18,8 @@ struct Swept {
     entries: Vec<Entry>,
     /// the journal's title (Crossref's container title)
     title: Option<String>,
+    /// whether its entries have all a lookup by DOI would give (Crossref's)
+    complete: bool,
 }
 
 impl Feeds {
@@ -48,6 +50,11 @@ impl Feeds {
             Ok(swept) => swept,
             Err(message) => return Outcome::Failed(message),
         };
+        if swept.complete {
+            for doi in swept.entries.iter().filter_map(|e| e.doi.as_ref()) {
+                self.lookups.insert(format!("crossref:{doi}"), now);
+            }
+        }
         let entries = swept.entries.len();
         let new = self.merge(&id, swept.entries);
         let subscription = &mut self.config.subscriptions[i];
@@ -74,6 +81,7 @@ fn crossref(
     let mut swept = Swept {
         entries: Vec::new(),
         title: None,
+        complete: true,
     };
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {
@@ -116,6 +124,7 @@ fn openalex(
     let mut swept = Swept {
         entries: Vec::new(),
         title: None,
+        complete: false,
     };
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {

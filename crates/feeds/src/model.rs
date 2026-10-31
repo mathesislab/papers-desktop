@@ -121,7 +121,7 @@ pub struct Subscription {
 /// One item of one feed, as the feed gives it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
-    /// the subscription's id
+    /// the subscription's id; [`LOOKUP`] for a work looked up by its DOI
     pub source: String,
     /// the feed's id of the item (its guid, Atom id, or feed-rs's hash of the link)
     pub guid: String,
@@ -143,7 +143,14 @@ pub struct Entry {
     pub editorial: bool,
     /// the subscription's kind, corrected by the entry's identifiers
     pub kind: ItemKind,
+    /// its DOIs as Crossref relates them: its own and those of its other
+    /// versions (`has-preprint`, `is-preprint-of`, `is-version-of`); none from a feed
+    #[serde(default)]
+    pub versions: Vec<Version>,
 }
+
+/// The source of the works looked up by DOI (abstracts, authors, versions).
+pub const LOOKUP: &str = "lookup";
 
 /// An entry of an item, and when it was first fetched.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -189,7 +196,7 @@ pub struct Item {
     pub content: Option<String>,
     pub editorial: bool,
     pub sources: Vec<Source>,
-    /// every DOI of its sources, preprint or published (Crossref relations later)
+    /// every DOI of its sources and of their relations in Crossref, preprint or published
     pub versions: Vec<Version>,
     /// the DOIs of the papers a post is about (found later)
     #[serde(default)]

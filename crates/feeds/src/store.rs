@@ -1,8 +1,9 @@
 //! The files of a feeds folder: `config.json` (the subscriptions),
 //! `items.json` (the items and the aliases of merged ones), `state.json` (the
 //! triage of each item), `http.json` (the validators of each subscription's
-//! last answer, the time of its last sweep). Each is read whole, and written
-//! whole through a temporary file renamed over it.
+//! last answer, the time of its last sweep), `lookups.json` (what was looked
+//! up, and when). Each is read whole, and written whole through a temporary
+//! file renamed over it.
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -19,6 +20,7 @@ pub(crate) const CONFIG: &str = "config.json";
 pub(crate) const ITEMS: &str = "items.json";
 pub(crate) const STATE: &str = "state.json";
 pub(crate) const HTTP: &str = "http.json";
+pub(crate) const LOOKUPS: &str = "lookups.json";
 
 /// The days a sweep looks back the first time.
 pub const LOOKBACK_DAYS: u32 = 14;
@@ -70,6 +72,10 @@ pub(crate) struct Validators {
 
 /// `http.json`: the validators, by subscription id.
 pub(crate) type Validated = BTreeMap<String, Validators>;
+
+/// `lookups.json`: what was looked up, found or not, and when: `crossref:`
+/// and `openalex:` and a DOI, `page:` and an item's id.
+pub(crate) type Lookups = BTreeMap<String, DateTime<Utc>>;
 
 /// A file of the folder, or its default if there is none yet.
 pub(crate) fn read<T: DeserializeOwned + Default>(dir: &Path, name: &str) -> Result<T> {

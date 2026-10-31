@@ -1,0 +1,264 @@
+{
+ "status": "ok",
+ "message-type": "work",
+ "message-version": "1.0.0",
+ "message": {
+  "institution": [
+   {
+    "name": "EGUsphere"
+   }
+  ],
+  "posted": {
+   "date-parts": [
+    [
+     2026,
+     1,
+     7
+    ]
+   ]
+  },
+  "group-title": "Snow/Mountain Processes",
+  "reference-count": 0,
+  "publisher": "Copernicus GmbH",
+  "short-container-title": [],
+  "abstract": "<jats:p>Abstract. Snow estimation in mountainous regions is uncertain because meteorology varies with topography, in situ observations are sparse and biased, and snow models have structural and scale limitations. Probabilistic methods are increasingly recognized as essential for quantifying and propagating these uncertainties in hydrological assessment. This study generates meteorological forcing ensembles designed for mountainous terrain and applies them for probabilistic, physically based snow modeling. Precipitation from global station datasets is corrected for wind induced undercatch using standardized transfer functions. Using the Geospatial Probabilistic Estimation Package (GPEP), we generate station based meteorological ensembles that combine static topographic predictors with dynamic atmospheric predictors from reanalyses. Deterministic fields are estimated with locally weighted regression and random forests, and spatially correlated random fields are used to sample residuals and produce skillful, reliable ensembles. The resulting ensembles drive the SUMMA energy-balance snow model in three contrasting basins: the Chena (Interior Alaska), Bow (Canadian Rockies), and Tuolumne (Sierra Nevada). Undercatch correction improves cold-season precipitation, dynamic predictors enhance regression skill, and random forests outperform locally weighted regression. Ensemble verification yields positive Brier Skill Scores, and ensemble-forced SUMMA simulations reproduce observed snow water equivalent with credible magnitude, timing, and uncertainty estimates. This structured approach advances probabilistic estimation of mountain snow by explicitly representing forcing uncertainty in complex terrain, supporting modeling, data assimilation, and water resource management applications.</jats:p>",
+  "DOI": "10.5194/egusphere-2025-6066",
+  "type": "posted-content",
+  "created": {
+   "date-parts": [
+    [
+     2026,
+     1,
+     7
+    ]
+   ],
+   "date-time": "2026-01-07T20:26:42Z",
+   "timestamp": 1767817602000
+  },
+  "source": "Crossref",
+  "is-referenced-by-count": 0,
+  "title": [
+   "Propagating Meteorological Uncertainty in Physically Based Mountain Snow Simulations"
+  ],
+  "prefix": "10.5194",
+  "author": [
+   {
+    "given": "David R.",
+    "family": "Casson",
+    "sequence": "first",
+    "affiliation": [
+     {
+      "id": [
+       {
+        "id": "https://ror.org/03yjb2x39",
+        "id-type": "ROR",
+        "asserted-by": "publisher"
+       }
+      ],
+      "name": "University of Calgary (Calgary, Canada)"
+     }
+    ],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     },
+     {
+      "role": "corresponding-author",
+      "vocabulary": "crossref"
+     }
+    ]
+   },
+   {
+    "ORCID": "https://orcid.org/0000-0002-0923-583X",
+    "authenticated-orcid": false,
+    "given": "Guoqiang",
+    "family": "Tang",
+    "sequence": "additional",
+    "affiliation": [],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "ORCID": "https://orcid.org/0000-0002-4651-8935",
+    "authenticated-orcid": false,
+    "given": "Nicolás",
+    "family": "Vásquez",
+    "sequence": "additional",
+    "affiliation": [],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "ORCID": "https://orcid.org/0000-0002-6231-0085",
+    "authenticated-orcid": false,
+    "given": "Andrew W.",
+    "family": "Wood",
+    "sequence": "additional",
+    "affiliation": [],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "given": "Martyn P.",
+    "family": "Clark",
+    "sequence": "additional",
+    "affiliation": [],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   }
+  ],
+  "member": "3145",
+  "container-title": [],
+  "original-title": [],
+  "deposited": {
+   "date-parts": [
+    [
+     2026,
+     10,
+     15
+    ]
+   ],
+   "date-time": "2026-10-15T06:30:33Z",
+   "timestamp": 1792045833000
+  },
+  "score": 1,
+  "resource": {
+   "primary": {
+    "URL": "https://egusphere.copernicus.org/preprints/2026/egusphere-2025-6066/"
+   }
+  },
+  "subtitle": [],
+  "short-title": [],
+  "issued": {
+   "date-parts": [
+    [
+     2026,
+     1,
+     7
+    ]
+   ]
+  },
+  "references-count": 0,
+  "URL": "https://doi.org/10.5194/egusphere-2025-6066",
+  "relation": {
+   "has-comment": [
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-AC1",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-AC2",
+     "asserted-by": "subject"
+    }
+   ],
+   "has-review": [
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-RC1",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-RC2",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-AC1",
+     "asserted-by": "object"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-AC2",
+     "asserted-by": "object"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-RC2",
+     "asserted-by": "object"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-RC1",
+     "asserted-by": "object"
+    }
+   ],
+   "is-supplemented-by": [
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-supplement",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/egusphere-2025-6066-supplement",
+     "asserted-by": "object"
+    }
+   ],
+   "is-part-of": [
+    {
+     "id-type": "doi",
+     "id": "10.5281/zenodo.17740655",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.20383/103.01532",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5281/zenodo.17727620",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5281/zenodo.17727624",
+     "asserted-by": "subject"
+    }
+   ],
+   "is-preprint-of": [
+    {
+     "id-type": "doi",
+     "id": "10.5194/tc-20-5895-2026",
+     "asserted-by": "subject"
+    },
+    {
+     "id-type": "doi",
+     "id": "10.5194/tc-20-5895-2026",
+     "asserted-by": "object"
+    }
+   ]
+  },
+  "subject": [],
+  "published": {
+   "date-parts": [
+    [
+     2026,
+     1,
+     7
+    ]
+   ]
+  },
+  "subtype": "preprint"
+ }
+}

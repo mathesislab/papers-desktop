@@ -65,6 +65,11 @@ pub(crate) fn with_query(base: &str, pairs: &[(&str, &str)]) -> String {
     }
 }
 
+/// A DOI as a path of a URL (its slashes kept).
+pub(crate) fn doi_path(doi: &str) -> String {
+    utf8_percent_encode(doi, QUERY).to_string()
+}
+
 /// The JSON of a GET: None if not found (404 or 410), an error for no answer,
 /// another error status or a body that does not parse.
 pub(crate) fn get_json<T: DeserializeOwned>(

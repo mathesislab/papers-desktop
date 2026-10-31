@@ -1,5 +1,6 @@
-//! The feeds of a folder: subscribing, fetching every subscription (a feed or
-//! a sweep) into the items, the triage of items, and the pruning of old ones.
+//! The feeds of a folder: subscribing, fetching every subscription into the
+//! items (and the lookups by DOI that follow), the triage of items, and the
+//! pruning of old ones.
 
 use std::path::{Path, PathBuf};
 
@@ -8,18 +9,22 @@ use chrono::{DateTime, TimeDelta, Utc};
 use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::merge::Merger;
 use crate::model::{Entry, Feed, Item, Mark, SourceKind, Subscription, Triage};
-use crate::normalize::short_id;
+use crate::normalize::{is_attachment_doi, short_id};
 use crate::parse::parse;
-use crate::store::{self, CONFIG, Config, HTTP, ITEMS, Items, STATE, State, Validated, Validators};
+use crate::store::{
+    self, CONFIG, Config, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State, Validated, Validators,
+};
 use crate::{Error, Result};
 
 /// The time of the feeds: the clock, or a test's.
 pub type Now = Box<dyn Fn() -> DateTime<Utc> + Send + Sync>;
 
-/// What a fetch did, per subscription.
+/// What a fetch did, per subscription, and what followed.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FetchReport {
     pub feeds: Vec<FeedReport>,
+    /// the requests of Crossref and OpenAlex for works by DOI
+    pub lookups: usize,
 }
 
 /// What the fetch of a subscription did.
@@ -48,6 +53,7 @@ pub struct Feeds {
     pub(crate) items: Items,
     pub(crate) state: State,
     pub(crate) http: Validated,
+    pub(crate) lookups: Lookups,
     pub(crate) now: Now,
 }
 
@@ -65,6 +71,7 @@ impl Feeds {
             items: store::read(&dir, ITEMS)?,
             state: store::read(&dir, STATE)?,
             http: store::read(&dir, HTTP)?,
+            lookups: store::read(&dir, LOOKUPS)?,
             dir,
             now,
         })
@@ -123,8 +130,9 @@ impl Feeds {
         store::write(&self.dir, CONFIG, &self.config)
     }
 
-    /// Fetches every subscription, one after the other, into the items; a
-    /// feed that fails is reported and the others go on. The APIs are asked with
+    /// Fetches every subscription, one after the other, into the items, then
+    /// looks up the DOIs of papers; a feed that fails is reported and the
+    /// others go on. The APIs are asked with
     /// `access`.
     pub fn fetch(&mut self, http: &dyn Http, access: &Access) -> Result<FetchReport> {
         let mut report = FetchReport::default();
@@ -136,6 +144,8 @@ impl Feeds {
                 outcome,
             });
         }
+        let budget = self.complete(http, access);
+        report.lookups = budget.lookups_used();
         self.save()?;
         Ok(report)
     }
@@ -145,7 +155,8 @@ impl Feeds {
         store::write(&self.dir, CONFIG, &self.config)?;
         store::write(&self.dir, ITEMS, &self.items)?;
         store::write(&self.dir, STATE, &self.state)?;
-        store::write(&self.dir, HTTP, &self.http)
+        store::write(&self.dir, HTTP, &self.http)?;
+        store::write(&self.dir, LOOKUPS, &self.lookups)
     }
 
     /// Fetches a feed: a conditional GET, the feed parsed and merged.
@@ -191,8 +202,7 @@ impl Feeds {
     }
 
     /// The entries of a subscription's feed into the items; the number of new
-    /// items. Only these entries are listed by it now, and the triage of a
-    /// merged item follows it.
+    /// items. Only these entries are listed by it now.
     pub(crate) fn merge(&mut self, subscription: &str, entries: Vec<Entry>) -> usize {
         for item in &mut self.items.items {
             for source in &mut item.sources {
@@ -201,11 +211,19 @@ impl Feeds {
                 }
             }
         }
+        self.add(entries, true)
+    }
+
+    /// Entries into the items, listed by their feed or not (a lookup's),
+    /// those of a paper's review comments and supplements left out; the
+    /// number of new items. The triage of a merged item follows it.
+    pub(crate) fn add(&mut self, entries: Vec<Entry>, listed: bool) -> usize {
         let now = (self.now)();
         let mut merger = Merger::new(&mut self.items.items, &mut self.items.aliases);
         let new = entries
             .into_iter()
-            .map(|e| merger.add(e, now))
+            .filter(|e| !e.doi.as_deref().is_some_and(is_attachment_doi))
+            .map(|e| merger.add(e, now, listed))
             .filter(|&new| new)
             .count();
         for (absorbed, kept) in merger.finish() {
@@ -259,9 +277,11 @@ impl Feeds {
     }
 
     /// Drops the items first seen more than `days` ago that no feed lists any
-    /// more, unless shortlisted or added; the number dropped.
+    /// more, unless shortlisted or added, and the lookups older (which may
+    /// then be made again); the number of items dropped.
     pub fn prune(&mut self, days: u32) -> Result<usize> {
         let before = (self.now)() - TimeDelta::days(days.into());
+        self.lookups.retain(|_, &mut at| at >= before);
         let state = &self.state;
         let old = |item: &Item| {
             let triage = state.get(&item.id).map_or(Triage::New, |m| m.triage);
@@ -280,6 +300,7 @@ impl Feeds {
             .retain(|_, kept| !dropped_ids.contains(&&*kept));
         store::write(&self.dir, ITEMS, &self.items)?;
         store::write(&self.dir, STATE, &self.state)?;
+        store::write(&self.dir, LOOKUPS, &self.lookups)?;
         Ok(dropped.len())
     }
 }

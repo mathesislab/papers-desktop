@@ -149,7 +149,13 @@ fn fetch_merge_triage_and_reopen() {
     files.sort();
     assert_eq!(
         files,
-        ["config.json", "http.json", "items.json", "state.json"],
+        [
+            "config.json",
+            "http.json",
+            "items.json",
+            "lookups.json",
+            "state.json"
+        ],
         "no temporary file left"
     );
 }
@@ -174,7 +180,12 @@ fn an_unchanged_feed_is_not_fetched_again() {
     let report = feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(report.feeds[0].outcome, Outcome::Unchanged);
     assert_eq!(feeds.items(), items);
-    let requests = http.requests();
+    // and the lookups of the papers' DOIs, which get no answer
+    let requests: Vec<_> = http
+        .requests()
+        .into_iter()
+        .filter(|r| r.url == TC)
+        .collect();
     assert_eq!(requests[0].if_none_match, None);
     assert_eq!(requests[1].if_none_match.as_deref(), Some("\"v1\""));
     assert_eq!(requests[1].if_modified_since.as_deref(), Some(modified));

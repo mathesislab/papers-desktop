@@ -1,8 +1,9 @@
 //! Entries into items: one item per paper or post, from every source that
-//! listed it. An entry joins the item of the same feed item, else of its DOI,
-//! else of its arXiv id, else of a title of the same words (Jaccard ≥ 0.9) by
-//! the same first author within a year; an entry that joins two items merges
-//! them, the newer becoming an alias of the older.
+//! listed it. An entry joins the item of the same feed item, else of its DOI
+//! or of a version Crossref relates it to (a preprint and its paper), else of
+//! its arXiv id, else of a title of the same words (Jaccard ≥ 0.9) by the same
+//! first author within a year; an entry that joins two items merges them, the
+//! newer becoming an alias of the older.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -49,7 +50,7 @@ impl<'a> Merger<'a> {
     fn index(&mut self, i: usize) {
         for source in &self.items[i].sources {
             let e = &source.entry;
-            if let Some(doi) = &e.doi {
+            for doi in e.doi.iter().chain(e.versions.iter().map(|v| &v.doi)) {
                 self.by_doi.insert(doi.clone(), i);
             }
             if let Some(arxiv) = &e.arxiv {
@@ -65,22 +66,27 @@ impl<'a> Merger<'a> {
         }
     }
 
-    /// An entry fetched at `now`, into its item or a new one; true if new.
-    pub fn add(&mut self, entry: Entry, now: DateTime<Utc>) -> bool {
+    /// An entry fetched at `now`, into its item or a new one, listed by its
+    /// feed or not (a lookup's); true if new.
+    pub fn add(&mut self, entry: Entry, now: DateTime<Utc>, listed: bool) -> bool {
         let own = self
             .by_source
             .get(&(entry.source.clone(), entry.guid.clone()))
             .copied();
-        let doi = entry.doi.as_ref().and_then(|d| self.by_doi.get(d));
+        let dois = entry
+            .doi
+            .iter()
+            .chain(entry.versions.iter().map(|v| &v.doi));
+        let doi = dois.filter_map(|d| self.by_doi.get(d));
         let arxiv = entry.arxiv.as_ref().and_then(|a| self.by_arxiv.get(a));
-        let mut found: BTreeSet<usize> = doi.into_iter().chain(arxiv).copied().collect();
+        let mut found: BTreeSet<usize> = doi.chain(arxiv).copied().collect();
         if own.is_none() && found.is_empty() {
             found.extend(self.same_title(&entry));
         }
         found.extend(own);
         // the oldest item stays
         let Some(&target) = found.first() else {
-            self.create(entry, now);
+            self.create(entry, now, listed);
             return true;
         };
         for &other in found.iter().skip(1) {
@@ -91,12 +97,12 @@ impl<'a> Merger<'a> {
         match item.sources.iter_mut().find(same) {
             Some(source) => {
                 source.entry = entry;
-                source.listed = true;
+                source.listed = listed;
             }
             None => item.sources.push(Source {
                 entry,
                 first_seen: now,
-                listed: true,
+                listed,
             }),
         }
         refresh(item);
@@ -105,7 +111,7 @@ impl<'a> Merger<'a> {
     }
 
     /// A new item of an entry, its id from the entry's first key.
-    fn create(&mut self, entry: Entry, now: DateTime<Utc>) {
+    fn create(&mut self, entry: Entry, now: DateTime<Utc>, listed: bool) {
         let key = match (&entry.doi, &entry.arxiv) {
             (Some(doi), _) => format!("doi:{doi}"),
             (None, Some(arxiv)) => format!("arxiv:{arxiv}"),
@@ -114,7 +120,7 @@ impl<'a> Merger<'a> {
         let source = Source {
             entry,
             first_seen: now,
-            listed: true,
+            listed,
         };
         self.items
             .push(assemble(short_id(&key), vec![source], Vec::new()));
@@ -205,7 +211,7 @@ fn refresh(item: &mut Item) {
 
 /// An item of its sources: the fields of the published version's entry (the
 /// preprint's if none, the first seen of a kind), the longest abstract and
-/// text, every DOI.
+/// text, every DOI (of a stage as Crossref relates them, else by its prefix).
 fn assemble(id: String, sources: Vec<Source>, linked: Vec<String>) -> Item {
     let best = &sources
         .iter()
@@ -213,17 +219,18 @@ fn assemble(id: String, sources: Vec<Source>, linked: Vec<String>) -> Item {
         .expect("an item has a source")
         .entry;
     let entries = || sources.iter().map(|s| &s.entry);
+    let related = entries().flat_map(|e| e.versions.iter().cloned());
+    let own = entries().filter_map(|e| e.doi.as_ref()).map(|doi| Version {
+        doi: doi.clone(),
+        stage: match is_preprint_doi(doi) {
+            true => Stage::Preprint,
+            false => Stage::Published,
+        },
+    });
     let mut versions: Vec<Version> = Vec::new();
-    for doi in entries().filter_map(|e| e.doi.as_ref()) {
-        if !versions.iter().any(|v| &v.doi == doi) {
-            let stage = match is_preprint_doi(doi) {
-                true => Stage::Preprint,
-                false => Stage::Published,
-            };
-            versions.push(Version {
-                doi: doi.clone(),
-                stage,
-            });
+    for version in related.chain(own) {
+        if !versions.iter().any(|v| v.doi == version.doi) {
+            versions.push(version);
         }
     }
     let doi = versions
@@ -288,6 +295,7 @@ mod tests {
             content: None,
             editorial: false,
             kind: ItemKind::Paper,
+            versions: Vec::new(),
         }
     }
 
@@ -316,7 +324,7 @@ mod tests {
         let mut aliases = BTreeMap::new();
         let mut merger = Merger::new(&mut items, &mut aliases);
         for (day, e) in (1..).zip(entries) {
-            merger.add(e, at(day));
+            merger.add(e, at(day), true);
         }
         let merged = merger.finish();
         Merged {
@@ -410,6 +418,38 @@ mod tests {
         );
         assert_eq!(items[0].versions[0].stage, Stage::Preprint);
         assert_eq!(items[1].versions[0].stage, Stage::Published);
+    }
+
+    #[test]
+    fn crossrefs_versions_join_a_preprint_and_its_paper() {
+        let title = "Snow modeling";
+        let mut egu = doi(
+            entry("egusphere", "e", title, "Casson"),
+            "10.5194/egusphere-2025-6066",
+        );
+        egu.kind = ItemKind::Preprint;
+        let tc = doi(
+            entry("tc", "t", "Snow modelling, final", "Casson"),
+            "10.5194/tc-20-5895-2026",
+        );
+        let mut looked_up = tc.clone();
+        looked_up.source = crate::model::LOOKUP.to_string();
+        looked_up.versions = vec![
+            Version {
+                doi: "10.5194/tc-20-5895-2026".to_string(),
+                stage: Stage::Published,
+            },
+            Version {
+                doi: "10.5194/egusphere-2025-6066".to_string(),
+                stage: Stage::Preprint,
+            },
+        ];
+        let Merged { items, merged, .. } = merge(vec![egu, tc, looked_up]);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].doi.as_deref(), Some("10.5194/tc-20-5895-2026"));
+        assert_eq!(items[0].title, "Snow modelling, final");
+        assert_eq!(items[0].kind, ItemKind::Paper);
+        assert_eq!(merged.len(), 1);
     }
 
     #[test]

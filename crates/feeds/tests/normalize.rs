@@ -110,6 +110,27 @@ fn short_ids_are_stable() {
 }
 
 #[test]
+fn review_comments_and_supplements_are_not_papers() {
+    for doi in [
+        "10.5194/egusphere-2025-6066-rc1",
+        "10.5194/egusphere-2025-6066-ac2",
+        "10.5194/egusphere-2025-6066-cc1",
+        "10.5194/egusphere-2025-6066-ec1",
+        "10.5194/egusphere-2025-6066-rc1-supplement",
+        "10.5194/tc-20-5895-2026-supplement",
+    ] {
+        assert!(is_attachment_doi(doi), "{doi}");
+    }
+    for doi in [
+        "10.5194/egusphere-2025-6066",
+        "10.5194/tc-20-5895-2026",
+        "10.1029/2026gl123955",
+    ] {
+        assert!(!is_attachment_doi(doi), "{doi}");
+    }
+}
+
+#[test]
 fn issns_with_their_check_digit() {
     assert_eq!(canonical_issn("1994-0424").as_deref(), Some("1994-0424"));
     assert_eq!(canonical_issn(" 19940424 ").as_deref(), Some("1994-0424"));
