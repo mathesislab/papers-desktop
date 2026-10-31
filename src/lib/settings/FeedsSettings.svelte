@@ -323,7 +323,7 @@
     </select>
     <button disabled={busy || !addText.trim()} onclick={add}>Add</button>
   </div>
-  <p class="hint">An ISSN is swept in Crossref; an OpenAlex filter needs the OpenAlex key.</p>
+  <p class="hint">An ISSN is swept in Crossref; an OpenAlex filter in OpenAlex, which its key helps.</p>
 
   <div class="actions">
     <button onclick={() => (showSuggested = !showSuggested)}>{showSuggested ? "Hide Suggested" : "Suggested…"}</button>

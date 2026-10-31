@@ -57,7 +57,7 @@ fn fetch_reports_each_subscription() {
 }
 
 #[test]
-fn a_sweep_that_needs_a_key_fails_without_stopping_the_others() {
+fn a_sweep_that_fails_does_not_stop_the_others() {
     let s = fetched();
     s.ok(&["subscribe", "--openalex", "primary_topic.id:T10644"]);
     let out = s.ok(&["fetch"]);
@@ -70,7 +70,9 @@ fn a_sweep_that_needs_a_key_fails_without_stopping_the_others() {
         report[2].starts_with("failed  OpenAlex primary_topic.id:T10644: "),
         "{out}"
     );
-    assert!(report[2].to_lowercase().contains("key"), "{out}");
+    // asked without a key, which OpenAlex does not need
+    assert!(report[2].contains("from_publication_date:"), "{out}");
+    assert!(!report[2].contains("api_key"), "{out}");
 }
 
 #[test]

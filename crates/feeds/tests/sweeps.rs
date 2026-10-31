@@ -1,5 +1,5 @@
 //! Sweeps as subscriptions: Crossref by ISSN (October 2026, 3 rows of The
-//! Cryosphere), OpenAlex by a filter (hand-written: no key to record with),
+//! Cryosphere), OpenAlex by a filter (hand-written),
 //! incremental; and `config.json` of the plain feeds before.
 
 use std::sync::{Arc, Mutex};
@@ -155,25 +155,56 @@ fn a_failed_sweep_is_asked_again_from_the_same_day() {
 }
 
 const OPENALEX: &str = "https://api.openalex.org/works?filter=primary_topic.id:T10644,\
-    from_created_date:2026-10-17,type:article\
+    from_publication_date:2026-10-03,type:article\
     &select=id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type\
     &per-page=100";
 
 #[test]
-fn openalex_sweep_needs_a_key() {
+fn openalex_sweep_without_a_key_back_the_lookback_each_time() {
     let dir = tempfile::tempdir().unwrap();
-    let mut feeds = Clock::new().open(dir.path());
+    let clock = Clock::new();
+    let mut feeds = clock.open(dir.path());
     let filter = Feed::OpenAlex {
         filter: " primary_topic.id:T10644 ".to_string(),
     };
     feeds.subscribe(filter, SourceKind::Journal).unwrap();
-    let http = Recorded::new();
+    let pages = |published: &str| {
+        let list = OPENALEX.replace("2026-10-03", published);
+        let tail = "&mailto=papers-desktop@example.org";
+        let cursor = "IlsxNzkzMDAwMDAwMDAwLCAnaHR0cHM6Ly9vcGVuYWxleC5vcmcvVzQ0MTAwMDAwMDInXSI%3D";
+        [
+            format!("{list}&cursor=*{tail}"),
+            format!("{list}&cursor={cursor}{tail}"),
+        ]
+    };
+    // the first time, published since the lookback before the lookback's
+    // first day; then since the lookback before the last sweep, a day ago
+    let [first1, first2] = pages("2026-10-03");
+    let [next1, next2] = pages("2026-10-17");
+    let http = Recorded::new()
+        .reply(
+            &first1,
+            Reply::ok(&first1, fixture("openalex-works-1.json")),
+        )
+        .reply(
+            &first2,
+            Reply::ok(&first2, fixture("openalex-works-2.json")),
+        )
+        .reply(&next1, Reply::ok(&next1, fixture("openalex-works-1.json")))
+        .reply(&next2, Reply::ok(&next2, fixture("openalex-works-2.json")));
     let report = feeds.fetch(&http, &polite()).unwrap();
     assert_eq!(
         report.feeds[0].outcome,
-        Outcome::Failed("OpenAlex: no key".to_string())
+        Outcome::Fetched { entries: 3, new: 3 }
     );
-    assert!(http.requests().is_empty());
+    *clock.0.lock().unwrap() += chrono::TimeDelta::days(1);
+    let report = feeds.fetch(&http, &polite()).unwrap();
+    assert_eq!(
+        report.feeds[0].outcome,
+        Outcome::Fetched { entries: 3, new: 0 },
+        "the works listed again are the items they were"
+    );
+    assert_eq!(feeds.items().len(), 3);
 }
 
 #[test]
@@ -246,7 +277,7 @@ fn openalex_sweep_of_words_in_titles_and_abstracts() {
     feeds.fetch(&http, &access).unwrap();
     let url = &http.requests()[0].url;
     let filter = "filter=title_and_abstract.search:ice%20sheet%20AND%20(tipping%20OR%20%22tipping%20point%22),\
-        from_created_date:2026-10-17,type:article&";
+        from_publication_date:2026-10-03,type:article&";
     assert!(url.contains(filter), "{url}");
 }
 

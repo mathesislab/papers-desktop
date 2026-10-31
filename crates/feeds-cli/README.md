@@ -10,7 +10,7 @@ cargo install --path crates/feeds-cli        # the program is `feeds`
 
 feeds subscribe https://www.nature.com/ngeo.rss
 feeds subscribe --issn 1994-0424 --journal "The Cryosphere"      # a Crossref sweep
-feeds subscribe --openalex primary_topic.id:T10644               # needs OPENALEX_KEY
+feeds subscribe --openalex primary_topic.id:T10644               # OPENALEX_KEY helps
 feeds fetch --mailto me@example.org
 feeds list "sea ice" --sort score --limit 20
 feeds --library ~/lit/papers.bib list like:30- --sort like      # like the papers of a library

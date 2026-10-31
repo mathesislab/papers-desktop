@@ -1,7 +1,7 @@
-//! OpenAlex's works: the requests (the articles of a filter created since a
-//! day, a work by its DOI; each with the key), their JSON, and a work as an
-//! entry, its abstract rebuilt from the inverted index. And its journals: a
-//! search by name, the journal of an ISSN.
+//! OpenAlex's works: the requests (the articles of a filter published since
+//! a day, a work by its DOI; each with the key, if set), their JSON, and a
+//! work as an entry, its abstract rebuilt from the inverted index. And its
+//! journals: a search by name, the journal of an ISSN.
 
 use std::collections::BTreeMap;
 
@@ -121,10 +121,16 @@ fn access_pairs<'a>(
     pairs
 }
 
-/// A page of the articles of a filter created since a day, from a cursor
-/// (`*` the first).
-pub(crate) fn list_url(filter: &str, created: NaiveDate, cursor: &str, access: &Access) -> String {
-    let filter = format!("{filter},from_created_date:{created},type:article");
+/// A page of the articles of a filter published since a day, from a cursor
+/// (`*` the first). Not created since a day: OpenAlex's `from_created_date`
+/// needs a paid plan.
+pub(crate) fn list_url(
+    filter: &str,
+    published: NaiveDate,
+    cursor: &str,
+    access: &Access,
+) -> String {
+    let filter = format!("{filter},from_publication_date:{published},type:article");
     let per_page = PER_PAGE.to_string();
     let pairs = vec![
         ("filter", filter.as_str()),

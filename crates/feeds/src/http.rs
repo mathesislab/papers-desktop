@@ -32,7 +32,7 @@ pub const PAGE_ACCEPT: &str = "text/html, application/xhtml+xml;q=0.9, */*;q=0.8
 pub struct Access {
     /// an address for Crossref's and OpenAlex's polite pools
     pub mailto: Option<String>,
-    /// OpenAlex's key, which its queries need
+    /// OpenAlex's key, which raises its small daily budget without one
     pub openalex_key: Option<String>,
 }
 

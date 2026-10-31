@@ -1,7 +1,8 @@
 //! The sweeps: the new works of a journal in Crossref (indexed since the last
 //! sweep, created within the lookback before it, which leaves out the old
-//! works that Crossref indexes again) and of a filter in OpenAlex (created
-//! since the last sweep), page by page, as the entries of a subscription.
+//! works that Crossref indexes again) and of a filter in OpenAlex (published
+//! within the lookback before the last sweep: those it lists again are the
+//! items they were), page by page, as the entries of a subscription.
 
 use chrono::{NaiveDate, TimeDelta};
 
@@ -44,7 +45,9 @@ impl Feeds {
                 return self.fetch_feed(i, &url, http);
             }
             Feed::Crossref { issn } => crossref(http, access, subscription, issn, since, lookback),
-            Feed::OpenAlex { filter } => openalex(http, access, subscription, filter, since),
+            Feed::OpenAlex { filter } => {
+                openalex(http, access, subscription, filter, since - lookback)
+            }
         };
         let swept = match swept {
             Ok(swept) => swept,
@@ -109,17 +112,15 @@ fn crossref(
     Ok(swept)
 }
 
-/// OpenAlex's articles of a filter created since a day; its key is needed.
+/// OpenAlex's articles of a filter published since a day; with its key, if
+/// set (without, OpenAlex answers a small daily budget).
 fn openalex(
     http: &dyn Http,
     access: &Access,
     subscription: &Subscription,
     filter: &str,
-    since: NaiveDate,
+    published: NaiveDate,
 ) -> Result<Swept, String> {
-    if access.openalex_key.is_none() {
-        return Err("OpenAlex: no key".to_string());
-    }
     let kind = subscription.kind.item_kind();
     let mut swept = Swept {
         entries: Vec::new(),
@@ -128,7 +129,7 @@ fn openalex(
     };
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {
-        let url = openalex::list_url(filter, since, &cursor, access);
+        let url = openalex::list_url(filter, published, &cursor, access);
         let page: openalex::List =
             get_json(http, &url)?.ok_or_else(|| format!("{url}: not found"))?;
         let entries = page.results.iter().map(|w| w.entry(&subscription.id, kind));

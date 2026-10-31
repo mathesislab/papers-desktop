@@ -729,7 +729,11 @@ wildcard); `queryTerms` reads a query's terms as the core's tokens do.
 **A subscription** follows a `Feed`: an RSS/Atom `url`, a Crossref `issn`
 (works indexed since the last sweep, created at most the lookback, 14 days,
 before it: Crossref re-indexes old works), or an `openalex` filter
-(`from_created_date`, `type:article`; needs the key). The APIs are asked
+(`type:article`, published at most the lookback before the last sweep:
+`from_publication_date`, as OpenAlex's `from_created_date` needs a paid
+plan; the works it lists again are the items they were, found by their
+id and DOI, so none is new twice; the key helps, raising OpenAlex's small
+daily budget without one). The APIs are asked
 with an `Access { mailto, openalex_key }` from the settings, each sent only
 if set; Crossref is paced to 3 requests a second with an address.
 
@@ -842,8 +846,8 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   (tipping OR collapse)`) are the OpenAlex filter
   `title_and_abstract.search:<words>` (`wordsFilter`: their commas, which
   would end the filter, and runs of white space as one space; OpenAlex's
-  AND, OR, NOT, quotes and parentheses work), a sweep as any filter's (its
-  key needed), titled as the words.
+  AND, OR, NOT, quotes and parentheses work), a sweep as any filter's,
+  titled as the words.
   *From your library*, the first group of *Suggested*: the journals of the
   library's papers (below), each with its count (*23 papers*), shown at
   once and filled in as their lookups come (*looking up…*, one at a time

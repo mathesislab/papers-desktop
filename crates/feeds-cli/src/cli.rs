@@ -70,7 +70,7 @@ pub struct AccessArgs {
     /// An address for the polite pools of Crossref and OpenAlex [env: FEEDS_MAILTO]
     #[arg(long, value_name = "ADDRESS")]
     pub mailto: Option<String>,
-    /// OpenAlex's key, which its sweeps need [env: OPENALEX_KEY]
+    /// OpenAlex's key, which raises its small daily budget without one [env: OPENALEX_KEY]
     #[arg(long, value_name = "KEY")]
     pub openalex_key: Option<String>,
 }
@@ -296,7 +296,7 @@ pub struct MarkArgs {
 pub enum IssnVia {
     /// A Crossref sweep: needs no key
     Crossref,
-    /// An OpenAlex filter `primary_location.source.issn:ISSN`: needs a key, as paper-feeder's
+    /// An OpenAlex filter `primary_location.source.issn:ISSN`, as paper-feeder's
     Openalex,
 }
 

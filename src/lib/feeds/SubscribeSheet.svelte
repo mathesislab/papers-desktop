@@ -40,11 +40,12 @@
   const TYPES: { type: FeedType; name: string; placeholder: string }[] = [
     { type: "rss", name: "Feed URL", placeholder: "https://… the RSS or Atom feed of a journal, a site, a blog" },
     { type: "crossref", name: "Crossref ISSN", placeholder: "1994-0424: the works of a journal, as Crossref indexes them" },
-    { type: "openalex", name: "OpenAlex filter", placeholder: "topics.id:T10017: a filter of OpenAlex works (needs its key)" },
+    { type: "openalex", name: "OpenAlex filter", placeholder: "topics.id:T10017: a filter of OpenAlex works (its key helps)" },
     {
       type: "words",
       name: "Words",
-      placeholder: "ice sheet AND (tipping OR collapse): new papers whose title or abstract has them (OpenAlex's key)",
+      placeholder:
+        "ice sheet AND (tipping OR collapse): new papers whose title or abstract has them (OpenAlex key helps)",
     },
   ];
   const KINDS: { kind: SourceKind; name: string }[] = [
