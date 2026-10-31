@@ -9,7 +9,7 @@
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSApplication, NSEventModifierFlags};
 use objc2_foundation::NSString;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, Webview, Wry};
 
 use crate::PANEL;
@@ -29,11 +29,22 @@ const TO_PAGE: &[&str] = &[
     "show-previous-tab",
 ];
 
-pub fn setup(app: &AppHandle) -> tauri::Result<()> {
+/// Window → Feeds, there only while the Feeds tab is shown, and Window → Show Feeds Tab, ticked
+/// then: they follow the setting (`feeds_tab`).
+struct FeedsItems {
+    feeds: MenuItem<Wry>,
+    show: CheckMenuItem<Wry>,
+}
+
+pub fn setup(app: &AppHandle, feeds_tab: bool) -> tauri::Result<()> {
     let separator = || PredefinedMenuItem::separator(app);
     // a command of the main window: its id is the name the page knows
     let item = |id: &str, text: &str, keys: &str| -> tauri::Result<MenuItem<Wry>> {
         MenuItem::with_id(app, id, text, true, Some(keys))
+    };
+    let feeds = FeedsItems {
+        feeds: MenuItem::with_id(app, "feeds", "Feeds", feeds_tab, Some("CmdOrCtrl+2"))?,
+        show: CheckMenuItem::with_id(app, "show-feeds-tab", "Show Feeds Tab", true, feeds_tab, None::<&str>)?,
     };
     let menu = Menu::with_items(
         app,
@@ -105,25 +116,46 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                     &PredefinedMenuItem::maximize(app, None)?,
                     &separator()?,
                     &item("library", "Library", "CmdOrCtrl+1")?,
-                    &item("feeds", "Feeds", "CmdOrCtrl+2")?,
+                    &feeds.feeds,
                     &item("next-tab", "Next Tab", "Ctrl+Tab")?,
                     &item("previous-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
                     &separator()?,
                     &item("show-next-tab", "Show Next Tab", "CmdOrCtrl+Shift+]")?,
                     &item("show-previous-tab", "Show Previous Tab", "CmdOrCtrl+Shift+[")?,
+                    &separator()?,
+                    &feeds.show,
                 ],
             )?,
         ],
     )?;
     app.set_menu(menu)?;
+    app.manage(feeds);
     show_plus(app);
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
+        "show-feeds-tab" => toggle_feeds_tab(app),
         "settings" => crate::settings_window(app, None),
         "install-cli" => crate::cli_tool::install_from_menu(app),
         id => command(app, id),
     });
     Ok(())
+}
+
+/// Window → Show Feeds Tab: the setting the other way.
+fn toggle_feeds_tab(app: &AppHandle) {
+    let shown = crate::feeds::feeds_tab(app.clone()).unwrap_or(true);
+    if crate::feeds::feeds_set_tab(app.clone(), !shown).is_err() {
+        // not written: the tick back as the setting is
+        feeds_tab(app, shown);
+    }
+}
+
+/// The items of the Feeds tab as the setting is.
+pub fn feeds_tab(app: &AppHandle, shown: bool) {
+    if let Some(items) = app.try_state::<FeedsItems>() {
+        let _ = items.feeds.set_enabled(shown);
+        let _ = items.show.set_checked(shown);
+    }
 }
 
 /// View → Zoom In shows ⌘+, as Safari's does. The accelerator of a menu item here is a key, which

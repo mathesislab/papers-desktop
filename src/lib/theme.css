@@ -16,6 +16,9 @@
   /* the sidebar of the main window */
   --sidebar: rgba(0, 0, 0, 0.035);
   --error: #c4321f;
+  /* the Feeds tab: green, against the blue of the library */
+  --feeds: #2e9a4f;
+  --on-feeds: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
@@ -32,5 +35,6 @@
     --on-selection: var(--fg);
     --sidebar: rgba(255, 255, 255, 0.035);
     --error: #ff7a66;
+    --feeds: #2f8a4a;
   }
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
-  // The main window: its two tabs, Library (LibraryView, with the papers open) and Feeds (FeedsView); its layout,
-  // kept between sessions; the commands of the menu and the keys, the window's own or passed on to the tab in front.
+  // The main window: its two tabs, Library (LibraryView, with the papers open) and Feeds (FeedsView, unless hidden
+  // by the setting); its layout, kept between sessions; the commands of the menu and the keys, the window's own or
+  // passed on to the tab in front.
 
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -8,12 +9,15 @@
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { commands } from "$lib/commands";
+  import * as feedsApi from "$lib/feeds/api";
   import FeedsView from "$lib/feeds/FeedsView.svelte";
   import { label, mac, matches, zoomStep } from "$lib/keys";
   import { restore, type Layout } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
 
   let layout = $state<Layout>(restore(null));
+  /** the Feeds tab, shown: the setting (Settings → Feeds, Window → Show Feeds Tab) */
+  let feedsTab = $state(true);
   let loaded = false;
   let timer: ReturnType<typeof setTimeout>;
 
@@ -24,12 +28,18 @@
   onMount(() => {
     // from the menu of the app
     const unlisten = listen<string>("command", (e) => command(e.payload));
+    const unlistenTab = listen<boolean>(feedsApi.EVENTS.tab, (e) => showFeeds(e.payload));
     load();
-    return () => unlisten.then((f) => f());
+    return () => {
+      unlisten.then((f) => f());
+      unlistenTab.then((f) => f());
+    };
   });
 
   async function load() {
-    layout = restore(await invoke<Partial<Layout> | null>("layout"));
+    const [saved, shown] = await Promise.all([invoke<Partial<Layout> | null>("layout"), feedsApi.tabShown()]);
+    layout = restore(saved);
+    showFeeds(shown);
     loaded = true;
     await library?.load();
     await tick();
@@ -48,6 +58,12 @@
     if (view === "library") tick().then(() => library?.focusSearch());
   }
 
+  /** The Feeds tab shown or hidden; hidden in front, the Library tab comes. */
+  function showFeeds(show: boolean) {
+    feedsTab = show;
+    if (!show) showView("library");
+  }
+
   // saved a moment after a change: a pane dragged changes it many times
   $effect(() => {
     const snapshot = $state.snapshot(layout);
@@ -63,7 +79,7 @@
       case "library":
         return layout.view === "library" ? library?.command(name) : showView("library");
       case "feeds":
-        return showView("feeds");
+        return feedsTab ? showView("feeds") : undefined;
       // the PDF in front has the keys; else they set the text size
       case "zoom-in":
         return zoom(1);
@@ -157,23 +173,27 @@
 
 <svelte:window {onkeydown} />
 
+<!-- no switch with the Feeds tab hidden: the Library tab alone -->
 {#snippet tabs()}
-  <div class="tabs" role="tablist">
-    <button
-      role="tab"
-      aria-selected={layout.view === "library"}
-      class:on={layout.view === "library"}
-      title="Library ({label(commands.library)})"
-      onclick={() => showView("library")}>Library</button
-    >
-    <button
-      role="tab"
-      aria-selected={layout.view === "feeds"}
-      class:on={layout.view === "feeds"}
-      title="Feeds ({label(commands.feeds)})"
-      onclick={() => showView("feeds")}>Feeds</button
-    >
-  </div>
+  {#if feedsTab}
+    <div class="tabs" role="tablist">
+      <button
+        role="tab"
+        aria-selected={layout.view === "library"}
+        class:on={layout.view === "library"}
+        title="Library ({label(commands.library)})"
+        onclick={() => showView("library")}>Library</button
+      >
+      <button
+        role="tab"
+        aria-selected={layout.view === "feeds"}
+        class="feeds"
+        class:on={layout.view === "feeds"}
+        title="Feeds ({label(commands.feeds)})"
+        onclick={() => showView("feeds")}>Feeds</button
+      >
+    </div>
+  {/if}
 {/snippet}
 
 <!-- the library stays, hidden behind the feeds: its selection, scroll and edit are there when it comes back -->
@@ -184,7 +204,7 @@
   {tabs}
   onfront={() => showView("library")}
 />
-{#if layout.view === "feeds"}
+{#if feedsTab && layout.view === "feeds"}
   <!-- the Add sheet is the library's, over this tab: after the paper is added, the Feeds tab stays in front -->
   <FeedsView
     bind:this={feeds}
@@ -236,5 +256,10 @@
     background: var(--line);
     color: var(--fg);
     font-weight: 600;
+  }
+  /* the Feeds tab's own colour, against the blue of the library */
+  .tabs button.feeds.on {
+    background: var(--feeds);
+    color: var(--on-feeds);
   }
 </style>

@@ -1230,6 +1230,29 @@ pub async fn feeds_set_settings(app: AppHandle, settings: FeedSettings) -> Resul
     .await
 }
 
+/// Whether the main window shows the Feeds tab (the setting `feeds_tab`).
+#[tauri::command]
+pub fn feeds_tab(app: AppHandle) -> Result<bool, String> {
+    Ok(Settings::load(&app.state::<AppState>().settings_path)?.feeds_tab)
+}
+
+/// Shows or hides the Feeds tab of the main window: from the Feeds section of the settings and
+/// Window → Show Feeds Tab. The windows are told at once ([`TAB_EVENT`]), and the menu follows.
+#[tauri::command]
+pub fn feeds_set_tab(app: AppHandle, show: bool) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let mut settings = Settings::load(&state.settings_path)?;
+    settings.feeds_tab = show;
+    settings.save(&state.settings_path)?;
+    #[cfg(target_os = "macos")]
+    crate::menu::feeds_tab(&app, show);
+    let _ = app.emit(TAB_EVENT, show);
+    Ok(())
+}
+
+/// The Feeds tab shown or hidden, to every window: whether it is shown.
+pub const TAB_EVENT: &str = "feeds-tab";
+
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};

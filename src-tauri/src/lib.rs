@@ -393,13 +393,14 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
 #[tauri::command]
 fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
     let old = Settings::load(&state.settings_path)?;
-    // pinned and saved in the sidebar, and the polling of the feeds set in
-    // their section, not here: what the window loaded may be stale
+    // pinned and saved in the sidebar, and the polling and the tab of the feeds set in their
+    // section (and the menu), not here: what the window loaded may be stale
     let settings = Settings {
         pinned_tags: old.pinned_tags.clone(),
         saved_searches: old.saved_searches.clone(),
         feeds_poll: old.feeds_poll,
         feeds_poll_minutes: old.feeds_poll_minutes,
+        feeds_tab: old.feeds_tab,
         ..settings
     };
     hotkey::apply(&app, &old, &settings)?;
@@ -965,7 +966,7 @@ pub fn run() {
             hotkey::setup(app.handle(), &settings);
             tray(app.handle(), &settings.hotkey)?;
             #[cfg(target_os = "macos")]
-            menu::setup(app.handle())?;
+            menu::setup(app.handle(), settings.feeds_tab)?;
             selection::setup(app.handle());
             cli_tool::repair_at_start();
             reload(app.handle());
@@ -1121,6 +1122,8 @@ pub fn run() {
             feeds::feeds_export_opml,
             feeds::feeds_settings,
             feeds::feeds_set_settings,
+            feeds::feeds_tab,
+            feeds::feeds_set_tab,
             feeds::feeds_searches,
             feeds::feeds_set_searches
         ])

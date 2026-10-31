@@ -62,6 +62,9 @@ pub struct Settings {
     pub feeds_poll: bool,
     /// the minutes between two fetches of the polling (5 at least)
     pub feeds_poll_minutes: u32,
+    /// the Feeds tab of the main window; on by default. Set in the Feeds section and by Window →
+    /// Show Feeds Tab
+    pub feeds_tab: bool,
 }
 
 /// A saved search of the library tab: a name for its filters and the sort of
@@ -164,6 +167,7 @@ impl Default for Settings {
             downloads_folder: PathBuf::from("~/Downloads"),
             feeds_poll: false,
             feeds_poll_minutes: 60,
+            feeds_tab: true,
         }
     }
 }
@@ -322,6 +326,14 @@ mod tests {
         let set: Settings =
             serde_json::from_str(r#"{"feeds_poll": true, "feeds_poll_minutes": 30}"#).unwrap();
         assert_eq!((set.feeds_poll, set.feeds_poll_minutes), (true, 30));
+    }
+
+    #[test]
+    fn the_feeds_tab_shown_by_default_also_for_older_files() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert!(settings.feeds_tab);
+        let set: Settings = serde_json::from_str(r#"{"feeds_tab": false}"#).unwrap();
+        assert!(!set.feeds_tab);
     }
 
     #[test]

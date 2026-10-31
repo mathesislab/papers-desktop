@@ -201,6 +201,11 @@ export interface FeedSettings {
   pollMinutes: number;
 }
 
+/** Whether the main window shows the Feeds tab (the setting `feeds_tab`). */
+export const tabShown = () => invoke<boolean>("feeds_tab");
+/** Shows or hides the Feeds tab: the windows are told (`EVENTS.tab`), and the menu follows. */
+export const setTab = (show: boolean) => invoke<void>("feeds_set_tab", { show });
+
 /** A saved search of the sidebar: the whole query of the tab's choices (filters.ts, `queryOf`) and the order. */
 export interface SavedSearch {
   name: string;
@@ -252,4 +257,6 @@ export const EVENTS = {
   changed: "feeds-changed",
   /** a fetch started (true) or ended (false) */
   fetching: "feeds-fetching",
+  /** the Feeds tab shown (true) or hidden (false) */
+  tab: "feeds-tab",
 } as const;

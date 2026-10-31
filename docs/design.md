@@ -66,7 +66,7 @@ so a settings file that does not have it gets that). With the library in front
 Library → paper 1 → … → Library; `⌘1` shows the library.
 
 **Library and Feeds.** A switch at the start of the toolbar, *Library |
-Feeds* (`⌘1`, `⌘2`, in the Window menu), shows one of the two tabs of the
+Feeds* (`⌘1`, `⌘2`, in the Window menu; *Feeds* green when in front), shows one of the two tabs of the
 window (`LibraryView.svelte`, `FeedsView.svelte`; the page keeps the layout
 and passes the commands on). The papers open are tabs of the Library:
 `⌃Tab` and `⌘⇧]` go through them there only. `⌘1` from Feeds shows the Library
@@ -942,7 +942,11 @@ message), the days kept, the lookback, background polling (the command line does
 the OPML, the days kept and the lookback too: `feeds opml import|export`,
 `feeds config keep-days|lookback-days`). Polling is in
 `settings.json` (`feeds_poll`, false; `feeds_poll_minutes`, 60, 5 at least),
-the rest in `feeds/config.json`.
+the rest in `feeds/config.json`. *Show the Feeds tab* (`feeds_tab` of
+`settings.json`, on by default; also Window → *Show Feeds Tab*, ticked while
+shown): hidden, the main window has the Library tab alone, without the switch,
+and Window → *Feeds* is off (`feeds_set_tab` tells the windows, `feeds-tab`,
+and the menu follows).
 
 **The suggested list** (`papers_feeds::suggested`, for the climate and the
 Earth's surface): Copernicus (TC, CP, ESD, GMD, BG, ACP, OS, NHESS, ESSD,

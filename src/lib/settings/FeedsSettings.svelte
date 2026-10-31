@@ -27,6 +27,8 @@
   let subscriptions = $state<SubscriptionInfo[]>([]);
   /** the settings as saved, and the interests and rules being edited */
   let saved = $state<FeedSettings | null>(null);
+  /** the Feeds tab of the main window, shown (also set by Window → Show Feeds Tab) */
+  let tab = $state(true);
   let draft = $state<Draft | null>(null);
   let draftError = $state("");
   let suggestions = $state<Suggested[]>([]);
@@ -51,14 +53,16 @@
   onMount(() => {
     load();
     const unlisten = listen(feeds.EVENTS.changed, () => loadSubscriptions());
+    const unlistenTab = listen<boolean>(feeds.EVENTS.tab, (e) => (tab = e.payload));
     return () => {
       unlisten.then((f) => f());
+      unlistenTab.then((f) => f());
     };
   });
 
   async function load() {
     try {
-      await Promise.all([loadSubscriptions(), loadSettings()]);
+      await Promise.all([loadSubscriptions(), loadSettings(), feeds.tabShown().then((shown) => (tab = shown))]);
       suggestions = await feeds.suggested();
     } catch (err) {
       notify(String(err), true);
@@ -257,6 +261,14 @@
 
 <section id="feeds">
   <h2>Feeds</h2>
+
+  <label class="row">
+    <span>
+      <span class="label">Show the Feeds tab</span>
+      <span class="hint">In the main window; also Window → Show Feeds Tab</span>
+    </span>
+    <input type="checkbox" class="switch" checked={tab} onchange={(e) => act(() => feeds.setTab(e.currentTarget.checked))} />
+  </label>
 
   <ul class="subs">
     {#each subscriptions as s (s.id)}
