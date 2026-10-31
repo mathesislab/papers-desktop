@@ -8,7 +8,7 @@ import type { Span } from "$lib/types";
 export type ItemKind = "paper" | "preprint" | "news" | "blog";
 export type SourceKind = "journal" | "preprints" | "news" | "blog";
 export type Triage = "new" | "seen" | "shortlisted" | "dismissed" | "added";
-export type Sort = "score" | "newest";
+export type Sort = "score" | "newest" | "like";
 
 /** What a subscription follows: a feed, or a sweep of Crossref or OpenAlex. */
 export type Feed = { rss: string } | { crossref: string } | { openalex: string };
@@ -37,6 +37,8 @@ export interface FeedRow {
   /** the best score of its interests, 0 without */
   score: number;
   interests: Scored[];
+  /** how like the library's papers it is, 0–100; null before the library is indexed */
+  like: number | null;
   triage: Triage;
   /** the ids of the library entries of the same paper (DOI, or title and year) */
   inLibrary: string[];
@@ -108,6 +110,22 @@ export interface FeedDetail {
   inLibrary: string[];
   /** library entries of another version of it (its preprint, say) */
   versionInLibrary: string[];
+  /** how like the library's papers it is, 0–100; null before the library is indexed */
+  like: number | null;
+  /** the library's papers most like it, the nearest first (3 at most) */
+  nearest: Nearest[];
+}
+
+/** A paper of the library like an item of the feeds. */
+export interface Nearest {
+  /** the library entry's id */
+  id: string;
+  key: string;
+  title: string;
+  /** "Feldmann & Levermann · 2017 · Cryosphere" */
+  subtitle: string;
+  /** of the item's words and the paper's (TF-IDF), 0–1 */
+  cosine: number;
 }
 
 /** What the open access copy of a paper is, as OpenAlex knows it. */
@@ -217,7 +235,7 @@ export const setSettings = (settings: FeedSettings) =>
 
 /** The events the page listens to. */
 export const EVENTS = {
-  /** the items changed: a fetch, a triage from elsewhere, papers found */
+  /** the items changed: a fetch, a triage from elsewhere, papers found, the library indexed again */
   changed: "feeds-changed",
   /** a fetch started (true) or ended (false) */
   fetching: "feeds-fetching",

@@ -661,6 +661,8 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   of a paper-feeder setup, the RSS and HTML digest: paper-feeder's job,
   which it replaces. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
   data folder) is the folder; not the app's while it runs, nothing locks it.
+  `--library <file.bib>` (repeated) indexes a library for `like:`, `--sort
+  like` and the nearest papers of `show`.
 - The app (`src-tauri/src/feeds.rs`, `src/lib/feeds/`): the tab, *In
   library* (core's `Identity`), the Add sheet, the settings.
 
@@ -734,11 +736,12 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   the sort, the search and the groups unfolded are kept in the layout
   (`feeds`; a file without it takes the defaults).
 - *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
-  added, the kind of a post or preprint), the score, the title (bold while
-  new, muted once seen), authors, journal or source, age, badges (*in
+  added, the kind of a post or preprint), the score, the likeness to the
+  library (*Like*, 0–100; – before the library is indexed), the title (bold
+  while new, muted once seen), authors, journal or source, age, badges (*in
   library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
-  reached). Sorted by score or newest (the headers, or the count above the
-  list). Click, ⇧-click and ⌘-click select as in the library; the keys act
+  reached). Sorted by score, likeness or newest (the headers, or the count
+  above the list, which goes through them). Click, ⇧-click and ⌘-click select as in the library; the keys act
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a dismissed item goes, the next
@@ -750,7 +753,9 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   item marks it seen.
 - *Details*: a paper's abstract marked by the query and the interests (from
   Crossref or OpenAlex when the feed had none), *Why it is here* (each
-  interest's score and terms), its free PDF (`pdfStatus`, asked 300 ms after
+  interest's score and terms), *Like in your library* (the likeness and the
+  3 nearest papers of the library, each with its authors, year, journal and
+  cosine, shown in the Library tab on a click), its free PDF (`pdfStatus`, asked 300 ms after
   it is shown, once per item), versions (*preprint in library → Add would
   replace it*), *Covered by*, *Seen in*. A post's text, then its linked
   papers as cards (Add by the DOI, Shortlist, Show paper), *Find linked
@@ -770,8 +775,8 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   begins, by score, one item at a time over the list and the details, with
   a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
   without PDF, `o` open, `l` later (stays shortlisted), `x` dismiss, `j`/`k`,
-  `Esc` leaves. *Like in your library* is not there yet: the backend has no
-  command for it.
+  `Esc` leaves. The facts are the details' (`Facts`), *Like in your
+  library* among them.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN or an OpenAlex
   filter, with the kind of its items, or one of the suggested subscriptions
   in their groups (those followed marked); fetched when the sheet closes.
@@ -808,14 +813,34 @@ them. `lookback_days` of a query stays without equivalent (warned).
 dismiss). They act on the items a fetch brings, the first that matches
 deciding, never on an item with a triage.
 
+**Likeness** (*Like in your library*): how close an item is to the
+library. Core's `Likeness::build(docs)` indexes the papers (`Doc { id,
+title, abstract, keywords }`; `Likeness::of(&Library)`): the folded words
+of the search, without stopwords, numbers and words of fewer than three
+letters, a plural's `s` dropped; a word weighs `(1 + ln tf) · idf` (idf
+smoothed, `ln((1+N)/(1+df)) + 1`), a word of the title or a keyword counting
+twice; the vectors of length 1, in an inverted index (each word's papers and
+weights). `like(title, abstract) -> Like { score, nearest }`: the cosine of
+the item with each paper that shares a word with it (the words no paper has
+count in its length), `score` the mean of the best 5 (fewer in a smaller
+library) × 100, 0–100, `nearest` the best 3 ids and cosines. The feeds crate
+knows no .bib: the index is given to the handle, `Feeds::set_likeness(Option
+<Arc<Likeness>>)`, and computed when asked as the scores are: the number
+`like:` of the query (none without an index: `like:` then matches nothing),
+`Row.like`, `Sort::Like` (the most like first, then the newest),
+`Feeds::like(item)` for the nearest, and the rules at a fetch (`like:40-` →
+shortlist). A library of 2,353 papers (titles; one abstract) is indexed in
+5 ms (release); an item with an abstract is scored in about 16 µs, a view of
+5,000 items in about 80 ms.
+
 **The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
 `is:` (new or unread, seen, shortlisted, dismissed, added, editorial, and
 the app's, such as `inlibrary`), `src:` (a subscription's title or id),
-`prof:` (the interests whose `min_score` the item reaches), and the number
-`score:` (its best score); an item's record is its title, the family names
+`prof:` (the interests whose `min_score` the item reaches), and the numbers
+`score:` (its best score) and `like:` (its likeness, with an index); an item's record is its title, the family names
 of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
 `has:doi`. `Feeds::view` gives the rows a query and the kinds pass, sorted
-newest or by score, each with its scores, the terms that matched and its
+newest, by score or by likeness, each with its scores and likeness, the terms that matched and its
 title, authors and abstract marked (the query's words and the interests'
 terms), and the counts of the sidebar: as the library's, over every live
 item (not dismissed) whatever the query, by `is:`, kind, interest and
@@ -873,7 +898,15 @@ feed, no ISSN, not a source of OpenAlex), Futurity's categories (404).
 command. *In library*: a row's and the details' library entries of the same
 paper (core's `Identity`: the DOI, or the title and year; the library
 indexed once per call), `versionInLibrary` those of another version's DOI;
-`is:inlibrary` in the query and the counts. A fetch runs on a copy of the
+`is:inlibrary` in the query and the counts. *Like in your library*: the
+index of the library's papers (`Likeness::of`, every .bib file of the
+library) is built on a thread of its own after every read of the library
+(`load`: at the start, when a .bib file changes, after a write), given to
+the feeds (`FeedsState::set_likeness`, numbered: a build that ends after a
+newer one is dropped; none for an empty library) and to each copy a fetch
+opens, so that the rules use it, then `feeds-changed`; rows have `like`,
+the details `like` and `nearest` (`{id, key, title, subtitle, cosine}`).
+A fetch runs on a copy of the
 feeds opened from the folder, so the tab reads and triages meanwhile: the
 changes made while it runs are applied at once, kept, and applied again to
 the fetched copy, which then takes the place of the feeds. One fetch at a
@@ -895,7 +928,8 @@ one paper at a time, when asked.
 the main window as `LibraryView` under a tab bar; feeds: items, parsing,
 merging, store; feeds: sweeps, abstracts, the paper of a post; feeds:
 interests, rules, scores; feeds-cli; the app's commands and settings; the
-Feeds tab; Review.
+Feeds tab; Review; *Like in your library* (core's index; `like:`, the sort,
+`--library`; the app and the tab).
 
 ## Later, optional: Spotlight add-on
 

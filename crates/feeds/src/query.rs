@@ -2,9 +2,11 @@
 //! `kind:` (paper, preprint, news, blog), `is:` (new or unread, seen,
 //! shortlisted, dismissed, added, editorial, and the caller's), `src:` (a
 //! subscription's title or id), `prof:` (an interest the item reaches the
-//! min_score of) and the number `score:` (its best score in an interest).
+//! min_score of), and the numbers `score:` (its best score in an interest)
+//! and `like:` (how like the library it is, 0–100: none without the index of
+//! the library, which then matches nothing).
 
-use papers_core::{Query, Record, Schema};
+use papers_core::{Like, Query, Record, Schema};
 
 use crate::feeds::Feeds;
 use crate::interest::Score;
@@ -15,7 +17,7 @@ use crate::normalize::family_name;
 pub const FACETS: &[&str] = &["kind", "is", "src", "prof"];
 
 /// The numbers of an item.
-pub const NUMBERS: &[&str] = &["score"];
+pub const NUMBERS: &[&str] = &["score", "like"];
 
 /// What the feeds' queries take besides the library's fields.
 pub const SCHEMA: Schema = Schema {
@@ -59,6 +61,8 @@ pub(crate) struct Seen {
     pub record: Record,
     pub triage: Triage,
     pub scores: Vec<Score>,
+    /// how like the library it is, with an index
+    pub like: Option<Like>,
     /// its `is:` values, `unread` left out
     pub is: Vec<String>,
     /// the ids of its subscriptions
@@ -106,10 +110,16 @@ impl Feeds {
             .facet("src", src)
             .facet("prof", prof)
             .number("score", best(&scores));
+        let like = self.like(item);
+        let record = match &like {
+            Some(like) => record.number("like", like.score),
+            None => record,
+        };
         Seen {
             record,
             triage,
             scores,
+            like,
             is,
             sources,
         }

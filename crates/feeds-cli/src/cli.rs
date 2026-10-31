@@ -13,6 +13,10 @@ pub struct Cli {
     /// platform]. Do not point it at the folder of the app while the app runs: nothing locks it
     #[arg(long, global = true, value_name = "FOLDER")]
     pub dir: Option<PathBuf>,
+    /// A .bib file of the library (repeated for several): `like:`, `--sort like`, and the
+    /// nearest papers of `show` tell how like its papers an item is
+    #[arg(long, global = true, value_name = "FILE")]
+    pub library: Vec<PathBuf>,
     #[command(subcommand)]
     pub command: Command,
 }
@@ -187,6 +191,8 @@ pub struct EditArgs {
 pub enum SortArg {
     Score,
     Newest,
+    /// The most like the library first (needs --library)
+    Like,
 }
 
 /// The kinds of an item.
@@ -212,9 +218,9 @@ impl From<ItemKindArg> for ItemKind {
 /// `feeds list`.
 #[derive(Debug, Args)]
 pub struct ListArgs {
-    /// A query: words, `kind:`, `is:`, `src:`, `prof:`, `score:3-`, `abs:`, `has:abstract`, ...
+    /// A query: words, `kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...
     pub query: Vec<String>,
-    /// The order: the best score first, or the newest
+    /// The order: the best score first, the newest, or the most like the library
     #[arg(long, value_enum, default_value = "newest")]
     pub sort: SortArg,
     /// Only these kinds, separated by commas

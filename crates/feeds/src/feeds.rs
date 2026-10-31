@@ -5,8 +5,10 @@
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use chrono::{DateTime, TimeDelta, Utc};
+use papers_core::{Like, Likeness};
 
 use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::interest::{self, Lexicon};
@@ -62,6 +64,8 @@ pub struct Feeds {
     pub(crate) http: Validated,
     pub(crate) lookups: Lookups,
     pub(crate) now: Now,
+    /// the library's papers, to tell how like them an item is (`like:`)
+    pub(crate) likeness: Option<Arc<Likeness>>,
 }
 
 impl Feeds {
@@ -83,6 +87,7 @@ impl Feeds {
             lookups: store::read(&dir, LOOKUPS)?,
             dir,
             now,
+            likeness: None,
         };
         feeds.prune()?;
         Ok(feeds)
@@ -279,6 +284,23 @@ impl Feeds {
 
     pub fn items(&self) -> &[Item] {
         &self.items.items
+    }
+
+    /// Sets the index of the library's papers that `like:`, the sort by
+    /// likeness and [`Feeds::like`] use; none: `like:` matches nothing.
+    pub fn set_likeness(&mut self, likeness: Option<Arc<Likeness>>) {
+        self.likeness = likeness;
+    }
+
+    pub fn likeness(&self) -> Option<&Arc<Likeness>> {
+        self.likeness.as_ref()
+    }
+
+    /// How like the library's papers an item is, by its title and summary;
+    /// none without an index.
+    pub fn like(&self, item: &Item) -> Option<Like> {
+        let summary = item.summary.as_deref().unwrap_or("");
+        (self.likeness.as_ref()).map(|index| index.like(&item.title, summary))
     }
 
     /// The id an item has now: its own, or that of the item it was merged into.

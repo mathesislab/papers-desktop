@@ -142,5 +142,8 @@ export function badges(row: FeedRow): { text: string; kind: "lib" | "pre" | "new
   return list;
 }
 
+/** A likeness as the list shows it: a whole number, none before the library is indexed. */
+export const likeText = (like: number | null) => (like === null ? "–" : Math.round(like).toString());
+
 /** A score as the list shows it: one decimal, none without. */
 export const scoreText = (score: number) => (score > 0 ? score.toFixed(1) : "–");

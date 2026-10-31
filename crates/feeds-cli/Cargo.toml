@@ -17,6 +17,7 @@ path = "src/main.rs"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }
 dirs = "6"
+papers-core = { version = "0.7.0", path = "../core" }
 papers-feeds = { version = "0.1.0", path = "../feeds" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

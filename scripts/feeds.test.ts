@@ -12,6 +12,7 @@ import {
   facet,
   feedChips,
   feedOf,
+  nextSort,
   requestOf,
   restoredFeeds,
   sameFeed,
@@ -28,6 +29,7 @@ import {
   arxivDoi,
   badges,
   fetchLine,
+  likeText,
   mergeRows,
   newAbove,
   nextAfter,
@@ -85,6 +87,14 @@ test("restored: what is missing or wrong takes the default", () => {
     sort: "newest",
     open: ["news"],
   });
+  assert.equal(restoredFeeds({ sort: "like" }).sort, "like");
+  assert.equal(restoredFeeds({ sort: "oldest" as never }).sort, "score");
+});
+
+test("the sorts in turn, and a likeness as the list shows it", () => {
+  assert.deepEqual([nextSort("score"), nextSort("like"), nextSort("newest")], ["like", "newest", "score"]);
+  assert.deepEqual(requestOf(f({ sort: "like" })).sort, "like");
+  assert.deepEqual([likeText(null), likeText(0), likeText(34.6)], ["–", "0", "35"]);
 });
 
 test("the counts of the views, and the sources in their groups", () => {
@@ -169,6 +179,7 @@ const row = (id: string, triage: Triage = "new"): FeedRow => ({
   date: null,
   score: 0,
   interests: [],
+  like: null,
   triage,
   inLibrary: [],
   hasVersions: false,

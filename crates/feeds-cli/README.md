@@ -13,6 +13,7 @@ feeds subscribe --issn 1994-0424 --journal "The Cryosphere"      # a Crossref sw
 feeds subscribe --openalex primary_topic.id:T10644               # needs OPENALEX_KEY
 feeds fetch --mailto me@example.org
 feeds list "sea ice" --sort score --limit 20
+feeds --library ~/lit/papers.bib list like:30- --sort like      # like the papers of a library
 feeds show 78dc4b209cfa
 feeds mark shortlisted 78dc4b209cfa
 feeds digest --rss feed.xml --html index.html --title "New papers" --link https://me.github.io/feed/
@@ -24,8 +25,8 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `edit <id> --boost N` | change the boost of a subscription (0 for none); the strongest of the subscriptions that list an item counts |
 | `unsubscribe <id>`, `subscriptions [--json]` | |
 | `fetch` | `--mailto <address>` (env `FEEDS_MAILTO`), `--openalex-key <key>` (env `OPENALEX_KEY`); one request at a time per host; a feed that fails is reported, the others go on |
-| `list [QUERY]...` | `--sort score\|newest`, `--kind paper,preprint,news,blog`, `--limit N`, `--dismissed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `abs:`, ...) |
-| `show <id> [--json]`, `find <id>` | everything known of an item; the papers behind a post (needs the network) |
+| `list [QUERY]...` | `--sort score\|newest\|like`, `--kind paper,preprint,news,blog`, `--limit N`, `--dismissed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...) |
+| `show <id> [--json]`, `find <id>` | everything known of an item (with `--library`, its likeness and the 3 nearest papers of the library); the papers behind a post (needs the network) |
 | `mark <state> <id>...` | `new`, `seen`, `shortlisted`, `dismissed`, `added` |
 | `prune` | the old items no feed lists go (done on opening too) |
 | `opml import <file>`, `opml export [file]` | the subscriptions as OPML, as the app's settings read and write it (to the standard output without a file); import passes over those followed already |
@@ -35,6 +36,12 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `digest --rss <file> --html <file>` | `--query` (default `score:3-`), `--days` (7), `--title`, `--link` |
 
 The folder is `--dir`, else `$FEEDS_DIR`, else `papers-feeds/` in the data folder of the platform.
+
+`--library <file.bib>` (repeated for several files) reads a library and indexes its papers (title,
+abstract, keywords: TF-IDF) to tell how like them an item is: `like`, 0–100, the mean of the 5 best
+cosines × 100. With it, `like:30-` works in `list`, `digest --query` and the rules of `fetch`, `list`
+shows the likeness after the score and sorts by it (`--sort like`), and `show` lists the nearest
+papers. Without it, `like:` matches nothing.
 **Do not point it at the folder of the app while the app runs**: nothing locks the files, and one
 writes over the other.
 
