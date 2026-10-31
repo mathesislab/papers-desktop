@@ -41,8 +41,8 @@ use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, Journal, Journals,
-    LOOKUP, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort, SourceKind, Stage,
-    Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
+    LOOKUP, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort, SourceKind,
+    Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
