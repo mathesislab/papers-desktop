@@ -326,6 +326,7 @@ fn assemble(id: String, sources: Vec<Source>, links: Vec<Linked>) -> Item {
         editorial: entries().any(|e| e.editorial),
         versions,
         links,
+        cited: entries().filter_map(|e| e.cited).max(),
         sources,
     }
 }
@@ -356,6 +357,7 @@ mod tests {
             editorial: false,
             kind: ItemKind::Paper,
             versions: Vec::new(),
+            cited: None,
         }
     }
 

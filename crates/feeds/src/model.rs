@@ -163,6 +163,9 @@ pub struct Entry {
     /// versions (`has-preprint`, `is-preprint-of`, `is-version-of`); none from a feed
     #[serde(default)]
     pub versions: Vec<Version>,
+    /// the works that cite it, as OpenAlex counted them when it was found
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cited: Option<u64>,
 }
 
 /// The source of the works looked up by DOI (abstracts, authors, versions).
@@ -217,6 +220,9 @@ pub struct Item {
     /// the papers a post is about, best first
     #[serde(default)]
     pub links: Vec<Linked>,
+    /// the works that cite it, the most its sources counted
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cited: Option<u64>,
 }
 
 /// A paper a post is about.

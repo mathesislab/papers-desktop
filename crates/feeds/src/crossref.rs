@@ -252,6 +252,7 @@ impl Work {
             content: None,
             kind,
             versions: self.versions(&doi, preprint),
+            cited: None,
             doi: Some(doi),
         })
     }

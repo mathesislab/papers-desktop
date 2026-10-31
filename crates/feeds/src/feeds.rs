@@ -468,17 +468,19 @@ impl Feeds {
             let kept = mark.is_some_and(|m| m.triage.kept() || m.remind.is_some());
             !kept && !item.listed() && item.first_seen() < before
         };
-        let (dropped, kept): (Vec<Item>, Vec<Item>) = std::mem::take(&mut self.items.items)
-            .into_iter()
-            .partition(old);
-        self.items.items = kept;
-        for item in &dropped {
-            self.state.remove(&item.id);
-        }
-        let dropped_ids: Vec<&String> = dropped.iter().map(|i| &i.id).collect();
-        self.items
-            .aliases
-            .retain(|_, kept| !dropped_ids.contains(&&*kept));
+        let dropped: Vec<String> = (self.items.items.iter())
+            .filter(|i| old(i))
+            .map(|i| i.id.clone())
+            .collect();
+        self.forget(&dropped);
         dropped.len()
+    }
+
+    /// Items gone, their triage and aliases with them; not written.
+    pub(crate) fn forget(&mut self, ids: &[String]) {
+        let ids: BTreeSet<&String> = ids.iter().collect();
+        self.items.items.retain(|i| !ids.contains(&i.id));
+        self.state.retain(|id, _| !ids.contains(id));
+        self.items.aliases.retain(|_, kept| !ids.contains(kept));
     }
 }

@@ -45,6 +45,28 @@ impl Query {
     pub fn is_empty(&self) -> bool {
         self.terms.is_empty()
     }
+
+    /// The terms of a query as written, for another engine to ask (OpenAlex):
+    /// a filter's field by its full name, its alternatives as typed.
+    pub fn written(query: &str, schema: Schema) -> Vec<Written> {
+        let tokens = tokens(query, schema).into_iter();
+        tokens
+            .map(|t| Written {
+                field: t.field.name(),
+                values: t.values,
+                negated: t.negated,
+            })
+            .collect()
+    }
+}
+
+/// A term as written: its field (none: a word or phrase of any field), its
+/// values (the alternatives of a filter), whether it excludes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Written {
+    pub field: Option<String>,
+    pub values: Vec<Value>,
+    pub negated: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,6 +95,24 @@ pub(crate) enum Field {
 }
 
 impl Field {
+    /// Its full name; none for any field.
+    fn name(&self) -> Option<String> {
+        Some(match self {
+            Field::Any => return None,
+            Field::Author => "author".to_string(),
+            Field::First => "first".to_string(),
+            Field::Title => "title".to_string(),
+            Field::Year => "year".to_string(),
+            Field::Journal => "journal".to_string(),
+            Field::Abstract => "abstract".to_string(),
+            Field::Key => "key".to_string(),
+            Field::Doi => "doi".to_string(),
+            Field::Tag => "tag".to_string(),
+            Field::Has => "has".to_string(),
+            Field::Facet(name) | Field::Number(name) => name.clone(),
+        })
+    }
+
     fn named(name: &str, schema: Schema) -> Option<Field> {
         let name = name.to_ascii_lowercase();
         let declared = |names: &[&str]| names.iter().any(|n| n.eq_ignore_ascii_case(&name));
@@ -179,9 +219,10 @@ struct Token {
 }
 
 /// A word, or the text of a "phrase".
-struct Value {
-    text: String,
-    quoted: bool,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Value {
+    pub text: String,
+    pub quoted: bool,
 }
 
 /// The terms of a query of the library: no facet, no number.
@@ -358,6 +399,35 @@ fn doi(value: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn terms_as_written() {
+        let schema = Schema {
+            facets: &["cites"],
+            numbers: &[],
+        };
+        let value = |text: &str, quoted| Value {
+            text: text.into(),
+            quoted,
+        };
+        let written = Query::written(
+            r#"ice -"sea level" t:melt,"ice shelf" cites:W1 nope:x"#,
+            schema,
+        );
+        let fields: Vec<Option<&str>> = written.iter().map(|w| w.field.as_deref()).collect();
+        assert_eq!(fields, [None, None, Some("title"), Some("cites"), None]);
+        assert!(written[1].negated);
+        assert_eq!(written[1].values, [value("sea level", true)]);
+        assert_eq!(
+            written[2].values,
+            [value("melt", false), value("ice shelf", true)]
+        );
+        assert_eq!(
+            written[4].values,
+            [value("nope:x", false)],
+            "no such field: a word"
+        );
+    }
 
     fn word(field: Field, w: &str) -> Term {
         Term {

@@ -24,7 +24,7 @@ use std::path::PathBuf;
 
 pub use item::{Cite, Item};
 pub use likeness::{Doc, Like, Likeness};
-pub use query::{Query, Schema};
+pub use query::{Query, Schema, Value, Written};
 pub use record::{Marks, Record};
 pub use search::{Found, Hit, Library, YearCount};
 pub use table::{FileState, Identity, Incoming, Row, TagCount};

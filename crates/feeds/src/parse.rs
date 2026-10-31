@@ -154,6 +154,7 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
         editorial,
         kind,
         versions: Vec::new(),
+        cited: None,
     }
 }
 

@@ -24,6 +24,7 @@ fn item(kind: ItemKind, doi: Option<&str>, arxiv: Option<&str>) -> Item {
         sources: Vec::new(),
         versions: Vec::new(),
         links: Vec::new(),
+        cited: None,
     }
 }
 

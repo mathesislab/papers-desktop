@@ -2036,6 +2036,7 @@ mod tests {
             sources: Vec::new(),
             versions: Vec::new(),
             links: Vec::new(),
+            cited: None,
         };
         let by_doi = item(Some("10.5194/tc-20-1-2026"), "Another title");
         assert_eq!(index.same(&by_doi), [id("doi2026")]);

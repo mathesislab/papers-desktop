@@ -164,7 +164,7 @@ impl From<Source> for Journal {
 }
 
 /// The journals of an OpenAlex search, the best first.
-fn search(http: &dyn Http, access: &Access, text: &str) -> Result<Vec<Source>, String> {
+pub(crate) fn sources(http: &dyn Http, access: &Access, text: &str) -> Result<Vec<Source>, String> {
     let url = openalex::journals_url(text, access);
     let sources: Option<Sources> = get_json(http, &url)?;
     Ok(sources.unwrap_or_default().results)
@@ -177,7 +177,7 @@ pub fn search_journals(
     access: &Access,
     text: &str,
 ) -> Result<Vec<Journal>, String> {
-    Ok(search(http, access, text)?
+    Ok(sources(http, access, text)?
         .into_iter()
         .map(Journal::from)
         .collect())
@@ -203,7 +203,7 @@ fn journal_named(http: &dyn Http, access: &Access, name: &str) -> Result<Option<
             std::iter::once(&s.display_name).chain(s.alternate_titles.iter().flatten());
         titles.any(|title| journal_key(title) == key)
     };
-    let found = search(http, access, name)?.into_iter().filter(named);
+    let found = sources(http, access, name)?.into_iter().filter(named);
     let (with_issn, without): (Vec<Journal>, Vec<Journal>) =
         found.map(Journal::from).partition(|j| j.issn.is_some());
     Ok(with_issn.into_iter().chain(without).next())

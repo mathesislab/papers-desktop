@@ -13,11 +13,11 @@ use crate::model::{Entry, ItemKind};
 use crate::normalize::{arxiv_id, canonical_doi, is_preprint_doi};
 use crate::parse::{EDITORIAL, plain};
 
-const WORKS: &str = "https://api.openalex.org/works";
+pub(crate) const WORKS: &str = "https://api.openalex.org/works";
 const SOURCES: &str = "https://api.openalex.org/sources";
 
 /// The fields of a work asked for.
-const SELECT: &str =
+pub(crate) const SELECT: &str =
     "id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type";
 
 /// The fields of a source asked for.
@@ -43,6 +43,8 @@ pub(crate) struct List {
 #[serde(default)]
 pub(crate) struct Meta {
     pub next_cursor: Option<String>,
+    /// the works of the list in all
+    pub count: u64,
 }
 
 /// A work, with the fields used.
@@ -62,6 +64,8 @@ pub(crate) struct Work {
     /// `article`, `preprint`, `dataset`, …
     #[serde(rename = "type")]
     pub kind: Option<String>,
+    /// the works that cite it, when asked
+    pub cited_by_count: Option<u64>,
 }
 
 /// An author of a work.
@@ -97,6 +101,8 @@ pub(crate) struct Sources {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub(crate) struct Source {
+    /// `https://openalex.org/S…`
+    pub id: String,
     pub display_name: String,
     pub alternate_titles: Option<Vec<String>>,
     /// the linking ISSN
@@ -108,7 +114,7 @@ pub(crate) struct Source {
 }
 
 /// The parameters of every request: the key, and the address, if set.
-fn access_pairs<'a>(
+pub(crate) fn access_pairs<'a>(
     mut pairs: Vec<(&'a str, &'a str)>,
     access: &'a Access,
 ) -> Vec<(&'a str, &'a str)> {
@@ -218,6 +224,7 @@ impl Work {
                 kind => kind,
             },
             versions: Vec::new(),
+            cited: self.cited_by_count,
             doi,
         }
     }
