@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <atom:link href="https://tc.copernicus.org/articles/xml/rss2_0.xml" rel="self" type="application/rss+xml"/>
+            <title>TC - recent papers</title>
+            <link>https://tc.copernicus.org/articles/</link>
+            <description>Combined list of the recent articles of the journal The Cryosphere and the recent discussion forum The Cryosphere Discussions</description>
+        <language>en</language>
+            <item>
+                <title>Empirical evidence of overestimated Ku-band sea ice radar freeboards in satellite altimetry</title>
+                <link>https://doi.org/10.5194/tc-20-6181-2026</link>
+                <guid>https://doi.org/10.5194/tc-20-6181-2026</guid>
+                <description>
+                    &lt;b&gt;Empirical evidence of overestimated Ku-band sea ice radar freeboards in satellite altimetry&lt;/b&gt;&lt;br&gt;
+                    Catherine Taelman, Jack C. Landy, Robbie D. C. Mallett, and Polona Itkin&lt;br&gt;
+                        The Cryosphere, 20, 6181&#8211;6219, https://doi.org/10.5194/tc-20-6181-2026, 2026&lt;br&gt;
+                        Arctic sea ice thickness is commonly estimated using radar measurements from satellites. This technique assumes that the snow on sea ice is &quot;invisible&quot; to the radar signals. We studied if this assumption is valid and found that the radar measurements work well in cold conditions, when air temperatures are below –10 °C. However, the radar measurements can overestimate ice thickness during warmer periods, especially if there is new snowfall and if the snow contains salt.
+
+                </description>
+
+                <pubDate>Fri, 30 Oct 2026 22:05:25 +0100</pubDate>
+            </item>
+            <item>
+                <title>Assessment of snow depth retrievability from passive microwave observations over Arctic sea ice: a global sensitivity analysis</title>
+                <link>https://doi.org/10.5194/tc-20-6157-2026</link>
+                <guid>https://doi.org/10.5194/tc-20-6157-2026</guid>
+                <description>
+                    &lt;b&gt;Assessment of snow depth retrievability from passive microwave observations over Arctic sea ice: a global sensitivity analysis&lt;/b&gt;&lt;br&gt;
+                    Ziyu Yan, Yufang Ye, Georg Heygster, Bin Cheng, Carolina Gabarró, Ferran Hernández-Macià, and Xiao Cheng&lt;br&gt;
+                        The Cryosphere, 20, 6157&#8211;6180, https://doi.org/10.5194/tc-20-6157-2026, 2026&lt;br&gt;
+                        Passive microwave retrieval of snow depth remains constrained by snow and ice conditions. By combining the Snow Microwave Radiative Transfer model with global sensitivity analysis, this study quantifies how snow grain radius, density, and sea ice type affect snow depth retrievability across channels. The small grain radius of new snow limits retrieval performance and increases its sensitivity to sea ice type, while the use of the 89 GHz channel may help address this limitation.
+
+                </description>
+
+                <pubDate>Fri, 30 Oct 2026 22:05:25 +0100</pubDate>
+            </item>
+            <item>
+                <title>Propagating meteorological uncertainty in physically based mountain snow modeling</title>
+                <link>https://doi.org/10.5194/tc-20-5895-2026</link>
+                <guid>https://doi.org/10.5194/tc-20-5895-2026</guid>
+                <description>
+                    &lt;b&gt;Propagating meteorological uncertainty in physically based mountain snow modeling&lt;/b&gt;&lt;br&gt;
+                    David R. Casson, Guoqiang Tang, Nicolás Vásquez, Andrew W. Wood, and Martyn P. Clark&lt;br&gt;
+                        The Cryosphere, 20, 5895&#8211;5940, https://doi.org/10.5194/tc-20-5895-2026, 2026&lt;br&gt;
+                        Improving mountain snow prediction requires better representation of meteorological uncertainty. This study generates meteorological ensembles accounting for topography, gauge undercatch, and large-scale atmospheric patterns. Driving a physics-based snow model calibrated using a Large Sample Emulator with these ensembles propagates forcing uncertainty into snow accumulation and melt, producing probablistic estimates for data assimilation and hydrological forecasting.
+
+                </description>
+
+                <pubDate>Thu, 15 Oct 2026 22:05:25 +0200</pubDate>
+            </item>
+    </channel>
+</rss>

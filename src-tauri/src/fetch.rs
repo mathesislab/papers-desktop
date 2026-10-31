@@ -387,7 +387,8 @@ pub async fn download_pdf(url: String) -> Result<PathBuf, String> {
     blocking(move || download_url(&url, true, None).map(PathBuf::from)).await
 }
 
-async fn blocking<T: Send + 'static>(
+/// Work that waits (on the network, the disk) off the main thread.
+pub(crate) async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(work)

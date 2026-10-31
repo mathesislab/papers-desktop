@@ -52,9 +52,29 @@ selection, or the papers shown, to a `.bib` file.
 | `↵` | open the paper |
 | `Esc` | clear the search, then leave it |
 | `⌘W` | close the paper (the window, from the library) |
-| `⌘1`, `⌃Tab`, `⌃⇧Tab` | the library, the next tab, the one before |
+| `⌘1`, `⌘2` | the Library tab (in it: the library), the Feeds tab |
+| `⌃Tab`, `⌃⇧Tab` | the next tab, the one before |
 | `⌘⌥S`, `⌘⌥I` | show or hide the sidebar, the details |
 | `⌘=` `⌘-` `⌘0` | zoom in, out, fit the width |
+
+The Feeds tab lists the new papers and posts of the journals, preprint
+servers, news sites and blogs followed (+ Subscribe…), scored by interests;
+the sidebar's views, kinds, interests and sources filter it. An item
+selected for a moment counts as seen.
+
+| Key (Feeds tab) | Action |
+|---|---|
+| `j` `k`, `↑` `↓` | move; with `⇧` and the arrows, extend the selection |
+| `s` | shortlist, or no longer |
+| `x` | dismiss, or bring back |
+| `m` | mark read, or unread |
+| `o` | open the item's page in the browser |
+| `a` | add the paper (a post: its linked paper), staying in Feeds |
+| `f` | find the paper behind a post |
+| `⇧Space` | mark all above as seen |
+| `/`, `⌘F` | search the feeds |
+| `⌘R` | fetch |
+| `⌘↩` | review the shortlist: `a` add, `b` add without PDF, `o` open, `l` later, `x` dismiss, `j` `k`, `Esc` leaves |
 
 Drag a paper out of the list to drop its PDF in the Finder, a mail or a
 chat, and the citation out of the preview to drop it, formatted, in a
@@ -94,14 +114,16 @@ Filters limit a word to one field, and quotes match a phrase:
 | `title:hysteresis` | `t:` | the title |
 | `year:2012` | `y:` | the year: `2010-2015`, `2020-`, `-1990`, or its first digits (`201`) |
 | `journal:cryosphere` | `j:` | the journal or book |
+| `abstract:threshold` | `abs:` | the abstract (plain words leave it out) |
 | `key:robinson2012` | `k:` | the citation key |
 | `doi:10.5194` | | the DOI |
 | `tag:greenland` | | a whole keyword, and the keywords under it (`tag:climate` finds `climate/amoc`); `*` is a wildcard: `tag:amoc*`, `tag:*amoc`, `tag:*amoc*`; `tag:"mass balance"` |
 | `has:pdf`, `has:abstract` | | a linked file, or any field of the entry |
 | `"ice sheet"`, `t:"ice sheet"` | | consecutive words |
+| `j:cryosphere,"Nature Geoscience"` | | any of the values, in any filter: `a:robinson,calov`, `y:1990-2000,2015`, `tag:amoc,ice*` |
 
 A leading `-` excludes the papers that match a term: `-review`,
-`-a:smith`, `-y:2012`, `-has:pdf`.
+`-a:smith`, `-y:2012`, `-has:pdf`, `-tag:review,draft` (either tag).
 
 The year of each paper stands in a column on the left. Clicking a year
 keeps that year only (click again to undo), `⇧`-click stretches the year
@@ -147,6 +169,10 @@ macOS, [the Linux path is below](#linux)), which can also be edited:
   `american-meteorological-society`, `nature`, `science`, `apa`,
   `elsevier-harvard`, `chicago-author-date` — or the path of any `.csl` file
   (e.g. from the [Zotero style repository](https://www.zotero.org/styles)).
+- `feeds_poll`: fetch the feeds in the background (default `false`: nothing
+  is sent unless asked); `feeds_poll_minutes`: every so many minutes (60, 5
+  at least). Set in the Feeds section, with the subscriptions, interests and
+  rules, which are kept in the app data folder (`feeds/config.json`).
 
 Reload Library re-reads the file and the library.
 

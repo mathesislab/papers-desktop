@@ -5,6 +5,9 @@ export const mac = navigator.userAgent.includes("Mac");
 /** `code`: the physical key, for one whose character changes with ⇧ (⇧] is }) */
 export type Shortcut = { key: string; code?: string; mod?: boolean; shift?: boolean; alt?: boolean };
 
+/** A click with ⌘ (Ctrl elsewhere): one that adds to a choice, or takes out of it, rather than replace it. */
+export const modClick = (e: MouseEvent) => (mac ? e.metaKey : e.ctrlKey);
+
 export function matches(e: KeyboardEvent, s: Shortcut): boolean {
   const mod = mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
   // ⌥ changes the character of a key on macOS (⌥C is ç): its letter is the code

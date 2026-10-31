@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use papers_core::{Error, FileState, Incoming, Library, Matching, TagCount};
+use papers_core::{Error, FileState, Identity, Incoming, Library, Matching, TagCount};
 
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -178,4 +178,9 @@ fn identity() {
     assert!(identity("twin2019").same_paper(&identity("twin2019b")));
     // the same title, another year
     assert!(!identity("twin2019").same_paper(&identity("twin2018")));
+    // the same paper from elsewhere: its DOI in any case, or its title and year
+    let of = |doi, title, year| Identity::of(doi, title, year);
+    assert!(identity("same2020").same_paper(&of(Some("10.1000/ABC"), "Other", None)));
+    assert!(identity("twin2019").same_paper(&of(None, "A Twin Title!", Some(2019))));
+    assert_eq!(of(None, " ", Some(2019)).title, None);
 }

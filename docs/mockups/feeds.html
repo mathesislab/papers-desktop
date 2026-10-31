@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feeds mockup</title>
+<style>
+  :root {
+    --bg: #ffffff; --side: #f4f4f6; --fg: #1d1d1f; --muted: #6e6e73; --line: #e3e3e8;
+    --accent: #2f6fdf; --on-accent: #fff; --sel: #dfe9fb; --chip: #eef1f6;
+    --t1: #d9822b; --t2: #2f9e6e; --t3: #8a5cd6; --news: #c2410c; --blog: #0e7490; --pre: #a16207;
+    --hit: #fde68a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e20; --side: #252528; --fg: #ececf0; --muted: #9a9aa2; --line: #38383d;
+      --accent: #5b8ff0; --sel: rgba(58,120,230,.35); --chip: #303036; --hit: rgba(250,204,21,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+    font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .switch { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; color: var(--muted); flex-wrap: wrap; }
+  .switch button { font: inherit; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--fg); cursor: pointer; }
+  .switch button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .window { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 1180px;
+    display: grid; grid-template-columns: 230px 1fr 340px; grid-template-rows: 44px 1fr 26px; height: 700px; }
+  .window.review { grid-template-columns: 230px 1fr; }
+  .titlebar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px;
+    border-bottom: 1px solid var(--line); background: var(--side); }
+  .lights { display: flex; gap: 7px; width: 60px; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .tabs { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; width: 140px; }
+  .tabs span { flex: 1; text-align: center; padding: 4px 0; color: var(--muted); }
+  .tabs span.on { background: var(--bg); color: var(--fg); font-weight: 600; }
+  .search { flex: 1; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--muted); }
+  .search b { color: var(--fg); font-weight: 400; }
+  .tool { height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg);
+    color: var(--fg); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tool.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .side { background: var(--side); border-right: 1px solid var(--line); overflow: hidden; padding: 6px 0; }
+  .side h4 { margin: 10px 14px 3px; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .side .item { display: flex; align-items: center; gap: 8px; padding: 3px 14px; border-radius: 6px; margin: 0 6px; }
+  .side .item .n { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .side .item.sel { background: var(--sel); }
+  .side .sub { padding-left: 28px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .k { font-size: 11px; width: 16px; text-align: center; flex: none; }
+  .main { overflow: hidden; display: flex; flex-direction: column; }
+  .filters { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-right: 6px; }
+  .seg span { padding: 2px 10px; font-size: 12px; color: var(--muted); border-right: 1px solid var(--line); }
+  .seg span:last-child { border-right: 0; }
+  .seg span.on { background: var(--sel); color: var(--fg); }
+  .chip { background: var(--chip); border-radius: 10px; padding: 2px 9px; font-size: 12px; white-space: nowrap; }
+  .filters .count { margin-left: auto; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 8px;
+    border-bottom: 1px solid var(--line); }
+  td { padding: 6px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid var(--line); }
+  tr.sel td { background: var(--sel); }
+  tr.seen td { color: var(--muted); }
+  tr.unread td.t { font-weight: 600; }
+  .score { font-variant-numeric: tabular-nums; text-align: right; }
+  .badge { font-size: 10.5px; border-radius: 4px; padding: 0 5px; border: 1px solid var(--line); color: var(--muted); margin-right: 3px; }
+  .badge.lib { border-color: var(--t2); color: var(--t2); }
+  .badge.pre { border-color: var(--pre); color: var(--pre); }
+  .badge.news { border-color: var(--news); color: var(--news); }
+  .badge.blog { border-color: var(--blog); color: var(--blog); }
+  .badge.cov { border-color: var(--news); color: var(--news); }
+  .star { color: var(--t1); }
+  .detail { border-left: 1px solid var(--line); overflow: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 11px; }
+  .detail h3 { margin: 0; font-size: 15px; line-height: 1.3; }
+  .by { color: var(--muted); line-height: 1.4; }
+  .sec { border-top: 1px solid var(--line); padding-top: 9px; }
+  .sec > b { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .abs { line-height: 1.5; }
+  mark { background: var(--hit); color: inherit; border-radius: 2px; padding: 0 1px; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: 12px; white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .btn kbd, .tool kbd { font: 10px ui-monospace, monospace; opacity: .7; margin-left: 3px; }
+  .fields { display: grid; grid-template-columns: 78px 1fr; gap: 3px 8px; }
+  .fields span:nth-child(odd) { color: var(--muted); }
+  .ok { color: var(--t2); }
+  .warn { color: var(--pre); }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .card .ti { font-weight: 600; line-height: 1.3; }
+  .muted { color: var(--muted); }
+  .status { grid-column: 1 / -1; display: flex; gap: 16px; align-items: center; padding: 0 12px;
+    border-top: 1px solid var(--line); background: var(--side); color: var(--muted); font-size: 12px; }
+  /* Review mode */
+  .rv { display: grid; grid-template-columns: 1fr; align-content: start; overflow: auto; padding: 18px 28px; gap: 18px; }
+  .rvhead { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  .prog { flex: 1; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 40%; background: var(--accent); }
+  .rvcard { display: grid; grid-template-columns: 1fr 300px; gap: 22px; }
+  .rvcard h2 { margin: 0 0 6px; font-size: 19px; line-height: 1.3; }
+  .rvcard .abs { font-size: 14px; line-height: 1.6; }
+  .facts { display: flex; flex-direction: column; gap: 10px; }
+  .keys { display: flex; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; flex-wrap: wrap; }
+  .keys .btn { padding: 5px 12px; font-size: 13px; }
+  .note { max-width: 1180px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="switch">
+  <span>View:</span>
+  <button data-v="papers" class="on">1 · Papers (filtered stream)</button>
+  <button data-v="all">2 · All kinds: press release selected</button>
+  <button data-v="review">3 · Review shortlist</button>
+</div>
+
+<div class="window" id="win">
+  <div class="titlebar">
+    <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="tabs"><span>Library</span><span class="on">Feeds</span></div>
+    <div class="search" id="q">⌕ <b>prof:ice-sheets</b> score&gt;3 -is:seen &nbsp;<span>— words, a: t: abs: j: src: kind: prof: score&gt; is: in:library</span></div>
+    <div class="tool">↻ <kbd>⌘R</kbd></div>
+    <div class="tool">＋ Subscribe</div>
+    <div class="tool primary">Review shortlist (5) <kbd>⌘↩</kbd></div>
+  </div>
+
+  <aside class="side">
+    <h4>Views</h4>
+    <div class="item">Unread <span class="n">312</span></div>
+    <div class="item"><span class="star">★</span> Shortlist <span class="n">5</span></div>
+    <div class="item">Added (7 days) <span class="n">3</span></div>
+    <div class="item">All <span class="n">1 480</span></div>
+    <h4>Kinds</h4>
+    <div class="item" id="k-pap"><span class="k">▤</span>Papers <span class="n">241</span></div>
+    <div class="item"><span class="k" style="color:var(--pre)">◐</span>Preprints <span class="n">38</span></div>
+    <div class="item" id="k-news"><span class="k" style="color:var(--news)">✦</span>News &amp; press <span class="n">27</span></div>
+    <div class="item"><span class="k" style="color:var(--blog)">✎</span>Blogs <span class="n">6</span></div>
+    <h4>Interests</h4>
+    <div class="item" id="i-ice"><span class="dot" style="background:var(--t2)"></span>Ice sheets <span class="n">26</span></div>
+    <div class="item"><span class="dot" style="background:var(--t1)"></span>AMOC <span class="n">18</span></div>
+    <div class="item"><span class="dot" style="background:var(--t3)"></span>Paleoclimate <span class="n">11</span></div>
+    <div class="item"><span class="dot" style="background:var(--line)"></span>Cites me <span class="n">2</span></div>
+    <div class="item"><span class="dot" style="background:var(--line)"></span>Authors followed <span class="n">4</span></div>
+    <h4>Sources</h4>
+    <div class="item">▾ Journals <span class="n">197</span></div>
+    <div class="item sub">The Cryosphere <span class="n">14</span></div>
+    <div class="item sub">Geophys. Res. Lett. <span class="n">41</span></div>
+    <div class="item sub">Nature Geoscience <span class="n">6</span></div>
+    <div class="item">▸ Preprint servers <span class="n">38</span></div>
+    <div class="item">▸ Sweeps (Crossref, OpenAlex) <span class="n">44</span></div>
+    <div class="item">▸ News &amp; press <span class="n">27</span></div>
+    <div class="item">▸ Blogs <span class="n">6</span></div>
+  </aside>
+
+  <!-- 1 · Papers -->
+  <section class="main" id="v-papers">
+    <div class="filters">
+      <div class="seg"><span class="on">Papers</span><span>Posts</span><span>All</span></div>
+      <span class="chip">Ice sheets ×</span><span class="chip">score &gt; 3 ×</span><span class="chip">unread ×</span>
+      <span class="count">26 of 1 480 · sorted by score</span>
+    </div>
+    <table>
+      <colgroup><col style="width:22px"><col style="width:40px"><col><col style="width:130px"><col style="width:120px"><col style="width:46px"><col style="width:130px"></colgroup>
+      <thead><tr><th></th><th>Score</th><th>Title</th><th>Authors</th><th>Journal</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        <tr class="unread sel"><td class="star">★</td><td class="score">9.5</td><td class="t">Earlier onset of the Greenland melt season since 2000 from passive microwave records</td><td>Hansen, Ito, Lund</td><td>Geophys. Res. Lett.</td><td>2 h</td><td><span class="badge cov">2 news</span></td></tr>
+        <tr class="unread"><td></td><td class="score">8.0</td><td class="t">Marine ice-sheet instability thresholds in a coupled ice–ocean model of Thwaites</td><td>Ortiz, Weber, et al.</td><td>The Cryosphere</td><td>5 h</td><td><span class="badge pre">had preprint</span></td></tr>
+        <tr class="unread"><td></td><td class="score">7.5</td><td class="t">Glacial isostatic adjustment feedbacks on West Antarctic grounding-line retreat</td><td>Kim, Bauer</td><td>Nature Geoscience</td><td>1 d</td><td></td></tr>
+        <tr><td class="star">★</td><td class="score">6.0</td><td class="t">Firn densification under extreme melt: a multi-model comparison</td><td>Pedersen, et al.</td><td>EGUsphere</td><td>1 d</td><td><span class="badge pre">preprint</span></td></tr>
+        <tr class="unread"><td></td><td class="score">5.5</td><td class="t">Hysteresis of the Greenland ice sheet under overshoot scenarios</td><td>Moreau, Robinson, et al.</td><td>Earth Syst. Dyn.</td><td>2 d</td><td><span class="badge">cites you</span></td></tr>
+        <tr class="seen"><td></td><td class="score">4.0</td><td class="t">Surface mass balance of Svalbard glaciers 1991–2025</td><td>Nilsen, Aas</td><td>J. Glaciol.</td><td>2 d</td><td><span class="badge lib">in library</span></td></tr>
+        <tr class="unread"><td></td><td class="score">3.5</td><td class="t">A data-driven emulator of ice-sheet surface melt for scenario screening</td><td>Zhou, Fischer</td><td>Geosci. Model Dev.</td><td>3 d</td><td></td></tr>
+        <tr class="unread"><td></td><td class="score">3.0</td><td class="t">Basal sliding laws inferred from surface velocity time series</td><td>Grant, Lee</td><td>arXiv physics.ao-ph</td><td>3 d</td><td><span class="badge pre">preprint</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 2 · All kinds -->
+  <section class="main" id="v-all" hidden>
+    <div class="filters">
+      <div class="seg"><span>Papers</span><span>Posts</span><span class="on">All</span></div>
+      <span class="chip">unread ×</span>
+      <span class="count">312 of 1 480 · newest first</span>
+    </div>
+    <table>
+      <colgroup><col style="width:22px"><col style="width:40px"><col><col style="width:150px"><col style="width:120px"><col style="width:46px"></colgroup>
+      <thead><tr><th></th><th>Score</th><th>Title</th><th>Authors / site</th><th>Source</th><th>Date</th></tr></thead>
+      <tbody>
+        <tr class="unread sel"><td class="k" style="color:var(--news)">✦</td><td class="score">9.5</td><td class="t">Greenland’s melt season now starts weeks earlier</td><td class="muted">press release</td><td>ScienceDaily</td><td>1 h</td></tr>
+        <tr class="unread"><td class="k">▤</td><td class="score">9.5</td><td class="t">Earlier onset of the Greenland melt season since 2000 from passive microwave records</td><td>Hansen, Ito, Lund</td><td>Geophys. Res. Lett.</td><td>2 h</td></tr>
+        <tr class="unread"><td class="k" style="color:var(--news)">✦</td><td class="score">–</td><td class="t">Ancient forests reveal how fast trees can migrate</td><td class="muted">news</td><td>Futurity</td><td>3 h</td></tr>
+        <tr class="unread"><td class="k" style="color:var(--blog)">✎</td><td class="score">2.0</td><td class="t">Unforced variations: November 2026</td><td>gavin</td><td>RealClimate</td><td>4 h</td></tr>
+        <tr class="unread"><td class="k">▤</td><td class="score">8.0</td><td class="t">Marine ice-sheet instability thresholds in a coupled ice–ocean model of Thwaites</td><td>Ortiz, Weber, et al.</td><td>The Cryosphere</td><td>5 h</td></tr>
+        <tr class="unread"><td class="k" style="color:var(--blog)">✎</td><td class="score">–</td><td class="t">Analysis: Why 2026 is on track to be the second warmest year</td><td>Hausfather</td><td>Carbon Brief</td><td>6 h</td></tr>
+        <tr class="unread"><td class="k" style="color:var(--pre)">◐</td><td class="score">6.0</td><td class="t">Firn densification under extreme melt: a multi-model comparison</td><td>Pedersen, et al.</td><td>EGUsphere</td><td>1 d</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 3 · Review -->
+  <section class="main rv" id="v-review" hidden>
+    <div class="rvhead"><span>Shortlist · 2 of 5</span><div class="prog"><i></i></div><span>Esc leaves review</span></div>
+    <div class="rvcard">
+      <div>
+        <h2>Marine ice-sheet instability thresholds in a coupled ice–ocean model of Thwaites Glacier</h2>
+        <div class="by" style="margin-bottom:12px">Ortiz, M., Weber, L., <b>Seroussi, H.</b> (followed), Nakamura, K. · The Cryosphere 20, 6011–6030 · published 30 Oct 2026</div>
+        <div class="abs">We couple a higher-order <mark>ice-sheet</mark> model to a regional ocean model and map the
+          <mark>tipping</mark> thresholds of Thwaites Glacier as a function of basal melt and sliding law. The
+          <mark>grounding line</mark> retreats irreversibly once sub-shelf melt exceeds 32 m a⁻¹ in the reference
+          configuration; the threshold shifts by a factor of two across sliding laws. Hysteresis experiments show that
+          regrowth requires cooling well below present-day ocean temperatures. Our results suggest that the commitment to
+          retreat depends more on the basal friction law than on the ocean forcing scenario …</div>
+      </div>
+      <div class="facts">
+        <div class="sec"><b>Why it is here</b>Ice sheets 8.0: <mark>ice-sheet</mark> ×2 title, <mark>grounding line</mark>, <mark>tipping</mark>, <mark>hysteresis</mark>. Followed author.</div>
+        <div class="sec"><b>PDF</b><span class="ok">● Open access</span> · CC BY 4.0 · tc.copernicus.org</div>
+        <div class="sec"><b>Versions</b>Preprint egusphere-2025-4410 (Mar 2025) · <span class="badge lib">preprint in library</span> → Add would <i>replace</i> ortiz2025 with the published version.</div>
+        <div class="sec"><b>Like in your library</b>
+          <div>robinson2012 · Multistability and critical thresholds…</div>
+          <div>favier2014 · Retreat of Pine Island Glacier controlled by MISI</div>
+          <div>gudmundsson2012 · The stability of grounding lines…</div>
+        </div>
+        <div class="sec"><b>Seen in</b>The Cryosphere RSS · Crossref sweep · OpenAlex “Ice sheets” topic</div>
+      </div>
+    </div>
+    <div class="keys">
+      <span class="btn primary">Add with PDF <kbd>A</kbd></span>
+      <span class="btn">Add without PDF <kbd>B</kbd></span>
+      <span class="btn">Open article ↗ <kbd>O</kbd></span>
+      <span class="btn">Later <kbd>L</kbd></span>
+      <span class="btn">Dismiss <kbd>X</kbd></span>
+      <span class="btn" style="margin-left:auto">← Previous <kbd>K</kbd></span>
+      <span class="btn">Next → <kbd>J</kbd></span>
+    </div>
+  </section>
+
+  <!-- details: paper -->
+  <aside class="detail" id="d-paper">
+    <div>
+      <h3>Earlier onset of the Greenland melt season since 2000 from passive microwave records</h3>
+      <div class="by">Hansen, A., Ito, R., Lund, S. · Geophys. Res. Lett. · 30 Oct 2026 · 10.1029/2026GL1xxxxx</div>
+    </div>
+    <div class="btns">
+      <span class="btn primary">Add <kbd>A</kbd></span><span class="btn">★ Shortlist <kbd>S</kbd></span>
+      <span class="btn">Open ↗ <kbd>O</kbd></span><span class="btn">Dismiss <kbd>X</kbd></span>
+    </div>
+    <div class="sec"><b>Abstract · from Crossref (feed had a teaser)</b>
+      <div class="abs">The onset of surface melt on the <mark>Greenland ice sheet</mark> controls the length of the
+        <mark>melt season</mark> and the albedo feedback. Using passive microwave brightness temperatures from 1979 to 2025,
+        we show that melt onset has advanced by 18 ± 5 days since 2000, most strongly in the northwest …</div>
+    </div>
+    <div class="sec"><b>Why it is here</b>Ice sheets 9.5: <mark>Greenland ice sheet</mark> ×2 title, <mark>melt season</mark>, <mark>albedo</mark></div>
+    <div class="sec"><b>Covered by</b>
+      <div>✦ ScienceDaily · Greenland’s melt season now starts weeks earlier</div>
+      <div>✦ phys.org · Satellites show earlier Greenland melt</div>
+    </div>
+    <div class="sec"><b>PDF</b><span class="warn">● Publisher only</span> (AGU) · preprint on ESSOAr ↗</div>
+    <div class="sec"><b>Seen in</b>GRL RSS · OpenAlex “Ice sheets”</div>
+  </aside>
+
+  <!-- details: press release -->
+  <aside class="detail" id="d-post" hidden>
+    <div>
+      <h3>Greenland’s melt season now starts weeks earlier</h3>
+      <div class="by"><span class="badge news">press release</span> ScienceDaily · source: University of Copenhagen · 1 h</div>
+    </div>
+    <div class="btns">
+      <span class="btn">Open post ↗ <kbd>O</kbd></span><span class="btn">Mark read <kbd>M</kbd></span><span class="btn">Dismiss <kbd>X</kbd></span>
+    </div>
+    <div class="sec"><b>Post · teaser from the feed</b>
+      <div class="abs muted">Snow on Greenland is starting to melt almost three weeks earlier than it did at the turn of the
+        century, according to a new study led by researchers at … “The longer season matters because …”</div>
+    </div>
+    <div class="sec"><b>Linked paper · found on the page (“Journal Reference” block)</b>
+      <div class="card">
+        <div class="ti">Earlier onset of the Greenland melt season since 2000 from passive microwave records</div>
+        <div class="muted">Hansen, Ito, Lund · Geophys. Res. Lett. · 2026</div>
+        <div><span class="badge">also in your feed · score 9.5</span></div>
+        <div class="btns"><span class="btn primary">Add <kbd>A</kbd></span><span class="btn">★ Shortlist <kbd>S</kbd></span><span class="btn">Show paper <kbd>↵</kbd></span></div>
+      </div>
+      <div class="muted" style="margin-top:6px">2 more DOIs on the page (cited works) ›</div>
+    </div>
+    <div class="sec"><b>Other posts without a link yet</b>
+      <div class="muted">Futurity · Ancient forests reveal… · <span class="btn">Find linked paper <kbd>F</kbd></span></div>
+    </div>
+  </aside>
+
+  <div class="status">
+    <span>Feeds · 64 subscriptions · fetched 8 min ago (3 not modified, 1 failed: IGS 403)</span>
+    <span style="margin-left:auto">Shortlist 5 · Added this week 3</span>
+  </div>
+</div>
+
+<p class="note">Mockup only. One Feeds tab for all subscriptions. Every item has a kind (paper, preprint, news &amp; press, blog), taken from the subscription and corrected per item (a DOI in a blog item makes it a link to a paper). The segment Papers | Posts | All picks the kinds; Papers is the default. A post whose page names a paper links to it: the paper gets <i>Covered by</i>, the post gets <i>Linked paper</i> with Add and Shortlist. Review steps through the shortlist one paper at a time.</p>
+
+<script>
+  const win = document.getElementById("win");
+  const ids = ["papers", "all", "review"];
+  function view(v) {
+    for (const id of ids) document.getElementById("v-" + id).hidden = id !== v;
+    document.getElementById("d-paper").hidden = v !== "papers";
+    document.getElementById("d-post").hidden = v !== "all";
+    win.classList.toggle("review", v === "review");
+    document.querySelectorAll(".switch button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+    document.getElementById("i-ice").classList.toggle("sel", v === "papers");
+    document.getElementById("q").innerHTML = v === "papers"
+      ? "⌕ <b>prof:ice-sheets</b> score&gt;3 -is:seen &nbsp;<span>— words, a: t: abs: j: src: kind: prof: score&gt; is: in:library</span>"
+      : v === "all" ? "⌕ <b>is:unread</b>" : "⌕ <b>is:shortlist</b>";
+  }
+  document.querySelectorAll(".switch button").forEach((b) => (b.onclick = () => view(b.dataset.v)));
+  document.querySelectorAll("tbody").forEach((tb) => tb.querySelectorAll("tr").forEach((r) => (r.onclick = () => {
+    tb.querySelectorAll("tr").forEach((x) => x.classList.remove("sel"));
+    r.classList.add("sel");
+  })));
+</script>
+</body>
+</html>

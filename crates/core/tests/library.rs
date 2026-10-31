@@ -258,6 +258,11 @@ fn years() {
         ["feldmann2017", "calov2015", "robinson2012"]
     );
     assert!(keys(&lib, "year:abc").is_empty());
+    assert_eq!(
+        keys(&lib, "y:2012,2020-"),
+        ["ipcc2021", "muller2020", "robinson2012"]
+    );
+    assert_eq!(keys(&lib, "y:2010-2016 -y:2015,2016"), ["robinson2012"]);
 }
 
 #[test]
@@ -373,6 +378,14 @@ fn year_counts() {
     assert_eq!(years("greenland y:2010-"), span(&|y| y >= 2010));
     assert_eq!(years("greenland -y:2012"), span(&|y| y != 2012));
     assert_eq!(
+        years("greenland y:2009,2015"),
+        span(&|y| y == 2009 || y == 2015)
+    );
+    assert_eq!(
+        years("greenland -y:2009,2015"),
+        span(&|y| ![2009, 2015].contains(&y))
+    );
+    assert_eq!(
         lib.search("greenland y:2015", Matching::WordStart, 50)
             .total,
         1
@@ -397,6 +410,23 @@ fn cite_and_link() {
     assert_eq!(it.cite(Cite::Latex), "\\cite{robinson2012}");
     assert_eq!(it.link().unwrap(), "https://doi.org/10.1038/nclimate1449");
     assert_eq!(lib.get("smith_handbook").unwrap().link(), None);
+}
+
+#[test]
+fn abstracts() {
+    let lib = Library::load(&[fixture("abstract.bib")]).unwrap();
+    assert_eq!(keys(&lib, "abs:greenland"), ["levermann2013"]);
+    assert_eq!(keys(&lib, r#"abstract:"ice sheets""#), ["levermann2013"]);
+    assert_eq!(keys(&lib, "-abs:greenland"), ["winkelmann2015"]);
+    // plain words do not search the abstract
+    assert!(keys(&lib, "greenland").is_empty());
+    assert_eq!(keys(&lib, "has:abstract"), ["levermann2013"]);
+    // the abstract is not shown in a hit
+    let found = lib.search("abs:millennia", Matching::WordStart, 1);
+    assert_eq!(
+        marked(&found.hits[0].title),
+        "The multimillennial sea-level commitment of global warming"
+    );
 }
 
 #[test]

@@ -102,8 +102,9 @@ pub fn closed(app: &AppHandle) {
 }
 
 /// The layout of the main window, kept between sessions as its page gives
-/// it: the widths of the panes, whether the details show, what the library
-/// tab shows (its library, view, tags and search), the papers open.
+/// it: the tab in front (Library or Feeds), the widths of the panes, whether
+/// the details show, what the library tab shows (its library, view, tags and
+/// search), the papers open.
 pub struct Layout {
     path: PathBuf,
 }

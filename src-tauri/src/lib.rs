@@ -2,6 +2,7 @@ mod added;
 mod cli_tool;
 mod compare;
 mod downloads;
+mod feeds;
 mod fetch;
 #[cfg(target_os = "macos")]
 mod focus;
@@ -30,7 +31,7 @@ use papers_core::{BibWatch, Cite, Found, Incoming, Item, Library, Matching, Row,
 use recent::Recent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use settings::{Settings, TextSize};
+use settings::{SavedSearch, Settings, TextSize};
 use styles::Style;
 use tauri::image::Image;
 use tauri::ipc::Response;
@@ -108,6 +109,8 @@ struct AppState {
     /// the settings tell of the update just installed once the main window,
     /// reopened at start, shows
     settings_after_main: AtomicBool,
+    /// the feeds of the Feeds tab, opened at its first command
+    feeds: feeds::FeedsState,
 }
 
 impl AppState {
@@ -390,9 +393,13 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
 #[tauri::command]
 fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
     let old = Settings::load(&state.settings_path)?;
-    // pinned in the sidebar, not here: what the window loaded may be stale
+    // pinned and saved in the sidebar, and the polling of the feeds set in
+    // their section, not here: what the window loaded may be stale
     let settings = Settings {
         pinned_tags: old.pinned_tags.clone(),
+        saved_searches: old.saved_searches.clone(),
+        feeds_poll: old.feeds_poll,
+        feeds_poll_minutes: old.feeds_poll_minutes,
         ..settings
     };
     hotkey::apply(&app, &old, &settings)?;
@@ -414,6 +421,15 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
 fn set_pinned_tags(state: State<AppState>, tags: Vec<Option<String>>) -> Result<(), String> {
     let mut settings = Settings::load(&state.settings_path)?;
     settings.pinned_tags = tags;
+    settings.save(&state.settings_path)
+}
+
+/// The saved searches of the library tab, in the order of the sidebar; the
+/// other settings stay.
+#[tauri::command]
+fn set_saved_searches(state: State<AppState>, searches: Vec<SavedSearch>) -> Result<(), String> {
+    let mut settings = Settings::load(&state.settings_path)?;
+    settings.saved_searches = searches;
     settings.save(&state.settings_path)
 }
 
@@ -639,6 +655,7 @@ fn load(app: &AppHandle) {
             *state.library.write().unwrap() = library;
             watch(app, &bibs);
             date_added(app);
+            feeds::index_library(app);
             Status::Ready { count }
         }
         Err(error) => {
@@ -935,6 +952,10 @@ pub fn run() {
                 downloads: downloads::Downloads::default(),
                 settings_on_main: AtomicBool::new(false),
                 settings_after_main: AtomicBool::new(false),
+                feeds: feeds::FeedsState::new(
+                    app.path().app_data_dir()?.join("feeds"),
+                    app.path().app_data_dir()?.join("feeds-fetched.json"),
+                ),
             });
             app.state::<AppState>()
                 .downloads
@@ -949,6 +970,7 @@ pub fn run() {
             cli_tool::repair_at_start();
             reload(app.handle());
             update::watch(app.handle());
+            feeds::watch(app.handle());
             main_window::reopen(app.handle());
             // after an update, the settings tell of it: over the main window
             // once it shows, when it opens again
@@ -1035,6 +1057,7 @@ pub fn run() {
             get_settings,
             save_settings,
             set_pinned_tags,
+            set_saved_searches,
             downloads::downloads_list,
             downloads::set_downloads_panel,
             downloads::set_downloads_folder,
@@ -1081,7 +1104,25 @@ pub fn run() {
             writer::remove_entries,
             writer::transfer_entries,
             writer::undo,
-            writer::redo
+            writer::redo,
+            feeds::feeds_fetch,
+            feeds::feeds_last_fetch,
+            feeds::feeds_view,
+            feeds::feeds_item,
+            feeds::feeds_triage,
+            feeds::feeds_find_papers,
+            feeds::feeds_pdf,
+            feeds::feeds_subscriptions,
+            feeds::feeds_subscribe,
+            feeds::feeds_unsubscribe,
+            feeds::feeds_update_subscription,
+            feeds::feeds_suggested,
+            feeds::feeds_import_opml,
+            feeds::feeds_export_opml,
+            feeds::feeds_settings,
+            feeds::feeds_set_settings,
+            feeds::feeds_searches,
+            feeds::feeds_set_searches
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

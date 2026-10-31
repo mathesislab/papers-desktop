@@ -1,0 +1,96 @@
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:prism="http://prismstandard.org/namespaces/basic/2.0/" xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns="http://purl.org/rss/1.0/" xmlns:admin="http://webns.net/mvcb/">
+    <channel rdf:about="http://feeds.nature.com/ngeo/rss/current">
+        <title>Nature Geoscience</title>
+        <description>Nature Geoscience is a monthly journal dedicated to publishing high-quality original research papers across all areas of the geosciences. The journal’s content reflects all the disciplines within the geosciences, including studies of the Earth’s climate system, the solid Earth and the planets. Nature Geoscience covers studies based on all the methods used by geoscientists, ranging from field work and numerical modelling on regional and global scales to theoretical studies and remote sensing. Physical, chemical and biological investigations that contribute to our understanding of the Earth system or the planets are all represented.</description>
+        <link>http://feeds.nature.com/ngeo/rss/current</link>
+        <admin:generatorAgent rdf:resource="https://www.nature.com/"/>
+        <admin:errorReportsTo rdf:resource="mailto:feedback@nature.com"/>
+        <dc:publisher>Nature Publishing Group</dc:publisher>
+        <dc:language>en</dc:language>
+        <dc:rights>© 2026 Macmillan Publishers Limited, part of Springer Nature. All rights reserved.</dc:rights>
+        <prism:publicationName>Nature Geoscience</prism:publicationName>
+        
+        
+        <prism:copyright>© 2026 Macmillan Publishers Limited, part of Springer Nature. All rights reserved.</prism:copyright>
+        <prism:rightsAgent>permissions@nature.com</prism:rightsAgent>
+        <image rdf:resource="https://www.nature.com/uploads/product/ngeo/rss.gif"/>
+        <items>
+            <rdf:Seq>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02107-w"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02127-6"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02126-7"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02117-8"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02124-9"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02135-6"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02123-w"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41561-026-02119-6"/>
+                
+            </rdf:Seq>
+        </items>
+    </channel>
+    <image rdf:about="https://www.nature.com/uploads/product/ngeo/rss.gif">
+        <title>Nature Geoscience</title>
+        <url>https://www.nature.com/uploads/product/ngeo/rss.gif</url>
+        <link>http://feeds.nature.com/ngeo/rss/current</link>
+    </image>
+    
+        <item rdf:about="https://www.nature.com/articles/s41561-026-02107-w">
+            <title><![CDATA[Vegetation increasingly controlled by atmospheric dryness rather than soil moisture]]></title>
+            <link>https://www.nature.com/articles/s41561-026-02107-w</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Geoscience, Published online: 28 October 2026; <a href="https://www.nature.com/articles/s41561-026-02107-w">doi:10.1038/s41561-026-02107-w</a></p>The influence of atmospheric dryness on vegetation has strengthened globally over the past four decades, while the influence of soil moisture has weakened, according to a machine learning analysis of satellite observations of vegetation greenness.]]></content:encoded>
+            <dc:title><![CDATA[Vegetation increasingly controlled by atmospheric dryness rather than soil moisture]]></dc:title>
+            <dc:creator>Lingcheng Li</dc:creator><dc:creator>Yilin Fang</dc:creator><dc:creator>Jiafu Mao</dc:creator><dc:creator>Shiqin Xu</dc:creator><dc:creator>Zhonghua Zheng</dc:creator><dc:creator>Wantong Li</dc:creator><dc:creator>Mingjie Shi</dc:creator><dc:creator>Charles D. Koven</dc:creator><dc:creator>Jeffrey Chambers</dc:creator><dc:creator>L. Ruby Leung</dc:creator><dc:creator>Nate McDowell</dc:creator>
+            <dc:identifier>doi:10.1038/s41561-026-02107-w</dc:identifier>
+            <dc:source>Nature Geoscience, Published online: 2026-10-28; | doi:10.1038/s41561-026-02107-w</dc:source>
+            <dc:date>2026-10-28</dc:date>
+            <prism:publicationName>Nature Geoscience</prism:publicationName>
+            <prism:doi>10.1038/s41561-026-02107-w</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41561-026-02107-w</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41561-026-02127-6">
+            <title><![CDATA[An Arctic ice shelf in the Last Glacial Maximum rivalled Antarctica’s modern ice shelves]]></title>
+            <link>https://www.nature.com/articles/s41561-026-02127-6</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Geoscience, Published online: 26 October 2026; <a href="https://www.nature.com/articles/s41561-026-02127-6">doi:10.1038/s41561-026-02127-6</a></p>Ice shelves stabilize marine-terminating ice sheets, and their loss can trigger rapid, irreversible ice-sheet retreat. New geomorphic evidence for a multi-kilometre-thick ice shelf in Baffin Bay during the last glacial period constrains the maximum extents of three surrounding ice sheets and demonstrates that their stability was fundamentally linked.]]></content:encoded>
+            <dc:title><![CDATA[An Arctic ice shelf in the Last Glacial Maximum rivalled Antarctica’s modern ice shelves]]></dc:title>
+            
+            <dc:identifier>doi:10.1038/s41561-026-02127-6</dc:identifier>
+            <dc:source>Nature Geoscience, Published online: 2026-10-26; | doi:10.1038/s41561-026-02127-6</dc:source>
+            <dc:date>2026-10-26</dc:date>
+            <prism:publicationName>Nature Geoscience</prism:publicationName>
+            <prism:doi>10.1038/s41561-026-02127-6</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41561-026-02127-6</prism:url>
+        </item>
+    
+    
+    
+        <item rdf:about="https://www.nature.com/articles/s41561-026-02124-9">
+            <title><![CDATA[Decolonize soil erosion modelling]]></title>
+            <link>https://www.nature.com/articles/s41561-026-02124-9</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Geoscience, Published online: 19 October 2026; <a href="https://www.nature.com/articles/s41561-026-02124-9">doi:10.1038/s41561-026-02124-9</a></p>Uncritical extrapolation of soil erosion models developed in the Global North to Global South settings for which they were not designed reflects and perpetuates neocolonial biases in geoscience. To build a more accurate and equitable understanding of land degradation, we must rethink erosion research.]]></content:encoded>
+            <dc:title><![CDATA[Decolonize soil erosion modelling]]></dc:title>
+            <dc:creator>Pedro Velloso Gomes Batista</dc:creator><dc:creator>Rónadh Cox</dc:creator><dc:creator>Markus Keck</dc:creator><dc:creator>Peter Ebanyat</dc:creator><dc:creator>Anindya Majhi</dc:creator><dc:creator>Jean Paolo Gomes Minella</dc:creator><dc:creator>Maarten Wynants</dc:creator><dc:creator>Peter Fiener</dc:creator>
+            <dc:identifier>doi:10.1038/s41561-026-02124-9</dc:identifier>
+            <dc:source>Nature Geoscience, Published online: 2026-10-19; | doi:10.1038/s41561-026-02124-9</dc:source>
+            <dc:date>2026-10-19</dc:date>
+            <prism:publicationName>Nature Geoscience</prism:publicationName>
+            <prism:doi>10.1038/s41561-026-02124-9</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41561-026-02124-9</prism:url>
+        </item>
+    
+    
+    
+    
+</rdf:RDF>

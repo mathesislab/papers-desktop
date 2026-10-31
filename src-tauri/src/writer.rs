@@ -1195,6 +1195,7 @@ mod tests {
             downloads: Default::default(),
             settings_on_main: Default::default(),
             settings_after_main: Default::default(),
+            feeds: crate::feeds::FeedsState::new(dir.join("feeds"), dir.join("feeds-fetched.json")),
         }
     }
 

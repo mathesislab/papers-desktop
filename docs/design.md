@@ -40,12 +40,13 @@ Two windows with different jobs:
 Three panes, each resized by dragging, the right one hidden on demand:
 
 - **Sidebar**: *Libraries* (with several .bib files: *All libraries*, then
-  one row per .bib, as the accounts of Mail); *Views* (all papers, recently
+  one row per .bib, as the accounts of Mail; a click shows one, `⌘`-click,
+  Ctrl-click elsewhere, adds one or takes it out); *Views* (all papers, recently
   opened, recently added, no PDF, broken file links, possible duplicates: the
   same DOI, or the same title and year); the tags with their counts (a click filters by
-  the tag, a second click takes the filter off); *Open*: the library tab,
+  the tag, a second click takes the filter off; `⌘`-click: below); *Open*: the library tab,
   then the open papers. The counts of the views and the tags are those
-  within the library chosen.
+  within the libraries chosen.
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
   missing file), multi-select. Only the rows on screen are drawn. A line
@@ -64,6 +65,21 @@ so a settings file that does not have it gets that). With the library in front
 *Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
 Library → paper 1 → … → Library; `⌘1` shows the library.
 
+**Library and Feeds.** A switch at the start of the toolbar, *Library |
+Feeds* (`⌘1`, `⌘2`, in the Window menu), shows one of the two tabs of the
+window (`LibraryView.svelte`, `FeedsView.svelte`; the page keeps the layout
+and passes the commands on). The papers open are tabs of the Library:
+`⌃Tab` and `⌘⇧]` go through them there only. `⌘1` from Feeds shows the Library
+as it was left (a paper in front stays), in it the library. The library
+stays behind the feeds, hidden, with its selection, scroll and edit; its
+PDF view steps aside (`Reader.cover`) and its keys are off. In Feeds `⌘W`
+closes the window, `⌘N` opens the Add sheet, `⌘F` goes to the search of the
+feeds, and a paper opened from the panel (or shown after it was added from
+the library) brings the Library back. The page passes the keys to the tab in
+front only (`LibraryView.key`, `FeedsView.key`): neither tab's keys leak into
+the other. The tab in front is kept in the layout (`view`), and the Feeds
+tab's choices too (`feeds`: below).
+
 **The library tab is the current set**, and keeps it while papers are opened
 and closed: going back shows the same list, the selection and where it was
 scrolled to. Its sidebar row is `Library` with its count, and under it, in
@@ -72,18 +88,25 @@ a second line (indented, smaller, muted, ellipsized), the filters it shows
 product of four filters (`src/lib/library/filters.ts`, a pure function of the
 rows, tested by `scripts/filters.test.ts`, `npm test`):
 
-- **Library**: all libraries, or one .bib (a click on its row).
+- **Library**: all libraries, or some .bib files (a click on a row chooses
+  it alone, `⌘`-click adds it or takes it out); one chip, `Library: a.bib,
+  b.bib` with several.
 - **View**: all papers, recently opened, recently added, no PDF, broken file
   links, possible duplicates. *All papers* takes the view filter off, and only
   that.
-- **Tags**: any number, clicked in the sidebar (or in the details); a paper
-  must have all of them (a tag counts the tags under it: `climate` finds
-  `climate/amoc`). They are filters of their own, shown as chips and
-  highlighted in the sidebar, not text of the search field: the field keeps
+- **Tags**: any number, clicked in the sidebar (or in the details), in
+  groups of alternatives: a click adds a tag as a group of its own, which a
+  paper must have too; `⌘`-click adds it to the last group (a paper may have
+  it instead: `Tag: amoc, ice`), a group of its own when there is none, or
+  takes it out. A paper must have a tag of every group (a tag counts the tags
+  under it: `climate` finds `climate/amoc`). They are filters of their own, a
+  chip per group, highlighted in the sidebar, not text of the search field: the field keeps
   what was typed, and a click on a tag does not change it. A `tag:` typed in
   the field works as before, as part of the search (`tag:`, `-tag:` and the
   rest of the syntax); the core is asked for the search text followed by a
-  `tag:` term per tag filter.
+  `tag:` term per group (`tag:amoc,ice`). The filters of a layout from before
+  the groups (`bib`, `tags` of strings) are read as one library and a group
+  per tag.
 - **Search**: the text of the field. It stays when the view, library or tags
   change and when papers are opened, until it is cleared: the × in the field,
   or `⌘⌫` (Ctrl+Backspace elsewhere) in the field, where it clears it;
@@ -93,10 +116,27 @@ rows, tested by `scripts/filters.test.ts`, `npm test`):
 
 Library, view, tags and search are kept in the layout (`window.json`, `library`)
 and come back at the next start; a .bib file no longer in the library is
-dropped. A paper shown after it was added or merged takes the filters off if
+dropped.
+
+**Saved searches** (`SaveSearch.svelte`, `SavedSearches.svelte`, `saved.ts`,
+shared with the Feeds tab): the ☆ next to the search field saves the
+filters shown and the sort of the table under a name, typed in a field that
+opens under it (the filters in a few words offered; a blank name or one
+taken, in any case, refused); ★ when a saved search is what the tab shows.
+A *Saved* section at the top of the sidebar lists them, each with the
+number of papers it shows (each set made as the library tab makes it: the
+core's `matching` for its search, then `currentSet` with the lists of the
+views); a click shows one in place of the filters and sort (a .bib no longer
+there dropped), the one shown selected (`sameFilters`: the same libraries,
+view, groups of tags in any order, search; and the same sort).
+Right-click: *Rename…* (in its row), *Update to the Filters Shown*,
+*Delete*. Kept in `settings.json`, `saved_searches: [{name, filters,
+sort}]` (the page's shapes, checked by `restored` when read;
+`set_saved_searches`, as the pinned tags: not in the settings window, which
+keeps them when it saves). A paper shown after it was added or merged takes the filters off if
 they would hide it.
 
-**Several papers at once** (`+page.svelte`, `Table.svelte`, `rowmenu.ts`,
+**Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
 `selection.ts`, pure and tested by `scripts/selection.test.ts`):
 
 - *Open*: Enter, a double-click, or *Open* in the context menu opens every
@@ -195,7 +235,7 @@ the page (the Add sheet, the delete question, the papers-missing notice) include
 each holds `holdModal` (`modal.svelte.ts`) while it is open, and the page has
 the reader step aside (`Reader.cover`: PDFKit's view is hidden, `pdf_cover`,
 and the keys go to the page; shown again, with the keys, when the last modal
-has closed). A pdf.js PDF is in the page, under the modals by their z-index. The library tab, the open papers, their pages, the pane widths and the
+has closed). A pdf.js PDF is in the page, under the modals by their z-index. The tab in front (Library or Feeds), the library tab, the open papers, their pages, the pane widths and the
 details shown or not are kept in the data folder of the app (`window.json`), as
 the recent papers are (`recent.json`) and the dates added (`added.json`); the window opens again at start if it was open at the end.
 
@@ -624,27 +664,331 @@ and the PDF dropped on the window. Left:
    (downloaded in the browser, with its login), checks its DOI, and opens the
    sheet with it.
 
-## Later: feeds
+## Feeds (P1, branch `feed-reader`)
 
-The new papers of the journals followed, as Feedly lists them: most
-journals have an RSS feed of their contents (Copernicus, Nature, Wiley and
-AGU, Science, Elsevier), arXiv too, and for a journal without one Crossref
-lists its new DOIs by ISSN. A Feeds view: title, authors, journal,
-abstract; mark as read; *Add* takes the metadata from the DOI.
+The new papers of the journals, preprint servers, news sites and blogs
+followed, in a *Feeds* tab beside the *Library* tab (⌘1, ⌘2): every item
+comes in, filters and scores distil them, and a paper goes to the Add sheet
+without its website (which stays one key away). Proposals and the checks
+behind them: `docs/drafts/feeds-proposals.md`; mockup:
+`docs/mockups/feeds.html`.
 
-The PDF, the simplest way first:
+**Crates.** As papers-rs and core: a library, a program, the app.
 
-1. Open access: Unpaywall (by DOI, free) gives the link of the PDF.
-2. The article's page: its `citation_pdf_url` meta tag (most publishers
-   have it, for Google Scholar), fetched on the institute's network or VPN,
-   kept if it is a PDF.
-3. Otherwise the article opens in the browser, and the app waits for the
-   next PDF in `~/Downloads` (as above): logins, viewers and checks happen
-   in the browser.
+- `crates/feeds` (UI-free, no .bib): subscriptions, fetching (conditional
+  GET, one request at a time per host), parsing (`feed-rs`, with the fixes
+  of paper-feeder: Copernicus bylines, Wiley author blobs, the DOI from the
+  guid, `prism:doi` or the link), sweeps (Crossref by ISSN, OpenAlex
+  queries, arXiv), merging, abstracts from Crossref or OpenAlex by DOI,
+  the paper behind a post, interests, rules, scores, triage, the store.
+- `crates/feeds-cli` (`feeds`, package `papers-feeds-cli`): subscribe,
+  edit, fetch, list, show, find, mark, prune, the interests and rules,
+  `opml import|export`, `config` (`keep-days`, `lookback-days`), the import
+  of a paper-feeder setup, the RSS and HTML digest: paper-feeder's job,
+  which it replaces. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
+  data folder) is the folder; not the app's while it runs, nothing locks it.
+  `--library <file.bib>` (repeated) indexes a library for `like:`, `--sort
+  like` and the nearest papers of `show`.
+- The app (`src-tauri/src/feeds.rs`, `src/lib/feeds/`): the tab, *In
+  library* (core's `Identity`), the Add sheet, the settings.
 
-A browser tab in the app (a webview that catches downloads) only if 3 is
-too clumsy. One paper at a time, when asked: no downloads in the
-background, which publishers block.
+**The query language** of the library works on feed items too: the parser
+and the matcher take a `Record` (the searchable texts of anything: title,
+authors, year, journal, abstract, keywords, DOI, the `has:` names, and named
+facets such as `kind:`, `src:`, `is:`, `prof:` and number ranges such as
+`score:3-`), which a library entry and a feed item each make. A module of
+core with no .bib types: `Record::new(title)` and its builder methods
+(`.authors`, `.abstract`, `.facet(name, values)`, `.number(name, x)`, ...),
+`Query::parse(text, Schema { facets, numbers })` (an undeclared name is a
+word, as in the library), and `record.check(&query, matching)`, the
+`Marks` to highlight when it matches. `abs:` searches the abstract (the
+library's too); plain words do not, which would change the library's hits.
+A facet takes a whole value, with `*` wildcards; a number takes `2-5`,
+`3-`, `-2`, and `3` is `3-`. Any filter takes alternatives between commas
+(`src:tc,"Nature Geosci"`, `y:1990-2000,2015`, `-kind:news,blog`), not a
+plain word: a `Term` holds its patterns, any of which matches (each one
+that matched marked), no OR node; without a comma a term is as before, and
+the words of an alternative are a phrase. `anyOf` (`src/lib/query.ts`)
+writes such a filter, a value of anything but letters, digits, `_`, `.` and
+`-` quoted (a quoted tag or facet value is the same value, its `*` a
+wildcard); `queryTerms` reads a query's terms as the core's tokens do.
+
+**A subscription** follows a `Feed`: an RSS/Atom `url`, a Crossref `issn`
+(works indexed since the last sweep, created at most the lookback, 14 days,
+before it: Crossref re-indexes old works), or an `openalex` filter
+(`from_created_date`, `type:article`; needs the key). The APIs are asked
+with an `Access { mailto, openalex_key }` from the settings, each sent only
+if set; Crossref is paced to 3 requests a second with an address.
+
+**An item** is one paper or post, from every source that listed it. Merged
+by the DOI, then the arXiv id, then Crossref's `has-preprint` /
+`is-preprint-of` / `is-version-of` (EGUsphere → TC; the review comments
+`-RC1`, `-AC1` and supplements dropped), then the title (Jaccard ≥ 0.9
+among the same first author and year ±1; never a post with a paper). Its
+kind is the subscription's (journal, preprint server, news & press, blog),
+corrected per item. After a fetch, each paper's DOI is looked up once in
+Crossref (abstract, authors, relations), and in OpenAlex for an abstract
+Crossref lacks, if a key is set: those without an abstract or with a teaser
+(< 300 characters) first, 50 per fetch. A post links to its papers
+(`links: [Linked { doi, confidence: high|low, via: feed|page|search }]`): a
+labelled block of the feed or of its page first (Futurity "Original Study
+DOI", ScienceDaily "Journal Reference", phys.org "More information", Eos's
+closing "(Journal, doi)"), else the DOIs and publisher links of the first
+paragraphs (not the references, sidebars or the page's own or a news DOI),
+else the title in Crossref; up to 3, marked low confidence when none wins.
+A linked DOI that is not an item becomes a paper of the post's source; it
+then shows *Covered by*. phys.org answers a program with a Cloudflare
+challenge (403), so its pages give nothing.
+
+**Triage**: new → seen → shortlisted, dismissed or added. Keys: `j`/`k`,
+`s` shortlist, `x` dismiss, `m` read, `o` open, `a` add, `f` find the
+paper of a post. *Review* steps through the shortlist one paper at a time:
+the abstract, why it is there, free PDF or not, the versions, the closest
+library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
+
+**The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
+`FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
+`filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`):
+
+- *Sidebar*: Views (Unread `is:new`, Shortlist, Added, All), Kinds,
+  Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
+  apart; a group folds), each with its count (`counts`: every item not
+  dismissed, whatever the search). A click chooses one of a group, a second
+  lets go; `⌘`-click (Ctrl elsewhere) adds one to the choices of its group,
+  or takes it out (the views: one). As the library's tags, the choices
+  are filters of their own, a chip per group with an × (`Source: TC, GRL`
+  with several); the backend is asked for a term per group, any of its
+  choices (`is:new kind:preprint prof:"Ice sheets" src:"The
+  Cryosphere",GRL`), the segment's kinds when no kind is chosen
+  (`kind:paper,preprint`: the query is the whole of the tab's choices,
+  `queryOf`), then the typed text, and `-is:dismissed` unless the query has
+  an `is:` term on `dismissed`. *Papers
+  | Posts | All* above the list picks the kinds (`kinds` of the request too;
+  Papers by default); kinds chosen that the segment does not show move it
+  (to All for papers and posts together), another segment lets go of those
+  it does not show. The choices, the segment,
+  the sort, the search and the groups unfolded are kept in the layout
+  (`feeds`; a file without it takes the defaults; the single `kind`,
+  `interest` and `source` of before become groups of one).
+- *Saved searches*: as the library's (above), the ☆ next to the search and a
+  *Saved* section at the top of the sidebar, each with its count
+  (`counts.searches`, from the backend). One keeps `queryOf` and the sort
+  (`feeds_set_searches`, in the feeds' `config.json`, so the CLI's `--saved`
+  takes them too). A click takes the query apart (`decompose`, pure and
+  tested: its first `is:` of a view, `kind:`, `prof:` and `src:` terms, not
+  excluding, become the choices, a `kind:` of a segment's kinds that
+  segment, no `kind:` All, the rest the text typed; `queryOf` of it is the
+  same query) and shows it with its sort; the one shown is selected
+  (`sameQuery` and the sort).
+- *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
+  added, the kind of a post or preprint), the score, the likeness to the
+  library (*Like*, 0–100; – before the library is indexed), the title (bold
+  while new, muted once seen), authors, journal or source, age, badges (*in
+  library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
+  reached). Sorted by score, likeness or newest (the headers, or the count
+  above the list, which goes through them). Click, ⇧-click and ⌘-click select as in the library; the keys act
+  on the selection. An item triaged here stays in its place until the
+  filters change (`mergeRows`), so that marking items seen in *Unread* does
+  not make the list jump under the cursor; a dismissed item goes, the next
+  selected.
+- *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
+  passed over faster (j held down) stays new: its title went by, its
+  details were not read. `⇧Space` (and the row menu's *Mark All Above as
+  Seen*) marks the new items above it seen, for titles skimmed. Opening an
+  item marks it seen.
+- *Details*: a paper's abstract marked by the query and the interests (from
+  Crossref or OpenAlex when the feed had none), *Why it is here* (each
+  interest's score and terms), *Like in your library* (the likeness and the
+  3 nearest papers of the library, each with its authors, year, journal and
+  cosine, shown in the Library tab on a click), its free PDF (`pdfStatus`, asked 300 ms after
+  it is shown, once per item), versions (*preprint in library → Add would
+  replace it*), *Covered by*, *Seen in*. A post's text, then its linked
+  papers as cards (Add by the DOI, Shortlist, Show paper), *Find linked
+  paper* (`findPapers`).
+- *Add*: the library's Add sheet, opened over the Feeds tab with the item's
+  DOI (an arXiv id as its DataCite DOI, `10.48550/arXiv.…`) fetched at once
+  (`initial`), its free PDF looked for unless added without one. After
+  adding, the Feeds tab stays in front (from the library, the paper is shown
+  in the Library tab, as before) and the item becomes *added*. A post adds
+  its linked paper.
+- *Fetch*: on opening the tab when the last fetch is older than 15 minutes,
+  and on `⌘R` or ↻; the `feeds-fetching` event shows the progress, the
+  status line the last fetch (*fetched 8 min ago · 12 new · 3 not modified ·
+  1 failed*, the failures listed on hover and click); `feeds-changed` reads
+  the list again.
+- *Review* (`⌘↩`, the button): the shortlist as it is when the review
+  begins, by score, one item at a time over the list and the details, with
+  a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
+  without PDF, `o` open, `l` later (stays shortlisted), `x` dismiss, `j`/`k`,
+  `Esc` leaves. The facts are the details' (`Facts`), *Like in your
+  library* among them.
+- *Subscribe* (the button): a feed URL, a Crossref ISSN or an OpenAlex
+  filter, with the kind of its items, or one of the suggested subscriptions
+  in their groups (those followed marked); fetched when the sheet closes.
+
+**Interests**: named profiles of weighted terms (paper-feeder's: a term in
+the title counts twice, `ice sheet` matches `ice-sheet`, an exclude vetoes),
+each a view sorted by score. In `config.json`: `interests` (`name`,
+`include` of `{term|pattern, weight, label}`, `exclude` of
+`{term|pattern}`, `min_score` 3) and `title_boost` (2). Scores are
+computed when asked, not stored (a `RegexSet` per interest, one pass per
+text): an edited interest or an enriched abstract counts at once.
+
+**Boost**: `boost` of a subscription in `config.json` (a number, 0 and left
+out by default), paper-feeder's `score_boost`: "cites my work" is partial
+credit, so that a citing paper needs only a weak topical match. It is added
+to each interest's score of the items the subscription lists, a veto
+excepted (the score stays 0); it counts with no term matching too. An item
+that several subscriptions list takes the strongest boost, not the sum. It
+is part of the score wherever the score is used (`score:`, `prof:` through
+`reached`, the sort, the rules, the digest's `score:3-`). Set in the
+settings (a field of the subscription's editor), by `feeds subscribe
+--boost N` or `feeds edit <id> --boost N`; `feeds subscriptions` shows it.
+`feeds import-paper-feeder` maps `score_boost: N` to `boost: N`, and
+`always_include: true` to a rule `{when: src:"<subscription title>", then:
+shortlist}` (by the id if the subscription has no title) added after the
+rules there are: paper-feeder's source kept every item of the source,
+unless an exclude vetoed it, where the rule shortlists the new items
+whatever the interest says. Both are set for the subscriptions the import
+adds only: a second import leaves the boosts and rules as the user made
+them. `lookback_days` of a query stays without equivalent (warned).
+
+**Saved searches**: `{name, query, sort}` in `config.json` (`searches`,
+in the order of the sidebar; `Feeds::searches`, `saved_search` by a name in
+any case, `set_searches`, which refuses a blank name or one given twice in
+any case). The query is the whole of the tab's choices (below); dismissed
+items are left out unless it has an `is:` term on them (`query::live`, as
+the app's and the CLI's lists). `Feeds::view` counts the items each one
+shows (`counts.searches`, by name), whatever the request. CLI: `feeds
+searches [--json]`, `searches add NAME QUERY... [--sort score|newest|like]` (in
+place of the search of that name), `searches remove NAME`, and `--saved
+NAME` on `list` (its sort unless `--sort`) and `digest` (no default
+`score:3-` then), with the query typed too.
+
+**Rules**: `{when, then}`, a query of the feeds and `shortlist`,
+`dismiss` or `seen` (`prof:amoc score:6-` → shortlist, `t:editorial` →
+dismiss). They act on the items a fetch brings, the first that matches
+deciding, never on an item with a triage.
+
+**Likeness** (*Like in your library*): how close an item is to the
+library. Core's `Likeness::build(docs)` indexes the papers (`Doc { id,
+title, abstract, keywords }`; `Likeness::of(&Library)`): the folded words
+of the search, without stopwords, numbers and words of fewer than three
+letters, a plural's `s` dropped; a word weighs `(1 + ln tf) · idf` (idf
+smoothed, `ln((1+N)/(1+df)) + 1`), a word of the title or a keyword counting
+twice; the vectors of length 1, in an inverted index (each word's papers and
+weights). `like(title, abstract) -> Like { score, nearest }`: the cosine of
+the item with each paper that shares a word with it (the words no paper has
+count in its length), `score` the mean of the best 5 (fewer in a smaller
+library) × 100, 0–100, `nearest` the best 3 ids and cosines. The feeds crate
+knows no .bib: the index is given to the handle, `Feeds::set_likeness(Option
+<Arc<Likeness>>)`, and computed when asked as the scores are: the number
+`like:` of the query (none without an index: `like:` then matches nothing),
+`Row.like`, `Sort::Like` (the most like first, then the newest),
+`Feeds::like(item)` for the nearest, and the rules at a fetch (`like:40-` →
+shortlist). A library of 2,353 papers (titles; one abstract) is indexed in
+5 ms (release); an item with an abstract is scored in about 16 µs, a view of
+5,000 items in about 80 ms.
+
+**The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
+`is:` (new or unread, seen, shortlisted, dismissed, added, editorial, and
+the app's, such as `inlibrary`), `src:` (a subscription's title or id),
+`prof:` (the interests whose `min_score` the item reaches), and the numbers
+`score:` (its best score) and `like:` (its likeness, with an index); an item's record is its title, the family names
+of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
+`has:doi`. `Feeds::view` gives the rows a query and the kinds pass, sorted
+newest, by score or by likeness, each with its scores and likeness, the terms that matched and its
+title, authors and abstract marked (the query's words and the interests'
+terms), and the counts of the sidebar: as the library's, over every live
+item (not dismissed) whatever the query, by `is:`, kind, interest and
+subscription. Dismissed items are rows only if asked (`-is:dismissed` by
+the app).
+
+**When**: on opening the Feeds tab (the tab calls `feeds_fetch` when shown
+and the last fetch, `feeds_last_fetch`, is older than 15 minutes) and on
+⌘R; polling in the background is a setting (off by default: the app sends
+nothing unless asked): a thread looks each minute, the settings read each
+time, and fetches when the last fetch is older than `feeds_poll_minutes`. The page of
+a post is fetched when the post is selected or on `f`, or at fetch time for
+a subscription marked so.
+
+**Store**: JSON in the app data folder, `feeds/` (the subscriptions and
+interests, the items, the triage state, the ETags and the last sweeps, the
+lookups made), never the .bib. An item no feed lists goes after `keep_days`
+(90), on opening and after a fetch; shortlisted and added stay.
+
+**Settings**: a *Feeds* section of the settings window
+(`src/lib/settings/FeedsSettings.svelte`): the subscriptions (each with its
+kind, feed and last outcome; added by a feed's URL, an ISSN or an OpenAlex
+filter, or from the suggested list, by group; edited: title, kind, journal,
+fetch pages, boost; removed), OPML import and export (sweeps as outlines of their
+own type, `crossref`/`issn` and `openalex`/`filter`, the kind in
+`category`), the interests and rules (edited, then saved together:
+`feeds_set_settings` refuses an interest that does not compile, with its
+message), the days kept, the lookback, background polling (the command line does
+the OPML, the days kept and the lookback too: `feeds opml import|export`,
+`feeds config keep-days|lookback-days`). Polling is in
+`settings.json` (`feeds_poll`, false; `feeds_poll_minutes`, 60, 5 at least),
+the rest in `feeds/config.json`.
+
+**The suggested list** (`papers_feeds::suggested`, for the climate and the
+Earth's surface): Copernicus (TC, CP, ESD, GMD, BG, ACP, OS, NHESS, ESSD,
+EGUsphere as preprints), Nature (Nature, Nature Geoscience, Nature Climate
+Change, Nature Communications), Science and Science Advances, AGU (GRL, JGR
+Oceans, Atmospheres, Earth Surface, AGU Advances, Earth's Future, Reviews of
+Geophysics: Wiley's `feed/<eISSN>/most-recent`), Journal of Glaciology and
+Annals of Glaciology (Crossref by ISSN: Cambridge's feeds refuse
+programs), Journal of Climate (AMS's feed), arXiv physics.ao-ph and
+physics.geo-ph, Futurity, ScienceDaily (Climate; Earth & Climate), Eos,
+Carbon Brief, RealClimate. Each answered one GET with a browser's user
+agent (October 2026); left out: PNAS (its feed answers 403), ESSOAr (no
+feed, no ISSN, not a source of OpenAlex), Futurity's categories (404).
+
+**The app's commands** (`src-tauri/src/feeds.rs`, the contract
+`src/lib/feeds/api.ts`): `feeds_fetch`, `feeds_last_fetch`, `feeds_view`,
+`feeds_item`, `feeds_triage`, `feeds_find_papers`, `feeds_pdf`,
+`feeds_subscriptions`, `feeds_subscribe`, `feeds_unsubscribe`,
+`feeds_update_subscription`, `feeds_suggested`, `feeds_import_opml`,
+`feeds_export_opml`, `feeds_settings`, `feeds_set_settings`,
+`feeds_searches`, `feeds_set_searches` (refused for a blank name or one
+given twice; a change of the journal, as the others); the events
+`feeds-changed` (a fetch, a change, papers found) and `feeds-fetching`
+(true, false). The feeds of `app_data_dir/feeds` are opened at the first
+command. *In library*: a row's and the details' library entries of the same
+paper (core's `Identity`: the DOI, or the title and year; the library
+indexed once per call), `versionInLibrary` those of another version's DOI;
+`is:inlibrary` in the query and the counts. *Like in your library*: the
+index of the library's papers (`Likeness::of`, every .bib file of the
+library) is built on a thread of its own after every read of the library
+(`load`: at the start, when a .bib file changes, after a write), given to
+the feeds (`FeedsState::set_likeness`, numbered: a build that ends after a
+newer one is dropped; none for an empty library) and to each copy a fetch
+opens, so that the rules use it, then `feeds-changed`; rows have `like`,
+the details `like` and `nearest` (`{id, key, title, subtitle, cosine}`).
+A fetch runs on a copy of the
+feeds opened from the folder, so the tab reads and triages meanwhile: the
+changes made while it runs are applied at once, kept, and applied again to
+the fetched copy, which then takes the place of the feeds. One fetch at a
+time: a second call (the tab opening while polling fetches) waits for the
+running one and answers its summary; finding the papers of a post works on
+a copy too, after a running fetch. The requests: the crate's `Network` (a
+browser's user agent) paced per host (`Pacing::polite`), Crossref and
+OpenAlex asked with the settings' address and OpenAlex key, each only when
+set. The last summary and each subscription's last fetch (when, its error)
+are kept in `app_data_dir/feeds-fetched.json`. `feeds_pdf`: OpenAlex's
+`works/doi:` locations (the published or accepted version's PDF, else its
+page: open; only a preprint's: preprint; licence and host), arXiv's PDF as
+the last resort, once per DOI a session.
+
+**PDF**: the Add sheet's (OpenAlex locations, `citation_pdf_url`, arXiv);
+one paper at a time, when asked.
+
+**Commits**, in order: the plan (this); core: the query over a `Record`;
+the main window as `LibraryView` under a tab bar; feeds: items, parsing,
+merging, store; feeds: sweeps, abstracts, the paper of a post; feeds:
+interests, rules, scores; feeds-cli; the app's commands and settings; the
+Feeds tab; Review; *Like in your library* (core's index; `like:`, the sort,
+`--library`; the app and the tab).
 
 ## Later, optional: Spotlight add-on
 

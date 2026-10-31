@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+  xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+  >
+
+<channel>
+  <title>Futurity</title>
+  <atom:link href="https://www.futurity.org/feed/" rel="self" type="application/rss+xml" />
+  <link>https://www.futurity.org/</link>
+  <description>Research news from top universities.</description>
+  <lastBuildDate>Fri, 30 Oct 2026 19:15:00 +0000</lastBuildDate>
+  <language>en-US</language>
+  <sy:updatePeriod>hourly</sy:updatePeriod>
+  <sy:updateFrequency>1</sy:updateFrequency>
+  <generator>https://wordpress.org/?v=7.0.8</generator>
+
+<image>
+	<url>https://www.futurity.org/wp/wp-content/uploads/2018/08/futurity_ico-70x70.png</url>
+	<title>Futurity</title>
+	<link>https://www.futurity.org/</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+  <item>
+    <title>Internal clock helps plants respond to dangerous stress</title>
+    <link>https://www.futurity.org/plants-internal-clock-salt-stress-3351722/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=plants-internal-clock-salt-stress-3351722</link>
+    <comments>https://www.futurity.org/plants-internal-clock-salt-stress-3351722/#respond</comments>
+    <pubDate>Fri, 30 Oct 2026 19:15:00 +0000</pubDate>
+    <dc:creator><![CDATA[Washington U. in St. Louis]]></dc:creator>
+    		<category><![CDATA[Science and Technology]]></category>
+		<category><![CDATA[plants]]></category>
+		<category><![CDATA[salt]]></category>
+
+    <guid isPermaLink="false">https://www.futurity.org/?p=3351722</guid>
+        <description><![CDATA[New research reveals how a plant's internal clock helps it to respond to dangerous salts in its environment.]]></description>
+        <content:encoded><![CDATA[<img width="640" height="366" src="https://www.futurity.org/wp/wp-content/uploads/2026/10/clock-gene-plants-salt-stress-1600-770x440.jpg" class="attachment-large size-large wp-post-image" alt="A close-up shot of a green leaf." style="padding:0 0 15px 0;" decoding="async" fetchpriority="high" srcset="https://www.futurity.org/wp/wp-content/uploads/2026/10/clock-gene-plants-salt-stress-1600-770x440.jpg 770w, https://www.futurity.org/wp/wp-content/uploads/2026/10/clock-gene-plants-salt-stress-1600-300x172.jpg 300w, https://www.futurity.org/wp/wp-content/uploads/2026/10/clock-gene-plants-salt-stress-1600-768x439.jpg 768w, https://www.futurity.org/wp/wp-content/uploads/2026/10/clock-gene-plants-salt-stress-1600-1536x878.jpg 1536w, https://www.futurity.org/wp/wp-content/uploads/2026/10/clock-gene-plants-salt-stress-1600.jpg 1600w" sizes="(max-width: 640px) 100vw, 640px" /><p>A new study finds that a plant&#8217;s internal clock helps it to respond to dangerous salt stress.</p>
+<p>Salty soil is a growing threat to crops worldwide. Hotter, drier weather has increased evaporation rates, drawing moisture from the soil and leaving behind concentrated mineral salts. At the same time, water shortages are forcing farmers to irrigate using water from lower-quality, saline, or recycled sources. Scientists estimate that around half of the world&#8217;s irrigated farmland is now affected by salinity to some degree.</p>
+<p>A new study from Washington University in St. Louis reveals how a plant&#8217;s internal clock helps it to respond to dangerous salts in its environment. Understanding how plants time their defenses against salt could eventually help scientists develop crops that hold up better against salt stress.</p>
+<p>The research in <a href="https://doi.org/10.1126/sciadv.aei1213"><em>Science Advances</em></a> was led by biologist Xuehua Zhong, a professorial scholar, and WashU postdoctoral fellow Wenwen Tian, an expert in circadian biology.</p>
+<p>Biologists already knew that a plant&#8217;s internal clock and its stress responses were connected—but not how the clock actually reaches the genes that protect the plant when trouble hits.</p>
+<p>The link is surprisingly physical, Zhong says.</p>
+<p>&#8220;When a plant senses salt, a clock protein clusters into tiny droplets inside the nucleus, which frees protective genes to switch on,&#8221; Zhong says. &#8220;Because the clock protein is part of this switch, the plant&#8217;s stress defenses are tied to its sense of time.&#8221;</p>
+<p>Among the researchers&#8217; findings:</p>
+<ul>
+<li><strong>A critical clock protein reacts to salt.</strong> Originally discovered and extensively studied in the model plant <em>Arabidopsis thaliana</em>, a clock protein called TIC ensures that biological rhythms synchronize properly with the 24-hour day-and-night cycle. Zhong and Tian found that when a plant is exposed to salt, TIC quickly gathers into tiny droplets inside the cell nucleus. &#8220;It&#8217;s the first evidence that a clock component can respond directly to salt, linking the plant&#8217;s sense of time with its sense of danger,&#8221; Zhong says.</li>
+<li><strong>Timing matters for survival.</strong> In this new study, plants that were modified to remove TIC were more vulnerable to salt. But these plants also had an internal clock that ran about 21 hours instead of 24. &#8220;When we grew them under 21-hour days that matched their clock, they actually handled salt better,&#8221; Zhong says. &#8220;This shows that a plant copes with stress best when its internal clock is in sync with the outside world.&#8221;</li>
+<li><strong>Plants have a switch that turns on protective genes.</strong> As TIC droplets form, they pull on a group of enzymes that normally keep salt-protection genes turned down, Zhong says. With those enzymes partly out of the way, the genes switch on more strongly, helping the plant survive.</li>
+</ul>
+<p>These findings open novel ways to think about building more resilient crops, the scientists says. Because TIC acts as a salt-responsive switch, it could become a target for breeding or gene editing. The new research also shows that plants cope with salt best when their internal clock matches their environment, a finding that suggests that tuning crop clocks could improve stress tolerance, Zhong says.</p>
+<p>&#8220;The clock directly shapes stress responses,&#8221; says Zhong, who also credited WashU undergraduate researcher Xinheng Lyu and visiting Stanford undergraduate student Grace Qian for making important contributions to this research as coauthors. &#8220;The same stress can produce different gene expression outcomes depending on when it occurs.&#8221;</p>
+<p>Zhong&#8217;s research was supported in part with grants from the National Institutes of Health and the National Science Foundation, as well as other federal funding.</p>
+<p><em>Source: <a href="https://source.washu.edu/2026/10/in-plants-sense-of-time-is-connected-with-sense-of-danger/">Washington University in St. Louis</a></em></p>
+<p>The post <a href="https://www.futurity.org/plants-internal-clock-salt-stress-3351722/">Internal clock helps plants respond to dangerous stress</a> appeared first on <a href="https://www.futurity.org">Futurity</a>.</p>
+]]></content:encoded>
+      <wfw:commentRss>https://www.futurity.org/plants-internal-clock-salt-stress-3351722/feed/</wfw:commentRss>
+    <slash:comments>0</slash:comments>
+    </item>
+    <item>
+    <title>Can a vaccine for moms protect infants from a deadly superbug?</title>
+    <link>https://www.futurity.org/vaccine-mothers-infants-k-pneumoniae-3351832/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=vaccine-mothers-infants-k-pneumoniae-3351832</link>
+    <comments>https://www.futurity.org/vaccine-mothers-infants-k-pneumoniae-3351832/#respond</comments>
+    <pubDate>Fri, 30 Oct 2026 19:09:48 +0000</pubDate>
+    <dc:creator><![CDATA[Washington U. in St. Louis]]></dc:creator>
+    		<category><![CDATA[Health and Medicine]]></category>
+		<category><![CDATA[bacteria]]></category>
+		<category><![CDATA[infections]]></category>
+		<category><![CDATA[vaccines]]></category>
+
+    <guid isPermaLink="false">https://www.futurity.org/?p=3351832</guid>
+        <description><![CDATA[Researchers have discovered that vaccinating mouse mothers transfers antibodies that defend vulnerable newborns against Klebsiella pneumoniae.]]></description>
+        <content:encoded><![CDATA[<img width="640" height="366" src="https://www.futurity.org/wp/wp-content/uploads/2026/10/vaccine-mothers-infants-k-pneumoniae-1600-770x440.jpg" class="attachment-large size-large wp-post-image" alt="A syringe with a drop of vaccine coming out of the needle." style="padding:0 0 15px 0;" decoding="async" srcset="https://www.futurity.org/wp/wp-content/uploads/2026/10/vaccine-mothers-infants-k-pneumoniae-1600-770x440.jpg 770w, https://www.futurity.org/wp/wp-content/uploads/2026/10/vaccine-mothers-infants-k-pneumoniae-1600-300x172.jpg 300w, https://www.futurity.org/wp/wp-content/uploads/2026/10/vaccine-mothers-infants-k-pneumoniae-1600-768x439.jpg 768w, https://www.futurity.org/wp/wp-content/uploads/2026/10/vaccine-mothers-infants-k-pneumoniae-1600-1536x878.jpg 1536w, https://www.futurity.org/wp/wp-content/uploads/2026/10/vaccine-mothers-infants-k-pneumoniae-1600.jpg 1600w" sizes="(max-width: 640px) 100vw, 640px" /><p>Researchers have discovered that vaccinating mouse mothers transfers antibodies that defend vulnerable newborns against <em>Klebsiella pneumoniae</em>.</p>
+<p><em>Klebsiella pneumoniae</em> is a dangerous bacterium that kills thousands of infants in low- and middle-income countries each year and is the leading killer of children globally.</p>
+<p>Such infections can be difficult to treat due to the bacterium&#8217;s growing resistance to antibiotics and there is currently no vaccine available to prevent infection. The study in <a href="https://doi.org/10.1126/sciadv.aeh8222"><em>Science Advances</em></a> points to a promising new strategy for protecting vulnerable infants from the drug-resistant superbug by harnessing maternal immunity.</p>
+<p>&#8220;<em>Klebsiella pneumoniae</em> is a serious threat to newborns who have not yet developed their own immune defenses,&#8221; says the study&#8217;s senior author, David A. Rosen, an associate professor of pediatrics and of molecular microbiology at Washington University School of Medicine in St. Louis.</p>
+<p>&#8220;Our study shows that maternal immunization can effectively bridge that critical window of vulnerability, giving newborns the protection they need right from birth.&#8221;</p>
+<p><em>K. pneumoniae</em> is a big problem around the world, especially in the hospital where it can cause pneumonia and other infections among adults and children. In low- and middle-income countries, where children often get exposed to the bacterium in their environment, it drives severe bacterial blood infections, known as sepsis. Because <em>K. pneumoniae</em> is increasingly resistant to standard antibiotics, doctors are often left without effective medicines to treat such infections.</p>
+<p>The Rosen team collaborated with the lab of Drew Schwartz, an assistant professor of pediatrics, to model <em>K. pneumoniae</em> sepsis in newborn mice that mimics the infection seen in children and asked if vaccinating a pregnant mouse would prevent infection in pups.</p>
+<p>Female mice were immunized at the time of mating and then again once or twice during pregnancy. The vaccine targets two of the most dangerous types of <em>K. pneumoniae</em>—known as K1 and K2—and was developed by Omniose, a St. Louis-based startup. Rosen had previously published findings that show the vaccine is effective in preventing <em>K. pneumoniae</em> infection in adult mice that can progress to life-threatening liver, respiratory tract, bloodstream, and other infections.</p>
+<p>Two weeks after birth, the young mice were exposed to lethal doses of the bacteria, either the K1 or K2 type. Of the two-week-old mouse pups from unvaccinated mothers, 0% infected with the K1 type and less than 35% with the K2 type survived. In contrast, of the young mice from vaccinated mothers, more than 80% infected with either type survived. Whether the mother received two or three doses of the vaccine did not impact survival.</p>
+<p>The researchers drew blood weekly from the young mice starting on their day of birth and continuing up to six weeks of life. They also collected breast milk from lactating mice. They found high concentrations of vaccine-specific antibodies in both the milk of vaccinated mothers and their newborn mice over the course of the study.</p>
+<p>&#8220;Mice that were never immunized themselves are highly protected from a lethal infection just from the durable antibodies transferred to them from their mother,&#8221; explains first author Paeton Wantuch, a staff scientist in the Rosen lab.</p>
+<p>The researchers are now testing updated vaccines designed to shield against multiple strains of the superbug found across the globe.</p>
+<p>&#8220;This study presents the first evidence that giving moms a vaccine could be an effective strategy for protecting their babies against these severe infections,&#8221; says Rosen. &#8220;And it also has established a practical model that we can now use to test therapies and vaccines that will bring us one step closer to human clinical trials with the ultimate goal of impacting global health.&#8221;</p>
+<p>This work was supported by the National Institute of Allergy and Infectious Diseases of the National Institutes of Health (NIH), the Gates Foundation, and the Washington University Department of Pediatrics. The content is solely the responsibility of the authors and does not necessarily represent the official view of the NIH, the Gates Foundation or other funders.</p>
+<p>Competing Interest Statement: Robinson LS, Darwech I, Knoot CJ, and Harding CM have a financial stake in Omniose, a for-profit entity developing bioconjugate vaccines using patented technology reflected in the data presented in this and other published manuscripts.</p>
+<p><em>Source: <a href="https://source.washu.edu/2026/10/vaccinating-moms-protects-offspring-from-deadly-superbug/">Washington University in St. Louis</a></em></p>
+<p>The post <a href="https://www.futurity.org/vaccine-mothers-infants-k-pneumoniae-3351832/">Can a vaccine for moms protect infants from a deadly superbug?</a> appeared first on <a href="https://www.futurity.org">Futurity</a>.</p>
+]]></content:encoded>
+      <wfw:commentRss>https://www.futurity.org/vaccine-mothers-infants-k-pneumoniae-3351832/feed/</wfw:commentRss>
+    <slash:comments>0</slash:comments>
+    </item>
+  </channel>
+</rss>

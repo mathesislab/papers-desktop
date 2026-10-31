@@ -8,6 +8,7 @@
   import "$lib/theme.css";
   import { mac, matches, zoomStep } from "$lib/keys";
   import { writers as listWriters } from "$lib/library/writes";
+  import FeedsSettings from "$lib/settings/FeedsSettings.svelte";
   import type { Writer } from "$lib/types";
 
   // Mirrors src-tauri/src/settings.rs and the SettingsView of lib.rs
@@ -36,6 +37,9 @@
     downloads_panel: boolean;
     /** its folder (~ for the home folder) */
     downloads_folder: string;
+    /** the background polling of the feeds: set in their section (feeds_set_settings), kept as they are here */
+    feeds_poll: boolean;
+    feeds_poll_minutes: number;
   };
   /** mirrors cli_tool::Status */
   type Cli = {
@@ -540,6 +544,8 @@
         </select>
       </label>
     </section>
+
+    <FeedsSettings notify={show} />
 
     <section>
       <h2>General</h2>

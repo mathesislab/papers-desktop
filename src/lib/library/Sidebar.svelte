@@ -1,6 +1,8 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { CheckMenuItem, Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
+  import type { Snippet } from "svelte";
+  import { modClick } from "$lib/keys";
   import { foldTag, lastSegment, parentsOf, sameTag } from "$lib/tags";
   import { fileName, type View } from "./filters";
   import type { Row, TagCount } from "$lib/types";
@@ -8,8 +10,9 @@
   import Downloads from "./Downloads.svelte";
 
   let {
+    saved,
     libraries,
-    bib,
+    bibs,
     views,
     tags,
     view,
@@ -32,10 +35,12 @@
     ondownload,
     onshow,
   }: {
+    /** the Saved section, at the top */
+    saved?: Snippet;
     /** the .bib files, with their number of papers */
     libraries: { bib: string; count: number }[];
-    /** the library shown by the library tab: a .bib file; none: all libraries */
-    bib: string | null;
+    /** the libraries shown by the library tab: .bib files; none: all libraries */
+    bibs: string[];
     /** the views, with their number of papers within the library */
     views: { view: View; name: string; count: number }[];
     /** the tags, with their counts within the library */
@@ -56,11 +61,11 @@
     active: string | null;
     /** the paper whose BibTeX has unsaved changes */
     dirty: string | null;
-    /** a library chosen; none: all libraries */
-    onlibrary: (bib: string | null) => void;
+    /** a library clicked (none: all libraries); with ⌘, to add it to the libraries chosen or take it out (`toggle`) */
+    onlibrary: (bib: string | null, toggle: boolean) => void;
     onview: (view: View) => void;
-    /** a tag clicked: to filter by it, or not any more */
-    ontag: (tag: string) => void;
+    /** a tag clicked: to filter by it, or not any more; with ⌘, as an alternative to the last tag filter */
+    ontag: (tag: string, alternative: boolean) => void;
     /** a parent tag unfolded or folded by its triangle */
     onfold: (tag: string, open: boolean) => void;
     /** a tag renamed in its row */
@@ -188,13 +193,20 @@
 
 <div class="box">
 <nav>
+  {@render saved?.()}
+
   {#if libraries.length > 1}
     <h4>Libraries</h4>
-    <button class="item" class:selected={bib === null} onclick={() => onlibrary(null)}>
+    <button class="item" class:selected={bibs.length === 0} onclick={(e) => onlibrary(null, modClick(e))}>
       <span class="name">All libraries</span><span class="count">{libraries.reduce((n, l) => n + l.count, 0)}</span>
     </button>
     {#each libraries as library}
-      <button class="item" class:selected={bib === library.bib} title={library.bib} onclick={() => onlibrary(library.bib)}>
+      <button
+        class="item"
+        class:selected={bibs.includes(library.bib)}
+        title={library.bib}
+        onclick={(e) => onlibrary(library.bib, modClick(e))}
+      >
         <span class="name">{fileName(library.bib)}</span><span class="count">{library.count}</span>
       </button>
     {/each}
@@ -247,7 +259,7 @@
           {:else}
             <span class="twisty"></span>
           {/if}
-          <button class="label" title={tag} onclick={() => ontag(tag)}>
+          <button class="label" title={tag} onclick={(e) => ontag(tag, modClick(e))}>
             <span class="name">{lastSegment(tag)}</span>
             {#if keyOf(tag)}<span class="key">{keyOf(tag)}</span>{/if}
             <span class="count">{under}</span>

@@ -1,0 +1,10 @@
+{
+  "id": "https://openalex.org/W4410000009",
+  "doi": "https://doi.org/10.5281/zenodo.17740654",
+  "title": "Snow model ensembles for the Canadian Rockies",
+  "publication_date": "2026-10-01",
+  "type": "dataset",
+  "authorships": [{"author_position": "first", "author": {"id": "https://openalex.org/A5000000004", "display_name": "David R. Casson"}, "institutions": []}],
+  "primary_location": {"is_oa": true, "landing_page_url": "https://zenodo.org/records/17740654", "source": {"id": "https://openalex.org/S4306400562", "display_name": "Zenodo (CERN European Organization for Nuclear Research)", "issn_l": null, "type": "repository"}},
+  "abstract_inverted_index": {"Ensembles": [0], "of": [1, 4], "snow": [2], "water": [3], "equivalent": [5], "for": [6], "three": [7], "basins.": [8]}
+}

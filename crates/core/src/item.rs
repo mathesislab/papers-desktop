@@ -9,7 +9,7 @@ use biblatex::{DateValue, Entry, PermissiveType};
 
 use crate::bib::BibEntry;
 use crate::fields::{Name, clean_doi, field, names, raw};
-use crate::search::Marks;
+use crate::record::Marks;
 use crate::text::{Span, Text};
 
 /// How a citation of an item is written.
