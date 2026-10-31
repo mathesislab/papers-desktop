@@ -1,7 +1,8 @@
 <script lang="ts">
   // The Feeds tab of the main window (docs/design.md, Feeds; the mockup docs/mockups/feeds.html): the sidebar (the
   // views, kinds, interests and sources), the list of the items its choices, the segment and the search select, the
-  // details of the one selected; the keys of the triage. The window (src/routes/library/+page.svelte) keeps the
+  // details of the one selected; the keys of the triage; the Review of the shortlist, over the list and the details.
+  // The window (src/routes/library/+page.svelte) keeps the
   // layout, and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is the
   // library's: it opens over this tab, which stays in front after the paper is added.
 
@@ -19,6 +20,7 @@
   import FeedDetails from "./FeedDetails.svelte";
   import FeedsSidebar from "./FeedsSidebar.svelte";
   import FeedTable from "./FeedTable.svelte";
+  import Review from "./Review.svelte";
   import {
     SEGMENTS,
     chooseInterest,
@@ -77,6 +79,7 @@
 
   const FETCH: Shortcut = { key: "r", mod: true };
   const ALL: Shortcut = { key: "a", mod: true };
+  const REVIEW: Shortcut = { key: "Enter", mod: true };
 
   let rows = $state<FeedRow[]>([]);
   let counts = $state<FeedCounts | null>(null);
@@ -99,6 +102,9 @@
   /** the failures of the last fetch, listed */
   let failures = $state(false);
   let input = $state<HTMLInputElement>();
+  /** the Review of the shortlist, over the list and the details */
+  let reviewing = $state(false);
+  let reviewer = $state<ReturnType<typeof Review>>();
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
@@ -296,11 +302,11 @@
     await load(true);
   }
 
-  /** s, x, m: the triage of the items selected toggled (`toggled`). */
-  function triage(action: TriageAction, ids = targets()) {
-    const items = ids
-      .map((id) => byId.get(id) ?? (detail?.id === id ? detail : undefined))
-      .filter((r): r is FeedRow | FeedDetail => r !== undefined);
+  /** s, x, m: the triage of the items selected toggled (`toggled`); an item not in the list (a linked paper) is
+   *  asked for. */
+  async function triage(action: TriageAction, ids = targets()) {
+    const found = await Promise.all(ids.map((id) => byId.get(id) ?? detailOf(id)));
+    const items = found.filter((r): r is FeedRow | FeedDetail => !!r);
     const change = toggled(items, action);
     if (change) setTo(change.ids, change.triage);
   }
@@ -439,6 +445,13 @@
     await menu.popup();
   }
 
+  /** ⌘↩: the Review of the shortlist; again, or Esc in it, the list. */
+  function toggleReview() {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    reviewing = !reviewing;
+    if (!reviewing) load(true);
+  }
+
   /** ⌘F, /: the search field. */
   export function focusSearch() {
     input?.select();
@@ -447,9 +460,10 @@
   /** the rows a page key moves: about those in view */
   const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 160) / 26));
 
-  /** A key of the window while the tab is in front (none while a sheet is open): ⌘R fetches; the arrows, j and k,
-   *  the page keys, Home and End move (⇧ extends the selection with the arrows); s, x, m, o, a, f act on the
-   *  selection; ⇧Space marks all above as seen; / goes to the search, Esc leaves it. */
+  /** A key of the window while the tab is in front (none while a sheet is open): ⌘R fetches, ⌘↩ starts the Review
+   *  (which then has the keys); the arrows, j and k, the page keys, Home and End move (⇧ extends the selection with
+   *  the arrows); s, x, m, o, a, f act on the selection; ⇧Space marks all above as seen; / goes to the search, Esc
+   *  leaves it. */
   export function key(e: KeyboardEvent) {
     if (modalOpen()) return;
     const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
@@ -463,6 +477,8 @@
       action();
     };
     if (matches(e, FETCH)) return act(fetchNow);
+    if (matches(e, REVIEW)) return act(toggleReview);
+    if (reviewing) return reviewer?.key(e);
     if (e.key === "ArrowDown") return go(mod ? "last" : 1);
     if (e.key === "ArrowUp") return go(mod ? "first" : -1);
     if (e.key === "PageDown") return go(pageRows());
@@ -554,76 +570,96 @@
         <span class="spin">↻</span>
         {fetching ? "Fetching…" : "Fetch"}
       </button>
+      <button class="tool primary" class:on={reviewing} title="Review the shortlist, one item at a time ({label(REVIEW)})" onclick={toggleReview}>
+        {reviewing ? "Leave review" : `Review shortlist (${shortlisted})`}
+      </button>
     </header>
     <div class="content">
-      <section class="list">
-        <div class="filters">
-          <span class="segment" role="group" aria-label="Kinds">
-            {#each SEGMENTS as s (s.segment)}
-              <button class:on={filters.segment === s.segment} onclick={() => (filters = chooseSegment(filters, s.segment))}>{s.name}</button>
-            {/each}
-          </span>
-          {#each chips as chip (chip.kind)}
-            <span class="chip">
-              <span class="text" title={chip.text}>{chip.text}</span>
-              <button aria-label="Remove the filter {chip.text}" onclick={() => dropChip(chip)}>×</button>
+      {#if reviewing}
+        <Review
+          bind:this={reviewer}
+          {colours}
+          {pdfOf}
+          onadd={add}
+          ontriage={(id, t) => setTo([id], t)}
+          onopen={(id) => openItems([id])}
+          onitem={(id) => {
+            toggleReview();
+            showItem(id);
+          }}
+          {onentry}
+          onclose={toggleReview}
+        />
+      {:else}
+        <section class="list">
+          <div class="filters">
+            <span class="segment" role="group" aria-label="Kinds">
+              {#each SEGMENTS as s (s.segment)}
+                <button class:on={filters.segment === s.segment} onclick={() => (filters = chooseSegment(filters, s.segment))}>{s.name}</button>
+              {/each}
             </span>
-          {/each}
-          <span class="spacer"></span>
-          <button
-            class="sort"
-            title="Sort by score or by date"
-            onclick={() => (filters.sort = filters.sort === "score" ? "newest" : "score")}
-          >
-            {summary} · {filters.sort === "score" ? "best score first" : "newest first"}
-          </button>
-        </div>
-        {#if !loaded}
-          <p class="empty">Loading the feeds…</p>
-        {:else if failure && !rows.length}
-          <p class="empty error">{failure}</p>
-        {:else if !subscriptions.length && !rows.length}
-          <p class="empty">No subscriptions yet: add them in Settings, Feeds.</p>
-        {:else if !rows.length}
-          <p class="empty">No item matches.</p>
-        {:else}
-          <FeedTable
-            {rows}
-            {selected}
-            {focus}
-            sort={filters.sort}
-            {colours}
-            onsort={(sort) => (filters.sort = sort)}
-            onselect={select}
-            onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
-            onmenu={rowMenu}
-          />
-        {/if}
-      </section>
-      {#if showDetails}
-        <Splitter bind:width={details} side="right" min={260} max={600} />
-        <aside class="details" style:width="{details}px">
-          {#if detail}
-            <FeedDetails
-              {detail}
-              count={focus && selected.has(focus) ? selected.size : 1}
-              {byId}
-              {colours}
-              finding={finding === detail.id}
-              {pdfOf}
-              onadd={(pdf) => addItems(targets().length ? targets() : [detail!.id], pdf)}
-              onaddlink={(link: Linked) => add({ id: link.doi, item: link.item }, true)}
-              ontriage={(action) => triage(action, targets().length ? targets() : [detail!.id])}
-              onshortlistlink={(item) => triage("shortlist", [item])}
-              onopen={() => openItems(targets().length ? targets() : [detail!.id])}
-              onfind={() => find(detail!.id)}
-              onitem={showItem}
-              {onentry}
-            />
+            {#each chips as chip (chip.kind)}
+              <span class="chip">
+                <span class="text" title={chip.text}>{chip.text}</span>
+                <button aria-label="Remove the filter {chip.text}" onclick={() => dropChip(chip)}>×</button>
+              </span>
+            {/each}
+            <span class="spacer"></span>
+            <button
+              class="sort"
+              title="Sort by score or by date"
+              onclick={() => (filters.sort = filters.sort === "score" ? "newest" : "score")}
+            >
+              {summary} · {filters.sort === "score" ? "best score first" : "newest first"}
+            </button>
+          </div>
+          {#if !loaded}
+            <p class="empty">Loading the feeds…</p>
+          {:else if failure && !rows.length}
+            <p class="empty error">{failure}</p>
+          {:else if !subscriptions.length && !rows.length}
+            <p class="empty">No subscriptions yet: add them in Settings, Feeds.</p>
+          {:else if !rows.length}
+            <p class="empty">No item matches.</p>
           {:else}
-            <p class="empty">No item selected</p>
+            <FeedTable
+              {rows}
+              {selected}
+              {focus}
+              sort={filters.sort}
+              {colours}
+              onsort={(sort) => (filters.sort = sort)}
+              onselect={select}
+              onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
+              onmenu={rowMenu}
+            />
           {/if}
-        </aside>
+        </section>
+        {#if showDetails}
+          <Splitter bind:width={details} side="right" min={260} max={600} />
+          <aside class="details" style:width="{details}px">
+            {#if detail}
+              <FeedDetails
+                {detail}
+                count={focus && selected.has(focus) ? selected.size : 1}
+                {byId}
+                {colours}
+                finding={finding === detail.id}
+                {pdfOf}
+                onadd={(pdf) => addItems(targets().length ? targets() : [detail!.id], pdf)}
+                onaddlink={(link: Linked) => add({ id: link.doi, item: link.item }, true)}
+                ontriage={(action) => triage(action, targets().length ? targets() : [detail!.id])}
+                onshortlistlink={(item) => triage("shortlist", [item])}
+                onopen={() => openItems(targets().length ? targets() : [detail!.id])}
+                onfind={() => find(detail!.id)}
+                onitem={showItem}
+                {onentry}
+              />
+            {:else}
+              <p class="empty">No item selected</p>
+            {/if}
+          </aside>
+        {/if}
       {/if}
     </div>
     <footer class="status">
@@ -771,6 +807,16 @@
   }
   .tool:disabled {
     opacity: 0.6;
+  }
+  .tool.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .tool.primary.on {
+    border-color: var(--border);
+    background: var(--line);
+    color: var(--fg);
   }
   .tool.busy .spin {
     animation: spin 1s linear infinite;
