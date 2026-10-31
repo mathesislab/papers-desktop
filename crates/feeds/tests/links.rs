@@ -4,7 +4,7 @@
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Confidence, Error, Feed, Feeds, ItemKind, Linked, Reply, SourceKind, Via,
+    Access, Confidence, Error, Feed, Feeds, ItemKind, Linked, Reply, SourceKind, Via, paragraphs,
 };
 
 const FUTURITY: &str = "https://www.futurity.org/feed/";
@@ -267,4 +267,23 @@ fn a_blog_post_titled_as_its_paper_is_found_by_its_title() {
     assert_eq!(feeds.items()[0].links, found.links, "kept on the post");
     let reopened = Feeds::open(dir.path()).unwrap();
     assert_eq!(reopened.items(), feeds.items());
+}
+
+#[test]
+fn a_posts_text_as_paragraphs() {
+    let html = "<p>Ice <em>sheets</em> melt.</p><ul><li>One</li><li>Two<br>lines</li></ul>\
+                <script>var x;</script><div>Last\n   words</div> tail";
+    assert_eq!(
+        paragraphs(html),
+        [
+            "Ice sheets melt.",
+            "One",
+            "Two",
+            "lines",
+            "Last words",
+            "tail"
+        ]
+    );
+    assert_eq!(paragraphs("plain text"), ["plain text"]);
+    assert!(paragraphs("  ").is_empty());
 }

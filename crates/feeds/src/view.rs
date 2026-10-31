@@ -124,6 +124,18 @@ impl Feeds {
         View { rows, counts }
     }
 
+    /// An item alone, as the details show it: its texts marked where the
+    /// query matched (if it does) and its interests' terms; by its id or an alias.
+    pub fn row_of(&self, id: &str, query: &str, matching: Matching) -> Option<Row> {
+        let item = self.item(id)?;
+        let seen = self.seen(item, Vec::new());
+        let marks = seen
+            .record
+            .check(&parse(query), matching)
+            .unwrap_or_default();
+        Some(self.row(item, seen, &marks))
+    }
+
     /// An item shown: the query's marks, its interests' terms marked too.
     fn row(&self, item: &Item, seen: Seen, marks: &Marks) -> Row {
         let summary = item.summary.as_deref().unwrap_or("");

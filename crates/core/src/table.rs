@@ -217,18 +217,23 @@ pub struct Identity {
 
 impl Item {
     pub fn identity(&self) -> Identity {
-        let words = words(&fold(&self.title)).join(" ");
+        Identity::of(self.doi.as_deref(), &self.title, self.year)
+    }
+}
+
+impl Identity {
+    /// The identity of a paper of this DOI, title and year, from anywhere (a feed's item too).
+    pub fn of(doi: Option<&str>, title: &str, year: Option<i32>) -> Identity {
+        let words = words(&fold(title)).join(" ");
         Identity {
-            doi: self.doi.as_ref().map(|d| d.to_lowercase()),
-            title: (!words.is_empty()).then(|| match self.year {
+            doi: doi.map(str::to_lowercase),
+            title: (!words.is_empty()).then(|| match year {
                 Some(year) => format!("{words} ({year})"),
                 None => words,
             }),
         }
     }
-}
 
-impl Identity {
     /// Whether it is the same paper: the same DOI, or the same title and year.
     pub fn same_paper(&self, other: &Identity) -> bool {
         let same = |a: &Option<String>, b: &Option<String>| a.is_some() && a == b;

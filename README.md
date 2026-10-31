@@ -168,6 +168,10 @@ macOS, [the Linux path is below](#linux)), which can also be edited:
   `american-meteorological-society`, `nature`, `science`, `apa`,
   `elsevier-harvard`, `chicago-author-date` — or the path of any `.csl` file
   (e.g. from the [Zotero style repository](https://www.zotero.org/styles)).
+- `feeds_poll`: fetch the feeds in the background (default `false`: nothing
+  is sent unless asked); `feeds_poll_minutes`: every so many minutes (60, 5
+  at least). Set in the Feeds section, with the subscriptions, interests and
+  rules, which are kept in the app data folder (`feeds/config.json`).
 
 Reload Library re-reads the file and the library.
 

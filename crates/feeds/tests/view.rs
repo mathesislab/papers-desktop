@@ -4,7 +4,7 @@
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
-use papers_core::Span;
+use papers_core::{Matching, Span};
 use papers_feeds::http::Recorded;
 use papers_feeds::{
     Access, Action, Feed, Feeds, Interest, ItemKind, Matcher, Reply, Rule, Sort, SourceKind,
@@ -298,6 +298,21 @@ fn rows_are_sorted_scored_and_marked() {
         [("Firn", 6.0), ("Ice sheets", 3.0)],
         "the best first"
     );
+}
+
+#[test]
+fn an_item_alone_is_marked_whether_the_query_matches_or_not() {
+    let dir = tempfile::tempdir().unwrap();
+    let feeds = feeds(dir.path(), &Clock::new(), Vec::new());
+    let id = id_of(&feeds, J1.1);
+    let marked = |query: &str| -> Vec<String> {
+        let row = feeds.row_of(&id, query, Matching::WordStart).unwrap();
+        let marked = row.title.iter().filter(|s| s.mark);
+        marked.map(|s| s.text.clone()).collect()
+    };
+    assert_eq!(marked("hysteresis"), ["Hysteresis", "ice sheet"]);
+    assert_eq!(marked("firn"), ["ice sheet"], "the interests' terms only");
+    assert!(feeds.row_of("none", "", Matching::WordStart).is_none());
 }
 
 #[test]

@@ -14,7 +14,9 @@
 //! [`Interest`]s score the items, as paper-feeder does; [`Rule`]s triage new
 //! items by a [`query`] (core's language over a `Record` of an item);
 //! [`Feeds::view`] gives the items a query shows and the counts of the
-//! sidebar. Nothing here knows of .bib files.
+//! sidebar. The subscriptions go out and come in as OPML; [`suggested`]
+//! lists some to start with; [`pdf`] tells the free copy of a paper. Nothing
+//! here knows of .bib files.
 
 mod crossref;
 mod enrich;
@@ -27,10 +29,13 @@ mod merge;
 mod model;
 pub mod normalize;
 mod openalex;
+mod opml;
 mod parse;
+mod pdf;
 pub mod query;
 mod rules;
 mod store;
+mod suggested;
 mod sweep;
 mod view;
 
@@ -40,14 +45,17 @@ pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
 pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
 pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
-pub use links::Found;
+pub use links::{Found, paragraphs};
 pub use model::{
     Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Source, SourceKind, Stage,
     Subscription, Triage, Version, Via,
 };
+pub use opml::Outline;
 pub use parse::{Parsed, parse};
+pub use pdf::{OpenAccess, Pdf, pdf};
 pub use rules::{Action, Rule};
 pub use store::LOOKBACK_DAYS;
+pub use suggested::{Suggested, suggested};
 pub use sweep::SWEEP_PAGES;
 pub use view::{Counts, IsValues, Row, Sort, View, ViewRequest};
 
@@ -76,6 +84,9 @@ pub enum Error {
     /// a feed that does not parse
     #[error("{url}: {message}")]
     Feed { url: String, message: String },
+    /// a list of subscriptions that does not parse
+    #[error("not an OPML list: {message}")]
+    Opml { message: String },
     #[error("{}: {source}", path.display())]
     Read {
         path: PathBuf,

@@ -54,6 +54,11 @@ pub struct Settings {
     pub downloads_panel: bool,
     /// the folder of the panel (~ for the home directory)
     pub downloads_folder: PathBuf,
+    /// fetch the feeds in the background, every `feeds_poll_minutes`; off by
+    /// default: nothing is sent unless asked. Set in the Feeds section
+    pub feeds_poll: bool,
+    /// the minutes between two fetches of the polling (5 at least)
+    pub feeds_poll_minutes: u32,
 }
 
 /// What writes a papers library: papers-rs, which the app has built in, or a
@@ -140,6 +145,8 @@ impl Default for Settings {
             pinned_tags: Vec::new(),
             downloads_panel: true,
             downloads_folder: PathBuf::from("~/Downloads"),
+            feeds_poll: false,
+            feeds_poll_minutes: 60,
         }
     }
 }
@@ -284,6 +291,16 @@ mod tests {
             ..Settings::default()
         };
         assert_eq!(empty.downloads_dir(), expand("~/Downloads"));
+    }
+
+    #[test]
+    fn no_polling_of_the_feeds_by_default_also_for_older_files() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert!(!settings.feeds_poll);
+        assert_eq!(settings.feeds_poll_minutes, 60);
+        let set: Settings =
+            serde_json::from_str(r#"{"feeds_poll": true, "feeds_poll_minutes": 30}"#).unwrap();
+        assert_eq!((set.feeds_poll, set.feeds_poll_minutes), (true, 30));
     }
 
     #[test]
