@@ -1,0 +1,15 @@
+{
+  "meta": {"count": 3, "db_response_time_ms": 12, "page": null, "per_page": 2, "next_cursor": null, "groups_count": null},
+  "results": [
+    {
+      "id": "https://openalex.org/W4410000003",
+      "doi": "https://doi.org/10.48550/arxiv.2610.38522",
+      "title": "Atmospheric power and the hydrological cycle",
+      "publication_date": "2026-10-22",
+      "type": "article",
+      "authorships": [{"author_position": "first", "author": {"id": "https://openalex.org/A5000000003", "display_name": "Anastassia M. Makarieva"}, "institutions": []}],
+      "primary_location": {"is_oa": true, "landing_page_url": "https://arxiv.org/abs/2610.38522", "source": {"id": "https://openalex.org/S4306400194", "display_name": "arXiv (Cornell University)", "issn_l": null, "type": "repository"}},
+      "abstract_inverted_index": {"Atmospheric": [0], "power": [1], "is": [2], "assessed.": [3]}
+    }
+  ]
+}

@@ -1,38 +1,51 @@
 //! Feeds for papers-desktop: the new papers of the journals, preprint servers,
 //! news sites and blogs followed.
 //!
-//! A [`Subscription`] is fetched (conditional GET, paced per host, through an
-//! [`Http`]), its feed parsed into [`Entry`]s (with paper-feeder's fixes:
+//! A [`Subscription`] follows a [`Feed`]: an RSS or Atom feed, fetched by a
+//! conditional GET and parsed into [`Entry`]s (with paper-feeder's fixes:
 //! Copernicus bylines, Wiley author blobs, the DOI from the guid,
-//! `prism:doi` or the link), and the entries of all sources merged into
-//! [`Item`]s: one per paper or post. [`Feeds`] keeps them in a folder of
-//! JSON files with their [`Triage`]. Nothing here knows of .bib files.
+//! `prism:doi` or the link), or a sweep of Crossref (a journal's ISSN) or
+//! OpenAlex (a filter) for the works new since the last. Requests go through
+//! an [`Http`] (paced per host), the APIs' with an [`Access`]. The entries of
+//! all sources are merged into [`Item`]s, one per paper or post. [`Feeds`]
+//! keeps them in a folder of JSON files with their [`Triage`].
+//! Nothing here knows of .bib files.
 
+mod crossref;
 mod extras;
 mod feeds;
 pub mod http;
 mod merge;
 mod model;
 pub mod normalize;
+mod openalex;
 mod parse;
 mod store;
+mod sweep;
 
 use std::path::PathBuf;
 
 pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
-pub use http::{Http, Network, Reply, Request};
+pub use http::{Access, Http, Network, Reply, Request};
 pub use model::{
-    Entry, Item, ItemKind, Mark, Source, SourceKind, Stage, Subscription, Triage, Version,
+    Entry, Feed, Item, ItemKind, Mark, Source, SourceKind, Stage, Subscription, Triage, Version,
 };
 pub use parse::{Parsed, parse};
+pub use store::LOOKBACK_DAYS;
+pub use sweep::SWEEP_PAGES;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// a subscription's address that is not an http(s) URL
     #[error("{url}: not a feed address: {message}")]
     Url { url: String, message: String },
-    #[error("{url}: already subscribed ({id})")]
-    Subscribed { url: String, id: String },
+    #[error("{feed}: already subscribed ({id})")]
+    Subscribed { feed: String, id: String },
+    /// an ISSN of a wrong form or check digit
+    #[error("{issn}: not an ISSN")]
+    Issn { issn: String },
+    #[error("{filter:?}: not an OpenAlex filter")]
+    Filter { filter: String },
     #[error("{id}: no such subscription")]
     NoSubscription { id: String },
     #[error("{id}: no such item")]

@@ -1,14 +1,14 @@
-//! The feeds of a folder: subscribing, fetching every subscription into the
-//! items, the triage of items, and the pruning of old ones.
+//! The feeds of a folder: subscribing, fetching every subscription (a feed or
+//! a sweep) into the items, the triage of items, and the pruning of old ones.
 
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-use crate::http::{FEED_ACCEPT, Http, Request};
+use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::merge::Merger;
-use crate::model::{Item, Mark, SourceKind, Subscription, Triage};
-use crate::normalize::{canonical_url, feed_key, short_id};
+use crate::model::{Entry, Feed, Item, Mark, SourceKind, Subscription, Triage};
+use crate::normalize::short_id;
 use crate::parse::parse;
 use crate::store::{self, CONFIG, Config, HTTP, ITEMS, Items, STATE, State, Validated, Validators};
 use crate::{Error, Result};
@@ -43,12 +43,12 @@ pub enum Outcome {
 
 /// A feeds folder, loaded.
 pub struct Feeds {
-    dir: PathBuf,
-    config: Config,
-    items: Items,
-    state: State,
-    http: Validated,
-    now: Now,
+    pub(crate) dir: PathBuf,
+    pub(crate) config: Config,
+    pub(crate) items: Items,
+    pub(crate) state: State,
+    pub(crate) http: Validated,
+    pub(crate) now: Now,
 }
 
 impl Feeds {
@@ -74,24 +74,20 @@ impl Feeds {
         &self.config.subscriptions
     }
 
-    /// A new subscription of a feed's address, unless it is one already
-    /// (http and https are one).
-    pub fn subscribe(&mut self, url: &str, kind: SourceKind) -> Result<Subscription> {
-        let url = canonical_url(url)?;
-        let key = feed_key(&url);
-        if let Some(known) = self
-            .subscriptions()
-            .iter()
-            .find(|s| feed_key(&s.url) == key)
-        {
+    /// A new subscription of a feed (its address canonical) or a sweep,
+    /// unless it is one already (http and https are one).
+    pub fn subscribe(&mut self, feed: Feed, kind: SourceKind) -> Result<Subscription> {
+        let feed = feed.canonical()?;
+        let key = feed.key();
+        if let Some(known) = self.subscriptions().iter().find(|s| s.feed.key() == key) {
             return Err(Error::Subscribed {
-                url,
+                feed: feed.to_string(),
                 id: known.id.clone(),
             });
         }
         let subscription = Subscription {
-            id: short_id(&format!("feed:{key}")),
-            url,
+            id: short_id(&key),
+            feed,
             title: None,
             kind,
             journal: None,
@@ -116,32 +112,49 @@ impl Feeds {
         Ok(subscription)
     }
 
+    /// The days a sweep looks back the first time.
+    pub fn lookback_days(&self) -> u32 {
+        self.config.lookback_days
+    }
+
+    /// Sets the days a sweep looks back the first time.
+    pub fn set_lookback_days(&mut self, days: u32) -> Result<()> {
+        self.config.lookback_days = days;
+        store::write(&self.dir, CONFIG, &self.config)
+    }
+
     /// Fetches every subscription, one after the other, into the items; a
-    /// feed that fails is reported and the others go on.
-    pub fn fetch(&mut self, http: &dyn Http) -> Result<FetchReport> {
+    /// feed that fails is reported and the others go on. The APIs are asked with
+    /// `access`.
+    pub fn fetch(&mut self, http: &dyn Http, access: &Access) -> Result<FetchReport> {
         let mut report = FetchReport::default();
         for i in 0..self.config.subscriptions.len() {
-            let outcome = self.fetch_one(i, http);
+            let outcome = self.fetch_subscription(i, http, access);
             let subscription = self.config.subscriptions[i].id.clone();
             report.feeds.push(FeedReport {
                 subscription,
                 outcome,
             });
         }
-        store::write(&self.dir, CONFIG, &self.config)?;
-        store::write(&self.dir, ITEMS, &self.items)?;
-        store::write(&self.dir, STATE, &self.state)?;
-        store::write(&self.dir, HTTP, &self.http)?;
+        self.save()?;
         Ok(report)
     }
 
-    /// Fetches a subscription: a conditional GET, the feed parsed and merged.
-    fn fetch_one(&mut self, i: usize, http: &dyn Http) -> Outcome {
+    /// Every file of the folder.
+    pub(crate) fn save(&self) -> Result<()> {
+        store::write(&self.dir, CONFIG, &self.config)?;
+        store::write(&self.dir, ITEMS, &self.items)?;
+        store::write(&self.dir, STATE, &self.state)?;
+        store::write(&self.dir, HTTP, &self.http)
+    }
+
+    /// Fetches a feed: a conditional GET, the feed parsed and merged.
+    pub(crate) fn fetch_feed(&mut self, i: usize, url: &str, http: &dyn Http) -> Outcome {
         let subscription = &self.config.subscriptions[i];
         let id = subscription.id.clone();
         let known = self.http.get(&id).cloned().unwrap_or_default();
         let request = Request {
-            url: subscription.url.clone(),
+            url: url.to_string(),
             accept: Some(FEED_ACCEPT.to_string()),
             if_none_match: known.etag.clone(),
             if_modified_since: known.last_modified.clone(),
@@ -153,6 +166,7 @@ impl Feeds {
         let validators = Validators {
             etag: reply.etag.clone().or(known.etag),
             last_modified: reply.last_modified.clone().or(known.last_modified),
+            swept: None,
         };
         match reply.status {
             304 => {
@@ -172,21 +186,14 @@ impl Feeds {
                 }
                 Err(e) => Outcome::Failed(e.to_string()),
             },
-            status => {
-                let retry = reply
-                    .retry_after
-                    .map(|r| format!(", retry after {r}"))
-                    .unwrap_or_default();
-                Outcome::Failed(format!("HTTP {status}{retry}"))
-            }
+            _ => Outcome::Failed(failure(&reply)),
         }
     }
 
     /// The entries of a subscription's feed into the items; the number of new
     /// items. Only these entries are listed by it now, and the triage of a
     /// merged item follows it.
-    fn merge(&mut self, subscription: &str, entries: Vec<crate::Entry>) -> usize {
-        let now = (self.now)();
+    pub(crate) fn merge(&mut self, subscription: &str, entries: Vec<Entry>) -> usize {
         for item in &mut self.items.items {
             for source in &mut item.sources {
                 if source.entry.source == subscription {
@@ -194,6 +201,7 @@ impl Feeds {
                 }
             }
         }
+        let now = (self.now)();
         let mut merger = Merger::new(&mut self.items.items, &mut self.items.aliases);
         let new = entries
             .into_iter()

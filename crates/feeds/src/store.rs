@@ -1,13 +1,14 @@
 //! The files of a feeds folder: `config.json` (the subscriptions),
 //! `items.json` (the items and the aliases of merged ones), `state.json` (the
 //! triage of each item), `http.json` (the validators of each subscription's
-//! last answer). Each is read whole, and written whole through a temporary
-//! file renamed over it.
+//! last answer, the time of its last sweep). Each is read whole, and written
+//! whole through a temporary file renamed over it.
 
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -19,11 +20,30 @@ pub(crate) const ITEMS: &str = "items.json";
 pub(crate) const STATE: &str = "state.json";
 pub(crate) const HTTP: &str = "http.json";
 
+/// The days a sweep looks back the first time.
+pub const LOOKBACK_DAYS: u32 = 14;
+
 /// `config.json`: what the user set.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Config {
     #[serde(default)]
     pub subscriptions: Vec<Subscription>,
+    /// the days a sweep looks back the first time
+    #[serde(default = "lookback_days")]
+    pub lookback_days: u32,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            subscriptions: Vec::new(),
+            lookback_days: LOOKBACK_DAYS,
+        }
+    }
+}
+
+fn lookback_days() -> u32 {
+    LOOKBACK_DAYS
 }
 
 /// `items.json`: the items, and the ids of merged items to the item they went into.
@@ -38,11 +58,14 @@ pub(crate) struct Items {
 /// `state.json`: the triage of items, by id.
 pub(crate) type State = BTreeMap<String, Mark>;
 
-/// The validators of a subscription's last answer, for a conditional GET.
+/// What the next request of a subscription is conditional on: the validators
+/// of a feed's last answer, the start of a sweep's last success.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Validators {
     pub etag: Option<String>,
     pub last_modified: Option<String>,
+    #[serde(default)]
+    pub swept: Option<DateTime<Utc>>,
 }
 
 /// `http.json`: the validators, by subscription id.

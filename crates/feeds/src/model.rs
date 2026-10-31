@@ -4,6 +4,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::normalize::{canonical_issn, canonical_url, feed_key};
+use crate::{Error, Result};
+
 /// What a subscription follows, which gives its items their kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -37,12 +40,73 @@ pub enum ItemKind {
     Blog,
 }
 
+/// What a subscription follows: a feed, or a sweep of Crossref or OpenAlex.
+/// In `config.json` as the subscription's `url`, `issn` or `openalex`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Feed {
+    /// an RSS, Atom or JSON feed; canonical: scheme and host lowercased, no fragment
+    Rss { url: String },
+    /// the new works of a journal in Crossref, by ISSN (`1994-0424`)
+    Crossref { issn: String },
+    /// the new works of an OpenAlex filter: `primary_topic.id:T10644`,
+    /// `cites:W1|W2`, `authorships.author.id:A123`
+    OpenAlex {
+        #[serde(rename = "openalex")]
+        filter: String,
+    },
+}
+
+impl Feed {
+    /// The feed checked and canonical: an http(s) URL, a valid ISSN, a filter.
+    pub fn canonical(&self) -> Result<Feed> {
+        Ok(match self {
+            Feed::Rss { url } => Feed::Rss {
+                url: canonical_url(url)?,
+            },
+            Feed::Crossref { issn } => Feed::Crossref {
+                issn: canonical_issn(issn).ok_or_else(|| Error::Issn { issn: issn.clone() })?,
+            },
+            Feed::OpenAlex { filter } => match filter.trim() {
+                "" => {
+                    return Err(Error::Filter {
+                        filter: filter.clone(),
+                    });
+                }
+                filter => Feed::OpenAlex {
+                    filter: filter.to_string(),
+                },
+            },
+        })
+    }
+
+    /// What makes two canonical feeds the same (http and https are one), and
+    /// the subscription's id.
+    pub fn key(&self) -> String {
+        match self {
+            Feed::Rss { url } => format!("feed:{}", feed_key(url)),
+            Feed::Crossref { issn } => format!("crossref:{issn}"),
+            Feed::OpenAlex { filter } => format!("openalex:{filter}"),
+        }
+    }
+}
+
+impl std::fmt::Display for Feed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Feed::Rss { url } => write!(f, "{url}"),
+            Feed::Crossref { issn } => write!(f, "Crossref ISSN {issn}"),
+            Feed::OpenAlex { filter } => write!(f, "OpenAlex {filter}"),
+        }
+    }
+}
+
 /// A feed followed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Subscription {
     pub id: String,
-    /// canonical: scheme and host lowercased, no fragment
-    pub url: String,
+    #[serde(flatten)]
+    pub feed: Feed,
     /// the feed's own title, until the user names it
     pub title: Option<String>,
     pub kind: SourceKind,

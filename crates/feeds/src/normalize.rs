@@ -60,6 +60,34 @@ pub fn is_preprint_doi(doi: &str) -> bool {
     PREPRINT_DOIS.iter().any(|p| doi.starts_with(p))
 }
 
+/// An ISSN as `NNNN-NNNC` (C a digit or X), if its check digit is right.
+pub fn canonical_issn(text: &str) -> Option<String> {
+    let chars: Vec<char> = text
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .map(|c| c.to_ascii_uppercase())
+        .collect();
+    let [digits @ .., check] = chars.as_slice() else {
+        return None;
+    };
+    if digits.len() != 7 || !digits.iter().all(char::is_ascii_digit) {
+        return None;
+    }
+    let sum: u32 = (2..=8)
+        .rev()
+        .zip(digits)
+        .map(|(weight, d)| weight * d.to_digit(10).unwrap_or(0))
+        .sum();
+    let expected = match (11 - sum % 11) % 11 {
+        10 => 'X',
+        n => char::from_digit(n, 10)?,
+    };
+    (*check == expected).then(|| {
+        let digits: String = digits.iter().collect();
+        format!("{}-{}{check}", &digits[..4], &digits[4..])
+    })
+}
+
 /// The arXiv id in a text (`oai:arXiv.org:2610.38522v1`, an abs or pdf link,
 /// `arXiv:…`, an arXiv DOI), without its version.
 pub fn arxiv_id(text: &str) -> Option<String> {

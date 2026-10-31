@@ -1,11 +1,13 @@
 //! The recorded feeds (October 2026, trimmed to a few items) as entries.
 
-use papers_feeds::{Entry, ItemKind, SourceKind, Subscription, parse};
+use papers_feeds::{Entry, Feed, ItemKind, SourceKind, Subscription, parse};
 
 fn subscription(kind: SourceKind) -> Subscription {
     Subscription {
         id: "sub".to_string(),
-        url: "https://example.org/feed".to_string(),
+        feed: Feed::Rss {
+            url: "https://example.org/feed".to_string(),
+        },
         title: None,
         kind,
         journal: None,

@@ -108,3 +108,14 @@ fn short_ids_are_stable() {
     assert_ne!(short_id("doi:10.1/a"), short_id("doi:10.1/b"));
     assert_eq!(short_id("").len(), 12);
 }
+
+#[test]
+fn issns_with_their_check_digit() {
+    assert_eq!(canonical_issn("1994-0424").as_deref(), Some("1994-0424"));
+    assert_eq!(canonical_issn(" 19940424 ").as_deref(), Some("1994-0424"));
+    assert_eq!(canonical_issn("0094-8276").as_deref(), Some("0094-8276"));
+    assert_eq!(canonical_issn("2169-897x").as_deref(), Some("2169-897X"));
+    for wrong in ["1994-0425", "1994-042", "abcd-efgh", ""] {
+        assert_eq!(canonical_issn(wrong), None, "{wrong}");
+    }
+}
