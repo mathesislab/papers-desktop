@@ -58,12 +58,19 @@ export interface FeedCounts {
   all: number;
   /** by `is:` value: new, seen, shortlisted, dismissed, added, editorial, inlibrary */
   is: Record<string, number>;
+  total: FeedGroups;
+  /** those new */
+  unread: FeedGroups;
+  /** what each saved search shows, by its name */
+  searches: Record<string, number>;
+}
+
+/** Items by kind, interest and subscription. */
+export interface FeedGroups {
   kinds: Partial<Record<ItemKind, number>>;
   interests: Record<string, number>;
   /** by subscription title */
   sources: Record<string, number>;
-  /** what each saved search shows, by its name */
-  searches: Record<string, number>;
 }
 
 export interface FeedView {

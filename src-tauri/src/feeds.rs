@@ -44,9 +44,9 @@ use chrono::{DateTime, Datelike, TimeDelta, Utc};
 use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
-    Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, Journal, Journals,
-    LOOKUP, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort, SourceKind,
-    Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
+    Access, Confidence, Feed, Feeds, FetchReport, Groups, Interest, Item, ItemKind, Journal,
+    Journals, LOOKUP, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort,
+    SourceKind, Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -689,10 +689,35 @@ pub struct FeedRow {
 pub struct FeedCounts {
     all: usize,
     is: BTreeMap<String, usize>,
+    total: FeedGroups,
+    /// those new
+    unread: FeedGroups,
+    searches: BTreeMap<String, usize>,
+}
+
+/// Items by kind, interest and subscription (by title).
+#[derive(Debug, Serialize)]
+pub struct FeedGroups {
     kinds: BTreeMap<ItemKind, usize>,
     interests: BTreeMap<String, usize>,
     sources: BTreeMap<String, usize>,
-    searches: BTreeMap<String, usize>,
+}
+
+impl FeedGroups {
+    /// The crate's groups, the subscriptions by title.
+    fn of(groups: Groups, titles: &HashMap<&str, String>) -> FeedGroups {
+        let mut sources: BTreeMap<String, usize> = BTreeMap::new();
+        for (id, count) in groups.sources {
+            if let Some(title) = titles.get(id.as_str()) {
+                *sources.entry(title.clone()).or_default() += count;
+            }
+        }
+        FeedGroups {
+            kinds: groups.kinds,
+            interests: groups.interests,
+            sources,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -1017,21 +1042,14 @@ pub fn view(
             like: row.like,
         }
     });
-    let mut sources: BTreeMap<String, usize> = BTreeMap::new();
-    for (id, count) in view.counts.sources {
-        if let Some(title) = titles.get(id.as_str()) {
-            *sources.entry(title.clone()).or_default() += count;
-        }
-    }
     FeedView {
         held: view.held,
         rows: rows.collect(),
         counts: FeedCounts {
             all: view.counts.all,
             is: view.counts.is,
-            kinds: view.counts.kinds,
-            interests: view.counts.interests,
-            sources,
+            total: FeedGroups::of(view.counts.total, &titles),
+            unread: FeedGroups::of(view.counts.unread, &titles),
             searches: view.counts.searches,
         },
     }

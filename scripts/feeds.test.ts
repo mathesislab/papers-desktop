@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import type { FeedRow, Journal, SubscriptionInfo, Triage } from "../src/lib/feeds/api.ts";
+import type { FeedCounts, FeedRow, Journal, SubscriptionInfo, Triage } from "../src/lib/feeds/api.ts";
 import {
   NO_FEED_FILTERS,
   chooseInterest,
@@ -150,16 +150,20 @@ test("the counts of the views, and the sources in their groups", () => {
       sub("Ice", "journal", { openalex: "z" }),
       sub("Eos", "news", { rss: "e" }),
     ],
-    { TC: 3, GRL: 1, Ice: 5 },
+    {
+      total: { kinds: {}, interests: {}, sources: { TC: 3, GRL: 1, Ice: 5 } },
+      unread: { kinds: {}, interests: {}, sources: { TC: 2, Ice: 5 } },
+    } as FeedCounts,
   );
   assert.deepEqual(
-    groups.map((g) => [g.group, g.count, g.sources.map((s) => s.title)]),
+    groups.map((g) => [g.group, g.unread, g.total, g.sources.map((s) => s.title)]),
     [
-      ["journal", 4, ["GRL", "TC"]],
-      ["sweeps", 5, ["Ice"]],
-      ["news", 0, ["Eos"]],
+      ["journal", 2, 4, ["GRL", "TC"]],
+      ["sweeps", 5, 5, ["Ice"]],
+      ["news", 0, 0, ["Eos"]],
     ],
   );
+  assert.deepEqual(groups[0].sources[1], { title: "TC", unread: 2, total: 3 });
 });
 
 test("the feed of the Subscribe sheet, and the same feed", () => {

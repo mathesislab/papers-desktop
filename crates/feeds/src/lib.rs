@@ -72,7 +72,7 @@ pub use searches::Search;
 pub use store::LOOKBACK_DAYS;
 pub use suggested::{Suggested, suggested};
 pub use sweep::SWEEP_PAGES;
-pub use view::{Counts, IsValues, Row, Sort, View, ViewRequest};
+pub use view::{Counts, Groups, IsValues, Row, Sort, View, ViewRequest};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

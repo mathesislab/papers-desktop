@@ -779,8 +779,10 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 - *Sidebar*: Views (Unread `is:new`, Starred, Snoozed, Added, All · *N days*:
   the keep-days of the settings), Kinds,
   Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
-  apart; a group folds), each with its count (`counts`: every item not
-  dismissed, whatever the search). A source's menu (right-click) sets its
+  apart; a group folds). A view shows the number of its items; a kind, an
+  interest, a source or a group of them the number of its unread ones (none:
+  no number), the total on hover (`counts.unread`, `counts.total`: every
+  item not dismissed, whatever the search). A source's menu (right-click) sets its
   kind (*Source Is*), fetches it alone (*Fetch This Source*) or ends it
   (*Unsubscribe…*, asked first; its items stay until they are old); the
   *Sources* header opens the Subscribe sheet. A click chooses one of a group, a second

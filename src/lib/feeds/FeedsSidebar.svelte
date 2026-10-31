@@ -3,7 +3,8 @@
   // their groups (folded or not). A click chooses one of a group, a second click lets it go (*All* for the views);
   // ⌘-click (Ctrl elsewhere) adds one to the choices of its group, or takes it out. The choices are filters of the
   // list, a chip per group above it. The counts are over every item not dismissed, whatever the search. A source's
-  // menu (right-click) sets its kind, fetches it or unsubscribes; the Sources header opens the Subscribe sheet.
+  // menu (right-click) sets its kind, fetches it or unsubscribes; the Sources header opens the Subscribe sheet. A kind,
+  // an interest or a source counts its unread items (none: no number), the total on hover; a view, its items.
 
   import { invoke } from "@tauri-apps/api/core";
   import type { Snippet } from "svelte";
@@ -50,9 +51,13 @@
   const KIND_MARK: Record<ItemKind, string> = { paper: "▤", preprint: "◐", news: "✦", blog: "✎" };
 
   let shelves = $derived(shelfCounts(counts));
-  let colours = $derived(interestColours(Object.keys(counts?.interests ?? {})));
+  let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
   let days = $derived(keepDays === null ? null : `${keepDays} ${keepDays === 1 ? "day" : "days"}`);
 </script>
+
+{#snippet count(unread: number, total: number)}
+  <span class="count" title="{unread} unread of {total}">{unread || ""}</span>
+{/snippet}
 
 <div class="box">
   <nav>
@@ -77,7 +82,7 @@
     {#each KINDS as { kind, name } (kind)}
       <button class="item" class:selected={filters.kinds.includes(kind)} onclick={(e) => onkind(kind, modClick(e))}>
         <span class="mark {kind}">{KIND_MARK[kind]}</span>
-        <span class="name">{name}</span><span class="count">{counts?.kinds[kind] ?? 0}</span>
+        <span class="name">{name}</span>{@render count(counts?.unread.kinds[kind] ?? 0, counts?.total.kinds[kind] ?? 0)}
       </button>
     {/each}
 
@@ -86,7 +91,7 @@
       {#each colours as [name, colour] (name)}
         <button class="item" class:selected={filters.interests.includes(name)} onclick={(e) => oninterest(name, modClick(e))}>
           <span class="dot" style:background={colour}></span>
-          <span class="name">{name}</span><span class="count">{counts?.interests[name] ?? 0}</span>
+          <span class="name">{name}</span>{@render count(counts?.unread.interests[name] ?? 0, counts?.total.interests[name] ?? 0)}
         </button>
       {/each}
     {/if}
@@ -101,7 +106,7 @@
           <svg class="twisty" class:open viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
             <path d="M2 1l4 3-4 3z" fill="currentColor" />
           </svg>
-          <span class="name">{g.name}</span><span class="count">{g.count}</span>
+          <span class="name">{g.name}</span>{@render count(g.unread, g.total)}
         </button>
         {#if open}
           {#each g.sources as source (source.title)}
@@ -115,7 +120,7 @@
                 onsourcemenu(source.title);
               }}
             >
-              <span class="name">{source.title}</span><span class="count">{source.count}</span>
+              <span class="name">{source.title}</span>{@render count(source.unread, source.total)}
             </button>
           {/each}
         {/if}

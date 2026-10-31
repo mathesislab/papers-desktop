@@ -89,23 +89,42 @@ pub struct Counts {
     pub all: usize,
     /// by `is:` value: triage, `editorial`, the caller's (`unread` is `new`)
     pub is: BTreeMap<String, usize>,
+    pub total: Groups,
+    /// those new (`is:new`: not snoozed)
+    pub unread: Groups,
+    /// the items each saved search shows (dismissed ones unless it asks), by name
+    pub searches: BTreeMap<String, usize>,
+}
+
+/// Items by kind, interest and subscription.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct Groups {
     pub kinds: BTreeMap<ItemKind, usize>,
     /// the items of each interest (`prof:`), by name
     pub interests: BTreeMap<String, usize>,
     /// by subscription id
     pub sources: BTreeMap<String, usize>,
-    /// the items each saved search shows (dismissed ones unless it asks), by name
-    pub searches: BTreeMap<String, usize>,
+}
+
+/// One more of a key.
+fn count(map: &mut BTreeMap<String, usize>, key: &str) {
+    *map.entry(key.to_string()).or_default() += 1;
 }
 
 impl Counts {
     fn add(&mut self, item: &Item, seen: &Seen) {
-        let count = |map: &mut BTreeMap<String, usize>, key: &str| {
-            *map.entry(key.to_string()).or_default() += 1;
-        };
         self.all += 1;
-        *self.kinds.entry(item.kind).or_default() += 1;
         seen.is.iter().for_each(|v| count(&mut self.is, v));
+        self.total.add(item, seen);
+        if seen.triage == Triage::New && !seen.is.iter().any(|v| v == "snoozed") {
+            self.unread.add(item, seen);
+        }
+    }
+}
+
+impl Groups {
+    fn add(&mut self, item: &Item, seen: &Seen) {
+        *self.kinds.entry(item.kind).or_default() += 1;
         let reached = seen.scores.iter().filter(|s| s.reached);
         reached.for_each(|s| count(&mut self.interests, &s.interest));
         seen.sources

@@ -163,8 +163,8 @@
   let focusRow = $derived(focus ? byId.get(focus) : undefined);
   let request = $derived(requestOf(filters));
   let chips = $derived(feedChips(filters));
-  let groups = $derived(sourceGroups(subscriptions, counts?.sources ?? {}));
-  let colours = $derived(interestColours(Object.keys(counts?.interests ?? {})));
+  let groups = $derived(sourceGroups(subscriptions, counts));
+  let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
   let shortlisted = $derived(counts?.is.shortlisted ?? 0);
   /** the saved searches of the sidebar; the one the tab shows */
   let searches = $state<api.SavedSearch[]>([]);

@@ -353,20 +353,27 @@ fn counts_are_of_live_items_whatever_the_query() {
             ("shortlisted".to_string(), 1),
         ]
     );
+    let total = &counts.total;
     assert_eq!(
-        counts.kinds.into_iter().collect::<Vec<_>>(),
+        total.kinds.clone().into_iter().collect::<Vec<_>>(),
         [(ItemKind::Paper, 3), (ItemKind::Preprint, 1)]
     );
     assert_eq!(
-        pairs(&counts.interests),
+        pairs(&total.interests),
         [("Firn".to_string(), 1), ("Ice sheets".to_string(), 2)]
     );
     let subscriptions = feeds.subscriptions();
-    assert_eq!(counts.sources[&subscriptions[0].id], 3);
-    assert_eq!(counts.sources[&subscriptions[1].id], 1);
-    assert!(!counts.sources.contains_key(&subscriptions[2].id));
+    assert_eq!(total.sources[&subscriptions[0].id], 3);
+    assert_eq!(total.sources[&subscriptions[1].id], 1);
+    assert!(!total.sources.contains_key(&subscriptions[2].id));
+    // the unread: not the shortlisted preprint
+    assert_eq!(
+        counts.unread.kinds.into_iter().collect::<Vec<_>>(),
+        [(ItemKind::Paper, 3)]
+    );
     let json = serde_json::to_value(feeds.view(&ViewRequest::default()).counts).unwrap();
-    assert_eq!(json["kinds"]["paper"], 3);
+    assert_eq!(json["total"]["kinds"]["paper"], 3);
+    assert_eq!(json["unread"]["kinds"]["paper"], 3);
 }
 
 #[test]

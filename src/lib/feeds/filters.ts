@@ -261,7 +261,13 @@ export function shelfCounts(counts: FeedCounts | null): Record<Shelf, number> {
 }
 
 /** A group of the sources in the sidebar: the subscriptions of a kind, the sweeps of Crossref and OpenAlex apart. */
-export type SourceGroup = { group: SourceKind | "sweeps"; name: string; count: number; sources: { title: string; count: number }[] };
+export type SourceGroup = {
+  group: SourceKind | "sweeps";
+  name: string;
+  unread: number;
+  total: number;
+  sources: { title: string; unread: number; total: number }[];
+};
 
 export const SOURCE_GROUPS: { group: SourceGroup["group"]; name: string }[] = [
   { group: "journal", name: "Journals" },
@@ -276,13 +282,19 @@ const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: tr
 /** The group of a subscription: its kind, or a sweep. */
 export const groupOf = (s: SubscriptionInfo): SourceGroup["group"] => ("rss" in s.feed ? s.kind : "sweeps");
 
-/** The subscriptions in their groups, by title, each with the number of its items (`counts.sources`); the groups
- *  without any are left out. */
-export function sourceGroups(subscriptions: SubscriptionInfo[], counts: Record<string, number>): SourceGroup[] {
+/** The subscriptions in their groups, by title, each with the number of its items and of those unread (`counts`);
+ *  the groups without any are left out. */
+export function sourceGroups(subscriptions: SubscriptionInfo[], counts: FeedCounts | null): SourceGroup[] {
+  const sum = (sources: { unread: number; total: number }[], key: "unread" | "total") =>
+    sources.reduce((n, s) => n + s[key], 0);
   return SOURCE_GROUPS.map(({ group, name }) => {
     const titles = [...new Set(subscriptions.filter((s) => groupOf(s) === group).map((s) => s.title))].sort(collator.compare);
-    const sources = titles.map((title) => ({ title, count: counts[title] ?? 0 }));
-    return { group, name, sources, count: sources.reduce((n, s) => n + s.count, 0) };
+    const sources = titles.map((title) => ({
+      title,
+      unread: counts?.unread.sources[title] ?? 0,
+      total: counts?.total.sources[title] ?? 0,
+    }));
+    return { group, name, sources, unread: sum(sources, "unread"), total: sum(sources, "total") };
   }).filter((g) => g.sources.length > 0);
 }
 
