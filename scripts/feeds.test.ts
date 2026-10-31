@@ -9,10 +9,12 @@ import {
   chooseInterest,
   chooseKind,
   chooseSegment,
-  facet,
+  chooseSource,
   feedChips,
   feedOf,
   nextSort,
+  live,
+  queryOf,
   requestOf,
   restoredFeeds,
   sameFeed,
@@ -41,32 +43,43 @@ import { Dwell, decide, progressOf, reviewed, startReview, stepReview, summaryOf
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
 
-test("the query: the text typed, then a term per choice; dismissed left out unless asked", () => {
-  assert.equal(searchOf(f()), "is:new -is:dismissed");
-  assert.equal(searchOf(f({ view: "all" })), "-is:dismissed");
+test("the query: a term per group of choices, the segment's kinds, then the text typed; dismissed left out unless asked", () => {
+  assert.equal(searchOf(f()), "is:new kind:paper,preprint -is:dismissed");
+  assert.equal(searchOf(f({ view: "all", segment: "all" })), "-is:dismissed");
   assert.equal(
-    searchOf(f({ query: " greenland ", view: "shortlist", kind: "preprint", interest: "Ice sheets", source: "The Cryosphere" })),
-    'greenland is:shortlisted kind:preprint prof:"Ice sheets" src:"The Cryosphere" -is:dismissed',
+    searchOf(f({ query: " greenland ", view: "shortlist", kinds: ["preprint"], interests: ["Ice sheets"], sources: ["The Cryosphere", "GRL"] })),
+    'is:shortlisted kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL greenland -is:dismissed',
   );
-  assert.equal(searchOf(f({ view: "all", query: "is:dismissed" })), "is:dismissed");
-  assert.equal(facet("prof", 'say "hi"'), 'prof:"say hi"');
-  assert.equal(facet("src", "EGUsphere"), "src:EGUsphere");
+  assert.equal(queryOf(f({ segment: "posts", interests: ['say "hi"'] })), 'is:new kind:news,blog prof:"say hi"');
+  assert.equal(searchOf(f({ view: "all", segment: "all", query: "is:dismissed" })), "is:dismissed");
+  assert.equal(searchOf(f({ view: "all", segment: "all", query: "-is:seen,dismissed x" })), "-is:seen,dismissed x");
+  assert.equal(live("x"), "x -is:dismissed");
+  assert.equal(live(""), "-is:dismissed");
 });
 
-test("the segment asks for its kinds; a kind chosen moves the segment", () => {
+test("a click chooses one of a group, ⌘-click several; the segment follows the kinds", () => {
   assert.deepEqual(requestOf(f()).kinds, ["paper", "preprint"]);
   assert.deepEqual(requestOf(f({ segment: "posts" })).kinds, ["news", "blog"]);
   assert.deepEqual(requestOf(f({ segment: "all" })).kinds, []);
-  assert.deepEqual(chooseKind(f(), "news"), f({ kind: "news", segment: "posts" }));
-  assert.deepEqual(chooseKind(f({ segment: "all" }), "news"), f({ kind: "news", segment: "all" }));
-  assert.equal(chooseKind(f({ kind: "news", segment: "posts" }), "news").kind, null);
-  assert.equal(chooseSegment(f({ kind: "news", segment: "posts" }), "papers").kind, null);
-  assert.equal(chooseSegment(f({ kind: "news", segment: "posts" }), "all").kind, "news");
-  assert.equal(chooseInterest(chooseInterest(f(), "AMOC"), "AMOC").interest, null);
+  assert.deepEqual(chooseKind(f(), "news"), f({ kinds: ["news"], segment: "posts" }));
+  assert.deepEqual(chooseKind(f({ segment: "all" }), "news"), f({ kinds: ["news"], segment: "all" }));
+  assert.deepEqual(chooseKind(f({ kinds: ["news"], segment: "posts" }), "news").kinds, []);
+  assert.deepEqual(chooseKind(f({ kinds: ["news", "blog"], segment: "posts" }), "news").kinds, ["news"]);
+  // ⌘: added, or taken out; papers and posts together: All
+  assert.deepEqual(chooseKind(f({ kinds: ["paper"] }), "preprint", true), f({ kinds: ["paper", "preprint"] }));
+  assert.deepEqual(chooseKind(f({ kinds: ["paper"] }), "news", true), f({ kinds: ["paper", "news"], segment: "all" }));
+  assert.deepEqual(chooseKind(f({ kinds: ["paper", "news"], segment: "all" }), "paper", true).kinds, ["news"]);
+  assert.deepEqual(chooseSegment(f({ kinds: ["news"], segment: "posts" }), "papers").kinds, []);
+  assert.deepEqual(chooseSegment(f({ kinds: ["paper", "news"], segment: "all" }), "posts").kinds, ["news"]);
+  assert.deepEqual(chooseInterest(chooseInterest(f(), "AMOC"), "AMOC").interests, []);
+  assert.deepEqual(chooseInterest(f({ interests: ["AMOC", "Ice"] }), "AMOC").interests, ["AMOC"]);
+  assert.deepEqual(chooseInterest(f({ interests: ["AMOC"] }), "Ice", true).interests, ["AMOC", "Ice"]);
+  assert.deepEqual(chooseSource(f({ sources: ["TC", "GRL"] }), "TC", true).sources, ["GRL"]);
+  assert.deepEqual(chooseSource(f({ sources: ["TC"] }), "GRL").sources, ["GRL"]);
 });
 
-test("chips, and their ×", () => {
-  const all = f({ view: "unread", kind: "paper", interest: "AMOC", source: "GRL", query: "melt" });
+test("chips, a chip per group, and their ×", () => {
+  const all = f({ view: "unread", kinds: ["paper"], interests: ["AMOC"], sources: ["GRL"], query: "melt" });
   assert.deepEqual(
     feedChips(all).map((c) => c.text),
     ["Unread", "Papers", "AMOC", "GRL", '"melt"'],
@@ -74,18 +87,36 @@ test("chips, and their ×", () => {
   assert.deepEqual(feedChips(f({ view: "all" })), []);
   const [view, kind, interest, source, search] = feedChips(all);
   assert.equal(withoutChip(all, view).view, "all");
-  assert.equal(withoutChip(all, kind).kind, null);
-  assert.equal(withoutChip(all, interest).interest, null);
-  assert.equal(withoutChip(all, source).source, null);
+  assert.deepEqual(withoutChip(all, kind).kinds, []);
+  assert.deepEqual(withoutChip(all, interest).interests, []);
+  assert.deepEqual(withoutChip(all, source).sources, []);
   assert.equal(withoutChip(all, search).query, "");
+  const many = f({ view: "all", kinds: ["paper", "preprint"], interests: ["A", "B"], sources: ["TC", "GRL"] });
+  assert.deepEqual(
+    feedChips(many).map((c) => c.text),
+    ["Kind: Papers, Preprints", "Interest: A, B", "Source: TC, GRL"],
+  );
 });
 
-test("restored: what is missing or wrong takes the default", () => {
+test("restored: what is missing or wrong takes the default; a single choice of before, a group of one", () => {
   assert.deepEqual(restoredFeeds(null), NO_FEED_FILTERS);
   assert.deepEqual(restoredFeeds({ view: "nope" as never, sort: "newest", open: ["news", 3 as never] }), {
     ...NO_FEED_FILTERS,
     sort: "newest",
     open: ["news"],
+  });
+  assert.deepEqual(restoredFeeds({ kind: "news", interest: "AMOC", source: "Eos", segment: "posts" }), {
+    ...NO_FEED_FILTERS,
+    kinds: ["news"],
+    interests: ["AMOC"],
+    sources: ["Eos"],
+    segment: "posts",
+  });
+  assert.deepEqual(restoredFeeds({ kind: null, interest: null, source: null }), NO_FEED_FILTERS);
+  assert.deepEqual(restoredFeeds({ kinds: ["blog", "nope" as never, "blog"], sources: ["A", 2 as never] }), {
+    ...NO_FEED_FILTERS,
+    kinds: ["blog"],
+    sources: ["A"],
   });
   assert.equal(restoredFeeds({ sort: "like" }).sort, "like");
   assert.equal(restoredFeeds({ sort: "oldest" as never }).sort, "score");

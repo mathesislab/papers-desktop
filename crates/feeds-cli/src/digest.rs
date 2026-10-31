@@ -9,6 +9,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use papers_feeds::{Item, ItemKind, Row, Sort, ViewRequest};
 
 use crate::cli::DigestArgs;
+use crate::searches::{saved, with_saved};
 use crate::text::{authors, day, link, newest};
 use crate::{Ctx, Error, Result};
 
@@ -228,7 +229,12 @@ fn write_file(path: &Path, text: &str) -> Result<()> {
 pub fn digest(ctx: &mut Ctx, a: DigestArgs) -> Result<()> {
     let feeds = ctx.open()?;
     let now = (ctx.host.now)();
-    let query = format!("{} -is:dismissed", a.query);
+    let search = a.saved.as_deref().map(|name| saved(&feeds, name)).transpose()?;
+    let typed = a.query.as_deref().unwrap_or(match search {
+        Some(_) => "",
+        None => "score:3-",
+    });
+    let query = papers_feeds::query::live(&with_saved(search, typed));
     let view = feeds.view(&ViewRequest {
         query: &query,
         sort: Sort::Score,

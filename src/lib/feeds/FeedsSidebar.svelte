@@ -1,14 +1,17 @@
 <script lang="ts">
   // The sidebar of the Feeds tab: the views (the items by their triage), the kinds, the interests, the sources in
-  // their groups (folded or not). One choice per group: a click chooses it, a second click lets it go (*All* for
-  // the views); the choices are filters of the list, shown as chips above it. The counts are over every item not
-  // dismissed, whatever the search.
+  // their groups (folded or not). A click chooses one of a group, a second click lets it go (*All* for the views);
+  // ⌘-click (Ctrl elsewhere) adds one to the choices of its group, or takes it out. The choices are filters of the
+  // list, a chip per group above it. The counts are over every item not dismissed, whatever the search.
 
   import { invoke } from "@tauri-apps/api/core";
+  import type { Snippet } from "svelte";
+  import { modClick } from "$lib/keys";
   import type { FeedCounts, ItemKind } from "./api";
   import { KINDS, SHELVES, interestColours, shelfCounts, type FeedFilters, type Shelf, type SourceGroup } from "./filters";
 
   let {
+    saved,
     filters,
     counts,
     groups,
@@ -18,15 +21,18 @@
     onsource,
     onfold,
   }: {
+    /** the Saved section, at the top */
+    saved?: Snippet;
     /** the choices made */
     filters: FeedFilters;
     counts: FeedCounts | null;
     /** the subscriptions, in their groups */
     groups: SourceGroup[];
     onview: (view: Shelf) => void;
-    onkind: (kind: ItemKind) => void;
-    oninterest: (name: string) => void;
-    onsource: (title: string) => void;
+    /** a kind, interest or subscription clicked; with ⌘, to add it to the choices or take it out (`toggle`) */
+    onkind: (kind: ItemKind, toggle: boolean) => void;
+    oninterest: (name: string, toggle: boolean) => void;
+    onsource: (title: string, toggle: boolean) => void;
     /** a group of the sources unfolded or folded */
     onfold: (group: string, open: boolean) => void;
   } = $props();
@@ -39,6 +45,8 @@
 
 <div class="box">
   <nav>
+    {@render saved?.()}
+
     <h4>Views</h4>
     {#each SHELVES as shelf (shelf.view)}
       <button class="item" class:selected={filters.view === shelf.view} onclick={() => onview(shelf.view)}>
@@ -49,7 +57,7 @@
 
     <h4>Kinds</h4>
     {#each KINDS as { kind, name } (kind)}
-      <button class="item" class:selected={filters.kind === kind} onclick={() => onkind(kind)}>
+      <button class="item" class:selected={filters.kinds.includes(kind)} onclick={(e) => onkind(kind, modClick(e))}>
         <span class="mark {kind}">{KIND_MARK[kind]}</span>
         <span class="name">{name}</span><span class="count">{counts?.kinds[kind] ?? 0}</span>
       </button>
@@ -58,7 +66,7 @@
     {#if colours.size}
       <h4>Interests</h4>
       {#each colours as [name, colour] (name)}
-        <button class="item" class:selected={filters.interest === name} onclick={() => oninterest(name)}>
+        <button class="item" class:selected={filters.interests.includes(name)} onclick={(e) => oninterest(name, modClick(e))}>
           <span class="dot" style:background={colour}></span>
           <span class="name">{name}</span><span class="count">{counts?.interests[name] ?? 0}</span>
         </button>
@@ -68,7 +76,7 @@
     {#if groups.length}
       <h4>Sources</h4>
       {#each groups as g (g.group)}
-        {@const open = filters.open.includes(g.group) || g.sources.some((s) => s.title === filters.source)}
+        {@const open = filters.open.includes(g.group) || g.sources.some((s) => filters.sources.includes(s.title))}
         <button class="item group" aria-expanded={open} onclick={() => onfold(g.group, !open)}>
           <svg class="twisty" class:open viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
             <path d="M2 1l4 3-4 3z" fill="currentColor" />
@@ -79,9 +87,9 @@
           {#each g.sources as source (source.title)}
             <button
               class="item sub"
-              class:selected={filters.source === source.title}
+              class:selected={filters.sources.includes(source.title)}
               title={source.title}
-              onclick={() => onsource(source.title)}
+              onclick={(e) => onsource(source.title, modClick(e))}
             >
               <span class="name">{source.title}</span><span class="count">{source.count}</span>
             </button>

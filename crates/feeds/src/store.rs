@@ -1,5 +1,5 @@
 //! The files of a feeds folder: `config.json` (the subscriptions, interests,
-//! rules, the days kept), `items.json` (the items and the aliases of merged
+//! rules, saved searches, the days kept), `items.json` (the items and the aliases of merged
 //! ones), `state.json` (the triage of each item), `http.json` (the
 //! validators of each subscription's last answer, the time of its last
 //! sweep), `lookups.json` (what was looked up, and when). Each is read whole,
@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::interest::Interest;
 use crate::model::{Item, Mark, Subscription};
 use crate::rules::Rule;
+use crate::searches::Search;
 use crate::{Error, Result};
 
 pub(crate) const CONFIG: &str = "config.json";
@@ -47,6 +48,9 @@ pub(crate) struct Config {
     /// the days a sweep looks back the first time
     #[serde(default = "lookback_days")]
     pub lookback_days: u32,
+    /// the saved searches, in the order of the sidebar
+    #[serde(default)]
+    pub searches: Vec<Search>,
 }
 
 impl Default for Config {
@@ -58,6 +62,7 @@ impl Default for Config {
             rules: Vec::new(),
             keep_days: keep_days(),
             lookback_days: LOOKBACK_DAYS,
+            searches: Vec::new(),
         }
     }
 }

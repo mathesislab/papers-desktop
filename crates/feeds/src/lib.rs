@@ -16,7 +16,7 @@
 //! index of the library's papers, given to [`Feeds::set_likeness`], tells
 //! how like them an item is (`like:`);
 //! [`Feeds::view`] gives the items a query shows and the counts of the
-//! sidebar. The subscriptions go out and come in as OPML; [`suggested`]
+//! sidebar, those of the saved [`Search`]es too. The subscriptions go out and come in as OPML; [`suggested`]
 //! lists some to start with; [`pdf`] tells the free copy of a paper. Nothing
 //! here knows of .bib files.
 
@@ -36,6 +36,7 @@ mod parse;
 mod pdf;
 pub mod query;
 mod rules;
+mod searches;
 mod store;
 mod suggested;
 mod sweep;
@@ -56,6 +57,7 @@ pub use opml::Outline;
 pub use parse::{Parsed, parse};
 pub use pdf::{OpenAccess, Pdf, pdf};
 pub use rules::{Action, Rule};
+pub use searches::Search;
 pub use store::LOOKBACK_DAYS;
 pub use suggested::{Suggested, suggested};
 pub use sweep::SWEEP_PAGES;
@@ -80,6 +82,9 @@ pub enum Error {
     /// an interest whose term or pattern is no regex, or whose name is taken
     #[error("interest {name}: {message}")]
     Interest { name: String, message: String },
+    /// a saved search without a name, or whose name is taken
+    #[error("saved search {name:?}: {message}")]
+    Search { name: String, message: String },
     /// the paper behind an item that is not a post (news or blog)
     #[error("{id}: not a post")]
     NotAPost { id: String },

@@ -51,6 +51,8 @@ pub enum Command {
     Interests(JsonArg),
     /// The rules that triage new items
     Rules(JsonArg),
+    /// The saved searches (as the Feeds tab's sidebar): name, order, query; or one added or removed
+    Searches(SearchesArgs),
     /// The folder and the settings; `keep-days` and `lookback-days` change one
     Config(ConfigArgs),
     /// The subscriptions as OPML, the list feed readers exchange
@@ -220,9 +222,13 @@ impl From<ItemKindArg> for ItemKind {
 pub struct ListArgs {
     /// A query: words, `kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...
     pub query: Vec<String>,
-    /// The order: the best score first, the newest, or the most like the library
-    #[arg(long, value_enum, default_value = "newest")]
-    pub sort: SortArg,
+    /// The items of a saved search (and of the query, if there is one)
+    #[arg(long, value_name = "NAME")]
+    pub saved: Option<String>,
+    /// The order: the best score first, the newest, or the most like the library [default: the saved
+    /// search's, else newest]
+    #[arg(long, value_enum)]
+    pub sort: Option<SortArg>,
     /// Only these kinds, separated by commas
     #[arg(long, value_enum, value_delimiter = ',')]
     pub kind: Vec<ItemKindArg>,
@@ -318,9 +324,12 @@ pub struct DigestArgs {
     /// Write the HTML page to this file
     #[arg(long, value_name = "FILE")]
     pub html: Option<PathBuf>,
-    /// Which items: a query, best score first
-    #[arg(long, default_value = "score:3-")]
-    pub query: String,
+    /// Which items: a query, best score first [default: score:3-, none with --saved]
+    #[arg(long)]
+    pub query: Option<String>,
+    /// The items of a saved search (and of --query, if given)
+    #[arg(long, value_name = "NAME")]
+    pub saved: Option<String>,
     /// Only the items of the last days (by their date, else when first fetched)
     #[arg(long, default_value_t = 7, value_name = "N")]
     pub days: u32,
@@ -330,4 +339,32 @@ pub struct DigestArgs {
     /// The link of the feed: where the digest is published
     #[arg(long, default_value = "")]
     pub link: String,
+}
+
+/// `feeds searches`.
+#[derive(Debug, Args)]
+#[command(args_conflicts_with_subcommands = true)]
+pub struct SearchesArgs {
+    #[command(subcommand)]
+    pub action: Option<SearchAction>,
+    /// As JSON
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// What `feeds searches` changes.
+#[derive(Debug, Subcommand)]
+pub enum SearchAction {
+    /// Save a query under a name, in place of the search of that name (in any case)
+    Add {
+        name: String,
+        /// The query, as `list` takes it (`is:new kind:paper prof:AMOC`)
+        #[arg(required = true)]
+        query: Vec<String>,
+        /// The order of its items
+        #[arg(long, value_enum, default_value = "newest")]
+        sort: SortArg,
+    },
+    /// Forget a saved search
+    Remove { name: String },
 }

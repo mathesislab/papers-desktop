@@ -59,6 +59,8 @@ export interface FeedCounts {
   interests: Record<string, number>;
   /** by subscription title */
   sources: Record<string, number>;
+  /** what each saved search shows, by its name */
+  searches: Record<string, number>;
 }
 
 export interface FeedView {
@@ -199,6 +201,13 @@ export interface FeedSettings {
   pollMinutes: number;
 }
 
+/** A saved search of the sidebar: the whole query of the tab's choices (filters.ts, `queryOf`) and the order. */
+export interface SavedSearch {
+  name: string;
+  query: string;
+  sort: Sort;
+}
+
 /** A subscription offered in the settings and the Subscribe sheet. */
 export interface Suggested {
   title: string;
@@ -232,6 +241,10 @@ export const settings = () => invoke<FeedSettings>("feeds_settings");
 /** Refused, with the message of the first interest or rule that does not parse. */
 export const setSettings = (settings: FeedSettings) =>
   invoke<void>("feeds_set_settings", { settings });
+
+export const savedSearches = () => invoke<SavedSearch[]>("feeds_searches");
+/** Refused for a blank name, or one given twice. */
+export const setSavedSearches = (searches: SavedSearch[]) => invoke<void>("feeds_set_searches", { searches });
 
 /** The events the page listens to. */
 export const EVENTS = {

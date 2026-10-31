@@ -26,7 +26,7 @@
     tags: TagCount[];
     /** whether the search filters a tag */
     filtered: (tag: string) => boolean;
-    ontag: (tag: string) => void;
+    ontag: (tag: string, alternative: boolean) => void;
     onset: (add: string[], remove: string[]) => Promise<boolean>;
     onopen: () => void;
     /** the BibTeX being edited */

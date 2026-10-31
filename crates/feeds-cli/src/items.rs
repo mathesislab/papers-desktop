@@ -1,10 +1,11 @@
 //! The items: the list, one in full, the papers behind a post, the triage, the prune.
 
-use papers_feeds::query::{kind_name, triage_name};
+use papers_feeds::query::{kind_name, live, triage_name};
 use papers_feeds::{Confidence, Feeds, Item, Row, Sort, Triage, Via, ViewRequest};
 use serde_json::{Value, json};
 
 use crate::cli::{FindArgs, ListArgs, MarkArgs, ShowArgs};
+use crate::searches::{saved, with_saved};
 use crate::text::{day, newest, source_label, table, wrap};
 use crate::{Ctx, Error, Result, fail};
 
@@ -43,22 +44,25 @@ fn row_json(feeds: &Feeds, row: &Row, item: &Item) -> Value {
     })
 }
 
-/// `feeds list`: the items a query passes, one line each, or as JSON.
+/// `feeds list`: the items a query (and a saved search) passes, one line each, or as JSON.
 pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
     let feeds = ctx.open()?;
-    let mut query = a.query.join(" ");
-    if !a.dismissed && !query.contains("is:dismissed") {
-        query.push_str(" -is:dismissed");
+    let search = a
+        .saved
+        .as_deref()
+        .map(|name| saved(&feeds, name))
+        .transpose()?;
+    let mut query = with_saved(search, &a.query.join(" "));
+    if !a.dismissed {
+        query = live(&query);
     }
     let kinds: Vec<_> = a.kind.iter().map(|&k| k.into()).collect();
-    let sort = match a.sort {
-        crate::cli::SortArg::Score => Sort::Score,
-        crate::cli::SortArg::Newest => Sort::Newest,
-        crate::cli::SortArg::Like if ctx.library.is_none() => {
-            return fail("--sort like needs the library: --library <file.bib>");
-        }
-        crate::cli::SortArg::Like => Sort::Like,
-    };
+    let sort = a
+        .sort
+        .map_or(search.map_or(Sort::Newest, |s| s.sort), Sort::from);
+    if sort == Sort::Like && ctx.library.is_none() {
+        return fail("sorting by like needs the library: --library <file.bib>");
+    }
     let request = ViewRequest {
         query: &query,
         sort,

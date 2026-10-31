@@ -49,6 +49,9 @@ pub struct Settings {
     /// the tags pinned to the keys 1–9 of the main window (index = key − 1);
     /// set from the sidebar, not in the settings window
     pub pinned_tags: Vec<Option<String>>,
+    /// the saved searches of the library tab, in the order of its sidebar;
+    /// set from the sidebar, not in the settings window
+    pub saved_searches: Vec<SavedSearch>,
     /// the Downloads panel at the bottom of the sidebar of the main window: the PDFs of a folder
     /// outside the library, to drag into it (shown also for settings files from before it existed)
     pub downloads_panel: bool,
@@ -59,6 +62,19 @@ pub struct Settings {
     pub feeds_poll: bool,
     /// the minutes between two fetches of the polling (5 at least)
     pub feeds_poll_minutes: u32,
+}
+
+/// A saved search of the library tab: a name for its filters and the sort of
+/// its table, as the page writes them (`src/lib/library/filters.ts`, which
+/// checks them when it reads them).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SavedSearch {
+    pub name: String,
+    /// the libraries, view, groups of tags and search
+    pub filters: Value,
+    /// the column and direction; null: the order of the library
+    #[serde(default)]
+    pub sort: Value,
 }
 
 /// What writes a papers library: papers-rs, which the app has built in, or a
@@ -143,6 +159,7 @@ impl Default for Settings {
             email: String::new(),
             openalex_key: String::new(),
             pinned_tags: Vec::new(),
+            saved_searches: Vec::new(),
             downloads_panel: true,
             downloads_folder: PathBuf::from("~/Downloads"),
             feeds_poll: false,
@@ -264,7 +281,11 @@ mod tests {
         let json = serde_json::to_string(&TextSize::Smallest).unwrap();
         assert_eq!(json, "\"smallest\"");
         // the sizes grow
-        assert!(TextSize::LEVELS.windows(2).all(|w| w[0].factor() < w[1].factor()));
+        assert!(
+            TextSize::LEVELS
+                .windows(2)
+                .all(|w| w[0].factor() < w[1].factor())
+        );
     }
 
     #[test]
@@ -301,6 +322,21 @@ mod tests {
         let set: Settings =
             serde_json::from_str(r#"{"feeds_poll": true, "feeds_poll_minutes": 30}"#).unwrap();
         assert_eq!((set.feeds_poll, set.feeds_poll_minutes), (true, 30));
+    }
+
+    #[test]
+    fn saved_searches_kept_as_the_page_writes_them() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert!(settings.saved_searches.is_empty());
+        let json = r#"{"saved_searches": [{"name": "AMOC", "filters": {"bibs": [], "view": "all",
+            "tags": [["amoc", "ice"]], "query": "y:2020-"}}]}"#;
+        let set: Settings = serde_json::from_str(json).unwrap();
+        let saved = &set.saved_searches[0];
+        assert_eq!(saved.name, "AMOC");
+        assert_eq!(saved.filters["tags"][0][1], "ice");
+        assert!(saved.sort.is_null(), "no sort: the order of the library");
+        let again: Settings = serde_json::from_value(serde_json::to_value(&set).unwrap()).unwrap();
+        assert_eq!(again.saved_searches, set.saved_searches);
     }
 
     #[test]

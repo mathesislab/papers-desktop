@@ -16,6 +16,9 @@
   import { modalOpen } from "$lib/library/modal.svelte";
   import { OPEN_ASK } from "$lib/library/selection";
   import Splitter from "$lib/library/Splitter.svelte";
+  import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
+  import SavedSearches from "$lib/SavedSearches.svelte";
+  import SaveSearch from "$lib/SaveSearch.svelte";
   import * as api from "./api";
   import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo, Triage } from "./api";
   import FeedDetails from "./FeedDetails.svelte";
@@ -26,6 +29,7 @@
   import {
     SEGMENTS,
     SORTS,
+    applied,
     chooseInterest,
     chooseKind,
     chooseSegment,
@@ -34,6 +38,8 @@
     interestColours,
     isPost,
     nextSort,
+    isShown,
+    queryOf,
     requestOf,
     searchOf,
     sourceGroups,
@@ -127,6 +133,9 @@
   let groups = $derived(sourceGroups(subscriptions, counts?.sources ?? {}));
   let colours = $derived(interestColours(Object.keys(counts?.interests ?? {})));
   let shortlisted = $derived(counts?.is.shortlisted ?? 0);
+  /** the saved searches of the sidebar; the one the tab shows */
+  let searches = $state<api.SavedSearch[]>([]);
+  let shownSearch = $derived(searches.find((s) => isShown(filters, s))?.name ?? null);
 
   /** An item becomes seen once it has stayed selected a moment (`Dwell`); one passed over stays new. */
   const dwell = new Dwell((id) => {
@@ -156,10 +165,10 @@
 
   onDestroy(() => dwell.stop());
 
-  /** The tab opened: the subscriptions, and a fetch when the last is older than 15 minutes. */
+  /** The tab opened: the subscriptions, the saved searches, and a fetch when the last is older than 15 minutes. */
   async function start() {
     try {
-      [last, subscriptions] = await Promise.all([api.lastFetch(), api.subscriptions()]);
+      [last, subscriptions, searches] = await Promise.all([api.lastFetch(), api.subscriptions(), api.savedSearches()]);
     } catch (e) {
       failure = String(e);
     }
@@ -531,6 +540,26 @@
     }
   }
 
+  /** The saved searches changed: kept, then their counts again. */
+  async function keepSearches(list: api.SavedSearch[]) {
+    try {
+      await api.setSavedSearches(list);
+      searches = list;
+      await load(true);
+    } catch (e) {
+      say(String(e));
+    }
+  }
+
+  /** A saved search shown: its choices, search and order in place of the tab's. */
+  function applySearch(name: string) {
+    const search = searches.find((s) => sameName(s.name, name));
+    if (search) filters = applied(filters, search);
+  }
+
+  /** What the tab shows, as a saved search. */
+  const current = (name: string): api.SavedSearch => ({ name, query: queryOf(filters), sort: filters.sort });
+
   function dropChip(chip: FeedChip) {
     filters = withoutChip(filters, chip);
   }
@@ -565,11 +594,23 @@
         {counts}
         {groups}
         onview={(view) => (filters.view = view)}
-        onkind={(kind) => (filters = chooseKind(filters, kind))}
-        oninterest={(name) => (filters = chooseInterest(filters, name))}
-        onsource={(title) => (filters = chooseSource(filters, title))}
+        onkind={(kind, toggle) => (filters = chooseKind(filters, kind, toggle))}
+        oninterest={(name, toggle) => (filters = chooseInterest(filters, name, toggle))}
+        onsource={(title, toggle) => (filters = chooseSource(filters, title, toggle))}
         onfold={fold}
-      />
+      >
+        {#snippet saved()}
+          <SavedSearches
+            searches={searches.map((s) => ({ name: s.name, count: counts?.searches?.[s.name] ?? 0 }))}
+            shown={shownSearch}
+            refusal={(name, own) => refusal(searches, name, own)}
+            onapply={applySearch}
+            onrename={(name, to) => keepSearches(renamed(searches, name, to))}
+            onupdate={(name) => keepSearches(changed(searches, name, () => current(name)))}
+            ondelete={(name) => keepSearches(removed(searches, name))}
+          />
+        {/snippet}
+      </FeedsSidebar>
     </aside>
     <Splitter bind:width={sidebar} side="left" min={160} max={420} />
   {/if}
@@ -589,6 +630,12 @@
           <button class="clear" aria-label="Clear the search" onclick={() => ((filters.query = ""), input?.focus())}>×</button>
         {/if}
       </div>
+      <SaveSearch
+        shown={shownSearch !== null}
+        suggestion={chips.map((c) => c.text).join(" · ") || "All items"}
+        refusal={(name) => refusal(searches, name)}
+        onsave={(name) => keepSearches(added(searches, current(name)))}
+      />
       <span class="notice">{notice ?? ""}</span>
       <span class="spacer"></span>
       <button class="tool" class:busy={fetching} disabled={fetching} title="Fetch every subscription ({label(FETCH)})" onclick={fetchNow}>

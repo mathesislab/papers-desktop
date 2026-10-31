@@ -1,9 +1,11 @@
 // The Feeds tab shows the items that the choices of its sidebar, the segment and the search select. As the library's
 // (library/filters.ts), the choices are filters of their own, shown as chips, not text of the search field; the
-// backend is asked for one query: the text typed followed by a term per choice (`is:new`, `kind:preprint`,
-// `prof:"Ice sheets"`, `src:"The Cryosphere"`), all of which must hold. One choice per group of the sidebar. Pure
-// functions, tested by scripts/feeds.test.ts (npm test).
+// backend is asked for one query: a term per group of choices (`is:new`, `kind:paper,preprint`, `prof:"Ice sheets"`,
+// `src:"The Cryosphere",GRL`) followed by the text typed, all of which must hold, an item being any of the choices
+// of a group. A click chooses one of a group, ⌘-click several. Pure functions, tested by
+// scripts/feeds.test.ts (npm test).
 
+import { FIELDS, anyOf, queryTerms } from "../query.ts";
 import type { Feed, FeedCounts, ItemKind, Sort, SourceKind, SubscriptionInfo, ViewRequest } from "./api.ts";
 
 /** the views of the sidebar: the items by their triage */
@@ -14,10 +16,10 @@ export type Segment = "papers" | "posts" | "all";
 /** What the Feeds tab keeps between sessions (the layout's `feeds`). */
 export type FeedFilters = {
   view: Shelf;
-  /** the kind, interest and subscription (by title) chosen in the sidebar; none: any */
-  kind: ItemKind | null;
-  interest: string | null;
-  source: string | null;
+  /** the kinds, interests and subscriptions (by title) chosen in the sidebar, any of which an item may be; none: any */
+  kinds: ItemKind[];
+  interests: string[];
+  sources: string[];
   segment: Segment;
   sort: Sort;
   /** the text of the search field, in the feeds' query language */
@@ -28,9 +30,9 @@ export type FeedFilters = {
 
 export const NO_FEED_FILTERS: FeedFilters = {
   view: "unread",
-  kind: null,
-  interest: null,
-  source: null,
+  kinds: [],
+  interests: [],
+  sources: [],
   segment: "papers",
   sort: "score",
   query: "",
@@ -59,6 +61,10 @@ export const SEGMENTS: { segment: Segment; name: string; kinds: ItemKind[] }[] =
 
 const kindsOf = (segment: Segment) => SEGMENTS.find((s) => s.segment === segment)?.kinds ?? [];
 
+/** The segment that shows the kinds: Papers, Posts, else All. */
+const segmentOf = (kinds: ItemKind[]): Segment =>
+  kinds.every((k) => !isPost(k)) ? "papers" : kinds.every(isPost) ? "posts" : "all";
+
 /** Whether the segment shows items of a kind. */
 export const segmentHas = (segment: Segment, kind: ItemKind) => {
   const kinds = kindsOf(segment);
@@ -80,14 +86,25 @@ export const SORTS: { sort: Sort; text: string }[] = [
 /** The order after this one, for the count above the list. */
 export const nextSort = (sort: Sort): Sort => SORTS[(SORTS.findIndex((s) => s.sort === sort) + 1) % SORTS.length].sort;
 
-/** Filters as saved, any part missing or of a wrong type made the default. */
-export function restoredFeeds(saved: Partial<FeedFilters> | null | undefined): FeedFilters {
+const isKind = (v: unknown): v is ItemKind => KINDS.some((k) => k.kind === v);
+
+/** The values of a choice as saved: several, or one of an older version (`kind`, `interest`, `source`). */
+function values<T extends string>(many: unknown, one: unknown, valid: (v: unknown) => v is T): T[] {
+  const list = Array.isArray(many) ? many : one !== undefined && one !== null ? [one] : [];
+  return [...new Set(list.filter(valid))];
+}
+
+/** Filters as saved, any part missing or of a wrong type made the default; a single choice of an older version
+ *  becomes the only one of its group. */
+export function restoredFeeds(
+  saved: (Partial<FeedFilters> & { kind?: unknown; interest?: unknown; source?: unknown }) | null | undefined,
+): FeedFilters {
   const d = NO_FEED_FILTERS;
   return {
     view: SHELVES.find((s) => s.view === saved?.view)?.view ?? d.view,
-    kind: KINDS.find((k) => k.kind === saved?.kind)?.kind ?? null,
-    interest: text(saved?.interest) ? saved.interest : null,
-    source: text(saved?.source) ? saved.source : null,
+    kinds: values(saved?.kinds, saved?.kind, isKind),
+    interests: values(saved?.interests, saved?.interest, text),
+    sources: values(saved?.sources, saved?.source, text),
     segment: SEGMENTS.find((s) => s.segment === saved?.segment)?.segment ?? d.segment,
     sort: SORTS.find((s) => s.sort === saved?.sort)?.sort ?? d.sort,
     query: text(saved?.query) ? saved.query : d.query,
@@ -95,64 +112,136 @@ export function restoredFeeds(saved: Partial<FeedFilters> | null | undefined): F
   };
 }
 
-/** A facet term: `kind:paper`, `prof:"Ice sheets"`. */
-export function facet(name: string, value: string): string {
-  return /^[\w.-]+$/.test(value) ? `${name}:${value}` : `${name}:"${value.replace(/"/g, "")}"`;
-}
+/** The field names of the feeds' queries: the core's, and the facets and numbers of crates/feeds/src/query.rs. */
+const FEED_FIELDS = [...FIELDS, "kind", "is", "src", "prof", "score", "like"];
 
-const DISMISSED = /(^|\s)is:dismissed(?=\s|$)/i;
+/** Whether a query has an `is:` term on dismissed items (`is:dismissed`, `-is:seen,dismissed`). */
+const asksDismissed = (query: string) =>
+  queryTerms(query, FEED_FIELDS).some((t) => t.field === "is" && t.values.some((v) => v.trim().toLowerCase() === "dismissed"));
 
-/** The query the backend matches: the text typed, then a term per choice of the sidebar; dismissed items are left
- *  out unless the query asks for them. */
-export function searchOf(f: FeedFilters): string {
-  const terms = [
+/** The query of the choices: a term per group of the sidebar, the segment's kinds when no kind is chosen, then the
+ *  text typed (`is:new kind:paper,preprint prof:AMOC melt`). The whole query of the tab, its segment too: what a saved
+ *  search keeps (see `decompose`, which takes the choices back: they come first). */
+export function queryOf(f: FeedFilters): string {
+  return [
+    SHELVES.find((s) => s.view === f.view)?.term ?? "",
+    anyOf("kind", f.kinds.length ? f.kinds : kindsOf(f.segment)),
+    anyOf("prof", f.interests),
+    anyOf("src", f.sources),
     f.query.trim(),
-    SHELVES.find((s) => s.view === f.view)?.term ?? null,
-    f.kind && facet("kind", f.kind),
-    f.interest !== null && facet("prof", f.interest),
-    f.source !== null && facet("src", f.source),
-  ].filter((t): t is string => !!t);
-  const query = terms.join(" ");
-  return DISMISSED.test(query) ? query : [query, "-is:dismissed"].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
+
+/** A query of the feeds as shown: dismissed items left out unless it asks for them. */
+export const live = (query: string) =>
+  asksDismissed(query) ? query : [query, "-is:dismissed"].filter(Boolean).join(" ");
+
+/** The query the backend matches: the query of the choices, live. */
+export const searchOf = (f: FeedFilters): string => live(queryOf(f));
 
 /** What `view` is asked for. */
 export function requestOf(f: FeedFilters): ViewRequest {
   return { query: searchOf(f), sort: f.sort, kinds: kindsOf(f.segment) };
 }
 
-/** A kind clicked in the sidebar: that kind only, or any again; the segment follows when it does not show it. */
-export function chooseKind(f: FeedFilters, kind: ItemKind): FeedFilters {
-  if (f.kind === kind) return { ...f, kind: null };
-  const segment = segmentHas(f.segment, kind) ? f.segment : isPost(kind) ? "posts" : "papers";
-  return { ...f, kind, segment };
+/** A value of a group clicked: that one alone, or none when it was so already; with ⌘ (`toggle`), added to the
+ *  choices or taken out of them. */
+function chosen<T>(values: T[], value: T, toggle: boolean): T[] {
+  if (toggle) return values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
+  return values.length === 1 && values[0] === value ? [] : [value];
 }
 
-/** Another segment: a kind chosen that it does not show is let go. */
+/** A kind clicked in the sidebar (see `chosen`); the segment follows when it does not show them. */
+export function chooseKind(f: FeedFilters, kind: ItemKind, toggle = false): FeedFilters {
+  const kinds = chosen(f.kinds, kind, toggle);
+  return { ...f, kinds, segment: kinds.every((k) => segmentHas(f.segment, k)) ? f.segment : segmentOf(kinds) };
+}
+
+/** Another segment: the kinds chosen that it does not show are let go. */
 export function chooseSegment(f: FeedFilters, segment: Segment): FeedFilters {
-  return { ...f, segment, kind: f.kind && !segmentHas(segment, f.kind) ? null : f.kind };
+  return { ...f, segment, kinds: f.kinds.filter((k) => segmentHas(segment, k)) };
 }
 
-/** An interest or a subscription clicked: that one, or any again. */
-export const chooseInterest = (f: FeedFilters, interest: string): FeedFilters => ({
+/** An interest or a subscription clicked (see `chosen`). */
+export const chooseInterest = (f: FeedFilters, interest: string, toggle = false): FeedFilters => ({
   ...f,
-  interest: f.interest === interest ? null : interest,
+  interests: chosen(f.interests, interest, toggle),
 });
-export const chooseSource = (f: FeedFilters, source: string): FeedFilters => ({
+export const chooseSource = (f: FeedFilters, source: string, toggle = false): FeedFilters => ({
   ...f,
-  source: f.source === source ? null : source,
+  sources: chosen(f.sources, source, toggle),
 });
+
+/** What a query of the tab chooses. */
+type Choices = Pick<FeedFilters, "view" | "kinds" | "interests" | "sources" | "segment" | "query">;
+
+/** The choices of a query, as the sidebar, the segment and the field show them: its first `is:` term of a view,
+ *  `kind:`, `prof:` and `src:` terms (not excluding) become the choices of their groups, a `kind:` of a segment's
+ *  kinds that segment, the rest the text typed, in its order. `queryOf` gives an equivalent query back. */
+export function decompose(query: string): Choices {
+  const f: Choices = { view: "all", kinds: [], interests: [], sources: [], segment: "all", query: "" };
+  const taken = new Set<string>();
+  const rest: string[] = [];
+  for (const term of queryTerms(query, FEED_FIELDS)) {
+    const vals = [...new Set(term.values.map((v) => v.trim()).filter(Boolean))];
+    const field = term.field ?? "";
+    const free = !term.negated && vals.length > 0 && !taken.has(field);
+    const lower = vals.map((v) => v.toLowerCase());
+    const shelf = SHELVES.find((s) => s.term === `is:${lower[0] === "unread" ? "new" : lower[0]}`);
+    if (free && field === "is" && vals.length === 1 && shelf) {
+      f.view = shelf.view;
+    } else if (free && field === "kind" && lower.every(isKind)) {
+      const kinds = [...new Set(lower)] as ItemKind[];
+      const segment = SEGMENTS.find((s) => s.kinds.length === kinds.length && s.kinds.every((k) => kinds.includes(k)));
+      if (segment) f.segment = segment.segment;
+      else [f.kinds, f.segment] = [kinds, segmentOf(kinds)];
+    } else if (free && field === "prof") {
+      f.interests = vals;
+    } else if (free && field === "src") {
+      f.sources = vals;
+    } else {
+      rest.push(term.text);
+      continue;
+    }
+    taken.add(field);
+  }
+  f.query = rest.join(" ");
+  return f;
+}
+
+/** Whether two queries of the feeds are the same: the same choices and text, in any order of the groups. */
+export function sameQuery(a: string, b: string): boolean {
+  const canonical = (q: string) => queryOf({ ...NO_FEED_FILTERS, ...decompose(q) });
+  return canonical(a) === canonical(b);
+}
+
+/** A saved search applied: its choices, text and order in place of the tab's (the groups unfolded stay). */
+export const applied = (f: FeedFilters, search: { query: string; sort: Sort }): FeedFilters => ({
+  ...f,
+  ...decompose(search.query),
+  sort: search.sort,
+});
+
+/** Whether a saved search is what the tab shows: the same query, the same order. */
+export const isShown = (f: FeedFilters, search: { query: string; sort: Sort }) =>
+  search.sort === f.sort && sameQuery(search.query, queryOf(f));
 
 /** A choice shown as a chip above the list; the × takes it off. */
 export type FeedChip = { kind: "view" | "kind" | "interest" | "source" | "search"; text: string };
 
-/** The chips of the choices made, in the order view › kind › interest › source › search. */
+/** A chip of several values: `Source: TC, GRL`; one value alone. */
+const several = (name: string, values: string[]) => (values.length > 1 ? `${name}: ${values.join(", ")}` : (values[0] ?? ""));
+
+/** The chips of the choices made, in the order view › kinds › interests › sources › search. */
 export function feedChips(f: FeedFilters): FeedChip[] {
   const list: FeedChip[] = [];
+  const kindName = (kind: ItemKind) => KINDS.find((k) => k.kind === kind)?.name ?? kind;
   if (f.view !== "all") list.push({ kind: "view", text: SHELVES.find((s) => s.view === f.view)?.name ?? f.view });
-  if (f.kind) list.push({ kind: "kind", text: KINDS.find((k) => k.kind === f.kind)?.name ?? f.kind });
-  if (f.interest !== null) list.push({ kind: "interest", text: f.interest });
-  if (f.source !== null) list.push({ kind: "source", text: f.source });
+  if (f.kinds.length) list.push({ kind: "kind", text: several("Kind", f.kinds.map(kindName)) });
+  if (f.interests.length) list.push({ kind: "interest", text: several("Interest", f.interests) });
+  if (f.sources.length) list.push({ kind: "source", text: several("Source", f.sources) });
   if (f.query.trim()) list.push({ kind: "search", text: `"${f.query.trim()}"` });
   return list;
 }
@@ -163,11 +252,11 @@ export function withoutChip(f: FeedFilters, chip: FeedChip): FeedFilters {
     case "view":
       return { ...f, view: "all" };
     case "kind":
-      return { ...f, kind: null };
+      return { ...f, kinds: [] };
     case "interest":
-      return { ...f, interest: null };
+      return { ...f, interests: [] };
     case "source":
-      return { ...f, source: null };
+      return { ...f, sources: [] };
     case "search":
       return { ...f, query: "" };
   }
