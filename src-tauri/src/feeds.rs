@@ -806,6 +806,11 @@ pub struct FeedDetail {
     like: Option<f64>,
     /// the papers of the library most like it, the nearest first
     nearest: Vec<Nearest>,
+    /// the works that cite it, as OpenAlex counted them when it was found
+    cited: Option<u64>,
+    /// its OpenAlex id (`W…`), if an entry is OpenAlex's: the works around it are searched by it,
+    /// else by its DOI
+    openalex: Option<String>,
 }
 
 /// A paper of the library like an item.
@@ -1157,6 +1162,11 @@ pub fn detail(
         doi: item.doi.clone(),
         arxiv: item.arxiv.clone(),
         url: item.url.clone(),
+        cited: item.cited,
+        openalex: (item.sources.iter())
+            .find_map(|s| s.entry.guid.strip_prefix("https://openalex.org/"))
+            .filter(|id| id.starts_with('W'))
+            .map(String::from),
         r#abstract: row.r#abstract,
         abstract_from_feed: item.summary.is_some() && !feeds.abstract_from_work(item),
         abstract_pending: feeds.pending(item).is_some(),
@@ -1267,7 +1277,7 @@ pub fn change_in(app: &AppHandle, store: Store, change: Change) -> Result<Applie
 }
 
 /// The subscription a change gives.
-fn subscription_of(app: &AppHandle, applied: Applied) -> Result<SubscriptionInfo, String> {
+pub fn subscription_of(app: &AppHandle, applied: Applied) -> Result<SubscriptionInfo, String> {
     match applied {
         Applied::Subscription(s) => Ok(info(s, &app.state::<AppState>().feeds.lasts()?)),
         _ => Err("no subscription".to_string()),

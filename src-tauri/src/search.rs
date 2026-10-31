@@ -6,13 +6,20 @@
 //! The rows are the Feeds tab's (`FeedRow`); the details, the triage, the
 //! abstracts and the PDFs are the Feeds tab's commands, with the store.
 
-use papers_feeds::{Order, search_works};
+use papers_feeds::{Feed, Order, SourceKind, follow_filter, search_works};
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::AppState;
-use crate::feeds::{Applied, Change, FeedRow, InLibrary, Rows, Store, change_in, network};
+use crate::feeds::{
+    Applied, Change, FeedRow, InLibrary, Rows, Store, SubscriptionInfo, change_in, network,
+    subscription_of,
+};
 use crate::fetch::blocking;
+use crate::settings::Settings;
+
+/// The Search tab shown or hidden, to every window: whether it is shown.
+pub const TAB_EVENT: &str = "search-tab";
 
 /// A page of a search, as the list shows it.
 #[derive(Debug, Serialize)]
@@ -72,6 +79,45 @@ pub async fn search_rows(
     query: String,
 ) -> Result<Vec<FeedRow>, String> {
     blocking(move || rows_of(&app, &ids, &query)).await
+}
+
+/// A search followed in the Feeds tab: a sweep of OpenAlex of its filter (its words searched in
+/// the titles and abstracts), titled as the query, its works papers. Fetched by the caller.
+#[tauri::command]
+pub async fn search_follow(app: AppHandle, query: String) -> Result<SubscriptionInfo, String> {
+    blocking(move || {
+        let (network, access) = network(&app.state::<AppState>())?;
+        let filter = follow_filter(&network, &access, &query)?;
+        let feed = Feed::OpenAlex { filter };
+        let title = Some(query.trim().to_string());
+        let applied = change_in(
+            &app,
+            Store::Feeds,
+            Change::Subscribe(feed, SourceKind::Journal, title),
+        )?;
+        subscription_of(&app, applied)
+    })
+    .await
+}
+
+/// Whether the main window shows the Search tab (the setting `search_tab`).
+#[tauri::command]
+pub fn search_tab(app: AppHandle) -> Result<bool, String> {
+    Ok(Settings::load(&app.state::<AppState>().settings_path)?.search_tab)
+}
+
+/// Shows or hides the Search tab of the main window: from the settings and Window → Show Search
+/// Tab. The windows are told at once ([`TAB_EVENT`]), and the menu follows.
+#[tauri::command]
+pub fn search_set_tab(app: AppHandle, show: bool) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let mut settings = Settings::load(&state.settings_path)?;
+    settings.search_tab = show;
+    settings.save(&state.settings_path)?;
+    #[cfg(target_os = "macos")]
+    crate::menu::search_tab(&app, show);
+    let _ = app.emit(TAB_EVENT, show);
+    Ok(())
 }
 
 /// The works saved for later, the latest found first.

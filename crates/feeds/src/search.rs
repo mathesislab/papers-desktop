@@ -3,15 +3,16 @@
 //! and phrases are the full-text `search` (`-` a NOT); its fields filters:
 //! `t:` the title, `abs:` the abstract, `a:` an author's name as written,
 //! `j:` a journal (looked up by its name), `y:` the years, `doi:` DOIs, and
-//! the facets `cites:` (the works that cite a work, by its OpenAlex id) and
-//! `citedby:` (the works a work cites). What OpenAlex cannot be asked (a
+//! the facets `cites:` (the works that cite a work, by its OpenAlex id or
+//! its DOI) and `citedby:` (the works a work cites). What OpenAlex cannot be asked (a
 //! field it has not, a title that excludes) is refused, said. Sorted by
 //! relevance (without words, the most cited first), the most cited or the
 //! newest; 25 a page, the next from a cursor.
 //!
 //! The works found go into a folder of feeds of their own (the app's
 //! `search`), an item each: the searches before go, but for the items saved
-//! for later (shortlisted) or added.
+//! for later (shortlisted) or added. A search followed is a sweep of the
+//! feeds: its words searched in the titles and abstracts.
 
 use papers_core::{Query, Schema};
 use serde::{Deserialize, Serialize};
@@ -22,7 +23,7 @@ use crate::http::{Access, Http, get_json, with_query};
 use crate::journals::{self, journal_key};
 use crate::model::{Entry, ItemKind, Triage};
 use crate::normalize::canonical_doi;
-use crate::openalex::{self, List};
+use crate::openalex::{self, List, Work};
 
 /// The source of the entries of the works found.
 pub const FOUND: &str = "search";
@@ -49,13 +50,16 @@ pub enum Order {
     Newest,
 }
 
-/// What a query asks of OpenAlex: its full-text search, its filters, and
-/// the journals to look up by name (any of them; excluded with `true`).
+/// What a query asks of OpenAlex: its full-text search, its filters, the
+/// journals to look up by name and the works around a work (by its id, or
+/// by its DOI to look up), any of each; excluded with `true`.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Asked {
     pub search: Vec<String>,
     pub filters: Vec<String>,
     pub journals: Vec<(Vec<String>, bool)>,
+    /// `cites` or `cited_by`, the works
+    pub around: Vec<(&'static str, Vec<String>, bool)>,
 }
 
 /// A page of a search: the works found, how many there are in all, the
@@ -145,11 +149,11 @@ pub fn ask(query: &str) -> std::result::Result<Asked, String> {
                 } else {
                     "cited_by"
                 };
-                let not = if term.negated { "!" } else { "" };
-                let works: Vec<String> = values.iter().map(|v| work_id(v)).collect();
-                asked
-                    .filters
-                    .push(format!("{field}:{not}{}", works.join("|")));
+                let works = values.iter().map(|v| {
+                    let v = v.trim_matches('"');
+                    canonical_doi(v).unwrap_or_else(|| work_id(v))
+                });
+                asked.around.push((field, works.collect(), term.negated));
             }
             Some(_) => return refused("not a field of OpenAlex's works"),
         }
@@ -180,30 +184,64 @@ fn work_id(value: &str) -> String {
     id.to_ascii_uppercase()
 }
 
-/// The request of a page of a search, its journals' ids found: from the
-/// first page, or from a cursor.
-pub fn search_url(
+/// A filter of any of some ids, or of none of them.
+fn any_of(field: &str, ids: &[String], excluded: bool) -> String {
+    match excluded {
+        true => {
+            let not: Vec<String> = ids.iter().map(|i| format!("!{i}")).collect();
+            format!("{field}:{}", not.join("+"))
+        }
+        false => format!("{field}:{}", ids.join("|")),
+    }
+}
+
+/// The filters of what a query asks, its journals and works looked up: a
+/// journal by its name (the one whose title is the name, else OpenAlex's
+/// best), a work by its DOI.
+pub fn filters(
+    http: &dyn Http,
+    access: &Access,
     asked: &Asked,
-    journals: &[(Vec<String>, bool)],
+) -> std::result::Result<Vec<String>, String> {
+    let mut filters = asked.filters.clone();
+    for (names, excluded) in &asked.journals {
+        let mut ids = Vec::new();
+        for name in names {
+            let found = journals::sources(http, access, name)?;
+            let key = journal_key(name);
+            let best = (found.iter().find(|s| journal_key(&s.display_name) == key))
+                .or(found.first())
+                .ok_or_else(|| format!("j:{name}: no such journal in OpenAlex"))?;
+            ids.push(work_id(&best.id));
+        }
+        filters.push(any_of("primary_location.source.id", &ids, *excluded));
+    }
+    for (field, works, excluded) in &asked.around {
+        let mut ids = Vec::new();
+        for work in works {
+            if !work.starts_with("10.") {
+                ids.push(work.clone());
+                continue;
+            }
+            let found: Option<Work> = get_json(http, &openalex::work_url(work, access))?;
+            let found = found.ok_or_else(|| format!("{work}: not in OpenAlex"))?;
+            ids.push(work_id(&found.id));
+        }
+        filters.push(any_of(field, &ids, *excluded));
+    }
+    Ok(filters)
+}
+
+/// The request of a page of a search, of its words and its filters: from
+/// the first page, or from a cursor.
+pub fn search_url(
+    words: &[String],
+    filters: &[String],
     order: Order,
     cursor: Option<&str>,
     access: &Access,
 ) -> std::result::Result<String, String> {
-    let mut filters = asked.filters.clone();
-    for (ids, excluded) in journals {
-        let field = "primary_location.source.id";
-        filters.push(match excluded {
-            true => format!(
-                "{field}:{}",
-                ids.iter()
-                    .map(|i| format!("!{i}"))
-                    .collect::<Vec<_>>()
-                    .join("+")
-            ),
-            false => format!("{field}:{}", ids.join("|")),
-        });
-    }
-    let search = asked.search.join(" ");
+    let search = words.join(" ");
     if search.is_empty() && filters.is_empty() {
         return Err("Nothing to search for".to_string());
     }
@@ -235,8 +273,7 @@ pub fn search_url(
 }
 
 /// A page of the works of a query, in an order: from the first, or from a
-/// cursor. The journals of `j:` are looked up by name first: the one whose
-/// title is the name, else OpenAlex's best.
+/// cursor (its journals and works looked up again: `filters`).
 pub fn search_works(
     http: &dyn Http,
     access: &Access,
@@ -245,20 +282,8 @@ pub fn search_works(
     cursor: Option<&str>,
 ) -> std::result::Result<Page, String> {
     let asked = ask(query)?;
-    let mut journals = Vec::new();
-    for (names, excluded) in &asked.journals {
-        let mut ids = Vec::new();
-        for name in names {
-            let found = journals::sources(http, access, name)?;
-            let key = journal_key(name);
-            let best = (found.iter().find(|s| journal_key(&s.display_name) == key))
-                .or(found.first())
-                .ok_or_else(|| format!("j:{name}: no such journal in OpenAlex"))?;
-            ids.push(work_id(&best.id));
-        }
-        journals.push((ids, *excluded));
-    }
-    let url = search_url(&asked, &journals, order, cursor, access)?;
+    let filters = filters(http, access, &asked)?;
+    let url = search_url(&asked.search, &filters, order, cursor, access)?;
     let list: List = get_json(http, &url)?.unwrap_or_default();
     let entries = list
         .results
@@ -273,6 +298,28 @@ pub fn search_works(
             .next_cursor
             .filter(|_| list.results.len() == PER_SEARCH),
     })
+}
+
+/// The OpenAlex filter of a query followed as a sweep of the feeds: its
+/// words searched in the titles and abstracts (their commas, which would end
+/// the filter, dropped), then its filters.
+pub fn follow_filter(
+    http: &dyn Http,
+    access: &Access,
+    query: &str,
+) -> std::result::Result<String, String> {
+    let asked = ask(query)?;
+    let mut all = Vec::new();
+    let words = asked.search.join(" ").replace(',', " ");
+    let words = words.split_whitespace().collect::<Vec<_>>().join(" ");
+    if !words.is_empty() {
+        all.push(format!("title_and_abstract.search:{words}"));
+    }
+    all.extend(filters(http, access, &asked)?);
+    if all.is_empty() {
+        return Err("Nothing to follow".to_string());
+    }
+    Ok(all.join(","))
 }
 
 impl Feeds {

@@ -69,6 +69,9 @@ pub struct Settings {
     /// place of the list, to read. Set in the Feeds section and by Window → Feeds Details Beside
     /// the List
     pub feeds_beside: bool,
+    /// the Search tab of the main window; on by default. Set in the settings and by Window →
+    /// Show Search Tab
+    pub search_tab: bool,
 }
 
 /// A saved search of the library tab: a name for its filters and the sort of
@@ -173,6 +176,7 @@ impl Default for Settings {
             feeds_poll_minutes: 60,
             feeds_tab: true,
             feeds_beside: false,
+            search_tab: true,
         }
     }
 }
@@ -339,6 +343,14 @@ mod tests {
         assert!(settings.feeds_tab);
         let set: Settings = serde_json::from_str(r#"{"feeds_tab": false}"#).unwrap();
         assert!(!set.feeds_tab);
+    }
+
+    #[test]
+    fn the_search_tab_shown_by_default_also_for_older_files() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert!(settings.search_tab);
+        let set: Settings = serde_json::from_str(r#"{"search_tab": false}"#).unwrap();
+        assert!(!set.search_tab);
     }
 
     #[test]

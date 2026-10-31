@@ -24,6 +24,7 @@ const TO_PAGE: &[&str] = &[
     "find",
     "library",
     "feeds",
+    "search",
     "next-tab",
     "previous-tab",
     "show-next-tab",
@@ -37,6 +38,13 @@ struct FeedsItems {
     feeds: MenuItem<Wry>,
     show: CheckMenuItem<Wry>,
     beside: CheckMenuItem<Wry>,
+}
+
+/// Window → Search, there only while the Search tab is shown, and Window → Show Search Tab, ticked
+/// then: they follow the setting (`search_tab`).
+struct SearchItems {
+    search: MenuItem<Wry>,
+    show: CheckMenuItem<Wry>,
 }
 
 pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
@@ -62,6 +70,18 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
             "Feeds Details Beside the List",
             feeds_tab,
             settings.feeds_beside,
+            None::<&str>,
+        )?,
+    };
+    let search_tab = settings.search_tab;
+    let search = SearchItems {
+        search: MenuItem::with_id(app, "search", "Search", search_tab, Some("CmdOrCtrl+3"))?,
+        show: CheckMenuItem::with_id(
+            app,
+            "show-search-tab",
+            "Show Search Tab",
+            true,
+            search_tab,
             None::<&str>,
         )?,
     };
@@ -142,6 +162,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &separator()?,
                     &item("library", "Library", "CmdOrCtrl+1")?,
                     &feeds.feeds,
+                    &search.search,
                     &item("next-tab", "Next Tab", "Ctrl+Tab")?,
                     &item("previous-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
                     &separator()?,
@@ -154,17 +175,20 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &separator()?,
                     &feeds.show,
                     &feeds.beside,
+                    &search.show,
                 ],
             )?,
         ],
     )?;
     app.set_menu(menu)?;
     app.manage(feeds);
+    app.manage(search);
     show_plus(app);
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
         "show-feeds-tab" => toggle_feeds_tab(app),
         "feeds-beside" => toggle_feeds_beside(app),
+        "show-search-tab" => toggle_search_tab(app),
         "settings" => crate::settings_window(app, None),
         "install-cli" => crate::cli_tool::install_from_menu(app),
         id => command(app, id),
@@ -187,6 +211,23 @@ pub fn feeds_tab(app: &AppHandle, shown: bool) {
         let _ = items.feeds.set_enabled(shown);
         let _ = items.show.set_checked(shown);
         let _ = items.beside.set_enabled(shown);
+    }
+}
+
+/// Window → Show Search Tab: the setting the other way.
+fn toggle_search_tab(app: &AppHandle) {
+    let shown = crate::search::search_tab(app.clone()).unwrap_or(true);
+    if crate::search::search_set_tab(app.clone(), !shown).is_err() {
+        // not written: the tick back as the setting is
+        search_tab(app, shown);
+    }
+}
+
+/// The items of the Search tab as the setting is.
+pub fn search_tab(app: &AppHandle, shown: bool) {
+    if let Some(items) = app.try_state::<SearchItems>() {
+        let _ = items.search.set_enabled(shown);
+        let _ = items.show.set_checked(shown);
     }
 }
 

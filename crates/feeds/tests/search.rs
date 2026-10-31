@@ -3,7 +3,7 @@
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Asked, FOUND, Feeds, Order, Reply, Triage, ask, search_url, search_works,
+    Access, FOUND, Feeds, Order, Reply, Triage, ask, follow_filter, search_url, search_works,
 };
 
 const SELECT: &str = "select=id,display_name,alternate_titles,issn_l,issn,host_organization_name,homepage_url,works_count";
@@ -36,8 +36,17 @@ fn words_phrases_and_fields_as_openalex_asks_them() {
         ["doi:10.5194/tc-1-2"]
     );
     assert_eq!(
-        filters("cites:https://openalex.org/W123 citedby:w9"),
-        ["cites:W123", "cited_by:W9"]
+        ask("cites:https://openalex.org/W123 citedby:w9,10.5194/TC-1")
+            .unwrap()
+            .around,
+        [
+            ("cites", vec!["W123".to_string()], false),
+            (
+                "cited_by",
+                vec!["W9".to_string(), "10.5194/tc-1".to_string()],
+                false
+            ),
+        ]
     );
     assert_eq!(
         ask("j:\"The Cryosphere\",GRL -j:Nature").unwrap().journals,
@@ -64,7 +73,14 @@ fn what_openalex_cannot_be_asked_is_refused() {
 fn the_request_its_order_and_its_page() {
     let access = Access::default();
     let asked = ask("greenland y:2000-2010").unwrap();
-    let url = search_url(&asked, &[], Order::Relevance, None, &access).unwrap();
+    let url = search_url(
+        &asked.search,
+        &asked.filters,
+        Order::Relevance,
+        None,
+        &access,
+    )
+    .unwrap();
     assert!(url.starts_with("https://api.openalex.org/works?search=greenland&filter=publication_year:2000-2010&sort=relevance_score:desc&select="), "{url}");
     assert!(
         url.contains(",cited_by_count&per-page=25&cursor=*"),
@@ -72,21 +88,27 @@ fn the_request_its_order_and_its_page() {
     );
     // without words, the most cited first
     let asked = ask("y:2000").unwrap();
-    let url = search_url(&asked, &[], Order::Relevance, Some("abc"), &access).unwrap();
+    let url = search_url(
+        &asked.search,
+        &asked.filters,
+        Order::Relevance,
+        Some("abc"),
+        &access,
+    )
+    .unwrap();
     assert!(
         url.contains("sort=cited_by_count:desc") && url.ends_with("cursor=abc"),
         "{url}"
     );
-    let url = search_url(&asked, &[], Order::Newest, None, &access).unwrap();
+    let url = search_url(&asked.search, &asked.filters, Order::Newest, None, &access).unwrap();
     assert!(url.contains("sort=publication_date:desc"));
-    let journals = [
-        (vec!["S1".to_string(), "S2".to_string()], false),
-        (vec!["S3".to_string()], true),
-    ];
-    let url = search_url(&asked, &journals, Order::Cited, None, &access).unwrap();
-    assert!(url.contains("filter=publication_year:2000,primary_location.source.id:S1|S2,primary_location.source.id:!S3&"), "{url}");
+    let url = search_url(&[], &asked.filters, Order::Cited, None, &access).unwrap();
+    assert!(
+        url.contains("?filter=publication_year:2000&sort=cited_by_count:desc&"),
+        "{url}"
+    );
     assert_eq!(
-        search_url(&Asked::default(), &[], Order::Relevance, None, &access).unwrap_err(),
+        search_url(&[], &[], Order::Relevance, None, &access).unwrap_err(),
         "Nothing to search for"
     );
 }
@@ -118,14 +140,8 @@ fn a_page_of_works_its_journal_looked_up_by_name() {
     let sources = r#"{"results":[{"id":"https://openalex.org/S99","display_name":"Cryosphere Letters"},
         {"id":"https://openalex.org/S42","display_name":"The Cryosphere"}]}"#;
     let asked = ask("melt").unwrap();
-    let works = search_url(
-        &asked,
-        &[(vec!["S42".to_string()], false)],
-        Order::Relevance,
-        None,
-        &access,
-    )
-    .unwrap();
+    let filters = ["primary_location.source.id:S42".to_string()];
+    let works = search_url(&asked.search, &filters, Order::Relevance, None, &access).unwrap();
     let body = page(
         &[
             work("W1", "10.5194/tc-1", "Melt", 120),
@@ -163,7 +179,15 @@ fn works_found_are_items_and_a_new_search_keeps_those_saved_for_later() {
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let access = Access::default();
     let url = |query: &str| {
-        search_url(&ask(query).unwrap(), &[], Order::Relevance, None, &access).unwrap()
+        let asked = ask(query).unwrap();
+        search_url(
+            &asked.search,
+            &asked.filters,
+            Order::Relevance,
+            None,
+            &access,
+        )
+        .unwrap()
     };
     let (melt, firn) = (url("melt"), url("firn"));
     let http = Recorded::new()
@@ -209,4 +233,37 @@ fn works_found_are_items_and_a_new_search_keeps_those_saved_for_later() {
         .unwrap();
     assert_eq!(again, more, "the same work: the same item");
     assert_eq!(Feeds::open(dir.path()).unwrap().items().len(), 2, "written");
+}
+
+#[test]
+fn the_works_citing_a_paper_by_its_doi_and_a_search_followed() {
+    let access = Access::default();
+    let doi = "https://api.openalex.org/works/doi:10.5194/tc-1?select=id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type";
+    let citing = search_url(&[], &["cites:W1".to_string()], Order::Cited, None, &access).unwrap();
+    let http = Recorded::new()
+        .reply(doi, Reply::ok(doi, work("W1", "10.5194/tc-1", "Melt", 3)))
+        .reply(
+            &citing,
+            Reply::ok(
+                &citing,
+                page(&[work("W5", "10.5194/tc-5", "Cites melt", 0)], 1),
+            ),
+        );
+    let found = search_works(&http, &access, "cites:10.5194/tc-1", Order::Cited, None).unwrap();
+    assert_eq!(found.entries[0].title, "Cites melt");
+
+    let followed = follow_filter(
+        &http,
+        &access,
+        r#"greenland, "ice sheet" -model y:2000- cites:W7"#,
+    )
+    .unwrap();
+    assert_eq!(
+        followed,
+        "title_and_abstract.search:greenland \"ice sheet\" NOT model,publication_year:>1999,cites:W7"
+    );
+    assert_eq!(
+        follow_filter(&http, &access, "").unwrap_err(),
+        "Nothing to follow"
+    );
 }

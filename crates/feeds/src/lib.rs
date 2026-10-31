@@ -69,7 +69,10 @@ pub use opml::Outline;
 pub use parse::{Parsed, parse};
 pub use pdf::{OpenAccess, Pdf, pdf};
 pub use rules::{Action, Rule};
-pub use search::{Asked, FOUND, Order, PER_SEARCH, Page, SEARCH_FACETS, ask, search_url, search_works};
+pub use search::{
+    Asked, FOUND, Order, PER_SEARCH, Page, SEARCH_FACETS, ask, filters, follow_filter, search_url,
+    search_works,
+};
 pub use searches::Search;
 pub use store::LOOKBACK_DAYS;
 pub use suggested::{Suggested, suggested};
