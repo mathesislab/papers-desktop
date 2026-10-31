@@ -658,10 +658,17 @@ fn published_refused_gives_its_link() {
             true,
         )],
     );
-    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    s.web.file(
+        "https://repo.example.edu/am.pdf",
+        File::Bytes(pdf_bytes("am")),
+    );
     let out = s.out(&["smith2020"]);
     let files = s.files("smith2020");
-    let name = Path::new(&files[0]).file_name().unwrap().to_string_lossy().into_owned();
+    let name = Path::new(&files[0])
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
     assert!(
         joined(&out).contains(&format!(
             "/files/{name} (accepted manuscript, from repo.example.edu; the published version was refused: open {PDF} in a browser)"
@@ -704,9 +711,15 @@ fn no_published_link_says_nothing() {
             true,
         )],
     );
-    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    s.web.file(
+        "https://repo.example.edu/am.pdf",
+        File::Bytes(pdf_bytes("am")),
+    );
     let out = joined(&s.out(&["smith2020"]));
-    assert!(out.contains("(accepted manuscript, from repo.example.edu)"), "{out}");
+    assert!(
+        out.contains("(accepted manuscript, from repo.example.edu)"),
+        "{out}"
+    );
     assert!(!out.contains("refused"), "{out}");
 }
 
@@ -965,7 +978,10 @@ fn several() -> Sandbox {
             true,
         )],
     );
-    s.web.file("https://repo.example.edu/acc.pdf", File::Bytes(pdf_bytes("acc")));
+    s.web.file(
+        "https://repo.example.edu/acc.pdf",
+        File::Bytes(pdf_bytes("acc")),
+    );
     s.web.publisher(
         "10.1000/none",
         Some("https://journals.example.org/none.pdf"),
@@ -1005,6 +1021,38 @@ fn no_summary_for_one_entry_or_a_dry_run() {
     let downloads = s.path("downloads");
     s.fetch_with(&[], true, PdfOptions::default(), &[&downloads], true);
     assert_eq!(s.summary(), None);
+}
+
+/// The accepted manuscript found is the file the entry has: counted once, as had, and not listed
+/// as refused (`test_refused_but_not_attached`).
+#[test]
+fn summary_refused_but_not_attached() {
+    let s = several();
+    fs::write(s.path("lib/files/acc.pdf"), pdf_bytes("acc")).unwrap();
+    s.bib(&[
+        entry("pub2020", &[], Some("10.1000/pub")),
+        entry("acc2020", &["files/acc.pdf"], Some("10.1000/acc")),
+    ]);
+    let (out, _) = s.fetch(
+        &["pub2020", "acc2020"],
+        false,
+        options(|o| o.again = true),
+        false,
+    );
+    assert!(
+        joined(&out).contains(
+            "acc2020: https://repo.example.edu/acc.pdf: not attached, the entry has the same file"
+        ),
+        "{out:?}"
+    );
+    assert_eq!(
+        s.summary().unwrap(),
+        [
+            "summary of 2 entries:",
+            "  1 PDF attached: 1 published version",
+            "  1 had the PDF already",
+        ]
+    );
 }
 
 /// The other lines of the summary: the entries that had the PDF, the supplements, nothing attached.
@@ -1548,7 +1596,10 @@ fn fetch_pdf_published_refused() {
             true,
         )],
     );
-    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    s.web.file(
+        "https://repo.example.edu/am.pdf",
+        File::Bytes(pdf_bytes("am")),
+    );
     let mut search = Search::new(
         &s.fetcher,
         &OpenAlex::default(),
@@ -1560,7 +1611,9 @@ fn fetch_pdf_published_refused() {
     assert_eq!(found.refused, [PDF]);
     assert_eq!(
         found.describe(),
-        format!("accepted manuscript, from repo.example.edu; the published version was refused: open {PDF} in a browser")
+        format!(
+            "accepted manuscript, from repo.example.edu; the published version was refused: open {PDF} in a browser"
+        )
     );
     freepdf::discard(&found.path);
 }
@@ -1576,7 +1629,8 @@ impl Sandbox {
         let mut out = String::new();
         let mut ok = Vec::new();
         for arg in args {
-            let result = fetch_free_pdf(&self.fetcher, &OpenAlex::default(), arg, output, Least::Any);
+            let result =
+                fetch_free_pdf(&self.fetcher, &OpenAlex::default(), arg, output, Least::Any);
             for line in pdf_porcelain_lines(arg, &result) {
                 out.push_str(&line);
                 out.push('\n');
@@ -1611,7 +1665,9 @@ fn porcelain_downloaded_into_a_directory() {
     let (out, _) = s.porcelain(&["arXiv:2101.01234"], Some(&dir));
     assert_eq!(
         out,
-        format!("downloaded arXiv:2101.01234 submitted https://arxiv.org/pdf/2101.01234 {dir}/2101.01234.pdf\n")
+        format!(
+            "downloaded arXiv:2101.01234 submitted https://arxiv.org/pdf/2101.01234 {dir}/2101.01234.pdf\n"
+        )
     );
 }
 
@@ -1629,7 +1685,10 @@ fn porcelain_refused_published() {
             true,
         )],
     );
-    s.web.file("https://repo.example.edu/am.pdf", File::Bytes(pdf_bytes("am")));
+    s.web.file(
+        "https://repo.example.edu/am.pdf",
+        File::Bytes(pdf_bytes("am")),
+    );
     let target = s.path("paper.pdf");
     let (out, _) = s.porcelain(&[DOI], Some(&target));
     assert_eq!(
@@ -1662,14 +1721,75 @@ fn porcelain_refused() {
 #[test]
 fn porcelain_failed() {
     let s = sandbox();
-    s.publisher();
-    let target = s.write("paper.pdf", "x");
-    // the file exists
-    assert_eq!(s.porcelain(&[DOI], Some(&target)), (format!("failed {DOI}\n"), vec![false]));
     assert_eq!(
         s.porcelain(&["nothing"], None),
         ("failed nothing\n".to_string(), vec![false])
     );
+}
+
+/// An existing `-o FILE` is found before any request: nothing is looked up nor downloaded
+/// (`test_exists_output_checked_before_the_download`).
+#[test]
+fn porcelain_exists_output_checked_before_the_download() {
+    let s = sandbox();
+    s.publisher();
+    s.web.file(PDF, File::Status(403));
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://repo.example.edu/am.pdf",
+            "acceptedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file(
+        "https://repo.example.edu/am.pdf",
+        File::Bytes(pdf_bytes("am")),
+    );
+    let target = s.write("paper.pdf", "x");
+    assert_eq!(
+        s.porcelain(&[DOI], Some(&target)),
+        (format!("exists {DOI} {target}\n"), vec![false])
+    );
+    assert!(s.web.0.lock().unwrap().requests.is_empty());
+    assert_eq!(fs::read_to_string(&target).unwrap(), "x");
+    let error = fetch_free_pdf(
+        &s.fetcher,
+        &OpenAlex::default(),
+        DOI,
+        Some(&target),
+        Least::Any,
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        format!("{target} exists: not replaced (-o FILE writes another file)")
+    );
+}
+
+/// The name made from the link is known once its PDF is found: it is not replaced, and no other
+/// link is tried (`test_exists_name_of_the_link`, with `-o DIR`: the current directory is that of
+/// the whole test process).
+#[test]
+fn porcelain_exists_name_of_the_link() {
+    let s = sandbox();
+    s.publisher();
+    s.web.openalex(
+        DOI,
+        vec![location(
+            "https://repo.example.edu/am.pdf",
+            "acceptedVersion",
+            None,
+            true,
+        )],
+    );
+    let existing = s.write("lib/10.1000_ocean.pdf", "x");
+    let (out, ok) = s.porcelain(&[DOI], Some(&s.path("lib")));
+    assert_eq!(out, format!("exists {DOI} {existing}\n"));
+    assert_eq!(ok, [false]);
+    assert_eq!(s.web.downloads(), [PDF]);
+    assert_eq!(fs::read_to_string(&existing).unwrap(), "x");
 }
 
 #[test]

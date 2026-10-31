@@ -232,13 +232,29 @@ pub fn format_bibtex_name(name: &Name) -> String {
     }
 }
 
-/// The names joined with ` and ` (`format_bibtex_names`).
+/// The names joined with ` and ` (`format_bibtex_names`); a part that is blank (empty or
+/// whitespace only) is left out, and so is a name with no part left (formats.md 3.3).
 pub fn format_bibtex_names(names: &[Name]) -> String {
     names
         .iter()
-        .map(format_bibtex_name)
+        .filter_map(name_parts)
+        .map(|name| format_bibtex_name(&name))
         .collect::<Vec<_>>()
         .join(" and ")
+}
+
+/// A name without its blank parts; none when no part is left (`_csl_name_parts`).
+fn name_parts(name: &Name) -> Option<Name> {
+    let part = |p: &Option<String>| p.clone().filter(|v| !strip(v).is_empty());
+    let name = Name {
+        literal: part(&name.literal),
+        family: part(&name.family),
+        given: part(&name.given),
+        non_dropping_particle: part(&name.non_dropping_particle),
+        dropping_particle: part(&name.dropping_particle),
+        suffix: part(&name.suffix),
+    };
+    (name != Name::default()).then_some(name)
 }
 
 /// A CSL name as a RIS name: `Family, Given, Suffix` (an organization as it is) (`_ris_name`).

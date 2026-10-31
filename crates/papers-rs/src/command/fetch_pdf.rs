@@ -23,6 +23,7 @@
 //!
 //! `papers fetch --pdf` ([`fetch_free_pdf`]) writes the free PDF of a DOI or an arXiv id to a file,
 //! without a library; with `--porcelain`, its lines for programs ([`pdf_porcelain_lines`]).
+//! An existing `-o FILE` is not replaced, and nothing is looked up ([`NotWritten::Exists`]).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -339,7 +340,8 @@ pub fn fetch_entry_pdfs(
     let dry_run = session.dry_run();
     let mut library = LibraryChecksums::new(session);
     let mut failed = 0;
-    let mut plans: Vec<(String, Vec<Found>)> = Vec::new();
+    // (entry, found, the summary line of a refused published version)
+    let mut plans: Vec<(String, Vec<Found>, Option<ToOpen>)> = Vec::new();
     for key in keys {
         let Some(e) = session.library.get(key) else {
             continue;
@@ -391,15 +393,19 @@ pub fn fetch_entry_pdfs(
             continue;
         }
         let mut found = Vec::new();
+        let mut refused = None;
         if main {
             match fetch_pdf(&mut search, Some(&mut local)) {
                 Ok(f) => {
                     if !f.refused.is_empty() {
-                        summary.browser.push(ToOpen {
+                        // in the order of the entries; left out below if the PDF is not attached
+                        let line = ToOpen {
                             key: key.clone(),
                             links: f.refused.clone(),
                             found: Some(f.link.version),
-                        });
+                        };
+                        summary.browser.push(line.clone());
+                        refused = Some(line);
                     }
                     found.push(f);
                 }
@@ -417,40 +423,46 @@ pub fn fetch_entry_pdfs(
         if options.supplements {
             found.extend(fetch_supplements(&mut search, Some(&mut local)));
         }
-        plans.push((key.clone(), found));
+        plans.push((key.clone(), found, refused));
     }
 
     // the downloads are done: the files are attached
-    for (key, found) in plans {
+    for (key, found, refused) in plans {
         let mut new: Vec<Found> = Vec::new();
         for f in found {
-            match f.how {
-                How::Has => {
-                    session.say.line(format!(
-                        "{key}: already has {} (from {})",
-                        show(&f.path),
-                        f.link.host()
-                    ));
-                    summary.had += usize::from(f.link.version != Version::Supplement);
-                    continue;
-                }
-                How::Downloaded => {
-                    let mut files = session.library.files(&key);
-                    files.extend(new.iter().map(|g| g.path.clone()));
-                    if let Some(same) = same_content(&f.path, &files) {
-                        session.say.line(format!(
-                            "{key}: {}: not attached, the entry has the same file: {}",
-                            f.link.url,
-                            show(&same)
-                        ));
-                        summary.had += usize::from(f.link.version != Version::Supplement);
-                        discard(&f.path);
-                        continue;
-                    }
-                }
-                _ => {}
+            let same = || {
+                let mut files = session.library.files(&key);
+                files.extend(new.iter().map(|g| g.path.clone()));
+                same_content(&f.path, &files)
+            };
+            if f.how == How::Has {
+                session.say.line(format!(
+                    "{key}: already has {} (from {})",
+                    show(&f.path),
+                    f.link.host()
+                ));
+            } else if let Some(same) = (f.how == How::Downloaded).then(same).flatten() {
+                session.say.line(format!(
+                    "{key}: {}: not attached, the entry has the same file: {}",
+                    f.link.url,
+                    show(&same)
+                ));
+                discard(&f.path);
+            } else {
+                new.push(f);
+                continue;
             }
-            new.push(f);
+            // not attached: the entry had the PDF already (counted once, not as refused)
+            if f.link.version != Version::Supplement {
+                summary.had += 1;
+                if let Some(i) = summary
+                    .browser
+                    .iter()
+                    .position(|b| Some(b) == refused.as_ref())
+                {
+                    summary.browser.remove(i);
+                }
+            }
         }
         if new.is_empty() {
             continue;
@@ -776,22 +788,53 @@ fn pdf_name(found: &Found, id: &str) -> String {
     format!("{}.pdf", id.replace('/', "_"))
 }
 
+/// Why `papers fetch --pdf` wrote no file for an argument.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NotWritten {
+    /// No PDF could be downloaded (the links to open in a browser), or there is no PDF to look
+    /// for (not a DOI or arXiv id: no link).
+    NoPdf(NoPdf),
+    /// The file to write exists: it is not replaced.
+    Exists(String),
+}
+
+impl std::fmt::Display for NotWritten {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            NotWritten::NoPdf(error) => error.fmt(f),
+            NotWritten::Exists(target) => write!(
+                f,
+                "{target} exists: not replaced (-o FILE writes another file)"
+            ),
+        }
+    }
+}
+
+impl From<NoPdf> for NotWritten {
+    fn from(error: NoPdf) -> NotWritten {
+        NotWritten::NoPdf(error)
+    }
+}
+
 /// `papers fetch --pdf` of one argument (`fetch_pdfs`): the free PDF of a DOI or an arXiv id,
 /// written to `output` (a directory: under the name of its URL in it), else under the name of its
-/// URL in the current directory; an existing file is not replaced. The error has the links to
-/// open in a browser when no PDF could be downloaded, none when there is no PDF to look for (not a
-/// DOI or arXiv id) or the file exists.
+/// URL in the current directory; an existing file is not replaced. An existing `output` file is
+/// found before any request; a name made from the link, once its PDF is downloaded, before it is
+/// written (the PDF is discarded; no other link is tried).
 pub fn fetch_free_pdf(
     fetcher: &Fetcher,
     access: &OpenAlex,
     arg: &str,
     output: Option<&str>,
     least: Least,
-) -> std::result::Result<Written, NoPdf> {
-    let failed = |message: String| NoPdf {
-        message,
-        links: Vec::new(),
+) -> std::result::Result<Written, NotWritten> {
+    let failed = |message: String| {
+        NotWritten::NoPdf(NoPdf {
+            message,
+            links: Vec::new(),
+        })
     };
+    let taken = |path: &str| std::fs::symlink_metadata(path).is_ok();
     let doi = strip_doi(arg);
     let arxiv = if doi.is_some() {
         None
@@ -801,17 +844,18 @@ pub fn fetch_free_pdf(
     let Some(id) = doi.as_deref().or(arxiv.as_deref()) else {
         return Err(failed("not a DOI or arXiv id".to_string()));
     };
+    if let Some(output) = output.filter(|o| !isdir(o) && taken(o)) {
+        return Err(NotWritten::Exists(output.to_string()));
+    }
     let mut search = Search::new(fetcher, access, doi.as_deref(), arxiv.as_deref(), least);
     let found = fetch_pdf(&mut search, None)?;
     let mut target = output.map_or_else(|| pdf_name(&found, id), str::to_string);
     if isdir(&target) {
         target = join(&target, &pdf_name(&found, id));
     }
-    if std::fs::symlink_metadata(&target).is_ok() {
+    if taken(&target) {
         discard(&found.path);
-        return Err(failed(format!(
-            "{target} exists: not replaced (-o FILE writes another file)"
-        )));
+        return Err(NotWritten::Exists(target));
     }
     move_path(&found.path, &target).map_err(|e| failed(format!("{target}: {e}")))?;
     discard(&found.path);
@@ -820,9 +864,12 @@ pub fn fetch_free_pdf(
 
 /// The porcelain lines of an argument of `papers fetch --pdf` (formats.md 7.2), `arg` as given:
 /// `downloaded ID VERSION URL FILE` and a `refused-published ID URL` per published link refused
-/// before it; else a `refused ID URL` per link to open in a browser, or `failed ID` when there is
-/// none.
-pub fn pdf_porcelain_lines(arg: &str, result: &std::result::Result<Written, NoPdf>) -> Vec<String> {
+/// before it; `exists ID FILE` when the file to write exists; else a `refused ID URL` per link to
+/// open in a browser, or `failed ID` when there is none.
+pub fn pdf_porcelain_lines(
+    arg: &str,
+    result: &std::result::Result<Written, NotWritten>,
+) -> Vec<String> {
     match result {
         Ok(Written { target, found }) => {
             let mut lines = vec![format!(
@@ -838,8 +885,9 @@ pub fn pdf_porcelain_lines(arg: &str, result: &std::result::Result<Written, NoPd
             );
             lines
         }
-        Err(error) if error.links.is_empty() => vec![format!("failed {arg}")],
-        Err(error) => error
+        Err(NotWritten::Exists(target)) => vec![format!("exists {arg} {target}")],
+        Err(NotWritten::NoPdf(error)) if error.links.is_empty() => vec![format!("failed {arg}")],
+        Err(NotWritten::NoPdf(error)) => error
             .links
             .iter()
             .map(|url| format!("refused {arg} {url}"))
