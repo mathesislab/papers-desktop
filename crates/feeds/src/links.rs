@@ -159,6 +159,66 @@ fn text_of(element: ElementRef) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// The elements that end a paragraph of text.
+const BLOCK_NAMES: &[&str] = &[
+    "p",
+    "div",
+    "li",
+    "br",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "blockquote",
+    "ul",
+    "ol",
+    "table",
+    "tr",
+    "figure",
+    "figcaption",
+    "section",
+    "article",
+    "pre",
+    "dd",
+    "dt",
+    "hr",
+];
+
+/// The text of an HTML text (a post's content) as plain paragraphs: a block
+/// (`p`, `li`, `h2`, `br`, ...) ends one, white space is collapsed, scripts
+/// and styles are left out.
+pub fn paragraphs(html: &str) -> Vec<String> {
+    fn flush(out: &mut Vec<String>, buffer: &mut String) {
+        let text = buffer.split_whitespace().collect::<Vec<_>>().join(" ");
+        if !text.is_empty() {
+            out.push(text);
+        }
+        buffer.clear();
+    }
+    fn walk(element: ElementRef, out: &mut Vec<String>, buffer: &mut String) {
+        for child in element.children() {
+            match (ElementRef::wrap(child), child.value()) {
+                (Some(e), _) if matches!(e.value().name(), "script" | "style") => {}
+                (Some(e), _) if BLOCK_NAMES.contains(&e.value().name()) => {
+                    flush(out, buffer);
+                    walk(e, out, buffer);
+                    flush(out, buffer);
+                }
+                (Some(e), _) => walk(e, out, buffer),
+                (None, Node::Text(text)) => buffer.push_str(text),
+                _ => {}
+            }
+        }
+    }
+    let fragment = Html::parse_fragment(html);
+    let (mut out, mut buffer) = (Vec::new(), String::new());
+    walk(fragment.root_element(), &mut out, &mut buffer);
+    flush(&mut out, &mut buffer);
+    out
+}
+
 /// The papers an element cites, in order: its links' (or a link's text, if
 /// its address is not a paper's), and the DOIs of its text.
 fn cited_in(element: ElementRef) -> Vec<Cited> {

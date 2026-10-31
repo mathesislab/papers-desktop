@@ -51,6 +51,17 @@ pub enum Outcome {
     Failed(String),
 }
 
+/// A change of a subscription: each field set is changed.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Patch {
+    /// blank: the feed's own title again, at the next fetch
+    pub title: Option<String>,
+    pub kind: Option<SourceKind>,
+    /// `Some(None)` or blank: the feed's journal again
+    pub journal: Option<Option<String>>,
+    pub fetch_pages: Option<bool>,
+}
+
 /// A feeds folder, loaded.
 pub struct Feeds {
     pub(crate) dir: PathBuf,
@@ -112,6 +123,33 @@ impl Feeds {
             fetch_pages: false,
         };
         self.config.subscriptions.push(subscription.clone());
+        store::write(&self.dir, CONFIG, &self.config)?;
+        Ok(subscription)
+    }
+
+    /// Changes a subscription: what the patch sets. Its items keep their
+    /// kind and journal; those it lists from now on take the new ones.
+    pub fn update_subscription(&mut self, id: &str, patch: Patch) -> Result<Subscription> {
+        let subscription = self
+            .config
+            .subscriptions
+            .iter_mut()
+            .find(|s| s.id == id)
+            .ok_or_else(|| Error::NoSubscription { id: id.to_string() })?;
+        let blank = |text: String| Some(text.trim().to_string()).filter(|t| !t.is_empty());
+        if let Some(title) = patch.title {
+            subscription.title = blank(title);
+        }
+        if let Some(kind) = patch.kind {
+            subscription.kind = kind;
+        }
+        if let Some(journal) = patch.journal {
+            subscription.journal = journal.and_then(blank);
+        }
+        if let Some(fetch_pages) = patch.fetch_pages {
+            subscription.fetch_pages = fetch_pages;
+        }
+        let subscription = subscription.clone();
         store::write(&self.dir, CONFIG, &self.config)?;
         Ok(subscription)
     }
