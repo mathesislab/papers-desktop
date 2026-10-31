@@ -3257,6 +3257,7 @@ name = "papers-desktop"
 version = "0.7.0"
 dependencies = [
  "block2",
+ "chrono",
  "gtk",
  "notify",
  "objc2",
@@ -3264,6 +3265,7 @@ dependencies = [
  "objc2-foundation",
  "objc2-pdf-kit",
  "papers-core",
+ "papers-feeds",
  "papers-rs",
  "serde",
  "serde_json",
