@@ -47,7 +47,7 @@ fn fetch_reports_each_subscription() {
         out,
         "3 new  TC - recent papers (3 entries)\n\
          2 new  Futurity (2 entries)\n\
-         new: 5; lookups: 2; pages: 0\n"
+         new: 5; lookups: 3; pages: 0\n"
     );
     // the feed gets no new reply: the second fetch fails, and says so
     let again = s.ok(&["fetch"]);
