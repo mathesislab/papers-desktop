@@ -1,7 +1,8 @@
 <script lang="ts">
   // The Feeds tab of the main window (docs/design.md, Feeds; the mockup docs/mockups/feeds.html): the sidebar (the
   // views, kinds, interests and sources), the list of the items its choices, the segment and the search select, the
-  // details of the one selected; the keys of the triage; the Review of the shortlist, over the list and the details.
+  // details of the one selected; the keys of the triage; the Review of the shortlist, over the list and the details;
+  // the Subscribe sheet.
   // The window (src/routes/library/+page.svelte) keeps the
   // layout, and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is the
   // library's: it opens over this tab, which stays in front after the paper is added.
@@ -21,6 +22,7 @@
   import FeedsSidebar from "./FeedsSidebar.svelte";
   import FeedTable from "./FeedTable.svelte";
   import Review from "./Review.svelte";
+  import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
     SEGMENTS,
     chooseInterest,
@@ -105,6 +107,9 @@
   /** the Review of the shortlist, over the list and the details */
   let reviewing = $state(false);
   let reviewer = $state<ReturnType<typeof Review>>();
+  /** the Subscribe sheet, open; whether a subscription was made in it (fetched when it closes) */
+  let subscribing = $state(false);
+  let subscribed = false;
   /** what was just done, said for a moment */
   let notice = $state<string | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout>;
@@ -445,6 +450,13 @@
     await menu.popup();
   }
 
+  /** The Subscribe sheet closed: what was subscribed to is fetched. */
+  function closeSubscribe() {
+    subscribing = false;
+    if (subscribed) fetchNow();
+    subscribed = false;
+  }
+
   /** ⌘↩: the Review of the shortlist; again, or Esc in it, the list. */
   function toggleReview() {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -532,6 +544,17 @@
   );
 </script>
 
+{#if subscribing}
+  <SubscribeSheet
+    {subscriptions}
+    onsubscribed={(info) => {
+      subscriptions = [...subscriptions, info];
+      subscribed = true;
+    }}
+    onclose={closeSubscribe}
+  />
+{/if}
+
 <main>
   {#if showSidebar}
     <aside class="sidebar" style:width="{sidebar}px">
@@ -569,6 +592,9 @@
       <button class="tool" class:busy={fetching} disabled={fetching} title="Fetch every subscription ({label(FETCH)})" onclick={fetchNow}>
         <span class="spin">↻</span>
         {fetching ? "Fetching…" : "Fetch"}
+      </button>
+      <button class="tool" title="Subscribe to a journal, a preprint server, a news site or a blog" onclick={() => (subscribing = true)}>
+        + Subscribe…
       </button>
       <button class="tool primary" class:on={reviewing} title="Review the shortlist, one item at a time ({label(REVIEW)})" onclick={toggleReview}>
         {reviewing ? "Leave review" : `Review shortlist (${shortlisted})`}
@@ -618,7 +644,9 @@
           {:else if failure && !rows.length}
             <p class="empty error">{failure}</p>
           {:else if !subscriptions.length && !rows.length}
-            <p class="empty">No subscriptions yet: add them in Settings, Feeds.</p>
+            <p class="empty">
+              No subscriptions yet. <button class="link" onclick={() => (subscribing = true)}>Subscribe…</button>
+            </p>
           {:else if !rows.length}
             <p class="empty">No item matches.</p>
           {:else}
@@ -966,5 +994,13 @@
   }
   .empty.error {
     color: var(--error);
+  }
+  button.link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
   }
 </style>
