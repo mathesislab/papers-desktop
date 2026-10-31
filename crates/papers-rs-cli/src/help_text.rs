@@ -1209,19 +1209,20 @@ find a free (open-access) PDF of each entry from its DOI or arXiv id, download
 it and attach it as `papers file attach` does (the downloaded file goes to the
 files directory, under its template name). The links are tried in this order,
 until one gives a PDF: the published version (the citation_pdf_url of the
-publisher's article page, then the open-access locations of OpenAlex), the
-accepted manuscript, the submitted version (preprint) and arXiv. Each line
-says which version was attached and where it came from. An entry that links to
-a PDF already is skipped (--again fetches it anyway). An entry whose PDF link
-is broken first gets the repair of `papers file fix` (the file found in the
-library by checksum, the pool, the other libraries of the machine, the
---search folders or the history), and is downloaded only if that gives it no
-PDF. A PDF with the content of a file of the entry is not attached; a URL
-downloaded before on this machine whose file the library has is not downloaded
-again. OpenAlex reads the environment variables OPENALEX_API_KEY (a free API
-key) and PAPERS_MAILTO (an email address, also given to the publishers in the
-user agent). Exit 1 if an entry got no PDF (the others are attached); the
-error gives the links to open in a browser.
+publisher's article page, then the open-access locations of OpenAlex, the
+citation_pdf_url of the repository pages they name), the accepted manuscript,
+the submitted version (preprint) and arXiv. Each line says which version was
+attached and where it came from. An entry that links to a PDF already is
+skipped (--again fetches it anyway). An entry whose PDF link is broken first
+gets the repair of `papers file fix` (the file found in the library by
+checksum, the pool, the other libraries of the machine, the --search folders
+or the history), and is downloaded only if that gives it no PDF. A PDF with
+the content of a file of the entry is not attached; a URL downloaded before on
+this machine whose file the library has is not downloaded again. OpenAlex
+reads the environment variables OPENALEX_API_KEY (a free API key) and
+PAPERS_MAILTO (an email address, also given to the publishers in the user
+agent). Exit 1 if an entry got no PDF (the others are attached); the error
+gives the links to open in a browser.
 
 positional arguments:
   KEY                   KEY: key, DOI, arXiv id or ISBN (a former key in the

@@ -147,6 +147,7 @@ impl Transport for Shared {
             content_type: f["content_type"].as_str().unwrap().to_string(),
             body: f["body"].as_str().unwrap().as_bytes().to_vec(),
             url: f["url"].as_str().unwrap_or(url).to_string(),
+            retry_after: None,
         })
     }
 }

@@ -31,6 +31,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use crate::bib::pystr::strip;
 use crate::config::paths::{
     abspath, basename, dirname, exists, getcwd, isdir, isfile, join, normpath, relpath, short_home,
 };
@@ -297,10 +298,44 @@ pub struct PdfOptions {
     pub again: bool,
     /// How OpenAlex is asked (`OPENALEX_API_KEY`, `PAPERS_MAILTO`).
     pub access: OpenAlex,
+    /// A fetch of several entries: an entry without PDF gets one line on the standard error, not
+    /// an error ([`no_pdf`]).
+    pub several: bool,
+}
+
+/// The message of a [`NoPdf`] in one line (`_one_line`): the reasons; open LINKS in a browser.
+pub fn one_line(message: &str) -> String {
+    const BROWSER: &str = "open in a browser: ";
+    let lines: Vec<&str> = message.lines().collect();
+    let rest = lines.get(1..).unwrap_or_default();
+    let mut reasons: Vec<String> = rest
+        .iter()
+        .filter(|line| !line.starts_with(BROWSER))
+        .map(|line| strip(line).to_string())
+        .collect();
+    if reasons.is_empty() {
+        reasons = lines.iter().take(1).map(|line| line.to_string()).collect();
+    }
+    reasons.extend(
+        rest.iter()
+            .filter_map(|line| line.strip_prefix(BROWSER))
+            .map(|links| format!("open {links} in a browser")),
+    );
+    reasons.join("; ")
+}
+
+/// Report an entry without PDF (`_no_pdf`): a `papers: error:` for one entry; for several, a line
+/// `KEY: no PDF (the reasons; open LINKS in a browser)` on the standard error.
+fn no_pdf(key: &str, message: &str, several: bool) {
+    if several {
+        log::eprintln(&format!("{key}: no PDF ({})", one_line(message)));
+    } else {
+        log::error(&format!("{key}: {message}"));
+    }
 }
 
 /// The DRYRUN lines of an entry (`_dry_run_lines`); false if no PDF would be found. `replacing`:
-/// the end of a line of `--upgrade` (empty otherwise).
+/// the end of a line of `--upgrade` (empty otherwise); `several`: see [`no_pdf`].
 #[allow(clippy::too_many_arguments)]
 fn dry_run_lines(
     session: &Session,
@@ -311,6 +346,7 @@ fn dry_run_lines(
     main: bool,
     supplements: bool,
     replacing: &str,
+    several: bool,
 ) -> bool {
     let (mut lines, mut ok) = (Vec::new(), true);
     if main {
@@ -344,7 +380,7 @@ fn dry_run_lines(
             ));
         }
         if links.is_empty() {
-            log::error(&format!("{key}: {}", no_pdf_message(search, &[])));
+            no_pdf(key, &no_pdf_message(search, &[]), several);
             ok = false;
         }
     }
@@ -403,7 +439,7 @@ pub fn fetch_entry_pdfs(
         let arxiv = entry_arxiv(e);
         if doi.is_none() && arxiv.is_empty() {
             if main {
-                log::error(&format!("{key}: no DOI or arXiv id to look for a PDF"));
+                no_pdf(key, "no DOI or arXiv id to look for a PDF", options.several);
                 summary.browser.push(ToOpen {
                     key: key.clone(),
                     links: Vec::new(),
@@ -432,6 +468,7 @@ pub fn fetch_entry_pdfs(
                 main,
                 options.supplements,
                 "",
+                options.several,
             );
             failed += usize::from(!ok);
             continue;
@@ -454,7 +491,7 @@ pub fn fetch_entry_pdfs(
                     found.push(f);
                 }
                 Err(error) => {
-                    log::error(&format!("{key}: {error}"));
+                    no_pdf(key, &error.to_string(), options.several);
                     summary.browser.push(ToOpen {
                         key: key.clone(),
                         links: error.links,
@@ -585,7 +622,8 @@ pub fn lower_version_pdf(
 /// accepted manuscript or a submitted version ([`lower_version_pdf`]) look for the published
 /// version only; one found replaces that file, under its name (the old file goes to the history,
 /// [`Session::replace_file`]). The library is not saved. `named`: the entries were given by key
-/// (an entry without such a PDF is said). The entries looked at.
+/// (an entry without such a PDF is said); `several`: an entry without published PDF gets one
+/// line. The entries looked at.
 pub fn upgrade_entry_pdfs(
     session: &mut Session,
     fetcher: &Fetcher,
@@ -593,6 +631,7 @@ pub fn upgrade_entry_pdfs(
     named: bool,
     access: &OpenAlex,
     summary: &mut FetchSummary,
+    several: bool,
 ) -> Result<Vec<String>> {
     let dry_run = session.dry_run();
     let versions = files_json(session)
@@ -640,17 +679,22 @@ pub fn upgrade_entry_pdfs(
                 true,
                 false,
                 &replacing,
+                several,
             );
             continue;
         }
         match fetch_pdf(&mut search, Some(&mut local)) {
             Ok(found) => plans.push((key.clone(), file, version, found)),
             Err(error) => {
-                session.say.line(format!(
-                    "{key}: {} ({}) kept: {error}",
-                    show(&file),
-                    version.name()
-                ));
+                let kept = format!("{key}: {} ({}) kept", show(&file), version.name());
+                session.say.line(if several {
+                    format!(
+                        "{kept} (no published version: {})",
+                        one_line(&error.to_string())
+                    )
+                } else {
+                    format!("{kept}: {error}")
+                });
                 summary.browser.push(ToOpen {
                     key: key.clone(),
                     links: error.links,
@@ -943,12 +987,17 @@ pub fn file_fetch(
         repaired: if pdf.again { 0 } else { repaired.len() },
         ..FetchSummary::default()
     };
+    // several entries: one line for each entry without PDF
+    let pdf = PdfOptions {
+        several: keys.len() > 1,
+        ..pdf.clone()
+    };
     let failed = fetch_entry_pdfs(
         session,
         fetcher,
         &fetched,
         mode,
-        pdf,
+        &pdf,
         &repaired,
         &mut summary,
     )?;
@@ -1030,6 +1079,7 @@ pub fn file_upgrade(
         named,
         &request.access,
         &mut summary,
+        keys.len() > 1,
     )?;
     let committed = if dry_run {
         None

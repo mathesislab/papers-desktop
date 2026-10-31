@@ -71,6 +71,7 @@ fn answer(
             content_type: content_type.to_string(),
             body: body.as_bytes().to_vec(),
             url: final_url.to_string(),
+            retry_after: None,
         }),
     }
 }

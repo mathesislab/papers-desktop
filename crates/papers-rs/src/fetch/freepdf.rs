@@ -7,13 +7,17 @@
 //!
 //! 1. the publisher's page (`https://doi.org/<DOI>`, then the article page): its
 //!    `citation_pdf_url` tag, a published version;
-//! 2. OpenAlex (`GET /works/doi:<DOI>`, [`Fetcher::work_locations`]): the open-access locations
-//!    with a PDF, by version, the best location first;
+//! 2. OpenAlex (`GET /works/doi:<DOI>`, [`Fetcher::work_locations`]), version by version: the
+//!    `pdf_url` of its open-access locations, the best location first, then the `citation_pdf_url`
+//!    tag of the landing pages of those without `pdf_url` (repositories; not the page of the DOI or
+//!    the page it led to);
 //! 3. arXiv: `https://arxiv.org/pdf/<id>`, a submitted version.
 //!
-//! The publisher's page is read first, and OpenAlex only when the publisher gives no PDF. A
-//! download that is refused (an HTTP error, a network error, not a PDF) moves to the next link;
-//! when none is left, the error gives the links to open in a browser. When an accepted or submitted
+//! The publisher's page is read first, OpenAlex only when the publisher gives no PDF, and a
+//! landing page only when the links before it gave none. An HTTP 429 (too many requests) is
+//! asked again once, after the wait it asks (`Retry-After`, at most [`RETRY_MAX`] seconds;
+//! [`RETRY_DEFAULT`] without it). A download that is refused (an HTTP error, a network error, not a
+//! PDF) moves to the next link; when none is left, the error gives the links to open in a browser. When an accepted or submitted
 //! version is found after the published version was refused, the published links are given too
 //! ([`Found::refused`]). The supplements are the PDFs that the article page links with "suppl" in
 //! the URL or the text of the link, and its `citation_supplementary_material` tags.
@@ -35,6 +39,7 @@ use sha2::{Digest, Sha256};
 
 use super::Fetcher;
 use super::download::{accept, connection_failed, save_download};
+use super::http::Response;
 use super::openalex::OpenAlex;
 use crate::config::paths::dirname;
 use crate::identity::{arxiv_of_doi, normalize_arxiv};
@@ -161,6 +166,39 @@ pub fn set_interval(interval: Duration) {
     INTERVAL_MS.store(interval.as_millis() as u64, Ordering::Relaxed);
 }
 
+/// Seconds to wait after an HTTP 429 without `Retry-After` (`RETRY_DEFAULT`), and at most
+/// (`RETRY_MAX`).
+pub const RETRY_DEFAULT: f64 = 5.0;
+pub const RETRY_MAX: f64 = 30.0;
+
+/// How the wait after an HTTP 429 is done (`time.sleep`; the tests record it).
+static SLEEP: Mutex<fn(Duration)> = Mutex::new(std::thread::sleep as fn(Duration));
+
+/// The sleep of the wait after an HTTP 429 (the tests record it instead).
+pub fn set_sleep(sleep: fn(Duration)) {
+    *SLEEP
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = sleep;
+}
+
+/// The seconds to wait for a `Retry-After` header (`_retry_after`): seconds, at most
+/// [`RETRY_MAX`]; a date or none gives [`RETRY_DEFAULT`].
+pub fn retry_after(value: Option<&str>) -> f64 {
+    match value.and_then(|v| v.trim().parse::<f64>().ok()) {
+        Some(seconds) => seconds.clamp(0.0, RETRY_MAX),
+        None => RETRY_DEFAULT,
+    }
+}
+
+/// Seconds as Python's `{:g}` writes them here: `30`, `2.5`.
+fn seconds_text(seconds: f64) -> String {
+    if seconds.fract() == 0.0 {
+        format!("{}", seconds as i64)
+    } else {
+        format!("{seconds}")
+    }
+}
+
 /// Wait until the last request to the site of `url` is the interval ago (`_wait`).
 fn wait(url: &str) {
     let interval = Duration::from_millis(INTERVAL_MS.load(Ordering::Relaxed));
@@ -233,6 +271,8 @@ pub struct Search<'a> {
     /// The URL of the publisher's page, when it gave an HTTP or network error.
     pub page_refused: Option<String>,
     page: Option<(Option<String>, Vec<String>)>,
+    /// The URL of the publisher's article page (after the redirections).
+    page_final: Option<String>,
 }
 
 impl<'a> Search<'a> {
@@ -264,6 +304,7 @@ impl<'a> Search<'a> {
             browser: Vec::new(),
             page_refused: None,
             page: None,
+            page_final: None,
         }
     }
 
@@ -274,13 +315,13 @@ impl<'a> Search<'a> {
             if let Some(doi) = self.doi.clone() {
                 let url = format!("https://doi.org/{doi}");
                 self.browser.push(url.clone());
-                wait(&url);
-                match self.fetcher.get(&url, None) {
+                match self.fetcher.fetch_page(&url) {
                     Ok(response) => {
                         if let Some(code) = response.status_error().map(|_| response.status) {
                             self.page_refused = Some(url.clone());
                             self.notes.push(format!("{url}: HTTP {code}"));
                         } else {
+                            self.page_final = Some(response.url.clone());
                             let found = page_links(&response.text(), &response.url);
                             if found.0.is_none() {
                                 self.notes.push(format!(
@@ -302,37 +343,44 @@ impl<'a> Search<'a> {
         self.page.clone().unwrap_or_default()
     }
 
-    /// The open-access PDFs of OpenAlex, by version (the best location first among those of a
-    /// version); the open landing pages go to `browser`.
-    fn openalex(&mut self) -> Vec<Link> {
+    /// The open-access locations of OpenAlex of the versions asked: their PDF links, and their
+    /// landing pages without PDF link (as links of their version), by version (the best location
+    /// first among those of a version); the open landing pages go to `browser`.
+    fn openalex(&mut self) -> (Vec<Link>, Vec<Link>) {
         let Some(doi) = self.doi.clone() else {
-            return Vec::new();
+            return (Vec::new(), Vec::new());
         };
         let locations = match self.fetcher.work_locations(&doi, &self.access) {
             Ok(locations) => locations,
             Err(error) if error.kind == super::ErrorKind::NotFound => {
                 self.notes.push("OpenAlex: no work of this DOI".to_string());
-                return Vec::new();
+                return (Vec::new(), Vec::new());
             }
             Err(error) => {
                 self.notes.push(error.message);
-                return Vec::new();
+                return (Vec::new(), Vec::new());
             }
         };
-        let mut links: Vec<Link> = Vec::new();
+        let (mut links, mut landings): (Vec<Link>, Vec<Link>) = (Vec::new(), Vec::new());
         for x in locations {
-            if x.is_oa
-                && let Some(landing) = x.landing_page_url.filter(|l| !l.is_empty())
-                && !self.browser.contains(&landing)
-            {
-                self.browser.push(landing);
+            if !x.is_oa {
+                continue;
             }
-            let version = Version::of_openalex(x.version.as_deref());
-            if x.is_oa
-                && let Some(pdf) = x.pdf_url.filter(|p| !p.is_empty())
-                && let Some(version) = version.filter(|v| self.versions.contains(v))
+            let landing = x.landing_page_url.filter(|l| !l.is_empty());
+            if let Some(landing) = &landing
+                && !self.browser.contains(landing)
             {
+                self.browser.push(landing.clone());
+            }
+            let Some(version) =
+                Version::of_openalex(x.version.as_deref()).filter(|v| self.versions.contains(v))
+            else {
+                continue;
+            };
+            if let Some(pdf) = x.pdf_url.filter(|p| !p.is_empty()) {
                 links.push(Link::new(pdf, version));
+            } else if let Some(landing) = landing {
+                landings.push(Link::new(landing, version));
             }
         }
         if links.is_empty() {
@@ -347,7 +395,33 @@ impl<'a> Search<'a> {
         }
         // stable: the best location first
         links.sort_by_key(|link| link.version);
-        links
+        landings.sort_by_key(|link| link.version);
+        (links, landings)
+    }
+
+    /// The link of the `citation_pdf_url` tag of a landing page, of its version, or none (what
+    /// the page gave goes to `notes`).
+    fn landing(&mut self, link: &Link) -> Option<Link> {
+        let response = match self.fetcher.fetch_page(&link.url) {
+            Ok(response) => response,
+            Err(error) => {
+                self.notes
+                    .push(format!("{}: {}", link.url, reason(&error.message)));
+                return None;
+            }
+        };
+        if let Some(code) = response.status_error().map(|_| response.status) {
+            self.notes.push(format!("{}: HTTP {code}", link.url));
+            return None;
+        }
+        let Some(pdf) = page_links(&response.text(), &response.url).0 else {
+            self.notes.push(format!(
+                "{}: no PDF link on the landing page",
+                host(&response.url)
+            ));
+            return None;
+        };
+        Some(Link::new(pdf, link.version))
     }
 
     /// The links to try, in order; the sources are read as they are needed.
@@ -373,11 +447,17 @@ impl<'a> Search<'a> {
     }
 }
 
+/// A link to try, or a landing page whose `citation_pdf_url` is the link to try.
+enum Step {
+    Link(Link),
+    Landing(Link),
+}
+
 /// The links of a [`Search`], read as they are needed (`Search.links`).
 pub struct Links<'s, 'a> {
     search: &'s mut Search<'a>,
     stage: u8,
-    queue: Vec<Link>,
+    queue: Vec<Step>,
     seen: HashSet<String>,
 }
 
@@ -387,7 +467,13 @@ impl Iterator for Links<'_, '_> {
     fn next(&mut self) -> Option<Link> {
         loop {
             if !self.queue.is_empty() {
-                let link = self.queue.remove(0);
+                let link = match self.queue.remove(0) {
+                    Step::Link(link) => link,
+                    Step::Landing(page) => match self.search.landing(&page) {
+                        Some(link) => link,
+                        None => continue,
+                    },
+                };
                 if self.seen.insert(link.url.clone()) {
                     return Some(link);
                 }
@@ -397,10 +483,43 @@ impl Iterator for Links<'_, '_> {
             match self.stage {
                 1 if self.search.doi.is_some() => {
                     if let Some(pdf) = self.search.page().0 {
-                        self.queue.push(Link::new(pdf, Version::Published));
+                        self.queue
+                            .push(Step::Link(Link::new(pdf, Version::Published)));
                     }
                 }
-                2 if self.search.doi.is_some() => self.queue = self.search.openalex(),
+                2 if self.search.doi.is_some() => {
+                    // version by version: the PDF links, then the landing pages (not the
+                    // publisher's page, read already)
+                    let (links, landings) = self.search.openalex();
+                    let doi = self.search.doi.clone().unwrap_or_default();
+                    let publisher = [
+                        format!("https://doi.org/{doi}").to_lowercase(),
+                        self.search
+                            .page_final
+                            .clone()
+                            .unwrap_or_default()
+                            .to_lowercase(),
+                    ];
+                    for version in self.search.versions {
+                        self.queue.extend(
+                            links
+                                .iter()
+                                .filter(|link| link.version == *version)
+                                .cloned()
+                                .map(Step::Link),
+                        );
+                        self.queue.extend(
+                            landings
+                                .iter()
+                                .filter(|page| {
+                                    page.version == *version
+                                        && !publisher.contains(&page.url.to_lowercase())
+                                })
+                                .cloned()
+                                .map(Step::Landing),
+                        );
+                    }
+                }
                 3 => {
                     let Some(arxiv) = self.search.arxiv.clone() else {
                         continue;
@@ -418,10 +537,10 @@ impl Iterator for Links<'_, '_> {
                         self.search
                             .browser
                             .push(format!("https://arxiv.org/abs/{arxiv}"));
-                        self.queue.push(Link::new(
+                        self.queue.push(Step::Link(Link::new(
                             format!("https://arxiv.org/pdf/{arxiv}"),
                             Version::Submitted,
-                        ));
+                        )));
                     }
                 }
                 1 | 2 => {}
@@ -517,6 +636,32 @@ impl std::fmt::Display for NoPdf {
 pub type Local<'l> = dyn FnMut(&Link, &Known) -> Option<Found> + 'l;
 
 impl Fetcher {
+    /// GET a URL, and again once after the wait that an HTTP 429 asks (`_once_more_if_429`).
+    fn once_more_if_429(&self, url: &str, accept: Option<&str>) -> super::Result<Response> {
+        let response = self.get(url, accept)?;
+        if response.status != 429 {
+            return Ok(response);
+        }
+        let seconds = retry_after(response.retry_after.as_deref());
+        log::debug(&format!(
+            "{url}: HTTP 429, retried in {} s",
+            seconds_text(seconds)
+        ));
+        let sleep = *SLEEP
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        // (a NaN, which Python's sleep refuses, waits nothing)
+        sleep(Duration::try_from_secs_f64(seconds).unwrap_or_default());
+        wait(url);
+        self.get(url, accept)
+    }
+
+    /// A page and its URL after the redirections, as papers asks for it (`_fetch_page`).
+    fn fetch_page(&self, url: &str) -> super::Result<Response> {
+        wait(url);
+        self.once_more_if_429(url, None)
+    }
+
     /// What the URL gave the last time it was downloaded on this machine (`known_download`).
     pub fn known_download(&self, url: &str) -> Option<Known> {
         let data = self.cache.read("downloads", &download_key(url))?;
@@ -552,7 +697,7 @@ impl Fetcher {
     pub fn download_pdf(&self, link: &Link) -> Result<String, String> {
         wait(&link.url);
         let response = self
-            .get(&link.url, Some(accept(true)))
+            .once_more_if_429(&link.url, Some(accept(true)))
             .map_err(|e| connection_failed(&link.url, "ConnectionError", &e.message))?;
         let path = save_download(
             &link.url,

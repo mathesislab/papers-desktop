@@ -97,6 +97,7 @@ impl Transport for Shared {
                 content_type: "application/json".to_string(),
                 body: body.into_bytes(),
                 url: url.to_string(),
+                retry_after: None,
             }),
         }
     }

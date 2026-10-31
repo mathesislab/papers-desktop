@@ -11,7 +11,7 @@ use std::time::Duration;
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::fetch_pdf::{
     FetchSummary, Fetched, FileFetch, FileUpgrade, PdfOptions, confirm_openalex, fetch_entry_pdfs,
-    fetch_free_pdf, file_fetch, file_upgrade, pdf_porcelain_lines,
+    fetch_free_pdf, file_fetch, file_upgrade, one_line, pdf_porcelain_lines,
 };
 use papers_rs::command::file_cmd::{
     Attach, CheckOptions, MvOptions, attach_files, check_entries_files, checksums, move_files,
@@ -67,13 +67,19 @@ fn location(pdf_url: &str, version: &str, landing: Option<&str>, is_oa: bool) ->
 enum File {
     Bytes(Vec<u8>),
     Status(u16),
+    /// HTTP 429, with its `Retry-After` header
+    TooMany(Option<&'static str>),
+    /// the answers of the requests in turn (the last one stays)
+    Answers(Vec<File>),
 }
 
-/// The sites: pages `{url: (final url, html)}`, OpenAlex `{doi: locations}` (none: 404), files, and
-/// the requests made (`(kind, url)`).
+/// The sites: pages `{url: (final url, html)}` (`busy`: a page that answers HTTP 429 once, with
+/// its `Retry-After`), OpenAlex `{doi: locations}` (none: 404), files, and the requests made
+/// (`(kind, url)`).
 #[derive(Default)]
 struct WebState {
     pages: HashMap<String, (String, String)>,
+    busy: HashMap<String, Option<&'static str>>,
     openalex: HashMap<String, Vec<Value>>,
     files: HashMap<String, File>,
     crossref: HashMap<String, Value>,
@@ -90,6 +96,14 @@ fn answer(status: u16, content_type: &str, body: Vec<u8>, url: &str) -> Response
         content_type: content_type.to_string(),
         body,
         url: url.to_string(),
+        retry_after: None,
+    }
+}
+
+fn too_many(retry_after: Option<&str>, url: &str) -> Response {
+    Response {
+        retry_after: retry_after.map(str::to_string),
+        ..answer(429, "text/html", Vec::new(), url)
     }
 }
 
@@ -130,17 +144,26 @@ impl Transport for Web {
         }
         if accept == Some(PDF_ACCEPT) {
             web.requests.push(("file".into(), url.into()));
-            return Ok(
-                match web.files.get(url).cloned().unwrap_or(File::Status(404)) {
-                    File::Status(code) => answer(code, "text/html", Vec::new(), url),
-                    File::Bytes(bytes) if bytes.starts_with(b"%PDF") => {
-                        answer(200, "application/pdf", bytes, url)
-                    }
-                    File::Bytes(bytes) => answer(200, "text/html", bytes, url),
-                },
-            );
+            let file = match web.files.get_mut(url) {
+                Some(File::Answers(answers)) if answers.len() > 1 => answers.remove(0),
+                Some(File::Answers(answers)) => answers[0].clone(),
+                Some(file) => file.clone(),
+                None => File::Status(404),
+            };
+            return Ok(match file {
+                File::Status(code) => answer(code, "text/html", Vec::new(), url),
+                File::TooMany(retry_after) => too_many(retry_after, url),
+                File::Bytes(bytes) if bytes.starts_with(b"%PDF") => {
+                    answer(200, "application/pdf", bytes, url)
+                }
+                File::Bytes(bytes) => answer(200, "text/html", bytes, url),
+                File::Answers(_) => unreachable!("answers in answers"),
+            });
         }
         web.requests.push(("page".into(), url.into()));
+        if let Some(retry_after) = web.busy.remove(url) {
+            return Ok(too_many(retry_after, url));
+        }
         Ok(match web.pages.get(url) {
             Some((last, html)) => answer(200, "text/html", html.clone().into_bytes(), last),
             None => answer(404, "text/html", Vec::new(), url),
@@ -225,8 +248,22 @@ fn entry(key: &str, files: &[&str], doi: Option<&str>) -> String {
     )
 }
 
+thread_local! {
+    /// The waits after an HTTP 429 of the test (`time.sleep` mocked).
+    static SLEPT: std::cell::RefCell<Vec<Duration>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn record_sleep(duration: Duration) {
+    SLEPT.with(|slept| slept.borrow_mut().push(duration));
+}
+
+fn slept() -> Vec<Duration> {
+    SLEPT.with(|slept| slept.borrow().clone())
+}
+
 fn sandbox() -> Sandbox {
     freepdf::set_interval(Duration::ZERO);
+    freepdf::set_sleep(record_sleep);
     let tmp = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(tmp.path())
         .unwrap()
@@ -611,6 +648,13 @@ fn none_works_the_links_to_open_and_the_others_attached() {
     assert!(
         message.contains(&format!("open in a browser: {PDF}, https://doi.org/{DOI}")),
         "{message}"
+    );
+    // several entries: one line for the entry without PDF (on the standard error), not an error
+    assert_eq!(
+        one_line(&message),
+        format!(
+            "{PDF} (published version): not a PDF; OpenAlex: no open-access PDF; open {PDF}, https://doi.org/{DOI} in a browser"
+        )
     );
 }
 
@@ -2709,4 +2753,331 @@ fn upgrade_summary_of_several_entries() {
         summary[4].starts_with(&format!("  ice2020: {ice}")),
         "{summary:?}"
     );
+}
+
+// TestMoreSources: library.md "The free PDF of an entry", the landing pages of OpenAlex
+// (repositories) and the retry after HTTP 429
+// -------------------------------------------------------------------------------------------------
+
+const REPO: &str = "https://repo.example.edu/handle/1";
+const REPO_PDF: &str = "https://repo.example.edu/bitstream/1/paper.pdf";
+
+/// An open-access location of OpenAlex without PDF link: its landing page.
+fn landing_location(version: &str, landing: &str) -> Value {
+    json!({"pdf_url": null, "landing_page_url": landing, "version": version, "is_oa": true,
+           "source": {"display_name": "somewhere"}})
+}
+
+impl Web {
+    /// A page of the web, answered from `last` (after the redirections).
+    fn page(&self, url: &str, last: &str, html: String) {
+        self.0
+            .lock()
+            .unwrap()
+            .pages
+            .insert(url.to_string(), (last.to_string(), html));
+    }
+}
+
+/// smith2020; the publisher gives a check page for its PDF.
+fn more_sources() -> Sandbox {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web.publisher(
+        DOI,
+        Some(PDF),
+        Some(b"<html>a check page</html>".to_vec()),
+        &[],
+        &[],
+    );
+    s
+}
+
+/// The message of the search of the DOI (the error of `file fetch` of one entry).
+fn no_pdf_of(s: &Sandbox, least: Least) -> String {
+    let mut search = Search::new(&s.fetcher, &OpenAlex::default(), Some(DOI), None, least);
+    fetch_pdf(&mut search, None).unwrap_err().message
+}
+
+#[test]
+fn landing_page_citation_pdf_url() {
+    let s = more_sources();
+    s.web.openalex(
+        DOI,
+        vec![
+            landing_location("acceptedVersion", REPO),
+            location(
+                "https://preprints.example.org/s.pdf",
+                "submittedVersion",
+                None,
+                true,
+            ),
+        ],
+    );
+    s.web
+        .page(REPO, REPO, page(Some("/bitstream/1/paper.pdf"), &[], &[]));
+    s.web.file(REPO_PDF, File::Bytes(pdf_bytes("am")));
+    let out = joined(&s.out(&["smith2020"]));
+    assert!(
+        out.contains(
+            "(accepted manuscript, from repo.example.edu; the published version was refused"
+        ),
+        "{out}"
+    );
+    assert_eq!(fs::read(&s.files("smith2020")[0]).unwrap(), pdf_bytes("am"));
+    assert_eq!(s.web.downloads(), [PDF, REPO_PDF]);
+}
+
+#[test]
+fn landing_page_of_a_repository_doi_follows_the_redirection() {
+    let s = more_sources();
+    let landing = "https://doi.org/10.34657/351";
+    s.web
+        .openalex(DOI, vec![landing_location("publishedVersion", landing)]);
+    s.web.page(
+        landing,
+        REPO,
+        page(Some("/bitstream/1/paper.pdf"), &[], &[]),
+    );
+    s.web.file(REPO_PDF, File::Bytes(pdf_bytes("vor")));
+    let out = joined(&s.out(&["smith2020"]));
+    assert!(
+        out.contains("(published version, from repo.example.edu)"),
+        "{out}"
+    );
+}
+
+#[test]
+fn landing_page_without_the_tag_is_to_open() {
+    let s = more_sources();
+    s.web
+        .openalex(DOI, vec![landing_location("acceptedVersion", REPO)]);
+    s.web.page(
+        REPO,
+        REPO,
+        page(None, &[("/bitstream/1/paper.pdf", "PDF")], &[]),
+    );
+    let (_, failed) = s.fetch(&["smith2020"], false, PdfOptions::default(), false);
+    assert_eq!(failed, 1);
+    assert_eq!(s.web.downloads(), [PDF]); // no other link of the page
+    let message = no_pdf_of(&s, Least::Any);
+    assert!(
+        message.contains("repo.example.edu: no PDF link on the landing page"),
+        "{message}"
+    );
+    assert!(
+        message.contains(&format!(
+            "open in a browser: {PDF}, https://doi.org/{DOI}, {REPO}"
+        )),
+        "{message}"
+    );
+}
+
+#[test]
+fn landing_page_of_the_publisher_is_not_read_again() {
+    let s = more_sources();
+    s.web.openalex(
+        DOI,
+        vec![landing_location(
+            "publishedVersion",
+            &format!("https://doi.org/{DOI}"),
+        )],
+    );
+    let (_, failed) = s.fetch(&["smith2020"], false, PdfOptions::default(), false);
+    assert_eq!(failed, 1);
+    assert_eq!(s.web.requests("page").len(), 1);
+}
+
+#[test]
+fn http_429_then_the_pdf() {
+    let s = more_sources();
+    let am = "https://repo.example.edu/am.pdf";
+    s.web
+        .openalex(DOI, vec![location(am, "acceptedVersion", None, true)]);
+    s.web.file(
+        am,
+        File::Answers(vec![
+            File::TooMany(Some("120")),
+            File::Bytes(pdf_bytes("am")),
+        ]),
+    );
+    let out = joined(&s.out(&["smith2020"]));
+    assert!(
+        out.contains("(accepted manuscript, from repo.example.edu"),
+        "{out}"
+    );
+    assert_eq!(slept(), [Duration::from_secs(30)]); // at most 30 s
+    assert_eq!(freepdf::retry_after(Some("120")), 30.0);
+    assert_eq!(freepdf::retry_after(Some("2.5")), 2.5);
+    assert_eq!(
+        freepdf::retry_after(Some("Wed, 21 Oct 2015 07:28:00 GMT")),
+        5.0
+    );
+}
+
+#[test]
+fn http_429_twice_moves_on() {
+    let s = more_sources();
+    let (am, preprint) = (
+        "https://repo.example.edu/am.pdf",
+        "https://preprints.example.org/s.pdf",
+    );
+    s.web.openalex(
+        DOI,
+        vec![
+            location(am, "acceptedVersion", None, true),
+            location(preprint, "submittedVersion", None, true),
+        ],
+    );
+    s.web.file(am, File::TooMany(None));
+    s.web.file(preprint, File::Bytes(pdf_bytes("s")));
+    let out = joined(&s.out(&["smith2020"]));
+    assert!(
+        out.contains("(submitted version, from preprints.example.org"),
+        "{out}"
+    );
+    assert_eq!(slept(), [Duration::from_secs(5)]); // without Retry-After
+    assert_eq!(s.web.downloads(), [PDF, am, am, preprint]);
+}
+
+#[test]
+fn http_429_of_a_page() {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.web
+        .publisher(DOI, Some(PDF), Some(pdf_bytes("vor")), &[], &[]);
+    s.web
+        .0
+        .lock()
+        .unwrap()
+        .busy
+        .insert(format!("https://doi.org/{DOI}"), Some("2"));
+    let out = joined(&s.out(&["smith2020"]));
+    assert!(out.contains("(published version"), "{out}");
+    assert_eq!(
+        s.web.requests("page"),
+        [
+            format!("https://doi.org/{DOI}"),
+            format!("https://doi.org/{DOI}")
+        ]
+    );
+    assert_eq!(slept(), [Duration::from_secs(2)]);
+}
+
+// TestNoPdfMessages: library.md "The free PDF of an entry", one entry without PDF is an error, of
+// several a line each on the standard error (`one_line`; the line of an entry without DOI:
+// tests/formats_cmds.rs of papers-rs-cli)
+// -------------------------------------------------------------------------------------------------
+
+#[test]
+fn no_pdf_a_line_each() {
+    let s = sandbox();
+    s.bib(&[
+        entry("smith2020", &[], Some(DOI)),
+        entry("nodoi2000", &[], None),
+    ]);
+    s.web.publisher(DOI, None, None, &[], &[]);
+    s.web.openalex(DOI, vec![]);
+    let (_, failed) = s.fetch(
+        &["smith2020", "nodoi2000"],
+        false,
+        PdfOptions::default(),
+        false,
+    );
+    assert_eq!(failed, 2);
+    assert_eq!(s.summary().unwrap()[0], "summary of 2 entries:");
+    let message = no_pdf_of(&s, Least::Any);
+    assert!(message.starts_with("no free PDF found\n"), "{message}");
+    assert_eq!(
+        one_line(&message),
+        format!(
+            "journals.example.org: no PDF link on the article page; OpenAlex: no open-access PDF; open https://doi.org/{DOI} in a browser"
+        )
+    );
+    assert_eq!(
+        one_line("no DOI or arXiv id to look for a PDF"),
+        "no DOI or arXiv id to look for a PDF"
+    );
+}
+
+// the versions of the PDFs found through a landing page (tests/test_pdf_versions.py)
+// ----------------------------------------------------------------------------------
+
+#[test]
+fn versions_written_for_a_landing_page() {
+    let s = versions();
+    let landing = "https://repo.example.edu/handle/1";
+    s.web
+        .openalex(DOI, vec![landing_location("acceptedVersion", landing)]);
+    s.web.page(landing, landing, page(Some(AM), &[], &[]));
+    let (_, rel) = s.fetch_accepted();
+    assert_eq!(s.version_of(&rel).as_deref(), Some("accepted"));
+}
+
+#[test]
+fn upgrade_several_entries_a_line_each() {
+    let s = versions();
+    s.bib(&[
+        entry("smith2020", &[], Some(DOI)),
+        entry("ice2020", &[], Some("10.1000/ice")),
+    ]);
+    let ice = "https://journals.example.org/ice.pdf";
+    s.web.publisher("10.1000/ice", Some(ice), None, &[], &[]);
+    s.web.file(ice, File::Status(403));
+    s.web.openalex(
+        "10.1000/ice",
+        vec![location(
+            "https://repo.example.edu/ice.pdf",
+            "submittedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file(
+        "https://repo.example.edu/ice.pdf",
+        File::Bytes(pdf_bytes("ice")),
+    );
+    s.out(&["smith2020", "ice2020"]);
+    let file = s.files("ice2020")[0].clone();
+    s.publish();
+    let (out, _) = s.upgrade(&[], false);
+    assert!(
+        out.contains(&format!(
+            "ice2020: {file} (submitted version) kept (no published version: {ice} (published version): HTTP 403; OpenAlex: no open-access PDF of the versions asked; open {ice}, https://doi.org/10.1000/ice in a browser)"
+        )),
+        "{out:?}"
+    );
+}
+
+#[test]
+fn upgrade_published_landing_page() {
+    let s = versions();
+    let (_, rel) = s.fetch_accepted();
+    let landing = "https://repo.example.edu/handle/2";
+    s.web.openalex(
+        DOI,
+        vec![
+            location(AM, "acceptedVersion", None, true),
+            landing_location("publishedVersion", landing),
+        ],
+    );
+    // the locations changed
+    fs::remove_dir_all(s.path("cache/openalex-work")).unwrap();
+    s.web.page(
+        landing,
+        landing,
+        page(Some("https://repo.example.edu/vor.pdf"), &[], &[]),
+    );
+    s.web.file(
+        "https://repo.example.edu/vor.pdf",
+        File::Bytes(pdf_bytes("vor")),
+    );
+    let (out, _) = s.upgrade(&["smith2020"], false);
+    assert!(
+        joined(&out).contains(
+            "accepted manuscript replaced by the published version, from repo.example.edu"
+        ),
+        "{out:?}"
+    );
+    assert_eq!(s.version_of(&rel).as_deref(), Some("published"));
 }

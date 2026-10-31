@@ -432,3 +432,45 @@ fn upgrade_usage() {
 fn upgrade_usage_as_papers() {
     the_upgrade_usage(true);
 }
+
+/// `papers file fetch`: an entry without PDF is an error for one entry, a line on the standard
+/// error for several (`test_file_fetch.py`, `TestNoPdfMessages`; entries without DOI: no request).
+fn the_no_pdf_lines(reference: bool) {
+    let s = Sandbox::new("papers.bib");
+    let p = program(reference);
+    s.write(
+        "lib/papers.bib",
+        "@article{a2000,\n title = {A}\n}\n\n@article{b2000,\n title = {B}\n}\n",
+    );
+    let (code, _, err) = s.run(&p, &["file", "fetch", "a2000"]);
+    assert_eq!(
+        (code, err.as_str()),
+        (
+            1,
+            "papers: error: a2000: no DOI or arXiv id to look for a PDF\n"
+        )
+    );
+    let (code, out, err) = s.run(&p, &["file", "fetch", "a2000", "b2000"]);
+    assert_eq!(
+        (code, err.as_str()),
+        (
+            1,
+            "a2000: no PDF (no DOI or arXiv id to look for a PDF)\nb2000: no PDF (no DOI or arXiv id to look for a PDF)\n"
+        )
+    );
+    assert!(
+        out.contains("summary of 2 entries:\n  2 without PDF\n"),
+        "{out}"
+    );
+}
+
+#[test]
+fn no_pdf_lines() {
+    the_no_pdf_lines(false);
+}
+
+#[test]
+#[ignore = "runs the reference (PAPERS_REFERENCE)"]
+fn no_pdf_lines_as_papers() {
+    the_no_pdf_lines(true);
+}

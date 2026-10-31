@@ -282,6 +282,7 @@ fn fetch(leaf: &Leaf, config: Config) -> Done {
         supplements: leaf.flag("supplements"),
         again: leaf.flag("again"),
         access: OpenAlex::from_env(),
+        ..PdfOptions::default()
     };
     let session = open(leaf, config, false, false)?;
     run_session(session, |session| {

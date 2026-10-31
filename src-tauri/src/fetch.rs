@@ -500,6 +500,7 @@ mod tests {
                 content_type: content_type.into(),
                 body: body.into_bytes(),
                 url: url.into(),
+                retry_after: None,
             })
         }
     }

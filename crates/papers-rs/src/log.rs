@@ -93,3 +93,8 @@ pub fn print_data(text: &str) {
 pub fn println_data(message: &str) {
     write_out(&format!("{message}\n"), false);
 }
+
+/// A line on the standard error, as it is (`print(..., file=sys.stderr)`).
+pub fn eprintln(message: &str) {
+    write_out(&format!("{message}\n"), true);
+}

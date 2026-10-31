@@ -25,6 +25,8 @@ pub struct Response {
     pub body: Vec<u8>,
     /// the URL that answered (after the redirects)
     pub url: String,
+    /// the `Retry-After` header (of an HTTP 429), if there is one
+    pub retry_after: Option<String>,
 }
 
 impl Response {
@@ -115,6 +117,11 @@ impl Transport for Network {
             .and_then(|v| v.to_str().ok())
             .unwrap_or("")
             .to_string();
+        let retry_after = response
+            .headers()
+            .get(reqwest::header::RETRY_AFTER)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
         let final_url = response.url().to_string();
         let body = response.bytes().map_err(|e| describe(&e))?.to_vec();
         Ok(Response {
@@ -123,6 +130,7 @@ impl Transport for Network {
             content_type,
             body,
             url: final_url,
+            retry_after,
         })
     }
 }
