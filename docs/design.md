@@ -337,7 +337,7 @@ read, a thread of its own (the library shows at once; the page is told,
     DOI of its metadata; else of its text, if the title of that DOI is in the
     text; else a search of Crossref by the text) and fetches its entry; the
     field says where the DOI came from (*from the PDF*, *found by a search of
-    the PDF's text*, *typed*, *from the page*, *none found*). *Read PDF again*
+    the PDF's text*, *typed*, *from the page*, *from the link*, *none found*). *Read PDF again*
     goes back to what the PDF gives; another DOI typed and fetched replaces the
     entry. The BibTeX is a text to fix (folded when the entry has a DOI).
   - *The key shown is the library's*: an entry fetched (Crossref's key is its
@@ -386,7 +386,11 @@ read, a thread of its own (the library shows at once; the page is told,
     browser: no browser User-Agent).
   - *A journal article's link*: `journal_page` reads the DOI from the
     `citation_doi`, `prism.doi` and `dc.identifier` tags of the page
-    (`papers_rs::fetch::html::page_doi`).
+    (`papers_rs::fetch::html::page_doi`); when the page gives none or cannot
+    be read (many publishers refuse programs), the DOI in the link
+    (`link_doi`: after `/doi/`, `/content/`, `/article/`…, without the parts
+    after it that name a view, `/full`, `/pdf`, `v4.full.pdf`), said *from the
+    link*.
   - *The free PDF*: with a DOI (typed or from the page) and no PDF, the sheet
     looks for the free PDF as `papers fetch --pdf` does and downloads it
     (`fetch_free_pdf`, papers-rs' `fetch::freepdf`: the `citation_pdf_url` of

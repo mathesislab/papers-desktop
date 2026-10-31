@@ -153,8 +153,10 @@ export type PdfRead = {
 export type Page = {
   /** where the link led */
   url: string;
-  /** the DOI the page gives the article */
+  /** the DOI the page gives the article, else the one in the link */
   doi: string | null;
+  /** the DOI is the one in the link: the page gives none, or cannot be read */
+  fromLink: boolean;
   /** the link is a PDF, not a page */
   pdf: boolean;
 };

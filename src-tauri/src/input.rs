@@ -103,7 +103,7 @@ fn path_of(text: &str) -> Option<PathBuf> {
 }
 
 /// `%20` and the like in a `file://` link, as UTF-8.
-fn unquote(text: &str) -> String {
+pub(crate) fn unquote(text: &str) -> String {
     let bytes = text.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;

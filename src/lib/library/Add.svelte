@@ -89,7 +89,7 @@
   /** the PDF */
   let pdf = $state<SheetPdf | null>(null);
   /** where the DOI in the field came from */
-  let source = $state<"pdf" | "search" | "typed" | "page" | "entry" | "feed" | "none" | null>(null);
+  let source = $state<"pdf" | "search" | "typed" | "page" | "link" | "entry" | "feed" | "none" | null>(null);
   /** the article the entry is of, the link to open in a browser; whether its free PDF is being looked for (the
    *  paper is not added meanwhile, unless the user skips the wait) */
   let article = $state<{ page: string; looking: boolean } | null>(null);
@@ -200,6 +200,8 @@
         return "found by a search of the PDF's text";
       case "page":
         return "from the page ✓";
+      case "link":
+        return "from the link";
       case "entry":
         return "the paper's DOI";
       case "feed":
@@ -513,11 +515,12 @@
         return;
       }
       field = page.doi;
-      source = "page";
-      message = { text: `Journal article, DOI ${page.doi}` };
+      source = page.fromLink ? "link" : "page";
+      const said = { text: `Journal article, DOI ${page.doi}${page.fromLink ? " (in its link)" : ""}` };
+      message = said;
       if (await fetchEntry(page.doi, n)) {
         // (the line of the DOI stays)
-        message = { text: `Journal article, DOI ${page.doi}` };
+        message = said;
         await lookup(page.doi, page.url, n);
       }
     } catch (e) {

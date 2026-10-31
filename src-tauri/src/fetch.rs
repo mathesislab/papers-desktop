@@ -23,6 +23,7 @@ use serde::{Serialize, Serializer};
 use tauri::State;
 
 use crate::AppState;
+use crate::input::unquote;
 use crate::settings::Settings;
 
 /// The DOI of what was typed or pasted: `10.1000/abc`, a doi.org or
@@ -221,33 +222,128 @@ pub async fn read_pdf_doi(state: State<'_, AppState>, path: PathBuf) -> Result<P
 
 /// What a link to a page says of its article.
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Page {
     /// where the link led (after redirects)
     pub url: String,
-    /// the DOI the page gives the article, if it does
+    /// the DOI the page gives the article, else the one in the link
     pub doi: Option<String>,
+    /// the DOI is the one in the link: the page gives none, or cannot be read
+    pub from_link: bool,
     /// the link is a PDF, not a page
     pub pdf: bool,
 }
 
+/// The DOI in a link, as many publishers and preprint servers have it in their pages' paths
+/// (`/doi/full/10.1002/…`, `/content/10.1101/…v4.full.pdf`, `/article/10.1088/…/pdf`), without
+/// the parts of the path after it that name a view of the article or its version. A guess, for
+/// when the page gives no DOI or cannot be read.
+fn link_doi(url: &str) -> Option<String> {
+    /// the last parts of a path that name a view of an article, not a part of its DOI
+    const VIEWS: [&str; 18] = [
+        "full",
+        "abstract",
+        "abs",
+        "pdf",
+        "epdf",
+        "pdfdirect",
+        "pdfft",
+        "html",
+        "meta",
+        "summary",
+        "fulltext",
+        "full-text",
+        "suppinfo",
+        "references",
+        "figures",
+        "tables",
+        "citedby",
+        "metrics",
+    ];
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let path = rest.split(['?', '#']).next()?;
+    let path = unquote(path);
+    let start = path.find("/10.")? + 1;
+    let mut doi = path[start..].trim_end_matches('/');
+    while let Some((before, last)) = doi.rsplit_once('/') {
+        if !VIEWS.iter().any(|v| last.eq_ignore_ascii_case(v)) {
+            break;
+        }
+        doi = before;
+    }
+    // bioRxiv's and medRxiv's version and view: 10.1101/2020.03.22.002386v4.full.pdf
+    for ending in [".pdf", ".html", ".full", ".abstract"] {
+        doi = strip_suffix_ignore_case(doi, ending);
+    }
+    if let Some((before, n)) = doi.rsplit_once('v')
+        && !n.is_empty()
+        && n.bytes().all(|b| b.is_ascii_digit())
+        && before.ends_with(|c: char| c.is_ascii_digit())
+    {
+        doi = before;
+    }
+    doi_of(doi)
+}
+
+fn strip_suffix_ignore_case<'a>(text: &'a str, suffix: &str) -> &'a str {
+    match text.len().checked_sub(suffix.len()) {
+        Some(at) if text.is_char_boundary(at) && text[at..].eq_ignore_ascii_case(suffix) => {
+            &text[..at]
+        }
+        _ => text,
+    }
+}
+
 /// The DOI of the article of a journal's page: the tags `citation_doi`, `prism.doi` and
-/// `dc.identifier` of the page.
+/// `dc.identifier` of the page; else the DOI in the link (where it led, else as given), also when
+/// the page cannot be read, as many publishers refuse programs.
 pub fn read_page(transport: &dyn Transport, url: &str) -> Result<Page, String> {
-    let response = transport
-        .get(url, Some("text/html,application/xhtml+xml,*/*;q=0.5"))
-        .map_err(|e| format!("Not reachable: {e}"))?;
+    // the DOI in the link, where it led, else as given
+    let in_link = |led: &str| link_doi(led).or_else(|| link_doi(url));
+    let of_link = |led: &str, doi| Page {
+        url: led.to_string(),
+        doi: Some(doi),
+        from_link: true,
+        pdf: false,
+    };
+    let response = match transport.get(url, Some("text/html,application/xhtml+xml,*/*;q=0.5")) {
+        Ok(response) => response,
+        Err(e) => {
+            return in_link(url)
+                .map(|doi| of_link(url, doi))
+                .ok_or_else(|| format!("Not reachable: {e}"));
+        }
+    };
     if let Some(error) = response.status_error() {
-        return Err(format!("The page cannot be read: {error}"));
+        return in_link(&response.url)
+            .map(|doi| of_link(&response.url, doi))
+            .ok_or_else(|| format!("The page cannot be read: {error}"));
     }
     let pdf = response.content_type.to_lowercase().contains("pdf");
-    Ok(Page {
-        doi: if pdf {
-            None
-        } else {
-            page_doi(&response.text())
+    if pdf {
+        return Ok(Page {
+            url: response.url,
+            doi: None,
+            from_link: false,
+            pdf,
+        });
+    }
+    Ok(match page_doi(&response.text()) {
+        Some(doi) => Page {
+            url: response.url,
+            doi: Some(doi),
+            from_link: false,
+            pdf,
         },
-        url: response.url,
-        pdf,
+        None => match in_link(&response.url) {
+            Some(doi) => of_link(&response.url, doi),
+            None => Page {
+                url: response.url,
+                doi: None,
+                from_link: false,
+                pdf,
+            },
+        },
     })
 }
 
@@ -643,6 +739,103 @@ mod tests {
         assert!(pdf.pdf && pdf.doi.is_none());
         let error = page("https://example.org/closed").unwrap_err();
         assert!(error.starts_with("The page cannot be read: 403"), "{error}");
+        assert!(!article.from_link);
+    }
+
+    #[test]
+    fn the_doi_in_the_link_when_the_page_gives_none() {
+        let canned = Canned::default()
+            .with(
+                "https://example.org/doi/full/10.1234/ice.2020.1",
+                200,
+                "text/html",
+                PAGE,
+            )
+            .with(
+                "https://example.org/doi/10.1234/nometa",
+                200,
+                "text/html",
+                "<html></html>",
+            )
+            .with(
+                "https://example.org/doi/epdf/10.1234/closed",
+                403,
+                "text/html",
+                "",
+            );
+        let page = |url| read_page(&canned, url).unwrap();
+        // the page's DOI first
+        let article = page("https://example.org/doi/full/10.1234/ice.2020.1");
+        assert_eq!(article.doi.as_deref(), Some("10.1234/ice.2020.1"));
+        assert!(!article.from_link);
+        let nometa = page("https://example.org/doi/10.1234/nometa");
+        assert_eq!(nometa.doi.as_deref(), Some("10.1234/nometa"));
+        assert!(nometa.from_link);
+        let closed = page("https://example.org/doi/epdf/10.1234/closed");
+        assert_eq!(closed.doi.as_deref(), Some("10.1234/closed"));
+        assert!(closed.from_link && !closed.pdf);
+        // a page not found
+        let away = page("https://unknown.example.org/article/10.1007/s00382-020-05123-4");
+        assert_eq!(away.doi.as_deref(), Some("10.1007/s00382-020-05123-4"));
+    }
+
+    #[test]
+    fn the_doi_in_a_link() {
+        for (url, doi) in [
+            (
+                "https://onlinelibrary.wiley.com/doi/full/10.1002/2017GL076101",
+                "10.1002/2017GL076101",
+            ),
+            (
+                "https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1002/joc.1234?af=R",
+                "10.1002/joc.1234",
+            ),
+            (
+                "https://onlinelibrary.wiley.com/doi/10.1002%2Fjoc.1234",
+                "10.1002/joc.1234",
+            ),
+            (
+                "https://www.pnas.org/doi/10.1073/pnas.2000000117",
+                "10.1073/pnas.2000000117",
+            ),
+            (
+                "https://www.science.org/doi/abs/10.1126/science.abc1234#sec-1",
+                "10.1126/science.abc1234",
+            ),
+            (
+                "https://www.biorxiv.org/content/10.1101/2020.03.22.002386v4.full.pdf",
+                "10.1101/2020.03.22.002386",
+            ),
+            (
+                "https://www.biorxiv.org/content/10.1101/2020.03.22.002386v4",
+                "10.1101/2020.03.22.002386",
+            ),
+            (
+                "https://essopenarchive.org/doi/full/10.22541/essoar.167898508.84145530/v1",
+                "10.22541/essoar.167898508.84145530/v1",
+            ),
+            (
+                "https://iopscience.iop.org/article/10.1088/1748-9326/8/1/014013/pdf",
+                "10.1088/1748-9326/8/1/014013",
+            ),
+            (
+                "https://www.frontiersin.org/articles/10.3389/fmars.2020.00001/full",
+                "10.3389/fmars.2020.00001",
+            ),
+            (
+                "https://link.springer.com/article/10.1007/s00382-020-05123-4/",
+                "10.1007/s00382-020-05123-4",
+            ),
+        ] {
+            assert_eq!(link_doi(url).as_deref(), Some(doi), "{url}");
+        }
+        for url in [
+            "https://www.nature.com/articles/s41586-020-1234-5",
+            "https://example.org/10.12/x",
+            "https://example.org/search?doi=10.1234/x",
+        ] {
+            assert_eq!(link_doi(url), None, "{url}");
+        }
     }
 
     /// The answer of OpenAlex for the work of a DOI: its open-access locations.
