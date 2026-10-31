@@ -12,6 +12,7 @@
 
   let {
     detail,
+    wide = false,
     count,
     byId,
     colours,
@@ -27,6 +28,8 @@
     onentry,
   }: {
     detail: FeedDetail;
+    /** read in place of the list: the texts a size up */
+    wide?: boolean;
     /** how many items are selected: the buttons act on all of them */
     count: number;
     /** the rows of the list, by id: a linked paper that is an item of the feeds */
@@ -57,7 +60,7 @@
   const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", search: "found by its title" };
 </script>
 
-<div class="details">
+<div class="details" class:wide>
   {#if count > 1}
     <p class="selection">{count} items selected: the buttons and keys act on all of them</p>
   {/if}
@@ -155,6 +158,20 @@
     padding: 14px 16px;
     -webkit-user-select: text;
     user-select: text;
+  }
+  .wide {
+    padding: 18px 24px 28px;
+    gap: 14px;
+  }
+  .wide h3 {
+    font-size: 20px;
+  }
+  .wide .authors {
+    font-size: 14px;
+  }
+  .wide .abstract .text {
+    font-size: 15px;
+    line-height: 1.6;
   }
   .selection {
     margin: 0;

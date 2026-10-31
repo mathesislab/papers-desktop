@@ -29,6 +29,8 @@
   let saved = $state<FeedSettings | null>(null);
   /** the Feeds tab of the main window, shown (also set by Window → Show Feeds Tab) */
   let tab = $state(true);
+  /** the details of an item beside the list, rather than in place of it */
+  let beside = $state(false);
   let draft = $state<Draft | null>(null);
   let draftError = $state("");
   let suggestions = $state<Suggested[]>([]);
@@ -54,15 +56,22 @@
     load();
     const unlisten = listen(feeds.EVENTS.changed, () => loadSubscriptions());
     const unlistenTab = listen<boolean>(feeds.EVENTS.tab, (e) => (tab = e.payload));
+    const unlistenBeside = listen<boolean>(feeds.EVENTS.beside, (e) => (beside = e.payload));
     return () => {
       unlisten.then((f) => f());
       unlistenTab.then((f) => f());
+      unlistenBeside.then((f) => f());
     };
   });
 
   async function load() {
     try {
-      await Promise.all([loadSubscriptions(), loadSettings(), feeds.tabShown().then((shown) => (tab = shown))]);
+      await Promise.all([
+        loadSubscriptions(),
+        loadSettings(),
+        feeds.tabShown().then((shown) => (tab = shown)),
+        feeds.besideShown().then((b) => (beside = b)),
+      ]);
       suggestions = await feeds.suggested();
     } catch (err) {
       notify(String(err), true);
@@ -268,6 +277,14 @@
       <span class="hint">In the main window; also Window → Show Feeds Tab</span>
     </span>
     <input type="checkbox" class="switch" checked={tab} onchange={(e) => act(() => feeds.setTab(e.currentTarget.checked))} />
+  </label>
+
+  <label class="row">
+    <span>
+      <span class="label">Details beside the list</span>
+      <span class="hint">Otherwise an item opens in place of the list, to read (Esc goes back); also Window → Feeds Details Beside the List</span>
+    </span>
+    <input type="checkbox" class="switch" checked={beside} onchange={(e) => act(() => feeds.setBeside(e.currentTarget.checked))} />
   </label>
 
   <ul class="subs">

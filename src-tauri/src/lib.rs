@@ -401,6 +401,7 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
         feeds_poll: old.feeds_poll,
         feeds_poll_minutes: old.feeds_poll_minutes,
         feeds_tab: old.feeds_tab,
+        feeds_beside: old.feeds_beside,
         ..settings
     };
     hotkey::apply(&app, &old, &settings)?;
@@ -966,7 +967,7 @@ pub fn run() {
             hotkey::setup(app.handle(), &settings);
             tray(app.handle(), &settings.hotkey)?;
             #[cfg(target_os = "macos")]
-            menu::setup(app.handle(), settings.feeds_tab)?;
+            menu::setup(app.handle(), &settings)?;
             selection::setup(app.handle());
             cli_tool::repair_at_start();
             reload(app.handle());
@@ -1128,6 +1129,8 @@ pub fn run() {
             feeds::feeds_settings,
             feeds::feeds_set_settings,
             feeds::feeds_tab,
+            feeds::feeds_beside,
+            feeds::feeds_set_beside,
             feeds::feeds_set_tab,
             feeds::feeds_searches,
             feeds::feeds_set_searches

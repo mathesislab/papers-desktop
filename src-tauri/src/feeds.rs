@@ -1442,6 +1442,31 @@ pub fn feeds_set_tab(app: AppHandle, show: bool) -> Result<(), String> {
 /// The Feeds tab shown or hidden, to every window: whether it is shown.
 pub const TAB_EVENT: &str = "feeds-tab";
 
+/// Whether the Feeds tab shows an item's details beside the list (the setting `feeds_beside`),
+/// rather than in place of it, to read.
+#[tauri::command]
+pub fn feeds_beside(app: AppHandle) -> Result<bool, String> {
+    Ok(Settings::load(&app.state::<AppState>().settings_path)?.feeds_beside)
+}
+
+/// The details beside the list, or in place of it: from the Feeds section of the settings and
+/// Window → Feeds Details Beside the List. The windows are told at once ([`BESIDE_EVENT`]), and
+/// the menu follows.
+#[tauri::command]
+pub fn feeds_set_beside(app: AppHandle, beside: bool) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let mut settings = Settings::load(&state.settings_path)?;
+    settings.feeds_beside = beside;
+    settings.save(&state.settings_path)?;
+    #[cfg(target_os = "macos")]
+    crate::menu::feeds_beside(&app, beside);
+    let _ = app.emit(BESIDE_EVENT, beside);
+    Ok(())
+}
+
+/// The details beside the list or in place of it, to every window: whether beside.
+pub const BESIDE_EVENT: &str = "feeds-beside";
+
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};

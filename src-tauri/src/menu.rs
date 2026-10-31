@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, Manager, Webview, Wry};
 
 use crate::PANEL;
 use crate::main_window::MAIN;
+use crate::settings::Settings;
 
 /// the commands that lead to the fields and lists of the page, which take
 /// the keys back from the PDF view
@@ -30,13 +31,16 @@ const TO_PAGE: &[&str] = &[
 ];
 
 /// Window → Feeds, there only while the Feeds tab is shown, and Window → Show Feeds Tab, ticked
-/// then: they follow the setting (`feeds_tab`).
+/// then: they follow the setting (`feeds_tab`). Window → Feeds Details Beside the List follows
+/// `feeds_beside`, there while the tab is shown.
 struct FeedsItems {
     feeds: MenuItem<Wry>,
     show: CheckMenuItem<Wry>,
+    beside: CheckMenuItem<Wry>,
 }
 
-pub fn setup(app: &AppHandle, feeds_tab: bool) -> tauri::Result<()> {
+pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
+    let feeds_tab = settings.feeds_tab;
     let separator = || PredefinedMenuItem::separator(app);
     // a command of the main window: its id is the name the page knows
     let item = |id: &str, text: &str, keys: &str| -> tauri::Result<MenuItem<Wry>> {
@@ -45,6 +49,14 @@ pub fn setup(app: &AppHandle, feeds_tab: bool) -> tauri::Result<()> {
     let feeds = FeedsItems {
         feeds: MenuItem::with_id(app, "feeds", "Feeds", feeds_tab, Some("CmdOrCtrl+2"))?,
         show: CheckMenuItem::with_id(app, "show-feeds-tab", "Show Feeds Tab", true, feeds_tab, None::<&str>)?,
+        beside: CheckMenuItem::with_id(
+            app,
+            "feeds-beside",
+            "Feeds Details Beside the List",
+            feeds_tab,
+            settings.feeds_beside,
+            None::<&str>,
+        )?,
     };
     let menu = Menu::with_items(
         app,
@@ -124,6 +136,7 @@ pub fn setup(app: &AppHandle, feeds_tab: bool) -> tauri::Result<()> {
                     &item("show-previous-tab", "Show Previous Tab", "CmdOrCtrl+Shift+[")?,
                     &separator()?,
                     &feeds.show,
+                    &feeds.beside,
                 ],
             )?,
         ],
@@ -134,6 +147,7 @@ pub fn setup(app: &AppHandle, feeds_tab: bool) -> tauri::Result<()> {
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
         "show-feeds-tab" => toggle_feeds_tab(app),
+        "feeds-beside" => toggle_feeds_beside(app),
         "settings" => crate::settings_window(app, None),
         "install-cli" => crate::cli_tool::install_from_menu(app),
         id => command(app, id),
@@ -155,6 +169,23 @@ pub fn feeds_tab(app: &AppHandle, shown: bool) {
     if let Some(items) = app.try_state::<FeedsItems>() {
         let _ = items.feeds.set_enabled(shown);
         let _ = items.show.set_checked(shown);
+        let _ = items.beside.set_enabled(shown);
+    }
+}
+
+/// Window → Feeds Details Beside the List: the setting the other way.
+fn toggle_feeds_beside(app: &AppHandle) {
+    let beside = crate::feeds::feeds_beside(app.clone()).unwrap_or(false);
+    if crate::feeds::feeds_set_beside(app.clone(), !beside).is_err() {
+        // not written: the tick back as the setting is
+        feeds_beside(app, beside);
+    }
+}
+
+/// Window → Feeds Details Beside the List ticked as the setting is.
+pub fn feeds_beside(app: &AppHandle, beside: bool) {
+    if let Some(items) = app.try_state::<FeedsItems>() {
+        let _ = items.beside.set_checked(beside);
     }
 }
 

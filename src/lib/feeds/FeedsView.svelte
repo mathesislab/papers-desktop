@@ -1,8 +1,9 @@
 <script lang="ts">
   // The Feeds tab of the main window (docs/design.md, Feeds; the mockup docs/mockups/feeds.html): the sidebar (the
   // views, kinds, interests and sources), the list of the items its choices, the segment and the search select, the
-  // details of the one selected; the keys of the triage; the Review of the shortlist, over the list and the details;
-  // the Subscribe sheet.
+  // details of the one selected, beside the list or in place of it (the setting `feeds_beside`: a click or Enter opens
+  // the item over the list, its row pinned at the top; Esc or the row goes back to the list, where it was); the keys
+  // of the triage; the Review of the starred items, over the list and the details; the Subscribe sheet.
   // The window (src/routes/library/+page.svelte) keeps the
   // layout, and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is the
   // library's: it opens over this tab, which stays in front after the paper is added.
@@ -13,6 +14,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount, untrack, type Snippet } from "svelte";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
+  import Marked from "$lib/Marked.svelte";
   import { modalOpen } from "$lib/library/modal.svelte";
   import { OPEN_ASK } from "$lib/library/selection";
   import Splitter from "$lib/library/Splitter.svelte";
@@ -107,6 +109,10 @@
   /** where shift extends the selection from */
   let anchor: string | null = null;
   let detail = $state<FeedDetail | null>(null);
+  /** the details beside the list (the setting), else in place of it */
+  let beside = $state(false);
+  /** the item in focus read in place of the list */
+  let reading = $state(false);
   /** the details are asked again: papers found for a post, items changed */
   let version = $state(0);
   /** the post whose papers are being looked for */
@@ -138,6 +144,8 @@
   const LOOKUP_DELAY = 300;
 
   let byId = $derived(new Map(rows.map((r) => [r.id, r])));
+  /** the row of the item in focus, pinned over the item read */
+  let focusRow = $derived(focus ? byId.get(focus) : undefined);
   let request = $derived(requestOf(filters));
   let chips = $derived(feedChips(filters));
   let groups = $derived(sourceGroups(subscriptions, counts?.sources ?? {}));
@@ -164,7 +172,9 @@
         version++;
         load(true);
       }),
+      listen<boolean>(api.EVENTS.beside, (e) => (beside = e.payload)),
     ];
+    api.besideShown().then((b) => (beside = b), (e) => say(String(e)));
     const clock = setInterval(() => (now = Date.now()), 30000);
     start();
     return () => {
@@ -465,6 +475,7 @@
     } else {
       selected = new Set([id]);
       anchor = id;
+      if (!beside) reading = true;
     }
     focus = id;
   }
@@ -569,6 +580,10 @@
     switch (e.key) {
       case "/":
         return act(focusSearch);
+      case "Enter":
+        return beside || !focus ? undefined : act(() => (reading = !reading));
+      case "Escape":
+        return reading ? act(() => (reading = false)) : undefined;
       case "Home":
         return go("first");
       case "End":
@@ -765,6 +780,7 @@
           {:else if !rows.length}
             <p class="empty">No item matches.</p>
           {:else}
+            <div class="rows">
             <FeedTable
               {rows}
               {selected}
@@ -778,28 +794,29 @@
               onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
               onmenu={rowMenu}
             />
+            {#if reading && !beside && focusRow}
+              <div class="reader">
+                <button class="pinned" title="Back to the list (Esc)" onclick={() => (reading = false)}>
+                  <span class="caret">▾</span>
+                  <span class="title"><Marked spans={focusRow.title} /></span>
+                  <span class="muted">{focusRow.journal ?? focusRow.sources[0] ?? ""}</span>
+                  <span class="muted keys">↑ ↓ previous, next · Esc the list</span>
+                </button>
+                <div class="page">
+                  <div class="column">
+                    {#if detail}{@render itemDetails(detail, true)}{/if}
+                  </div>
+                </div>
+              </div>
+            {/if}
+            </div>
           {/if}
         </section>
-        {#if showDetails}
+        {#if beside && showDetails}
           <Splitter bind:width={details} side="right" min={260} max={600} />
           <aside class="details" style:width="{details}px">
             {#if detail}
-              <FeedDetails
-                {detail}
-                count={focus && selected.has(focus) ? selected.size : 1}
-                {byId}
-                {colours}
-                finding={finding === detail.id}
-                {pdfOf}
-                onadd={(pdf) => addItems(targets().length ? targets() : [detail!.id], pdf)}
-                onaddlink={(link: Linked) => add({ id: link.doi, item: link.item }, true)}
-                ontriage={(action) => triage(action, targets().length ? targets() : [detail!.id])}
-                onshortlistlink={(item) => triage("shortlist", [item])}
-                onopen={() => openItems(targets().length ? targets() : [detail!.id])}
-                onfind={() => find(detail!.id)}
-                onitem={showItem}
-                {onentry}
-              />
+              {@render itemDetails(detail, false)}
             {:else}
               <p class="empty">No item selected</p>
             {/if}
@@ -834,6 +851,26 @@
     </footer>
   </div>
 </main>
+
+{#snippet itemDetails(d: FeedDetail, wide: boolean)}
+  <FeedDetails
+    detail={d}
+    {wide}
+    count={focus && selected.has(focus) ? selected.size : 1}
+    {byId}
+    {colours}
+    finding={finding === d.id}
+    {pdfOf}
+    onadd={(pdf) => addItems(targets().length ? targets() : [d.id], pdf)}
+    onaddlink={(link: Linked) => add({ id: link.doi, item: link.item }, true)}
+    ontriage={(action) => triage(action, targets().length ? targets() : [d.id])}
+    onshortlistlink={(item) => triage("shortlist", [item])}
+    onopen={() => openItems(targets().length ? targets() : [d.id])}
+    onfind={() => find(d.id)}
+    onitem={showItem}
+    {onentry}
+  />
+{/snippet}
 
 <style>
   main {
@@ -879,6 +916,69 @@
     display: flex;
     flex-direction: column;
     border-left: 1px solid var(--line);
+  }
+  /* the table, and the item read over it: the table stays as it was, scrolled where it was */
+  .rows {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .reader {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+  .pinned {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 30px;
+    padding: 0 12px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--feeds) 10%, transparent);
+    color: var(--fg);
+    font: inherit;
+    text-align: left;
+  }
+  .pinned .caret {
+    color: var(--feeds);
+  }
+  .pinned .title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-weight: 600;
+  }
+  .pinned .muted {
+    flex: none;
+    max-width: 240px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    justify-content: center;
+  }
+  .column {
+    flex: 1;
+    max-width: 820px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   /* the search keeps its width: what is next to it stays in place */

@@ -65,6 +65,10 @@ pub struct Settings {
     /// the Feeds tab of the main window; on by default. Set in the Feeds section and by Window →
     /// Show Feeds Tab
     pub feeds_tab: bool,
+    /// the details of an item of the Feeds tab beside the list; off by default: an item opens in
+    /// place of the list, to read. Set in the Feeds section and by Window → Feeds Details Beside
+    /// the List
+    pub feeds_beside: bool,
 }
 
 /// A saved search of the library tab: a name for its filters and the sort of
@@ -168,6 +172,7 @@ impl Default for Settings {
             feeds_poll: false,
             feeds_poll_minutes: 60,
             feeds_tab: true,
+            feeds_beside: false,
         }
     }
 }
@@ -334,6 +339,14 @@ mod tests {
         assert!(settings.feeds_tab);
         let set: Settings = serde_json::from_str(r#"{"feeds_tab": false}"#).unwrap();
         assert!(!set.feeds_tab);
+    }
+
+    #[test]
+    fn the_feeds_details_in_place_of_the_list_by_default() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert!(!settings.feeds_beside);
+        let set: Settings = serde_json::from_str(r#"{"feeds_beside": true}"#).unwrap();
+        assert!(set.feeds_beside);
     }
 
     #[test]
