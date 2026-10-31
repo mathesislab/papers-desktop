@@ -72,9 +72,12 @@ and passes the commands on). The papers open are tabs of the Library:
 as it was left (a paper in front stays), in it the library. The library
 stays behind the feeds, hidden, with its selection, scroll and edit; its
 PDF view steps aside (`Reader.cover`) and its keys are off. In Feeds `⌘W`
-closes the window, `⌘N` opens the Add sheet, and a paper opened from the
-panel (or shown after it was added) brings the Library back. The tab in
-front is kept in the layout (`view`).
+closes the window, `⌘N` opens the Add sheet, `⌘F` goes to the search of the
+feeds, and a paper opened from the panel (or shown after it was added from
+the library) brings the Library back. The page passes the keys to the tab in
+front only (`LibraryView.key`, `FeedsView.key`): neither tab's keys leak into
+the other. The tab in front is kept in the layout (`view`), and the Feeds
+tab's choices too (`feeds`: below).
 
 **The library tab is the current set**, and keeps it while papers are opened
 and closed: going back shows the same list, the selection and where it was
@@ -706,6 +709,66 @@ challenge (403), so its pages give nothing.
 paper of a post. *Review* steps through the shortlist one paper at a time:
 the abstract, why it is there, free PDF or not, the versions, the closest
 library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
+
+**The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
+`FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
+`filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`):
+
+- *Sidebar*: Views (Unread `is:new`, Shortlist, Added, All), Kinds,
+  Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
+  apart; a group folds), each with its count (`counts`: every item not
+  dismissed, whatever the search). One choice per group (the query has no
+  OR): a click chooses, a second lets go. As the library's tags, the choices
+  are filters of their own, shown as chips with an ×; the backend is asked
+  for the typed text followed by a term per choice (`is:new kind:preprint
+  prof:"Ice sheets" src:"The Cryosphere"`), and `-is:dismissed` unless the
+  query asks for `is:dismissed`. *Papers | Posts | All* above the list picks
+  the kinds (`kinds` of the request; Papers by default); a kind chosen that
+  the segment does not show moves the segment. The choices, the segment,
+  the sort, the search and the groups unfolded are kept in the layout
+  (`feeds`; a file without it takes the defaults).
+- *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
+  added, the kind of a post or preprint), the score, the title (bold while
+  new, muted once seen), authors, journal or source, age, badges (*in
+  library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
+  reached). Sorted by score or newest (the headers, or the count above the
+  list). Click, ⇧-click and ⌘-click select as in the library; the keys act
+  on the selection. An item triaged here stays in its place until the
+  filters change (`mergeRows`), so that marking items seen in *Unread* does
+  not make the list jump under the cursor; a dismissed item goes, the next
+  selected.
+- *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
+  passed over faster (j held down) stays new: its title went by, its
+  details were not read. `⇧Space` (and the row menu's *Mark All Above as
+  Seen*) marks the new items above it seen, for titles skimmed. Opening an
+  item marks it seen.
+- *Details*: a paper's abstract marked by the query and the interests (from
+  Crossref or OpenAlex when the feed had none), *Why it is here* (each
+  interest's score and terms), its free PDF (`pdfStatus`, asked 300 ms after
+  it is shown, once per item), versions (*preprint in library → Add would
+  replace it*), *Covered by*, *Seen in*. A post's text, then its linked
+  papers as cards (Add by the DOI, Shortlist, Show paper), *Find linked
+  paper* (`findPapers`).
+- *Add*: the library's Add sheet, opened over the Feeds tab with the item's
+  DOI (an arXiv id as its DataCite DOI, `10.48550/arXiv.…`) fetched at once
+  (`initial`), its free PDF looked for unless added without one. After
+  adding, the Feeds tab stays in front (from the library, the paper is shown
+  in the Library tab, as before) and the item becomes *added*. A post adds
+  its linked paper.
+- *Fetch*: on opening the tab when the last fetch is older than 15 minutes,
+  and on `⌘R` or ↻; the `feeds-fetching` event shows the progress, the
+  status line the last fetch (*fetched 8 min ago · 12 new · 3 not modified ·
+  1 failed*, the failures listed on hover and click); `feeds-changed` reads
+  the list again.
+- *Review* (`⌘↩`, the button): the shortlist as it is when the review
+  begins, by score, one item at a time over the list and the details, with
+  a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
+  without PDF, `o` open, `l` later (stays shortlisted), `x` dismiss, `j`/`k`,
+  `Esc` leaves. *Like in your library* is not there yet: the backend has no
+  command for it.
+- *Subscribe* (the button): a feed URL, a Crossref ISSN or an OpenAlex
+  filter, with the kind of its items, or one of the suggested subscriptions
+  in their groups (those followed marked); fetched when the sheet closes.
 
 **Interests**: named profiles of weighted terms (paper-feeder's: a term in
 the title counts twice, `ice sheet` matches `ice-sheet`, an exclude vetoes),

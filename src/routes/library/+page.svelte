@@ -18,6 +18,7 @@
   let timer: ReturnType<typeof setTimeout>;
 
   let library = $state<ReturnType<typeof LibraryView>>();
+  let feeds = $state<ReturnType<typeof FeedsView>>();
 
   /** The window is made hidden, not to flash empty: shown once drawn. */
   onMount(() => {
@@ -88,14 +89,16 @@
     }
   }
 
-  /** A command in the Feeds tab: ⌘W closes the window, ⌘N opens the Add sheet of the library; the papers open
-   *  and their keys are the Library tab's. */
+  /** A command in the Feeds tab: ⌘W closes the window, ⌘N opens the Add sheet of the library, ⌘F goes to the
+   *  search of the feeds; the papers open and their keys are the Library tab's. */
   function feedsCommand(name: string) {
     switch (name) {
       case "close":
         return library?.closeWindow();
       case "add":
         return library?.command(name);
+      case "find":
+        return feeds?.focusSearch();
     }
   }
 
@@ -146,7 +149,9 @@
         return;
       }
     }
+    // the keys of the tab in front only: the other's stay off
     if (layout.view === "library") library?.key(e);
+    else feeds?.key(e);
   }
 </script>
 
@@ -180,12 +185,17 @@
   onfront={() => showView("library")}
 />
 {#if layout.view === "feeds"}
+  <!-- the Add sheet is the library's, over this tab: after the paper is added, the Feeds tab stays in front -->
   <FeedsView
+    bind:this={feeds}
     {tabs}
+    bind:filters={layout.feeds}
     bind:sidebar={layout.sidebar}
     bind:details={layout.details}
     showSidebar={layout.showSidebar}
     showDetails={layout.showDetails}
+    onadd={(initial) => library?.addFrom(initial) ?? Promise.resolve(null)}
+    onentry={(id) => library?.showEntry(id)}
   />
 {/if}
 

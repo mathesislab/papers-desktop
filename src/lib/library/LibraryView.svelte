@@ -137,8 +137,15 @@
   let exporting = $state(false);
   /** papers to install, to write a papers library: the version found, too old */
   let missing = $state<{ version: string | null } | null>(null);
-  /** the sheet to add a paper, open: for a PDF to add to the paper `id`, else a new paper; with a PDF to start with, or the chooser of one */
-  let adding = $state<{ id: string | null; pdf: string | null; choose: boolean } | null>(null);
+  /** the sheet to add a paper, open: for a PDF to add to the paper `id`, else a new paper; with a PDF to start with, or the chooser of one;
+   *  from an item of the Feeds tab, with the paper to fetch (`initial`), and `done`, told what was added when it closes */
+  let adding = $state<{
+    id: string | null;
+    pdf: string | null;
+    choose: boolean;
+    initial?: { id: string; pdf: boolean };
+    done?: (said: string | null) => void;
+  } | null>(null);
   let sheet = $state<ReturnType<typeof Add>>();
   /** a PDF is being dragged over the window: onto the paper that would get it (none: a new paper), or onto the sheet */
   let dragging = $state<{ id: string | null; sheet: boolean } | null>(null);
@@ -736,23 +743,28 @@
 
   /** The papers of BibTeX added to a .bib file. Then the sheet closes, and
    *  the first paper added (else the first that was there) is selected, in
-   *  the library tab (see `show`). */
+   *  the library tab (see `show`); from the Feeds tab, which stays in front,
+   *  the sheet's `done` is told instead. */
   async function addPapers(bib: string, text: string, options: AddOptions, fail: (message: string) => void): Promise<boolean> {
     let added: Added | undefined;
     if (!(await write(async () => (added = await addBibtex(bib, text, options)), (error) => fail(errorText(error)))) || !added)
       return false;
+    const done = adding?.done;
     adding = null;
+    const n = added.added.length;
+    const said = n
+      ? `Added ${n} ${n === 1 ? "paper" : "papers"}` + (added.existing.length ? `, ${added.existing.length} already there` : "")
+      : added.existing.length
+        ? `Already in the library: ${added.existing.join(", ")}`
+        : "Nothing added";
+    if (done) {
+      done(said);
+      return true;
+    }
     const keys = added.added.length ? added.added : added.existing;
     const [id] = await invoke<string[]>("ids_of", { bib, keys });
     if (id) await show(id);
-    const n = added.added.length;
-    say(
-      n
-        ? `Added ${n} ${n === 1 ? "paper" : "papers"}` + (added.existing.length ? `, ${added.existing.length} already there` : "")
-        : added.existing.length
-          ? `Already in the library: ${added.existing.join(", ")}`
-          : "Nothing added",
-    );
+    say(said);
     return true;
   }
 
@@ -765,19 +777,43 @@
     files: FilesMode | null,
     fail: (message: string) => void,
   ): Promise<boolean> {
-    const done = () => (pdf ? attachPdf(id, text, pdf, files) : replaceEntry(id, text ?? ""));
-    if (!(await write(done, (error) => fail(errorText(error))))) return false;
+    const change = () => (pdf ? attachPdf(id, text, pdf, files) : replaceEntry(id, text ?? ""));
+    if (!(await write(change, (error) => fail(errorText(error))))) return false;
+    const done = adding?.done;
     adding = null;
     const key = byId.get(id)?.key ?? id;
+    const said = pdf ? `Added the PDF to ${key}` : `Merged into ${key}`;
+    if (done) {
+      done(said);
+      return true;
+    }
     await show(id);
-    say(pdf ? `Added the PDF to ${key}` : `Merged into ${key}`);
+    say(said);
     return true;
   }
 
   /** A paper of the library, from the link of the sheet that says an entry is the same paper. */
   async function showPaper(id: string) {
-    adding = null;
+    closeSheet();
     await show(id);
+  }
+
+  /** The sheet closed without adding. */
+  function closeSheet() {
+    adding?.done?.(null);
+    adding = null;
+  }
+
+  /** The sheet, for an item of the Feeds tab: its DOI (or arXiv id) fetched at once, its free PDF looked for or
+   *  not (`pdf`). The Feeds tab stays in front: the answer is what was added, said (none: the sheet was closed). */
+  export function addFrom(initial: { id: string; pdf: boolean }): Promise<string | null> {
+    closeSheet();
+    return new Promise((done) => (adding = { id: null, pdf: null, choose: false, initial, done }));
+  }
+
+  /** A paper of the library, selected in the library tab with its details: from the Feeds tab, an item in it. */
+  export function showEntry(id: string) {
+    return show(id);
   }
 
   function say(text: string) {
@@ -979,10 +1015,11 @@
     forId={adding.id}
     pdf={adding.pdf}
     choose={adding.choose}
+    initial={adding.initial}
     onadd={addPapers}
     onchange={changePaper}
     onshow={showPaper}
-    onclose={() => (adding = null)}
+    onclose={closeSheet}
   />
 {/if}
 {#if deleting}

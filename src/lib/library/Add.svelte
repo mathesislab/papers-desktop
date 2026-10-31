@@ -5,6 +5,8 @@
   // The entry's BibTeX is in a field to fix before adding, with the key the library gives it.
   // An entry that is a paper of the .bib already is not added: the sheet compares it with the
   // paper, field by field, to merge into it, and the PDF is attached to it.
+  // From an item of the Feeds tab (`initial`), the sheet starts with its DOI fetched, and its free PDF looked for
+  // unless it is added without one.
 
   import { invoke } from "@tauri-apps/api/core";
   import { downloadDir } from "@tauri-apps/api/path";
@@ -12,6 +14,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount, untrack } from "svelte";
   import { holdModal } from "./modal.svelte";
+  import { addField } from "$lib/feeds/items";
   import { label } from "$lib/keys";
   import { sheetPdf, type SheetPdf } from "$lib/library/freepdf";
   import { defaultFiles, writers } from "$lib/library/writes";
@@ -35,6 +38,7 @@
     forId = null,
     pdf: first = null,
     choose: choosing = false,
+    initial = null,
     onadd,
     onchange,
     onshow,
@@ -50,6 +54,8 @@
     pdf?: string | null;
     /** open the chooser of the PDF at once */
     choose?: boolean;
+    /** a paper to fetch at once, from the Feeds tab: its DOI or arXiv id, and whether its free PDF is looked for */
+    initial?: { id: string; pdf: boolean } | null;
     /** write the new paper; whether it was written, else `fail` was told why */
     onadd: (bib: string, text: string, options: AddOptions, fail: (message: string) => void) => Promise<boolean>;
     /** change the paper: its entry to `text` when that is not null, then the PDF added when that is not null */
@@ -82,7 +88,7 @@
   /** the PDF */
   let pdf = $state<SheetPdf | null>(null);
   /** where the DOI in the field came from */
-  let source = $state<"pdf" | "search" | "typed" | "page" | "entry" | "none" | null>(null);
+  let source = $state<"pdf" | "search" | "typed" | "page" | "entry" | "feed" | "none" | null>(null);
   /** the article the entry is of, the link to open in a browser; whether its free PDF is being looked for (the
    *  paper is not added meanwhile, unless the user skips the wait) */
   let article = $state<{ page: string; looking: boolean } | null>(null);
@@ -122,6 +128,10 @@
   let attach = $state(true);
   /** the latest thing the user started: what an older one finds out is dropped */
   let seq = 0;
+  /** the DOI of the item of the Feeds tab; whether the free PDF of the article is looked for (Add without PDF does
+   *  not) */
+  const feedDoi = untrack(() => (initial ? addField(initial.id) : null));
+  const freePdf = untrack(() => initial?.pdf ?? true);
 
   let entries = $derived(checked && "entries" in checked ? checked.entries : []);
   /** the papers of the .bib to add to that each entry is the same as (the paper that gets the PDF is none) */
@@ -193,6 +203,8 @@
         return "from the page ✓";
       case "entry":
         return "the paper's DOI";
+      case "feed":
+        return freePdf ? "from the feed" : "from the feed, added without its PDF";
       case "typed":
         return "typed";
       case "none":
@@ -226,6 +238,10 @@
     }
     if (first) setPdf(first);
     else if (choosing) chooseFile();
+    else if (initial) {
+      field = feedDoi ?? "";
+      go();
+    }
   });
 
   // what is done with a file is the library's `files` setting, until the user chooses
@@ -424,6 +440,10 @@
    *  went on to something else, is discarded. */
   async function lookup(doi: string, page: string, n: number) {
     if (pdf) return;
+    if (!freePdf) {
+      article = { page, looking: false };
+      return;
+    }
     article = { page, looking: true };
     try {
       const found = await invoke<FreePdf>("fetch_free_pdf", { doi });
@@ -533,12 +553,15 @@
         article = null;
         message = null;
         return;
-      case "doi":
-        field = found.doi;
-        source = paper?.doi?.toLowerCase() === found.doi.toLowerCase() ? "entry" : "typed";
+      case "doi": {
+        const doi = found.doi;
+        const same = (other: string | null | undefined) => other?.toLowerCase() === doi.toLowerCase();
+        field = doi;
+        source = same(paper?.doi) ? "entry" : same(feedDoi) ? "feed" : "typed";
         article = null;
-        if (await fetchEntry(found.doi, n)) await lookup(found.doi, `https://doi.org/${found.doi}`, n);
+        if (await fetchEntry(doi, n)) await lookup(doi, `https://doi.org/${doi}`, n);
         return;
+      }
       case "pdf":
         field = "";
         pdf = { path: found.path, downloaded: false };
@@ -699,7 +722,7 @@
       {/if}
     </div>
     {#if sourceText}
-      <p class="source" class:ok={source === "pdf" || source === "page"}>{sourceText}</p>
+      <p class="source" class:ok={source === "pdf" || source === "page" || source === "feed"}>{sourceText}</p>
     {/if}
 
     {#if busy}
