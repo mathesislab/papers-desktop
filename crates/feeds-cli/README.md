@@ -28,7 +28,9 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `show <id> [--json]`, `find <id>` | everything known of an item; the papers behind a post (needs the network) |
 | `mark <state> <id>...` | `new`, `seen`, `shortlisted`, `dismissed`, `added` |
 | `prune` | the old items no feed lists go (done on opening too) |
+| `opml import <file>`, `opml export [file]` | the subscriptions as OPML, as the app's settings read and write it (to the standard output without a file); import passes over those followed already |
 | `interests`, `rules`, `config` | what is set; `--json` for the first two |
+| `config keep-days <N>`, `config lookback-days <N>` | the days an item no feed lists is kept (90), the days a first sweep looks back (14); at least 1 |
 | `import-paper-feeder <sources.yaml> <scoring.yaml>` | `--interest <name>` (default `Interests`), `--issn-via crossref\|openalex` |
 | `digest --rss <file> --html <file>` | `--query` (default `score:3-`), `--days` (7), `--title`, `--link` |
 

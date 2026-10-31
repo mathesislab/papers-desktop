@@ -96,3 +96,31 @@ fn the_apis_are_asked_with_the_option_over_the_environment() {
     assert!(urls[1].ends_with("&mailto=env@example.org"), "{}", urls[1]);
     assert!(!urls[2].contains("mailto"), "{}", urls[2]);
 }
+
+#[test]
+fn config_sets_the_days_kept_and_the_lookback() {
+    let s = Sandbox::new(Recorded::new());
+    s.config(CONFIG);
+    let said = s.ok(&["config", "keep-days", "45"]);
+    assert!(said.contains("keep days     45\n"), "{said}");
+    assert!(said.contains("lookback days 7\n"), "{said}");
+    let said = s.ok(&["config", "lookback-days", "21"]);
+    assert!(
+        said.contains("keep days     45\nlookback days 21\n"),
+        "{said}"
+    );
+    // kept, and nothing else changed
+    let shown = s.ok(&["config"]);
+    assert_eq!(shown, said);
+    assert!(shown.contains("interests     1\nrules         2\ntitle boost   2.5\n"));
+    // days are whole and at least 1
+    for args in [
+        ["config", "keep-days", "0"],
+        ["config", "keep-days", "soon"],
+        ["config", "lookback-days", "-3"],
+    ] {
+        assert_eq!(s.run(&args).code, 2, "{args:?}");
+    }
+    assert_eq!(s.run(&["config", "keep-days"]).code, 2);
+    assert!(s.ok(&["config"]).contains("keep days     45\n"));
+}

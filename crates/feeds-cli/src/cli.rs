@@ -47,8 +47,10 @@ pub enum Command {
     Interests(JsonArg),
     /// The rules that triage new items
     Rules(JsonArg),
-    /// The folder and the settings
-    Config,
+    /// The folder and the settings; `keep-days` and `lookback-days` change one
+    Config(ConfigArgs),
+    /// The subscriptions as OPML, the list feed readers exchange
+    Opml(OpmlArgs),
     /// Migrate a paper-feeder setup (sources.yaml and scoring.yaml)
     ImportPaperFeeder(ImportArgs),
     /// Write the items of the last days that reach an interest as an RSS feed or an HTML page
@@ -99,6 +101,45 @@ impl From<KindArg> for SourceKind {
             KindArg::Blog => SourceKind::Blog,
         }
     }
+}
+
+/// `feeds config`.
+#[derive(Debug, Args)]
+pub struct ConfigArgs {
+    /// A setting to change; none: show them all
+    #[command(subcommand)]
+    pub set: Option<ConfigSet>,
+}
+
+/// The settings `feeds config` changes.
+#[derive(Debug, Subcommand)]
+pub enum ConfigSet {
+    /// The days an item no feed lists is kept, unless shortlisted or added
+    KeepDays {
+        #[arg(value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+        days: u32,
+    },
+    /// The days a sweep of Crossref or OpenAlex looks back the first time
+    LookbackDays {
+        #[arg(value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+        days: u32,
+    },
+}
+
+/// `feeds opml`.
+#[derive(Debug, Args)]
+pub struct OpmlArgs {
+    #[command(subcommand)]
+    pub command: OpmlCommand,
+}
+
+/// What `feeds opml` does.
+#[derive(Debug, Subcommand)]
+pub enum OpmlCommand {
+    /// Follow the feeds and sweeps of an OPML file (those followed already are passed over)
+    Import { file: PathBuf },
+    /// Write the subscriptions as OPML to a file, else to the standard output
+    Export { file: Option<PathBuf> },
 }
 
 /// `feeds subscribe`.

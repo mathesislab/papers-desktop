@@ -2,7 +2,7 @@
 
 use papers_feeds::Matcher;
 
-use crate::cli::{AccessArgs, JsonArg};
+use crate::cli::{AccessArgs, ConfigArgs, ConfigSet, JsonArg};
 use crate::{Ctx, Result};
 
 /// A term or pattern as written: a pattern between slashes.
@@ -69,9 +69,15 @@ pub fn rules(ctx: &mut Ctx, a: JsonArg) -> Result<()> {
     Ok(())
 }
 
-/// `feeds config`: the folder, its settings, and what the APIs are asked with.
-pub fn config(ctx: &mut Ctx) -> Result<()> {
-    let feeds = ctx.open()?;
+/// `feeds config`: sets what it is told, then shows the folder, its settings, and what the APIs
+/// are asked with.
+pub fn config(ctx: &mut Ctx, a: ConfigArgs) -> Result<()> {
+    let mut feeds = ctx.open()?;
+    match a.set {
+        Some(ConfigSet::KeepDays { days }) => feeds.set_keep_days(days)?,
+        Some(ConfigSet::LookbackDays { days }) => feeds.set_lookback_days(days)?,
+        None => {}
+    }
     let access = ctx.access(&AccessArgs {
         mailto: None,
         openalex_key: None,

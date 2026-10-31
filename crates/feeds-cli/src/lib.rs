@@ -173,7 +173,8 @@ fn dispatch(ctx: &mut Ctx, command: Command) -> Result<()> {
         Command::Prune => items::prune(ctx),
         Command::Interests(a) => settings::interests(ctx, a),
         Command::Rules(a) => settings::rules(ctx, a),
-        Command::Config => settings::config(ctx),
+        Command::Config(a) => settings::config(ctx, a),
+        Command::Opml(a) => subs::opml(ctx, a),
         Command::ImportPaperFeeder(a) => paperfeeder::import(ctx, a),
         Command::Digest(a) => digest::digest(ctx, a),
     }

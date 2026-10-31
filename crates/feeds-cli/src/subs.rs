@@ -2,9 +2,9 @@
 
 use papers_feeds::{Feed, Outcome, SourceKind};
 
-use crate::cli::{AccessArgs, EditArgs, IdArg, JsonArg, SubscribeArgs};
+use crate::cli::{AccessArgs, EditArgs, IdArg, JsonArg, OpmlArgs, OpmlCommand, SubscribeArgs};
 use crate::text::{label, table};
-use crate::{Ctx, Result, fail};
+use crate::{Ctx, Error, Result, fail};
 /// The kind of a feed's items when none is said: preprints for arXiv and the preprint servers,
 /// else journal.
 pub fn guess_kind(feed: &Feed) -> SourceKind {
@@ -108,6 +108,33 @@ pub fn subscriptions(ctx: &mut Ctx, a: JsonArg) -> Result<()> {
     };
     let rows: Vec<Vec<String>> = feeds.subscriptions().iter().map(row).collect();
     write!(ctx.out, "{}", table(&rows))?;
+    Ok(())
+}
+
+/// `feeds opml`: follows what a file lists, or writes the subscriptions.
+pub fn opml(ctx: &mut Ctx, a: OpmlArgs) -> Result<()> {
+    let file_error = |path: &std::path::Path| {
+        let path = path.to_path_buf();
+        move |source| Error::File { path, source }
+    };
+    match a.command {
+        OpmlCommand::Import { file } => {
+            let text = std::fs::read_to_string(&file).map_err(file_error(&file))?;
+            let added = ctx.open()?.import_opml(&text)?;
+            writeln!(ctx.out, "subscribed to {added} new")?;
+        }
+        OpmlCommand::Export { file } => {
+            let feeds = ctx.open()?;
+            match file {
+                Some(file) => {
+                    std::fs::write(&file, feeds.opml()).map_err(file_error(&file))?;
+                    let n = feeds.subscriptions().len();
+                    writeln!(ctx.out, "exported {n} to {}", file.display())?;
+                }
+                None => write!(ctx.out, "{}", feeds.opml())?,
+            }
+        }
+    }
     Ok(())
 }
 
