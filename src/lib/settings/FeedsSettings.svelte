@@ -420,7 +420,7 @@
       <div class="line">
         <input class="text grow" type="text" spellcheck="false" placeholder="Query" bind:value={rule.when} />
         <select bind:value={rule.then}>
-          <option value="shortlist">Shortlist</option>
+          <option value="shortlist">Star</option>
           <option value="seen">Mark seen</option>
           <option value="dismiss">Dismiss</option>
         </select>
@@ -458,7 +458,7 @@
     <label class="row">
       <span>
         <span class="label">Keep items (days)</span>
-        <span class="hint">An item no feed lists any more goes after this, unless shortlisted or added</span>
+        <span class="hint">An item no feed lists any more goes after this, unless starred or added</span>
       </span>
       <input class="num" type="number" min="1" value={saved.keepDays} onchange={(e) => setNow({ keepDays: number(e) })} />
     </label>

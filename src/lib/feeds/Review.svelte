@@ -130,7 +130,7 @@
 
 <section class="review">
   <div class="head">
-    <span>Shortlist · {progress.text}</span>
+    <span>Starred · {progress.text}</span>
     <div class="progress" role="progressbar" aria-valuenow={Math.round(progress.fraction * 100)} aria-valuemin={0} aria-valuemax={100}>
       <i style:width="{progress.fraction * 100}%"></i>
     </div>
@@ -138,12 +138,12 @@
   </div>
 
   {#if !loaded}
-    <p class="empty">Loading the shortlist…</p>
+    <p class="empty">Loading the starred items…</p>
   {:else if !review.ids.length}
-    <p class="empty">Nothing shortlisted: <kbd>S</kbd> in the list shortlists an item.</p>
+    <p class="empty">Nothing starred: <kbd>S</kbd> or the ☆ of a row stars an item.</p>
   {:else if id === null}
     <div class="empty">
-      <p>The shortlist is reviewed: {summaryOf(review)}.</p>
+      <p>The starred items are reviewed: {summaryOf(review)}.</p>
       <p><button onclick={() => (review = stepReview(review, -review.ids.length))}>Again from the first</button> <button class="primary" onclick={onclose}>Leave the review</button></p>
     </div>
   {:else if detail && detail.id === id}

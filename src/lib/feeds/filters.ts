@@ -51,7 +51,7 @@ export const NO_FEED_FILTERS: FeedFilters = {
 
 export const SHELVES: { view: Shelf; name: string; term: string | null }[] = [
   { view: "unread", name: "Unread", term: "is:new" },
-  { view: "shortlist", name: "Shortlist", term: "is:shortlisted" },
+  { view: "shortlist", name: "Starred", term: "is:shortlisted" },
   { view: "added", name: "Added", term: "is:added" },
   { view: "all", name: "All", term: null },
 ];

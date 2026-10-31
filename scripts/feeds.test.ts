@@ -388,5 +388,5 @@ test("the review steps through the shortlist", () => {
   assert.equal(decide(r, "added"), r);
   assert.equal(summaryOf(r), "1 added, 1 dismissed, 1 for later");
   assert.equal(summaryOf(stepReview(startReview(["a", "b"]), 9)), "0 added, 0 dismissed, 0 for later, 2 passed");
-  assert.equal(progressOf(startReview([])).text, "nothing shortlisted");
+  assert.equal(progressOf(startReview([])).text, "nothing starred");
 });

@@ -18,7 +18,8 @@
   // The list of the Feeds tab: the items the filters select, best score, most similar to the library or newest
   // first. Only the rows in view are drawn, as in the library's table, and an edge of a header resizes its column
   // (the window's layout keeps the widths). A new item's title is bold; one seen is muted. A click selects (⇧ a
-  // range, ⌘ one more), a double-click opens the item's page, a right-click its menu.
+  // range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at its start stars
+  // the item, or unstars it (✓: added).
 
   import Marked from "$lib/Marked.svelte";
   import type { FeedRow, ItemKind, Sort } from "./api";
@@ -33,6 +34,7 @@
     colours,
     onsort,
     onwidths,
+    onstar,
     onselect,
     onopen,
     onmenu,
@@ -47,6 +49,8 @@
     colours: Map<string, string>;
     onsort: (sort: Sort) => void;
     onwidths: (widths: Record<FeedColumn, number>) => void;
+    /** the star of a row clicked: the item starred, or no longer */
+    onstar: (id: string) => void;
     onselect: (id: string, e: MouseEvent) => void;
     onopen: (id: string) => void;
     /** right-click on a row: its context menu */
@@ -57,7 +61,8 @@
   /** rows drawn above and below the ones in view, for a smooth scroll */
   const EXTRA = 12;
   const KIND_MARK: Record<ItemKind, string> = { paper: "", preprint: "◐", news: "✦", blog: "✎" };
-  const MARK = 24;
+  const STAR = 22;
+  const MARK = 18;
   const MIN_WIDTH = 30;
   const ORDER: FeedColumn[] = ["score", "similar", "title", "authors", "journal", "date", "badges"];
 
@@ -67,9 +72,9 @@
   let now = $state(Date.now());
 
   let template = $derived(
-    [`${MARK}px`, ...ORDER.map((c) => (c === "title" ? `minmax(${widths.title}px, 1fr)` : `${widths[c]}px`))].join(" "),
+    [`${STAR}px`, `${MARK}px`, ...ORDER.map((c) => (c === "title" ? `minmax(${widths.title}px, 1fr)` : `${widths[c]}px`))].join(" "),
   );
-  let minWidth = $derived(MARK + ORDER.reduce((sum, c) => sum + widths[c], 0));
+  let minWidth = $derived(STAR + MARK + ORDER.reduce((sum, c) => sum + widths[c], 0));
 
   let first = $derived(Math.max(0, Math.floor(scrollTop / ROW) - EXTRA));
   let last = $derived(Math.min(rows.length, Math.ceil((scrollTop + height) / ROW) + EXTRA));
@@ -111,6 +116,7 @@
 
 <div class="table" role="grid" aria-rowcount={rows.length}>
   <div class="head row" role="row" style:grid-template-columns={template} style:min-width="{minWidth}px">
+    <span></span>
     <span></span>
     {#each ORDER as column (column)}
       <div class="head-cell" role="columnheader">
@@ -160,9 +166,19 @@
             onmenu(row.id);
           }}
         >
-          <span class="mark {row.kind}" title={row.triage === "shortlisted" ? "Shortlisted" : row.triage === "added" ? "Added" : row.kind}>
-            {row.triage === "shortlisted" ? "★" : row.triage === "added" ? "✓" : KIND_MARK[row.kind]}
-          </span>
+          {#if row.triage === "added"}
+            <span class="star added" title="Added">✓</span>
+          {:else}
+            <button
+              class="star"
+              class:on={row.triage === "shortlisted"}
+              title={row.triage === "shortlisted" ? "Starred: unstar" : "Star"}
+              onmousedown={(e) => e.stopPropagation()}
+              ondblclick={(e) => e.stopPropagation()}
+              onclick={() => onstar(row.id)}>{row.triage === "shortlisted" ? "★" : "☆"}</button
+            >
+          {/if}
+          <span class="mark {row.kind}" title={row.kind}>{KIND_MARK[row.kind]}</span>
           <span class="score">{scoreText(row.score)}</span>
           <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
           <span class="title"><Marked spans={row.title} /></span>
@@ -292,16 +308,35 @@
     font-variant-numeric: tabular-nums;
     text-align: right;
   }
-  .body .row > .mark {
+  .body .row > .mark,
+  .body .row > .star {
     padding: 0;
     text-align: center;
     font-size: 11px;
   }
-  .row.shortlisted .mark {
+  .star {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--border);
+    font: inherit;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .row:hover .star {
+    color: var(--muted);
+  }
+  .star.on,
+  .row:hover .star.on {
     color: #d9822b;
   }
-  .row.added .mark {
+  .star.added {
     color: #2f9e6e;
+    cursor: default;
+  }
+  .row.selected .star {
+    color: inherit;
   }
   .mark.preprint {
     color: #a16207;

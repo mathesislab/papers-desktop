@@ -68,13 +68,13 @@
     {#if post}
       <button class="open" onclick={onopen} disabled={!detail.url}>Open post ↗ <kbd>O</kbd></button>
       <button onclick={() => ontriage("read")}>{detail.triage === "new" ? "Mark read" : "Mark unread"} <kbd>M</kbd></button>
-      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Shortlisted" : "★ Shortlist"} <kbd>S</kbd></button>
+      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
       <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
     {:else}
       <button class="primary" onclick={() => onadd(true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
       <button class="open" onclick={onopen} disabled={!detail.url && !detail.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
       <button onclick={() => onadd(false)} title="Add to the library without looking for its PDF">Add without PDF</button>
-      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Shortlisted" : "★ Shortlist"} <kbd>S</kbd></button>
+      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
       <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
     {/if}
   </div>
@@ -121,7 +121,7 @@
           <div class="actions">
             <button class="primary" onclick={() => onaddlink(link)}>Add</button>
             {#if link.item}
-              <button onclick={() => onshortlistlink(link.item!)}>{row?.triage === "shortlisted" ? "★ Shortlisted" : "★ Shortlist"}</button>
+              <button onclick={() => onshortlistlink(link.item!)}>{row?.triage === "shortlisted" ? "★ Starred" : "☆ Star"}</button>
               <button onclick={() => onitem(link.item!)}>Show paper</button>
             {/if}
           </div>

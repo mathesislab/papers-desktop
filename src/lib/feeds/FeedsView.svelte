@@ -514,7 +514,7 @@
         await item("Add without PDF…", () => addItems(ids, false)),
         ...(posts ? [await item("Find Linked Paper", () => find(id))] : []),
         await separator(),
-        await item(every("shortlisted") ? "Remove from Shortlist" : "Shortlist", () => triage("shortlist", ids)),
+        await item(every("shortlisted") ? "Unstar" : "Star", () => triage("shortlist", ids)),
         await item(items.some((r) => r.triage === "new") ? "Mark as Seen" : "Mark as New", () => triage("read", ids)),
         await item(every("dismissed") ? "Restore" : "Dismiss", () => triage("dismiss", ids)),
         await separator(),
@@ -712,8 +712,8 @@
       <button class="tool" title="Subscribe to a journal, a preprint server, a news site or a blog" onclick={() => (subscribing = true)}>
         + Subscribe…
       </button>
-      <button class="tool primary" class:on={reviewing} title="Review the shortlist, one item at a time ({label(REVIEW)})" onclick={toggleReview}>
-        {reviewing ? "Leave review" : `Review shortlist (${shortlisted})`}
+      <button class="tool primary" class:on={reviewing} title="Review the starred items, one at a time ({label(REVIEW)})" onclick={toggleReview}>
+        {reviewing ? "Leave review" : `Review starred (${shortlisted})`}
       </button>
     </header>
     <div class="content">
@@ -763,7 +763,7 @@
               <span>{selected.size} selected</span>
               <button onclick={() => markSeen(chosen().filter((r) => r.triage === "new").map((r) => r.id))}>Mark read</button>
               <button onclick={() => setTo(chosen().filter((r) => r.triage === "seen").map((r) => r.id), "new")}>Mark unread</button>
-              <button onclick={() => triage("shortlist", chosen().map((r) => r.id))}>★ Shortlist</button>
+              <button onclick={() => triage("shortlist", chosen().map((r) => r.id))}>★ Star</button>
               <button onclick={() => triage("dismiss", chosen().map((r) => r.id))}>Dismiss</button>
               <span class="spacer"></span>
               <button class="plain" onclick={() => (selected = new Set(focus ? [focus] : []))}>Clear selection</button>
@@ -790,6 +790,7 @@
               {colours}
               onsort={(sort) => (filters.sort = sort)}
               onwidths={(widths) => (columns = widths)}
+              onstar={(id) => triage("shortlist", [id])}
               onselect={select}
               onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
               onmenu={rowMenu}
@@ -837,7 +838,7 @@
       </span>
       <span class="spacer"></span>
       <span>
-        {subscriptions.length} {subscriptions.length === 1 ? "subscription" : "subscriptions"} · Shortlist {shortlisted} · Added
+        {subscriptions.length} {subscriptions.length === 1 ? "subscription" : "subscriptions"} · Starred {shortlisted} · Added
         {counts?.is.added ?? 0}
       </span>
       {#if failures && last?.failed.length}

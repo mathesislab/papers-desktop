@@ -48,7 +48,14 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
     };
     let feeds = FeedsItems {
         feeds: MenuItem::with_id(app, "feeds", "Feeds", feeds_tab, Some("CmdOrCtrl+2"))?,
-        show: CheckMenuItem::with_id(app, "show-feeds-tab", "Show Feeds Tab", true, feeds_tab, None::<&str>)?,
+        show: CheckMenuItem::with_id(
+            app,
+            "show-feeds-tab",
+            "Show Feeds Tab",
+            true,
+            feeds_tab,
+            None::<&str>,
+        )?,
         beside: CheckMenuItem::with_id(
             app,
             "feeds-beside",
@@ -69,7 +76,13 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &PredefinedMenuItem::about(app, None, None)?,
                     &separator()?,
                     &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
-                    &MenuItem::with_id(app, "install-cli", "Install Command Line Tool…", true, None::<&str>)?,
+                    &MenuItem::with_id(
+                        app,
+                        "install-cli",
+                        "Install Command Line Tool…",
+                        true,
+                        None::<&str>,
+                    )?,
                     &separator()?,
                     &PredefinedMenuItem::services(app, None)?,
                     &separator()?,
@@ -133,7 +146,11 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &item("previous-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
                     &separator()?,
                     &item("show-next-tab", "Show Next Tab", "CmdOrCtrl+Shift+]")?,
-                    &item("show-previous-tab", "Show Previous Tab", "CmdOrCtrl+Shift+[")?,
+                    &item(
+                        "show-previous-tab",
+                        "Show Previous Tab",
+                        "CmdOrCtrl+Shift+[",
+                    )?,
                     &separator()?,
                     &feeds.show,
                     &feeds.beside,

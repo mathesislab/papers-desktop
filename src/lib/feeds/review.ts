@@ -67,7 +67,7 @@ export function decide(r: Review, outcome: Outcome): Review {
 /** "2 of 5", and how far as a fraction (1 at the end). */
 export function progressOf(r: Review): { text: string; fraction: number } {
   const n = r.ids.length;
-  if (!n) return { text: "nothing shortlisted", fraction: 1 };
+  if (!n) return { text: "nothing starred", fraction: 1 };
   return { text: r.at < n ? `${r.at + 1} of ${n}` : `${n} of ${n}, done`, fraction: r.at / n };
 }
 
