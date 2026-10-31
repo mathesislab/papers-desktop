@@ -45,6 +45,7 @@
     openedMessage,
     transferMessage,
   } from "$lib/library/selection";
+  import { closed, initial, seen, type Seen } from "$lib/library/history";
   import { modalOpen } from "$lib/library/modal.svelte";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
@@ -172,8 +173,10 @@
   let collapse: string | null = null;
   /** the BibTeX of the paper in the details, being edited */
   const editor = new Editor();
-  /** after a paper is closed: the next paper open, or the library (a setting) */
+  /** after the paper in front is closed: the view seen before it ("next"), or the library (a setting) */
   let afterClose: "library" | "next" = "next";
+  /** the list and the papers open, in the order they were seen, the one in front first (not state: nothing draws it) */
+  let history: Seen[] = [null];
   /** the saved searches of the sidebar (a setting): the filters and the order of the table */
   let savedSearches = $state<Saved[]>([]);
   /** the papers each saved search shows, by name */
@@ -285,6 +288,7 @@
   /** The library as the window opens, once its layout is loaded: the papers, the settings, the paper to open with
    *  the window ("library#ID"). */
   export async function load() {
+    history = initial(layout.open, layout.active);
     status = await invoke<Status>("status");
     if (status.state === "ready") await loadLibrary();
     await refresh();
@@ -426,8 +430,8 @@
       layout.library.bibs = layout.library.bibs.filter((b) => rows.some((r) => r.bib === b));
     selected = new Set([...selected].filter((id) => byId.has(id)));
     if (focus && !byId.has(focus)) focus = null;
-    layout.open = layout.open.filter((id) => byId.has(id));
-    if (layout.active && !byId.has(layout.active)) layout.active = null;
+    const gone = layout.open.filter((id) => !byId.has(id));
+    if (gone.length) closePapers(gone);
     if (editor.id && !byId.has(editor.id)) editor.stop();
     await search(searchOf(layout.library));
   }
@@ -736,7 +740,7 @@
   async function openPapers(ids: string[], front = ids[0]) {
     if (!ids.length || !(await leave(front))) return;
     layout.open = [...layout.open, ...ids.filter((id, i) => !layout.open.includes(id) && ids.indexOf(id) === i)];
-    layout.active = front;
+    toFront(front);
     onfront();
     Promise.all(ids.map((id) => invoke("opened", { id }))).then(refresh);
   }
@@ -897,16 +901,34 @@
     noticeTimer = setTimeout(() => (notice = null), 4000);
   }
 
-  /** A paper closed: the library comes to the front, or the next paper open. */
+  /** A view to the front: a paper (its PDF), or the list (null). */
+  function toFront(view: Seen) {
+    layout.active = view;
+    history = seen(history, view);
+  }
+
+  /** What is in front once the papers `ids` are closed: what is now, unless it is one of them; then the view seen
+   *  before it, or the library (the setting). */
+  function frontAfter(ids: string[]): Seen {
+    if (layout.active === null || !ids.includes(layout.active)) return layout.active;
+    return afterClose === "library" ? null : closed(history, ids)[0];
+  }
+
+  /** Papers closed, or gone from the library: their tabs, pages and history go, `frontAfter` comes to the front. */
+  function closePapers(ids: string[]) {
+    const next = frontAfter(ids);
+    layout.open = layout.open.filter((id) => !ids.includes(id));
+    for (const id of ids) delete layout.pages[id];
+    history = closed(history, ids);
+    toFront(next);
+  }
+
+  /** A paper closed: its tab ×, Close PDF, ⌘W. */
   async function closePaper(id: string) {
-    const at = layout.open.indexOf(id);
-    const rest = layout.open.filter((x) => x !== id);
-    const next = layout.active !== id ? layout.active : afterClose === "next" ? (rest[at] ?? rest[at - 1] ?? null) : null;
+    const next = frontAfter([id]);
     // the edit of the paper goes with its tab
     if (!(await leave(editor.id === id ? null : (next ?? focus)))) return;
-    layout.open = rest;
-    delete layout.pages[id];
-    if (layout.active === id) layout.active = next;
+    closePapers([id]);
   }
 
   /** ⌘W: the paper in front, else the window. */
@@ -922,7 +944,7 @@
 
   async function showLibrary() {
     if (!(await leave(focus))) return;
-    layout.active = null;
+    toFront(null);
     onfront();
     tick().then(() => input?.focus());
   }
@@ -1066,7 +1088,7 @@
 
   /** A tab to the front. */
   async function activate(id: string) {
-    if (await leave(id)) layout.active = id;
+    if (await leave(id)) toFront(id);
   }
 
   /** ⌃Tab: the next tab, the library first; ⌃⇧Tab: the one before. */
@@ -1393,8 +1415,9 @@
     align-items: center;
     max-width: 260px;
     padding: 1px 2px 1px 8px;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
     color: var(--fg);
   }
   .chip .text {

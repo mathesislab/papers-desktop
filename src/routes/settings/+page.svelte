@@ -585,7 +585,7 @@
           value={settings.after_close}
           onchange={(e) => save({ after_close: e.currentTarget.value as Settings["after_close"] })}
         >
-          <option value="next">Show the next paper open</option>
+          <option value="next">Show what was shown before it</option>
           <option value="library">Show the library</option>
         </select>
       </label>

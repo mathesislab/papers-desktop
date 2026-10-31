@@ -58,9 +58,11 @@ Three panes, each resized by dragging, the right one hidden on demand:
 **Tabs.** The window works as a browser does: the first tab is always the
 library, then one tab per open paper, listed in the sidebar (*Open*): author,
 year and title in full, as a tab bar cannot. Enter or a double-click opens a
-paper; `⌘W` closes it, which shows the next open paper, the library after
-the last (a setting: or the library at once; `after_close`, "next" by default,
-so a settings file that does not have it gets that). With the library in front
+paper; `⌘W` closes it, which shows what was shown before it, as a browser's
+back does: the list or another paper, in the order they were last shown (the
+list last; `history.ts`, not kept across launches). A setting shows the library
+at once instead (`after_close`, "next" by default, so a settings file that does
+not have it gets that). With the library in front
 `⌘W` closes the window. `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and
 *Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
 Library → paper 1 → … → Library; `⌘1` shows the library.
