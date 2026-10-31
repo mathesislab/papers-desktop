@@ -168,9 +168,7 @@
       ? comparison !== null && !adding && !busy && !looking && (taken.length > 0 || attaching)
       : entries.length > 0 && !adding && !busy && !looking && target !== "" && (forId === null || pdf !== null),
   );
-  /** what the PDF becomes in the library */
-  let placed = $derived(native || mode === "link" ? "linked where it is" : mode === "move" ? "moved" : "copied");
-  /** what the main button does, and what it says of it */
+  /** what the main button does, and what it says of a merge (the File row says what the PDF becomes) */
   let action = $derived.by(() => {
     if (adding) return { label: "Working…", summary: "" };
     if (forId) return { label: "Add PDF", summary: "" };
@@ -182,12 +180,12 @@
         if (attaching) parts.push("attach PDF");
         return { label: `Merge into ${key}`, summary: parts.join(", ") };
       }
-      if (attaching) return { label: `Attach PDF to ${key}`, summary: `PDF ${placed}` };
+      if (attaching) return { label: `Attach PDF to ${key}`, summary: "" };
       return comparison ? { label: "Nothing to change", summary: "" } : { label: `Merge into ${key}`, summary: "" };
     }
     const anyway = native && known.some((k) => k.here);
     const label = anyway ? "Add anyway" : entries.length > 1 ? `Add ${entries.length} papers` : "Add paper";
-    return { label, summary: pdf ? `PDF ${placed}` : "" };
+    return { label, summary: "" };
   });
   let open = $derived(!(folded ?? doiKnown));
   let entry = $derived(entries.length === 1 ? entries[0].item : null);
