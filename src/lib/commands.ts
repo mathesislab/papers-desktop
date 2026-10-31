@@ -15,6 +15,7 @@ export const commands: Record<string, Shortcut> = {
   details: { key: "i", mod: true, alt: true },
   library: { key: "1", mod: true },
   feeds: { key: "2", mod: true },
+  search: { key: "3", mod: true },
   "show-next-tab": { key: "]", code: "BracketRight", mod: true, shift: true },
   "show-previous-tab": { key: "[", code: "BracketLeft", mod: true, shift: true },
   settings: { key: ",", mod: true },

@@ -15,7 +15,6 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount, untrack, type Snippet } from "svelte";
   import { label, mac, matches, type Shortcut } from "$lib/keys";
-  import Marked from "$lib/Marked.svelte";
   import { modalOpen } from "$lib/library/modal.svelte";
   import { OPEN_ASK } from "$lib/library/selection";
   import Splitter from "$lib/library/Splitter.svelte";
@@ -27,6 +26,7 @@
   import FeedDetails from "./FeedDetails.svelte";
   import FeedsSidebar from "./FeedsSidebar.svelte";
   import FeedTable, { type FeedColumn } from "./FeedTable.svelte";
+  import Reader from "./Reader.svelte";
   import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
@@ -375,6 +375,9 @@
     if (focus && selected.has(focus)) return rows.filter((r) => selected.has(r.id)).map((r) => r.id);
     return focus ? [focus] : [];
   }
+
+  /** The items the buttons of the details act on: the keys', else the item shown. */
+  const targetsOr = (id: string) => (targets().length ? targets() : [id]);
 
   /** A triage given to items. Shown at once; the list keeps them in place until the filters change, except
    *  dismissed items, which go, the next selected. Then the counts, and the list, again. */
@@ -1005,21 +1008,9 @@
               onmenu={rowMenu}
             />
             {#if reading && !beside && focusRow}
-              <div class="reader">
-                <button class="pinned" title="Back to the list (Esc)" onclick={() => (reading = false)}>
-                  <svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
-                    <path d="M1.5 3.5h9L6 9.5z" fill="currentColor" />
-                  </svg>
-                  <span class="title"><Marked spans={focusRow.title} /></span>
-                  <span class="muted">{focusRow.journal ?? focusRow.sources[0] ?? ""}</span>
-                  <span class="muted keys">↑ ↓ previous, next · Esc the list</span>
-                </button>
-                <div class="page">
-                  <div class="column">
-                    {#if detail}{@render itemDetails(detail, true)}{/if}
-                  </div>
-                </div>
-              </div>
+              <Reader row={focusRow} onback={() => (reading = false)}>
+                {#if detail}{@render itemDetails(detail, true)}{/if}
+              </Reader>
             {/if}
             </div>
           {/if}
@@ -1071,19 +1062,34 @@
     count={focus && selected.has(focus) ? selected.size : 1}
     {byId}
     {colours}
-    finding={finding === d.id}
     {pdfOf}
-    onadd={(pdf) => addItems(targets().length ? targets() : [d.id], pdf)}
+    actions={itemActions}
+    finding={finding === d.id}
     onaddlink={(link: Linked) => add({ id: link.doi, item: link.item }, true)}
-    ontriage={(action) => triage(action, targets().length ? targets() : [d.id])}
     onshortlistlink={(item) => triage("shortlist", [item])}
-    onopen={() => openItems(targets().length ? targets() : [d.id])}
     onfind={() => find(d.id)}
-    onlater={() => laterMenu(targets().length ? targets() : [d.id])}
     onitem={showItem}
     {onentry}
     onback={wide ? () => (reading = false) : undefined}
   />
+{/snippet}
+
+<!-- the buttons of the details: a post's, a paper's -->
+{#snippet itemActions(d: FeedDetail)}
+  {#if isPost(d.kind)}
+    <button class="open" onclick={() => openItems(targetsOr(d.id))} disabled={!d.url}>Open post ↗ <kbd>O</kbd></button>
+    <button onclick={() => triage("read", targetsOr(d.id))}>{d.triage === "new" ? "Mark read" : "Mark unread"} <kbd>M</kbd></button>
+    <button onclick={() => triage("shortlist", targetsOr(d.id))}>{d.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
+    <button onclick={() => triage("dismiss", targetsOr(d.id))}>{d.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
+    <button onclick={() => laterMenu(targetsOr(d.id))} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
+  {:else}
+    <button class="primary" onclick={() => addItems(targetsOr(d.id), true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
+    <button class="open" onclick={() => openItems(targetsOr(d.id))} disabled={!d.url && !d.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
+    <button onclick={() => addItems(targetsOr(d.id), false)} title="Add to the library without looking for its PDF">Add without PDF</button>
+    <button onclick={() => triage("shortlist", targetsOr(d.id))}>{d.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
+    <button onclick={() => triage("dismiss", targetsOr(d.id))}>{d.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
+    <button onclick={() => laterMenu(targetsOr(d.id))} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
+  {/if}
 {/snippet}
 
 <style>
@@ -1139,64 +1145,6 @@
     display: flex;
     flex-direction: column;
   }
-  .reader {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg);
-  }
-  .pinned {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 30px;
-    padding: 0 12px;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    background: color-mix(in srgb, var(--feeds) 10%, transparent);
-    color: var(--fg);
-    font: inherit;
-    text-align: left;
-  }
-  .pinned .caret {
-    flex: none;
-    display: block;
-    color: var(--feeds);
-  }
-  .pinned .title {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-weight: 600;
-  }
-  .pinned .muted {
-    flex: none;
-    max-width: 240px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--muted);
-    font-size: 12px;
-  }
-  .page {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    justify-content: center;
-  }
-  .column {
-    flex: 1;
-    max-width: 820px;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
   /* the search keeps its width: what is next to it stays in place */
   .search {
     position: relative;

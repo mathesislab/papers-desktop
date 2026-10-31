@@ -19,6 +19,9 @@
   /* the Feeds tab: green, against the blue of the library */
   --feeds: #2e9a4f;
   --on-feeds: #ffffff;
+  /* the Search tab: a calm violet */
+  --search: #6b5bc8;
+  --on-search: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
@@ -36,5 +39,6 @@
     --sidebar: rgba(255, 255, 255, 0.035);
     --error: #ff7a66;
     --feeds: #2f8a4a;
+    --search: #6e5fc4;
   }
 }

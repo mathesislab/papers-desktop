@@ -2,12 +2,14 @@
   // The Feeds section of the settings window: the subscriptions (added by
   // address, ISSN or OpenAlex filter, or from the suggested list; edited;
   // OPML in and out), the interests and the rules, the days kept, the
-  // background polling. The commands are those of $lib/feeds/api.ts.
+  // background polling; whether the Feeds and Search tabs show. The commands are those of $lib/feeds/api.ts (and
+  // $lib/search/api.ts for the Search tab).
   import { open, save as saveFile } from "@tauri-apps/plugin-dialog";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import * as feeds from "$lib/feeds/api";
   import type { Feed, FeedSettings, Interest, Rule, SourceKind, Suggested, SubscriptionInfo } from "$lib/feeds/api";
+  import * as search from "$lib/search/api";
 
   let { notify }: { notify: (text: string, error: boolean) => void } = $props();
 
@@ -29,6 +31,8 @@
   let saved = $state<FeedSettings | null>(null);
   /** the Feeds tab of the main window, shown (also set by Window → Show Feeds Tab) */
   let tab = $state(true);
+  /** the Search tab of the main window, shown (also set by Window → Show Search Tab) */
+  let searchTab = $state(true);
   /** the details of an item beside the list, rather than in place of it */
   let beside = $state(false);
   let draft = $state<Draft | null>(null);
@@ -57,10 +61,12 @@
     const unlisten = listen(feeds.EVENTS.changed, () => loadSubscriptions());
     const unlistenTab = listen<boolean>(feeds.EVENTS.tab, (e) => (tab = e.payload));
     const unlistenBeside = listen<boolean>(feeds.EVENTS.beside, (e) => (beside = e.payload));
+    const unlistenSearch = listen<boolean>(search.EVENTS.tab, (e) => (searchTab = e.payload));
     return () => {
       unlisten.then((f) => f());
       unlistenTab.then((f) => f());
       unlistenBeside.then((f) => f());
+      unlistenSearch.then((f) => f());
     };
   });
 
@@ -71,6 +77,7 @@
         loadSettings(),
         feeds.tabShown().then((shown) => (tab = shown)),
         feeds.besideShown().then((b) => (beside = b)),
+        search.tabShown().then((shown) => (searchTab = shown)),
       ]);
       suggestions = await feeds.suggested();
     } catch (err) {
@@ -281,8 +288,16 @@
 
   <label class="row">
     <span>
+      <span class="label">Show the Search tab</span>
+      <span class="hint">In the main window, to search OpenAlex's works and add them; also Window → Show Search Tab</span>
+    </span>
+    <input type="checkbox" class="switch" checked={searchTab} onchange={(e) => act(() => search.setTab(e.currentTarget.checked))} />
+  </label>
+
+  <label class="row">
+    <span>
       <span class="label">Details beside the list</span>
-      <span class="hint">Otherwise an item opens in place of the list, to read (Esc goes back); also Window → Feeds Details Beside the List</span>
+      <span class="hint">Otherwise an item opens in place of the list, to read (Esc goes back), in the Feeds and Search tabs; also Window → Feeds Details Beside the List</span>
     </span>
     <input type="checkbox" class="switch" checked={beside} onchange={(e) => act(() => feeds.setBeside(e.currentTarget.checked))} />
   </label>

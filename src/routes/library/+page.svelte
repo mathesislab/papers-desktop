@@ -1,7 +1,7 @@
 <script lang="ts">
-  // The main window: its two tabs, Library (LibraryView, with the papers open) and Feeds (FeedsView, unless hidden
-  // by the setting); its layout, kept between sessions; the commands of the menu and the keys, the window's own or
-  // passed on to the tab in front.
+  // The main window: its tabs, Library (LibraryView, with the papers open), Feeds (FeedsView) and Search
+  // (SearchView), the last two unless hidden by their settings; its layout, kept between sessions; the commands of
+  // the menu and the keys, the window's own or passed on to the tab in front.
 
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -14,32 +14,44 @@
   import { label, mac, matches, zoomStep } from "$lib/keys";
   import { restore, type Layout } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
+  import * as searchApi from "$lib/search/api";
+  import SearchView from "$lib/search/SearchView.svelte";
 
   let layout = $state<Layout>(restore(null));
   /** the Feeds tab, shown: the setting (Settings → Feeds, Window → Show Feeds Tab) */
   let feedsTab = $state(true);
+  /** the Search tab, shown: the setting (Settings → Feeds, Window → Show Search Tab) */
+  let searchTab = $state(true);
   let loaded = false;
   let timer: ReturnType<typeof setTimeout>;
 
   let library = $state<ReturnType<typeof LibraryView>>();
   let feeds = $state<ReturnType<typeof FeedsView>>();
+  let search = $state<ReturnType<typeof SearchView>>();
 
   /** The window is made hidden, not to flash empty: shown once drawn. */
   onMount(() => {
     // from the menu of the app
     const unlisten = listen<string>("command", (e) => command(e.payload));
     const unlistenTab = listen<boolean>(feedsApi.EVENTS.tab, (e) => showFeeds(e.payload));
+    const unlistenSearch = listen<boolean>(searchApi.EVENTS.tab, (e) => showSearch(e.payload));
     load();
     return () => {
       unlisten.then((f) => f());
       unlistenTab.then((f) => f());
+      unlistenSearch.then((f) => f());
     };
   });
 
   async function load() {
-    const [saved, shown] = await Promise.all([invoke<Partial<Layout> | null>("layout"), feedsApi.tabShown()]);
+    const [saved, shown, searchShown] = await Promise.all([
+      invoke<Partial<Layout> | null>("layout"),
+      feedsApi.tabShown(),
+      searchApi.tabShown(),
+    ]);
     layout = restore(saved);
     showFeeds(shown);
+    showSearch(searchShown);
     loaded = true;
     await library?.load();
     await tick();
@@ -61,7 +73,13 @@
   /** The Feeds tab shown or hidden; hidden in front, the Library tab comes. */
   function showFeeds(show: boolean) {
     feedsTab = show;
-    if (!show) showView("library");
+    if (!show && layout.view === "feeds") showView("library");
+  }
+
+  /** The Search tab shown or hidden; hidden in front, the Library tab comes. */
+  function showSearch(show: boolean) {
+    searchTab = show;
+    if (!show && layout.view === "search") showView("library");
   }
 
   // saved a moment after a change: a pane dragged changes it many times
@@ -80,6 +98,8 @@
         return layout.view === "library" ? library?.command(name) : showView("library");
       case "feeds":
         return feedsTab ? showView("feeds") : undefined;
+      case "search":
+        return searchTab ? showView("search") : undefined;
       // the PDF in front has the keys; else they set the text size
       case "zoom-in":
         return zoom(1);
@@ -101,20 +121,20 @@
       case "redo":
         return undo(false);
       default:
-        return layout.view === "library" ? library?.command(name) : feedsCommand(name);
+        return layout.view === "library" ? library?.command(name) : tabCommand(name);
     }
   }
 
-  /** A command in the Feeds tab: ⌘W closes the window, ⌘N opens the Add sheet of the library, ⌘F goes to the
-   *  search of the feeds; the papers open and their keys are the Library tab's. */
-  function feedsCommand(name: string) {
+  /** A command in the Feeds or the Search tab: ⌘W closes the window, ⌘N opens the Add sheet of the library, ⌘F
+   *  goes to the tab's search field; the papers open and their keys are the Library tab's. */
+  function tabCommand(name: string) {
     switch (name) {
       case "close":
         return library?.closeWindow();
       case "add":
         return library?.command(name);
       case "find":
-        return feeds?.focusSearch();
+        return (layout.view === "feeds" ? feeds : search)?.focusSearch();
     }
   }
 
@@ -167,15 +187,16 @@
     }
     // the keys of the tab in front only: the other's stay off
     if (layout.view === "library") library?.key(e);
-    else feeds?.key(e);
+    else if (layout.view === "feeds") feeds?.key(e);
+    else search?.key(e);
   }
 </script>
 
 <svelte:window {onkeydown} />
 
-<!-- no switch with the Feeds tab hidden: the Library tab alone -->
+<!-- no switch with the Feeds and Search tabs hidden: the Library tab alone -->
 {#snippet tabs()}
-  {#if feedsTab}
+  {#if feedsTab || searchTab}
     <div class="tabs" role="tablist">
       <button
         role="tab"
@@ -184,14 +205,26 @@
         title="Library ({label(commands.library)})"
         onclick={() => showView("library")}>Library</button
       >
-      <button
-        role="tab"
-        aria-selected={layout.view === "feeds"}
-        class="feeds"
-        class:on={layout.view === "feeds"}
-        title="Feeds ({label(commands.feeds)})"
-        onclick={() => showView("feeds")}>Feeds</button
-      >
+      {#if feedsTab}
+        <button
+          role="tab"
+          aria-selected={layout.view === "feeds"}
+          class="feeds"
+          class:on={layout.view === "feeds"}
+          title="Feeds ({label(commands.feeds)})"
+          onclick={() => showView("feeds")}>Feeds</button
+        >
+      {/if}
+      {#if searchTab}
+        <button
+          role="tab"
+          aria-selected={layout.view === "search"}
+          class="search"
+          class:on={layout.view === "search"}
+          title="Search OpenAlex's works ({label(commands.search)})"
+          onclick={() => showView("search")}>Search</button
+        >
+      {/if}
     </div>
   {/if}
 {/snippet}
@@ -220,6 +253,21 @@
     onentry={(id) => library?.showEntry(id)}
   />
 {/if}
+{#if searchTab && layout.view === "search"}
+  <!-- as the Feeds tab: the Add sheet is the library's, over this tab -->
+  <SearchView
+    bind:this={search}
+    {tabs}
+    bind:search={layout.search}
+    bind:columns={layout.searchColumns}
+    bind:sidebar={layout.sidebar}
+    bind:details={layout.details}
+    showSidebar={layout.showSidebar}
+    showDetails={layout.showDetails}
+    onadd={(initial) => library?.addFrom(initial) ?? Promise.resolve(null)}
+    onentry={(id) => library?.showEntry(id)}
+  />
+{/if}
 
 <style>
   :global(html, body) {
@@ -233,7 +281,7 @@
     user-select: none;
   }
 
-  /* Library | Feeds, at the start of the toolbar of either tab */
+  /* Library | Feeds | Search, at the start of the toolbar of each tab */
   .tabs {
     flex: none;
     display: flex;
@@ -263,5 +311,10 @@
   .tabs button.feeds.on {
     background: var(--feeds);
     color: var(--on-feeds);
+  }
+  /* the Search tab's, violet */
+  .tabs button.search.on {
+    background: var(--search);
+    color: var(--on-search);
   }
 </style>

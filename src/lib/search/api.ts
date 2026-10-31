@@ -1,0 +1,43 @@
+// The commands of the Search tab (src-tauri/src/search.rs): a search of OpenAlex's works, page by page, the works
+// found again, those saved for later, a search followed in the Feeds tab. The works found are items of a folder of
+// feeds of their own: their details, triage, abstracts and PDFs are the Feeds tab's commands with the store
+// "search" ($lib/feeds/api.ts).
+
+import { invoke } from "@tauri-apps/api/core";
+import type { FeedRow, SubscriptionInfo } from "$lib/feeds/api";
+
+/** The order of the works found: the best match first (without words, the most cited), the most cited, the newest. */
+export type Order = "relevance" | "cited" | "newest";
+
+/** A page of a search. */
+export interface SearchPage {
+  rows: FeedRow[];
+  /** the works found in all */
+  total: number;
+  /** the cursor of the next page; none after the last */
+  next: string | null;
+}
+
+/** A page of the works of a query: the first (`cursor` none), whose works take the place of those found before but
+ *  for those saved for later or added; or the next. Refused, said, for what OpenAlex cannot be asked. */
+export const run = (query: string, order: Order, cursor: string | null) =>
+  invoke<SearchPage>("search_run", { query, order, cursor });
+/** The rows of works found again, in that order, the query's words marked: after a triage or an add. */
+export const rowsOf = (ids: string[], query: string) => invoke<FeedRow[]>("search_rows", { ids, query });
+/** The works saved for later, the latest found first. */
+export const saved = () => invoke<FeedRow[]>("search_saved");
+/** A query followed in the Feeds tab, as a sweep of OpenAlex: the subscription made, to fetch. */
+export const follow = (query: string) => invoke<SubscriptionInfo>("search_follow", { query });
+
+/** Whether the main window shows the Search tab (the setting `search_tab`). */
+export const tabShown = () => invoke<boolean>("search_tab");
+/** Shows or hides the Search tab: the windows are told (`EVENTS.tab`), and the menu follows. */
+export const setTab = (show: boolean) => invoke<void>("search_set_tab", { show });
+
+/** The events the page listens to. */
+export const EVENTS = {
+  /** the works found changed: a triage, an abstract looked up, the library indexed again */
+  changed: "search-changed",
+  /** the Search tab shown (true) or hidden (false) */
+  tab: "search-tab",
+} as const;

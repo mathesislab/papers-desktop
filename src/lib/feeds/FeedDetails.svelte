@@ -1,14 +1,14 @@
 <script lang="ts">
-  // The details of the item selected in the Feeds tab, to read: the buttons (they do what the keys do), its title,
-  // authors and where it appeared, then a paper's abstract, marked where the query or an interest matched, and what
-  // tells whether to add it (Facts); a post's text, and the papers behind it, each to add, shortlist or show (*Find
-  // linked paper* looks for them again).
+  // The details of the item selected in the Feeds tab or the Search tab, to read: the buttons of the tab (they do
+  // what the keys do), its title, authors and where it appeared, then a paper's abstract, marked where the query or
+  // an interest matched, and what tells whether to add it (Facts); a post's text, and the papers behind it, each to
+  // add, shortlist or show (*Find linked paper* looks for them again).
 
+  import type { Snippet } from "svelte";
   import type { FeedDetail, FeedRow, Linked, PdfStatus } from "./api";
   import Facts from "./Facts.svelte";
   import PostHtml from "./PostHtml.svelte";
   import { isPost } from "./filters";
-  import type { TriageAction } from "./items";
   import Spans from "./Spans.svelte";
 
   let {
@@ -17,15 +17,12 @@
     count,
     byId,
     colours,
-    finding,
     pdfOf,
-    onadd,
+    actions,
+    finding = false,
     onaddlink,
-    ontriage,
     onshortlistlink,
-    onopen,
     onfind,
-    onlater,
     onitem,
     onentry,
     onback,
@@ -38,20 +35,15 @@
     /** the rows of the list, by id: a linked paper that is an item of the feeds */
     byId: Map<string, FeedRow>;
     colours: Map<string, string>;
-    /** the papers of the post are being looked for */
-    finding: boolean;
     pdfOf: (id: string) => Promise<PdfStatus>;
-    /** the item added: the sheet, with or without the free PDF */
-    onadd: (pdf: boolean) => void;
-    /** a paper of the post added, by its DOI */
-    onaddlink: (link: Linked) => void;
-    ontriage: (action: TriageAction) => void;
-    /** a paper of the post shortlisted, or no longer */
-    onshortlistlink: (item: string) => void;
-    onopen: () => void;
-    onfind: () => void;
-    /** Later ▾: kept unread, or snoozed */
-    onlater: () => void;
+    /** the buttons of the tab, at the top, for the item shown */
+    actions: Snippet<[FeedDetail]>;
+    /** a post's papers (the Feeds tab's: the works found in the Search tab are no posts): being looked for; one
+     *  added, by its DOI; one shortlisted, or no longer; looked for again */
+    finding?: boolean;
+    onaddlink?: (link: Linked) => void;
+    onshortlistlink?: (item: string) => void;
+    onfind?: () => void;
     onitem: (id: string) => void;
     onentry: (id: string) => void;
     /** read in place of the list: back to it, as Esc */
@@ -62,7 +54,8 @@
   let date = $derived(
     detail.date ? new Date(detail.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null,
   );
-  let where = $derived([detail.journal, date, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
+  let cited = $derived(detail.cited === null ? null : `cited ${detail.cited.toLocaleString("en-US")}×`);
+  let where = $derived([detail.journal, date, cited, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
   const KIND: Record<FeedDetail["kind"], string> = { paper: "paper", preprint: "preprint", news: "news & press", blog: "general" };
   const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", search: "found by its title" };
 </script>
@@ -71,21 +64,9 @@
   {#if count > 1}
     <p class="selection">{count} items selected: the buttons and keys act on all of them</p>
   {/if}
+  <!-- the tab's own buttons: styled here (`.actions :global(button)`), as those of a linked paper -->
   <div class="actions">
-    {#if post}
-      <button class="open" onclick={onopen} disabled={!detail.url}>Open post ↗ <kbd>O</kbd></button>
-      <button onclick={() => ontriage("read")}>{detail.triage === "new" ? "Mark read" : "Mark unread"} <kbd>M</kbd></button>
-      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
-      <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
-      <button onclick={onlater} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
-    {:else}
-      <button class="primary" onclick={() => onadd(true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
-      <button class="open" onclick={onopen} disabled={!detail.url && !detail.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
-      <button onclick={() => onadd(false)} title="Add to the library without looking for its PDF">Add without PDF</button>
-      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
-      <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
-      <button onclick={onlater} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
-    {/if}
+    {@render actions(detail)}
   </div>
 
   <div>
@@ -128,9 +109,9 @@
             <div><span class="badge">also in your feed{row.score ? ` · score ${row.score.toFixed(1)}` : ""}</span></div>
           {/if}
           <div class="actions">
-            <button class="primary" onclick={() => onaddlink(link)}>Add</button>
+            <button class="primary" onclick={() => onaddlink?.(link)}>Add</button>
             {#if link.item}
-              <button onclick={() => onshortlistlink(link.item!)}>{row?.triage === "shortlisted" ? "★ Starred" : "☆ Star"}</button>
+              <button onclick={() => onshortlistlink?.(link.item!)}>{row?.triage === "shortlisted" ? "★ Starred" : "☆ Star"}</button>
               <button onclick={() => onitem(link.item!)}>Show paper</button>
             {/if}
           </div>
@@ -242,7 +223,8 @@
   section .actions {
     margin-top: 6px;
   }
-  button {
+  button,
+  .actions :global(button) {
     padding: 3px 9px;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -252,22 +234,24 @@
     font-size: 12px;
     white-space: nowrap;
   }
-  button:disabled {
+  button:disabled,
+  .actions :global(button:disabled) {
     opacity: 0.4;
   }
-  button.primary {
+  button.primary,
+  .actions :global(button.primary) {
     border-color: var(--accent);
     background: var(--accent);
     color: var(--on-accent);
   }
   /* lightly in the feeds' green, as the library's light blue buttons: the paper's page, to decide */
-  button.open {
+  .actions :global(button.open) {
     border-color: color-mix(in srgb, var(--feeds) 40%, transparent);
     background: color-mix(in srgb, var(--feeds) 14%, transparent);
     color: var(--feeds);
     font-weight: 500;
   }
-  button.open:hover:not(:disabled) {
+  .actions :global(button.open:hover:not(:disabled)) {
     background: color-mix(in srgb, var(--feeds) 24%, transparent);
   }
   /* at the end of the item read: the list again */
@@ -286,7 +270,8 @@
     border: none;
     color: var(--accent);
   }
-  kbd {
+  kbd,
+  .actions :global(kbd) {
     margin-left: 3px;
     font: 10px ui-monospace, monospace;
     opacity: 0.7;

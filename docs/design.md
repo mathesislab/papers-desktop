@@ -1121,6 +1121,47 @@ interests, rules, scores; feeds-cli; the app's commands and settings; the
 Feeds tab; Review; *Similar in your library* (core's index; `like:`, the sort,
 `--library`; the app and the tab).
 
+## Search (P1, branch `feed-reading`)
+
+A third tab, *Search* (⌘3; hidden by the setting `search_tab` or Window →
+Show Search Tab): OpenAlex's works searched as a search engine of papers
+does, to find a paper and add it.
+
+**The query** is the app's (core's `Query::written` gives its terms as
+typed), with a *Year* field appended as `y:`. In OpenAlex's terms
+(`crates/feeds/src/search.rs`, `ask`, pure and tested): the words and
+"phrases" are the full-text `search` (`-word` a NOT); `t:`, `abs:` and `a:`
+the title, the abstract and an author's name as written (`title.search`,
+`abstract.search`, `raw_author_name.search`, alternatives an OR); `y:` the
+years (`2000-2010`, `2000-`, `-2010`, `2005`, `201` the 2010s); `j:` a
+journal, looked up by its name (the one whose title is the name, else
+OpenAlex's best); `doi:`; `cites:` and `citedby:`, the works around a work,
+by its OpenAlex id or its DOI (looked up). What OpenAlex cannot be asked
+(another field, a title or author that excludes) is refused, said. Sorted by
+relevance (without words, the most cited), the most cited or the newest; 25
+a page, *Show 25 more* from the cursor.
+
+**The works found** are items of a folder of feeds of their own
+(`app_data_dir/search`, `Store::Search`), so the rows, the details, the
+abstracts looked up, the free PDF, the Add sheet, *in library* and *Similar in
+your library* are the Feeds tab's (the item commands take the store). A new
+search drops the works found before but those *saved for later* (☆, `s`:
+shortlisted in that folder, apart from the Feeds tab's Starred: works kept
+from a search, not yet sure to add) and those added. Each keeps the
+citations OpenAlex counted (`cited`, the *Cited* column). The tab keeps the
+search shown (its ids, total, cursor) and the 20 last searches in the
+window's layout; the sidebar: Results, *Saved for later (N)*, Recent
+searches.
+
+**Around a paper**: *Cited by* (`cites:`) and *References* (`citedby:`)
+search again, the most cited first. **Follow this search** subscribes the
+query in the Feeds tab as a sweep of OpenAlex (`follow_filter`: its words in
+the titles and abstracts, then its filters), fetched at once.
+
+The table and the details are the Feeds tab's components (the columns, the
+buttons given by the tab; `Reader`, the item read in place of the list, by
+the setting `feeds_beside`), in the tab's violet (`--search`).
+
 ## Later, optional: Spotlight add-on
 
 A small Swift helper that indexes the items of the core with Core Spotlight,

@@ -132,6 +132,10 @@ export interface FeedDetail {
   like: number | null;
   /** the library's papers most like it, the nearest first (3 at most) */
   nearest: Nearest[];
+  /** the works that cite it, as OpenAlex counted them when it was found */
+  cited: number | null;
+  /** its OpenAlex id (`W…`): the works around it are searched by it, else by its DOI */
+  openalex: string | null;
 }
 
 /** A paper of the library like an item of the feeds. */

@@ -1,37 +1,53 @@
 <script lang="ts" module>
   /** a column of the list after its mark, which an edge of its header resizes */
-  export type FeedColumn = "score" | "similar" | "title" | "authors" | "journal" | "date" | "badges";
+  export type FeedColumn = "score" | "cited" | "similar" | "title" | "authors" | "journal" | "date" | "year" | "badges";
 
   /** the widths of the columns at first, in pixels; the title's is its least (it takes the room left) */
   export const FEED_COLUMNS: Record<FeedColumn, number> = {
     score: 60,
+    cited: 64,
     similar: 70,
     title: 240,
     authors: 150,
     journal: 150,
     date: 58,
+    year: 50,
     badges: 190,
   };
+
+  /** the columns of the Feeds tab, in their order */
+  export const FEED_ORDER: FeedColumn[] = ["score", "similar", "title", "authors", "journal", "date", "badges"];
+
+  /** the columns of the Search tab: the citations first, the year, no score; and their widths at first */
+  export const SEARCH_ORDER: FeedColumn[] = ["cited", "similar", "title", "authors", "journal", "year", "badges"];
+  export const SEARCH_COLUMNS: Record<FeedColumn, number> = { ...FEED_COLUMNS, title: 280, journal: 170, badges: 110 };
 </script>
 
 <script lang="ts">
   // The list of the Feeds tab: the items the filters select, best score, most similar to the library or newest
-  // first. Only the rows in view are drawn, as in the library's table, and an edge of a header resizes a column, the
+  // first; and of the Search tab: the works found, in the order OpenAlex gave them (the caller chooses the columns).
+  // Only the rows in view are drawn, as in the library's table, and an edge of a header resizes a column, the
   // title taking the room left (the window's layout keeps the widths). A new item's title is bold; one seen is
-  // muted. A click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu;
-  // the star at its start stars the item, or unstars it (✓: added).
+  // muted (in the Feeds tab). A click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a
+  // right-click its menu; the star at its start stars the item, or unstars it (✓: added).
 
+  import type { Snippet } from "svelte";
   import Marked from "$lib/Marked.svelte";
   import type { FeedRow, ItemKind, Sort } from "./api";
-  import { ago, badges, likeText, scoreText } from "./items";
+  import { ago, badges, citedText, likeText, scoreText, yearOf } from "./items";
 
   let {
     rows,
     selected,
     focus,
+    columns = FEED_ORDER,
+    names = {},
     sort,
     widths,
     colours,
+    unread = true,
+    star = { on: "Starred: unstar", off: "Star" },
+    after,
     onsort,
     onwidths,
     onstar,
@@ -43,11 +59,22 @@
     selected: Set<string>;
     /** the row the details show, and that the keys move from */
     focus: string | null;
-    sort: Sort;
+    /** the columns shown after the star and the mark, in their order */
+    columns?: FeedColumn[];
+    /** the names of headers other than the Feeds tab's */
+    names?: Partial<Record<FeedColumn, string>>;
+    /** the order of the list, its header marked; none: the headers do not sort */
+    sort?: Sort;
     widths: Record<FeedColumn, number>;
     /** the colours of the interests */
     colours: Map<string, string>;
-    onsort: (sort: Sort) => void;
+    /** a new item's title bold, one seen muted */
+    unread?: boolean;
+    /** what the star of a row says, on and off */
+    star?: { on: string; off: string };
+    /** after the last row, in the scroll of the list: *Show 25 more* */
+    after?: Snippet;
+    onsort?: (sort: Sort) => void;
     onwidths: (widths: Record<FeedColumn, number>) => void;
     /** the star of a row clicked: the item starred, or no longer */
     onstar: (id: string) => void;
@@ -65,11 +92,22 @@
   const MARK = 18;
   const MIN_WIDTH = 30;
   /** the least widths above MIN_WIDTH: a sorted header and its arrow fit, a title stays readable */
-  const LEAST: Partial<Record<FeedColumn, number>> = { score: 60, similar: 70, date: 58, title: 100 };
+  const LEAST: Partial<Record<FeedColumn, number>> = { score: 60, cited: 56, similar: 70, date: 58, year: 48, title: 100 };
   const least = (column: FeedColumn) => LEAST[column] ?? MIN_WIDTH;
-  const ORDER: FeedColumn[] = ["score", "similar", "title", "authors", "journal", "date", "badges"];
-  const TITLE = ORDER.indexOf("title");
-  const LAST = ORDER.length - 1;
+  /** the headers, and the order each sorts by (none: it does not sort) */
+  const HEADERS: Record<FeedColumn, { name: string; sort?: Sort; title?: string }> = {
+    score: { name: "Score", sort: "score", title: "Best score first" },
+    cited: { name: "Cited" },
+    similar: { name: "Similar", sort: "like", title: "Most similar to the papers of your library first" },
+    title: { name: "Title" },
+    authors: { name: "Authors" },
+    journal: { name: "Journal / source" },
+    date: { name: "Date", sort: "newest", title: "Newest first" },
+    year: { name: "Year" },
+    badges: { name: "" },
+  };
+  let titleAt = $derived(columns.indexOf("title"));
+  let lastAt = $derived(columns.length - 1);
 
   let body = $state<HTMLDivElement>();
   let scrollTop = $state(0);
@@ -80,12 +118,12 @@
 
   /** the widths kept, none under its least */
   let sized = $derived(
-    Object.fromEntries(ORDER.map((c) => [c, Math.max(least(c), widths[c])])) as Record<FeedColumn, number>,
+    Object.fromEntries(columns.map((c) => [c, Math.max(least(c), widths[c])])) as Record<FeedColumn, number>,
   );
   let template = $derived(
-    [`${STAR}px`, `${MARK}px`, ...ORDER.map((c) => (c === "title" ? `minmax(${sized.title}px, 1fr)` : `${sized[c]}px`))].join(" "),
+    [`${STAR}px`, `${MARK}px`, ...columns.map((c) => (c === "title" ? `minmax(${sized.title}px, 1fr)` : `${sized[c]}px`))].join(" "),
   );
-  let minWidth = $derived(STAR + MARK + ORDER.reduce((sum, c) => sum + sized[c], 0));
+  let minWidth = $derived(STAR + MARK + columns.reduce((sum, c) => sum + sized[c], 0));
   /** the title wider than its least: it fills the room, the columns after it keep to the right */
   let fills = $derived(room > minWidth);
 
@@ -115,7 +153,7 @@
     if (e.button !== 0) return;
     e.stopPropagation();
     const title = fills ? room - minWidth + sized.title : sized.title;
-    const drawn = ORDER.map((c) => (c === "title" ? title : sized[c]));
+    const drawn = columns.map((c) => (c === "title" ? title : sized[c]));
     resizing = { index, x: e.clientX, drawn, titleLeast: sized.title, filled: fills };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
@@ -127,15 +165,15 @@
     if (!resizing) return;
     const { index, x, drawn, titleLeast, filled } = resizing;
     const moved = Math.round(e.clientX - x);
-    if (index < TITLE || index === LAST || !filled) {
-      const column = ORDER[index];
+    if (index < titleAt || index === lastAt || !filled) {
+      const column = columns[index];
       onwidths({ ...widths, [column]: Math.max(least(column), drawn[index] + moved) });
       return;
     }
-    const column = ORDER[index + 1];
+    const column = columns[index + 1];
     // as far as the column after the edge and the title allow
-    const change = Math.min(drawn[index + 1] - least(column), Math.max(least("title") - drawn[TITLE], moved));
-    onwidths({ ...widths, [column]: drawn[index + 1] - change, title: Math.min(titleLeast, drawn[TITLE] + change) });
+    const change = Math.min(drawn[index + 1] - least(column), Math.max(least("title") - drawn[titleAt], moved));
+    onwidths({ ...widths, [column]: drawn[index + 1] - change, title: Math.min(titleLeast, drawn[titleAt] + change) });
   }
 
   /** The family names of a row: three, then "et al." */
@@ -146,25 +184,19 @@
   <div class="head row" role="row" style:grid-template-columns={template} style:min-width="{minWidth}px">
     <span></span>
     <span></span>
-    {#each ORDER as column, i (column)}
+    {#each columns as column, i (column)}
+      {@const header = HEADERS[column]}
+      {@const by = header.sort}
       <div class="head-cell" role="columnheader">
-        {#if column === "score"}
-          <button class="cell sort" class:sorted={sort === "score"} onclick={() => onsort("score")} title="Best score first">
-            <span class="name">Score</span>{#if sort === "score"}<span class="arrow">▾</span>{/if}
-          </button>
-        {:else if column === "similar"}
-          <button class="cell sort" class:sorted={sort === "like"} onclick={() => onsort("like")} title="Most similar to the papers of your library first">
-            <span class="name">Similar</span>{#if sort === "like"}<span class="arrow">▾</span>{/if}
-          </button>
-        {:else if column === "date"}
-          <button class="cell sort" class:sorted={sort === "newest"} onclick={() => onsort("newest")} title="Newest first">
-            <span class="name">Date</span>{#if sort === "newest"}<span class="arrow">▾</span>{/if}
+        {#if by && onsort}
+          <button class="cell sort" class:sorted={sort === by} onclick={() => onsort(by)} title={header.title}>
+            <span class="name">{names[column] ?? header.name}</span>{#if sort === by}<span class="arrow">▾</span>{/if}
           </button>
         {:else}
-          <span class="cell"><span class="name">{{ title: "Title", authors: "Authors", journal: "Journal / source", badges: "" }[column]}</span></span>
+          <span class="cell"><span class="name">{names[column] ?? header.name}</span></span>
         {/if}
         <!-- the end of the table, while the title fills the room, does not move -->
-        {#if i < LAST || !fills}
+        {#if i < lastAt || !fills}
           <span
             class="edge"
             role="separator"
@@ -188,7 +220,7 @@
       {#each rows.slice(first, last) as row, i (row.id)}
         <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
         <div
-          class="row {row.triage}"
+          class="row {unread ? row.triage : ''}"
           class:selected={selected.has(row.id)}
           role="row"
           tabindex="-1"
@@ -208,33 +240,48 @@
             <button
               class="star"
               class:on={row.triage === "shortlisted"}
-              title={row.triage === "shortlisted" ? "Starred: unstar" : "Star"}
+              title={row.triage === "shortlisted" ? star.on : star.off}
               onmousedown={(e) => e.stopPropagation()}
               ondblclick={(e) => e.stopPropagation()}
               onclick={() => onstar(row.id)}>{row.triage === "shortlisted" ? "★" : "☆"}</button
             >
           {/if}
           <span class="mark {row.kind}" title={row.kind}>{KIND_MARK[row.kind]}</span>
-          <span class="score">{scoreText(row.score)}</span>
-          <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
-          <span class="title"><Marked spans={row.title} /></span>
-          <span class="muted">
-            {#if row.authors.length}
-              {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
-            {:else if row.kind === "news" || row.kind === "blog"}
-              {row.kind === "news" ? "news" : "general"}
+          {#each columns as column (column)}
+            {#if column === "score"}
+              <span class="score">{scoreText(row.score)}</span>
+            {:else if column === "cited"}
+              <span class="cited muted" title="The works that cite it, as OpenAlex counts them">{citedText(row.cited)}</span>
+            {:else if column === "similar"}
+              <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
+            {:else if column === "title"}
+              <span class="title"><Marked spans={row.title} /></span>
+            {:else if column === "authors"}
+              <span class="muted">
+                {#if row.authors.length}
+                  {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
+                {:else if row.kind === "news" || row.kind === "blog"}
+                  {row.kind === "news" ? "news" : "general"}
+                {/if}
+              </span>
+            {:else if column === "journal"}
+              <span class="muted" title={row.sources.join(", ")}>{row.journal ?? row.sources[0] ?? ""}</span>
+            {:else if column === "date"}
+              <span class="muted date">{ago(row.date, now)}</span>
+            {:else if column === "year"}
+              <span class="muted date">{yearOf(row.date)}</span>
+            {:else}
+              <span class="badges">
+                {#each badges(row) as b (b.text)}
+                  <span class="badge {b.kind}" style:--c={b.kind === "interest" ? colours.get(b.text) : null}>{b.text}</span>
+                {/each}
+              </span>
             {/if}
-          </span>
-          <span class="muted" title={row.sources.join(", ")}>{row.journal ?? row.sources[0] ?? ""}</span>
-          <span class="muted date">{ago(row.date, now)}</span>
-          <span class="badges">
-            {#each badges(row) as b (b.text)}
-              <span class="badge {b.kind}" style:--c={b.kind === "interest" ? colours.get(b.text) : null}>{b.text}</span>
-            {/each}
-          </span>
+          {/each}
         </div>
       {/each}
     </div>
+    {@render after?.()}
   </div>
 </div>
 
@@ -347,6 +394,7 @@
     color: inherit;
   }
   .score,
+  .cited,
   .like,
   .date {
     font-variant-numeric: tabular-nums;
