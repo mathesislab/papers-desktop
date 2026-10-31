@@ -482,7 +482,11 @@ fn the_files_json_of_a_state_finds_a_file_by_content() {
     let before = History::before_command(&mut config);
     let mut history = History::open(&mut config, true, false).unwrap().unwrap();
     history.sync_head(before.as_ref()).unwrap();
-    assert!(files.update(&links, &links, true).unwrap());
+    assert!(
+        files
+            .update(&links, &links, true, &Default::default())
+            .unwrap()
+    );
     fs::write(config.bibtex.as_ref().unwrap(), text).unwrap();
     history.record(Step::new("papers add one.bib")).unwrap();
     let history = open(&mut config);
@@ -698,7 +702,13 @@ fn the_entries_are_dated_by_the_oldest_state_of_the_head_that_has_them() {
     command(
         &mut config,
         "papers rm one2000",
-        |c| fs::write(c.bibtex.as_ref().unwrap(), entry("zero2000") + &entry("two2000")).unwrap(),
+        |c| {
+            fs::write(
+                c.bibtex.as_ref().unwrap(),
+                entry("zero2000") + &entry("two2000"),
+            )
+            .unwrap()
+        },
         vec![],
     );
     add(&mut config, "one2000");

@@ -272,3 +272,163 @@ fn add_ris() {
 fn add_ris_as_papers() {
     add_ris_with_stray_lines(true);
 }
+
+// the versions of the PDFs in papers list (formats.md 6, 6.1; tests/test_pdf_versions.py, TestList):
+// the version of a file is that of its checksum in .papers/files.json, written here as papers file
+// fetch writes it
+// -------------------------------------------------------------------------------------------------
+
+/// smith2020 has an accepted manuscript attached by papers file fetch, hand2000 a PDF attached by
+/// hand, none2000 no file.
+fn versions_sandbox() -> Sandbox {
+    let s = Sandbox::new("papers.bib");
+    s.write(
+        "lib/papers.bib",
+        "@article{hand2000,\n file = {:files/a.pdf:pdf},\n title = {Hand}\n}\n\n@article{none2000,\n title = {None}\n}\n\n\
+         @article{smith2020,\n doi = {10.1000/ocean},\n file = {:files/am.pdf:pdf},\n title = {Ocean}\n}\n",
+    );
+    s.write("lib/files/a.pdf", "pdf a");
+    s.write("lib/files/am.pdf", "%PDF am");
+    let (a, am) = (
+        papers_rs::history::store::sha256(b"pdf a"),
+        papers_rs::history::store::sha256(b"%PDF am"),
+    );
+    s.write(
+        "lib/.papers/files.json",
+        &format!(
+            "{{\n \"files\": {{\n  \"files/a.pdf\": \"{a}\",\n  \"files/am.pdf\": \"{am}\"\n }},\n \"versions\": {{\n  \"{am}\": \"accepted\"\n }}\n}}\n"
+        ),
+    );
+    s
+}
+
+fn the_versions_in_the_listing(reference: bool) {
+    let s = versions_sandbox();
+    let p = program(reference);
+    let (hand, file) = (s.path("lib/files/a.pdf"), s.path("lib/files/am.pdf"));
+    // test_format_files
+    let (code, out, _) = s.run(&p, &["list", "--format", "files", "--porcelain"]);
+    assert_eq!(
+        (code, out),
+        (
+            0,
+            format!("hand2000 unknown {hand}\nsmith2020 accepted {file}\n")
+        )
+    );
+    // test_json
+    let (_, out, _) = s.run(&p, &["list", "--format", "csl-json", "smith2020"]);
+    assert!(
+        out.contains(&format!(
+            "\"custom\": {{\n      \"file\": [\n        \"{file}\"\n      ],\n      \"file-version\": {{\n        \"{file}\": \"accepted\"\n      }}\n    }}"
+        )),
+        "{out}"
+    );
+    let (_, out, _) = s.run(&p, &["list", "--format", "csl-json", "hand2000"]);
+    assert!(
+        out.contains("\"custom\"") && !out.contains("file-version"),
+        "{out}"
+    );
+    let (_, out, _) = s.run(&p, &["list", "--format", "bibjson"]);
+    assert!(
+        out.contains(&format!(
+            "\"file-version\": {{\n        \"{file}\": \"accepted\"\n      }}"
+        )),
+        "{out}"
+    );
+    assert_eq!(out.matches("file-version").count(), 1, "{out}");
+    // test_export_has_no_version
+    let (code, _, _) = s.run(&p, &["export", "../out", "--format", "csl-json"]);
+    assert_eq!(code, 0);
+    assert!(!s.read("out/papers.json").contains("file-version"));
+    // test_pdf_version_filter
+    for (version, keys) in [
+        ("accepted", "smith2020\n"),
+        ("unknown", "hand2000\n"),
+        ("published", ""),
+        ("submitted", ""),
+    ] {
+        let (_, out, _) = s.run(&p, &["list", "--pdf-version", version, "-K"]);
+        assert_eq!(out, keys, "{version}");
+    }
+    let (_, out, _) = s.run(&p, &["list", "--pdf-version", "accepted", "--invert", "-K"]);
+    assert_eq!(out, "hand2000\nnone2000\n");
+    // a files.json without versions: unknown (test_old_file_without_versions)
+    let am = papers_rs::history::store::sha256(b"%PDF am");
+    s.write(
+        "lib/.papers/files.json",
+        &format!("{{\n \"files\": {{\n  \"files/am.pdf\": \"{am}\"\n }}\n}}\n"),
+    );
+    let (_, out, _) = s.run(&p, &["list", "smith2020", "--format", "files"]);
+    assert_eq!(out, format!("smith2020 unknown {file}\n"));
+}
+
+#[test]
+fn versions_in_the_listing() {
+    the_versions_in_the_listing(false);
+}
+
+#[test]
+#[ignore = "runs the reference (PAPERS_REFERENCE)"]
+fn versions_in_the_listing_as_papers() {
+    the_versions_in_the_listing(true);
+}
+
+/// `papers file fetch --upgrade`: the options that do not go with it are usage errors, and nothing
+/// to upgrade is said (`test_options_that_do_not_go_with_it`, `test_nothing_to_upgrade`).
+fn the_upgrade_usage(reference: bool) {
+    let s = versions_sandbox();
+    let p = program(reference);
+    for option in [
+        &["--missing"][..],
+        &["--again"],
+        &["--supplements"],
+        &["--version", "published"],
+        &["--search", "."],
+    ] {
+        let mut args = vec!["file", "fetch", "--upgrade"];
+        args.extend(option);
+        let (code, _, err) = s.run(&p, &args);
+        assert_eq!(code, 2, "{option:?}: {err}");
+        assert!(
+            err.contains(&format!(
+                "papers file fetch: error: --upgrade and {}: --upgrade replaces an accepted manuscript or a submitted version by the published version",
+                option[0]
+            )),
+            "{err}"
+        );
+    }
+    let (code, _, err) = s.run(&p, &["file", "fetch"]);
+    assert_eq!(code, 2);
+    assert!(
+        err.contains("error: papers file fetch KEY... or --missing [KEY...] or --upgrade [KEY...]"),
+        "{err}"
+    );
+    // no entry has a lower version: nothing is looked up
+    s.write("lib/.papers/files.json", "{\n \"files\": {}\n}\n");
+    let (code, out, _) = s.run(&p, &["file", "fetch", "--upgrade"]);
+    assert_eq!(code, 0);
+    assert!(
+        out.contains(
+            "no entry has an accepted manuscript or a submitted version attached by papers file fetch"
+        ),
+        "{out}"
+    );
+    // an entry named without one is said
+    let (code, out, _) = s.run(&p, &["file", "fetch", "--upgrade", "hand2000"]);
+    assert_eq!(code, 0);
+    assert!(
+        out.contains("hand2000: no accepted manuscript or submitted version to replace"),
+        "{out}"
+    );
+}
+
+#[test]
+fn upgrade_usage() {
+    the_upgrade_usage(false);
+}
+
+#[test]
+#[ignore = "runs the reference (PAPERS_REFERENCE)"]
+fn upgrade_usage_as_papers() {
+    the_upgrade_usage(true);
+}

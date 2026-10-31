@@ -9,7 +9,7 @@ use papers_rs::formats::common::{
 use papers_rs::formats::names::{
     Name, bibtex_name_of_ris, format_bibtex_names, parse_bibtex_names,
 };
-use papers_rs::formats::{Format, dumps};
+use papers_rs::formats::{Format, dumps, no_versions};
 use serde_json::{Value, json};
 
 mod common;
@@ -136,7 +136,7 @@ fn entries_as_papers() {
             (Format::BibJson, "bibjson"),
             (Format::Ris, "ris"),
         ] {
-            let got = dumps(one, format, &|_| files.clone());
+            let got = dumps(one, format, &|_| files.clone(), &no_versions);
             assert_eq!(got, case[key].as_str().unwrap(), "{key} of {text:?}");
         }
         written += 1;
@@ -160,9 +160,14 @@ fn several_and_none() {
         (Format::BibJson, "bibjson"),
         (Format::Ris, "ris"),
     ] {
-        let got = dumps(&entries, format, &|_| vec!["a/b.pdf".to_string()]);
+        let got = dumps(
+            &entries,
+            format,
+            &|_| vec!["a/b.pdf".to_string()],
+            &no_versions,
+        );
         assert_eq!(got, several[key].as_str().unwrap(), "{key}");
-        let none = dumps(&[], format, &|_| vec![]);
+        let none = dumps(&[], format, &|_| vec![], &no_versions);
         assert_eq!(
             none,
             expected["empty"][key].as_str().unwrap(),

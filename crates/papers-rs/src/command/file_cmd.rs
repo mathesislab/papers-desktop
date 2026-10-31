@@ -1224,7 +1224,9 @@ impl Source {
             Source::Checksum(otherlibs::Found::Own(Some(key))) => {
                 format!("same content as the file of {key}")
             }
-            Source::Checksum(otherlibs::Found::Own(None)) => "same content, in the library".to_string(),
+            Source::Checksum(otherlibs::Found::Own(None)) => {
+                "same content, in the library".to_string()
+            }
             Source::Checksum(otherlibs::Found::Pool) => "from the pool, same content".to_string(),
             Source::Checksum(otherlibs::Found::Other(place)) => {
                 format!("found in {}", short_home(&dirname(place)))
@@ -1318,8 +1320,11 @@ fn plan_relinks(
                 .map(|f| realpath(&f))
                 .collect()
         };
-        type Search<'a> =
-            &'a mut dyn FnMut(&mut Lookup, &str, &HashSet<String>) -> Option<(String, otherlibs::Found)>;
+        type Search<'a> = &'a mut dyn FnMut(
+            &mut Lookup,
+            &str,
+            &HashSet<String>,
+        ) -> Option<(String, otherlibs::Found)>;
         let by_checksum = |plan: &mut Plan, lookup: &mut Lookup, find: Search| {
             for link in &broken {
                 if plan.found.iter().any(|(l, _)| l == link) {
@@ -1331,7 +1336,9 @@ fn plan_relinks(
                 }
             }
         };
-        by_checksum(&mut plan, lookup, &mut |l, link, exclude| l.own(link, exclude));
+        by_checksum(&mut plan, lookup, &mut |l, link, exclude| {
+            l.own(link, exclude)
+        });
         for (pool, source) in &pools {
             let todo: Vec<String> = broken
                 .iter()
@@ -1344,10 +1351,14 @@ fn plan_relinks(
                 plan.found.push((link, files));
             }
             if *source == Source::Pool {
-                by_checksum(&mut plan, lookup, &mut |l, link, exclude| l.in_pool(link, exclude));
+                by_checksum(&mut plan, lookup, &mut |l, link, exclude| {
+                    l.in_pool(link, exclude)
+                });
             }
         }
-        by_checksum(&mut plan, lookup, &mut |l, link, exclude| l.in_others(link, exclude));
+        by_checksum(&mut plan, lookup, &mut |l, link, exclude| {
+            l.in_others(link, exclude)
+        });
         let linked: HashSet<String> = taken(&plan);
         let rest: Vec<String> = broken
             .iter()
@@ -1602,7 +1613,8 @@ fn placement(
                     pool_files.push(f.clone())
                 }
                 Some(Source::Checksum(otherlibs::Found::Own(Some(_)))) => keep.push(f.clone()),
-                Some(Source::Checksum(found)) if otherlibs::is_own_unlinked(found, f, filesdir) => {}
+                Some(Source::Checksum(found)) if otherlibs::is_own_unlinked(found, f, filesdir) => {
+                }
                 Some(Source::Folder(_)) if move_ => {}
                 _ => copied.push(f.clone()),
             }
@@ -1708,9 +1720,15 @@ pub fn check_entries_files(
     }
     for (key, link, when) in &restores {
         lines.push(if place {
-            format!("{key}: {}: restored from the history ({when})", short_home(link))
+            format!(
+                "{key}: {}: restored from the history ({when})",
+                short_home(link)
+            )
         } else if fix {
-            format!("DRYRUN: {key}: restore {} from the history ({when})", short_home(link))
+            format!(
+                "DRYRUN: {key}: restore {} from the history ({when})",
+                short_home(link)
+            )
         } else {
             format!(
                 "{key}: broken link: {} -> in the history ({when})",
@@ -2074,7 +2092,7 @@ pub fn checksums(session: &mut Session, keys: &[String], check: bool) -> Result<
         return Ok(());
     }
     if !session.dry_run() {
-        files_json.save(&hashes)?;
+        files_json.save(&hashes, None)?;
     }
     session.say.line(format!(
         "{written} checksum{} written ({} changed)",

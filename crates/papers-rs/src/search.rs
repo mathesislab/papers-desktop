@@ -1,5 +1,5 @@
 //! The selection of `papers list`: the words and the fields searched (substring,
-//! exact with wildcards, or fuzzy), the tags, the files, the entries to review,
+//! exact with wildcards, or fuzzy), the tags, the files and the version of their PDF, the entries to review,
 //! the duplicates, `--invert` (`papers.cli.entry_cmds.listcmd`, `papers.duplicate`).
 //!
 //! The fuzzy match is rapidfuzz's `token_set_ratio` ([`token_set_ratio`], by the
@@ -17,12 +17,12 @@
 //! assert_eq!(found[0].key, "a");
 //! ```
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::bib::Entry;
 use crate::bib::encoding::{family_names, parse_keywords};
 use crate::bib::pystr::{is_space, is_word, strip};
-use crate::config::paths::exists;
+use crate::config::paths::{exists, isfile, normpath};
 use crate::entry::{files, fnmatch, tag_matches, val};
 use crate::identity::{Distinct, Identifiers, duplicate_groups, normalize_doi, normalize_text};
 use crate::names::{is_decimal, is_valid_key};
@@ -75,6 +75,12 @@ pub struct Search {
     pub has_file: bool,
     pub no_file: bool,
     pub broken_file: bool,
+    /// `--pdf-version`: the entries with a PDF (a link ending in `.pdf` to a file) of this version,
+    /// `published`, `accepted`, `submitted` or `unknown` (formats.md 6.1).
+    pub pdf_version: Option<String>,
+    /// `{absolute path: version}` of the linked files whose version is known
+    /// ([`crate::history::FilesJson::file_versions`]), for `pdf_version`.
+    pub file_versions: BTreeMap<String, String>,
     pub review_required: bool,
 }
 
@@ -588,6 +594,19 @@ impl Search {
         }
         if self.no_file {
             keep(&mut current, &|e| val(e, "file").is_empty());
+        }
+        if let Some(version) = &self.pdf_version {
+            keep(&mut current, &|e| {
+                files(e, Some(relative_to))
+                    .iter()
+                    .filter(|f| f.to_lowercase().ends_with(".pdf") && isfile(f))
+                    .any(|f| {
+                        self.file_versions
+                            .get(&normpath(f))
+                            .map_or("unknown", String::as_str)
+                            == version
+                    })
+            });
         }
         if self.broken_file {
             keep(&mut current, &|e| {

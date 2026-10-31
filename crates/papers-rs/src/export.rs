@@ -19,7 +19,7 @@ use crate::config::settings::{NO_POOL, SETTINGS};
 use crate::config::{CONFIG_FILE_LOCAL, Config};
 use crate::entry::{files, set_files};
 use crate::error::{Error, Result};
-use crate::formats::{Format, dumps};
+use crate::formats::{Format, dumps, no_versions};
 use crate::history::{FileOp, History, OpKind, PoolLink, Step};
 use crate::identity::Distinct;
 use crate::install::{InstallOptions, apply_install, resolve_install};
@@ -305,12 +305,18 @@ pub fn export(
             })
             .collect();
         let listed: Vec<&Entry> = sorted.iter().collect();
-        let text = dumps(&listed, format, &|e| {
-            files(e, Some(&target.relative_to))
-                .iter()
-                .map(|f| relpath(f, &dest))
-                .collect()
-        });
+        // papers export writes no version
+        let text = dumps(
+            &listed,
+            format,
+            &|e| {
+                files(e, Some(&target.relative_to))
+                    .iter()
+                    .map(|f| relpath(f, &dest))
+                    .collect()
+            },
+            &no_versions,
+        );
         let path = join(&dest, format.filename());
         fs::write(&path, text).map_err(|e| Error::other(format!("{path}: {e}")))?;
         written.push(format.filename().to_string());

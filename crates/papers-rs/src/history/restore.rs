@@ -452,12 +452,14 @@ impl Restore<'_> {
         // the files deleted by the commands whose link did not change (no entry links to them, e.g.
         // papers file clean, or the same entry before and after): brought back by undo, deleted
         // again by redo
-        let ordered: Vec<&FileOp> = if undo {
-            ops.iter().rev().collect()
+        let order: Vec<usize> = if undo {
+            (0..ops.len()).rev().collect()
         } else {
-            ops.iter().collect()
+            (0..ops.len()).collect()
         };
-        for op in &ordered {
+        let ordered: Vec<&FileOp> = order.iter().map(|&i| &ops[i]).collect();
+        for &i in &order {
+            let op = &ops[i];
             let path = &op.src;
             if op.kind != OpKind::Trashed
                 || current.contains(path) != target.contains(path)
@@ -466,6 +468,35 @@ impl Restore<'_> {
                 continue;
             }
             reported.insert(path.clone());
+            // a file that the command put in place of it, from the history (`file fetch --upgrade`)
+            let new = ops[i + 1..].iter().find(|o| {
+                o.kind == OpKind::Copied
+                    && o.dst.as_deref() == Some(path.as_str())
+                    && is_file_object(&o.src)
+            });
+            if undo
+                && let Some(new) = new
+                && isfile(path)
+                && digest(&mut digests, path) == new.checksum
+                && isfile(&self.copied_from(new))
+                && op
+                    .checksum
+                    .as_deref()
+                    .and_then(|c| self.store.intact_file(c))
+                    .is_some()
+            {
+                // the history keeps it
+                let own = digest(&mut digests, path);
+                push(
+                    record,
+                    OpKind::Removed,
+                    path,
+                    Some(&self.copied_from(new)),
+                    own,
+                );
+                io(path, fs::remove_file(path))?;
+                digests.remove(path);
+            }
             if undo && !lexists(path) {
                 let found = op
                     .checksum
@@ -484,7 +515,18 @@ impl Restore<'_> {
                 }
             } else if !undo && isfile(path) && digest(&mut digests, path) == op.checksum {
                 self.deleter.remove(path, record)?;
-                lines.push(self.deleted_again(path));
+                digests.remove(path);
+                match new.map(|n| self.copied_from(n)).filter(|src| isfile(src)) {
+                    Some(src) => {
+                        place_file(&src, path, true)?;
+                        push(record, OpKind::Copied, &src, Some(path), None);
+                        lines.push(format!(
+                            "    {}: replaced again (from the history)",
+                            show(path)
+                        ));
+                    }
+                    None => lines.push(self.deleted_again(path)),
+                }
             }
         }
 

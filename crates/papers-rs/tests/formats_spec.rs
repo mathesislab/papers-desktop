@@ -8,7 +8,7 @@ use papers_rs::formats::import::loads;
 use papers_rs::formats::names::{
     Name, bibtex_name_of_ris, format_bibtex_names, parse_bibtex_names,
 };
-use papers_rs::formats::{Format, dumps};
+use papers_rs::formats::{Format, dumps, no_versions};
 use serde_json::{Value, json};
 
 // helpers
@@ -22,7 +22,7 @@ fn text(bibtex: &str, format: Format, files: &[&str]) -> String {
     let entries = parse(bibtex);
     let refs: Vec<&Entry> = entries.iter().collect();
     let files: Vec<String> = files.iter().map(|f| f.to_string()).collect();
-    dumps(&refs, format, &|_| files.clone())
+    dumps(&refs, format, &|_| files.clone(), &no_versions)
 }
 
 /// The CSL-JSON items written for a bibtex text.
@@ -893,6 +893,26 @@ fn bibjson_a_field_named_as_a_key_is_namespaced() {
     );
     assert_eq!(field(back, "type").as_deref(), Some("Working paper"));
     assert_eq!(field(back, "id").as_deref(), Some("X1"));
+}
+
+/// A field named `file-version` goes in `bibtex:file-version`, and a record's `file-version` (the
+/// versions of `papers list`) is not read as a field (formats.md 5.1; `test_pdf_versions.py`,
+/// `TestBibjsonField`).
+#[test]
+fn bibjson_a_field_named_file_version() {
+    let text = text("@misc{a,\n file-version = {x}\n}\n", Format::BibJson, &[]);
+    let collection: Value = serde_json::from_str(&text).unwrap();
+    let record = &collection["records"][0];
+    assert_eq!(record["bibtex:file-version"], json!("x"));
+    assert!(record.get("file-version").is_none());
+    assert_eq!(
+        field(&loads(&text, Format::BibJson).unwrap()[0], "file-version").as_deref(),
+        Some("x")
+    );
+    let e = bibjson_one(
+        r#"{"type": "misc", "id": "a", "file": ["a.pdf"], "file-version": {"a.pdf": "accepted"}}"#,
+    );
+    assert_eq!(field(&e, "file-version"), None);
 }
 
 #[test]

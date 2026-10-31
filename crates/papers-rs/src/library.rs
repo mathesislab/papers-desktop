@@ -37,7 +37,7 @@
 //! before and after, and the file operations, see [`Saved`]), the lock of
 //! the library, the pools, `.papers/files.json`.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 use std::sync::Arc;
 
@@ -343,6 +343,9 @@ pub struct Library {
     /// The keys of the library entries that duplicates skipped by `insert` were of: the command
     /// considered them (`existing` in its report).
     pub skipped: Vec<String>,
+    /// `{path: version}`: the PDFs that `papers file fetch` attached or replaced, written in
+    /// `.papers/files.json` by their checksum at the save (`pdf_versions`).
+    pub pdf_versions: BTreeMap<String, String>,
 }
 
 impl fmt::Debug for Library {
@@ -429,6 +432,7 @@ impl Library {
             loaded: None,
             ops: Vec::new(),
             placed: HashMap::new(),
+            pdf_versions: BTreeMap::new(),
             skipped: Vec::new(),
         }
     }
@@ -1812,13 +1816,18 @@ impl Library {
         (new, modified)
     }
 
-    /// The entries are as loaded (the same keys, types and fields), nothing changed at load and no
-    /// pair was added to `distinct.json` (`unchanged`); false without [`Library::mark_loaded`].
+    /// The entries are as loaded (the same keys, types and fields), nothing changed at load, no
+    /// pair was added to `distinct.json` and no PDF version is to be written (`unchanged`); false
+    /// without [`Library::mark_loaded`].
     pub fn unchanged(&self) -> bool {
         let Some(loaded) = &self.loaded else {
             return false;
         };
-        if self.load_changes || self.distinct.changed || loaded.entries.len() != self.len() {
+        if self.load_changes
+            || self.distinct.changed
+            || !self.pdf_versions.is_empty()
+            || loaded.entries.len() != self.len()
+        {
             return false;
         }
         let exact = |e: &Entry| {

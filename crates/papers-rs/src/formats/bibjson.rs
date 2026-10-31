@@ -6,13 +6,16 @@ use super::names::{Sep, split_depth0};
 use crate::bib::Entry;
 use crate::history::ojson::J;
 
-/// The keys that BibJSON gives a meaning: a bibtex field of that name is written as `bibtex:NAME`.
-pub(crate) const SKIPPED: [&str; 8] = [
+/// The keys that BibJSON gives a meaning (and `file-version`, that `papers list` writes): a bibtex
+/// field of that name is written as `bibtex:NAME`, and a record's key of that name is not read as
+/// a field.
+pub(crate) const SKIPPED: [&str; 9] = [
     "type",
     "id",
     "cid",
     "collection",
     "file",
+    "file-version",
     "identifier",
     "link",
     "license",
@@ -25,8 +28,9 @@ const NAMESPACE_URL: &str = "https://www.bibtex.org/Format/";
 
 /// The BibJSON record of an entry: `type` and `id`, the fields in the order
 /// of the entry (`author` and `editor` as lists of `{"name": ...}`, `journal` as
-/// `{"name": ...}`, a field named as a key of BibJSON as `bibtex:NAME`), then the file links.
-pub fn entry_to_bibjson(entry: &Entry, files: &[String]) -> J {
+/// `{"name": ...}`, a field named as a key of BibJSON as `bibtex:NAME`), then the file links, then
+/// `file-version`, `{path: version}` of the files whose version is known (`papers list`).
+pub fn entry_to_bibjson(entry: &Entry, files: &[String], versions: &[(String, String)]) -> J {
     let mut record: Vec<(String, J)> = vec![
         ("type".into(), J::str(&entry.entry_type)),
         ("id".into(), J::str(&entry.key)),
@@ -55,15 +59,29 @@ pub fn entry_to_bibjson(entry: &Entry, files: &[String]) -> J {
     }
     if !files.is_empty() {
         put(&mut record, "file", J::strs(files));
+        if !versions.is_empty() {
+            put(
+                &mut record,
+                "file-version",
+                super::file_versions_json(versions),
+            );
+        }
     }
     J::Obj(record)
 }
 
-/// The text of the BibJSON file of some entries.
-pub fn dumps_bibjson(entries: &[&Entry], files: &dyn Fn(&Entry) -> Vec<String>) -> String {
+/// The text of the BibJSON file of some entries; `versions`: the version of a file, if known.
+pub fn dumps_bibjson(
+    entries: &[&Entry],
+    files: &dyn Fn(&Entry) -> Vec<String>,
+    versions: &dyn Fn(&str) -> Option<String>,
+) -> String {
     let records: Vec<J> = entries
         .iter()
-        .map(|e| entry_to_bibjson(e, &files(e)))
+        .map(|e| {
+            let paths = files(e);
+            entry_to_bibjson(e, &paths, &super::known_versions(&paths, versions))
+        })
         .collect();
     let mut metadata = vec![("records".to_string(), J::Int(records.len() as i64))];
     let prefix = format!("{NAMESPACE}:");

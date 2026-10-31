@@ -3,16 +3,18 @@
 //!
 //! Its actions that change the library (`--delete`, `--edit`, `--add-tag`...) are in `cmd_list_actions`.
 
+use std::collections::BTreeMap;
 use std::io::{IsTerminal, Read};
 
 use papers_rs::bib::{Bib, Block, Entry};
-use papers_rs::config::paths::{abspath, dirname, exists, realpath};
+use papers_rs::config::paths::{abspath, dirname, exists, normpath, realpath};
 use papers_rs::config::settings::py_int;
 use papers_rs::config::{Config, Origin, find_library_config};
 use papers_rs::error::Error;
 use papers_rs::export::FilesMode;
 use papers_rs::formats::line::{Style, field_value, format_entry, format_key};
 use papers_rs::formats::{Format, dumps};
+use papers_rs::history::FilesJson;
 use papers_rs::log;
 use papers_rs::search::{By, Search};
 
@@ -168,8 +170,18 @@ fn deprecated_warnings(leaf: &Leaf) {
     }
 }
 
+/// `{absolute path: version}` of the linked files of the library whose version is known
+/// (`papers.checksums.file_versions`).
+fn file_versions(config: &Config) -> BTreeMap<String, String> {
+    let libdir = dirname(&abspath(config.bibtex.as_deref().unwrap_or_default()));
+    FilesJson::of(config, &libdir)
+        .map(|f| f.file_versions())
+        .unwrap_or_default()
+}
+
 /// The search that the options say.
-fn search_of(leaf: &Leaf) -> Search {
+fn search_of(leaf: &Leaf, config: &Config) -> Search {
+    let pdf_version = leaf.string("pdf_version");
     let by = ["duplicates_key", "duplicates_doi", "duplicates_tit"]
         .into_iter()
         .zip([By::Key, By::Doi, By::Title])
@@ -202,6 +214,12 @@ fn search_of(leaf: &Leaf) -> Search {
         has_file: leaf.flag("has_file"),
         no_file: leaf.flag("no_file"),
         broken_file: leaf.flag("broken_file"),
+        file_versions: if pdf_version.is_some() {
+            file_versions(config)
+        } else {
+            BTreeMap::new()
+        },
+        pdf_version,
         review_required: leaf.flag("review_required"),
     }
 }
@@ -333,15 +351,16 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
     {
         return Err(usage(format!("--{exchange} takes one --pool")));
     }
+    let search = search_of(leaf, &config);
     if let Some(action) = Action::of(leaf) {
-        return cmd_list_actions::run(leaf, config, &search_of(leaf), action);
+        return cmd_list_actions::run(leaf, config, &search, action);
     }
     if let Some(kind) = exchange {
-        return crate::cmd_exchange::list_exchange(kind, leaf, config, &search_of(leaf));
+        return crate::cmd_exchange::list_exchange(kind, leaf, config, &search);
     }
     // the actions on the files: `papers file` on the listed entries
     if let Some(action) = crate::cmd_list_files::FileAction::from_leaf(leaf) {
-        return crate::cmd_list_files::run(leaf, config, &search_of(leaf), action);
+        return crate::cmd_list_files::run(leaf, config, &search, action);
     }
     // the formats of --export-format, before the library is read
     let export_formats = if export.is_some() {
@@ -356,7 +375,6 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
     let library = papers_rs::command::pool::load_library(&config)?;
     let all: Vec<&Entry> = library.entries().collect();
     warn_similarity(leaf);
-    let search = search_of(leaf);
     let entries = search
         .select(&all, Some(&library.distinct), &library.relative_to)
         .map_err(Failure::Usage)?;
@@ -417,10 +435,25 @@ pub fn list_cmd(leaf: &Leaf, config: Config) -> Result<(), Failure> {
             blocks: entries.iter().map(|e| Block::Entry((*e).clone())).collect(),
         };
         log::println_data(&bib.format());
+    } else if format == "files" {
+        // one line per file link: KEY VERSION PATH
+        let versions = file_versions(&config);
+        for e in &entries {
+            for f in papers_rs::entry::files(e, Some(&library.relative_to)) {
+                let version = versions
+                    .get(&normpath(&f))
+                    .map_or("unknown", String::as_str);
+                log::println_data(&format!("{} {version} {f}", e.key));
+            }
+        }
     } else if let Some(f) = Format::from_id(&format) {
-        log::print_data(&dumps(&entries, f, &|e| {
-            papers_rs::entry::files(e, Some(&library.relative_to))
-        }));
+        let versions = file_versions(&config);
+        log::print_data(&dumps(
+            &entries,
+            f,
+            &|e| papers_rs::entry::files(e, Some(&library.relative_to)),
+            &|f| versions.get(&normpath(f)).cloned(),
+        ));
     } else {
         for e in &entries {
             log::println_data(&format_entry(e, &library.relative_to, no_key, "", style));

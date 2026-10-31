@@ -2,7 +2,7 @@
 //! deprecated `papers filecheck`: the command line of `papers_rs::command::file_cmd` (and of
 //! `papers_rs::command::fetch_pdf` for `fetch`).
 
-use papers_rs::command::fetch_pdf::{FileFetch, PdfOptions, file_fetch};
+use papers_rs::command::fetch_pdf::{FileFetch, FileUpgrade, PdfOptions, file_fetch, file_upgrade};
 use papers_rs::command::file_cmd::{
     Attach, CheckOptions, MvOptions, attach_files, check_entries_files, check_entry_lines,
     checksums, clean, clean_filesdir, detach_broken_quietly, detach_entries, move_files,
@@ -253,8 +253,26 @@ fn attach(leaf: &Leaf, config: Config) -> Done {
 fn fetch(leaf: &Leaf, config: Config) -> Done {
     let entries = leaf.strings("entries");
     let missing = leaf.flag("missing");
+    if leaf.flag("upgrade") {
+        for (option, given) in [
+            ("--missing", missing),
+            ("--again", leaf.flag("again")),
+            ("--supplements", leaf.flag("supplements")),
+            ("--version", leaf.string("least_version").is_some()),
+            ("--search", !leaf.strings("search").is_empty()),
+        ] {
+            if given {
+                return Err(usage(&format!(
+                    "--upgrade and {option}: --upgrade replaces an accepted manuscript or a submitted version by the published version"
+                )));
+            }
+        }
+        return upgrade(leaf, config);
+    }
     if entries.is_empty() && !missing {
-        return Err(usage("papers file fetch KEY... or --missing [KEY...]"));
+        return Err(usage(
+            "papers file fetch KEY... or --missing [KEY...] or --upgrade [KEY...]",
+        ));
     }
     let pdf = PdfOptions {
         least: leaf
@@ -299,6 +317,50 @@ fn fetch(leaf: &Leaf, config: Config) -> Done {
             }
         }
         refused(fetched.failed == 0)
+    })
+}
+
+/// `papers file fetch --upgrade [KEY...]` (`file_upgradecmd`).
+fn upgrade(leaf: &Leaf, config: Config) -> Done {
+    let entries = leaf.strings("entries");
+    let session = open(leaf, config, false, false)?;
+    run_session(session, |session| {
+        let keys = if entries.is_empty() {
+            None
+        } else {
+            Some(entries_or_all(session, &entries)?)
+        };
+        let request = FileUpgrade {
+            keys,
+            access: OpenAlex::from_env(),
+            yes: leaf.flag("yes"),
+        };
+        let fetcher = Queries::default()
+            .fetcher()
+            .map_err(|e| Error::other(e.message))?;
+        let upgraded = file_upgrade(session, &fetcher, &request)?;
+        if let Some(committed) = &upgraded.committed {
+            if leaf.flag("porcelain") {
+                report(session, leaf, &upgraded.keys, &committed.notes);
+            } else {
+                for line in push_note_lines(&session.library, &committed.notes) {
+                    session.say.line(line);
+                }
+            }
+        }
+        if entries.is_empty() && upgraded.keys.is_empty() {
+            session.say.line(
+                "no entry has an accepted manuscript or a submitted version attached by papers file fetch",
+            );
+        }
+        if !leaf.flag("porcelain")
+            && let Some(summary) = upgraded.summary()
+        {
+            for line in summary {
+                session.say.line(line);
+            }
+        }
+        Ok(())
     })
 }
 

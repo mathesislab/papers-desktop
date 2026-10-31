@@ -97,8 +97,9 @@ fn date_json(parts: &[i128]) -> J {
     )])
 }
 
-/// A CSL-JSON item of a bibtex entry; `files`: the paths of its file links, as written.
-pub fn entry_to_csl(entry: &Entry, files: &[String]) -> J {
+/// A CSL-JSON item of a bibtex entry; `files`: the paths of its file links, as written;
+/// `versions`: `{path: version}` of those whose version is known (`papers list`).
+pub fn entry_to_csl(entry: &Entry, files: &[String], versions: &[(String, String)]) -> J {
     let f = Fields::of(entry);
     let entry_type = entry.entry_type.to_lowercase();
     let mut csl = csl_type(&entry_type);
@@ -194,18 +195,28 @@ pub fn entry_to_csl(entry: &Entry, files: &[String]) -> J {
         put(&mut item, "accessed", date_json(&accessed));
     }
     if !files.is_empty() {
-        put(
-            &mut item,
-            "custom",
-            J::Obj(vec![("file".into(), J::strs(files))]),
-        );
+        let mut custom = vec![("file".into(), J::strs(files))];
+        if !versions.is_empty() {
+            custom.push(("file-version".into(), super::file_versions_json(versions)));
+        }
+        put(&mut item, "custom", J::Obj(custom));
     }
     J::Obj(item)
 }
 
-/// The text of the CSL-JSON file of some entries.
-pub fn dumps_csl(entries: &[&Entry], files: &dyn Fn(&Entry) -> Vec<String>) -> String {
+/// The text of the CSL-JSON file of some entries; `versions`: the version of a file, if known.
+pub fn dumps_csl(
+    entries: &[&Entry],
+    files: &dyn Fn(&Entry) -> Vec<String>,
+    versions: &dyn Fn(&str) -> Option<String>,
+) -> String {
     dumps(&J::Arr(
-        entries.iter().map(|e| entry_to_csl(e, &files(e))).collect(),
+        entries
+            .iter()
+            .map(|e| {
+                let paths = files(e);
+                entry_to_csl(e, &paths, &super::known_versions(&paths, versions))
+            })
+            .collect(),
     ))
 }

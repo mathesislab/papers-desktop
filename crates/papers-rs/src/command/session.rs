@@ -45,7 +45,7 @@
 //! logger (`papers: warning: ...`) go through [`crate::log`], as everywhere in
 //! this crate. Questions are put to a [`Prompt`]; the default has no terminal.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::{Arc, Mutex};
 
 use super::revert::Revert;
@@ -54,7 +54,7 @@ use crate::config::Config;
 use crate::config::paths::{abspath, basename, dirname, getcwd, isfile, normpath};
 use crate::entry;
 use crate::error::{Error, Result};
-use crate::history::restore::{Deleter, file_digest, move_path, show};
+use crate::history::restore::{Deleter, copy_file, file_digest, move_path, show};
 use crate::history::{FileOp as HistoryOp, Snapshot};
 use crate::history::{FilesJson, History, OpKind, PoolLink, StateId, Step};
 use crate::library::{FileOp, Library, OpKind as LibraryOpKind, SaveError, SaveStatus};
@@ -618,7 +618,8 @@ impl Session {
 
     /// `.papers/files.json` before the bibtex is written: the checksums of the
     /// files that the command moved, copied, added or linked; the files that
-    /// no entry links to any more are dropped (`papers.checksums.update`).
+    /// no entry links to any more are dropped; the PDFs that `papers file fetch` attached or
+    /// replaced get their checksum and version (`papers.checksums.update`).
     fn update_files_json(&self, early: &[HistoryOp]) -> Result<()> {
         let Some(libdir) = self.config.bibtex.as_deref().map(|b| dirname(&abspath(b))) else {
             return Ok(());
@@ -658,7 +659,13 @@ impl Session {
             touched.extend(links.difference(&before).cloned());
         }
         let checksums = !matches!(self.config.get("checksums"), serde_json::Value::Bool(false));
-        files_json.update(&links, &touched, checksums)?;
+        let fetched: BTreeMap<String, String> = self
+            .library
+            .pdf_versions
+            .iter()
+            .map(|(path, version)| (normpath(path), version.clone()))
+            .collect();
+        files_json.update(&links, &touched, checksums, &fetched)?;
         Ok(())
     }
 
@@ -789,6 +796,39 @@ impl Session {
         };
         self.ops_after = record.unwrap_or_default();
         result
+    }
+
+    /// Put the file `new` at `path`, in place of the file there (`journal.replace`, `papers file
+    /// fetch --upgrade`); `copy`: `new` stays where it is. The old file is deleted as
+    /// [`Session::remove_file`] does. When the history keeps it, it keeps the new file too, and
+    /// the new file is recorded as copied from it to `path`: undo puts the old file back, redo the
+    /// new one (history.md 4, 6.4). Nothing in a dry run.
+    pub fn replace_file(&mut self, path: &str, new: &str, copy: bool) -> Result<()> {
+        if self.options.dry_run {
+            return Ok(());
+        }
+        self.remove_file(path)?;
+        let placed = if copy {
+            copy_file(new, path)
+        } else {
+            move_path(new, path)
+        };
+        placed.map_err(|e| Error::other(format!("{path}: {e}")))?;
+        if !self.keeps_deleted() {
+            return Ok(());
+        }
+        let digest = file_digest(path).unwrap_or_default();
+        // a copy for the history (its put_file moves the file)
+        let spare = crate::config::paths::join(&dirname(path), &format!(".{}", basename(path)));
+        copy_file(path, &spare).map_err(|e| Error::other(format!("{spare}: {e}")))?;
+        let stored = self.history()?.store.put_file(&spare, &digest)?;
+        self.ops_after.push(HistoryOp::new(
+            OpKind::Copied,
+            &stored,
+            Some(&abspath(path)),
+            Some(digest),
+        ));
+        Ok(())
     }
 
     /// Delete a file that has an identical copy that stays: recorded as removed (`dst` is the copy), not

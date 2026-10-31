@@ -6,7 +6,7 @@
 //!   exists ([`has_pdf`]: a broken link is no PDF). Its main PDF is not fetched again, unless
 //!   `again`; the supplements are still fetched.
 //! - A downloaded file with the content of a file of the entry is not attached.
-//! - Nothing about the download is written in the library. The machine keeps, in its cache, the
+//! - Nothing else about the download is written in the library. The machine keeps, in its cache, the
 //!   sha256 and size of the file each URL gave: before a URL of that cache is downloaded again, a
 //!   file of the entry with that content means nothing to attach; a file of another entry, or of
 //!   `.papers/files.json`, with it is attached without a download (the file of another entry is
@@ -20,6 +20,10 @@
 //! - An accepted manuscript or a submitted version attached after the published version was
 //!   refused names the published links to open in a browser ([`Found::describe`]).
 //! - A fetch of several entries ends with a summary ([`FetchSummary`], [`Fetched::summary`]).
+//! - The version of a PDF attached (not a supplement) is written in `.papers/files.json`, by its
+//!   checksum, at the save ([`Library::pdf_versions`]).
+//! - `papers file fetch --upgrade` ([`file_upgrade`]): the published version in place of a PDF
+//!   attached as an accepted manuscript or a submitted version, under the same name.
 //!
 //! `papers fetch --pdf` ([`fetch_free_pdf`]) writes the free PDF of a DOI or an arXiv id to a file,
 //! without a library; with `--porcelain`, its lines for programs ([`pdf_porcelain_lines`]).
@@ -28,7 +32,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::config::paths::{
-    abspath, basename, dirname, exists, getcwd, isdir, isfile, join, relpath, short_home,
+    abspath, basename, dirname, exists, getcwd, isdir, isfile, join, normpath, relpath, short_home,
 };
 use crate::entry::val;
 use crate::error::{Error, Result};
@@ -81,14 +85,17 @@ struct LibraryChecksums {
     digests: HashMap<String, String>,
 }
 
+/// The checksums file of the library of the session (none for a bibtex without library).
+fn files_json(session: &Session) -> Option<FilesJson> {
+    let libdir = dirname(&abspath(
+        session.config.bibtex.as_deref().unwrap_or_default(),
+    ));
+    FilesJson::of(&session.config, &libdir)
+}
+
 impl LibraryChecksums {
     fn new(session: &Session) -> LibraryChecksums {
-        let libdir = dirname(&abspath(
-            session.config.bibtex.as_deref().unwrap_or_default(),
-        ));
-        let hashes = FilesJson::of(&session.config, &libdir)
-            .map(|f| f.load())
-            .unwrap_or_default();
+        let hashes = files_json(session).map(|f| f.load()).unwrap_or_default();
         LibraryChecksums {
             hashes,
             sizes: HashMap::new(),
@@ -163,13 +170,35 @@ fn found_line(key: &str, path: &str, found: &Found) -> String {
     }
 }
 
+/// Why an entry has links to open in a browser, in the summary of `papers file fetch`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Unattached {
+    /// No PDF.
+    NoPdf,
+    /// The published version was refused; this version was found.
+    Refused(Version),
+    /// `--upgrade`: no published version (the PDF is kept as it is) (`NO_PUBLISHED`).
+    NoPublished,
+}
+
+impl Unattached {
+    fn text(self) -> String {
+        match self {
+            Unattached::NoPdf => "no PDF".to_string(),
+            Unattached::Refused(version) => {
+                format!("published version refused; {} found", version.name())
+            }
+            Unattached::NoPublished => "no published version".to_string(),
+        }
+    }
+}
+
 /// Links to open in a browser for an entry, in the summary of `papers file fetch`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToOpen {
     pub key: String,
     pub links: Vec<String>,
-    /// The version found after the published one was refused; none: no PDF.
-    pub found: Option<Version>,
+    pub what: Unattached,
 }
 
 /// What `papers file fetch` did, entry by entry, for the summary printed at the end of a fetch of
@@ -183,6 +212,8 @@ pub struct FetchSummary {
     pub repaired: usize,
     /// The entries that had the PDF already.
     pub had: usize,
+    /// `--upgrade`: the PDFs replaced by the published version.
+    pub upgraded: usize,
     /// The links to open in a browser, entry by entry.
     pub browser: Vec<ToOpen>,
 }
@@ -205,6 +236,12 @@ impl FetchSummary {
                 versions.join(", ")
             ));
         }
+        if self.upgraded > 0 {
+            lines.push(format!(
+                "  {} replaced by the published version",
+                self.upgraded
+            ));
+        }
         if self.repaired > 0 {
             lines.push(format!(
                 "  {} found locally (repaired, not downloaded)",
@@ -221,9 +258,16 @@ impl FetchSummary {
                 plural(self.supplements)
             ));
         }
-        let failed = self.browser.iter().filter(|b| b.found.is_none()).count();
+        let count = |what: Unattached| self.browser.iter().filter(|b| b.what == what).count();
+        let failed = count(Unattached::NoPdf);
         if failed > 0 {
             lines.push(format!("  {failed} without PDF"));
+        }
+        let kept = count(Unattached::NoPublished);
+        if kept > 0 {
+            lines.push(format!(
+                "  {kept} without published version (kept as they are)"
+            ));
         }
         if lines.len() == 1 {
             lines.push("  nothing attached".to_string());
@@ -232,15 +276,7 @@ impl FetchSummary {
             .browser
             .iter()
             .filter(|b| !b.links.is_empty())
-            .map(|b| {
-                let what = match b.found {
-                    None => "no PDF".to_string(),
-                    Some(version) => {
-                        format!("published version refused; {} found", version.name())
-                    }
-                };
-                format!("  {}: {} ({what})", b.key, b.links.join(", "))
-            })
+            .map(|b| format!("  {}: {} ({})", b.key, b.links.join(", "), b.what.text()))
             .collect();
         if !links.is_empty() {
             lines.push("open in a browser:".to_string());
@@ -263,7 +299,9 @@ pub struct PdfOptions {
     pub access: OpenAlex,
 }
 
-/// The DRYRUN lines of an entry (`_dry_run_lines`); false if no PDF would be found.
+/// The DRYRUN lines of an entry (`_dry_run_lines`); false if no PDF would be found. `replacing`:
+/// the end of a line of `--upgrade` (empty otherwise).
+#[allow(clippy::too_many_arguments)]
 fn dry_run_lines(
     session: &Session,
     key: &str,
@@ -272,6 +310,7 @@ fn dry_run_lines(
     fetcher: &Fetcher,
     main: bool,
     supplements: bool,
+    replacing: &str,
 ) -> bool {
     let (mut lines, mut ok) = (Vec::new(), true);
     if main {
@@ -280,7 +319,8 @@ fn dry_run_lines(
             let found = fetcher
                 .known_download(&link.url)
                 .and_then(|known| local(link, &known));
-            let what = match &found {
+            let has = found.as_ref().is_some_and(|f| f.how == How::Has);
+            let mut what = match &found {
                 Some(found) if found.how == How::Has => {
                     format!("already has {} (from {})", show(&found.path), link.host())
                 }
@@ -295,6 +335,9 @@ fn dry_run_lines(
                 ),
                 None => format!("would download {} ({})", link.url, link.describe()),
             };
+            if !replacing.is_empty() && !has {
+                what = what.replace("would attach", "would copy") + replacing;
+            }
             lines.push(format!(
                 "DRYRUN: {key}: {}{what}",
                 if i > 0 { "else " } else { "" }
@@ -364,7 +407,7 @@ pub fn fetch_entry_pdfs(
                 summary.browser.push(ToOpen {
                     key: key.clone(),
                     links: Vec::new(),
-                    found: None,
+                    what: Unattached::NoPdf,
                 });
                 failed += 1;
             }
@@ -388,6 +431,7 @@ pub fn fetch_entry_pdfs(
                 fetcher,
                 main,
                 options.supplements,
+                "",
             );
             failed += usize::from(!ok);
             continue;
@@ -402,7 +446,7 @@ pub fn fetch_entry_pdfs(
                         let line = ToOpen {
                             key: key.clone(),
                             links: f.refused.clone(),
-                            found: Some(f.link.version),
+                            what: Unattached::Refused(f.link.version),
                         };
                         summary.browser.push(line.clone());
                         refused = Some(line);
@@ -414,7 +458,7 @@ pub fn fetch_entry_pdfs(
                     summary.browser.push(ToOpen {
                         key: key.clone(),
                         links: error.links,
-                        found: None,
+                        what: Unattached::NoPdf,
                     });
                     failed += 1;
                 }
@@ -495,10 +539,174 @@ pub fn fetch_entry_pdfs(
                 summary.supplements += 1;
             } else {
                 *summary.attached.entry(f.link.version).or_default() += 1;
+                // in .papers/files.json, by checksum
+                session
+                    .library
+                    .pdf_versions
+                    .insert(path.clone(), f.link.version.word().to_string());
             }
         }
     }
     Ok(failed)
+}
+
+/// The versions lower than the published one, that `--upgrade` replaces (`LOWER_VERSIONS`).
+const LOWER_VERSIONS: [Version; 2] = [Version::Accepted, Version::Submitted];
+
+/// The first PDF of the entry whose version is accepted or submitted, with its version, when no
+/// PDF of the entry is the published version; else none (`lower_version_pdf`). `versions`:
+/// `{absolute path: version}` ([`FilesJson::file_versions`]).
+pub fn lower_version_pdf(
+    library: &Library,
+    key: &str,
+    versions: &BTreeMap<String, String>,
+) -> Option<(String, Version)> {
+    let pdfs: Vec<String> = library
+        .files(key)
+        .into_iter()
+        .filter(|f| f.to_lowercase().ends_with(".pdf") && isfile(f))
+        .collect();
+    let known: Vec<Option<&str>> = pdfs
+        .iter()
+        .map(|f| versions.get(&normpath(f)).map(String::as_str))
+        .collect();
+    if known.contains(&Some(Version::Published.word())) {
+        return None;
+    }
+    pdfs.into_iter().zip(known).find_map(|(f, v)| {
+        LOWER_VERSIONS
+            .into_iter()
+            .find(|lower| Some(lower.word()) == v)
+            .map(|lower| (f, lower))
+    })
+}
+
+/// `papers file fetch --upgrade` (`upgrade_entry_pdfs`): the entries `keys` whose PDF is an
+/// accepted manuscript or a submitted version ([`lower_version_pdf`]) look for the published
+/// version only; one found replaces that file, under its name (the old file goes to the history,
+/// [`Session::replace_file`]). The library is not saved. `named`: the entries were given by key
+/// (an entry without such a PDF is said). The entries looked at.
+pub fn upgrade_entry_pdfs(
+    session: &mut Session,
+    fetcher: &Fetcher,
+    keys: &[String],
+    named: bool,
+    access: &OpenAlex,
+    summary: &mut FetchSummary,
+) -> Result<Vec<String>> {
+    let dry_run = session.dry_run();
+    let versions = files_json(session)
+        .map(|f| f.file_versions())
+        .unwrap_or_default();
+    let mut library = LibraryChecksums::new(session);
+    let (mut looked, mut plans) = (Vec::new(), Vec::new());
+    for key in keys {
+        let Some(e) = session.library.get(key) else {
+            continue;
+        };
+        let Some((file, version)) = lower_version_pdf(&session.library, key, &versions) else {
+            if named {
+                session.say.line(format!(
+                    "{key}: no accepted manuscript or submitted version to replace"
+                ));
+            }
+            continue;
+        };
+        looked.push(key.clone());
+        let Some(doi) = strip_doi(val(e, "doi")) else {
+            session.say.line(format!(
+                "{key}: no DOI to look for the published version: {} ({}) kept",
+                show(&file),
+                version.name()
+            ));
+            summary.browser.push(ToOpen {
+                key: key.clone(),
+                links: Vec::new(),
+                what: Unattached::NoPublished,
+            });
+            continue;
+        };
+        let mut search = Search::new(fetcher, access, Some(&doi), None, Least::Published);
+        let current = &session.library;
+        let mut local = |link: &Link, known: &Known| library.local(current, key, link, known);
+        let replacing = format!(", in place of {} ({})", show(&file), version.name());
+        if dry_run {
+            dry_run_lines(
+                session,
+                key,
+                &mut search,
+                &mut local,
+                fetcher,
+                true,
+                false,
+                &replacing,
+            );
+            continue;
+        }
+        match fetch_pdf(&mut search, Some(&mut local)) {
+            Ok(found) => plans.push((key.clone(), file, version, found)),
+            Err(error) => {
+                session.say.line(format!(
+                    "{key}: {} ({}) kept: {error}",
+                    show(&file),
+                    version.name()
+                ));
+                summary.browser.push(ToOpen {
+                    key: key.clone(),
+                    links: error.links,
+                    what: Unattached::NoPublished,
+                });
+            }
+        }
+    }
+
+    // the downloads are done: the files are replaced
+    for (key, file, version, found) in plans {
+        let same = if found.how == How::Has {
+            Some(found.path.clone())
+        } else {
+            same_content(&found.path, &session.library.files(&key))
+        };
+        if let Some(same) = same {
+            // the entry has the published version already: it is now known
+            session.say.line(format!(
+                "{key}: already has {} ({})",
+                show(&same),
+                found.describe()
+            ));
+            if found.how == How::Downloaded {
+                discard(&found.path);
+            }
+            session
+                .library
+                .pdf_versions
+                .insert(same, Version::Published.word().to_string());
+            summary.had += 1;
+            continue;
+        }
+        session.replace_file(&file, &found.path, found.how != How::Downloaded)?;
+        if found.how == How::Downloaded {
+            // the temporary folder of the download, now empty
+            discard(&found.path);
+        }
+        session
+            .library
+            .pdf_versions
+            .insert(file.clone(), Version::Published.word().to_string());
+        session.say.line(format!(
+            "{key}: {}: {} replaced by the {}{}",
+            show(&file),
+            version.name(),
+            found.describe(),
+            if session.keeps_deleted() {
+                ""
+            } else {
+                " (the old file went to the trash of the system)"
+            }
+        ));
+        summary.upgraded += 1;
+    }
+    Ok(looked)
 }
 
 /// `papers file fetch`, before it downloads (`repair_pdf_links`): the entries whose PDF link is
@@ -752,6 +960,85 @@ pub fn file_fetch(
     Ok(Fetched {
         keys,
         failed,
+        committed,
+        summary,
+    })
+}
+
+/// What `papers file fetch --upgrade` is asked.
+#[derive(Debug, Clone, Default)]
+pub struct FileUpgrade {
+    /// The entries named; none: those of the library whose PDF is of a lower version.
+    pub keys: Option<Vec<String>>,
+    /// How OpenAlex is asked (`OPENALEX_API_KEY`, `PAPERS_MAILTO`).
+    pub access: OpenAlex,
+    /// `-y/--yes`: no question before many entries.
+    pub yes: bool,
+}
+
+/// What `papers file fetch --upgrade` did.
+#[derive(Debug, Default)]
+pub struct Upgraded {
+    /// The entries of the command (without keys: those whose PDF is of a lower version).
+    pub keys: Vec<String>,
+    /// The entries looked at (a PDF of a lower version).
+    pub looked: Vec<String>,
+    /// The save (none with a dry run).
+    pub committed: Option<Committed>,
+    pub summary: FetchSummary,
+}
+
+impl Upgraded {
+    /// The summary printed at the end of an upgrade of more than one entry looked at (none for
+    /// one entry or a dry run; papers prints none with `--porcelain` either).
+    pub fn summary(&self) -> Option<Vec<String>> {
+        (self.looked.len() > 1 && self.committed.is_some())
+            .then(|| self.summary.lines(self.looked.len()))
+    }
+}
+
+/// `papers file fetch --upgrade [KEY...]` (`file_upgradecmd`): the published version of the PDFs
+/// that `papers file fetch` attached as an accepted manuscript or a submitted version, in place of
+/// them, saved in one step. Without keys, the entries of the library with such a PDF.
+pub fn file_upgrade(
+    session: &mut Session,
+    fetcher: &Fetcher,
+    request: &FileUpgrade,
+) -> Result<Upgraded> {
+    let dry_run = session.dry_run();
+    if !dry_run {
+        // a shallow library pushes the entries it saves
+        session.use_pool_files()?;
+    }
+    let named = request.keys.is_some();
+    let mut keys: Vec<String> = match &request.keys {
+        Some(keys) => keys.clone(),
+        None => session.library.entries().map(|e| e.key.clone()).collect(),
+    };
+    if !named {
+        let versions = files_json(session)
+            .map(|f| f.file_versions())
+            .unwrap_or_default();
+        keys.retain(|k| lower_version_pdf(&session.library, k, &versions).is_some());
+    }
+    confirm_openalex(session, &keys, request.yes, &request.access)?;
+    let mut summary = FetchSummary::default();
+    let looked = upgrade_entry_pdfs(
+        session,
+        fetcher,
+        &keys,
+        named,
+        &request.access,
+        &mut summary,
+    )?;
+    let committed = if dry_run {
+        None
+    } else {
+        Some(session.commit()?)
+    };
+    Ok(Upgraded {
+        keys,
+        looked,
         committed,
         summary,
     })

@@ -1185,8 +1185,9 @@ filename format:
                          [--name-title-sep NAME_TITLE_SEP]
                          [--name-unknown-template NAME_UNKNOWN_TEMPLATE]
                          [--name-unknown-strict | --no-name-unknown-strict]
-                         [--missing] [--version {published,accepted,any}]
-                         [--supplements] [--again] [--search DIR] [-y]
+                         [--missing] [--upgrade]
+                         [--version {published,accepted,any}] [--supplements]
+                         [--again] [--search DIR] [-y]
                          [KEY ...]
 "#, r#"usage: papers file fetch [-h] [-v] [--debug] [--color {auto,always,never}]
                          [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
@@ -1199,8 +1200,9 @@ filename format:
                          [--name-title-sep NAME_TITLE_SEP]
                          [--name-unknown-template NAME_UNKNOWN_TEMPLATE]
                          [--name-unknown-strict | --no-name-unknown-strict]
-                         [--missing] [--version {published,accepted,any}]
-                         [--supplements] [--again] [--search DIR] [-y]
+                         [--missing] [--upgrade]
+                         [--version {published,accepted,any}] [--supplements]
+                         [--again] [--search DIR] [-y]
                          [KEY ...]
 
 find a free (open-access) PDF of each entry from its DOI or arXiv id, download
@@ -1244,6 +1246,13 @@ options:
   --missing             the entries without PDF (of KEY..., or of the whole
                         library); papers asks before more than 50 entries with
                         a DOI when OPENALEX_API_KEY is not set
+  --upgrade             the entries (of KEY..., or of the whole library) whose
+                        PDF was attached by papers file fetch as an accepted
+                        manuscript or a submitted version: look for the
+                        published version only, and when it is found, put it
+                        in place of that file, under the same name (the old
+                        file is kept in the history: `papers undo` brings it
+                        back); without a published version, nothing changes
   --version {published,accepted,any}
                         the least final version to attach: published (the
                         version of record only), accepted (also the accepted
@@ -1683,8 +1692,10 @@ filename format:
                    [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]
                    [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]
                    [--by {key,doi,title}] [--duplicates] [--has-file]
-                   [--no-file] [--broken-file] [--review-required]
-                   [--format {line,bibtex,ris,csl-json,bibjson,key} |
+                   [--no-file] [--broken-file]
+                   [--pdf-version {published,accepted,submitted,unknown}]
+                   [--review-required]
+                   [--format {line,bibtex,ris,csl-json,bibjson,key,files} |
                    --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]
                    [--delete] [--delete-files] [--keep-files] [-e]
                    [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]
@@ -1706,8 +1717,10 @@ filename format:
                    [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]
                    [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]
                    [--by {key,doi,title}] [--duplicates] [--has-file]
-                   [--no-file] [--broken-file] [--review-required]
-                   [--format {line,bibtex,ris,csl-json,bibjson,key} |
+                   [--no-file] [--broken-file]
+                   [--pdf-version {published,accepted,submitted,unknown}]
+                   [--review-required]
+                   [--format {line,bibtex,ris,csl-json,bibjson,key,files} |
                    --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]
                    [--delete] [--delete-files] [--keep-files] [-e]
                    [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]
@@ -1789,15 +1802,23 @@ check:
   --has-file            entries with at least one file
   --no-file             entries without file
   --broken-file         entries with a file link to a missing file
+  --pdf-version {published,accepted,submitted,unknown}
+                        entries with a PDF of this version (that of a PDF
+                        attached by papers file fetch; unknown: a PDF attached
+                        otherwise)
   --review-required     suspicious entry (invalid dois, missing field etc.)
 
 formatting:
-  --format {line,bibtex,ris,csl-json,bibjson,key}
+  --format {line,bibtex,ris,csl-json,bibjson,key,files}
                         line: one line per entry (the default); bibtex, ris,
                         csl-json, bibjson: the entries in that format (file
-                        links as absolute paths; RIS needs the rispy package);
-                        key: the keys only, one per line (to pipe into the
-                        commands that take -, e.g. `papers file rename -`)
+                        links as absolute paths, with the version of the PDFs
+                        that papers file fetch attached in CSL-JSON and
+                        BibJSON; RIS needs the rispy package); key: the keys
+                        only, one per line (to pipe into the commands that
+                        take -, e.g. `papers file rename -`); files: one line
+                        per file link, KEY VERSION PATH (VERSION: published,
+                        accepted, submitted or unknown)
   --plain               same as --format bibtex
   -l, -1, --one-liner   same as --format line
   -K, --key-only        same as --format key

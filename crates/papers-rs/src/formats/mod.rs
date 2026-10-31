@@ -15,15 +15,15 @@
 //! The values are converted from LaTeX to unicode on export (RIS, CSL-JSON:
 //! [`crate::bib::unicode::value_to_unicode`]); BibJSON keeps them as they are.
 //! The file links are given by the caller (`files`: entry to paths, written
-//! as given).
+//! as given), and the version of the PDFs (`versions`, `papers list`).
 //!
 //! ```
 //! use papers_rs::bib::Bib;
-//! use papers_rs::formats::{Format, dumps};
+//! use papers_rs::formats::{Format, dumps, no_versions};
 //!
 //! let bib = Bib::parse("@article{k, author = {Perrette, M. and van der Berg, Jan}, title = {G{\\\"o}ttingen}, year = 2013}");
 //! let entries: Vec<_> = bib.entries().collect();
-//! let ris = dumps(&entries, Format::Ris, &|_| vec![]);
+//! let ris = dumps(&entries, Format::Ris, &|_| vec![], &no_versions);
 //! assert_eq!(ris, "TY  - JOUR\nID  - k\nAU  - Perrette, M.\nAU  - van der Berg, Jan\nTI  - Göttingen\nPY  - 2013\nER  - \n");
 //! ```
 
@@ -37,6 +37,7 @@ pub mod names;
 pub mod ris;
 
 use crate::bib::Entry;
+use crate::history::ojson::J;
 
 /// The formats, in the order that matters (`export`, the options).
 pub const FORMATS: [Format; 4] = [
@@ -112,17 +113,49 @@ pub fn file_format(path: &str, forced: Option<Format>) -> Format {
 }
 
 /// The entries as a text in a format other than bibtex (`dumps`); `files`: the
-/// paths of the file links of an entry, as written.
+/// paths of the file links of an entry, as written; `versions`: the version of the PDF of a path
+/// (`papers list`), written in CSL-JSON and BibJSON.
 ///
 /// # Panics
 /// For bibtex, which the library writes ([`crate::bib::Bib::format`]).
-pub fn dumps(entries: &[&Entry], format: Format, files: &dyn Fn(&Entry) -> Vec<String>) -> String {
+pub fn dumps(
+    entries: &[&Entry],
+    format: Format,
+    files: &dyn Fn(&Entry) -> Vec<String>,
+    versions: &dyn Fn(&str) -> Option<String>,
+) -> String {
     match format {
         Format::Ris => ris::dumps_ris(entries, files),
-        Format::CslJson => csl::dumps_csl(entries, files),
-        Format::BibJson => bibjson::dumps_bibjson(entries, files),
+        Format::CslJson => csl::dumps_csl(entries, files, versions),
+        Format::BibJson => bibjson::dumps_bibjson(entries, files, versions),
         Format::Bibtex => panic!("bibtex is written by the library"),
     }
+}
+
+/// No version known (`papers export`, the tests).
+pub fn no_versions(_: &str) -> Option<String> {
+    None
+}
+
+/// `{path: version}` of the files whose version is known (`_versions`), in their order.
+fn known_versions(
+    files: &[String],
+    versions: &dyn Fn(&str) -> Option<String>,
+) -> Vec<(String, String)> {
+    files
+        .iter()
+        .filter_map(|f| versions(f).map(|v| (f.clone(), v)))
+        .collect()
+}
+
+/// The `file-version` object of CSL-JSON and BibJSON.
+fn file_versions_json(versions: &[(String, String)]) -> J {
+    J::Obj(
+        versions
+            .iter()
+            .map(|(path, version)| (path.clone(), J::str(version)))
+            .collect(),
+    )
 }
 
 #[cfg(test)]

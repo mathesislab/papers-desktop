@@ -1066,7 +1066,7 @@ fn the_keys_of_files_json_are_written_and_read_with_a_slash() {
         libdir: root.clone(),
         absolute_paths: false,
     };
-    files.save(&read).unwrap();
+    files.save(&read, None).unwrap();
     assert_eq!(
         fs::read_to_string(&files.path).unwrap(),
         "{\n \"files\": {\n  \"files/a.pdf\": \"abc\",\n  \"files/b.pdf\": \"e\"\n }\n}\n"

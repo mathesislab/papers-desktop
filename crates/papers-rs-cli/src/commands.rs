@@ -1,22 +1,32 @@
 //! The commands of papers, their options as papers' parser (papers/cli/parser.py)
 //! defines them.
 
-use papers_rs::config::settings::SETTINGS;
 use papers_rs::config::settings::Kind;
+use papers_rs::config::settings::SETTINGS;
 
 use crate::spec::{Builder, Nargs, Spec};
 
 /// The commands in the help of papers.
 pub const COMMANDS: [&str; 22] = [
-    "status", "init", "config", "migrate", "add", "check", "file", "list", "edit", "rm", "tag", "pull", "push", "sync",
-    "export", "open", "fetch", "extract", "undo", "redo", "restore", "history",
+    "status", "init", "config", "migrate", "add", "check", "file", "list", "edit", "rm", "tag",
+    "pull", "push", "sync", "export", "open", "fetch", "extract", "undo", "redo", "restore",
+    "history",
 ];
 
 /// The deprecated commands (removed in v4): they work, with a warning, and the help does not show them.
-pub const DEPRECATED_COMMANDS: [&str; 7] = ["install", "uninstall", "filecheck", "doi", "restore-backup", "backup", "git"];
+pub const DEPRECATED_COMMANDS: [&str; 7] = [
+    "install",
+    "uninstall",
+    "filecheck",
+    "doi",
+    "restore-backup",
+    "backup",
+    "git",
+];
 
-pub const FILE_COMMANDS: [&str; 10] =
-    ["rename", "mv", "attach", "fetch", "detach", "rm", "check", "fix", "clean", "checksum"];
+pub const FILE_COMMANDS: [&str; 10] = [
+    "rename", "mv", "attach", "fetch", "detach", "rm", "check", "fix", "clean", "checksum",
+];
 
 /// All the commands that papers parses.
 pub fn is_command(name: &str) -> bool {
@@ -56,7 +66,9 @@ fn config_options(b: &mut Builder) {
 /// The name or key format options (`--name-template`, `--key-author-num`...).
 fn format_options(b: &mut Builder, kind: &str) {
     for (name, setting_kind) in SETTINGS.iter() {
-        let Some(field) = name.strip_prefix(&format!("{kind}.")) else { continue };
+        let Some(field) = name.strip_prefix(&format!("{kind}.")) else {
+            continue;
+        };
         let option = format!("--{kind}-{field}");
         let id = format!("{kind}-{field}");
         match setting_kind {
@@ -160,7 +172,11 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.opt("pool", &["--pool"], Nargs::One);
             b.flag("no_merge_files", &["--no-merge-files"]);
             b.flag("update_key", &["-u", "--update-key"]);
-            b.choice("mode", &["-m", "--mode"], &["u", "U", "o", "s", "r", "i", "a"]);
+            b.choice(
+                "mode",
+                &["-m", "--mode"],
+                &["u", "U", "o", "s", "r", "i", "a"],
+            );
             b.flag("recursive", &["-R", "--recursive"]);
             b.flag("ignore_errors", &["--ignore-errors"]);
             b.opt("doi", &["--doi"], Nargs::One);
@@ -231,6 +247,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             format_options(&mut b, "name");
             b.pos("entries", "KEY", Nargs::Star);
             b.flag("missing", &["--missing"]);
+            b.flag("upgrade", &["--upgrade"]);
             b.choice("least_version", &["--version"], LEAST_VERSIONS);
             b.flag("supplements", &["--supplements"]);
             b.flag("again", &["--again"]);
@@ -313,6 +330,7 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.flag("has_file", &["--has-file"]);
             b.flag("no_file", &["--no-file"]);
             b.flag("broken_file", &["--broken-file"]);
+            b.choice("pdf_version", &["--pdf-version"], PDF_VERSIONS);
             b.flag("review_required", &["--review-required"]);
             b.choice("format", &["--format"], LIST_FORMATS);
             b.flag("plain", &["--plain"]);
@@ -320,13 +338,24 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.flag("key_only", &["-K", "--key-only"]);
             b.opt("field", &["--field"], Nargs::Plus);
             b.opt("field_f", &["-f"], Nargs::Plus);
-            b.exclusive(&["format", "plain", "one_liner", "key_only", "field", "field_f"]);
+            b.exclusive(&[
+                "format",
+                "plain",
+                "one_liner",
+                "key_only",
+                "field",
+                "field_f",
+            ]);
             b.flag("no_key", &["--no-key"]);
             b.flag("delete", &["--delete"]);
             b.flag("delete_files", &["--delete-files"]);
             b.flag("keep_files", &["--keep-files"]);
             b.flag("edit", &["-e", "--edit"]);
-            b.opt("add_keywords", &["--add-keywords", "--add-tag"], Nargs::Plus);
+            b.opt(
+                "add_keywords",
+                &["--add-keywords", "--add-tag"],
+                Nargs::Plus,
+            );
             b.flag("rename", &["--rename"]);
             b.flag("keep_source", &["--keep-source"]);
             b.flag("open", &["-o", "--open"]);
@@ -348,7 +377,13 @@ pub fn spec(path: &str) -> Option<Spec> {
             b.opt("add_files", &["--add-files"], Nargs::Plus);
             b.flag("copy", &["--copy"]);
             b.hide(&[
-                "similarity", "duplicates_key", "duplicates_doi", "duplicates_tit", "field_f", "fetch", "add_files",
+                "similarity",
+                "duplicates_key",
+                "duplicates_doi",
+                "duplicates_tit",
+                "field_f",
+                "fetch",
+                "add_files",
                 "copy",
             ]);
         }
@@ -475,5 +510,9 @@ pub fn spec(path: &str) -> Option<Spec> {
 
 /// The choices of `--version` of `file fetch` and `fetch --pdf`.
 const LEAST_VERSIONS: &[&str] = &papers_rs::fetch::freepdf::Least::CHOICES;
+/// The choices of `papers list --pdf-version`.
+const PDF_VERSIONS: &[&str] = &["published", "accepted", "submitted", "unknown"];
 
-const LIST_FORMATS: &[&str] = &["line", "bibtex", "ris", "csl-json", "bibjson", "key"];
+const LIST_FORMATS: &[&str] = &[
+    "line", "bibtex", "ris", "csl-json", "bibjson", "key", "files",
+];

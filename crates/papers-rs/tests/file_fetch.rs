@@ -10,10 +10,13 @@ use std::time::Duration;
 
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::fetch_pdf::{
-    FetchSummary, Fetched, FileFetch, PdfOptions, confirm_openalex, fetch_entry_pdfs,
-    fetch_free_pdf, file_fetch, pdf_porcelain_lines,
+    FetchSummary, Fetched, FileFetch, FileUpgrade, PdfOptions, confirm_openalex, fetch_entry_pdfs,
+    fetch_free_pdf, file_fetch, file_upgrade, pdf_porcelain_lines,
 };
-use papers_rs::command::file_cmd::{CheckOptions, check_entries_files, checksums};
+use papers_rs::command::file_cmd::{
+    Attach, CheckOptions, MvOptions, attach_files, check_entries_files, checksums, move_files,
+    rm_files,
+};
 use papers_rs::command::files::Mode;
 use papers_rs::command::queries::Queries;
 use papers_rs::command::{Options, Prompt, Session};
@@ -24,7 +27,8 @@ use papers_rs::fetch::freepdf::{
 };
 use papers_rs::fetch::http::{Response, Transport};
 use papers_rs::fetch::openalex::{OpenAlex, WORK_SELECT};
-use papers_rs::history::History;
+use papers_rs::history::restore::file_digest;
+use papers_rs::history::{FilesJson, History, OpKind};
 use papers_rs::merge::{OnDuplicate, Resolver};
 use serde_json::{Map, Value, json};
 
@@ -1573,6 +1577,9 @@ fn add_doi_fetch_pdf() {
     );
     let files = s.files(&touched[0]);
     assert_eq!(fs::read(&files[0]).unwrap(), pdf_bytes(PDF));
+    // its version (`test_pdf_versions.TestFilesJson.test_add_fetch_pdf`)
+    let rel = files[0].strip_prefix(&s.path("lib/")).unwrap();
+    assert_eq!(s.version_of(rel).as_deref(), Some("published"));
 }
 
 /// `fetch --pdf` of an accepted manuscript after the published version was refused (a challenge):
@@ -2275,4 +2282,431 @@ fn a_gone_place_is_skipped() {
     o.s.check(false, false);
     fs::rename(o.s.path("other"), o.s.path("moved")).unwrap();
     assert!(joined(&o.s.check(true, false)).contains("0 links relinked, 1 still broken"));
+}
+
+// the version of the PDFs that papers file fetch attaches (.papers/files.json), papers file fetch
+// --upgrade (history.md 4, 6.4, 10; library.md "The free PDF of an entry";
+// tests/test_pdf_versions.py; its TestList: tests/formats_cmds.rs of papers-rs-cli)
+// -------------------------------------------------------------------------------------------------
+
+const AM: &str = "https://repo.example.edu/am.pdf";
+
+/// smith2020 gets an accepted manuscript: the publisher refuses its PDF (`VersionsTest`).
+fn versions() -> Sandbox {
+    let s = sandbox();
+    s.bib(&[entry("smith2020", &[], Some(DOI))]);
+    s.publisher();
+    s.web.file(PDF, File::Status(403));
+    s.web
+        .openalex(DOI, vec![location(AM, "acceptedVersion", None, true)]);
+    s.web.file(AM, File::Bytes(pdf_bytes("am")));
+    s
+}
+
+impl Sandbox {
+    fn files_json(&self) -> Option<Value> {
+        fs::read_to_string(self.path("lib/.papers/files.json"))
+            .ok()
+            .map(|text| serde_json::from_str(&text).unwrap())
+    }
+
+    /// The version of the file at `rel` (relative to the library).
+    fn version_of(&self, rel: &str) -> Option<String> {
+        let data = self.files_json()?;
+        let digest = data["files"][rel].as_str()?;
+        data["versions"][digest].as_str().map(str::to_string)
+    }
+
+    /// `papers file fetch smith2020`: its file, absolute and relative to the library.
+    fn fetch_accepted(&self) -> (String, String) {
+        self.out(&["smith2020"]);
+        let files = self.files("smith2020");
+        assert_eq!(files.len(), 1);
+        let rel = files[0]
+            .strip_prefix(&self.path("lib/"))
+            .unwrap()
+            .to_string();
+        (files[0].clone(), rel)
+    }
+
+    /// The publisher gives its PDF now.
+    fn publish(&self) {
+        self.web.file(PDF, File::Bytes(pdf_bytes("vor")));
+    }
+
+    /// `papers file fetch --upgrade [KEY...]`: the lines and the summary.
+    fn upgrade(&self, keys: &[&str], dry_run: bool) -> (Vec<String>, Option<Vec<String>>) {
+        let mut session = self.session(dry_run);
+        let request = FileUpgrade {
+            keys: (!keys.is_empty()).then(|| keys.iter().map(|k| k.to_string()).collect()),
+            ..FileUpgrade::default()
+        };
+        let upgraded = file_upgrade(&mut session, &self.fetcher, &request).unwrap();
+        (session.finish().out, upgraded.summary())
+    }
+
+    fn history_step(&self, command: &str, undo: bool) {
+        let mut config = self.config();
+        let mut history = History::require(&mut config, false).unwrap();
+        let mut resolver = Resolver::new(OnDuplicate::Skip);
+        if undo {
+            history
+                .undo(1, false, None, command, &mut resolver)
+                .unwrap();
+        } else {
+            history
+                .redo(1, false, None, command, &mut resolver)
+                .unwrap();
+        }
+    }
+
+    fn head(&self) -> String {
+        let mut config = self.config();
+        let history = History::open(&mut config, false, false).unwrap().unwrap();
+        history.head().unwrap().state.to_string()
+    }
+}
+
+fn digest(path: &str) -> String {
+    file_digest(path).unwrap()
+}
+
+// TestFilesJson
+
+#[test]
+fn versions_written_by_fetch() {
+    let s = versions();
+    let (file, rel) = s.fetch_accepted();
+    let d = digest(&file);
+    assert_eq!(
+        s.files_json().unwrap(),
+        json!({"files": {&rel: &d}, "versions": {&d: "accepted"}})
+    );
+    // written as json.dumps(indent=1, sort_keys=True)
+    assert_eq!(
+        fs::read_to_string(s.path("lib/.papers/files.json")).unwrap(),
+        format!(
+            "{{\n \"files\": {{\n  \"{rel}\": \"{d}\"\n }},\n \"versions\": {{\n  \"{d}\": \"accepted\"\n }}\n}}\n"
+        )
+    );
+}
+
+#[test]
+fn versions_none_for_a_file_attached_by_hand() {
+    let s = versions();
+    let x = s.write("downloads/x.pdf", "pdf x");
+    let mut session = s.session(false);
+    attach_files(&mut session, "smith2020", &[x], &Attach::new(Mode::Copy)).unwrap();
+    session.commit().unwrap();
+    session.finish();
+    assert!(s.files_json().unwrap().get("versions").is_none());
+}
+
+#[test]
+fn versions_supplements_have_none() {
+    let s = versions();
+    let suppl = "https://journals.example.org/suppl.pdf";
+    s.web
+        .publisher(DOI, Some(PDF), None, &[(suppl, "Supplement")], &[]);
+    s.web.file(suppl, File::Bytes(pdf_bytes("suppl")));
+    s.fetch(
+        &["smith2020"],
+        false,
+        options(|o| o.supplements = true),
+        false,
+    );
+    assert_eq!(s.files("smith2020").len(), 2);
+    let data = s.files_json().unwrap();
+    let versions: Vec<&Value> = data["versions"].as_object().unwrap().values().collect();
+    assert_eq!(versions, [&json!("published")]);
+}
+
+#[test]
+fn versions_with_the_checksums_setting_off() {
+    let s = versions();
+    let path = s.path("lib/.papers/config.json");
+    let text = fs::read_to_string(&path).unwrap();
+    fs::write(
+        &path,
+        text.replace("\"filesdir\"", "\"checksums\": false,\n  \"filesdir\""),
+    )
+    .unwrap();
+    let (_, rel) = s.fetch_accepted();
+    assert_eq!(s.version_of(&rel).as_deref(), Some("accepted"));
+}
+
+#[test]
+fn versions_kept_when_the_file_moves() {
+    let s = versions();
+    let (file, _) = s.fetch_accepted();
+    let mut session = s.session(false);
+    move_files(
+        &mut session,
+        std::slice::from_ref(&file),
+        &s.path("lib/files/moved.pdf"),
+        &MvOptions::default(),
+    )
+    .unwrap();
+    session.finish();
+    let new = s.files("smith2020")[0].clone();
+    assert_ne!(new, file);
+    assert_eq!(s.version_of("files/moved.pdf").as_deref(), Some("accepted"));
+}
+
+#[test]
+fn versions_dropped_with_the_checksum() {
+    let s = versions();
+    let (file, rel) = s.fetch_accepted();
+    let x = s.write("downloads/x.pdf", "pdf x");
+    let mut session = s.session(false);
+    attach_files(&mut session, "smith2020", &[x], &Attach::new(Mode::Copy)).unwrap();
+    session.commit().unwrap();
+    session.finish();
+    let mut session = s.session(false);
+    rm_files(&mut session, None, &[file], false).unwrap();
+    session.finish();
+    let data = s.files_json().unwrap();
+    assert!(data["files"].get(&rel).is_none());
+    assert!(data.get("versions").is_none());
+}
+
+#[test]
+fn versions_of_an_old_file_without_them() {
+    let s = versions();
+    let (file, rel) = s.fetch_accepted();
+    let d = digest(&file);
+    fs::write(
+        s.path("lib/.papers/files.json"),
+        format!("{{\n \"files\": {{\n  \"{rel}\": \"{d}\"\n }}\n}}\n"),
+    )
+    .unwrap();
+    let config = s.config();
+    let files_json = FilesJson::of(&config, &s.path("lib")).unwrap();
+    assert!(files_json.file_versions().is_empty()); // unknown
+    let mut session = s.session(false);
+    checksums(&mut session, &["smith2020".to_string()], false).unwrap();
+    session.finish();
+    assert_eq!(s.files_json().unwrap(), json!({"files": {&rel: &d}}));
+}
+
+#[test]
+fn versions_restored_by_undo() {
+    let s = versions();
+    let (_, rel) = s.fetch_accepted();
+    s.history_step("papers undo", true);
+    assert_eq!(s.files_json(), None);
+    s.history_step("papers redo", false);
+    assert_eq!(s.version_of(&rel).as_deref(), Some("accepted"));
+}
+
+// TestUpgrade
+
+#[test]
+fn upgrade_replaces_under_the_same_name() {
+    let s = versions();
+    let (file, rel) = s.fetch_accepted();
+    s.publish();
+    let (out, _) = s.upgrade(&[], false);
+    assert!(
+        out.contains(&format!(
+            "smith2020: {file}: accepted manuscript replaced by the published version, from journals.example.org"
+        )),
+        "{out:?}"
+    );
+    assert_eq!(s.files("smith2020"), std::slice::from_ref(&file));
+    assert_eq!(fs::read(&file).unwrap(), pdf_bytes("vor"));
+    let d = digest(&file);
+    assert_eq!(
+        s.files_json().unwrap(),
+        json!({"files": {&rel: &d}, "versions": {&d: "published"}})
+    );
+    assert_eq!(
+        s.libfiles(),
+        [Path::new(&file)
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()]
+    );
+}
+
+#[test]
+fn upgrade_undo_brings_the_old_file_back() {
+    let s = versions();
+    let (file, rel) = s.fetch_accepted();
+    s.publish();
+    s.upgrade(&["smith2020"], false);
+    s.history_step("papers undo", true);
+    assert_eq!(fs::read(&file).unwrap(), pdf_bytes("am"));
+    assert_eq!(s.version_of(&rel).as_deref(), Some("accepted"));
+    assert_eq!(s.libfiles().len(), 1);
+    s.history_step("papers redo", false);
+    assert_eq!(fs::read(&file).unwrap(), pdf_bytes("vor"));
+    assert_eq!(s.version_of(&rel).as_deref(), Some("published"));
+    s.history_step("papers undo", true);
+    assert_eq!(fs::read(&file).unwrap(), pdf_bytes("am"));
+}
+
+#[test]
+fn upgrade_undo_leaves_a_file_changed_since() {
+    let s = versions();
+    let (file, _) = s.fetch_accepted();
+    s.publish();
+    s.upgrade(&["smith2020"], false);
+    fs::write(&file, b"%PDF annotated").unwrap();
+    s.history_step("papers undo", true);
+    assert_eq!(fs::read(&file).unwrap(), b"%PDF annotated");
+}
+
+#[test]
+fn upgrade_operations_of_the_step() {
+    let s = versions();
+    let (file, rel) = s.fetch_accepted();
+    let old = digest(&file);
+    s.publish();
+    s.upgrade(&["smith2020"], false);
+    let mut config = s.config();
+    let history = History::open(&mut config, false, false).unwrap().unwrap();
+    let head = history.head().unwrap().state;
+    let ops = history.project.state(&head).unwrap().ops();
+    let new = digest(&file);
+    let got: Vec<(OpKind, bool, Option<String>)> = ops
+        .iter()
+        .map(|op| {
+            (
+                op.kind,
+                op.dst.as_deref() == Some(rel.as_str()),
+                op.checksum.clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        got,
+        [
+            (OpKind::Trashed, false, Some(old)),
+            (OpKind::Copied, true, Some(new))
+        ]
+    );
+    assert_eq!(ops[0].src, rel);
+}
+
+#[test]
+fn upgrade_only_the_published_version() {
+    let s = versions();
+    s.fetch_accepted();
+    s.web.clear();
+    s.upgrade(&[], false);
+    assert_eq!(s.web.downloads(), [PDF]); // not the accepted manuscript again
+}
+
+#[test]
+fn upgrade_without_published_version_changes_nothing() {
+    let s = versions();
+    let (file, _) = s.fetch_accepted();
+    let (before, head) = (s.files_json(), s.head());
+    let (out, _) = s.upgrade(&["smith2020"], false);
+    let out = joined(&out);
+    assert!(
+        out.contains(&format!(
+            "smith2020: {file} (accepted manuscript) kept: no PDF could be downloaded"
+        )),
+        "{out}"
+    );
+    assert!(out.contains(&format!("open in a browser: {PDF}")), "{out}");
+    assert_eq!(fs::read(&file).unwrap(), pdf_bytes("am"));
+    assert_eq!(s.files_json(), before);
+    assert_eq!(s.head(), head);
+}
+
+#[test]
+fn upgrade_dry_run() {
+    let s = versions();
+    let (file, rel) = s.fetch_accepted();
+    s.publish();
+    let (out, _) = s.upgrade(&[], true);
+    assert!(
+        out.contains(&format!(
+            "DRYRUN: smith2020: would download {PDF} (published version, from journals.example.org), in place of {file} (accepted manuscript)"
+        )),
+        "{out:?}"
+    );
+    assert_eq!(fs::read(&file).unwrap(), pdf_bytes("am"));
+    assert_eq!(s.version_of(&rel).as_deref(), Some("accepted"));
+}
+
+#[test]
+fn upgrade_entries_without_lower_version() {
+    let s = versions();
+    s.write("lib/files/a.pdf", "pdf a");
+    s.bib(&[
+        entry("smith2020", &[], Some(DOI)),
+        entry("hand2000", &["files/a.pdf"], Some("10.1000/hand")),
+    ]);
+    let (file, _) = s.fetch_accepted();
+    s.publish();
+    let (out, _) = s.upgrade(&["hand2000"], false);
+    assert!(
+        out.contains(
+            &"hand2000: no accepted manuscript or submitted version to replace".to_string()
+        ),
+        "{out:?}"
+    );
+    assert_eq!(s.web.downloads(), [PDF, AM]); // the first fetch only
+    // all entries: those with a lower version
+    let (out, _) = s.upgrade(&[], false);
+    let out = joined(&out);
+    assert!(!out.contains("hand2000"), "{out}");
+    assert!(out.contains(&format!("smith2020: {file}: ")), "{out}");
+    assert!(out.contains("replaced by the published version"), "{out}");
+}
+
+#[test]
+fn upgrade_nothing_to_upgrade() {
+    let s = versions();
+    let mut session = s.session(false);
+    let upgraded = file_upgrade(&mut session, &s.fetcher, &FileUpgrade::default()).unwrap();
+    assert!(upgraded.keys.is_empty() && upgraded.looked.is_empty());
+    assert!(s.web.0.lock().unwrap().requests.is_empty());
+}
+
+#[test]
+fn upgrade_summary_of_several_entries() {
+    let s = versions();
+    s.bib(&[
+        entry("smith2020", &[], Some(DOI)),
+        entry("ice2020", &[], Some("10.1000/ice")),
+    ]);
+    let ice = "https://journals.example.org/ice.pdf";
+    s.web.publisher("10.1000/ice", Some(ice), None, &[], &[]);
+    s.web.file(ice, File::Status(403));
+    s.web.openalex(
+        "10.1000/ice",
+        vec![location(
+            "https://repo.example.edu/ice.pdf",
+            "submittedVersion",
+            None,
+            true,
+        )],
+    );
+    s.web.file(
+        "https://repo.example.edu/ice.pdf",
+        File::Bytes(pdf_bytes("ice")),
+    );
+    s.out(&["smith2020", "ice2020"]);
+    s.publish();
+    let (_, summary) = s.upgrade(&[], false);
+    let summary = summary.unwrap();
+    assert_eq!(
+        summary[..4],
+        [
+            "summary of 2 entries:",
+            "  1 replaced by the published version",
+            "  1 without published version (kept as they are)",
+            "open in a browser:",
+        ]
+    );
+    assert!(
+        summary[4].starts_with(&format!("  ice2020: {ice}")),
+        "{summary:?}"
+    );
 }

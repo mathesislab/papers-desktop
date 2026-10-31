@@ -13,7 +13,11 @@ use crate::input::entry_of;
 /// The CSL-JSON item of the BibTeX of a paper, as `papers export --format csl` writes it
 /// (without the file links), for the citation processor.
 pub fn item(bibtex: &str) -> Result<Value, String> {
-    Ok(value(&entry_to_csl(&entry_of(bibtex, "The paper")?, &[])))
+    Ok(value(&entry_to_csl(
+        &entry_of(bibtex, "The paper")?,
+        &[],
+        &[],
+    )))
 }
 
 fn value(j: &J) -> Value {
