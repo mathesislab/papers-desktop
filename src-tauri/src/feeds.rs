@@ -597,6 +597,9 @@ pub struct ViewRequest {
     query: String,
     sort: Sort,
     kinds: Vec<ItemKind>,
+    /// when the list was last brought up to date: what was fetched since is held back
+    #[serde(default)]
+    shown: Option<DateTime<Utc>>,
 }
 
 /// A row of the list.
@@ -641,6 +644,8 @@ pub struct FeedCounts {
 pub struct FeedView {
     rows: Vec<FeedRow>,
     counts: FeedCounts,
+    /// the items fetched since the list was shown, held back
+    held: usize,
 }
 
 /// A paper behind a post, and its item.
@@ -912,6 +917,7 @@ pub fn view(
         sort: request.sort,
         kinds: &request.kinds,
         is: Some(&inlibrary),
+        shown: request.shown,
     });
     let titles: HashMap<&str, String> = (feeds.subscriptions().iter())
         .map(|s| (s.id.as_str(), title_of(s)))
@@ -963,6 +969,7 @@ pub fn view(
         }
     }
     FeedView {
+        held: view.held,
         rows: rows.collect(),
         counts: FeedCounts {
             all: view.counts.all,

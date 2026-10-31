@@ -69,6 +69,8 @@ export interface FeedCounts {
 export interface FeedView {
   rows: FeedRow[];
   counts: FeedCounts;
+  /** the items fetched since the list was shown, held back */
+  held: number;
 }
 
 export interface ViewRequest {
@@ -76,6 +78,8 @@ export interface ViewRequest {
   sort: Sort;
   /** none: every kind */
   kinds: ItemKind[];
+  /** when the list was last brought up to date (ISO): what was fetched since is held back; none: every item */
+  shown?: string | null;
 }
 
 /** A paper behind a post. */

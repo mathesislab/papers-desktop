@@ -44,6 +44,10 @@ pub struct ViewRequest<'a> {
     /// the kinds shown; none: every kind
     pub kinds: &'a [ItemKind],
     pub is: Option<IsValues<'a>>,
+    /// when the list was last brought up to date: the items first fetched
+    /// since are held back (neither listed nor counted, `View::held`); none:
+    /// every item
+    pub shown: Option<DateTime<Utc>>,
 }
 
 /// The caller's `is:` values of an item, such as `inlibrary`.
@@ -54,6 +58,8 @@ pub type IsValues<'a> = &'a dyn Fn(&Item) -> Vec<String>;
 pub struct View {
     pub rows: Vec<Row>,
     pub counts: Counts,
+    /// the items held back, first fetched since the list was shown (not dismissed)
+    pub held: usize,
 }
 
 /// An item shown.
@@ -117,9 +123,14 @@ impl Feeds {
             .collect();
         let mut counts = Counts::default();
         let mut rows = Vec::new();
+        let mut held = 0;
         for item in self.items() {
             let extra = request.is.map_or_else(Vec::new, |is| is(item));
             let seen = self.seen(item, extra);
+            if request.shown.is_some_and(|shown| item.first_seen() > shown) {
+                held += usize::from(seen.triage != Triage::Dismissed);
+                continue;
+            }
             if seen.triage != Triage::Dismissed {
                 counts.add(item, &seen);
             }
@@ -146,7 +157,7 @@ impl Feeds {
         // the reminders due first, in that order
         rows.sort_by_key(|(_, row)| row.reminder != Some(Reminder::Due));
         let rows = rows.into_iter().map(|(_, row)| row).collect();
-        View { rows, counts }
+        View { rows, counts, held }
     }
 
     /// An item alone, as the details show it: its texts marked where the

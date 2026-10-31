@@ -70,6 +70,7 @@
     tabs,
     filters = $bindable(),
     columns = $bindable(),
+    shown = $bindable(),
     sidebar = $bindable(),
     details = $bindable(),
     showSidebar,
@@ -83,6 +84,9 @@
     filters: FeedFilters;
     /** the widths of the list's columns: the window's layout keeps them */
     columns: Record<FeedColumn, number>;
+    /** when the list was last brought up to date: what a fetch in the background brought since waits behind
+     *  *N new · Show*; a fetch asked for here (⌘R, Fetch, a subscription) shows it at once. The layout keeps it. */
+    shown: string | null;
     /** the widths of the side panes and whether they show: the window's, as in the library */
     sidebar: number;
     details: number;
@@ -201,11 +205,11 @@
     } catch (e) {
       failure = String(e);
     }
-    if (stale(last) && subscriptions.length) fetchNow();
+    if (stale(last) && subscriptions.length) fetchNow(false);
   }
 
   /** ⌘R, ↻: every subscription fetched, then the list again. */
-  async function fetchNow() {
+  async function fetchNow(show = true) {
     if (fetching) return;
     fetching = true;
     failures = false;
@@ -218,7 +222,14 @@
     } finally {
       fetching = false;
     }
+    if (show) shown = new Date().toISOString();
     await refresh();
+  }
+
+  /** N new · Show: what was fetched since the list was shown, into it. */
+  function showHeld() {
+    shown = new Date().toISOString();
+    load(true);
   }
 
   /** After a fetch: the subscriptions, the summary of the fetch, the list. */
@@ -232,15 +243,19 @@
   }
 
   let asked = 0;
+  /** the items fetched since the list was shown, held back */
+  let held = $state(0);
 
   /** The items the filters select, and the counts; with `keep`, the items triaged here stay in their place. */
   async function load(keep: boolean) {
     const n = ++asked;
     try {
-      const answer = await api.view(request);
+      shown ??= new Date().toISOString();
+      const answer = await api.view({ ...request, shown });
       if (n !== asked) return;
       rows = keep ? mergeRows(rows, answer.rows, sticky) : answer.rows;
       counts = answer.counts;
+      held = answer.held;
       failure = null;
     } catch (e) {
       if (n !== asked) return;
@@ -648,7 +663,7 @@
       e.preventDefault();
       action();
     };
-    if (matches(e, FETCH)) return act(fetchNow);
+    if (matches(e, FETCH)) return act(() => fetchNow());
     if (matches(e, REVIEW)) return act(toggleReview);
     if (reviewing && !typing) return reviewer?.key(e);
     if (e.key === "ArrowDown") return go(mod ? "last" : 1);
@@ -795,7 +810,12 @@
       />
       <span class="notice">{notice ?? ""}</span>
       <span class="spacer"></span>
-      <button class="tool" class:busy={fetching} disabled={fetching} title="Fetch every subscription ({label(FETCH)})" onclick={fetchNow}>
+      {#if held}
+        <button class="tool held" title="Show what was fetched since the list was brought up to date" onclick={showHeld}>
+          {held} new · Show
+        </button>
+      {/if}
+      <button class="tool" class:busy={fetching} disabled={fetching} title="Fetch every subscription ({label(FETCH)})" onclick={() => fetchNow()}>
         <span class="spin">↻</span>
         {fetching ? "Fetching…" : "Fetch"}
       </button>
@@ -1145,6 +1165,13 @@
   }
   .tool:disabled {
     opacity: 0.6;
+  }
+  /* what a fetch in the background brought, waiting */
+  .tool.held {
+    border-color: color-mix(in srgb, var(--feeds) 40%, transparent);
+    background: color-mix(in srgb, var(--feeds) 14%, transparent);
+    color: var(--feeds);
+    font-weight: 500;
   }
   .tool.primary {
     border-color: var(--accent);

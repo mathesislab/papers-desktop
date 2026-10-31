@@ -32,6 +32,8 @@ export type Layout = {
   /** the Feeds tab: the choices of its sidebar, the segment, the sort, the search, the groups unfolded */
   feeds: FeedFilters;
   feedColumns: Record<FeedColumn, number>;
+  /** when the Feeds tab's list was last brought up to date (ISO): what was fetched since waits behind *N new* */
+  feedsShown: string | null;
 };
 
 const DEFAULTS: Layout = {
@@ -49,6 +51,7 @@ const DEFAULTS: Layout = {
   openTags: [],
   feeds: NO_FEED_FILTERS,
   feedColumns: FEED_COLUMNS,
+  feedsShown: null,
 };
 
 /** The layout saved (none: the defaults): what a file of an older version
