@@ -1,11 +1,11 @@
 <script lang="ts">
-  // The list of the Feeds tab: the items the filters select, best score or newest first. Only the rows in view are
+  // The list of the Feeds tab: the items the filters select, best score, most like the library or newest first. Only the rows in view are
   // drawn, as in the library's table. A new item's title is bold; one seen is muted. A click selects (⇧ a range,
   // ⌘ one more), a double-click opens the item's page, a right-click its menu.
 
   import Marked from "$lib/Marked.svelte";
   import type { FeedRow, ItemKind, Sort } from "./api";
-  import { ago, badges, scoreText } from "./items";
+  import { ago, badges, likeText, scoreText } from "./items";
 
   let {
     rows,
@@ -36,7 +36,7 @@
   /** rows drawn above and below the ones in view, for a smooth scroll */
   const EXTRA = 12;
   const KIND_MARK: Record<ItemKind, string> = { paper: "", preprint: "◐", news: "✦", blog: "✎" };
-  const TEMPLATE = "24px 44px minmax(240px, 1fr) 150px 150px 52px 190px";
+  const TEMPLATE = "24px 44px 40px minmax(240px, 1fr) 150px 150px 52px 190px";
 
   let body = $state<HTMLDivElement>();
   let scrollTop = $state(0);
@@ -71,6 +71,9 @@
     <button class="cell sort" class:sorted={sort === "score"} onclick={() => onsort("score")} title="Best score first">
       Score{#if sort === "score"}<span class="arrow">▾</span>{/if}
     </button>
+    <button class="cell sort" class:sorted={sort === "like"} onclick={() => onsort("like")} title="Most like the papers of your library first">
+      Like{#if sort === "like"}<span class="arrow">▾</span>{/if}
+    </button>
     <span class="cell">Title</span>
     <span class="cell">Authors</span>
     <span class="cell">Journal / source</span>
@@ -102,6 +105,7 @@
             {row.triage === "shortlisted" ? "★" : row.triage === "added" ? "✓" : KIND_MARK[row.kind]}
           </span>
           <span class="score">{scoreText(row.score)}</span>
+          <span class="like muted" title="How like the papers of your library (0–100)">{likeText(row.like)}</span>
           <span class="title"><Marked spans={row.title} /></span>
           <span class="muted">
             {#if row.authors.length}
@@ -135,7 +139,7 @@
     display: grid;
     align-items: center;
     height: 26px;
-    min-width: 860px;
+    min-width: 900px;
   }
   .head {
     flex: none;
@@ -199,6 +203,7 @@
     color: inherit;
   }
   .score,
+  .like,
   .date {
     font-variant-numeric: tabular-nums;
     text-align: right;

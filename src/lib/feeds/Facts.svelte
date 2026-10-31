@@ -1,7 +1,8 @@
 <script lang="ts">
   // What tells whether a paper of the feeds is worth adding, in the details and in the Review: why it is here (the
-  // interests and the terms that matched), its free PDF (looked up a moment after it is shown, once per item), its
-  // versions, the posts that cover it, where it was seen.
+  // interests and the terms that matched), the papers of the library most like it (each shown in the Library tab on
+  // a click), its free PDF (looked up a moment after it is shown, once per item), its versions, the posts that cover
+  // it, where it was seen.
 
   import type { FeedDetail, PdfStatus } from "./api";
 
@@ -62,6 +63,18 @@
       <p class:muted={!s.reached}>
         <span class="dot" style:background={colours.get(s.interest) ?? "var(--border)"}></span>
         {s.interest} {s.score.toFixed(1)}{#if s.terms.length}: {s.terms.join(", ")}{/if}{#if !s.reached} (below its minimum){/if}
+      </p>
+    {/each}
+  </section>
+{/if}
+
+{#if detail.nearest.length}
+  <section>
+    <h5>Like in your library{detail.like !== null ? ` · ${Math.round(detail.like)}` : ""}</h5>
+    {#each detail.nearest as near (near.id)}
+      <p>
+        <button class="link plain" title="Show it in the library ({near.key})" onclick={() => onentry(near.id)}>{near.title}</button>
+        <span class="muted">{near.subtitle} · {near.cosine.toFixed(2)}</span>
       </p>
     {/each}
   </section>

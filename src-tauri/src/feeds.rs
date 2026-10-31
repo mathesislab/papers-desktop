@@ -16,14 +16,20 @@
 //! are asked with the e-mail address and the OpenAlex key of the settings,
 //! each sent only when set. The last fetch's summary, and how each
 //! subscription's last fetch ended, are kept in `feeds-fetched.json`.
+//!
+//! *Like in your library*: the index of the library's papers (core's
+//! `Likeness`) is built on a thread of its own whenever the library is read
+//! (at the start, after a change of its files or a write), then given to the
+//! feeds and to every copy a fetch opens; the page is told (`feeds-changed`).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, TryLockError};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::time::Duration;
 
 use chrono::{DateTime, Datelike, TimeDelta, Utc};
-use papers_core::{Identity, Library, Matching, Span};
+use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, LOOKUP, Network,
@@ -65,13 +71,20 @@ pub struct FeedsState {
     /// the free copy of each DOI asked for, this session
     pdfs: Mutex<HashMap<String, Pdf>>,
     open: Opener,
+    /// counts the builds of the index of the library: one that ends after a
+    /// newer one is dropped
+    builds: AtomicU64,
 }
 
-/// The feeds the commands see, and the changes made while a copy is worked on.
+/// The feeds the commands see, the changes made while a copy is worked on,
+/// and the index of the library that the feeds and their copies are given.
 #[derive(Default)]
 struct Live {
     feeds: Option<Feeds>,
     journal: Option<Vec<Change>>,
+    likeness: Option<Arc<Likeness>>,
+    /// the build of `likeness`
+    build: u64,
 }
 
 /// A change of the feeds, kept to apply again to a copy that was fetched.
@@ -237,16 +250,45 @@ impl FeedsState {
             fetched: Mutex::new(None),
             pdfs: Mutex::new(HashMap::new()),
             open,
+            builds: AtomicU64::new(0),
         }
+    }
+
+    /// The feeds of the folder, opened, with the index of the library.
+    fn opened(&self, live: &Live) -> Result<Feeds, String> {
+        let mut feeds = (self.open)(&self.dir).map_err(|e| e.to_string())?;
+        feeds.set_likeness(live.likeness.clone());
+        Ok(feeds)
     }
 
     /// The live feeds, opened if they are not yet.
     fn live(&self) -> Result<MutexGuard<'_, Live>, String> {
         let mut live = self.live.lock().unwrap();
         if live.feeds.is_none() {
-            live.feeds = Some((self.open)(&self.dir).map_err(|e| e.to_string())?);
+            live.feeds = Some(self.opened(&live)?);
         }
         Ok(live)
+    }
+
+    /// The number of a new build of the index of the library.
+    pub fn next_build(&self) -> u64 {
+        self.builds.fetch_add(1, Ordering::SeqCst) + 1
+    }
+
+    /// The index of the library of build `build`, for the feeds and the
+    /// copies opened from now on, unless a newer build was given already:
+    /// whether it was taken.
+    pub fn set_likeness(&self, build: u64, likeness: Option<Arc<Likeness>>) -> bool {
+        let mut live = self.live.lock().unwrap();
+        if build < live.build {
+            return false;
+        }
+        live.build = build;
+        live.likeness = likeness.clone();
+        if let Some(feeds) = &mut live.feeds {
+            feeds.set_likeness(likeness);
+        }
+        true
     }
 
     /// Something read of the feeds.
@@ -275,7 +317,7 @@ impl FeedsState {
     ) -> Result<T, String> {
         let mut copy = {
             let mut live = self.live()?;
-            let copy = (self.open)(&self.dir).map_err(|e| e.to_string())?;
+            let copy = self.opened(&live)?;
             live.journal = Some(Vec::new());
             copy
         };
@@ -287,6 +329,8 @@ impl FeedsState {
             // what no longer applies (an item gone, a feed subscribed twice) is passed over
             let _ = change.apply(&mut copy);
         }
+        // the index built meanwhile
+        copy.set_likeness(live.likeness.clone());
         live.feeds = Some(copy);
         Ok(done)
     }
@@ -517,6 +561,8 @@ pub struct FeedRow {
     date: Option<DateTime<Utc>>,
     score: f64,
     interests: Vec<Score>,
+    /// how like the library it is, 0–100; none before the library is indexed
+    like: Option<f64>,
     triage: Triage,
     in_library: Vec<String>,
     has_versions: bool,
@@ -575,6 +621,21 @@ pub struct FeedDetail {
     triage: Triage,
     in_library: Vec<String>,
     version_in_library: Vec<String>,
+    like: Option<f64>,
+    /// the papers of the library most like it, the nearest first
+    nearest: Vec<Nearest>,
+}
+
+/// A paper of the library like an item.
+#[derive(Debug, Serialize)]
+pub struct Nearest {
+    id: String,
+    key: String,
+    title: String,
+    /// "Feldmann & Levermann · 2017 · Cryosphere"
+    subtitle: String,
+    /// of the item's vector and the paper's
+    cosine: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -759,6 +820,7 @@ pub fn view(
             authors: row.authors,
             score: row.score,
             interests: row.interests,
+            like: row.like,
         }
     });
     let mut sources: BTreeMap<String, usize> = BTreeMap::new();
@@ -799,6 +861,18 @@ pub fn detail(
     };
     let index = InLibrary::of(library);
     let in_library = index.same(item);
+    let like = feeds.like(item);
+    let nearest = (like.iter().flat_map(|l| &l.nearest))
+        .filter_map(|(id, cosine)| {
+            library.get(id).map(|entry| Nearest {
+                id: entry.id.clone(),
+                key: entry.key.clone(),
+                title: entry.title.clone(),
+                subtitle: entry.subtitle.clone(),
+                cosine: *cosine,
+            })
+        })
+        .collect();
     let looked_up = item.sources.iter().any(|s| {
         s.entry.source == LOOKUP && s.entry.summary.is_some() && s.entry.summary == item.summary
     });
@@ -843,6 +917,8 @@ pub fn detail(
         triage: feeds.triage(&item.id),
         version_in_library: index.versions(item, &in_library),
         in_library,
+        like: like.map(|l| l.score),
+        nearest,
     })
 }
 
@@ -899,6 +975,24 @@ fn subscription_of(app: &AppHandle, applied: Applied) -> Result<SubscriptionInfo
         Applied::Subscription(s) => Ok(info(s, &app.state::<AppState>().feeds.lasts()?)),
         _ => Err("no subscription".to_string()),
     }
+}
+
+/// Indexes the library's papers on a thread of its own, the library as it is
+/// now, and gives the index to the feeds (none for an empty library); the
+/// page is told. After every read of the library.
+pub fn index_library(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let state = app.state::<AppState>();
+        let build = state.feeds.next_build();
+        let likeness = {
+            let library = state.library.read().unwrap();
+            (!library.is_empty()).then(|| Arc::new(Likeness::of(&library)))
+        };
+        if state.feeds.set_likeness(build, likeness) {
+            let _ = app.emit(CHANGED, ());
+        }
+    });
 }
 
 /// Fetch in the background, every so many minutes, while the settings say so.
@@ -1253,6 +1347,70 @@ mod tests {
         drop(running);
         // no fetch ran, none was kept
         assert_eq!(joining.join().unwrap(), Err("the fetch failed".to_string()));
+    }
+
+    #[test]
+    fn the_index_of_the_library_goes_to_the_feeds_and_their_copies() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = opened(dir.path());
+        subscribe(&state, TC);
+        let configured = Configured {
+            interests: Vec::new(),
+            title_boost: 2.0,
+            rules: vec![Rule {
+                when: "like:30-".into(),
+                then: papers_feeds::Action::Shortlist,
+            }],
+            keep_days: 90,
+            lookback_days: 14,
+        };
+        state
+            .change(Change::Settings(Box::new(configured)))
+            .unwrap();
+        let index = |title: &str| {
+            let doc = papers_core::Doc {
+                id: "lib".into(),
+                title: title.into(),
+                ..Default::default()
+            };
+            Some(Arc::new(Likeness::build([doc])))
+        };
+        let (old, new) = (state.next_build(), state.next_build());
+        assert!(state.set_likeness(new, index("Firn densification")));
+        assert!(
+            !state.set_likeness(old, index("Ice")),
+            "an older build is dropped"
+        );
+        let http = Recorded::new().reply(
+            TC,
+            atom(
+                "TC",
+                &[("a", "Ice", None), ("b", "Firn densification", None)],
+            ),
+        );
+        state.fetch(&http, &Access::default(), |_| {}).unwrap();
+        let triage = |title: &str| {
+            state
+                .read(|f| f.triage(&f.items().iter().find(|i| i.title == title).unwrap().id))
+                .unwrap()
+        };
+        assert_eq!(
+            triage("Firn densification"),
+            Triage::Shortlisted,
+            "the copy fetched had the index"
+        );
+        assert_eq!(triage("Ice"), Triage::New);
+        let like = |title: &str| {
+            state
+                .read(|f| {
+                    f.like(f.items().iter().find(|i| i.title == title).unwrap())
+                        .map(|l| l.score)
+                })
+                .unwrap()
+        };
+        assert!(like("Firn densification").is_some_and(|l| l > 99.9));
+        assert!(state.set_likeness(state.next_build(), None));
+        assert_eq!(like("Firn densification"), None);
     }
 
     #[test]

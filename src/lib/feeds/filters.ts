@@ -70,6 +70,16 @@ export const isPost = (kind: ItemKind) => kind === "news" || kind === "blog";
 
 const text = (v: unknown): v is string => typeof v === "string";
 
+/** The orders of the list, in the order the count above it goes through them. */
+export const SORTS: { sort: Sort; text: string }[] = [
+  { sort: "score", text: "best score first" },
+  { sort: "like", text: "most like the library first" },
+  { sort: "newest", text: "newest first" },
+];
+
+/** The order after this one, for the count above the list. */
+export const nextSort = (sort: Sort): Sort => SORTS[(SORTS.findIndex((s) => s.sort === sort) + 1) % SORTS.length].sort;
+
 /** Filters as saved, any part missing or of a wrong type made the default. */
 export function restoredFeeds(saved: Partial<FeedFilters> | null | undefined): FeedFilters {
   const d = NO_FEED_FILTERS;
@@ -79,7 +89,7 @@ export function restoredFeeds(saved: Partial<FeedFilters> | null | undefined): F
     interest: text(saved?.interest) ? saved.interest : null,
     source: text(saved?.source) ? saved.source : null,
     segment: SEGMENTS.find((s) => s.segment === saved?.segment)?.segment ?? d.segment,
-    sort: saved?.sort === "newest" || saved?.sort === "score" ? saved.sort : d.sort,
+    sort: SORTS.find((s) => s.sort === saved?.sort)?.sort ?? d.sort,
     query: text(saved?.query) ? saved.query : d.query,
     open: Array.isArray(saved?.open) ? saved.open.filter(text) : d.open,
   };

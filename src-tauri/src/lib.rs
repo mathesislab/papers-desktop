@@ -645,6 +645,7 @@ fn load(app: &AppHandle) {
             *state.library.write().unwrap() = library;
             watch(app, &bibs);
             date_added(app);
+            feeds::index_library(app);
             Status::Ready { count }
         }
         Err(error) => {

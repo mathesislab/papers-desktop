@@ -730,11 +730,12 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   the sort, the search and the groups unfolded are kept in the layout
   (`feeds`; a file without it takes the defaults).
 - *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
-  added, the kind of a post or preprint), the score, the title (bold while
-  new, muted once seen), authors, journal or source, age, badges (*in
+  added, the kind of a post or preprint), the score, the likeness to the
+  library (*Like*, 0–100; – before the library is indexed), the title (bold
+  while new, muted once seen), authors, journal or source, age, badges (*in
   library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
-  reached). Sorted by score or newest (the headers, or the count above the
-  list). Click, ⇧-click and ⌘-click select as in the library; the keys act
+  reached). Sorted by score, likeness or newest (the headers, or the count
+  above the list, which goes through them). Click, ⇧-click and ⌘-click select as in the library; the keys act
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a dismissed item goes, the next
@@ -746,7 +747,9 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   item marks it seen.
 - *Details*: a paper's abstract marked by the query and the interests (from
   Crossref or OpenAlex when the feed had none), *Why it is here* (each
-  interest's score and terms), its free PDF (`pdfStatus`, asked 300 ms after
+  interest's score and terms), *Like in your library* (the likeness and the
+  3 nearest papers of the library, each with its authors, year, journal and
+  cosine, shown in the Library tab on a click), its free PDF (`pdfStatus`, asked 300 ms after
   it is shown, once per item), versions (*preprint in library → Add would
   replace it*), *Covered by*, *Seen in*. A post's text, then its linked
   papers as cards (Add by the DOI, Shortlist, Show paper), *Find linked
@@ -766,8 +769,8 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   begins, by score, one item at a time over the list and the details, with
   a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
   without PDF, `o` open, `l` later (stays shortlisted), `x` dismiss, `j`/`k`,
-  `Esc` leaves. *Like in your library* is not there yet: the backend has no
-  command for it.
+  `Esc` leaves. The facts are the details' (`Facts`), *Like in your
+  library* among them.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN or an OpenAlex
   filter, with the kind of its items, or one of the suggested subscriptions
   in their groups (those followed marked); fetched when the sheet closes.
@@ -868,7 +871,15 @@ feed, no ISSN, not a source of OpenAlex), Futurity's categories (404).
 command. *In library*: a row's and the details' library entries of the same
 paper (core's `Identity`: the DOI, or the title and year; the library
 indexed once per call), `versionInLibrary` those of another version's DOI;
-`is:inlibrary` in the query and the counts. A fetch runs on a copy of the
+`is:inlibrary` in the query and the counts. *Like in your library*: the
+index of the library's papers (`Likeness::of`, every .bib file of the
+library) is built on a thread of its own after every read of the library
+(`load`: at the start, when a .bib file changes, after a write), given to
+the feeds (`FeedsState::set_likeness`, numbered: a build that ends after a
+newer one is dropped; none for an empty library) and to each copy a fetch
+opens, so that the rules use it, then `feeds-changed`; rows have `like`,
+the details `like` and `nearest` (`{id, key, title, subtitle, cosine}`).
+A fetch runs on a copy of the
 feeds opened from the folder, so the tab reads and triages meanwhile: the
 changes made while it runs are applied at once, kept, and applied again to
 the fetched copy, which then takes the place of the feeds. One fetch at a
@@ -890,7 +901,8 @@ one paper at a time, when asked.
 the main window as `LibraryView` under a tab bar; feeds: items, parsing,
 merging, store; feeds: sweeps, abstracts, the paper of a post; feeds:
 interests, rules, scores; feeds-cli; the app's commands and settings; the
-Feeds tab; Review.
+Feeds tab; Review; *Like in your library* (core's index; `like:`, the sort,
+`--library`; the app and the tab).
 
 ## Later, optional: Spotlight add-on
 

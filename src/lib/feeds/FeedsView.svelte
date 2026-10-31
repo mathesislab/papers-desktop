@@ -25,6 +25,7 @@
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
     SEGMENTS,
+    SORTS,
     chooseInterest,
     chooseKind,
     chooseSegment,
@@ -32,6 +33,7 @@
     feedChips,
     interestColours,
     isPost,
+    nextSort,
     requestOf,
     searchOf,
     sourceGroups,
@@ -633,10 +635,10 @@
             <span class="spacer"></span>
             <button
               class="sort"
-              title="Sort by score or by date"
-              onclick={() => (filters.sort = filters.sort === "score" ? "newest" : "score")}
+              title="Sort by score, by likeness to the library or by date"
+              onclick={() => (filters.sort = nextSort(filters.sort))}
             >
-              {summary} · {filters.sort === "score" ? "best score first" : "newest first"}
+              {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}
             </button>
           </div>
           {#if !loaded}
