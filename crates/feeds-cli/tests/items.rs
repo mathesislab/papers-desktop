@@ -312,3 +312,52 @@ fn prune_keeps_what_a_feed_lists() {
     let out = s.ok(&["prune"]);
     assert!(out.starts_with("5 items kept"), "{out}");
 }
+
+#[test]
+fn library_tells_how_like_its_papers_an_item_is() {
+    let s = fetched();
+    s.ok(&["fetch"]);
+    let bib = s.path("library.bib");
+    std::fs::write(
+        &bib,
+        "@article{landy2022, title = {Sea ice freeboards from radar altimetry}}\n\
+         @article{raleigh2015, title = {Snow modeling in the mountains}}\n\
+         @article{birds, title = {Songbird migration}}\n",
+    )
+    .unwrap();
+    let library = bib.display().to_string();
+
+    // without the library: like: matches nothing, and the Like sort needs it
+    assert_eq!(s.ok(&["list", "like:0-"]), "");
+    let sorted = s.run(&["list", "--sort", "like"]);
+    assert_eq!(sorted.code, 1);
+    assert!(sorted.err.contains("--library"), "{}", sorted.err);
+
+    let with = |args: &[&str]| s.ok(&[&["--library", library.as_str()], args].concat());
+    let list = with(&["list", "--sort", "like"]);
+    let first = list.lines().next().unwrap();
+    assert!(
+        first.contains("Empirical evidence of overestimated Ku-band"),
+        "{list}"
+    );
+    let json: serde_json::Value = serde_json::from_str(&with(&["list", "--json"])).unwrap();
+    assert!(json.as_array().unwrap().iter().all(|r| r["like"].is_f64()));
+    let liked = with(&["list", "like:10-"]);
+    assert!(!liked.is_empty() && liked.lines().count() < 5, "{liked}");
+
+    let id = first.split(' ').next().unwrap();
+    let shown = with(&["show", id]);
+    let near = shown.split("like in the library:\n").nth(1).unwrap();
+    assert!(
+        near.starts_with("  0.")
+            && near
+                .lines()
+                .next()
+                .unwrap()
+                .ends_with("Sea ice freeboards from radar altimetry [landy2022]"),
+        "{shown}"
+    );
+    let json: serde_json::Value = serde_json::from_str(&with(&["show", id, "--json"])).unwrap();
+    assert_eq!(json["like"]["nearest"][0]["key"], "landy2022");
+    assert!(json["like"]["score"].as_f64().unwrap() > 0.0);
+}

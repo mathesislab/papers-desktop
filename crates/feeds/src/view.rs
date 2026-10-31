@@ -1,6 +1,7 @@
 //! The view of the items, for the app and the CLI: those that a query and
-//! the kinds pass, sorted, each with its scores and its texts marked (the
-//! query's words and its interests' terms), and the counts of the sidebar.
+//! the kinds pass, sorted, each with its scores, its likeness to the library
+//! and its texts marked (the query's words and its interests' terms), and the
+//! counts of the sidebar.
 //!
 //! The counts are those of the library's sidebar: over every live item (not
 //! dismissed), whatever the query and the kinds shown. The rows are what
@@ -27,6 +28,9 @@ pub enum Sort {
     Newest,
     /// the best score first, then the newest
     Score,
+    /// the most like the library first, then the newest; those without a
+    /// likeness (no index) last
+    Like,
 }
 
 /// What a view shows.
@@ -57,6 +61,8 @@ pub struct Row {
     pub id: String,
     /// its best score in an interest; 0 without any
     pub score: f64,
+    /// how like the library it is (0–100); none without the index
+    pub like: Option<f64>,
     /// the interests it matched a term of, the best first
     pub interests: Vec<Score>,
     /// the words of the query and the terms of its interests marked
@@ -119,6 +125,10 @@ impl Feeds {
         match request.sort {
             Sort::Newest => rows.sort_by_key(|r| std::cmp::Reverse(r.0)),
             Sort::Score => rows.sort_by(|a, b| b.1.score.total_cmp(&a.1.score).then(b.0.cmp(&a.0))),
+            Sort::Like => {
+                let like = |row: &Row| row.like.unwrap_or(f64::NEG_INFINITY);
+                rows.sort_by(|a, b| like(&b.1).total_cmp(&like(&a.1)).then(b.0.cmp(&a.0)))
+            }
         }
         let rows = rows.into_iter().map(|(_, row)| row).collect();
         View { rows, counts }
@@ -162,6 +172,7 @@ impl Feeds {
         Row {
             id: item.id.clone(),
             score: best(&seen.scores),
+            like: seen.like.map(|l| l.score),
             interests,
             title,
             authors,

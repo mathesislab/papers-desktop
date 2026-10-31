@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use crate::cli::{FindArgs, ListArgs, MarkArgs, ShowArgs};
 use crate::text::{day, newest, source_label, table, wrap};
-use crate::{Ctx, Error, Result};
+use crate::{Ctx, Error, Result, fail};
 
 /// The mark of a state in the list.
 fn marker(triage: Triage) -> &'static str {
@@ -36,7 +36,8 @@ fn item_json(feeds: &Feeds, item: &Item) -> Value {
 fn row_json(feeds: &Feeds, row: &Row, item: &Item) -> Value {
     json!({
         "id": item.id, "kind": kind_name(item.kind), "triage": triage_name(feeds.triage(&item.id)),
-        "score": row.score, "interests": row.interests, "date": item.date, "title": item.title,
+        "score": row.score, "interests": row.interests, "like": row.like, "date": item.date,
+        "title": item.title,
         "authors": item.authors, "journal": item.journal, "doi": item.doi, "arxiv": item.arxiv,
         "url": item.url, "editorial": item.editorial, "summary": item.summary,
     })
@@ -53,6 +54,10 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
     let sort = match a.sort {
         crate::cli::SortArg::Score => Sort::Score,
         crate::cli::SortArg::Newest => Sort::Newest,
+        crate::cli::SortArg::Like if ctx.library.is_none() => {
+            return fail("--sort like needs the library: --library <file.bib>");
+        }
+        crate::cli::SortArg::Like => Sort::Like,
     };
     let request = ViewRequest {
         query: &query,
@@ -82,14 +87,19 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
                 .journal
                 .as_deref()
                 .map_or(String::new(), |j| format!(" — {j}"));
-            vec![
+            // the likeness after the score, with the library
+            let mut line = vec![
                 item.id.clone(),
                 marker(feeds.triage(&item.id)).to_string(),
                 format!("{:>4.1}", row.score),
+            ];
+            line.extend(row.like.map(|like| format!("{like:>3.0}")));
+            line.extend([
                 kind_name(item.kind).to_string(),
                 day(newest(item)),
                 format!("{}{journal}", item.title),
-            ]
+            ]);
+            line
         };
         let lines: Vec<Vec<String>> = rows.iter().map(line).collect();
         write!(ctx.out, "{}", table(&lines))?;
@@ -116,8 +126,21 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
     let feeds = ctx.open()?;
     let item = find_item(&feeds, &a.id)?;
     let covered: Vec<&Item> = feeds.covered_by(&item.id);
+    let like = feeds.like(item);
+    // the nearest papers of the library: cosine, key, title
+    let nearest: Vec<(f64, &str, &str)> = match (&like, &ctx.library) {
+        (Some(like), Some((library, _))) => (like.nearest.iter())
+            .filter_map(|(id, cosine)| library.get(id).map(|e| (*cosine, &*e.key, &*e.title)))
+            .collect(),
+        _ => Vec::new(),
+    };
     if a.json {
         let mut json = item_json(&feeds, item);
+        if let Some(like) = &like {
+            let near = |&(cosine, key, title): &(f64, &str, &str)| json!({"key": key, "title": title, "cosine": cosine});
+            let nearest: Vec<Value> = nearest.iter().map(near).collect();
+            json["like"] = json!({"score": like.score, "nearest": nearest});
+        }
         let by = |i: &&Item| json!({"id": i.id, "title": i.title, "kind": kind_name(i.kind)});
         json["covered_by"] = covered.iter().map(by).collect();
         let at = feeds.mark(&item.id).map(|m| m.at);
@@ -143,6 +166,11 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
             format!("{}{since}", triage_name(feeds.triage(&item.id))),
         ),
         ("id", item.id.clone()),
+        (
+            "like",
+            like.as_ref()
+                .map_or(String::new(), |l| format!("{:.0}", l.score)),
+        ),
         ("doi", item.doi.clone().unwrap_or_default()),
         ("arxiv", item.arxiv.clone().unwrap_or_default()),
         ("url", item.url.clone().unwrap_or_default()),
@@ -186,6 +214,8 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
     section("papers", links.collect());
     let by = covered.iter().map(|i| format!("{} [{}]", i.title, i.id));
     section("covered by", by.collect());
+    let near = (nearest.iter()).map(|(cosine, key, title)| format!("{cosine:.2}  {title} [{key}]"));
+    section("like in the library", near.collect());
     let sources = item.sources.iter().map(|s| {
         let listed = if s.listed { "listed" } else { "not listed" };
         format!(

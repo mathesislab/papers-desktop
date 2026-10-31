@@ -660,6 +660,8 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   of a paper-feeder setup, the RSS and HTML digest: paper-feeder's job,
   which it replaces. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
   data folder) is the folder; not the app's while it runs, nothing locks it.
+  `--library <file.bib>` (repeated) indexes a library for `like:`, `--sort
+  like` and the nearest papers of `show`.
 - The app (`src-tauri/src/feeds.rs`, `src/lib/feeds/`): the tab, *In
   library* (core's `Identity`), the Add sheet, the settings.
 
@@ -783,14 +785,34 @@ text): an edited interest or an enriched abstract counts at once.
 dismiss). They act on the items a fetch brings, the first that matches
 deciding, never on an item with a triage.
 
+**Likeness** (*Like in your library*): how close an item is to the
+library. Core's `Likeness::build(docs)` indexes the papers (`Doc { id,
+title, abstract, keywords }`; `Likeness::of(&Library)`): the folded words
+of the search, without stopwords, numbers and words of fewer than three
+letters, a plural's `s` dropped; a word weighs `(1 + ln tf) · idf` (idf
+smoothed, `ln((1+N)/(1+df)) + 1`), a word of the title or a keyword counting
+twice; the vectors of length 1, in an inverted index (each word's papers and
+weights). `like(title, abstract) -> Like { score, nearest }`: the cosine of
+the item with each paper that shares a word with it (the words no paper has
+count in its length), `score` the mean of the best 5 (fewer in a smaller
+library) × 100, 0–100, `nearest` the best 3 ids and cosines. The feeds crate
+knows no .bib: the index is given to the handle, `Feeds::set_likeness(Option
+<Arc<Likeness>>)`, and computed when asked as the scores are: the number
+`like:` of the query (none without an index: `like:` then matches nothing),
+`Row.like`, `Sort::Like` (the most like first, then the newest),
+`Feeds::like(item)` for the nearest, and the rules at a fetch (`like:40-` →
+shortlist). A library of 2,353 papers (titles; one abstract) is indexed in
+5 ms (release); an item with an abstract is scored in about 16 µs, a view of
+5,000 items in about 80 ms.
+
 **The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
 `is:` (new or unread, seen, shortlisted, dismissed, added, editorial, and
 the app's, such as `inlibrary`), `src:` (a subscription's title or id),
-`prof:` (the interests whose `min_score` the item reaches), and the number
-`score:` (its best score); an item's record is its title, the family names
+`prof:` (the interests whose `min_score` the item reaches), and the numbers
+`score:` (its best score) and `like:` (its likeness, with an index); an item's record is its title, the family names
 of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
 `has:doi`. `Feeds::view` gives the rows a query and the kinds pass, sorted
-newest or by score, each with its scores, the terms that matched and its
+newest, by score or by likeness, each with its scores and likeness, the terms that matched and its
 title, authors and abstract marked (the query's words and the interests'
 terms), and the counts of the sidebar: as the library's, over every live
 item (not dismissed) whatever the query, by `is:`, kind, interest and

@@ -1,10 +1,11 @@
 //! The query language over items (facets, numbers, fields), the view
-//! (filtering, sorting, marks, counts), rules on new items, and retention.
+//! (filtering, sorting, marks, counts), rules on new items, the likeness to
+//! the library, and retention.
 
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
-use papers_core::{Matching, Span};
+use papers_core::{Doc, Likeness, Matching, Span};
 use papers_feeds::http::Recorded;
 use papers_feeds::{
     Access, Action, Feed, Feeds, Interest, ItemKind, Matcher, Reply, Rule, Sort, SourceKind,
@@ -415,6 +416,88 @@ fn rules_triage_the_new_items_only() {
     let reopened = clock.open(dir.path());
     assert_eq!(reopened.rules(), rules);
     assert_eq!(triage(&reopened, P2), Triage::Dismissed, "written");
+}
+
+/// An index of a library of a paper on Greenland's hysteresis, one on firn
+/// and one on songbirds.
+fn library() -> Arc<Likeness> {
+    let doc = |id: &str, title: &str| Doc {
+        id: id.to_string(),
+        title: title.to_string(),
+        ..Doc::default()
+    };
+    Arc::new(Likeness::build([
+        doc(
+            "hysteresis",
+            "Hysteresis and overshoot of the Greenland ice sheet",
+        ),
+        doc("firn", "Firn densification in a warmer climate"),
+        doc("songbirds", "Songbird migration in autumn"),
+    ]))
+}
+
+#[test]
+fn like_needs_the_index_of_the_library() {
+    let dir = tempfile::tempdir().unwrap();
+    let clock = Clock::new();
+    let mut feeds = feeds(dir.path(), &clock, Vec::new());
+    assert!(
+        titles(&feeds, "like:0-").is_empty(),
+        "no index: like: matches nothing"
+    );
+    assert!(
+        feeds
+            .view(&ViewRequest::default())
+            .rows
+            .iter()
+            .all(|r| r.like.is_none())
+    );
+    assert_eq!(feeds.like(&feeds.items()[0]), None);
+
+    feeds.set_likeness(Some(library()));
+    let j1 = feeds.item(&id_of(&feeds, J1.1)).unwrap();
+    let like = feeds.like(j1).unwrap();
+    assert_eq!(like.nearest[0].0, "hysteresis");
+    assert!(like.score > 20.0, "{like:?}");
+    assert_eq!(titles(&feeds, "like:20-"), [J1.1]);
+    assert_eq!(
+        titles(&feeds, "like:0-").len(),
+        5,
+        "every item has a likeness"
+    );
+    let view = feeds.view(&ViewRequest {
+        sort: Sort::Like,
+        ..ViewRequest::default()
+    });
+    assert_eq!(titles_of(&view)[..2], [J1.1, P1.1]);
+    assert_eq!(view.rows[0].like, Some(like.score));
+    let likes: Vec<f64> = view.rows.iter().map(|r| r.like.unwrap()).collect();
+    assert!(likes.is_sorted_by(|a, b| a >= b));
+
+    feeds.set_likeness(None);
+    assert!(titles(&feeds, "like:0-").is_empty());
+}
+
+#[test]
+fn rules_at_fetch_use_the_likeness() {
+    let dir = tempfile::tempdir().unwrap();
+    let clock = Clock::new();
+    let mut feeds = clock.open(dir.path());
+    feeds.set_likeness(Some(library()));
+    feeds
+        .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
+        .unwrap();
+    let rule = Rule {
+        when: "like:20-".to_string(),
+        then: Action::Shortlist,
+    };
+    feeds.set_rules(vec![rule]).unwrap();
+    let http = Recorded::new().reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2, J3])));
+    feeds.fetch(&http, &Access::default()).unwrap();
+    let triage = |e: E| feeds.triage(&id_of(&feeds, e.1));
+    assert_eq!(triage(J1), Triage::Shortlisted);
+    assert_eq!(triage(J2), Triage::New);
+    assert_eq!(triage(J3), Triage::New);
 }
 
 #[test]

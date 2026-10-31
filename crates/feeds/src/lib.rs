@@ -12,7 +12,9 @@
 //! paper as one item), and the papers behind posts found ([`Linked`]).
 //! [`Feeds`] keeps them in a folder of JSON files with their [`Triage`].
 //! [`Interest`]s score the items, as paper-feeder does; [`Rule`]s triage new
-//! items by a [`query`] (core's language over a `Record` of an item);
+//! items by a [`query`] (core's language over a `Record` of an item); the
+//! index of the library's papers, given to [`Feeds::set_likeness`], tells
+//! how like them an item is (`like:`);
 //! [`Feeds::view`] gives the items a query shows and the counts of the
 //! sidebar. The subscriptions go out and come in as OPML; [`suggested`]
 //! lists some to start with; [`pdf`] tells the free copy of a paper. Nothing
