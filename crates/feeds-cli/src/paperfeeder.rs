@@ -1,11 +1,13 @@
 //! `feeds import-paper-feeder`: a paper-feeder setup (`sources.yaml`, `scoring.yaml`) as
-//! subscriptions, the lookback and one interest. What has no equivalent here is skipped and
-//! reported: `always_include` and `score_boost` of a source, the `lookback_days` of a query.
+//! subscriptions, the lookback and one interest. The `score_boost` of a source is the boost of
+//! its subscription, its `always_include` a rule that shortlists its items; what has no
+//! equivalent here is skipped and reported: the `lookback_days` of a query.
 
 use std::path::Path;
 
 use papers_feeds::{
-    Error as FeedsError, Feed, Feeds, Interest, Lexicon, Matcher, SourceKind, Weighted,
+    Action, Error as FeedsError, Feed, Feeds, Interest, Lexicon, Matcher, Rule, SourceKind,
+    Subscription, Weighted,
 };
 use serde::Deserialize;
 
@@ -119,12 +121,15 @@ fn read<T: for<'de> Deserialize<'de> + Default>(path: &Path) -> Result<T> {
     Ok(parsed.unwrap_or_default())
 }
 
-/// What the sources hold that has no equivalent, by what: the names of the sources.
+/// What a source of `sources.yaml` says of its subscription, beside its feed.
 #[derive(Debug, Default)]
-struct Skipped {
-    always_include: Vec<String>,
-    score_boost: Vec<String>,
-    lookback_days: Vec<String>,
+struct Source {
+    /// the name shown in the report
+    name: String,
+    title: Option<String>,
+    journal: Option<String>,
+    always_include: bool,
+    score_boost: f64,
 }
 
 /// How the subscriptions went.
@@ -133,27 +138,50 @@ struct Subscribed {
     added: usize,
     already: usize,
     failed: Vec<String>,
+    /// the sources whose subscription got a boost, with it
+    boosted: Vec<String>,
+    /// the sources whose items a rule shortlists
+    always: Vec<String>,
+    /// the rules of `always`
+    rules: Vec<Rule>,
+}
+
+/// The query of the items of a subscription: `src:"title"`, by its id if it has no title (the
+/// language has no way to quote a quote).
+fn items_of(subscription: &Subscription) -> String {
+    let name = subscription.title.as_ref().unwrap_or(&subscription.id);
+    format!("src:\"{}\"", name.replace('"', ""))
 }
 
 impl Subscribed {
-    /// Subscribes to a feed, naming it; one that fails or is there already is counted.
+    /// Subscribes to a feed, naming it and setting its boost; one that fails or is there already
+    /// is counted (and left as it is).
     fn add(
         &mut self,
         feeds: &mut Feeds,
         feed: Feed,
         kind: SourceKind,
-        title: Option<String>,
-        journal: Option<String>,
+        source: Source,
     ) -> Result<()> {
         let shown = feed.to_string();
         match feeds.subscribe(feed, kind) {
             Ok(subscription) => {
                 self.added += 1;
-                if title.is_some() || journal.is_some() {
-                    feeds.edit_subscription(&subscription.id, |s| {
-                        s.title = title;
-                        s.journal = journal;
-                    })?;
+                let subscription = feeds.edit_subscription(&subscription.id, |s| {
+                    s.title = source.title;
+                    s.journal = source.journal;
+                    s.boost = source.score_boost;
+                })?;
+                if source.score_boost != 0.0 {
+                    let boost = source.score_boost;
+                    self.boosted.push(format!("{} ({boost})", source.name));
+                }
+                if source.always_include {
+                    self.always.push(source.name);
+                    self.rules.push(Rule {
+                        when: items_of(&subscription),
+                        then: Action::Shortlist,
+                    });
                 }
             }
             Err(FeedsError::Subscribed { .. }) => self.already += 1,
@@ -184,35 +212,20 @@ fn subscribe_all(
     feeds: &mut Feeds,
     sources: &Sources,
     via: IssnVia,
-    skipped: &mut Skipped,
+    lookbacks: &mut Vec<String>,
 ) -> Result<Subscribed> {
     let mut done = Subscribed::default();
-    let mut skip = |kind: &str, entry: Option<bool>, boost: Option<f64>, lookback: Option<u32>| {
-        let name = kind.to_string();
-        if entry == Some(true) {
-            skipped.always_include.push(name.clone());
-        }
-        if boost.is_some_and(|b| b != 0.0) {
-            skipped
-                .score_boost
-                .push(format!("{name} ({})", boost.unwrap_or_default()));
-        }
-        if lookback.is_some() {
-            skipped
-                .lookback_days
-                .push(format!("{name} ({} days)", lookback.unwrap_or_default()));
-        }
-    };
     for e in sources.rss.iter().flatten() {
-        skip(
-            &format!("rss:{}", e.name.as_deref().unwrap_or(&e.url)),
-            e.always_include,
-            e.score_boost,
-            None,
-        );
         let feed = Feed::Rss { url: e.url.clone() };
         let kind = guess_kind(&feed);
-        done.add(feeds, feed, kind, e.journal.clone(), e.journal.clone())?;
+        let source = Source {
+            name: format!("rss:{}", e.name.as_deref().unwrap_or(&e.url)),
+            title: e.journal.clone(),
+            journal: e.journal.clone(),
+            always_include: e.always_include == Some(true),
+            score_boost: e.score_boost.unwrap_or_default(),
+        };
+        done.add(feeds, feed, kind, source)?;
     }
     let openalex = sources.openalex.as_ref();
     for q in openalex
@@ -220,16 +233,21 @@ fn subscribe_all(
         .into_iter()
         .flatten()
     {
-        skip(
-            &format!("openalex:{}", q.name.as_deref().unwrap_or(&q.filter)),
-            q.always_include,
-            q.score_boost,
-            q.lookback_days,
-        );
+        let name = format!("openalex:{}", q.name.as_deref().unwrap_or(&q.filter));
+        if let Some(days) = q.lookback_days {
+            lookbacks.push(format!("{name} ({days} days)"));
+        }
         let feed = Feed::OpenAlex {
             filter: q.filter.clone(),
         };
-        done.add(feeds, feed, SourceKind::Journal, q.name.clone(), None)?;
+        let source = Source {
+            name,
+            title: q.name.clone(),
+            always_include: q.always_include == Some(true),
+            score_boost: q.score_boost.unwrap_or_default(),
+            ..Source::default()
+        };
+        done.add(feeds, feed, SourceKind::Journal, source)?;
     }
     let from_openalex = openalex
         .and_then(|o| o.issns.as_deref())
@@ -243,7 +261,7 @@ fn subscribe_all(
         .into_iter()
         .chain(issn_feeds(from_crossref, IssnVia::Crossref));
     for feed in issns {
-        done.add(feeds, feed, SourceKind::Journal, None, None)?;
+        done.add(feeds, feed, SourceKind::Journal, Source::default())?;
     }
     Ok(done)
 }
@@ -320,11 +338,20 @@ pub fn import(ctx: &mut Ctx, a: ImportArgs) -> Result<()> {
     let sources: Sources = read(&a.sources)?;
     let scoring: Scoring = read(&a.scoring)?;
     let mut feeds = ctx.open()?;
-    let mut skipped = Skipped::default();
-    let done = subscribe_all(&mut feeds, &sources, a.issn_via, &mut skipped)?;
+    let mut lookbacks = Vec::new();
+    let done = subscribe_all(&mut feeds, &sources, a.issn_via, &mut lookbacks)?;
     if let Some(days) = sources.lookback_days {
         feeds.set_lookback_days(days)?;
     }
+    let mut rules = feeds.rules().to_vec();
+    let new_rules: Vec<Rule> = done
+        .rules
+        .iter()
+        .filter(|r| !rules.contains(r))
+        .cloned()
+        .collect();
+    rules.extend(new_rules.iter().cloned());
+    feeds.set_rules(rules)?;
     let mut bad = Vec::new();
     let interest = lexicon(&scoring, &a.interest, &mut bad);
     let mut interests = feeds.interests().to_vec();
@@ -357,6 +384,16 @@ pub fn import(ctx: &mut Ctx, a: ImportArgs) -> Result<()> {
         "interest {}: {terms} terms, {vetoes} vetoes, from score {min}, title boost {boost}{replaced}",
         a.interest
     )?;
+    if !done.boosted.is_empty() {
+        writeln!(ctx.out, "boost: {}", done.boosted.join(", "))?;
+    }
+    if !done.always.is_empty() {
+        let (n, names) = (new_rules.len(), done.always.join(", "));
+        writeln!(
+            ctx.out,
+            "rules: {n} added, shortlisting the items of {names} (always_include)"
+        )?;
+    }
     if let Some(mailto) = &sources.mailto {
         writeln!(
             ctx.out,
@@ -366,21 +403,11 @@ pub fn import(ctx: &mut Ctx, a: ImportArgs) -> Result<()> {
     for message in done.failed.iter().chain(&bad) {
         warn(ctx, format!("skipped {message}"))?;
     }
-    let unsupported = [
-        ("always_include", &skipped.always_include),
-        ("score_boost", &skipped.score_boost),
-        ("lookback_days of a query", &skipped.lookback_days),
-    ];
-    for (what, names) in unsupported {
-        if !names.is_empty() {
-            warn(
-                ctx,
-                format!(
-                    "{what} has no equivalent yet, skipped for {}",
-                    names.join(", ")
-                ),
-            )?;
-        }
+    if !lookbacks.is_empty() {
+        let names = lookbacks.join(", ");
+        let message =
+            format!("lookback_days of a query has no equivalent yet, skipped for {names}");
+        warn(ctx, message)?;
     }
     let unused = [
         ("window_days", sources.window_days.is_some()),

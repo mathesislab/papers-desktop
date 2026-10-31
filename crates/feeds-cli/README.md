@@ -43,11 +43,14 @@ writes over the other.
 `crossref:` ISSNs (the ISSNs under `openalex:` are Crossref sweeps, which need no key, or with
 `--issn-via openalex` the filter `primary_location.source.issn:<issn>`); sets the lookback; and
 turns the lexicon into one interest (`publish_min_score` is its minimum, `title_boost` the
-boost). Importing again changes nothing but the interest. Warnings on the error stream list what
-has no equivalent yet and is skipped: `always_include` and `score_boost` of a source, the
-`lookback_days` of a query, a pattern that is no Rust regex (look-around), and the settings not
-used (`window_days`, `retention_days`, `render`, `serendipity_count`, `llm_rerank`). The `mailto`
-is not stored: set `FEEDS_MAILTO`.
+boost). The `score_boost` of a source is the boost of its subscription; its `always_include` is a
+rule that shortlists the new items of the subscription (`src:"<its title>"` → shortlist, by its id
+if it has no title), added after the rules there are. Unlike `always_include`, the rule does not
+yield to the exclusions of the interest. Importing again changes nothing but the interest: the
+boost and rule of a subscription there already stay as they are. Warnings on the error stream
+list what has no equivalent yet and is skipped: the `lookback_days` of a query, a pattern that is
+no Rust regex (look-around), and the settings not used (`window_days`, `retention_days`,
+`render`, `serendipity_count`, `llm_rerank`). The `mailto` is not stored: set `FEEDS_MAILTO`.
 
 `feeds digest` is `render.py`: the RSS has the DOI (else the link) as guid, the authors as
 `dc:creator`, the journal as category, and "journal — matched: terms" before the abstract; the
