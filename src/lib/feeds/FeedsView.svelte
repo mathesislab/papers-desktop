@@ -57,6 +57,7 @@
     newAbove,
     newOlderThan,
     nextAfter,
+    snoozeUntil,
     pageOf,
     rangeOf,
     stale,
@@ -139,6 +140,13 @@
   const pdfs = new Map<string, Promise<api.PdfStatus>>();
   /** above this many, Mark read asks first */
   const MARK_ASK = 50;
+  /** the snoozes of Later ▾ and the row menu: till the start of the day */
+  const SNOOZES: [string, number][] = [
+    ["1 Day", 1],
+    ["3 Days", 3],
+    ["1 Week", 7],
+    ["1 Month", 30],
+  ];
   /** the items whose abstract was looked up here, once each */
   const lookedUp = new Set<string>();
   /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
@@ -286,7 +294,11 @@
   // the item in focus, if new, is seen once it stays
   $effect(() => {
     const id = focus;
-    untrack(() => dwell.show(id, id !== null && byId.get(id)?.triage === "new"));
+    // a reminder stays new until marked read
+    untrack(() => {
+      const row = id === null ? undefined : byId.get(id);
+      dwell.show(id, row?.triage === "new" && !row.reminder);
+    });
   });
 
   /** The details of an item: those shown, else asked. */
@@ -393,6 +405,49 @@
     if (ids.length > MARK_ASK && !(await ask(question, { title: "Mark read", okLabel: "Mark read", cancelLabel: "Cancel" }))) return;
     setTo(ids, "seen");
     say(`Marked ${ids.length} as read`);
+  }
+
+  /** U: kept unread (a reminder due now, first in the list); the reminders of items all kept so, cleared. */
+  function keepUnread(ids = targets()) {
+    const due = ids.every((id) => byId.get(id)?.reminder === "due");
+    if (due) return setTo(ids, "new");
+    remindOf(ids, null);
+  }
+
+  /** Items new again, to be reminded of in some days (snoozed till then), else now (kept unread). */
+  async function remindOf(ids: string[], days: number | null) {
+    if (!ids.length) return;
+    const until = days === null ? null : snoozeUntil(days, new Date());
+    const set = new Set(ids);
+    for (const id of ids) sticky.add(id);
+    rows = rows.map((r) =>
+      set.has(r.id) ? { ...r, triage: "new", reminder: until ? "snoozed" : "due", remind: until?.toISOString() ?? null } : r,
+    );
+    try {
+      await api.remind(ids, until?.toISOString() ?? null);
+      const n = ids.length === 1 ? "" : ` ${ids.length}`;
+      say(until ? `Snoozed${n} until ${until.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}` : `Kept${n} unread`);
+    } catch (e) {
+      say(String(e));
+    }
+    await load(true);
+  }
+
+  /** Z, Later ▾: kept unread, snoozed for some days, or the reminder cleared. */
+  async function laterMenu(ids = targets()) {
+    if (!ids.length) return;
+    const item = (text: string, action: () => void, enabled = true) => MenuItem.new({ text, action, enabled });
+    const reminded = ids.some((id) => byId.get(id)?.reminder);
+    const menu = await Menu.new({
+      items: [
+        await item("Keep Unread", () => remindOf(ids, null)),
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        ...(await Promise.all(SNOOZES.map(([text, days]) => item(`Snooze ${text}`, () => remindOf(ids, days))))),
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        await item("Clear Reminder", () => setTo(ids, "new"), reminded),
+      ],
+    });
+    await menu.popup();
   }
 
   /** The selection bar: the rows selected, in the order of the list. */
@@ -529,6 +584,12 @@
         await item(every("shortlisted") ? "Unstar" : "Star", () => triage("shortlist", ids)),
         await item(items.some((r) => r.triage === "new") ? "Mark as Seen" : "Mark as New", () => triage("read", ids)),
         await item(every("dismissed") ? "Restore" : "Dismiss", () => triage("dismiss", ids)),
+        await item("Keep Unread", () => remindOf(ids, null)),
+        await Submenu.new({
+          text: "Snooze",
+          items: await Promise.all(SNOOZES.map(([text, days]) => item(text, () => remindOf(ids, days)))),
+        }),
+        await item("Clear Reminder", () => setTo(ids, "new"), items.some((r) => r.reminder)),
         await separator(),
         await item("Mark All Above as Seen", () => markAbove(id), newAbove(rows, id).length > 0),
         ...(sources.length ? [await separator(), ...(await Promise.all(sources.map(kindOf)))] : []),
@@ -573,8 +634,8 @@
 
   /** A key of the window while the tab is in front (none while a sheet is open): ⌘R fetches, ⌘↩ starts the Review
    *  (which then has the keys); the arrows, j and k, the page keys, Home and End move (⇧ extends the selection with
-   *  the arrows); s, x, m, o, a, f act on the selection; ⇧Space marks all above as seen; / goes to the search, Esc
-   *  leaves it. */
+   *  the arrows); s, x, m, u (keep unread), z (later), o, a, f act on the selection; ⇧Space marks all above as
+   *  seen; Enter reads the item in place of the list, Esc goes back; / goes to the search, Esc leaves it. */
   export function key(e: KeyboardEvent) {
     if (modalOpen()) return;
     const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
@@ -629,6 +690,10 @@
         return act(() => addItems(targets(), true));
       case "f":
         return act(() => find());
+      case "u":
+        return act(() => keepUnread());
+      case "z":
+        return act(() => laterMenu());
     }
   }
 
@@ -790,6 +855,7 @@
               <button onclick={() => setTo(chosen().filter((r) => r.triage === "seen").map((r) => r.id), "new")}>Mark unread</button>
               <button onclick={() => triage("shortlist", chosen().map((r) => r.id))}>★ Star</button>
               <button onclick={() => triage("dismiss", chosen().map((r) => r.id))}>Dismiss</button>
+              <button onclick={() => laterMenu(chosen().map((r) => r.id))}>⏰ Later ▾</button>
               <span class="spacer"></span>
               <button class="plain" onclick={() => (selected = new Set(focus ? [focus] : []))}>Clear selection</button>
             </div>
@@ -893,6 +959,7 @@
     onshortlistlink={(item) => triage("shortlist", [item])}
     onopen={() => openItems(targets().length ? targets() : [d.id])}
     onfind={() => find(d.id)}
+    onlater={() => laterMenu(targets().length ? targets() : [d.id])}
     onitem={showItem}
     {onentry}
   />

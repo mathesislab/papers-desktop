@@ -301,9 +301,41 @@ impl Triage {
 pub struct Mark {
     pub triage: Triage,
     pub at: DateTime<Utc>,
+    /// a new item to be reminded of then (snoozed till then, due after); any
+    /// other triage set clears it
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remind: Option<DateTime<Utc>>,
+}
+
+/// Where an item to be reminded of is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Reminder {
+    /// out of the unread items until its day (`is:snoozed`)
+    Snoozed,
+    /// new, first in the list, and not seen by being shown (`is:reminder`)
+    Due,
 }
 
 impl Mark {
+    /// A triage set now, no reminder.
+    pub fn new(triage: Triage, at: DateTime<Utc>) -> Mark {
+        Mark {
+            triage,
+            at,
+            remind: None,
+        }
+    }
+
+    /// Where its reminder is at `now`, if it has one.
+    pub fn reminder(&self, now: DateTime<Utc>) -> Option<Reminder> {
+        let remind = self.remind.filter(|_| self.triage == Triage::New)?;
+        Some(match remind > now {
+            true => Reminder::Snoozed,
+            false => Reminder::Due,
+        })
+    }
+
     /// The mark of two merged items: the strongest decision, the latest if equal.
     pub(crate) fn stronger(self, other: Mark) -> Mark {
         match self.triage.weight().cmp(&other.triage.weight()) {

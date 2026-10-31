@@ -40,6 +40,9 @@ export interface FeedRow {
   /** how like the library's papers it is, 0–100; null before the library is indexed */
   like: number | null;
   triage: Triage;
+  /** snoozed (out of Unread till `remind`), or due (new again, first in the list, not seen by being shown) */
+  reminder: Reminder | null;
+  remind: string | null;
   /** the ids of the library entries of the same paper (DOI, or title and year) */
   inLibrary: string[];
   /** a preprint, or a paper whose preprint is known */
@@ -290,6 +293,11 @@ export interface Guess {
 }
 /** The kind of the feed at an address, guessed from its items (DOIs, preprints) and its title (OpenAlex). */
 export const guessKind = (url: string) => invoke<Guess>("feeds_guess_kind", { url });
+
+/** Where an item to be reminded of is. */
+export type Reminder = "snoozed" | "due";
+/** Items new again, to be reminded of `until` (snoozed till then), else now (kept unread). */
+export const remind = (ids: string[], until: string | null) => invoke<void>("feeds_remind", { ids, until });
 
 /** The abstract of an item looked up now; whether it asked (the feeds then change). */
 export const lookUp = (id: string) => invoke<boolean>("feeds_look_up", { id });

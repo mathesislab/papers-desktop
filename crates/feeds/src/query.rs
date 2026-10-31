@@ -1,6 +1,7 @@
 //! The query language over items: the library's (core's), with the facets
 //! `kind:` (paper, preprint, news, blog), `is:` (new or unread, seen,
-//! shortlisted, dismissed, added, editorial, and the caller's), `src:` (a
+//! shortlisted, dismissed, added, editorial, snoozed (not new till its day),
+//! reminder (new again, due), and the caller's), `src:` (a
 //! subscription's title or id), `prof:` (an interest the item reaches the
 //! min_score of), and the numbers `score:` (its best score in an interest)
 //! and `like:` (how like the library it is, 0–100: none without the index of
@@ -10,7 +11,7 @@ use papers_core::{Like, Query, Record, Schema};
 
 use crate::feeds::Feeds;
 use crate::interest::Score;
-use crate::model::{Item, ItemKind, Triage};
+use crate::model::{Item, ItemKind, Reminder, Triage};
 use crate::normalize::family_name;
 
 /// The facets of an item.
@@ -90,7 +91,14 @@ impl Feeds {
     pub(crate) fn seen(&self, item: &Item, extra: Vec<String>) -> Seen {
         let scores = self.scores(item);
         let triage = self.triage(&item.id);
-        let mut is = vec![triage_name(triage).to_string()];
+        let reminder = self.reminder(&item.id);
+        let mut is = vec![match reminder {
+            Some(Reminder::Snoozed) => "snoozed".to_string(),
+            _ => triage_name(triage).to_string(),
+        }];
+        if reminder == Some(Reminder::Due) {
+            is.push("reminder".to_string());
+        }
         if item.editorial {
             is.push("editorial".to_string());
         }
@@ -109,7 +117,7 @@ impl Feeds {
         let src: Vec<&str> = sources.iter().map(String::as_str).chain(titles).collect();
         let prof = scores.iter().filter(|s| s.reached).map(|s| &s.interest);
         let summary = item.summary.as_deref().unwrap_or("");
-        let unread = (triage == Triage::New).then_some("unread");
+        let unread = (is[0] == "new").then_some("unread");
         let has = [
             ("abstract", !summary.is_empty()),
             ("doi", item.doi.is_some()),

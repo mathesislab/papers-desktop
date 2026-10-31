@@ -40,6 +40,7 @@ import {
   newAbove,
   newOlderThan,
   nextAfter,
+  snoozeUntil,
   rangeOf,
   stale,
   toggled,
@@ -134,10 +135,11 @@ test("the sorts in turn, and a likeness as the list shows it", () => {
 });
 
 test("the counts of the views, and the sources in their groups", () => {
-  assert.deepEqual(shelfCounts(null), { unread: 0, shortlist: 0, added: 0, all: 0 });
-  assert.deepEqual(shelfCounts({ all: 9, is: { new: 4, shortlisted: 2 }, kinds: {}, interests: {}, sources: {} }), {
+  assert.deepEqual(shelfCounts(null), { unread: 0, shortlist: 0, snoozed: 0, added: 0, all: 0 });
+  assert.deepEqual(shelfCounts({ all: 9, is: { new: 4, shortlisted: 2, snoozed: 1 }, kinds: {}, interests: {}, sources: {} }), {
     unread: 4,
     shortlist: 2,
+    snoozed: 1,
     added: 0,
     all: 9,
   });
@@ -256,8 +258,10 @@ test("mark all above, ranges, the next after some go", () => {
     { id: "b", triage: "new" as Triage, date: "2026-10-20T00:00:00Z" },
     { id: "c", triage: "seen" as Triage, date: "2026-10-20T00:00:00Z" },
     { id: "d", triage: "new" as Triage, date: null },
+    { id: "e", triage: "new" as Triage, reminder: "snoozed" as const, date: "2026-10-20T00:00:00Z" },
   ];
-  assert.deepEqual(newOlderThan(dated, 3, Date.parse("2026-10-31T00:00:00Z")), ["b"]);
+  assert.deepEqual(newOlderThan(dated, 3, Date.parse("2026-10-31T00:00:00Z")), ["b"], "a snoozed item is not unread");
+  assert.deepEqual(snoozeUntil(3, new Date(2026, 9, 31, 15, 30)), new Date(2026, 10, 3), "the start of the day");
   assert.deepEqual(rangeOf(["a", "b", "c", "d"], "c", "a"), ["a", "b", "c"]);
   assert.deepEqual(rangeOf(["a", "b"], "z", "b"), ["b"]);
   assert.equal(nextAfter(["a", "b", "c", "d"], new Set(["b", "c"])), "d");
@@ -277,6 +281,8 @@ const row = (id: string, triage: Triage = "new"): FeedRow => ({
   interests: [],
   like: null,
   triage,
+  reminder: null,
+  remind: null,
   inLibrary: [],
   hasVersions: false,
   coveredBy: 0,

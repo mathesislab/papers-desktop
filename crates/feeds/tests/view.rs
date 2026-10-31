@@ -8,8 +8,8 @@ use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use papers_core::{Doc, Likeness, Matching, Span};
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Action, Feed, Feeds, Interest, ItemKind, Matcher, Reply, Rule, Sort, SourceKind,
-    Triage, View, ViewRequest, Weighted,
+    Access, Action, Feed, Feeds, Interest, ItemKind, Matcher, Reminder, Reply, Rule, Sort,
+    SourceKind, Triage, View, ViewRequest, Weighted,
 };
 
 const TC: &str = "https://example.org/tc.atom";
@@ -562,4 +562,41 @@ fn old_items_go_on_opening_and_fetching() {
     assert!(!items.contains(J3.1), "written");
     feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(left(&feeds), [J1.1, J2.1, N1.1], "no longer listed");
+}
+
+#[test]
+fn snoozed_out_of_the_unread_till_its_day_then_first() {
+    let dir = tempfile::tempdir().unwrap();
+    let clock = Clock::new();
+    let mut feeds = feeds(dir.path(), &clock, Vec::new());
+    let (j1, j2, j3, p1, n1) = (J1.1, J2.1, J3.1, P1.1, N1.1);
+    let j3_id = id_of(&feeds, j3);
+    feeds
+        .remind(&j3_id, clock.now() + TimeDelta::days(3))
+        .unwrap();
+    assert_eq!(feeds.reminder(&j3_id), Some(Reminder::Snoozed));
+    assert_eq!(
+        titles(&feeds, "is:new"),
+        [n1, j1, p1, j2],
+        "out of the unread"
+    );
+    assert_eq!(titles(&feeds, "is:snoozed"), [j3]);
+    let counts = feeds.view(&ViewRequest::default()).counts;
+    assert_eq!(
+        (counts.is.get("snoozed"), counts.is.get("new")),
+        (Some(&1), Some(&4))
+    );
+
+    clock.advance(3);
+    assert_eq!(feeds.reminder(&j3_id), Some(Reminder::Due));
+    assert_eq!(titles(&feeds, "is:new"), [j3, n1, j1, p1, j2], "due: first");
+    assert_eq!(titles(&feeds, "is:reminder"), [j3]);
+
+    // kept unread now: due at once; another triage clears it
+    let j1_id = id_of(&feeds, j1);
+    feeds.remind(&j1_id, clock.now()).unwrap();
+    assert_eq!(titles(&feeds, "is:reminder"), [j1, j3], "the newest first");
+    feeds.set_triage(&j3_id, Triage::Seen).unwrap();
+    assert_eq!(feeds.reminder(&j3_id), None);
+    assert_eq!(titles(&feeds, "is:reminder"), [j1]);
 }

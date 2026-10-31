@@ -13,7 +13,7 @@ use papers_core::{Like, Likeness};
 use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::interest::{self, Lexicon};
 use crate::merge::{Merger, refresh};
-use crate::model::{Entry, Feed, Item, Mark, SourceKind, Subscription, Triage};
+use crate::model::{Entry, Feed, Item, Mark, Reminder, SourceKind, Subscription, Triage};
 use crate::normalize::{is_attachment_doi, short_id};
 use crate::parse::{kind_of, parse};
 use crate::store::{
@@ -359,15 +359,32 @@ impl Feeds {
         let item = self
             .item(id)
             .ok_or_else(|| Error::NoItem { id: id.to_string() })?;
+        let mark = Mark::new(triage, (self.now)());
+        self.state.insert(item.id.clone(), mark);
+        store::write(&self.dir, STATE, &self.state)
+    }
+
+    /// An item, by its id or an alias, new and to be reminded of at `when`:
+    /// snoozed till then (now: kept unread, not seen by being shown).
+    pub fn remind(&mut self, id: &str, when: DateTime<Utc>) -> Result<()> {
+        let item = self
+            .item(id)
+            .ok_or_else(|| Error::NoItem { id: id.to_string() })?;
         let mark = Mark {
-            triage,
-            at: (self.now)(),
+            remind: Some(when),
+            ..Mark::new(Triage::New, (self.now)())
         };
         self.state.insert(item.id.clone(), mark);
         store::write(&self.dir, STATE, &self.state)
     }
 
-    /// The days an item no feed lists is kept, unless shortlisted or added.
+    /// Where the reminder of an item is now, if it has one.
+    pub fn reminder(&self, id: &str) -> Option<Reminder> {
+        self.mark(id).and_then(|m| m.reminder((self.now)()))
+    }
+
+    /// The days an item no feed lists is kept, unless shortlisted, added or to
+    /// be reminded of.
     pub fn keep_days(&self) -> u32 {
         self.config.keep_days
     }
@@ -397,8 +414,9 @@ impl Feeds {
         self.lookups.retain(|_, &mut at| at >= before);
         let state = &self.state;
         let old = |item: &Item| {
-            let triage = state.get(&item.id).map_or(Triage::New, |m| m.triage);
-            !triage.kept() && !item.listed() && item.first_seen() < before
+            let mark = state.get(&item.id);
+            let kept = mark.is_some_and(|m| m.triage.kept() || m.remind.is_some());
+            !kept && !item.listed() && item.first_seen() < before
         };
         let (dropped, kept): (Vec<Item>, Vec<Item>) = std::mem::take(&mut self.items.items)
             .into_iter()

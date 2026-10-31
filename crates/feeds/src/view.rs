@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::feeds::Feeds;
 use crate::interest::{Score, joined};
-use crate::model::{Item, ItemKind, Triage};
+use crate::model::{Item, ItemKind, Reminder, Triage};
 use crate::query::{Seen, best, live, parse};
 
 /// The order of the rows.
@@ -72,6 +72,8 @@ pub struct Row {
     pub authors: Vec<Vec<Span>>,
     /// the summary, marked as the title
     pub r#abstract: Vec<Span>,
+    /// snoozed, or due: first in the list
+    pub reminder: Option<Reminder>,
 }
 
 /// The live items (not dismissed) of each group of the sidebar; a value no
@@ -141,6 +143,8 @@ impl Feeds {
                 rows.sort_by(|a, b| like(&b.1).total_cmp(&like(&a.1)).then(b.0.cmp(&a.0)))
             }
         }
+        // the reminders due first, in that order
+        rows.sort_by_key(|(_, row)| row.reminder != Some(Reminder::Due));
         let rows = rows.into_iter().map(|(_, row)| row).collect();
         View { rows, counts }
     }
@@ -188,6 +192,7 @@ impl Feeds {
             title,
             authors,
             r#abstract,
+            reminder: self.reminder(&item.id),
         }
     }
 }

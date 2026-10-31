@@ -41,7 +41,7 @@ use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, Journal, Journals,
-    LOOKUP, Network, Outcome, Pdf, Rule, Score, Search, SiteFeed, Sort, SourceKind, Stage,
+    LOOKUP, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort, SourceKind, Stage,
     Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
@@ -101,6 +101,8 @@ struct Live {
 #[derive(Debug, Clone)]
 pub enum Change {
     Triage(Vec<String>, Triage),
+    /// new, to be reminded of then (snoozed till then)
+    Remind(Vec<String>, DateTime<Utc>),
     /// a feed, the kind of its items, the title it is given (else the feed's own)
     Subscribe(Feed, SourceKind, Option<String>),
     Unsubscribe(String),
@@ -136,6 +138,12 @@ impl Change {
             Change::Triage(ids, triage) => {
                 for id in ids {
                     feeds.set_triage(id, *triage)?;
+                }
+                Applied::Done
+            }
+            Change::Remind(ids, when) => {
+                for id in ids {
+                    feeds.remind(id, *when)?;
                 }
                 Applied::Done
             }
@@ -608,6 +616,10 @@ pub struct FeedRow {
     /// how like the library it is, 0–100; none before the library is indexed
     like: Option<f64>,
     triage: Triage,
+    /// snoozed, or due (first in the list)
+    reminder: Option<Reminder>,
+    /// when it is to be reminded of
+    remind: Option<DateTime<Utc>>,
     in_library: Vec<String>,
     has_versions: bool,
     covered_by: usize,
@@ -929,6 +941,8 @@ pub fn view(
                 .collect(),
             date: item.date,
             triage: feeds.triage(&item.id),
+            reminder: row.reminder,
+            remind: feeds.mark(&item.id).and_then(|m| m.remind),
             in_library: index.same(item),
             has_versions: item.kind == ItemKind::Preprint
                 || item.versions.iter().any(|v| v.stage == Stage::Preprint),
@@ -1177,6 +1191,17 @@ pub async fn feeds_item(app: AppHandle, id: String, query: String) -> Result<Fee
 #[tauri::command]
 pub async fn feeds_triage(app: AppHandle, ids: Vec<String>, triage: Triage) -> Result<(), String> {
     blocking(move || change(&app, Change::Triage(ids, triage)).map(drop)).await
+}
+
+/// Items new, to be reminded of `until` (snoozed till then), else now (kept unread).
+#[tauri::command]
+pub async fn feeds_remind(
+    app: AppHandle,
+    ids: Vec<String>,
+    until: Option<DateTime<Utc>>,
+) -> Result<(), String> {
+    let when = until.unwrap_or_else(Utc::now);
+    blocking(move || change(&app, Change::Remind(ids, when)).map(drop)).await
 }
 
 #[tauri::command]

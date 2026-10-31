@@ -61,7 +61,7 @@ pub use journals::{
 };
 pub use links::Found;
 pub use model::{
-    Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Source, SourceKind, Stage,
+    Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Reminder, Source, SourceKind, Stage,
     Subscription, Triage, Version, Via,
 };
 pub use opml::Outline;

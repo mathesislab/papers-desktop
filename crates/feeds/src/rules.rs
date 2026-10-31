@@ -77,7 +77,7 @@ impl Feeds {
         let at = (self.now)();
         for (id, action) in decided {
             let triage = action.triage();
-            self.state.insert(id, Mark { triage, at });
+            self.state.insert(id, Mark::new(triage, at));
         }
     }
 }

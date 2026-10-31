@@ -375,6 +375,10 @@
     border-color: #c2410c;
     color: #c2410c;
   }
+  .badge.remind {
+    border-color: #d9822b;
+    color: #d9822b;
+  }
   .badge.interest {
     border-color: var(--c, var(--border));
     color: var(--c, var(--muted));

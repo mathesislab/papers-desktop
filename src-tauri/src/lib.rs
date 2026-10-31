@@ -1114,6 +1114,7 @@ pub fn run() {
             feeds::feeds_triage,
             feeds::feeds_find_papers,
             feeds::feeds_look_up,
+            feeds::feeds_remind,
             feeds::feeds_guess_kind,
             feeds::feeds_pdf,
             feeds::feeds_subscriptions,

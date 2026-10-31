@@ -2,7 +2,7 @@
 // adds to the library, how old things are said to be. Pure functions, tested by scripts/feeds.test.ts (npm test).
 
 import { arxivDoi } from "../arxiv.ts";
-import type { FeedDetail, FeedRow, FetchSummary, Linked, Triage } from "./api.ts";
+import type { FeedDetail, FeedRow, FetchSummary, Linked, Reminder, Triage } from "./api.ts";
 
 /** the keys that change the triage of the items selected */
 export type TriageAction = "shortlist" | "dismiss" | "read";
@@ -31,16 +31,28 @@ export function toggled(items: { id: string; triage: Triage }[], action: TriageA
   }
 }
 
-/** Mark all above as seen: the new items before `focus` in the list (all of them when it is not in the list). */
-export function newAbove(rows: { id: string; triage: Triage }[], focus: string | null): string[] {
+/** A row unread: new, not snoozed. */
+export const unread = (r: { triage: Triage; reminder?: Reminder | null }) => r.triage === "new" && r.reminder !== "snoozed";
+
+/** Mark all above as seen: the unread items before `focus` in the list (all of them when it is not in the list). */
+export function newAbove(rows: { id: string; triage: Triage; reminder?: Reminder | null }[], focus: string | null): string[] {
   const at = focus === null ? -1 : rows.findIndex((r) => r.id === focus);
-  return rows.slice(0, at < 0 ? rows.length : at).filter((r) => r.triage === "new").map((r) => r.id);
+  return rows.slice(0, at < 0 ? rows.length : at).filter(unread).map((r) => r.id);
 }
 
-/** Mark read, older than: the new items dated more than some days before now (one without a date is not). */
-export function newOlderThan(rows: { id: string; triage: Triage; date: string | null }[], days: number, now: number): string[] {
+/** Mark read, older than: the unread items dated more than some days before now (one without a date is not). */
+export function newOlderThan(
+  rows: { id: string; triage: Triage; reminder?: Reminder | null; date: string | null }[],
+  days: number,
+  now: number,
+): string[] {
   const before = now - days * 86_400_000;
-  return rows.filter((r) => r.triage === "new" && r.date !== null && Date.parse(r.date) < before).map((r) => r.id);
+  return rows.filter((r) => unread(r) && r.date !== null && Date.parse(r.date) < before).map((r) => r.id);
+}
+
+/** Snoozed for some days: till the start of that day. */
+export function snoozeUntil(days: number, now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
 }
 
 /** The items from one to another, in the order of the list (one alone if either is not in it). */
@@ -132,8 +144,13 @@ export function fetchLine(last: FetchSummary | null, now = Date.now()): string {
 }
 
 /** The badges of a row, after its title. */
-export function badges(row: FeedRow): { text: string; kind: "lib" | "pre" | "news" | "link" | "interest" }[] {
+export function badges(row: FeedRow): { text: string; kind: "lib" | "pre" | "news" | "link" | "interest" | "remind" }[] {
   const list: ReturnType<typeof badges> = [];
+  if (row.reminder === "due") list.push({ text: "⏰", kind: "remind" });
+  else if (row.reminder === "snoozed" && row.remind) {
+    const day = new Date(row.remind).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    list.push({ text: `⏰ ${day}`, kind: "remind" });
+  }
   if (row.inLibrary.length) list.push({ text: "in library", kind: "lib" });
   if (row.kind === "preprint") list.push({ text: "preprint", kind: "pre" });
   else if (row.hasVersions && row.kind === "paper") list.push({ text: "has preprint", kind: "pre" });

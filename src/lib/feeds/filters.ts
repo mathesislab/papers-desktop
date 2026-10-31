@@ -19,7 +19,7 @@ import type {
 } from "./api.ts";
 
 /** the views of the sidebar: the items by their triage */
-export type Shelf = "unread" | "shortlist" | "added" | "all";
+export type Shelf = "unread" | "shortlist" | "snoozed" | "added" | "all";
 /** Papers | Posts | All, above the list: the kinds asked for */
 export type Segment = "papers" | "posts" | "all";
 
@@ -52,6 +52,7 @@ export const NO_FEED_FILTERS: FeedFilters = {
 export const SHELVES: { view: Shelf; name: string; term: string | null }[] = [
   { view: "unread", name: "Unread", term: "is:new" },
   { view: "shortlist", name: "Starred", term: "is:shortlisted" },
+  { view: "snoozed", name: "Snoozed", term: "is:snoozed" },
   { view: "added", name: "Added", term: "is:added" },
   { view: "all", name: "All", term: null },
 ];
@@ -283,7 +284,13 @@ export function withoutChip(f: FeedFilters, chip: FeedChip): FeedFilters {
 /** The number of items of each view of the sidebar. */
 export function shelfCounts(counts: FeedCounts | null): Record<Shelf, number> {
   const is = counts?.is ?? {};
-  return { unread: is.new ?? 0, shortlist: is.shortlisted ?? 0, added: is.added ?? 0, all: counts?.all ?? 0 };
+  return {
+    unread: is.new ?? 0,
+    shortlist: is.shortlisted ?? 0,
+    snoozed: is.snoozed ?? 0,
+    added: is.added ?? 0,
+    all: counts?.all ?? 0,
+  };
 }
 
 /** A group of the sources in the sidebar: the subscriptions of a kind, the sweeps of Crossref and OpenAlex apart. */
