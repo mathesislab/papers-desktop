@@ -1,7 +1,24 @@
+<script lang="ts" module>
+  /** a column of the list after its mark, which an edge of its header resizes */
+  export type FeedColumn = "score" | "similar" | "title" | "authors" | "journal" | "date" | "badges";
+
+  /** the widths of the columns at first, in pixels; the title's is its least (it takes the room left) */
+  export const FEED_COLUMNS: Record<FeedColumn, number> = {
+    score: 44,
+    similar: 58,
+    title: 240,
+    authors: 150,
+    journal: 150,
+    date: 52,
+    badges: 190,
+  };
+</script>
+
 <script lang="ts">
-  // The list of the Feeds tab: the items the filters select, best score, most like the library or newest first. Only the rows in view are
-  // drawn, as in the library's table. A new item's title is bold; one seen is muted. A click selects (⇧ a range,
-  // ⌘ one more), a double-click opens the item's page, a right-click its menu.
+  // The list of the Feeds tab: the items the filters select, best score, most similar to the library or newest
+  // first. Only the rows in view are drawn, as in the library's table, and an edge of a header resizes its column
+  // (the window's layout keeps the widths). A new item's title is bold; one seen is muted. A click selects (⇧ a
+  // range, ⌘ one more), a double-click opens the item's page, a right-click its menu.
 
   import Marked from "$lib/Marked.svelte";
   import type { FeedRow, ItemKind, Sort } from "./api";
@@ -12,8 +29,10 @@
     selected,
     focus,
     sort,
+    widths,
     colours,
     onsort,
+    onwidths,
     onselect,
     onopen,
     onmenu,
@@ -23,9 +42,11 @@
     /** the row the details show, and that the keys move from */
     focus: string | null;
     sort: Sort;
+    widths: Record<FeedColumn, number>;
     /** the colours of the interests */
     colours: Map<string, string>;
     onsort: (sort: Sort) => void;
+    onwidths: (widths: Record<FeedColumn, number>) => void;
     onselect: (id: string, e: MouseEvent) => void;
     onopen: (id: string) => void;
     /** right-click on a row: its context menu */
@@ -36,12 +57,19 @@
   /** rows drawn above and below the ones in view, for a smooth scroll */
   const EXTRA = 12;
   const KIND_MARK: Record<ItemKind, string> = { paper: "", preprint: "◐", news: "✦", blog: "✎" };
-  const TEMPLATE = "24px 44px 40px minmax(240px, 1fr) 150px 150px 52px 190px";
+  const MARK = 24;
+  const MIN_WIDTH = 30;
+  const ORDER: FeedColumn[] = ["score", "similar", "title", "authors", "journal", "date", "badges"];
 
   let body = $state<HTMLDivElement>();
   let scrollTop = $state(0);
   let height = $state(0);
   let now = $state(Date.now());
+
+  let template = $derived(
+    [`${MARK}px`, ...ORDER.map((c) => (c === "title" ? `minmax(${widths.title}px, 1fr)` : `${widths[c]}px`))].join(" "),
+  );
+  let minWidth = $derived(MARK + ORDER.reduce((sum, c) => sum + widths[c], 0));
 
   let first = $derived(Math.max(0, Math.floor(scrollTop / ROW) - EXTRA));
   let last = $derived(Math.min(rows.length, Math.ceil((scrollTop + height) / ROW) + EXTRA));
@@ -61,26 +89,56 @@
     else if (top + ROW > body.scrollTop + body.clientHeight) body.scrollTop = top + ROW - body.clientHeight;
   });
 
+  /** the edge of a header dragged: its column resized */
+  let resizing: { column: FeedColumn; x: number; width: number } | null = null;
+
+  function edgeDown(e: PointerEvent, column: FeedColumn) {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    resizing = { column, x: e.clientX, width: widths[column] };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function edgeMove(e: PointerEvent) {
+    if (!resizing) return;
+    const { column, x, width } = resizing;
+    onwidths({ ...widths, [column]: Math.max(MIN_WIDTH, Math.round(width + e.clientX - x)) });
+  }
+
   /** The family names of a row: three, then "et al." */
   const authorsOf = (row: FeedRow) => row.authors.slice(0, 3);
 </script>
 
 <div class="table" role="grid" aria-rowcount={rows.length}>
-  <div class="head row" role="row" style:grid-template-columns={TEMPLATE}>
+  <div class="head row" role="row" style:grid-template-columns={template} style:min-width="{minWidth}px">
     <span></span>
-    <button class="cell sort" class:sorted={sort === "score"} onclick={() => onsort("score")} title="Best score first">
-      Score{#if sort === "score"}<span class="arrow">▾</span>{/if}
-    </button>
-    <button class="cell sort" class:sorted={sort === "like"} onclick={() => onsort("like")} title="Most like the papers of your library first">
-      Like{#if sort === "like"}<span class="arrow">▾</span>{/if}
-    </button>
-    <span class="cell">Title</span>
-    <span class="cell">Authors</span>
-    <span class="cell">Journal / source</span>
-    <button class="cell sort" class:sorted={sort === "newest"} onclick={() => onsort("newest")} title="Newest first">
-      Date{#if sort === "newest"}<span class="arrow">▾</span>{/if}
-    </button>
-    <span class="cell"></span>
+    {#each ORDER as column (column)}
+      <div class="head-cell" role="columnheader">
+        {#if column === "score"}
+          <button class="cell sort" class:sorted={sort === "score"} onclick={() => onsort("score")} title="Best score first">
+            Score{#if sort === "score"}<span class="arrow">▾</span>{/if}
+          </button>
+        {:else if column === "similar"}
+          <button class="cell sort" class:sorted={sort === "like"} onclick={() => onsort("like")} title="Most similar to the papers of your library first">
+            Similar{#if sort === "like"}<span class="arrow">▾</span>{/if}
+          </button>
+        {:else if column === "date"}
+          <button class="cell sort" class:sorted={sort === "newest"} onclick={() => onsort("newest")} title="Newest first">
+            Date{#if sort === "newest"}<span class="arrow">▾</span>{/if}
+          </button>
+        {:else}
+          <span class="cell">{{ title: "Title", authors: "Authors", journal: "Journal / source", badges: "" }[column]}</span>
+        {/if}
+        <span
+          class="edge"
+          role="separator"
+          aria-orientation="vertical"
+          onpointerdown={(e) => edgeDown(e, column)}
+          onpointermove={edgeMove}
+          onpointerup={() => (resizing = null)}
+        ></span>
+      </div>
+    {/each}
   </div>
   <div class="body" bind:this={body} bind:clientHeight={height} onscroll={() => (scrollTop = body!.scrollTop)}>
     <div style:height="{rows.length * ROW}px" style:position="relative">
@@ -93,7 +151,8 @@
           tabindex="-1"
           aria-selected={selected.has(row.id)}
           style:top="{(first + i) * ROW}px"
-          style:grid-template-columns={TEMPLATE}
+          style:grid-template-columns={template}
+          style:min-width="{minWidth}px"
           onmousedown={(e) => onselect(row.id, e)}
           ondblclick={() => onopen(row.id)}
           oncontextmenu={(e) => {
@@ -105,7 +164,7 @@
             {row.triage === "shortlisted" ? "★" : row.triage === "added" ? "✓" : KIND_MARK[row.kind]}
           </span>
           <span class="score">{scoreText(row.score)}</span>
-          <span class="like muted" title="How like the papers of your library (0–100)">{likeText(row.like)}</span>
+          <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
           <span class="title"><Marked spans={row.title} /></span>
           <span class="muted">
             {#if row.authors.length}
@@ -139,7 +198,6 @@
     display: grid;
     align-items: center;
     height: 26px;
-    min-width: 900px;
   }
   .head {
     flex: none;
@@ -158,6 +216,32 @@
     font-size: 12px;
     font-weight: 500;
     white-space: nowrap;
+  }
+  .head-cell {
+    position: relative;
+    height: 100%;
+    min-width: 0;
+  }
+  .head-cell > .cell {
+    width: 100%;
+  }
+  .edge {
+    position: absolute;
+    top: 4px;
+    right: -3px;
+    bottom: 4px;
+    z-index: 1;
+    width: 6px;
+    cursor: col-resize;
+  }
+  .edge::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 2px;
+    width: 1px;
+    background: var(--line);
   }
   .cell.sorted {
     color: var(--fg);

@@ -745,8 +745,11 @@ among the same first author and year ±1; never a post with a paper). Its
 kind is the subscription's (journal, preprint server, news & press, blog),
 corrected per item. After a fetch, each paper's DOI is looked up once in
 Crossref (abstract, authors, relations), and in OpenAlex for an abstract
-Crossref lacks, if a key is set: those without an abstract or with a teaser
-(< 300 characters) first, 50 per fetch. A post links to its papers
+Crossref lacks (no key needed): those whose feed gave no abstract or a
+teaser (< 300 characters) first, 50 per fetch; the item the reader shows is
+looked up at once (`feeds_look_up`). The abstract looked up wins over the
+feed's text (a teaser, a plain-language summary); an issue line ("Science,
+Volume 394, Issue 6823, Page 556-561, October 2026.") is no abstract. A post links to its papers
 (`links: [Linked { doi, confidence: high|low, via: feed|page|search }]`): a
 labelled block of the feed or of its page first (Futurity "Original Study
 DOI", ScienceDaily "Journal Reference", phys.org "More information", Eos's
@@ -813,15 +816,19 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   details were not read. `⇧Space` (and the row menu's *Mark All Above as
   Seen*) marks the new items above it seen, for titles skimmed. Opening an
   item marks it seen.
-- *Details*: a paper's abstract marked by the query and the interests (from
-  Crossref or OpenAlex when the feed had none), *Why it is here* (each
-  interest's score and terms), *Like in your library* (the likeness and the
-  3 nearest papers of the library, each with its authors, year, journal and
-  cosine, shown in the Library tab on a click), its free PDF (`pdfStatus`, asked 300 ms after
-  it is shown, once per item), versions (*preprint in library → Add would
-  replace it*), *Covered by*, *Seen in*. A post's text, then its linked
-  papers as cards (Add by the DOI, Shortlist, Show paper), *Find linked
-  paper* (`findPapers`).
+- *Details*, to read: the buttons (*Open* in the feeds' green), the title,
+  authors, journal and date, then a paper's abstract marked by the query and
+  the interests (*Summary from the feed* until Crossref or OpenAlex gives
+  one; looked up 300 ms after it is shown, once per item), *Why it is here*
+  (each interest's score and terms), its free PDF (`pdfStatus`, asked 300 ms
+  after it is shown, once per item), versions (*preprint in library → Add
+  would replace it*), *Covered by*, *Seen in*, and last, set apart and
+  quieter, *Similar in your library* (the likeness and the 3 nearest papers
+  of the library, each with its authors, year, journal and cosine, shown in
+  the Library tab on a click). A post's text, then its linked papers as
+  cards (Add by the DOI, Shortlist, Show paper), *Find linked paper*
+  (`findPapers`). The list's columns are resized by their headers' edges
+  (the window's layout keeps the widths).
 - *Add*: the library's Add sheet, opened over the Feeds tab with the item's
   DOI (an arXiv id as its DataCite DOI, `10.48550/arXiv.…`) fetched at once
   (`initial`), its free PDF looked for unless added without one. After
@@ -837,7 +844,7 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   begins, by score, one item at a time over the list and the details, with
   a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
   without PDF, `o` open, `l` later (stays shortlisted), `x` dismiss, `j`/`k`,
-  `Esc` leaves. The facts are the details' (`Facts`), *Like in your
+  `Esc` leaves. The facts are the details' (`Facts`), *Similar in your
   library* among them.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN, an OpenAlex
   filter or *Words*, with the kind of its items (the user's choice, Journal
@@ -919,7 +926,7 @@ NAME` on `list` (its sort unless `--sort`) and `digest` (no default
 dismiss). They act on the items a fetch brings, the first that matches
 deciding, never on an item with a triage.
 
-**Likeness** (*Like in your library*): how close an item is to the
+**Likeness** (*Similar in your library*): how close an item is to the
 library. Core's `Likeness::build(docs)` indexes the papers (`Doc { id,
 title, abstract, keywords }`; `Likeness::of(&Library)`): the folded words
 of the search, without stopwords, numbers and words of fewer than three
@@ -1041,7 +1048,7 @@ given twice; a change of the journal, as the others); the events
 command. *In library*: a row's and the details' library entries of the same
 paper (core's `Identity`: the DOI, or the title and year; the library
 indexed once per call), `versionInLibrary` those of another version's DOI;
-`is:inlibrary` in the query and the counts. *Like in your library*: the
+`is:inlibrary` in the query and the counts. *Similar in your library*: the
 index of the library's papers (`Likeness::of`, every .bib file of the
 library) is built on a thread of its own after every read of the library
 (`load`: at the start, when a .bib file changes, after a write), given to
@@ -1071,7 +1078,7 @@ one paper at a time, when asked.
 the main window as `LibraryView` under a tab bar; feeds: items, parsing,
 merging, store; feeds: sweeps, abstracts, the paper of a post; feeds:
 interests, rules, scores; feeds-cli; the app's commands and settings; the
-Feeds tab; Review; *Like in your library* (core's index; `like:`, the sort,
+Feeds tab; Review; *Similar in your library* (core's index; `like:`, the sort,
 `--library`; the app and the tab).
 
 ## Later, optional: Spotlight add-on

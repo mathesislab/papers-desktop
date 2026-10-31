@@ -1,8 +1,8 @@
 <script lang="ts">
   // What tells whether a paper of the feeds is worth adding, in the details and in the Review: why it is here (the
-  // interests and the terms that matched), the papers of the library most like it (each shown in the Library tab on
-  // a click), its free PDF (looked up a moment after it is shown, once per item), its versions, the posts that cover
-  // it, where it was seen.
+  // interests and the terms that matched), its free PDF (looked up a moment after it is shown, once per item), its
+  // versions, the posts that cover it, where it was seen, and last, set apart and quieter than what is read, the
+  // papers of the library similar to it (each shown in the Library tab on a click).
 
   import type { FeedDetail, PdfStatus } from "./api";
 
@@ -68,18 +68,6 @@
   </section>
 {/if}
 
-{#if detail.nearest.length}
-  <section>
-    <h5>Like in your library{detail.like !== null ? ` · ${Math.round(detail.like)}` : ""}</h5>
-    {#each detail.nearest as near (near.id)}
-      <p>
-        <button class="link plain" title="Show it in the library ({near.key})" onclick={() => onentry(near.id)}>{near.title}</button>
-        <span class="muted">{near.subtitle} · {near.cosine.toFixed(2)}</span>
-      </p>
-    {/each}
-  </section>
-{/if}
-
 {#if paper && detail.doi}
   <section>
     <h5>PDF</h5>
@@ -134,6 +122,18 @@
   </section>
 {/if}
 
+{#if detail.nearest.length}
+  <section class="similar">
+    <h5>Similar in your library{detail.like !== null ? ` · ${Math.round(detail.like)}` : ""}</h5>
+    {#each detail.nearest as near (near.id)}
+      <p>
+        <button class="link plain" title="Show it in the library ({near.key})" onclick={() => onentry(near.id)}>{near.title}</button>
+        <span class="muted">{near.subtitle} · {near.cosine.toFixed(2)}</span>
+      </p>
+    {/each}
+  </section>
+{/if}
+
 <style>
   section {
     padding-top: 9px;
@@ -151,6 +151,18 @@
     overflow-wrap: anywhere;
   }
   .muted {
+    color: var(--muted);
+  }
+  /* set apart, and quieter than the abstract */
+  .similar {
+    margin-top: 4px;
+    padding: 8px 10px;
+    border-top: none;
+    border-radius: 8px;
+    background: var(--sidebar);
+    font-size: 11.5px;
+  }
+  .similar button.link.plain {
     color: var(--muted);
   }
   .dot {

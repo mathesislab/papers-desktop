@@ -89,7 +89,7 @@ const text = (v: unknown): v is string => typeof v === "string";
 /** The orders of the list, in the order the count above it goes through them. */
 export const SORTS: { sort: Sort; text: string }[] = [
   { sort: "score", text: "best score first" },
-  { sort: "like", text: "most like the library first" },
+  { sort: "like", text: "most similar to the library first" },
   { sort: "newest", text: "newest first" },
 ];
 

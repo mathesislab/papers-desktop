@@ -210,6 +210,7 @@
     bind:this={feeds}
     {tabs}
     bind:filters={layout.feeds}
+    bind:columns={layout.feedColumns}
     bind:sidebar={layout.sidebar}
     bind:details={layout.details}
     showSidebar={layout.showSidebar}

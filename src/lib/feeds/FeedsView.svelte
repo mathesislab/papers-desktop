@@ -23,7 +23,7 @@
   import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo, Triage } from "./api";
   import FeedDetails from "./FeedDetails.svelte";
   import FeedsSidebar from "./FeedsSidebar.svelte";
-  import FeedTable from "./FeedTable.svelte";
+  import FeedTable, { type FeedColumn } from "./FeedTable.svelte";
   import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
@@ -64,6 +64,7 @@
   let {
     tabs,
     filters = $bindable(),
+    columns = $bindable(),
     sidebar = $bindable(),
     details = $bindable(),
     showSidebar,
@@ -75,6 +76,8 @@
     tabs: Snippet;
     /** the choices of the tab, its search and sort: the window's layout keeps them */
     filters: FeedFilters;
+    /** the widths of the list's columns: the window's layout keeps them */
+    columns: Record<FeedColumn, number>;
     /** the widths of the side panes and whether they show: the window's, as in the library */
     sidebar: number;
     details: number;
@@ -126,6 +129,10 @@
   const sticky = new Set<string>();
   /** the free PDFs asked for, by item */
   const pdfs = new Map<string, Promise<api.PdfStatus>>();
+  /** the items whose abstract was looked up here, once each */
+  const lookedUp = new Set<string>();
+  /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
+  const LOOKUP_DELAY = 300;
 
   let byId = $derived(new Map(rows.map((r) => [r.id, r])));
   let request = $derived(requestOf(filters));
@@ -249,6 +256,17 @@
     return () => {
       live = false;
     };
+  });
+
+  // the abstract of the item shown, looked up if its lookups may still find it (the feeds then change)
+  $effect(() => {
+    const id = detail?.abstractPending ? detail.id : null;
+    if (!id || lookedUp.has(id)) return;
+    const timer = setTimeout(() => {
+      lookedUp.add(id);
+      api.lookUp(id).catch((e) => say(String(e)));
+    }, LOOKUP_DELAY);
+    return () => clearTimeout(timer);
   });
 
   // the item in focus, if new, is seen once it stays
@@ -704,8 +722,10 @@
               {selected}
               {focus}
               sort={filters.sort}
+              widths={columns}
               {colours}
               onsort={(sort) => (filters.sort = sort)}
+              onwidths={(widths) => (columns = widths)}
               onselect={select}
               onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
               onmenu={rowMenu}

@@ -1,7 +1,8 @@
 <script lang="ts">
-  // The details of the item selected in the Feeds tab. A paper: its abstract, marked where the query or an
-  // interest matched, and what tells whether to add it (Facts). A post: its text, and the papers behind it, each
-  // to add, shortlist or show; *Find linked paper* looks for them again. The buttons do what the keys do.
+  // The details of the item selected in the Feeds tab, to read: the buttons (they do what the keys do), its title,
+  // authors and where it appeared, then a paper's abstract, marked where the query or an interest matched, and what
+  // tells whether to add it (Facts); a post's text, and the papers behind it, each to add, shortlist or show (*Find
+  // linked paper* looks for them again).
 
   import type { FeedDetail, FeedRow, Linked, PdfStatus } from "./api";
   import Facts from "./Facts.svelte";
@@ -51,9 +52,7 @@
   let date = $derived(
     detail.date ? new Date(detail.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null,
   );
-  let by = $derived(
-    [detail.authors.join(", "), detail.journal, date, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "),
-  );
+  let where = $derived([detail.journal, date, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
   const KIND: Record<FeedDetail["kind"], string> = { paper: "paper", preprint: "preprint", news: "news & press", blog: "blog" };
   const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", search: "found by its title" };
 </script>
@@ -62,33 +61,34 @@
   {#if count > 1}
     <p class="selection">{count} items selected: the buttons and keys act on all of them</p>
   {/if}
+  <div class="actions">
+    {#if post}
+      <button class="open" onclick={onopen} disabled={!detail.url}>Open post ↗ <kbd>O</kbd></button>
+      <button onclick={() => ontriage("read")}>{detail.triage === "new" ? "Mark read" : "Mark unread"} <kbd>M</kbd></button>
+      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Shortlisted" : "★ Shortlist"} <kbd>S</kbd></button>
+      <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
+    {:else}
+      <button class="primary" onclick={() => onadd(true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
+      <button class="open" onclick={onopen} disabled={!detail.url && !detail.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
+      <button onclick={() => onadd(false)} title="Add to the library without looking for its PDF">Add without PDF</button>
+      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Shortlisted" : "★ Shortlist"} <kbd>S</kbd></button>
+      <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
+    {/if}
+  </div>
+
   <div>
     <h3><Spans spans={detail.title} /></h3>
+    {#if detail.authors.length}<p class="authors">{detail.authors.join(", ")}</p>{/if}
     <p class="by">
       {#if detail.kind !== "paper"}<span class="badge {detail.kind}">{KIND[detail.kind]}</span>{/if}
       {#if detail.editorial}<span class="badge">editorial</span>{/if}
-      {by}
+      {where}
     </p>
     {#if detail.inLibrary.length}
       <p class="by">
         <span class="badge lib">in library</span>
         {#each detail.inLibrary as id (id)}<button class="link" onclick={() => onentry(id)}>show</button>{/each}
       </p>
-    {/if}
-  </div>
-
-  <div class="actions">
-    {#if post}
-      <button class="primary" onclick={onopen} disabled={!detail.url}>Open post ↗ <kbd>O</kbd></button>
-      <button onclick={() => ontriage("read")}>{detail.triage === "new" ? "Mark read" : "Mark unread"} <kbd>M</kbd></button>
-      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Shortlisted" : "★ Shortlist"} <kbd>S</kbd></button>
-      <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
-    {:else}
-      <button class="primary" onclick={() => onadd(true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
-      <button onclick={() => onadd(false)} title="Add to the library without looking for its PDF">Add without PDF</button>
-      <button onclick={() => ontriage("shortlist")}>{detail.triage === "shortlisted" ? "★ Shortlisted" : "★ Shortlist"} <kbd>S</kbd></button>
-      <button onclick={onopen} disabled={!detail.url && !detail.doi}>Open ↗ <kbd>O</kbd></button>
-      <button onclick={() => ontriage("dismiss")}>{detail.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
     {/if}
   </div>
 
@@ -131,8 +131,8 @@
       </div>
     </section>
   {:else}
-    <section>
-      <h5>Abstract{detail.abstractLookedUp ? " · from Crossref or OpenAlex (the feed had none, or a teaser)" : ""}</h5>
+    <section class="abstract">
+      <h5>{detail.abstractFromFeed ? "Summary from the feed" : "Abstract"}</h5>
       {#if detail.abstract.length}
         <p class="text"><Spans spans={detail.abstract} /></p>
       {:else}
@@ -162,9 +162,13 @@
     font-size: 12px;
   }
   h3 {
-    margin: 0 0 4px;
-    font-size: 15px;
+    margin: 0 0 5px;
+    font-size: 16px;
     line-height: 1.3;
+  }
+  .authors {
+    margin: 0 0 3px;
+    line-height: 1.4;
   }
   .by {
     margin: 0 0 3px;
@@ -187,6 +191,15 @@
   .text {
     margin: 0 0 8px;
     line-height: 1.5;
+  }
+  /* what is read: no rule above it, a size up */
+  .abstract {
+    padding-top: 0;
+    border-top: none;
+  }
+  .abstract .text {
+    font-size: 13.5px;
+    line-height: 1.55;
   }
   .muted {
     color: var(--muted);
@@ -216,6 +229,16 @@
     border-color: var(--accent);
     background: var(--accent);
     color: var(--on-accent);
+  }
+  /* lightly in the feeds' green, as the library's light blue buttons: the paper's page, to decide */
+  button.open {
+    border-color: color-mix(in srgb, var(--feeds) 40%, transparent);
+    background: color-mix(in srgb, var(--feeds) 14%, transparent);
+    color: var(--feeds);
+    font-weight: 500;
+  }
+  button.open:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--feeds) 24%, transparent);
   }
   button.link {
     padding: 0;
