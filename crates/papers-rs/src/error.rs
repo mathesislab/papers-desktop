@@ -4,7 +4,7 @@ use std::fmt;
 
 /// The version of papers-cli that this port follows (its `--version`, and the
 /// version in the errors of configuration files that are too new).
-pub const PAPERS_VERSION: &str = "3.0.0b7.dev94+ge1790670a";
+pub const PAPERS_VERSION: &str = "3.0.0b7";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {

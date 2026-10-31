@@ -604,10 +604,18 @@ history. In the long run a standard both follow and change together.
   *Free* (messages, prompts, caches). The suite is its executable side: a
   case names its section and whether it checks a contract.
 
-**Done**: follows papers v3 at e179067 (3.0.0b7.dev94: the free PDF of an
+**Done**: follows papers v3 at 3b7f5fd (3.0.0b7: the free PDF of an
 entry, `file fetch`, `add --fetch-pdf`, `fetch --pdf`, perrette/papers#211
 to #215; the file of a broken link in the other libraries of the machine;
-`--openalex` as papers has it, #205; #207, #210. Since faeaf4d: an accepted
+`--openalex` as papers has it, #205; #207, #210. Since e179067, #219 to
+#222: the version of a fetched PDF in `.papers/files.json`, `file fetch
+--upgrade` (the published version in place of the file, undone by `papers
+undo`), `papers list --format files`, `file-version` in CSL-JSON and
+BibJSON, `--pdf-version`; the `citation_pdf_url` of the repository pages
+that OpenAlex names, an HTTP 429 asked again once; a line per entry without
+PDF in a `file fetch` of several; `fetch --pdf -o FILE` checked before the
+download, porcelain `exists ID FILE`; CSL-JSON import leaves out blank name
+parts. Since faeaf4d: an accepted
 manuscript or a submitted version attached or downloaded after the
 published version was refused names the published link to open in a
 browser; a `file fetch` of several entries ends with a summary (the PDFs

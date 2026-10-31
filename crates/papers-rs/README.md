@@ -181,7 +181,7 @@ rules of the specification on the API. The cases in
 `crates/papers-rs-cli/tests/fixtures/cases` were recorded by running papers-cli
 (`tests/record/record_cases.py`), and the help of the commands by
 `tests/record/record_help.py` (both run with a `papers` executable; they use
-temporary home directories), with papers v3 at e179067 on Python 3.14 (the usage lines and
+temporary home directories), with papers v3 at 3b7f5fd (3.0.0b7) on Python 3.14 (the usage lines and
 some messages of argparse and json depend on the version of Python).
 
 The library model (`names`, `entry`, `identity`, `merge`, `library`) is tested
@@ -262,16 +262,21 @@ modules:
   it adds on a set of PDFs.
 - `fetch::freepdf`: the free PDF of a paper (papers v3 faeaf4d, #211; library.md "The free PDF of an
   entry"): the `citation_pdf_url` of the publisher's page, then the open-access locations of OpenAlex
-  by version (`Fetcher::work_locations`, kept a month in `openalex-work/`), then arXiv; the
+  by version (`Fetcher::work_locations`, kept a month in `openalex-work/`): their PDF links, then the
+  `citation_pdf_url` of the landing pages of those without (papers v3 3b7f5fd, #221), then arXiv; the
   supplements of the page; the checksum and size of each download kept by URL in `downloads/` of the
   cache. The downloads go through the `Transport` (the user agent is that of the transport: free),
-  with a second between two requests to a site. An accepted or submitted version found after the
+  with a second between two requests to a site, and an HTTP 429 asked again once after its
+  `Retry-After`. An accepted or submitted version found after the
   published one was refused names the published links (`Found::refused`, papers v3 e179067); a search
   without PDF gives the links to open in a browser (`NoPdf::links`, `browser_links`). `first_pdf` is
   an **extension of papers-rs, not in papers**: `fetch_pdf` without its message, the links tried
   with their error, for a program that shows them (Papers Desktop). `command::fetch_pdf` has `file
   fetch` (its summary of several entries: `Fetched::summary`) and `fetch --pdf` (`fetch_free_pdf`,
-  its `--porcelain` lines: `pdf_porcelain_lines`, formats.md 7.2).
+  its `--porcelain` lines: `pdf_porcelain_lines`, formats.md 7.2). The version of a PDF attached
+  goes to `.papers/files.json` by its checksum (`Library::pdf_versions`, `history::FilesJson`), and
+  `file fetch --upgrade` puts the published version in place of an accepted or submitted one
+  (`file_upgrade`, `Session::replace_file`; papers v3 3b7f5fd, #220).
 - `fetch::html::meta_content` and `page_doi`: **extensions of papers-rs, not in papers**: the `<meta>`
   tags that journals put in the page of an article (`citation_doi`, `prism.doi`, `dc.identifier`), and
   the DOI they give. For a program that adds a paper from the link of its article (Papers Desktop).

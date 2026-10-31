@@ -78,7 +78,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev94+ge1790670a\n",
+   "stdout": "3.0.0b7\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -94,7 +94,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev94+ge1790670a\n",
+   "stdout": "3.0.0b7\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -110,7 +110,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev94+ge1790670a\n",
+   "stdout": "3.0.0b7\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",
@@ -227,7 +227,7 @@
    "rm": [],
    "env": {},
    "rc": 0,
-   "stdout": "3.0.0b7.dev94+ge1790670a\n",
+   "stdout": "3.0.0b7\n",
    "stderr": "",
    "tree": {
     "cwd/x.pdf": "",

@@ -2,7 +2,7 @@
 
 The conformance suite is in papers itself (`design/cases`, perrette/papers#206), with the
 specification it checks (`design/*.md`). `spec/papers` is a git submodule of perrette/papers,
-pinned at the commit papers-rs follows: **papers v3 at e179067**. Moving the pin is catching
+pinned at the commit papers-rs follows: **papers v3 at 3b7f5fd** (3.0.0b7). Moving the pin is catching
 up with papers: check out the new commit in `spec/papers`, port what changed, and commit the
 submodule with the port.
 
