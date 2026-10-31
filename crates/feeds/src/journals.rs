@@ -358,14 +358,16 @@ fn names(text: Option<&str>, journal: &str) -> bool {
 /// address), read to tell that it is one: the one whose link names the
 /// journal; else, of the first three, the first whose own title names it;
 /// else the first read, as one that may not be the journal's; else why none
-/// could be read.
-pub fn site_feed(http: &dyn Http, homepage: &str, journal: &str) -> SiteFeed {
+/// could be read. The page is read with `page`, the feeds with `feeds`: the
+/// transport the subscription will be fetched with, so that a feed read is one
+/// that answers its fetches.
+pub fn site_feed(page: &dyn Http, feeds: &dyn Http, homepage: &str, journal: &str) -> SiteFeed {
     let request = Request {
         url: homepage.to_string(),
         accept: Some(PAGE_ACCEPT.to_string()),
         ..Request::default()
     };
-    let reply = match http.get(&request) {
+    let reply = match page.get(&request) {
         Ok(reply) if (200..=299).contains(&reply.status) => reply,
         Ok(reply) => {
             return SiteFeed::Refused {
@@ -384,14 +386,14 @@ pub fn site_feed(http: &dyn Http, homepage: &str, journal: &str) -> SiteFeed {
         title,
     };
     if let Some(link) = links.iter().find(|l| names(l.title.as_deref(), journal)) {
-        return match read_feed(http, &link.url) {
+        return match read_feed(feeds, &link.url) {
             Ok(title) => found(&link.url, title.or_else(|| link.title.clone())),
             Err(refused) => refused,
         };
     }
     let (mut other, mut refused) = (None, None);
     for link in links.iter().take(FEEDS_READ) {
-        match read_feed(http, &link.url) {
+        match read_feed(feeds, &link.url) {
             Ok(title) if names(title.as_deref(), journal) => return found(&link.url, title),
             Ok(title) => {
                 other = other.or_else(|| {

@@ -328,7 +328,10 @@ const CLIMATE: &str = "Journal of Climate";
 
 #[test]
 fn the_feed_a_site_links_to() {
-    let site = |reply: Reply| site_feed(&Recorded::new().reply(HOME, reply), HOME, CLIMATE);
+    let site = |reply: Reply| {
+        let http = Recorded::new().reply(HOME, reply);
+        site_feed(&http, &http, HOME, CLIMATE)
+    };
     // no feed: none linked, or another kind of alternate
     let other = r#"<link rel="alternate" hreflang="de" href="/de/">
         <link rel="alternate" type="application/json" href="/oembed">"#;
@@ -343,7 +346,7 @@ fn the_feed_a_site_links_to() {
     );
     let unreachable = Recorded::new().fail(HOME, "dns error: no such host");
     assert_eq!(
-        site_feed(&unreachable, HOME, CLIMATE),
+        site_feed(&unreachable, &unreachable, HOME, CLIMATE),
         SiteFeed::Refused {
             reason: "dns error: no such host".to_string()
         }
@@ -363,7 +366,7 @@ fn the_feed_whose_link_names_the_journal_read() {
         .reply(HOME, Reply::ok(HOME, page(&head.concat())))
         .reply(feed, Reply::ok(feed, rss("J Clim")));
     assert_eq!(
-        site_feed(&http, HOME, CLIMATE),
+        site_feed(&http, &http, HOME, CLIMATE),
         SiteFeed::Found {
             url: feed.to_string(),
             title: Some("J Clim".to_string())
@@ -378,22 +381,29 @@ fn the_feed_whose_link_names_the_journal_read() {
             Reply::ok(HOME, page(&link("journal of climate", "/clim.xml"))),
         )
     };
+    let http = refused().reply(feed, Reply::status(feed, 403));
     assert_eq!(
-        site_feed(
-            &refused().reply(feed, Reply::status(feed, 403)),
-            HOME,
-            CLIMATE
-        ),
+        site_feed(&http, &http, HOME, CLIMATE),
         SiteFeed::FeedRefused {
             url: feed.to_string(),
             reason: "HTTP 403".to_string()
         }
     );
-    let html = Reply::ok(feed, page(""));
+    let html = refused().reply(feed, Reply::ok(feed, page("")));
     assert_eq!(
-        site_feed(&refused().reply(feed, html), HOME, CLIMATE),
+        site_feed(&html, &html, HOME, CLIMATE),
         SiteFeed::NotAFeed {
             url: feed.to_string()
+        }
+    );
+    // the feed read as it will be fetched: one the page's agent gets, the fetch's not
+    let page_agent = refused().reply(feed, Reply::ok(feed, rss("Journal of Climate")));
+    let fetch_agent = Recorded::new().reply(feed, Reply::status(feed, 403));
+    assert_eq!(
+        site_feed(&page_agent, &fetch_agent, HOME, CLIMATE),
+        SiteFeed::FeedRefused {
+            url: feed.to_string(),
+            reason: "HTTP 403".to_string()
         }
     );
 }
@@ -415,7 +425,7 @@ fn the_feed_whose_own_title_names_the_journal() {
         .reply(latest, Reply::status(latest, 404))
         .reply(atom, Reply::ok(atom, atom_feed));
     assert_eq!(
-        site_feed(&http, HOME, CLIMATE),
+        site_feed(&http, &http, HOME, CLIMATE),
         SiteFeed::Found {
             url: atom.to_string(),
             title: Some("{The} Journal of Climate".to_string())
@@ -439,7 +449,7 @@ fn a_feed_that_may_not_be_the_journal_s() {
         )
         .reply(&feeds[3], Reply::ok(&feeds[3], rss(CLIMATE)));
     assert_eq!(
-        site_feed(&http, HOME, CLIMATE),
+        site_feed(&http, &http, HOME, CLIMATE),
         SiteFeed::Other {
             url: feeds[0].clone(),
             title: Some("AMS News".to_string())
@@ -452,7 +462,7 @@ fn a_feed_that_may_not_be_the_journal_s() {
         .fail(&feeds[0], "timed out")
         .reply(&feeds[1], Reply::status(&feeds[1], 403));
     assert_eq!(
-        site_feed(&http, HOME, CLIMATE),
+        site_feed(&http, &http, HOME, CLIMATE),
         SiteFeed::FeedRefused {
             url: feeds[0].clone(),
             reason: "timed out".to_string()

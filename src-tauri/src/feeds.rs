@@ -21,9 +21,9 @@
 //! by the suggested list's subscription, else by its ISSN, from the papers
 //! or looked up in OpenAlex by its name (kept in the folder's
 //! `journals.json`, opened at the first ask). A journal of the library or of
-//! a search of OpenAlex is followed by the feed its home page links to, read
-//! with the page user agent of the Add sheet (`fetch::page_agent`), else, if
-//! the user chooses, by its ISSN.
+//! a search of OpenAlex is followed by the feed its home page links to (the
+//! page read with the page user agent of the Add sheet, `fetch::page_agent`;
+//! the feed as it will be fetched), else, if the user chooses, by its ISSN.
 //!
 //! *Like in your library*: the index of the library's papers (core's
 //! `Likeness`) is built on a thread of its own whenever the library is read
@@ -1275,8 +1275,8 @@ pub async fn feeds_search_journals(app: AppHandle, text: String) -> Result<Vec<J
 }
 
 /// The feed a journal's site links to, read to tell it is the journal's:
-/// its home page (OpenAlex's, else looked up by its ISSN) and its feeds read
-/// with the page user agent.
+/// its home page (OpenAlex's, else looked up by its ISSN) read with the page
+/// user agent, its feeds as the subscription will be fetched.
 #[tauri::command]
 pub async fn feeds_journal_feed(app: AppHandle, journal: Journal) -> Result<JournalSite, String> {
     blocking(move || {
@@ -1289,7 +1289,7 @@ pub async fn feeds_journal_feed(app: AppHandle, journal: Journal) -> Result<Jour
         let feed = journal
             .homepage
             .as_deref()
-            .map(|homepage| papers_feeds::site_feed(&page, homepage, &journal.title));
+            .map(|homepage| papers_feeds::site_feed(&page, &network, homepage, &journal.title));
         Ok(JournalSite {
             homepage: journal.homepage,
             feed,
