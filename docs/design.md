@@ -116,7 +116,24 @@ rows, tested by `scripts/filters.test.ts`, `npm test`):
 
 Library, view, tags and search are kept in the layout (`window.json`, `library`)
 and come back at the next start; a .bib file no longer in the library is
-dropped. A paper shown after it was added or merged takes the filters off if
+dropped.
+
+**Saved searches** (`SaveSearch.svelte`, `SavedSearches.svelte`, `saved.ts`,
+shared with the Feeds tab): the ☆ next to the search field saves the
+filters shown and the sort of the table under a name, typed in a field that
+opens under it (the filters in a few words offered; a blank name or one
+taken, in any case, refused); ★ when a saved search is what the tab shows.
+A *Saved* section at the top of the sidebar lists them, each with the
+number of papers it shows (each set made as the library tab makes it: the
+core's `matching` for its search, then `currentSet` with the lists of the
+views); a click shows one in place of the filters and sort (a .bib no longer
+there dropped), the one shown selected (`sameFilters`: the same libraries,
+view, groups of tags in any order, search; and the same sort).
+Right-click: *Rename…* (in its row), *Update to the Filters Shown*,
+*Delete*. Kept in `settings.json`, `saved_searches: [{name, filters,
+sort}]` (the page's shapes, checked by `restored` when read;
+`set_saved_searches`, as the pinned tags: not in the settings window, which
+keeps them when it saves). A paper shown after it was added or merged takes the filters off if
 they would hide it.
 
 **Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
@@ -736,11 +753,12 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   lets go; `⌘`-click (Ctrl elsewhere) adds one to the choices of its group,
   or takes it out (the views: one). As the library's tags, the choices
   are filters of their own, a chip per group with an × (`Source: TC, GRL`
-  with several); the backend is asked for the typed text followed by a term
-  per group, any of its choices (`is:new kind:preprint prof:"Ice sheets"
-  src:"The Cryosphere",GRL`), the segment's kinds when no kind is chosen
-  (`kind:paper,preprint`: the query is the whole of the tab's choices), and
-  `-is:dismissed` unless the query has an `is:` term on `dismissed`. *Papers
+  with several); the backend is asked for a term per group, any of its
+  choices (`is:new kind:preprint prof:"Ice sheets" src:"The
+  Cryosphere",GRL`), the segment's kinds when no kind is chosen
+  (`kind:paper,preprint`: the query is the whole of the tab's choices,
+  `queryOf`), then the typed text, and `-is:dismissed` unless the query has
+  an `is:` term on `dismissed`. *Papers
   | Posts | All* above the list picks the kinds (`kinds` of the request too;
   Papers by default); kinds chosen that the segment does not show move it
   (to All for papers and posts together), another segment lets go of those
@@ -748,6 +766,16 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   the sort, the search and the groups unfolded are kept in the layout
   (`feeds`; a file without it takes the defaults; the single `kind`,
   `interest` and `source` of before become groups of one).
+- *Saved searches*: as the library's (above), the ☆ next to the search and a
+  *Saved* section at the top of the sidebar, each with its count
+  (`counts.searches`, from the backend). One keeps `queryOf` and the sort
+  (`feeds_set_searches`, in the feeds' `config.json`, so the CLI's `--saved`
+  takes them too). A click takes the query apart (`decompose`, pure and
+  tested: its first `is:` of a view, `kind:`, `prof:` and `src:` terms, not
+  excluding, become the choices, a `kind:` of a segment's kinds that
+  segment, no `kind:` All, the rest the text typed; `queryOf` of it is the
+  same query) and shows it with its sort; the one shown is selected
+  (`sameQuery` and the sort).
 - *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
   added, the kind of a post or preprint), the score, the title (bold while
   new, muted once seen), authors, journal or source, age, badges (*in
@@ -873,7 +901,9 @@ feed, no ISSN, not a source of OpenAlex), Futurity's categories (404).
 `feeds_item`, `feeds_triage`, `feeds_find_papers`, `feeds_pdf`,
 `feeds_subscriptions`, `feeds_subscribe`, `feeds_unsubscribe`,
 `feeds_update_subscription`, `feeds_suggested`, `feeds_import_opml`,
-`feeds_export_opml`, `feeds_settings`, `feeds_set_settings`; the events
+`feeds_export_opml`, `feeds_settings`, `feeds_set_settings`,
+`feeds_searches`, `feeds_set_searches` (refused for a blank name or one
+given twice; a change of the journal, as the others); the events
 `feeds-changed` (a fetch, a change, papers found) and `feeds-fetching`
 (true, false). The feeds of `app_data_dir/feeds` are opened at the first
 command. *In library*: a row's and the details' library entries of the same

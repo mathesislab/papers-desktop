@@ -5,11 +5,13 @@
   // list, a chip per group above it. The counts are over every item not dismissed, whatever the search.
 
   import { invoke } from "@tauri-apps/api/core";
+  import type { Snippet } from "svelte";
   import { modClick } from "$lib/keys";
   import type { FeedCounts, ItemKind } from "./api";
   import { KINDS, SHELVES, interestColours, shelfCounts, type FeedFilters, type Shelf, type SourceGroup } from "./filters";
 
   let {
+    saved,
     filters,
     counts,
     groups,
@@ -19,6 +21,8 @@
     onsource,
     onfold,
   }: {
+    /** the Saved section, at the top */
+    saved?: Snippet;
     /** the choices made */
     filters: FeedFilters;
     counts: FeedCounts | null;
@@ -41,6 +45,8 @@
 
 <div class="box">
   <nav>
+    {@render saved?.()}
+
     <h4>Views</h4>
     {#each SHELVES as shelf (shelf.view)}
       <button class="item" class:selected={filters.view === shelf.view} onclick={() => onview(shelf.view)}>

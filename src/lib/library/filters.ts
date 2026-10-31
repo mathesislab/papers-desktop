@@ -213,6 +213,18 @@ export function renameTags(tags: string[][], old: string, name: string): string[
   return groups.filter((g, i) => groups.findIndex((h) => sameGroup(g, h)) === i);
 }
 
+/** Whether two filters show the same: the same libraries, view, groups of tags (in any order) and search. */
+export function sameFilters(a: Filters, b: Filters): boolean {
+  const sameSet = <T>(x: T[], y: T[], same: (p: T, q: T) => boolean) =>
+    x.length === y.length && x.every((p) => y.some((q) => same(p, q))) && y.every((q) => x.some((p) => same(p, q)));
+  return (
+    a.view === b.view &&
+    a.query.trim() === b.query.trim() &&
+    sameSet(a.bibs, b.bibs, (p, q) => p === q) &&
+    sameSet(a.tags, b.tags, sameGroup)
+  );
+}
+
 /** A filter shown as a chip above the table; the × takes it off: `group`, the index of a group of tags. */
 export type Chip = { kind: "bib" | "view" | "tag" | "search"; text: string; group?: number };
 

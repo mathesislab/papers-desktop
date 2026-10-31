@@ -31,7 +31,7 @@ use papers_core::{BibWatch, Cite, Found, Incoming, Item, Library, Matching, Row,
 use recent::Recent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use settings::{Settings, TextSize};
+use settings::{SavedSearch, Settings, TextSize};
 use styles::Style;
 use tauri::image::Image;
 use tauri::ipc::Response;
@@ -393,10 +393,11 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
 #[tauri::command]
 fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
     let old = Settings::load(&state.settings_path)?;
-    // pinned in the sidebar, and the polling of the feeds set in their
-    // section, not here: what the window loaded may be stale
+    // pinned and saved in the sidebar, and the polling of the feeds set in
+    // their section, not here: what the window loaded may be stale
     let settings = Settings {
         pinned_tags: old.pinned_tags.clone(),
+        saved_searches: old.saved_searches.clone(),
         feeds_poll: old.feeds_poll,
         feeds_poll_minutes: old.feeds_poll_minutes,
         ..settings
@@ -420,6 +421,15 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
 fn set_pinned_tags(state: State<AppState>, tags: Vec<Option<String>>) -> Result<(), String> {
     let mut settings = Settings::load(&state.settings_path)?;
     settings.pinned_tags = tags;
+    settings.save(&state.settings_path)
+}
+
+/// The saved searches of the library tab, in the order of the sidebar; the
+/// other settings stay.
+#[tauri::command]
+fn set_saved_searches(state: State<AppState>, searches: Vec<SavedSearch>) -> Result<(), String> {
+    let mut settings = Settings::load(&state.settings_path)?;
+    settings.saved_searches = searches;
     settings.save(&state.settings_path)
 }
 
@@ -1046,6 +1056,7 @@ pub fn run() {
             get_settings,
             save_settings,
             set_pinned_tags,
+            set_saved_searches,
             downloads::downloads_list,
             downloads::set_downloads_panel,
             downloads::set_downloads_folder,
@@ -1108,7 +1119,9 @@ pub fn run() {
             feeds::feeds_import_opml,
             feeds::feeds_export_opml,
             feeds::feeds_settings,
-            feeds::feeds_set_settings
+            feeds::feeds_set_settings,
+            feeds::feeds_searches,
+            feeds::feeds_set_searches
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

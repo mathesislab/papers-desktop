@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { CheckMenuItem, Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
+  import type { Snippet } from "svelte";
   import { modClick } from "$lib/keys";
   import { foldTag, lastSegment, parentsOf, sameTag } from "$lib/tags";
   import { fileName, type View } from "./filters";
@@ -9,6 +10,7 @@
   import Downloads from "./Downloads.svelte";
 
   let {
+    saved,
     libraries,
     bibs,
     views,
@@ -33,6 +35,8 @@
     ondownload,
     onshow,
   }: {
+    /** the Saved section, at the top */
+    saved?: Snippet;
     /** the .bib files, with their number of papers */
     libraries: { bib: string; count: number }[];
     /** the libraries shown by the library tab: .bib files; none: all libraries */
@@ -189,6 +193,8 @@
 
 <div class="box">
 <nav>
+  {@render saved?.()}
+
   {#if libraries.length > 1}
     <h4>Libraries</h4>
     <button class="item" class:selected={bibs.length === 0} onclick={(e) => onlibrary(null, modClick(e))}>

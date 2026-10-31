@@ -27,7 +27,7 @@ use papers_core::{Identity, Library, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, LOOKUP, Network,
-    Outcome, Pdf, Rule, Score, Sort, SourceKind, Stage, Subscription, Triage, Via,
+    Outcome, Pdf, Rule, Score, Search, Sort, SourceKind, Stage, Subscription, Triage, Via,
     ViewRequest as CrateRequest, paragraphs,
 };
 use serde::{Deserialize, Serialize};
@@ -84,6 +84,8 @@ pub enum Change {
     Settings(Box<Configured>),
     /// an OPML text
     Import(String),
+    /// the saved searches, all of them
+    Searches(Vec<Search>),
 }
 
 /// What a change gives back.
@@ -133,6 +135,10 @@ impl Change {
                 Applied::Done
             }
             Change::Import(text) => Applied::Count(feeds.import_opml(text)?),
+            Change::Searches(searches) => {
+                feeds.set_searches(searches.clone())?;
+                Applied::Done
+            }
         })
     }
 }
@@ -524,7 +530,7 @@ pub struct FeedRow {
     links: usize,
 }
 
-/// The counts of the sidebar, the subscriptions by title.
+/// The counts of the sidebar, the subscriptions by title, the saved searches by name.
 #[derive(Debug, Serialize)]
 pub struct FeedCounts {
     all: usize,
@@ -532,6 +538,7 @@ pub struct FeedCounts {
     kinds: BTreeMap<ItemKind, usize>,
     interests: BTreeMap<String, usize>,
     sources: BTreeMap<String, usize>,
+    searches: BTreeMap<String, usize>,
 }
 
 #[derive(Debug, Serialize)]
@@ -775,6 +782,7 @@ pub fn view(
             kinds: view.counts.kinds,
             interests: view.counts.interests,
             sources,
+            searches: view.counts.searches,
         },
     }
 }
@@ -1083,6 +1091,23 @@ pub async fn feeds_settings(app: AppHandle) -> Result<FeedSettings, String> {
     .await
 }
 
+/// The saved searches of the sidebar, in their order.
+#[tauri::command]
+pub async fn feeds_searches(app: AppHandle) -> Result<Vec<Search>, String> {
+    blocking(move || {
+        let state = app.state::<AppState>();
+        state.feeds.read(|feeds| feeds.searches().to_vec())
+    })
+    .await
+}
+
+/// Sets the saved searches; refused, nothing changed, for a blank name or one
+/// given twice.
+#[tauri::command]
+pub async fn feeds_set_searches(app: AppHandle, searches: Vec<Search>) -> Result<(), String> {
+    blocking(move || change(&app, Change::Searches(searches)).map(drop)).await
+}
+
 /// Sets the settings of the feeds; refused, nothing changed, with the
 /// message of the first interest that does not compile.
 #[tauri::command]
@@ -1237,6 +1262,40 @@ mod tests {
         assert_eq!(state.read(|f| f.items().len()).unwrap(), 2);
         let reopened = Feeds::open(&dir.path().join("feeds")).unwrap();
         assert_eq!(reopened.triage(&id), Triage::Shortlisted, "written");
+    }
+
+    #[test]
+    fn saved_searches_set_during_a_fetch_stay_and_a_bad_one_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = opened(dir.path());
+        subscribe(&state, TC);
+        let search = |name: &str| Search {
+            name: name.to_string(),
+            query: "is:new".to_string(),
+            sort: Sort::Score,
+        };
+        let http = Meanwhile {
+            inner: Recorded::new().reply(TC, atom("TC", &[("a", "Ice", None)])),
+            state: &state,
+            change: Mutex::new(Some(Change::Searches(vec![search("New")]))),
+        };
+        state.fetch(&http, &Access::default(), |_| {}).unwrap();
+        let names = |state: &FeedsState| {
+            state.read(|f| {
+                f.searches()
+                    .iter()
+                    .map(|s| s.name.clone())
+                    .collect::<Vec<_>>()
+            })
+        };
+        assert_eq!(names(&state).unwrap(), ["New"]);
+        let twice = Change::Searches(vec![search("A"), search("a")]);
+        assert!(state.change(twice).is_err());
+        assert_eq!(
+            names(&opened(dir.path())).unwrap(),
+            ["New"],
+            "written, unchanged"
+        );
     }
 
     #[test]

@@ -50,6 +50,9 @@
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
   import ReaderView from "$lib/library/ReaderView.svelte";
+  import { added as savedAdded, changed, refusal, removed, renamed, sameName } from "$lib/saved";
+  import SavedSearches from "$lib/SavedSearches.svelte";
+  import SaveSearch from "$lib/SaveSearch.svelte";
   import {
     VIEWS,
     chooseLibrary,
@@ -60,6 +63,7 @@
     libraryCounts,
     renameTags,
     restored,
+    sameFilters,
     searchOf,
     tabFilters,
     tagCounts,
@@ -67,6 +71,7 @@
     viewCounts,
     without,
     type Chip,
+    type Filters,
     type Lists,
     type View,
   } from "$lib/library/filters";
@@ -103,6 +108,9 @@
     /** the Library tab to the front: a paper opened from the panel, a paper shown after it was added */
     onfront: () => void;
   } = $props();
+
+  /** a saved search of the library tab: its filters and the order of the table */
+  type Saved = { name: string; filters: Filters; sort: Sort };
 
   let status = $state<Status>({ state: "loading" });
   let rows = $state<Row[]>([]);
@@ -166,12 +174,21 @@
   const editor = new Editor();
   /** after a paper is closed: the next paper open, or the library (a setting) */
   let afterClose: "library" | "next" = "next";
+  /** the saved searches of the sidebar (a setting): the filters and the order of the table */
+  let savedSearches = $state<Saved[]>([]);
+  /** the papers each saved search shows, by name */
+  let savedCounts = $state<Record<string, number>>({});
 
   const allShortcut: Shortcut = { key: "a", mod: true };
 
   const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 
   let byId = $derived(new Map(rows.map((r) => [r.id, r])));
+
+  /** the saved search the library tab shows: the same filters, the same order */
+  let shownSaved = $derived(
+    savedSearches.find((s) => sameFilters(s.filters, layout.library) && sameSort(s.sort, layout.sort))?.name ?? null,
+  );
 
   /** The papers the tags in the details change: the one in front, else the
    *  selection when the focus is in it, else the paper shown. */
@@ -282,11 +299,62 @@
   async function refresh() {
     recent = await invoke<string[]>("recent");
     const { settings } = await invoke<{
-      settings: { after_close: "library" | "next"; pinned_tags: (string | null)[] };
+      settings: {
+        after_close: "library" | "next";
+        pinned_tags: (string | null)[];
+        saved_searches: { name: string; filters: Partial<Filters> | null; sort: unknown }[];
+      };
     }>("get_settings");
     afterClose = settings.after_close;
     pinned = settings.pinned_tags;
+    savedSearches = settings.saved_searches.map((s) => ({ name: s.name, filters: restored(s.filters), sort: sortOf(s.sort) }));
   }
+
+  /** A sort as saved: a column of the table and a direction; else none. */
+  function sortOf(saved: unknown): Sort {
+    const sort = saved as Sort;
+    return sort && typeof sort === "object" && sort.column in COLUMNS && typeof sort.descending === "boolean" ? sort : null;
+  }
+
+  const sameSort = (a: Sort, b: Sort) => a?.column === b?.column && !!a?.descending === !!b?.descending;
+
+  /** The saved searches changed: kept in the settings. */
+  async function keepSaved(list: Saved[]) {
+    try {
+      await invoke("set_saved_searches", { searches: $state.snapshot(list) });
+      savedSearches = list;
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** What the library tab shows, as a saved search. */
+  const currentSaved = (name: string): Saved => ({ name, filters: $state.snapshot(layout.library), sort: $state.snapshot(layout.sort) });
+
+  /** A saved search shown: its filters and order in place of the library tab's (a .bib no longer there dropped). */
+  function applySaved(name: string) {
+    const search = savedSearches.find((s) => sameName(s.name, name));
+    if (!search) return;
+    layout.library = restored(search.filters, libraries.map((l) => l.bib));
+    layout.sort = search.sort;
+    showLibrary();
+  }
+
+  let countsAsked = 0;
+
+  // the counts of the saved searches: each set as the library tab makes it (the core's answer, the lists of the
+  // views); again when the library or the searches change
+  $effect(() => {
+    const [list, all, views] = [savedSearches, rows, lists];
+    const n = ++countsAsked;
+    const counted = list.map(async (s) => {
+      const ids = await invoke<string[]>("matching", { query: searchOf(s.filters) });
+      return [s.name, currentSet(all, new Set(ids), s.filters, views).length] as const;
+    });
+    Promise.all(counted)
+      .then((pairs) => n === countsAsked && (savedCounts = Object.fromEntries(pairs)))
+      .catch(() => {});
+  });
 
   /** Pin tags to the keys, kept in the settings. */
   async function savePinned(tags: (string | null)[]) {
@@ -1082,7 +1150,19 @@
         onclose={closePaper}
         ondownload={(pdf, id) => (adding = { id, pdf, choose: false })}
         onshow={show}
-      />
+      >
+        {#snippet saved()}
+          <SavedSearches
+            searches={savedSearches.map((s) => ({ name: s.name, count: savedCounts[s.name] ?? 0 }))}
+            shown={shownSaved}
+            refusal={(name, own) => refusal(savedSearches, name, own)}
+            onapply={applySaved}
+            onrename={(name, to) => keepSaved(renamed(savedSearches, name, to))}
+            onupdate={(name) => keepSaved(changed(savedSearches, name, () => currentSaved(name)))}
+            ondelete={(name) => keepSaved(removed(savedSearches, name))}
+          />
+        {/snippet}
+      </Sidebar>
     </aside>
     <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
   {/if}
@@ -1105,6 +1185,12 @@
             <button class="clear" title="Clear the search ({label({ key: 'Backspace', mod: true })})" aria-label="Clear the search" onclick={clearSearch}>×</button>
           {/if}
         </div>
+        <SaveSearch
+          shown={shownSaved !== null}
+          suggestion={tabFilters(layout.library) || "All papers"}
+          refusal={(name) => refusal(savedSearches, name)}
+          onsave={(name) => keepSaved(savedAdded(savedSearches, currentSaved(name)))}
+        />
         <span class="count">{notice ?? summary}</span>
         <div class="export">
           <button class="tool" class:on={exporting} onclick={() => (exporting = !exporting)}>Export…</button>

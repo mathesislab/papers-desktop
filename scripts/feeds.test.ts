@@ -41,12 +41,12 @@ import { Dwell, decide, progressOf, reviewed, startReview, stepReview, summaryOf
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
 
-test("the query: the text typed, then a term per group of choices, the segment's kinds; dismissed left out unless asked", () => {
+test("the query: a term per group of choices, the segment's kinds, then the text typed; dismissed left out unless asked", () => {
   assert.equal(searchOf(f()), "is:new kind:paper,preprint -is:dismissed");
   assert.equal(searchOf(f({ view: "all", segment: "all" })), "-is:dismissed");
   assert.equal(
     searchOf(f({ query: " greenland ", view: "shortlist", kinds: ["preprint"], interests: ["Ice sheets"], sources: ["The Cryosphere", "GRL"] })),
-    'greenland is:shortlisted kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL -is:dismissed',
+    'is:shortlisted kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL greenland -is:dismissed',
   );
   assert.equal(queryOf(f({ segment: "posts", interests: ['say "hi"'] })), 'is:new kind:news,blog prof:"say hi"');
   assert.equal(searchOf(f({ view: "all", segment: "all", query: "is:dismissed" })), "is:dismissed");
