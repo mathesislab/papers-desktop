@@ -734,8 +734,11 @@ item (not dismissed) whatever the query, by `is:`, kind, interest and
 subscription. Dismissed items are rows only if asked (`-is:dismissed` by
 the app).
 
-**When**: on opening the Feeds tab and on ⌘R; polling in the background is
-a setting (off by default: the app sends nothing unless asked). The page of
+**When**: on opening the Feeds tab (the tab calls `feeds_fetch` when shown
+and the last fetch, `feeds_last_fetch`, is older than 15 minutes) and on
+⌘R; polling in the background is a setting (off by default: the app sends
+nothing unless asked): a thread looks each minute, the settings read each
+time, and fetches when the last fetch is older than `feeds_poll_minutes`. The page of
 a post is fetched when the post is selected or on `f`, or at fetch time for
 a subscription marked so.
 
@@ -744,9 +747,56 @@ interests, the items, the triage state, the ETags and the last sweeps, the
 lookups made), never the .bib. An item no feed lists goes after `keep_days`
 (90), on opening and after a fetch; shortlisted and added stay.
 
-**Settings**: a *Feeds* section: the subscriptions (a URL, OPML import, a
-list of suggested journals), the interests and rules, background polling,
-the days kept.
+**Settings**: a *Feeds* section of the settings window
+(`src/lib/settings/FeedsSettings.svelte`): the subscriptions (each with its
+kind, feed and last outcome; added by a feed's URL, an ISSN or an OpenAlex
+filter, or from the suggested list, by group; edited: title, kind, journal,
+fetch pages; removed), OPML import and export (sweeps as outlines of their
+own type, `crossref`/`issn` and `openalex`/`filter`, the kind in
+`category`), the interests and rules (edited, then saved together:
+`feeds_set_settings` refuses an interest that does not compile, with its
+message), the days kept, the lookback, background polling. Polling is in
+`settings.json` (`feeds_poll`, false; `feeds_poll_minutes`, 60, 5 at least),
+the rest in `feeds/config.json`.
+
+**The suggested list** (`papers_feeds::suggested`, for the climate and the
+Earth's surface): Copernicus (TC, CP, ESD, GMD, BG, ACP, OS, NHESS, ESSD,
+EGUsphere as preprints), Nature (Nature, Nature Geoscience, Nature Climate
+Change, Nature Communications), Science and Science Advances, AGU (GRL, JGR
+Oceans, Atmospheres, Earth Surface, AGU Advances, Earth's Future, Reviews of
+Geophysics: Wiley's `feed/<eISSN>/most-recent`), Journal of Glaciology and
+Annals of Glaciology (Crossref by ISSN: Cambridge's feeds refuse
+programs), Journal of Climate (AMS's feed), arXiv physics.ao-ph and
+physics.geo-ph, Futurity, ScienceDaily (Climate; Earth & Climate), Eos,
+Carbon Brief, RealClimate. Each answered one GET with a browser's user
+agent (October 2026); left out: PNAS (its feed answers 403), ESSOAr (no
+feed, no ISSN, not a source of OpenAlex), Futurity's categories (404).
+
+**The app's commands** (`src-tauri/src/feeds.rs`, the contract
+`src/lib/feeds/api.ts`): `feeds_fetch`, `feeds_last_fetch`, `feeds_view`,
+`feeds_item`, `feeds_triage`, `feeds_find_papers`, `feeds_pdf`,
+`feeds_subscriptions`, `feeds_subscribe`, `feeds_unsubscribe`,
+`feeds_update_subscription`, `feeds_suggested`, `feeds_import_opml`,
+`feeds_export_opml`, `feeds_settings`, `feeds_set_settings`; the events
+`feeds-changed` (a fetch, a change, papers found) and `feeds-fetching`
+(true, false). The feeds of `app_data_dir/feeds` are opened at the first
+command. *In library*: a row's and the details' library entries of the same
+paper (core's `Identity`: the DOI, or the title and year; the library
+indexed once per call), `versionInLibrary` those of another version's DOI;
+`is:inlibrary` in the query and the counts. A fetch runs on a copy of the
+feeds opened from the folder, so the tab reads and triages meanwhile: the
+changes made while it runs are applied at once, kept, and applied again to
+the fetched copy, which then takes the place of the feeds. One fetch at a
+time: a second call (the tab opening while polling fetches) waits for the
+running one and answers its summary; finding the papers of a post works on
+a copy too, after a running fetch. The requests: the crate's `Network` (a
+browser's user agent) paced per host (`Pacing::polite`), Crossref and
+OpenAlex asked with the settings' address and OpenAlex key, each only when
+set. The last summary and each subscription's last fetch (when, its error)
+are kept in `app_data_dir/feeds-fetched.json`. `feeds_pdf`: OpenAlex's
+`works/doi:` locations (the published or accepted version's PDF, else its
+page: open; only a preprint's: preprint; licence and host), arXiv's PDF as
+the last resort, once per DOI a session.
 
 **PDF**: the Add sheet's (OpenAlex locations, `citation_pdf_url`, arXiv);
 one paper at a time, when asked.
