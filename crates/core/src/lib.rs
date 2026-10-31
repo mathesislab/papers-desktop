@@ -3,11 +3,13 @@
 //! The library is one or more .bib files, read as they are: the entries
 //! become search [`Item`]s, and keep their BibTeX and their CSL-JSON (for a
 //! citation processor). The app's own writer changes the entries of a file
-//! and leaves the rest of it as it is.
+//! and leaves the rest of it as it is. [`Likeness`] tells how like the
+//! library's papers a text is.
 
 mod bib;
 mod fields;
 mod item;
+mod likeness;
 mod query;
 mod record;
 mod reference;
@@ -21,6 +23,7 @@ mod write;
 use std::path::PathBuf;
 
 pub use item::{Cite, Item};
+pub use likeness::{Doc, Like, Likeness};
 pub use query::{Query, Schema};
 pub use record::{Marks, Record};
 pub use search::{Found, Hit, Library, YearCount};
