@@ -1,0 +1,26 @@
+[package]
+name = "papers-feeds-cli"
+version = "0.1.0"
+description = "The feeds program: subscribe to journals, preprint servers, news and blogs, fetch, list, show and mark their papers, migrate from paper-feeder, write an RSS digest"
+authors = ["Alexander Robinson"]
+edition = "2024"
+license = "MIT"
+
+[lib]
+name = "feeds_cli"
+
+[[bin]]
+name = "feeds"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }
+dirs = "6"
+papers-feeds = { version = "0.1.0", path = "../feeds" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
