@@ -22,13 +22,13 @@ static BR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)<br\s*/?>").unwra
 
 /// The label before an abstract: arXiv's announcement, Wiley's heading.
 static LABEL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(?:arXiv:\S+\s+Announce Type:\s*\S+\s*)?(?:Abstract\b:?\s*)?").unwrap()
+    Regex::new(r"^(?:arXiv:\S+\s+Announce Type:\s*\S+\s*)?(?:Abstract\b[:.]?\s*)?").unwrap()
 });
 
 /// A first paragraph that only cites the paper (Nature's "Published online; doi:…").
 static CITATION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?is)^\s*<p>(.*?)</p>").unwrap());
 
-static EDITORIAL: LazyLock<Regex> = LazyLock::new(|| {
+pub(crate) static EDITORIAL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?i)\b(?:news (?:&|and) views|perspective|editorial|comment|correspondence|opinion)s?\b",
     )
@@ -47,7 +47,7 @@ pub struct Parsed {
 /// subscription.
 pub fn parse(body: &[u8], base: Option<&str>, subscription: &Subscription) -> Result<Parsed> {
     let failed = |message: String| Error::Feed {
-        url: subscription.url.clone(),
+        url: subscription.feed.to_string(),
         message,
     };
     let feed = feed_rs::parser::Builder::new()
@@ -148,6 +148,7 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
         content: content.filter(|_| post),
         editorial,
         kind,
+        versions: Vec::new(),
     }
 }
 
@@ -165,8 +166,9 @@ pub(crate) fn plain(html: &str) -> String {
 }
 
 /// An abstract or teaser as plain text, without a citation paragraph before it
-/// (Nature) or a label (arXiv's announcement, "Abstract").
-fn abstract_text(html: &str) -> String {
+/// (Nature) or a label (arXiv's announcement, "Abstract", Copernicus's
+/// "Abstract."); JATS's tags go as HTML's.
+pub(crate) fn abstract_text(html: &str) -> String {
     let decoded = html_escape::decode_html_entities(html);
     let body = match CITATION.captures(&decoded) {
         Some(c) if canonical_doi(&c[1]).is_some() => &decoded[c.get(0).unwrap().end()..],

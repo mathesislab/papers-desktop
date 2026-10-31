@@ -4,6 +4,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::normalize::{canonical_issn, canonical_url, feed_key};
+use crate::{Error, Result};
+
 /// What a subscription follows, which gives its items their kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -37,12 +40,80 @@ pub enum ItemKind {
     Blog,
 }
 
+impl ItemKind {
+    /// A post (news or blog), about papers rather than one.
+    pub fn is_post(self) -> bool {
+        matches!(self, ItemKind::News | ItemKind::Blog)
+    }
+}
+
+/// What a subscription follows: a feed, or a sweep of Crossref or OpenAlex.
+/// In `config.json` as the subscription's `url`, `issn` or `openalex`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Feed {
+    /// an RSS, Atom or JSON feed; canonical: scheme and host lowercased, no fragment
+    Rss { url: String },
+    /// the new works of a journal in Crossref, by ISSN (`1994-0424`)
+    Crossref { issn: String },
+    /// the new works of an OpenAlex filter: `primary_topic.id:T10644`,
+    /// `cites:W1|W2`, `authorships.author.id:A123`
+    OpenAlex {
+        #[serde(rename = "openalex")]
+        filter: String,
+    },
+}
+
+impl Feed {
+    /// The feed checked and canonical: an http(s) URL, a valid ISSN, a filter.
+    pub fn canonical(&self) -> Result<Feed> {
+        Ok(match self {
+            Feed::Rss { url } => Feed::Rss {
+                url: canonical_url(url)?,
+            },
+            Feed::Crossref { issn } => Feed::Crossref {
+                issn: canonical_issn(issn).ok_or_else(|| Error::Issn { issn: issn.clone() })?,
+            },
+            Feed::OpenAlex { filter } => match filter.trim() {
+                "" => {
+                    return Err(Error::Filter {
+                        filter: filter.clone(),
+                    });
+                }
+                filter => Feed::OpenAlex {
+                    filter: filter.to_string(),
+                },
+            },
+        })
+    }
+
+    /// What makes two canonical feeds the same (http and https are one), and
+    /// the subscription's id.
+    pub fn key(&self) -> String {
+        match self {
+            Feed::Rss { url } => format!("feed:{}", feed_key(url)),
+            Feed::Crossref { issn } => format!("crossref:{issn}"),
+            Feed::OpenAlex { filter } => format!("openalex:{filter}"),
+        }
+    }
+}
+
+impl std::fmt::Display for Feed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Feed::Rss { url } => write!(f, "{url}"),
+            Feed::Crossref { issn } => write!(f, "Crossref ISSN {issn}"),
+            Feed::OpenAlex { filter } => write!(f, "OpenAlex {filter}"),
+        }
+    }
+}
+
 /// A feed followed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Subscription {
     pub id: String,
-    /// canonical: scheme and host lowercased, no fragment
-    pub url: String,
+    #[serde(flatten)]
+    pub feed: Feed,
     /// the feed's own title, until the user names it
     pub title: Option<String>,
     pub kind: SourceKind,
@@ -57,7 +128,7 @@ pub struct Subscription {
 /// One item of one feed, as the feed gives it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
-    /// the subscription's id
+    /// the subscription's id; [`LOOKUP`] for a work looked up by its DOI
     pub source: String,
     /// the feed's id of the item (its guid, Atom id, or feed-rs's hash of the link)
     pub guid: String,
@@ -79,7 +150,14 @@ pub struct Entry {
     pub editorial: bool,
     /// the subscription's kind, corrected by the entry's identifiers
     pub kind: ItemKind,
+    /// its DOIs as Crossref relates them: its own and those of its other
+    /// versions (`has-preprint`, `is-preprint-of`, `is-version-of`); none from a feed
+    #[serde(default)]
+    pub versions: Vec<Version>,
 }
+
+/// The source of the works looked up by DOI (abstracts, authors, versions).
+pub const LOOKUP: &str = "lookup";
 
 /// An entry of an item, and when it was first fetched.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -125,11 +203,40 @@ pub struct Item {
     pub content: Option<String>,
     pub editorial: bool,
     pub sources: Vec<Source>,
-    /// every DOI of its sources, preprint or published (Crossref relations later)
+    /// every DOI of its sources and of their relations in Crossref, preprint or published
     pub versions: Vec<Version>,
-    /// the DOIs of the papers a post is about (found later)
+    /// the papers a post is about, best first
     #[serde(default)]
-    pub linked: Vec<String>,
+    pub links: Vec<Linked>,
+}
+
+/// A paper a post is about.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Linked {
+    pub doi: String,
+    pub confidence: Confidence,
+    pub via: Via,
+}
+
+/// Whether a linked paper is the one: high when it is labelled or wins
+/// clearly, low when it is one of several candidates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Confidence {
+    High,
+    Low,
+}
+
+/// Where a linked paper was found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Via {
+    /// the post's text in its feed
+    Feed,
+    /// the post's page
+    Page,
+    /// the post's title in Crossref
+    Search,
 }
 
 impl Item {

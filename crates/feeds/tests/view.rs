@@ -7,8 +7,8 @@ use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use papers_core::Span;
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Action, Feeds, Interest, ItemKind, Matcher, Reply, Rule, Sort, SourceKind, Triage, View,
-    ViewRequest, Weighted,
+    Access, Action, Feed, Feeds, Interest, ItemKind, Matcher, Reply, Rule, Sort, SourceKind,
+    Triage, View, ViewRequest, Weighted,
 };
 
 const TC: &str = "https://example.org/tc.atom";
@@ -148,16 +148,22 @@ impl Clock {
 /// news site, with the interests, `rules` set before the first fetch.
 fn feeds(dir: &std::path::Path, clock: &Clock, rules: Vec<Rule>) -> Feeds {
     let mut feeds = clock.open(dir);
-    feeds.subscribe(TC, SourceKind::Journal).unwrap();
-    feeds.subscribe(EGU, SourceKind::Preprints).unwrap();
-    feeds.subscribe(NEWS, SourceKind::News).unwrap();
+    feeds
+        .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
+        .unwrap();
+    feeds
+        .subscribe(Feed::Rss { url: EGU.into() }, SourceKind::Preprints)
+        .unwrap();
+    feeds
+        .subscribe(Feed::Rss { url: NEWS.into() }, SourceKind::News)
+        .unwrap();
     feeds.set_interests(interests(), 2.0).unwrap();
     feeds.set_rules(rules).unwrap();
     let http = Recorded::new()
         .reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2, J3])))
         .reply(EGU, Reply::ok(EGU, atom("EGUsphere", &[P1])))
         .reply(NEWS, Reply::ok(NEWS, atom("Futurity", &[N1])));
-    feeds.fetch(&http).unwrap();
+    feeds.fetch(&http, &Access::default()).unwrap();
     feeds
 }
 
@@ -383,7 +389,7 @@ fn rules_triage_the_new_items_only() {
         .reply(EGU, Reply::ok(EGU, atom("EGUsphere", &[P1, P2])))
         .reply(NEWS, Reply::ok(NEWS, atom("Futurity", &[N1])));
     clock.advance(1);
-    feeds.fetch(&http).unwrap();
+    feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(triage(&feeds, J1), Triage::Seen);
     assert_eq!(triage(&feeds, J3), Triage::New);
     assert_eq!(
@@ -447,7 +453,7 @@ fn old_items_go_on_opening_and_fetching() {
         .reply(EGU, Reply::ok(EGU, atom("EGUsphere", &[])))
         .reply(NEWS, Reply::status(NEWS, 304));
     clock.advance(11);
-    feeds.fetch(&http).unwrap();
+    feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(feeds.items().len(), 5, "kept 90 days");
     feeds.set_keep_days(10).unwrap();
     let mut feeds = clock.open(dir.path());
@@ -456,6 +462,6 @@ fn old_items_go_on_opening_and_fetching() {
     assert_eq!(left(&feeds), [J1.1, J2.1, P1.1, N1.1], "J2 shortlisted");
     let items = std::fs::read_to_string(dir.path().join("items.json")).unwrap();
     assert!(!items.contains(J3.1), "written");
-    feeds.fetch(&http).unwrap();
+    feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(left(&feeds), [J1.1, J2.1, N1.1], "no longer listed");
 }

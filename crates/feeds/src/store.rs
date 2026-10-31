@@ -1,13 +1,16 @@
 //! The files of a feeds folder: `config.json` (the subscriptions, interests,
 //! rules, the days kept), `items.json` (the items and the aliases of merged
 //! ones), `state.json` (the triage of each item), `http.json` (the
-//! validators of each subscription's last answer). Each is read whole, and written whole through a temporary
+//! validators of each subscription's last answer, the time of its last
+//! sweep), `lookups.json` (what was looked up, and when). Each is read whole,
+//! and written whole through a temporary
 //! file renamed over it.
 
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +23,10 @@ pub(crate) const CONFIG: &str = "config.json";
 pub(crate) const ITEMS: &str = "items.json";
 pub(crate) const STATE: &str = "state.json";
 pub(crate) const HTTP: &str = "http.json";
+pub(crate) const LOOKUPS: &str = "lookups.json";
+
+/// The days a sweep looks back the first time.
+pub const LOOKBACK_DAYS: u32 = 14;
 
 /// `config.json`: what the user set.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -37,6 +44,9 @@ pub(crate) struct Config {
     /// the days an item no feed lists is kept, unless shortlisted or added
     #[serde(default = "keep_days")]
     pub keep_days: u32,
+    /// the days a sweep looks back the first time
+    #[serde(default = "lookback_days")]
+    pub lookback_days: u32,
 }
 
 impl Default for Config {
@@ -47,6 +57,7 @@ impl Default for Config {
             title_boost: title_boost(),
             rules: Vec::new(),
             keep_days: keep_days(),
+            lookback_days: LOOKBACK_DAYS,
         }
     }
 }
@@ -58,6 +69,10 @@ fn keep_days() -> u32 {
 /// paper-feeder's: a term in the title counts twice.
 fn title_boost() -> f64 {
     2.0
+}
+
+fn lookback_days() -> u32 {
+    LOOKBACK_DAYS
 }
 
 /// `items.json`: the items, and the ids of merged items to the item they went into.
@@ -72,15 +87,22 @@ pub(crate) struct Items {
 /// `state.json`: the triage of items, by id.
 pub(crate) type State = BTreeMap<String, Mark>;
 
-/// The validators of a subscription's last answer, for a conditional GET.
+/// What the next request of a subscription is conditional on: the validators
+/// of a feed's last answer, the start of a sweep's last success.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Validators {
     pub etag: Option<String>,
     pub last_modified: Option<String>,
+    #[serde(default)]
+    pub swept: Option<DateTime<Utc>>,
 }
 
 /// `http.json`: the validators, by subscription id.
 pub(crate) type Validated = BTreeMap<String, Validators>;
+
+/// `lookups.json`: what was looked up, found or not, and when: `crossref:`
+/// and `openalex:` and a DOI, `page:` and an item's id.
+pub(crate) type Lookups = BTreeMap<String, DateTime<Utc>>;
 
 /// A file of the folder, or its default if there is none yet.
 pub(crate) fn read<T: DeserializeOwned + Default>(dir: &Path, name: &str) -> Result<T> {

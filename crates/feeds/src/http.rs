@@ -6,7 +6,9 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use reqwest::header::{self, HeaderMap, HeaderName};
+use serde::de::DeserializeOwned;
 
 pub const TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -17,6 +19,90 @@ pub const BROWSER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
 /// What a feed request accepts.
 pub const FEED_ACCEPT: &str = "application/rss+xml, application/atom+xml, application/rdf+xml, \
     application/xml;q=0.9, text/xml;q=0.9, */*;q=0.8";
+
+/// What a request of an API accepts.
+pub const JSON_ACCEPT: &str = "application/json";
+
+/// What a request of a page accepts.
+pub const PAGE_ACCEPT: &str = "text/html, application/xhtml+xml;q=0.9, */*;q=0.8";
+
+/// What the APIs are asked with: set by the user, never filled in, and sent
+/// only when set.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Access {
+    /// an address for Crossref's and OpenAlex's polite pools
+    pub mailto: Option<String>,
+    /// OpenAlex's key, which its queries need
+    pub openalex_key: Option<String>,
+}
+
+/// Crossref's API, whose list requests are paced (3 a second in its polite pool).
+pub const CROSSREF: &str = "api.crossref.org";
+
+/// What a query string leaves as written: the `:`, `,`, `|`, `/` and `*` of
+/// filters and cursors stay readable.
+const QUERY: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'#')
+    .add(b'%')
+    .add(b'&')
+    .add(b'+')
+    .add(b'<')
+    .add(b'=')
+    .add(b'>')
+    .add(b'?')
+    .add(b'`')
+    .add(b'{')
+    .add(b'}');
+
+/// A URL of a base and its parameters, encoded.
+pub(crate) fn with_query(base: &str, pairs: &[(&str, &str)]) -> String {
+    let query: Vec<String> = pairs
+        .iter()
+        .map(|(k, v)| format!("{k}={}", utf8_percent_encode(v, QUERY)))
+        .collect();
+    match query.is_empty() {
+        true => base.to_string(),
+        false => format!("{base}?{}", query.join("&")),
+    }
+}
+
+/// A DOI as a path of a URL (its slashes kept).
+pub(crate) fn doi_path(doi: &str) -> String {
+    utf8_percent_encode(doi, QUERY).to_string()
+}
+
+/// The JSON of a GET: None if not found (404 or 410), an error for no answer,
+/// another error status or a body that does not parse.
+pub(crate) fn get_json<T: DeserializeOwned>(
+    http: &dyn Http,
+    url: &str,
+) -> Result<Option<T>, String> {
+    let request = Request {
+        url: url.to_string(),
+        accept: Some(JSON_ACCEPT.to_string()),
+        ..Request::default()
+    };
+    let reply = http.get(&request)?;
+    match reply.status {
+        200..=299 => serde_json::from_slice(&reply.body)
+            .map(Some)
+            .map_err(|e| format!("{url}: {e}")),
+        404 | 410 => Ok(None),
+        _ => Err(failure(&reply)),
+    }
+}
+
+/// The message of an error status, with its `Retry-After`.
+pub(crate) fn failure(reply: &Reply) -> String {
+    let retry = reply
+        .retry_after
+        .as_ref()
+        .map(|r| format!(", retry after {r}"))
+        .unwrap_or_default();
+    format!("HTTP {}{retry}", reply.status)
+}
 
 /// A GET, conditional when the validators of the last answer are given.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -201,6 +287,17 @@ impl Default for Pacing {
 }
 
 impl Pacing {
+    /// The default, with Crossref at 3 requests a second with an address for
+    /// its polite pool (1 a second without, as the default).
+    pub fn polite(access: &Access) -> Pacing {
+        let mut pacing = Pacing::default();
+        if access.mailto.is_some() {
+            let third = Duration::from_millis(334);
+            pacing.hosts.push((CROSSREF.to_string(), third));
+        }
+        pacing
+    }
+
     /// The interval of a host.
     pub fn interval(&self, host: &str) -> Duration {
         self.hosts

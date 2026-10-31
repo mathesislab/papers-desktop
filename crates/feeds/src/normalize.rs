@@ -60,6 +60,63 @@ pub fn is_preprint_doi(doi: &str) -> bool {
     PREPRINT_DOIS.iter().any(|p| doi.starts_with(p))
 }
 
+/// The review comments, replies and supplements of Copernicus's papers and
+/// discussions: `-RC1`, `-AC2`, `-CC1`, `-EC1`, `-RC1-supplement`, `-supplement`.
+static ATTACHMENT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^10\.5194/.+-(?:(?:rc|ac|cc|ec)\d+(?:-supplement)?|supplement)$").unwrap()
+});
+
+/// The DOIs of news and magazine articles: Eos (`10.1029/2026EO260345`), The
+/// Conversation (`10.64628/…`), Nature's news (`10.1038/d41586-…`).
+static NEWS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:10\.1029/\d{4}eo\d+$|10\.64628/|10\.1038/d41586-)").unwrap());
+
+/// Whether a canonical DOI is of a paper's review comment, reply or
+/// supplement, not of a paper.
+pub fn is_attachment_doi(doi: &str) -> bool {
+    ATTACHMENT.is_match(doi)
+}
+
+/// Whether a canonical DOI is of a news article, not of a paper.
+pub fn is_news_doi(doi: &str) -> bool {
+    NEWS.is_match(doi)
+}
+
+/// Every DOI in a text, canonical, in order.
+pub fn dois_in(text: &str) -> Vec<String> {
+    DOI.find_iter(text)
+        .filter_map(|m| canonical_doi(m.as_str()))
+        .collect()
+}
+
+/// An ISSN as `NNNN-NNNC` (C a digit or X), if its check digit is right.
+pub fn canonical_issn(text: &str) -> Option<String> {
+    let chars: Vec<char> = text
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .map(|c| c.to_ascii_uppercase())
+        .collect();
+    let [digits @ .., check] = chars.as_slice() else {
+        return None;
+    };
+    if digits.len() != 7 || !digits.iter().all(char::is_ascii_digit) {
+        return None;
+    }
+    let sum: u32 = (2..=8)
+        .rev()
+        .zip(digits)
+        .map(|(weight, d)| weight * d.to_digit(10).unwrap_or(0))
+        .sum();
+    let expected = match (11 - sum % 11) % 11 {
+        10 => 'X',
+        n => char::from_digit(n, 10)?,
+    };
+    (*check == expected).then(|| {
+        let digits: String = digits.iter().collect();
+        format!("{}-{}{check}", &digits[..4], &digits[4..])
+    })
+}
+
 /// The arXiv id in a text (`oai:arXiv.org:2610.38522v1`, an abs or pdf link,
 /// `arXiv:…`, an arXiv DOI), without its version.
 pub fn arxiv_id(text: &str) -> Option<String> {

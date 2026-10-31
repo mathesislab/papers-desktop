@@ -1,0 +1,28 @@
+{
+  "meta": {"count": 3, "db_response_time_ms": 41, "page": null, "per_page": 2, "next_cursor": "IlsxNzkzMDAwMDAwMDAwLCAnaHR0cHM6Ly9vcGVuYWxleC5vcmcvVzQ0MTAwMDAwMDInXSI=", "groups_count": null},
+  "results": [
+    {
+      "id": "https://openalex.org/W4410000001",
+      "doi": "https://doi.org/10.1029/2026GL120001",
+      "title": "Ocean-driven melt of <i>Thwaites</i> Glacier since 2010",
+      "publication_date": "2026-10-20",
+      "type": "article",
+      "authorships": [
+        {"author_position": "first", "author": {"id": "https://openalex.org/A5000000001", "display_name": "Ana Ruiz"}, "institutions": []},
+        {"author_position": "last", "author": {"id": "https://openalex.org/A5000000002", "display_name": "Ben Okafor"}, "institutions": []}
+      ],
+      "primary_location": {"is_oa": false, "landing_page_url": "https://doi.org/10.1029/2026gl120001", "source": {"id": "https://openalex.org/S110000001", "display_name": "Geophysical Research Letters", "issn_l": "0094-8276", "type": "journal"}},
+      "abstract_inverted_index": {"Warm": [0], "water": [1], "reaches": [2], "the": [3, 6], "grounding": [4], "line": [5], "more": [7], "often.": [8]}
+    },
+    {
+      "id": "https://openalex.org/W4410000002",
+      "doi": null,
+      "title": "A sea-level budget without a DOI",
+      "publication_date": "2026-10-21",
+      "type": "article",
+      "authorships": [],
+      "primary_location": {"is_oa": true, "landing_page_url": "https://example.org/budget", "source": null},
+      "abstract_inverted_index": null
+    }
+  ]
+}
