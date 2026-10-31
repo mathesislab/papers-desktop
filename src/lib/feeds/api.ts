@@ -102,8 +102,8 @@ export interface FeedDetail {
   abstractFromFeed: boolean;
   /** its lookups may still find its abstract: `lookUp` asks */
   abstractPending: boolean;
-  /** a post's text as the feed gives it, as plain paragraphs */
-  content: string[];
+  /** a post's HTML as the feed gives it, made safe (no scripts, styles or frames): its text, links and images */
+  content: string | null;
   editorial: boolean;
   sources: { id: string; title: string; kind: SourceKind }[];
   versions: { doi: string; stage: "preprint" | "published"; item: string | null }[];

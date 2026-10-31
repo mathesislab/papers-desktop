@@ -42,7 +42,7 @@ use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Feed, Feeds, FetchReport, Interest, Item, ItemKind, Journal, Journals,
     LOOKUP, Network, Outcome, Pdf, Rule, Score, Search, SiteFeed, Sort, SourceKind, Stage,
-    Subscription, Triage, Via, ViewRequest as CrateRequest, paragraphs,
+    Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -659,7 +659,8 @@ pub struct FeedDetail {
     abstract_from_feed: bool,
     /// its lookups may still find its abstract: the reader asks (`feeds_look_up`)
     abstract_pending: bool,
-    content: Vec<String>,
+    /// a post's HTML, safe to show (`safe_html`): its text, links and images
+    content: Option<String>,
     editorial: bool,
     sources: Vec<SourceOf>,
     versions: Vec<VersionOf>,
@@ -1005,7 +1006,7 @@ pub fn detail(
         r#abstract: row.r#abstract,
         abstract_from_feed: item.summary.is_some() && !feeds.abstract_from_work(item),
         abstract_pending: feeds.pending(item).is_some(),
-        content: item.content.as_deref().map(paragraphs).unwrap_or_default(),
+        content: (item.content.as_deref()).map(|html| safe_html(html, item.url.as_deref())),
         editorial: item.editorial,
         sources: (source_ids(item).into_iter())
             .filter_map(subscription)

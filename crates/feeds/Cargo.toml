@@ -10,6 +10,7 @@ license = "MIT"
 name = "papers_feeds"
 
 [dependencies]
+ammonia = "4"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 feed-rs = "3"
 html-escape = "0.3"

@@ -8,6 +8,7 @@
   import * as api from "./api";
   import type { FeedDetail, PdfStatus, Triage } from "./api";
   import Facts from "./Facts.svelte";
+  import PostHtml from "./PostHtml.svelte";
   import { isPost } from "./filters";
   import { addTarget } from "./items";
   import { REVIEW_REQUEST, decide, progressOf, reviewed, startReview, stepReview, summaryOf, type Review } from "./review";
@@ -156,8 +157,8 @@
         {/if}
         {#if detail.abstract.length}
           <p class="abstract"><Spans spans={detail.abstract} /></p>
-        {:else if detail.content.length}
-          {#each detail.content as paragraph}<p class="abstract">{paragraph}</p>{/each}
+        {:else if detail.content}
+          <div class="abstract"><PostHtml html={detail.content} /></div>
         {:else}
           <p class="muted">No abstract</p>
         {/if}

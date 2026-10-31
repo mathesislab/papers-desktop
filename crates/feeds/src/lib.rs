@@ -27,6 +27,7 @@ mod enrich;
 mod extras;
 mod feeds;
 mod guess;
+mod html;
 pub mod http;
 mod interest;
 mod journals;
@@ -50,6 +51,7 @@ use std::path::PathBuf;
 
 pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
 pub use guess::{Guess, guess_kind};
+pub use html::safe_html;
 pub use feeds::{FeedReport, Feeds, FetchReport, Now, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
 pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
@@ -57,7 +59,7 @@ pub use journals::{
     Follow, Journal, Journals, LEAST_PAPERS, LibraryJournal, MOST_JOURNALS, SiteFeed, journal_key,
     library_journals, search_journals, site_feed,
 };
-pub use links::{Found, paragraphs};
+pub use links::Found;
 pub use model::{
     Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Source, SourceKind, Stage,
     Subscription, Triage, Version, Via,

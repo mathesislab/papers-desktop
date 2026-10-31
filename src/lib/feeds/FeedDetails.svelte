@@ -6,6 +6,7 @@
 
   import type { FeedDetail, FeedRow, Linked, PdfStatus } from "./api";
   import Facts from "./Facts.svelte";
+  import PostHtml from "./PostHtml.svelte";
   import { isPost } from "./filters";
   import type { TriageAction } from "./items";
   import Spans from "./Spans.svelte";
@@ -97,9 +98,9 @@
 
   {#if post}
     <section>
-      <h5>{detail.content.length ? "Post" : "Post · the teaser of the feed"}</h5>
-      {#if detail.content.length}
-        {#each detail.content as paragraph}<p class="text">{paragraph}</p>{/each}
+      <h5>Post</h5>
+      {#if detail.content}
+        <div class="text"><PostHtml html={detail.content} /></div>
       {:else if detail.abstract.length}
         <p class="text"><Spans spans={detail.abstract} /></p>
       {:else}
