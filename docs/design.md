@@ -652,8 +652,11 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   guid, `prism:doi` or the link), sweeps (Crossref by ISSN, OpenAlex
   queries, arXiv), merging, abstracts from Crossref or OpenAlex by DOI,
   the paper behind a post, interests, rules, scores, triage, the store.
-- `crates/feeds-cli` (`feeds`): subscribe, fetch, list, show, resolve,
-  mark, export (RSS digest, OPML): paper-feeder's job, which it replaces.
+- `crates/feeds-cli` (`feeds`, package `papers-feeds-cli`): subscribe,
+  fetch, list, show, find, mark, prune, the interests and rules, the import
+  of a paper-feeder setup, the RSS and HTML digest: paper-feeder's job,
+  which it replaces. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
+  data folder) is the folder; not the app's while it runs, nothing locks it.
 - The app (`src-tauri/src/feeds.rs`, `src/lib/feeds/`): the tab, *In
   library* (core's `Identity`), the Add sheet, the settings.
 

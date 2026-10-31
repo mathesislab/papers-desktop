@@ -57,6 +57,18 @@ pub fn wrap(text: &str, width: usize) -> Vec<String> {
     lines
 }
 
+/// The names of authors, the first `limit` and how many more (paper-feeder's).
+pub fn authors(names: &[String], limit: usize) -> String {
+    match names.len() > limit {
+        true => format!(
+            "{}, … (+{})",
+            names[..limit].join(", "),
+            names.len() - limit
+        ),
+        false => names.join(", "),
+    }
+}
+
 /// What a subscription is called: its title, else its feed.
 pub fn label(subscription: &Subscription) -> String {
     let named = subscription
@@ -72,4 +84,10 @@ pub fn source_label(feeds: &Feeds, id: &str) -> String {
         Some(subscription) => label(subscription),
         None => id.to_string(),
     }
+}
+
+/// The link of an item: its DOI's address, else its URL.
+pub fn link(item: &Item) -> Option<String> {
+    let doi = item.doi.as_ref().map(|d| format!("https://doi.org/{d}"));
+    doi.or_else(|| item.url.clone())
 }

@@ -1,0 +1,20 @@
+# a paper-feeder scoring.yaml, as examples/consumer/config/scoring.yaml
+title_boost: 3.0
+publish_min_score: 4.0
+serendipity_count: 3
+
+include:
+  - {term: "ice sheet", weight: 3}
+  - {pattern: "ice[- ]sheet model(l)?ing", weight: 5, label: "ice-sheet modelling"}
+  - {pattern: "\\bGIA\\b", weight: 4, label: "GIA"}
+  - {term: "sea ice"}
+  - {pattern: "(?=ice)shelf", weight: 2, label: "lookahead"}
+  - {weight: 1}
+
+exclude:
+  - "Georgia"
+  - {term: "clinical trial"}
+  - {pattern: "stock\\s+market"}
+
+llm_rerank:
+  enabled: false

@@ -100,6 +100,8 @@ fn the_help_names_the_commands_and_the_folder() {
         "interests",
         "rules",
         "config",
+        "import-paper-feeder",
+        "digest",
     ] {
         assert!(out.contains(&format!("\n  {command} ")), "{command}\n{out}");
     }

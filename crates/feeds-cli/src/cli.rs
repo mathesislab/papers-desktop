@@ -47,6 +47,11 @@ pub enum Command {
     Rules(JsonArg),
     /// The folder and the settings
     Config,
+    /// Migrate a paper-feeder setup (sources.yaml and scoring.yaml)
+    ImportPaperFeeder(ImportArgs),
+    /// Write the items of the last days that reach an interest as an RSS feed or an HTML page
+    #[command(group(ArgGroup::new("output").required(true).multiple(true).args(["rss", "html"])))]
+    Digest(DigestArgs),
 }
 
 /// What the APIs of Crossref and OpenAlex are asked with.
@@ -215,4 +220,51 @@ pub struct MarkArgs {
     pub state: StateArg,
     #[arg(required = true)]
     pub ids: Vec<String>,
+}
+
+/// Where the ISSNs of OpenAlex's journal list go.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum IssnVia {
+    /// A Crossref sweep: needs no key
+    Crossref,
+    /// An OpenAlex filter `primary_location.source.issn:ISSN`: needs a key, as paper-feeder's
+    Openalex,
+}
+
+/// `feeds import-paper-feeder`.
+#[derive(Debug, Args)]
+pub struct ImportArgs {
+    /// paper-feeder's config/sources.yaml
+    pub sources: PathBuf,
+    /// paper-feeder's config/scoring.yaml
+    pub scoring: PathBuf,
+    /// The name of the interest the lexicon becomes
+    #[arg(long, value_name = "NAME", default_value = "Interests")]
+    pub interest: String,
+    /// What the ISSNs listed under `openalex:` become
+    #[arg(long, value_enum, default_value = "crossref")]
+    pub issn_via: IssnVia,
+}
+
+/// `feeds digest`.
+#[derive(Debug, Args)]
+pub struct DigestArgs {
+    /// Write the RSS feed to this file
+    #[arg(long, value_name = "FILE")]
+    pub rss: Option<PathBuf>,
+    /// Write the HTML page to this file
+    #[arg(long, value_name = "FILE")]
+    pub html: Option<PathBuf>,
+    /// Which items: a query, best score first
+    #[arg(long, default_value = "score:3-")]
+    pub query: String,
+    /// Only the items of the last days (by their date, else when first fetched)
+    #[arg(long, default_value_t = 7, value_name = "N")]
+    pub days: u32,
+    /// The title of the feed and of the page
+    #[arg(long, default_value = "Feeds")]
+    pub title: String,
+    /// The link of the feed: where the digest is published
+    #[arg(long, default_value = "")]
+    pub link: String,
 }
