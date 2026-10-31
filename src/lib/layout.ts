@@ -1,6 +1,7 @@
 // The layout of the main window, kept between sessions (window.json, in the
 // data folder of the app, through the commands `layout` and `save_layout`).
 
+import { NO_FEED_FILTERS, restoredFeeds, type FeedFilters } from "$lib/feeds/filters";
 import { NO_FILTERS, restored, type Filters } from "$lib/library/filters";
 import { DEFAULT_COLUMNS, type Shown, type Sort } from "$lib/library/Table.svelte";
 
@@ -8,7 +9,7 @@ import { DEFAULT_COLUMNS, type Shown, type Sort } from "$lib/library/Table.svelt
  *  Feeds), the widths of the side panes, whether the details show, the
  *  columns and order of the table, the library tab (its library, view, tags
  *  and search), the papers open and the page of each, the parent tags
- *  unfolded in the sidebar. */
+ *  unfolded in the sidebar, the Feeds tab's choices. */
 export type Layout = {
   /** the tab of the window in front: the library (with the papers open), or the feeds */
   view: "library" | "feeds";
@@ -26,6 +27,8 @@ export type Layout = {
   pages: Record<string, number>;
   /** the parent tags unfolded in the sidebar, folded as `foldTag` does */
   openTags: string[];
+  /** the Feeds tab: the choices of its sidebar, the segment, the sort, the search, the groups unfolded */
+  feeds: FeedFilters;
 };
 
 const DEFAULTS: Layout = {
@@ -41,11 +44,12 @@ const DEFAULTS: Layout = {
   active: null,
   pages: {},
   openTags: [],
+  feeds: NO_FEED_FILTERS,
 };
 
 /** The layout saved (none: the defaults): what a file of an older version
- *  does not have takes its default, and the filters of the library tab are
- *  checked (`restored`). */
+ *  does not have takes its default, and the filters of the library tab and of
+ *  the Feeds tab are checked (`restored`, `restoredFeeds`). */
 export function restore(saved: Partial<Layout> | null): Layout {
-  return { ...DEFAULTS, ...saved, library: restored(saved?.library) };
+  return { ...DEFAULTS, ...saved, library: restored(saved?.library), feeds: restoredFeeds(saved?.feeds) };
 }
