@@ -57,6 +57,25 @@ selection, or the papers shown, to a `.bib` file.
 | `⌘⌥S`, `⌘⌥I` | show or hide the sidebar, the details |
 | `⌘=` `⌘-` `⌘0` | zoom in, out, fit the width |
 
+The Feeds tab lists the new papers and posts of the journals, preprint
+servers, news sites and blogs followed (+ Subscribe…), scored by interests;
+the sidebar's views, kinds, interests and sources filter it. An item
+selected for a moment counts as seen.
+
+| Key (Feeds tab) | Action |
+|---|---|
+| `j` `k`, `↑` `↓` | move; with `⇧` and the arrows, extend the selection |
+| `s` | shortlist, or no longer |
+| `x` | dismiss, or bring back |
+| `m` | mark read, or unread |
+| `o` | open the item's page in the browser |
+| `a` | add the paper (a post: its linked paper), staying in Feeds |
+| `f` | find the paper behind a post |
+| `⇧Space` | mark all above as seen |
+| `/`, `⌘F` | search the feeds |
+| `⌘R` | fetch |
+| `⌘↩` | review the shortlist: `a` add, `b` add without PDF, `o` open, `l` later, `x` dismiss, `j` `k`, `Esc` leaves |
+
 Drag a paper out of the list to drop its PDF in the Finder, a mail or a
 chat, and the citation out of the preview to drop it, formatted, in a
 document.

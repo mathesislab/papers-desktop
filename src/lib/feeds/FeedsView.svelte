@@ -316,9 +316,9 @@
     if (change) setTo(change.ids, change.triage);
   }
 
-  /** ⇧Space, the menu: the new items above the one in focus marked seen. */
-  function markAbove() {
-    const ids = newAbove(rows, focus);
+  /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked seen. */
+  function markAbove(from = focus) {
+    const ids = newAbove(rows, from);
     if (!ids.length) return;
     setTo(ids, "seen");
     say(`Marked ${ids.length} as seen`);
@@ -444,7 +444,7 @@
         await item(items.some((r) => r.triage === "new") ? "Mark as Seen" : "Mark as New", () => triage("read", ids)),
         await item(every("dismissed") ? "Restore" : "Dismiss", () => triage("dismiss", ids)),
         await separator(),
-        await item("Mark All Above as Seen", markAbove, newAbove(rows, focus).length > 0),
+        await item("Mark All Above as Seen", () => markAbove(id), newAbove(rows, id).length > 0),
       ],
     });
     await menu.popup();
@@ -490,7 +490,7 @@
     };
     if (matches(e, FETCH)) return act(fetchNow);
     if (matches(e, REVIEW)) return act(toggleReview);
-    if (reviewing) return reviewer?.key(e);
+    if (reviewing && !typing) return reviewer?.key(e);
     if (e.key === "ArrowDown") return go(mod ? "last" : 1);
     if (e.key === "ArrowUp") return go(mod ? "first" : -1);
     if (e.key === "PageDown") return go(pageRows());
@@ -501,7 +501,7 @@
     }
     if (matches(e, ALL)) return act(() => (selected = new Set(rows.map((r) => r.id))));
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === " " && e.shiftKey) return act(markAbove);
+    if (e.key === " " && e.shiftKey) return act(() => markAbove());
     if (e.shiftKey) return;
     switch (e.key) {
       case "/":
