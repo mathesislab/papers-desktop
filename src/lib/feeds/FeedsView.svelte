@@ -9,7 +9,7 @@
   // library's: it opens over this tab, which stays in front after the paper is added.
 
   import { listen } from "@tauri-apps/api/event";
-  import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
+  import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount, untrack, type Snippet } from "svelte";
@@ -30,6 +30,7 @@
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
     SEGMENTS,
+    SOURCE_KINDS,
     SORTS,
     applied,
     chooseInterest,
@@ -507,6 +508,17 @@
     const item = (text: string, action: () => void, enabled = true) => MenuItem.new({ text, action, enabled });
     const separator = () => PredefinedMenuItem.new({ item: "Separator" });
     const posts = items.length === 1 && isPost(items[0].kind);
+    // one item: the kind of each subscription that lists it, to set right
+    const sources = items.length === 1 ? ((await detailOf(id))?.sources ?? []) : [];
+    const kindOf = async (s: api.FeedDetail["sources"][number]) =>
+      Submenu.new({
+        text: sources.length === 1 ? "Source Is" : `${s.title} Is`,
+        items: await Promise.all(
+          SOURCE_KINDS.map((k) =>
+            CheckMenuItem.new({ text: k.name, checked: s.kind === k.kind, action: () => setKind(s.id, s.title, k.kind) }),
+          ),
+        ),
+      });
     const menu = await Menu.new({
       items: [
         await item(posts ? "Open Post" : "Open", () => openItems(ids)),
@@ -519,9 +531,22 @@
         await item(every("dismissed") ? "Restore" : "Dismiss", () => triage("dismiss", ids)),
         await separator(),
         await item("Mark All Above as Seen", () => markAbove(id), newAbove(rows, id).length > 0),
+        ...(sources.length ? [await separator(), ...(await Promise.all(sources.map(kindOf)))] : []),
       ],
     });
     await menu.popup();
+  }
+
+  /** A subscription set to another kind, from the row menu: its items move at once. */
+  async function setKind(id: string, title: string, kind: api.SourceKind) {
+    try {
+      await api.updateSubscription(id, { kind });
+      say(`${title}: ${SOURCE_KINDS.find((k) => k.kind === kind)?.name}`);
+      version++;
+      await load(true);
+    } catch (e) {
+      say(String(e));
+    }
   }
 
   /** The Subscribe sheet closed: what was subscribed to is fetched. */

@@ -12,10 +12,10 @@ use papers_core::{Like, Likeness};
 
 use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::interest::{self, Lexicon};
-use crate::merge::Merger;
+use crate::merge::{Merger, refresh};
 use crate::model::{Entry, Feed, Item, Mark, SourceKind, Subscription, Triage};
 use crate::normalize::{is_attachment_doi, short_id};
-use crate::parse::parse;
+use crate::parse::{kind_of, parse};
 use crate::store::{
     self, CONFIG, Config, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State, Validated, Validators,
 };
@@ -138,6 +138,8 @@ impl Feeds {
 
     /// Changes what the user names or sets on a subscription (its title,
     /// journal, kind, `fetch_pages`, `boost`); its id and feed stay as they are.
+    /// Another kind is its items' at once, and the next fetch reads its feed
+    /// whole again (a post keeps its HTML, a paper does not).
     pub fn edit_subscription(
         &mut self,
         id: &str,
@@ -149,13 +151,41 @@ impl Feeds {
             .iter_mut()
             .find(|s| s.id == id)
             .ok_or_else(|| Error::NoSubscription { id: id.to_string() })?;
-        let feed = subscription.feed.clone();
+        let (feed, kind) = (subscription.feed.clone(), subscription.kind);
         edit(subscription);
         subscription.id = id.to_string();
         subscription.feed = feed;
         let edited = subscription.clone();
         store::write(&self.dir, CONFIG, &self.config)?;
+        if edited.kind != kind {
+            self.rekind(&edited);
+            self.http.remove(id);
+            store::write(&self.dir, HTTP, &self.http)?;
+            self.save()?;
+        }
         Ok(edited)
+    }
+
+    /// The entries of a subscription of another kind: theirs, and their items'.
+    fn rekind(&mut self, subscription: &Subscription) {
+        for item in &mut self.items.items {
+            let mut changed = false;
+            for source in item
+                .sources
+                .iter_mut()
+                .filter(|s| s.entry.source == subscription.id)
+            {
+                let e = &mut source.entry;
+                e.kind = kind_of(subscription.kind, e.doi.as_deref(), e.arxiv.is_some());
+                if !e.kind.is_post() {
+                    e.content = None;
+                }
+                changed = true;
+            }
+            if changed {
+                refresh(item);
+            }
+        }
     }
 
     /// The days a sweep looks back the first time.

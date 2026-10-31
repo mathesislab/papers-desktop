@@ -52,7 +52,7 @@
     { kind: "journal", name: "Journal" },
     { kind: "preprints", name: "Preprint server" },
     { kind: "news", name: "News & press" },
-    { kind: "blog", name: "Blog" },
+    { kind: "blog", name: "General (blogs, comics, …)" },
   ];
 
   let type = $state<FeedType>("rss");

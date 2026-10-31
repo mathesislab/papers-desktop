@@ -135,12 +135,10 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
         .clone()
         .or_else(|| x.publication.clone())
         .or_else(|| feed_title.map(String::from));
-    let kind = match (sub.kind, &doi, &arxiv) {
-        (SourceKind::Journal, Some(doi), _) if is_preprint_doi(doi) => ItemKind::Preprint,
-        (SourceKind::Journal, None, Some(_)) => ItemKind::Preprint,
-        (kind, _, _) => kind.item_kind(),
-    };
-    let post = matches!(kind, ItemKind::News | ItemKind::Blog);
+    let kind = kind_of(sub.kind, doi.as_deref(), arxiv.is_some());
+    let post = kind.is_post();
+    // a post's HTML, shown as it is (its images): the content, else the description
+    let content = content.or_else(|| description.map(String::from));
     Entry {
         source: sub.id.clone(),
         guid: e.id,
@@ -156,6 +154,16 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
         editorial,
         kind,
         versions: Vec::new(),
+    }
+}
+
+/// The kind of an entry of a subscription: a journal's preprint (a preprint
+/// server's DOI, or an arXiv id and no DOI) is a preprint.
+pub(crate) fn kind_of(sub: SourceKind, doi: Option<&str>, arxiv: bool) -> ItemKind {
+    match (sub, doi) {
+        (SourceKind::Journal, Some(doi)) if is_preprint_doi(doi) => ItemKind::Preprint,
+        (SourceKind::Journal, None) if arxiv => ItemKind::Preprint,
+        (kind, _) => kind.item_kind(),
     }
 }
 

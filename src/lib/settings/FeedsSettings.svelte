@@ -15,7 +15,7 @@
     { value: "journal", name: "Journal" },
     { value: "preprints", name: "Preprints" },
     { value: "news", name: "News" },
-    { value: "blog", name: "Blog" },
+    { value: "blog", name: "General" },
   ];
   type FeedType = "rss" | "crossref" | "openalex";
   const TYPES: { value: FeedType; name: string; placeholder: string }[] = [

@@ -56,11 +56,19 @@ export const SHELVES: { view: Shelf; name: string; term: string | null }[] = [
   { view: "all", name: "All", term: null },
 ];
 
+/** The kinds of a subscription, as the menus name them. */
+export const SOURCE_KINDS: { kind: SourceKind; name: string }[] = [
+  { kind: "journal", name: "Journal" },
+  { kind: "preprints", name: "Preprint Server" },
+  { kind: "news", name: "News & Press" },
+  { kind: "blog", name: "General" },
+];
+
 export const KINDS: { kind: ItemKind; name: string }[] = [
   { kind: "paper", name: "Papers" },
   { kind: "preprint", name: "Preprints" },
   { kind: "news", name: "News & press" },
-  { kind: "blog", name: "Blogs" },
+  { kind: "blog", name: "General" },
 ];
 
 export const SEGMENTS: { segment: Segment; name: string; kinds: ItemKind[] }[] = [
@@ -286,7 +294,7 @@ const GROUPS: { group: SourceGroup["group"]; name: string }[] = [
   { group: "preprints", name: "Preprint servers" },
   { group: "sweeps", name: "Sweeps (Crossref, OpenAlex)" },
   { group: "news", name: "News & press" },
-  { group: "blog", name: "Blogs" },
+  { group: "blog", name: "General" },
 ];
 
 const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });

@@ -122,3 +122,43 @@ fn the_suggested_subscriptions_are_valid_and_distinct() {
         feeds.subscribe(s.feed.clone(), s.kind).unwrap();
     }
 }
+
+#[test]
+fn another_kind_moves_the_items_and_reads_the_feed_whole_again() {
+    use papers_feeds::http::Recorded;
+    use papers_feeds::{Access, ItemKind, Reply};
+
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    let url = "https://xkcd.com/rss.xml";
+    let comic = feeds.subscribe(rss(url), SourceKind::Journal).unwrap();
+    let body = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>xkcd.com</title>\
+        <item><title>Earth Sized Planets</title><link>https://xkcd.com/3000/</link>\
+        <description>&lt;img src=\"https://imgs.xkcd.com/comics/planets.png\" /&gt;</description>\
+        </item></channel></rss>";
+    let http = Recorded::new()
+        .reply(
+            url,
+            Reply::ok(url, body).with_validators(Some("\"v1\""), None),
+        )
+        .reply(
+            url,
+            Reply::ok(url, body).with_validators(Some("\"v1\""), None),
+        );
+    feeds.fetch(&http, &Access::default()).unwrap();
+    assert_eq!(feeds.items()[0].kind, ItemKind::Paper);
+    assert_eq!(feeds.items()[0].content, None, "a paper keeps no HTML");
+
+    feeds
+        .edit_subscription(&comic.id, |s| s.kind = SourceKind::Blog)
+        .unwrap();
+    assert_eq!(feeds.items()[0].kind, ItemKind::Blog, "at once");
+    feeds.fetch(&http, &Access::default()).unwrap();
+    let asked = &http.requests()[1];
+    assert_eq!(asked.if_none_match, None, "the feed read whole again");
+    let content = feeds.items()[0].content.as_deref().unwrap();
+    assert!(
+        content.contains("<img src=\"https://imgs.xkcd.com/comics/planets.png\""),
+        "{content}"
+    );
+}

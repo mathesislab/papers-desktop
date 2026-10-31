@@ -186,7 +186,7 @@
             {#if row.authors.length}
               {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
             {:else if row.kind === "news" || row.kind === "blog"}
-              {row.kind}
+              {row.kind === "news" ? "news" : "general"}
             {/if}
           </span>
           <span class="muted" title={row.sources.join(", ")}>{row.journal ?? row.sources[0] ?? ""}</span>

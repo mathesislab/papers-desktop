@@ -153,7 +153,8 @@ fn physorg_teasers() {
             .unwrap()
             .contains("Earth's rocky places")
     );
-    assert_eq!(e.content, None);
+    let content = e.content.as_deref().unwrap();
+    assert!(content.contains("rocky places"), "the description, its HTML: {content}");
 }
 
 #[test]

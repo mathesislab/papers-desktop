@@ -203,7 +203,7 @@ fn conflicts(entry: &Entry, item: &Item) -> bool {
 }
 
 /// An item's fields again, from its sources.
-fn refresh(item: &mut Item) {
+pub(crate) fn refresh(item: &mut Item) {
     let sources = std::mem::take(&mut item.sources);
     let links = std::mem::take(&mut item.links);
     *item = assemble(std::mem::take(&mut item.id), sources, links);

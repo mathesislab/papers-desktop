@@ -56,7 +56,7 @@
     detail.date ? new Date(detail.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null,
   );
   let where = $derived([detail.journal, date, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
-  const KIND: Record<FeedDetail["kind"], string> = { paper: "paper", preprint: "preprint", news: "news & press", blog: "blog" };
+  const KIND: Record<FeedDetail["kind"], string> = { paper: "paper", preprint: "preprint", news: "news & press", blog: "general" };
   const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", search: "found by its title" };
 </script>
 
