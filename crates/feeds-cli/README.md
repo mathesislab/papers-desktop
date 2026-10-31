@@ -20,7 +20,8 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 
 | Command | |
 | --- | --- |
-| `subscribe <url> \| --issn <issn> \| --openalex <filter>` | `--kind journal\|preprints\|news\|blog` (arXiv and preprint servers: preprints, else journal), `--title`, `--journal`, `--fetch-pages` |
+| `subscribe <url> \| --issn <issn> \| --openalex <filter>` | `--kind journal\|preprints\|news\|blog` (arXiv and preprint servers: preprints, else journal), `--title`, `--journal`, `--fetch-pages`, `--boost N` (added to the score of its items, e.g. 2 for "cites my work") |
+| `edit <id> --boost N` | change the boost of a subscription (0 for none); the strongest of the subscriptions that list an item counts |
 | `unsubscribe <id>`, `subscriptions [--json]` | |
 | `fetch` | `--mailto <address>` (env `FEEDS_MAILTO`), `--openalex-key <key>` (env `OPENALEX_KEY`); one request at a time per host; a feed that fails is reported, the others go on |
 | `list [QUERY]...` | `--sort score\|newest`, `--kind paper,preprint,news,blog`, `--limit N`, `--dismissed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `abs:`, ...) |

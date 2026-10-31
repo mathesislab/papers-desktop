@@ -110,6 +110,7 @@ impl Feeds {
             kind,
             journal: None,
             fetch_pages: false,
+            boost: 0.0,
         };
         self.config.subscriptions.push(subscription.clone());
         store::write(&self.dir, CONFIG, &self.config)?;
@@ -131,7 +132,7 @@ impl Feeds {
     }
 
     /// Changes what the user names or sets on a subscription (its title,
-    /// journal, kind, `fetch_pages`); its id and feed stay as they are.
+    /// journal, kind, `fetch_pages`, `boost`); its id and feed stay as they are.
     pub fn edit_subscription(
         &mut self,
         id: &str,

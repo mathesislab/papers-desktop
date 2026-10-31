@@ -135,3 +135,40 @@ fn unsubscribe_and_the_errors_of_subscribing() {
         (1, format!("feeds: error: {id}: no such subscription\n"))
     );
 }
+
+#[test]
+fn the_boost_is_set_when_subscribing_and_edited_after() {
+    let s = Sandbox::new(Recorded::new());
+    s.ok(&["subscribe", TC]);
+    s.ok(&["subscribe", "--openalex", "cites:W1", "--boost", "2"]);
+    let json = s.json(&["subscriptions", "--json"]);
+    assert!(json[0].get("boost").is_none(), "none when 0");
+    assert_eq!(json[1]["boost"], 2.0);
+    let table = s.ok(&["subscriptions"]);
+    let lines: Vec<&str> = table.lines().collect();
+    assert!(
+        lines[0].ends_with(TC) && !lines[0].contains("boost"),
+        "{table}"
+    );
+    assert!(lines[1].ends_with("boost +2  OpenAlex cites:W1"), "{table}");
+
+    let id = json[0]["id"].as_str().unwrap();
+    assert_eq!(
+        s.ok(&["edit", id, "--boost", "-1.5"]),
+        format!("edited {id} {TC}: boost -1.5\n")
+    );
+    assert_eq!(s.json(&["subscriptions", "--json"])[0]["boost"], -1.5);
+    s.ok(&["edit", id, "--boost", "0"]);
+    assert!(
+        s.json(&["subscriptions", "--json"])[0]
+            .get("boost")
+            .is_none()
+    );
+
+    assert_eq!(s.run(&["edit", id]).code, 2, "--boost is required");
+    let gone = s.run(&["edit", "nope", "--boost", "1"]);
+    assert_eq!(
+        (gone.code, gone.err.as_str()),
+        (1, "feeds: error: nope: no such subscription\n")
+    );
+}

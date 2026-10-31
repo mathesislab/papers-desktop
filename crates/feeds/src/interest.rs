@@ -170,6 +170,12 @@ impl Lexicon {
 
     /// The score of a title and an abstract (paper-feeder's `score_record`).
     pub fn score(&self, title: &str, r#abstract: &str) -> Score {
+        self.score_boosted(title, r#abstract, 0.0)
+    }
+
+    /// [`Lexicon::score`] with `boost` added unless an exclude vetoes (paper-feeder's
+    /// `score_boost`: it counts with no term matching too).
+    pub fn score_boosted(&self, title: &str, r#abstract: &str, boost: f64) -> Score {
         let excluded = self.exclude.is_match(title) || self.exclude.is_match(r#abstract);
         let mut score = 0.0;
         let mut terms = Vec::new();
@@ -190,6 +196,7 @@ impl Lexicon {
                     terms.push(term.label.clone());
                 }
             }
+            score += boost;
         }
         Score {
             interest: self.name.clone(),
@@ -261,13 +268,26 @@ impl Feeds {
     }
 
     /// The score of an item in each interest, in their order: by its title
-    /// and its summary.
+    /// and its summary, and the boost of its subscriptions.
     pub fn scores(&self, item: &Item) -> Vec<Score> {
         let r#abstract = item.summary.as_deref().unwrap_or("");
+        let boost = self.boost(item);
         self.lexicons
             .iter()
-            .map(|l| l.score(&item.title, r#abstract))
+            .map(|l| l.score_boosted(&item.title, r#abstract, boost))
             .collect()
+    }
+
+    /// The boost of an item: the strongest of the subscriptions that list it
+    /// (an entry of a lookup, or of a subscription since ended, has none).
+    fn boost(&self, item: &Item) -> f64 {
+        let subscription = |id: &str| self.subscriptions().iter().find(|s| s.id == id);
+        item.sources
+            .iter()
+            .filter_map(|s| subscription(&s.entry.source))
+            .map(|s| s.boost)
+            .reduce(f64::max)
+            .unwrap_or(0.0)
     }
 
     /// The interests compiled, in their order.

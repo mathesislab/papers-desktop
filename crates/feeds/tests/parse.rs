@@ -12,6 +12,7 @@ fn subscription(kind: SourceKind) -> Subscription {
         kind,
         journal: None,
         fetch_pages: false,
+        boost: 0.0,
     }
 }
 

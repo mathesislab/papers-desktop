@@ -22,6 +22,8 @@ pub struct Cli {
 pub enum Command {
     /// Follow a feed (a URL), a journal's Crossref sweep (--issn) or an OpenAlex filter (--openalex)
     Subscribe(SubscribeArgs),
+    /// Change a subscription
+    Edit(EditArgs),
     /// Stop following a subscription (its items stay until pruned)
     Unsubscribe(IdArg),
     /// The subscriptions
@@ -123,6 +125,20 @@ pub struct SubscribeArgs {
     /// Fetch the page of each item at fetch time (to find the paper of a post)
     #[arg(long)]
     pub fetch_pages: bool,
+    /// Added to the score of its items, e.g. 2 for "cites my work" (paper-feeder's score_boost)
+    #[arg(long, value_name = "N", allow_negative_numbers = true)]
+    pub boost: Option<f64>,
+}
+
+/// `feeds edit`.
+#[derive(Debug, Args)]
+pub struct EditArgs {
+    /// The id of the subscription
+    pub id: String,
+    /// Added to the score of its items in each interest (0 for none); the strongest of the
+    /// subscriptions that list an item counts
+    #[arg(long, value_name = "N", allow_negative_numbers = true)]
+    pub boost: f64,
 }
 
 /// The order of `feeds list`.
