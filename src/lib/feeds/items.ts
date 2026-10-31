@@ -37,6 +37,12 @@ export function newAbove(rows: { id: string; triage: Triage }[], focus: string |
   return rows.slice(0, at < 0 ? rows.length : at).filter((r) => r.triage === "new").map((r) => r.id);
 }
 
+/** Mark read, older than: the new items dated more than some days before now (one without a date is not). */
+export function newOlderThan(rows: { id: string; triage: Triage; date: string | null }[], days: number, now: number): string[] {
+  const before = now - days * 86_400_000;
+  return rows.filter((r) => r.triage === "new" && r.date !== null && Date.parse(r.date) < before).map((r) => r.id);
+}
+
 /** The items from one to another, in the order of the list (one alone if either is not in it). */
 export function rangeOf(ids: string[], from: string, to: string): string[] {
   const [a, b] = [ids.indexOf(from), ids.indexOf(to)].sort((x, y) => x - y);

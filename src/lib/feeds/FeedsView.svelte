@@ -52,6 +52,7 @@
     fetchLine,
     mergeRows,
     newAbove,
+    newOlderThan,
     nextAfter,
     pageOf,
     rangeOf,
@@ -129,6 +130,8 @@
   const sticky = new Set<string>();
   /** the free PDFs asked for, by item */
   const pdfs = new Map<string, Promise<api.PdfStatus>>();
+  /** above this many, Mark read asks first */
+  const MARK_ASK = 50;
   /** the items whose abstract was looked up here, once each */
   const lookedUp = new Set<string>();
   /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
@@ -352,6 +355,37 @@
     setTo(ids, "seen");
     say(`Marked ${ids.length} as seen`);
   }
+
+  /** Mark read ▾: the new items of the list, those older than some days, those above the selection, marked seen
+   *  (above 50, after asking). */
+  async function markMenu() {
+    const item = (text: string, ids: string[]) =>
+      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markSeen(ids) });
+    const all = rows.filter((r) => r.triage === "new").map((r) => r.id);
+    const older = (days: number) => newOlderThan(rows, days, Date.now());
+    const menu = await Menu.new({
+      items: [
+        await item("All in This List", all),
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        await item("Older than 1 Day", older(1)),
+        await item("Older than 3 Days", older(3)),
+        await item("Older than 1 Week", older(7)),
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        await item("All Above the Selection", newAbove(rows, focus)),
+      ],
+    });
+    await menu.popup();
+  }
+
+  async function markSeen(ids: string[]) {
+    const question = `Mark ${ids.length} items as read?`;
+    if (ids.length > MARK_ASK && !(await ask(question, { title: "Mark read", okLabel: "Mark read", cancelLabel: "Cancel" }))) return;
+    setTo(ids, "seen");
+    say(`Marked ${ids.length} as read`);
+  }
+
+  /** The selection bar: the rows selected, in the order of the list. */
+  const chosen = () => rows.filter((r) => selected.has(r.id));
 
   /** o, a double-click: the page of each item in the browser (above 5, after asking); a new one is seen. */
   async function openItems(ids: string[]) {
@@ -698,6 +732,9 @@
               </span>
             {/each}
             <span class="spacer"></span>
+            <button class="sort" title="Mark the new items of the list as read: all, the older ones, those above" onclick={markMenu}>
+              Mark read ▾
+            </button>
             <button
               class="sort"
               title="Sort by score, by likeness to the library or by date"
@@ -706,6 +743,17 @@
               {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}
             </button>
           </div>
+          {#if selected.size > 1}
+            <div class="selbar">
+              <span>{selected.size} selected</span>
+              <button onclick={() => markSeen(chosen().filter((r) => r.triage === "new").map((r) => r.id))}>Mark read</button>
+              <button onclick={() => setTo(chosen().filter((r) => r.triage === "seen").map((r) => r.id), "new")}>Mark unread</button>
+              <button onclick={() => triage("shortlist", chosen().map((r) => r.id))}>★ Shortlist</button>
+              <button onclick={() => triage("dismiss", chosen().map((r) => r.id))}>Dismiss</button>
+              <span class="spacer"></span>
+              <button class="plain" onclick={() => (selected = new Set(focus ? [focus] : []))}>Clear selection</button>
+            </div>
+          {/if}
           {#if !loaded}
             <p class="empty">Loading the feeds…</p>
           {:else if failure && !rows.length}
@@ -1000,6 +1048,30 @@
   }
   .sort:hover {
     color: var(--fg);
+  }
+  /* two or more rows selected: what acts on them all */
+  .selbar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    font-size: 12px;
+  }
+  .selbar button {
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+  }
+  .selbar button.plain {
+    border: none;
+    background: none;
+    color: var(--muted);
   }
 
   /* the last fetch, and what the feeds hold */

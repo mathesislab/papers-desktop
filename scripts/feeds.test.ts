@@ -38,6 +38,7 @@ import {
   likeText,
   mergeRows,
   newAbove,
+  newOlderThan,
   nextAfter,
   rangeOf,
   stale,
@@ -250,6 +251,13 @@ test("mark all above, ranges, the next after some go", () => {
   assert.deepEqual(newAbove(rows, "d"), ["a", "c"]);
   assert.deepEqual(newAbove(rows, "a"), []);
   assert.deepEqual(newAbove(rows, null), ["a", "c", "d"]);
+  const dated = [
+    { id: "a", triage: "new" as Triage, date: "2026-10-30T00:00:00Z" },
+    { id: "b", triage: "new" as Triage, date: "2026-10-20T00:00:00Z" },
+    { id: "c", triage: "seen" as Triage, date: "2026-10-20T00:00:00Z" },
+    { id: "d", triage: "new" as Triage, date: null },
+  ];
+  assert.deepEqual(newOlderThan(dated, 3, Date.parse("2026-10-31T00:00:00Z")), ["b"]);
   assert.deepEqual(rangeOf(["a", "b", "c", "d"], "c", "a"), ["a", "b", "c"]);
   assert.deepEqual(rangeOf(["a", "b"], "z", "b"), ["b"]);
   assert.equal(nextAfter(["a", "b", "c", "d"], new Set(["b", "c"])), "d");
