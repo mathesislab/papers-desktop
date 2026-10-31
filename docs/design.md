@@ -656,7 +656,8 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   queries, arXiv), merging, abstracts from Crossref or OpenAlex by DOI,
   the paper behind a post, interests, rules, scores, triage, the store.
 - `crates/feeds-cli` (`feeds`, package `papers-feeds-cli`): subscribe,
-  fetch, list, show, find, mark, prune, the interests and rules, the import
+  edit, fetch, list, show, find, mark, prune, the interests and rules,
+  `opml import|export`, `config` (`keep-days`, `lookback-days`), the import
   of a paper-feeder setup, the RSS and HTML digest: paper-feeder's job,
   which it replaces. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
   data folder) is the folder; not the app's while it runs, nothing locks it.
@@ -778,6 +779,25 @@ each a view sorted by score. In `config.json`: `interests` (`name`,
 computed when asked, not stored (a `RegexSet` per interest, one pass per
 text): an edited interest or an enriched abstract counts at once.
 
+**Boost**: `boost` of a subscription in `config.json` (a number, 0 and left
+out by default), paper-feeder's `score_boost`: "cites my work" is partial
+credit, so that a citing paper needs only a weak topical match. It is added
+to each interest's score of the items the subscription lists, a veto
+excepted (the score stays 0); it counts with no term matching too. An item
+that several subscriptions list takes the strongest boost, not the sum. It
+is part of the score wherever the score is used (`score:`, `prof:` through
+`reached`, the sort, the rules, the digest's `score:3-`). Set in the
+settings (a field of the subscription's editor), by `feeds subscribe
+--boost N` or `feeds edit <id> --boost N`; `feeds subscriptions` shows it.
+`feeds import-paper-feeder` maps `score_boost: N` to `boost: N`, and
+`always_include: true` to a rule `{when: src:"<subscription title>", then:
+shortlist}` (by the id if the subscription has no title) added after the
+rules there are: paper-feeder's source kept every item of the source,
+unless an exclude vetoed it, where the rule shortlists the new items
+whatever the interest says. Both are set for the subscriptions the import
+adds only: a second import leaves the boosts and rules as the user made
+them. `lookback_days` of a query stays without equivalent (warned).
+
 **Rules**: `{when, then}`, a query of the feeds and `shortlist`,
 `dismiss` or `seen` (`prof:amoc score:6-` → shortlist, `t:editorial` →
 dismiss). They act on the items a fetch brings, the first that matches
@@ -814,11 +834,13 @@ lookups made), never the .bib. An item no feed lists goes after `keep_days`
 (`src/lib/settings/FeedsSettings.svelte`): the subscriptions (each with its
 kind, feed and last outcome; added by a feed's URL, an ISSN or an OpenAlex
 filter, or from the suggested list, by group; edited: title, kind, journal,
-fetch pages; removed), OPML import and export (sweeps as outlines of their
+fetch pages, boost; removed), OPML import and export (sweeps as outlines of their
 own type, `crossref`/`issn` and `openalex`/`filter`, the kind in
 `category`), the interests and rules (edited, then saved together:
 `feeds_set_settings` refuses an interest that does not compile, with its
-message), the days kept, the lookback, background polling. Polling is in
+message), the days kept, the lookback, background polling (the command line does
+the OPML, the days kept and the lookback too: `feeds opml import|export`,
+`feeds config keep-days|lookback-days`). Polling is in
 `settings.json` (`feeds_poll`, false; `feeds_poll_minutes`, 60, 5 at least),
 the rest in `feeds/config.json`.
 
