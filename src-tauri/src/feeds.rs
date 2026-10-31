@@ -44,7 +44,7 @@ use chrono::{DateTime, Datelike, TimeDelta, Utc};
 use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
-    Access, Confidence, Feed, Feeds, FetchReport, Groups, Interest, Item, ItemKind, Journal,
+    Access, Confidence, Entry, Feed, Feeds, FetchReport, Groups, Interest, Item, ItemKind, Journal,
     Journals, LOOKUP, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort,
     SourceKind, Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
@@ -58,6 +58,36 @@ use crate::settings::Settings;
 /// The events of the page: the items changed; where a fetch is (`Phase`).
 const CHANGED: &str = "feeds-changed";
 const FETCHING: &str = "feeds-fetching";
+
+/// The items' events of the Search tab: the items changed.
+pub const SEARCH_CHANGED: &str = "search-changed";
+
+/// The folder of feeds an item is of: the Feeds tab's, or the works found in
+/// the Search tab (`crate::search`), whose items the same commands show and
+/// triage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Store {
+    Feeds,
+    Search,
+}
+
+impl Store {
+    pub fn of(self, state: &AppState) -> &FeedsState {
+        match self {
+            Store::Feeds => &state.feeds,
+            Store::Search => &state.search,
+        }
+    }
+
+    /// The event that its items changed.
+    pub fn changed(self) -> &'static str {
+        match self {
+            Store::Feeds => CHANGED,
+            Store::Search => SEARCH_CHANGED,
+        }
+    }
+}
 
 /// Where a fetch is: reading the feeds, looking up what they brought, done.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -129,6 +159,8 @@ pub enum Change {
     Import(String),
     /// the saved searches, all of them
     Searches(Vec<Search>),
+    /// the works of a search, its first page (fresh) or the next
+    Found(Vec<Entry>, bool),
 }
 
 /// What a change gives back.
@@ -137,6 +169,7 @@ pub enum Applied {
     Done,
     Subscription(Subscription),
     Count(usize),
+    Ids(Vec<String>),
 }
 
 /// The settings of the feeds kept in their folder.
@@ -193,6 +226,7 @@ impl Change {
                 feeds.set_searches(searches.clone())?;
                 Applied::Done
             }
+            Change::Found(entries, fresh) => Applied::Ids(feeds.found(entries.clone(), *fresh)?),
         })
     }
 }
@@ -682,6 +716,8 @@ pub struct FeedRow {
     has_versions: bool,
     covered_by: usize,
     links: usize,
+    /// the works that cite it, as OpenAlex counted them when it was found
+    cited: Option<u64>,
 }
 
 /// The counts of the sidebar, the subscriptions by title, the saved searches by name.
@@ -999,22 +1035,56 @@ pub fn view(
         shown: request.shown,
         ..CrateRequest::default()
     });
-    let titles: HashMap<&str, String> = (feeds.subscriptions().iter())
-        .map(|s| (s.id.as_str(), title_of(s)))
-        .collect();
-    let items: HashMap<&str, &Item> = feeds.items().iter().map(|i| (i.id.as_str(), i)).collect();
-    // the posts that link each DOI
-    let mut posts: HashMap<&str, HashSet<&str>> = HashMap::new();
-    for post in feeds.items().iter().filter(|i| !i.links.is_empty()) {
-        for link in &post.links {
-            posts.entry(&link.doi).or_default().insert(&post.id);
+    let rows = Rows::new(feeds, index);
+    FeedView {
+        held: view.held,
+        counts: FeedCounts {
+            all: view.counts.all,
+            is: view.counts.is,
+            total: FeedGroups::of(view.counts.total, &rows.titles),
+            unread: FeedGroups::of(view.counts.unread, &rows.titles),
+            searches: view.counts.searches,
+        },
+        rows: view.rows.into_iter().map(|row| rows.row(row)).collect(),
+    }
+}
+
+/// What the rows of the list show besides the crate's rows: the titles of the
+/// subscriptions, the library's papers, the posts that cover a paper.
+pub struct Rows<'a> {
+    feeds: &'a Feeds,
+    index: InLibrary,
+    titles: HashMap<&'a str, String>,
+    /// the posts that link each DOI
+    posts: HashMap<&'a str, HashSet<&'a str>>,
+}
+
+impl<'a> Rows<'a> {
+    pub fn new(feeds: &'a Feeds, index: InLibrary) -> Rows<'a> {
+        let titles = (feeds.subscriptions().iter())
+            .map(|s| (s.id.as_str(), title_of(s)))
+            .collect();
+        let mut posts: HashMap<&str, HashSet<&str>> = HashMap::new();
+        for post in feeds.items().iter().filter(|i| !i.links.is_empty()) {
+            for link in &post.links {
+                posts.entry(&link.doi).or_default().insert(&post.id);
+            }
+        }
+        Rows {
+            feeds,
+            index,
+            titles,
+            posts,
         }
     }
-    let rows = view.rows.into_iter().map(|row| {
-        let item = items[row.id.as_str()];
+
+    /// The row of the list of a crate's row.
+    pub fn row(&self, row: papers_feeds::Row) -> FeedRow {
+        let feeds = self.feeds;
+        let item = feeds.item(&row.id).expect("a row's item");
         let dois = item.doi.iter().chain(item.versions.iter().map(|v| &v.doi));
         let covering: HashSet<&str> = dois
-            .filter_map(|d| posts.get(d.as_str()))
+            .filter_map(|d| self.posts.get(d.as_str()))
             .flatten()
             .filter(|&&id| id != item.id)
             .copied()
@@ -1023,17 +1093,18 @@ pub fn view(
             kind: item.kind,
             journal: item.journal.clone(),
             sources: (source_ids(item).iter())
-                .filter_map(|id| titles.get(id).cloned())
+                .filter_map(|id| self.titles.get(id).cloned())
                 .collect(),
             date: item.date,
             triage: feeds.triage(&item.id),
             reminder: row.reminder,
             remind: feeds.mark(&item.id).and_then(|m| m.remind),
-            in_library: index.same(item),
+            in_library: self.index.same(item),
             has_versions: item.kind == ItemKind::Preprint
                 || item.versions.iter().any(|v| v.stage == Stage::Preprint),
             covered_by: covering.len(),
             links: item.links.len(),
+            cited: item.cited,
             id: row.id,
             title: row.title,
             authors: row.authors,
@@ -1041,17 +1112,6 @@ pub fn view(
             interests: row.interests,
             like: row.like,
         }
-    });
-    FeedView {
-        held: view.held,
-        rows: rows.collect(),
-        counts: FeedCounts {
-            all: view.counts.all,
-            is: view.counts.is,
-            total: FeedGroups::of(view.counts.total, &titles),
-            unread: FeedGroups::of(view.counts.unread, &titles),
-            searches: view.counts.searches,
-        },
     }
 }
 
@@ -1157,7 +1217,7 @@ fn access(settings: &Settings) -> Access {
 }
 
 /// The network, paced per host, and the access, from the settings.
-fn network(state: &AppState) -> Result<(Paced<Network>, Access), String> {
+pub fn network(state: &AppState) -> Result<(Paced<Network>, Access), String> {
     let access = access(&Settings::load(&state.settings_path)?);
     let network = Paced::new(Network::new()?, Pacing::polite(&access));
     Ok((network, access))
@@ -1194,10 +1254,15 @@ fn fetch_now(app: &AppHandle, only: Option<String>) -> Result<FetchSummary, Stri
         .map_err(|_| "the fetch stopped".to_string())?
 }
 
-/// A change, the windows told.
+/// A change of the feeds, the windows told.
 fn change(app: &AppHandle, change: Change) -> Result<Applied, String> {
-    let applied = app.state::<AppState>().feeds.change(change)?;
-    let _ = app.emit(CHANGED, ());
+    change_in(app, Store::Feeds, change)
+}
+
+/// A change of a store, the windows told.
+pub fn change_in(app: &AppHandle, store: Store, change: Change) -> Result<Applied, String> {
+    let applied = store.of(&app.state::<AppState>()).change(change)?;
+    let _ = app.emit(store.changed(), ());
     Ok(applied)
 }
 
@@ -1210,19 +1275,21 @@ fn subscription_of(app: &AppHandle, applied: Applied) -> Result<SubscriptionInfo
 }
 
 /// Indexes the library's papers on a thread of its own, the library as it is
-/// now, and gives the index to the feeds (none for an empty library); the
-/// page is told. After every read of the library.
+/// now, and gives the index to the feeds and to the works found (none for an
+/// empty library); the page is told. After every read of the library.
 pub fn index_library(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
-        let build = state.feeds.next_build();
+        let builds = [Store::Feeds, Store::Search].map(|s| (s, s.of(&state).next_build()));
         let likeness = {
             let library = state.library.read().unwrap();
             (!library.is_empty()).then(|| Arc::new(Likeness::of(&library)))
         };
-        if state.feeds.set_likeness(build, likeness) {
-            let _ = app.emit(CHANGED, ());
+        for (store, build) in builds {
+            if store.of(&state).set_likeness(build, likeness.clone()) {
+                let _ = app.emit(store.changed(), ());
+            }
         }
     });
 }
@@ -1274,11 +1341,16 @@ pub async fn feeds_view(app: AppHandle, request: ViewRequest) -> Result<FeedView
 }
 
 #[tauri::command]
-pub async fn feeds_item(app: AppHandle, id: String, query: String) -> Result<FeedDetail, String> {
+pub async fn feeds_item(
+    app: AppHandle,
+    store: Store,
+    id: String,
+    query: String,
+) -> Result<FeedDetail, String> {
     blocking(move || {
         let state = app.state::<AppState>();
         let matching = *state.matching.read().unwrap();
-        state.feeds.read(|feeds| {
+        store.of(&state).read(|feeds| {
             let library = state.library.read().unwrap();
             detail(feeds, &library, matching, &id, &query)
         })?
@@ -1287,8 +1359,13 @@ pub async fn feeds_item(app: AppHandle, id: String, query: String) -> Result<Fee
 }
 
 #[tauri::command]
-pub async fn feeds_triage(app: AppHandle, ids: Vec<String>, triage: Triage) -> Result<(), String> {
-    blocking(move || change(&app, Change::Triage(ids, triage)).map(drop)).await
+pub async fn feeds_triage(
+    app: AppHandle,
+    store: Store,
+    ids: Vec<String>,
+    triage: Triage,
+) -> Result<(), String> {
+    blocking(move || change_in(&app, store, Change::Triage(ids, triage)).map(drop)).await
 }
 
 /// Items new, to be reminded of `until` (snoozed till then), else now (kept unread).
@@ -1315,13 +1392,13 @@ pub async fn feeds_find_papers(app: AppHandle, id: String) -> Result<Vec<Linked>
 }
 
 #[tauri::command]
-pub async fn feeds_look_up(app: AppHandle, id: String) -> Result<bool, String> {
+pub async fn feeds_look_up(app: AppHandle, store: Store, id: String) -> Result<bool, String> {
     blocking(move || {
         let state = app.state::<AppState>();
         let (network, access) = network(&state)?;
-        let asked = state.feeds.look_up(&id, &network, &access)?;
+        let asked = store.of(&state).look_up(&id, &network, &access)?;
         if asked {
-            let _ = app.emit(CHANGED, ());
+            let _ = app.emit(store.changed(), ());
         }
         Ok(asked)
     })
@@ -1329,11 +1406,11 @@ pub async fn feeds_look_up(app: AppHandle, id: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub async fn feeds_pdf(app: AppHandle, id: String) -> Result<Pdf, String> {
+pub async fn feeds_pdf(app: AppHandle, store: Store, id: String) -> Result<Pdf, String> {
     blocking(move || {
         let state = app.state::<AppState>();
         let (network, access) = network(&state)?;
-        state.feeds.pdf(&id, &network, &access)
+        store.of(&state).pdf(&id, &network, &access)
     })
     .await
 }

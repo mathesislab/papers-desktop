@@ -14,6 +14,7 @@ mod menu;
 #[cfg(target_os = "macos")]
 mod pdf_view;
 mod recent;
+mod search;
 mod selection;
 mod settings;
 mod styles;
@@ -111,6 +112,8 @@ struct AppState {
     settings_after_main: AtomicBool,
     /// the feeds of the Feeds tab, opened at its first command
     feeds: feeds::FeedsState,
+    /// the works found in the Search tab, opened at its first command
+    search: feeds::FeedsState,
 }
 
 impl AppState {
@@ -958,6 +961,11 @@ pub fn run() {
                     app.path().app_data_dir()?.join("feeds"),
                     app.path().app_data_dir()?.join("feeds-fetched.json"),
                 ),
+                // never fetched: no summary is kept
+                search: feeds::FeedsState::new(
+                    app.path().app_data_dir()?.join("search"),
+                    app.path().app_data_dir()?.join("search-fetched.json"),
+                ),
             });
             app.state::<AppState>()
                 .downloads
@@ -1135,7 +1143,10 @@ pub fn run() {
             feeds::feeds_set_beside,
             feeds::feeds_set_tab,
             feeds::feeds_searches,
-            feeds::feeds_set_searches
+            feeds::feeds_set_searches,
+            search::search_run,
+            search::search_rows,
+            search::search_saved
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

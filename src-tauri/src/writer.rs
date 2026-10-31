@@ -1196,6 +1196,10 @@ mod tests {
             settings_on_main: Default::default(),
             settings_after_main: Default::default(),
             feeds: crate::feeds::FeedsState::new(dir.join("feeds"), dir.join("feeds-fetched.json")),
+            search: crate::feeds::FeedsState::new(
+                dir.join("search"),
+                dir.join("search-fetched.json"),
+            ),
         }
     }
 

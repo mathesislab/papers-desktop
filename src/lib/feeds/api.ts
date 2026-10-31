@@ -51,6 +51,8 @@ export interface FeedRow {
   coveredBy: number;
   /** a post: the papers found behind it */
   links: number;
+  /** the works that cite it, as OpenAlex counted them when it was found */
+  cited: number | null;
 }
 
 /** The counts of the sidebar: over every item not dismissed. */
@@ -292,10 +294,13 @@ export interface LibraryJournal {
 export const fetchFeeds = (only?: string) => invoke<FetchSummary>("feeds_fetch", { only: only ?? null });
 export const lastFetch = () => invoke<FetchSummary | null>("feeds_last_fetch");
 export const view = (request: ViewRequest) => invoke<FeedView>("feeds_view", { request });
-export const detail = (id: string, query: string) =>
-  invoke<FeedDetail>("feeds_item", { id, query });
-export const setTriage = (ids: string[], triage: Triage) =>
-  invoke<void>("feeds_triage", { ids, triage });
+/** The folder of feeds an item is of: the Feeds tab's, or the works found in the Search tab. */
+export type Store = "feeds" | "search";
+
+export const detail = (id: string, query: string, store: Store = "feeds") =>
+  invoke<FeedDetail>("feeds_item", { store, id, query });
+export const setTriage = (ids: string[], triage: Triage, store: Store = "feeds") =>
+  invoke<void>("feeds_triage", { store, ids, triage });
 export const findPapers = (id: string) => invoke<Linked[]>("feeds_find_papers", { id });
 /** A kind guessed for a feed, and what tells it. */
 export interface Guess {
@@ -311,8 +316,8 @@ export type Reminder = "snoozed" | "due";
 export const remind = (ids: string[], until: string | null) => invoke<void>("feeds_remind", { ids, until });
 
 /** The abstract of an item looked up now; whether it asked (the feeds then change). */
-export const lookUp = (id: string) => invoke<boolean>("feeds_look_up", { id });
-export const pdfStatus = (id: string) => invoke<PdfStatus>("feeds_pdf", { id });
+export const lookUp = (id: string, store: Store = "feeds") => invoke<boolean>("feeds_look_up", { store, id });
+export const pdfStatus = (id: string, store: Store = "feeds") => invoke<PdfStatus>("feeds_pdf", { store, id });
 
 export const subscriptions = () => invoke<SubscriptionInfo[]>("feeds_subscriptions");
 /** With a title (else the feed's own, at the next fetch). */
