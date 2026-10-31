@@ -3,8 +3,9 @@
 //! query's words and its interests' terms), and the counts of the sidebar.
 //!
 //! The counts are those of the library's sidebar: over every live item (not
-//! dismissed), whatever the query and the kinds shown. The rows are what
-//! the query passes, dismissed items too: the app asks `-is:dismissed`.
+//! dismissed), whatever the query and the kinds shown; a saved search's are
+//! the items it shows. The rows are what the query passes, dismissed items
+//! too: the app asks `-is:dismissed`.
 
 use std::collections::BTreeMap;
 use std::ops::Range;
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::feeds::Feeds;
 use crate::interest::{Score, joined};
 use crate::model::{Item, ItemKind, Triage};
-use crate::query::{Seen, best, parse};
+use crate::query::{Seen, best, live, parse};
 
 /// The order of the rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -79,6 +80,8 @@ pub struct Counts {
     pub interests: BTreeMap<String, usize>,
     /// by subscription id
     pub sources: BTreeMap<String, usize>,
+    /// the items each saved search shows (dismissed ones unless it asks), by name
+    pub searches: BTreeMap<String, usize>,
 }
 
 impl Counts {
@@ -101,6 +104,9 @@ impl Feeds {
     /// The items a request shows, and the counts of the sidebar.
     pub fn view(&self, request: &ViewRequest) -> View {
         let query = parse(request.query);
+        let searches: Vec<_> = (self.searches().iter())
+            .map(|s| (&s.name, parse(&live(&s.query))))
+            .collect();
         let mut counts = Counts::default();
         let mut rows = Vec::new();
         for item in self.items() {
@@ -108,6 +114,11 @@ impl Feeds {
             let seen = self.seen(item, extra);
             if seen.triage != Triage::Dismissed {
                 counts.add(item, &seen);
+            }
+            for (name, search) in &searches {
+                if seen.record.check(search, request.matching).is_some() {
+                    *counts.searches.entry(name.to_string()).or_default() += 1;
+                }
             }
             if !request.kinds.is_empty() && !request.kinds.contains(&item.kind) {
                 continue;

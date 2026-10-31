@@ -49,6 +49,22 @@ pub fn triage_name(triage: Triage) -> &'static str {
     }
 }
 
+/// A query as the app and the CLI show it: dismissed items left out (`-is:dismissed`
+/// added) unless it has an `is:` term on them (`is:dismissed`, `-is:seen,dismissed`).
+pub fn live(query: &str) -> String {
+    let asks = query.split_whitespace().any(|token| {
+        let token = token.strip_prefix('-').unwrap_or(token).to_lowercase();
+        token
+            .strip_prefix("is:")
+            .is_some_and(|values| (values.split(',')).any(|v| v.trim_matches('"') == "dismissed"))
+    });
+    match (asks, query.trim().is_empty()) {
+        (true, _) => query.to_string(),
+        (false, true) => "-is:dismissed".to_string(),
+        (false, false) => format!("{query} -is:dismissed"),
+    }
+}
+
 /// The best of the scores; 0 without any.
 pub fn best(scores: &[Score]) -> f64 {
     scores.iter().map(|s| s.score).fold(0.0, f64::max)

@@ -1,6 +1,6 @@
 //! The `feeds` program: the commands of the feeds crate on a folder, as paper-feeder's job
-//! and more (subscribe, fetch, list, show, mark, the interests and rules, the import of a
-//! paper-feeder setup, the RSS digest).
+//! and more (subscribe, fetch, list, show, mark, the interests, rules and saved searches, the
+//! import of a paper-feeder setup, the RSS digest).
 //!
 //! [`run`] is the whole program, on a [`Host`] (the environment, the clock, where requests
 //! go) and two writers, so that the tests run it with recorded replies.
@@ -9,6 +9,7 @@ mod cli;
 mod digest;
 mod items;
 mod paperfeeder;
+mod searches;
 mod settings;
 mod subs;
 mod text;
@@ -172,6 +173,7 @@ fn dispatch(ctx: &mut Ctx, command: Command) -> Result<()> {
         Command::Prune => items::prune(ctx),
         Command::Interests(a) => settings::interests(ctx, a),
         Command::Rules(a) => settings::rules(ctx, a),
+        Command::Searches(a) => searches::searches(ctx, a),
         Command::Config => settings::config(ctx),
         Command::ImportPaperFeeder(a) => paperfeeder::import(ctx, a),
         Command::Digest(a) => digest::digest(ctx, a),

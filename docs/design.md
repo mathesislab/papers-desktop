@@ -799,6 +799,18 @@ each a view sorted by score. In `config.json`: `interests` (`name`,
 computed when asked, not stored (a `RegexSet` per interest, one pass per
 text): an edited interest or an enriched abstract counts at once.
 
+**Saved searches**: `{name, query, sort}` in `config.json` (`searches`,
+in the order of the sidebar; `Feeds::searches`, `saved_search` by a name in
+any case, `set_searches`, which refuses a blank name or one given twice in
+any case). The query is the whole of the tab's choices (below); dismissed
+items are left out unless it has an `is:` term on them (`query::live`, as
+the app's and the CLI's lists). `Feeds::view` counts the items each one
+shows (`counts.searches`, by name), whatever the request. CLI: `feeds
+searches [--json]`, `searches add NAME QUERY... [--sort score|newest]` (in
+place of the search of that name), `searches remove NAME`, and `--saved
+NAME` on `list` (its sort unless `--sort`) and `digest` (no default
+`score:3-` then), with the query typed too.
+
 **Rules**: `{when, then}`, a query of the feeds and `shortlist`,
 `dismiss` or `seen` (`prof:amoc score:6-` → shortlist, `t:editorial` →
 dismiss). They act on the items a fetch brings, the first that matches
