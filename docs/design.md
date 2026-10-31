@@ -742,7 +742,11 @@ if set; Crossref is paced to 3 requests a second with an address.
 **An item** is one paper or post, from every source that listed it. Merged
 by the DOI, then the arXiv id, then Crossref's `has-preprint` /
 `is-preprint-of` / `is-version-of` (EGUsphere → TC; the review comments
-`-RC1`, `-AC1` and supplements dropped), then the title (Jaccard ≥ 0.9
+`-RC1`, `-AC1` and supplements dropped), then, for an entry of neither DOI
+nor arXiv id, its page (`page_key`: the link without scheme, fragment,
+trailing slash or tracking parameters; not a home page, nor a page a feed
+links two of its entries to: two news feeds of one site list an article
+once), then the title (Jaccard ≥ 0.9
 among the same first author and year ±1; never a post with a paper). Its
 kind is the subscription's (journal, preprint server, news & press, blog),
 corrected per item. After a fetch, each paper's DOI is looked up once in

@@ -1,16 +1,17 @@
 //! Entries into items: one item per paper or post, from every source that
 //! listed it. An entry joins the item of the same feed item, else of its DOI
 //! or of a version Crossref relates it to (a preprint and its paper), else of
-//! its arXiv id, else of a title of the same words (Jaccard ≥ 0.9) by the same
-//! first author within a year; an entry that joins two items merges them, the
-//! newer becoming an alias of the older.
+//! its arXiv id, else of its page (the link of an entry of neither, as two
+//! news feeds of one site list an article), else of a title of the same words
+//! (Jaccard ≥ 0.9) by the same first author within a year; an entry that joins
+//! two items merges them, the newer becoming an alias of the older.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use chrono::{DateTime, Datelike, Utc};
 
 use crate::model::{Entry, Item, LOOKUP, Linked, Source, Stage, Version};
-use crate::normalize::{family, is_preprint_doi, jaccard, short_id, title_words};
+use crate::normalize::{family, is_preprint_doi, jaccard, page_key, short_id, title_words};
 
 /// The least Jaccard index of the title words of one paper.
 pub(crate) const SAME_TITLE: f64 = 0.9;
@@ -25,6 +26,9 @@ pub(crate) struct Merger<'a> {
     by_arxiv: HashMap<String, usize>,
     by_source: HashMap<(String, String), usize>,
     by_family: HashMap<String, Vec<usize>>,
+    /// every item of a page, that the items of one page (merged before pages
+    /// were compared) collapse at once
+    by_page: HashMap<String, Vec<usize>>,
     /// (absorbed, kept) ids, in order
     merged: Vec<(String, String)>,
 }
@@ -40,6 +44,7 @@ impl<'a> Merger<'a> {
             by_arxiv: HashMap::new(),
             by_source: HashMap::new(),
             by_family: HashMap::new(),
+            by_page: HashMap::new(),
             merged: Vec::new(),
         };
         (0..count).for_each(|i| merger.index(i));
@@ -57,8 +62,9 @@ impl<'a> Merger<'a> {
                 self.by_arxiv.insert(arxiv.clone(), i);
             }
             self.by_source.insert((e.source.clone(), e.guid.clone()), i);
-            if let Some(family) = first_family(e) {
-                let items = self.by_family.entry(family).or_default();
+            let family = first_family(e).map(|f| self.by_family.entry(f).or_default());
+            let page = page_of(e).map(|p| self.by_page.entry(p).or_default());
+            for items in family.into_iter().chain(page) {
                 if !items.contains(&i) {
                     items.push(i);
                 }
@@ -80,6 +86,7 @@ impl<'a> Merger<'a> {
         let doi = dois.filter_map(|d| self.by_doi.get(d));
         let arxiv = entry.arxiv.as_ref().and_then(|a| self.by_arxiv.get(a));
         let mut found: BTreeSet<usize> = doi.chain(arxiv).copied().collect();
+        found.extend(self.same_page(&entry));
         if own.is_none() && found.is_empty() {
             found.extend(self.same_title(&entry));
         }
@@ -169,6 +176,31 @@ impl<'a> Merger<'a> {
             .map(|(_, i)| i)
     }
 
+    /// The items of an entry's page, none if a subscription lists the page
+    /// under two guids: a feed that links its entries to one page (a section,
+    /// a podcast's) says it is not an article's.
+    fn same_page(&self, entry: &Entry) -> Vec<usize> {
+        let Some(page) = page_of(entry) else {
+            return Vec::new();
+        };
+        let items = self.by_page.get(&page).into_iter().flatten();
+        let items: Vec<usize> = items.copied().filter(|&i| !self.gone[i]).collect();
+        let entries = items.iter().flat_map(|&i| &self.items[i].sources);
+        let mut guids = HashMap::from([(&entry.source, &entry.guid)]);
+        for e in entries.map(|s| &s.entry) {
+            if page_of(e).as_ref() != Some(&page) {
+                continue;
+            }
+            if guids
+                .insert(&e.source, &e.guid)
+                .is_some_and(|g| *g != e.guid)
+            {
+                return Vec::new();
+            }
+        }
+        items
+    }
+
     /// The (absorbed, kept) ids of the items merged, the absorbed removed.
     pub fn finish(self) -> Vec<(String, String)> {
         let mut gone = self.gone.into_iter();
@@ -180,6 +212,16 @@ impl<'a> Merger<'a> {
 /// The first author's family name of an entry.
 fn first_family(entry: &Entry) -> Option<String> {
     entry.authors.first().and_then(|a| family(a))
+}
+
+/// The page of an entry of no DOI and no arXiv id, a post's mostly: its
+/// link, as [`page_key`] compares them. A paper's DOI or arXiv id is its key,
+/// not its link: the link of a journal's feed can be its issue's page.
+fn page_of(entry: &Entry) -> Option<String> {
+    if entry.doi.is_some() || entry.arxiv.is_some() {
+        return None;
+    }
+    page_key(entry.url.as_deref()?)
 }
 
 /// Whether an entry and an item are two works: another DOI, another arXiv
@@ -508,6 +550,90 @@ mod tests {
             2,
             "the arXiv source updated, not added"
         );
+        assert_eq!(aliases.get(&absorbed), Some(&kept));
+        assert_eq!(merged, [(absorbed, kept)]);
+    }
+
+    /// A news article of a feed, its guid its link (titles that differ, that
+    /// they merge by their page only).
+    fn article(source: &str, url: &str, title: &str) -> Entry {
+        let mut e = entry(source, url, title, "ScienceDaily");
+        e.url = Some(url.to_string());
+        e.kind = ItemKind::News;
+        e
+    }
+
+    const PAGE: &str = "https://www.sciencedaily.com/releases/2026/09/260919031037.htm";
+
+    #[test]
+    fn an_article_of_two_feeds_is_one_item() {
+        let earth = article("earth-climate", PAGE, "Glaciers retreat");
+        let climate = article(
+            "climate",
+            "http://WWW.ScienceDaily.com/releases/2026/09/260919031037.htm/?utm_source=rss#top",
+            "Glaciers retreat faster",
+        );
+        let Merged { items, .. } = merge(vec![earth, climate]);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].sources.len(), 2);
+        assert_eq!(
+            items[0].id,
+            short_id(&format!("entry:earth-climate\n{PAGE}"))
+        );
+    }
+
+    #[test]
+    fn a_sites_home_page_is_no_article() {
+        let a = article("a", "https://www.sciencedaily.com/", "Glaciers retreat");
+        let b = article("b", "https://www.sciencedaily.com", "Sea ice thins");
+        let Merged { items, .. } = merge(vec![a, b]);
+        assert_eq!(items.len(), 2);
+    }
+
+    #[test]
+    fn a_page_a_feed_links_its_entries_to_is_no_article() {
+        let section = "https://example.org/podcast";
+        let mut first = article("podcast", section, "Glaciers retreat");
+        first.guid = "episode-1".to_string();
+        let mut second = article("podcast", section, "Sea ice thins");
+        second.guid = "episode-2".to_string();
+        let other = article("digest", section, "Permafrost thaws");
+        let Merged { items, .. } = merge(vec![first, second, other]);
+        assert_eq!(items.len(), 3);
+    }
+
+    #[test]
+    fn papers_merge_by_their_doi_not_their_link() {
+        let issue = "https://example.org/journal/current-issue";
+        let mut a = doi(entry("j", "a", TITLE, "Robinson"), "10.1/a");
+        a.url = Some(issue.to_string());
+        let mut b = doi(entry("j", "b", "Another paper", "Smith"), "10.1/b");
+        b.url = Some(issue.to_string());
+        let post = article("news", issue, "This issue");
+        let Merged { items, .. } = merge(vec![a, b, post]);
+        assert_eq!(items.len(), 3);
+    }
+
+    #[test]
+    fn duplicates_of_an_article_collapse_when_it_comes_again() {
+        // two items of one article, as merged before pages were compared
+        let earth = article("earth-climate", PAGE, "Glaciers retreat");
+        let mut items = merge(vec![earth]).items;
+        let climate = article("climate", PAGE, "Glaciers retreat faster");
+        items.extend(merge(vec![climate.clone()]).items);
+        let (kept, absorbed) = (items[0].id.clone(), items[1].id.clone());
+        let mut aliases = BTreeMap::new();
+        let mut merger = Merger::new(&mut items, &mut aliases);
+        assert!(!merger.add(climate, at(2), true));
+        let merged = merger.finish();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].id, kept);
+        let sources: Vec<&str> = items[0]
+            .sources
+            .iter()
+            .map(|s| s.entry.source.as_str())
+            .collect();
+        assert_eq!(sources, ["earth-climate", "climate"]);
         assert_eq!(aliases.get(&absorbed), Some(&kept));
         assert_eq!(merged, [(absorbed, kept)]);
     }

@@ -1,5 +1,6 @@
 //! The keys that items are matched by: canonical DOIs, arXiv ids, title
-//! words, first-author family names; and the canonical address of a feed.
+//! words, first-author family names, pages; and the canonical address of a
+//! feed.
 
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
@@ -196,6 +197,36 @@ pub fn feed_key(canonical: &str) -> &str {
     canonical
         .split_once("://")
         .map_or(canonical, |(_, rest)| rest)
+}
+
+/// What makes two links the same page: the link without its scheme (http
+/// and https are one), its host lowercase, without its fragment, a trailing
+/// slash or the parameters that track the click (`utm_*`, `fbclid`, `gclid`,
+/// Mailchimp's `mc_cid` and `mc_eid`); none for a site's home page (no path)
+/// or a link that is not http(s).
+pub fn page_key(link: &str) -> Option<String> {
+    let url = Url::parse(link.trim()).ok()?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return None;
+    }
+    let host = url.host_str()?;
+    let port = url.port().map(|p| format!(":{p}")).unwrap_or_default();
+    let path = url.path().trim_end_matches('/');
+    if path.is_empty() {
+        return None;
+    }
+    let tracks = |pair: &&str| {
+        let name = pair.split('=').next().unwrap_or("").to_ascii_lowercase();
+        name.starts_with("utm_")
+            || matches!(name.as_str(), "fbclid" | "gclid" | "mc_cid" | "mc_eid")
+    };
+    let query = url.query().unwrap_or("").split('&');
+    let query: Vec<&str> = query.filter(|p| !p.is_empty() && !tracks(p)).collect();
+    let query = match query.is_empty() {
+        true => String::new(),
+        false => format!("?{}", query.join("&")),
+    };
+    Some(format!("{host}{port}{path}{query}"))
 }
 
 /// A short stable id of a key: 12 hex digits of its FNV-1a hash.

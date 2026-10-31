@@ -166,3 +166,38 @@ fn issns_with_their_check_digit() {
         assert_eq!(canonical_issn(wrong), None, "{wrong}");
     }
 }
+
+#[test]
+fn pages_of_links() {
+    let page = "www.sciencedaily.com/releases/2026/09/260919031037.htm";
+    for link in [
+        "https://www.sciencedaily.com/releases/2026/09/260919031037.htm",
+        " http://WWW.ScienceDaily.com/releases/2026/09/260919031037.htm/#more ",
+        "https://www.sciencedaily.com/releases/2026/09/260919031037.htm?utm_source=rss&utm_medium=feed",
+        "https://www.sciencedaily.com:443/releases/2026/09/260919031037.htm?fbclid=x",
+    ] {
+        assert_eq!(page_key(link).as_deref(), Some(page), "{link}");
+    }
+    assert_eq!(
+        page_key("https://example.org/post?id=7&utm_campaign=x&mc_cid=y").as_deref(),
+        Some("example.org/post?id=7")
+    );
+    assert_ne!(
+        page_key("https://example.org/Post"),
+        page_key("https://example.org/post"),
+        "the path's case counts"
+    );
+    assert_ne!(
+        page_key("https://example.org:8080/post"),
+        page_key("https://example.org/post")
+    );
+    for link in [
+        "https://www.sciencedaily.com/",
+        "https://www.sciencedaily.com",
+        "https://www.sciencedaily.com/?utm_source=rss",
+        "ftp://example.org/post",
+        "not a link",
+    ] {
+        assert_eq!(page_key(link), None, "{link}");
+    }
+}
