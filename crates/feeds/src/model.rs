@@ -206,7 +206,7 @@ pub struct Item {
     pub doi: Option<String>,
     pub arxiv: Option<String>,
     pub url: Option<String>,
-    /// the longest of its sources
+    /// the abstract looked up by its DOI, else the longest of its sources
     pub summary: Option<String>,
     /// the longest of its sources
     pub content: Option<String>,

@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use chrono::{DateTime, Datelike, Utc};
 
-use crate::model::{Entry, Item, Linked, Source, Stage, Version};
+use crate::model::{Entry, Item, LOOKUP, Linked, Source, Stage, Version};
 use crate::normalize::{family, is_preprint_doi, jaccard, short_id, title_words};
 
 /// The least Jaccard index of the title words of one paper.
@@ -224,8 +224,10 @@ pub(crate) fn join_links(mut links: Vec<Linked>, more: Vec<Linked>) -> Vec<Linke
 }
 
 /// An item of its sources: the fields of the published version's entry (the
-/// preprint's if none, the first seen of a kind), the longest abstract and
-/// text, every DOI (of a stage as Crossref relates them, else by its prefix).
+/// preprint's if none, the first seen of a kind), the abstract looked up by
+/// DOI over a feed's (a teaser, an issue line, a plain-language summary)
+/// else the longest, the longest text, every DOI (of a stage as Crossref
+/// relates them, else by its prefix).
 fn assemble(id: String, sources: Vec<Source>, links: Vec<Linked>) -> Item {
     let best = &sources
         .iter()
@@ -275,7 +277,9 @@ fn assemble(id: String, sources: Vec<Source>, links: Vec<Linked>) -> Item {
             .url
             .clone()
             .or_else(|| entries().find_map(|e| e.url.clone())),
-        summary: longest(|e| &e.summary),
+        summary: (entries().filter(|e| e.source == LOOKUP))
+            .find_map(|e| e.summary.clone())
+            .or_else(|| longest(|e| &e.summary)),
         content: longest(|e| &e.content),
         editorial: entries().any(|e| e.editorial),
         versions,

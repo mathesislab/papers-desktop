@@ -28,6 +28,13 @@ static LABEL: LazyLock<Regex> = LazyLock::new(|| {
 /// A first paragraph that only cites the paper (Nature's "Published online; doi:…").
 static CITATION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?is)^\s*<p>(.*?)</p>").unwrap());
 
+/// A text that only places the paper in its issue (Science's and Wiley's
+/// "Science, Volume 394, Issue 6823, Page 556-561, October 2026."): no abstract.
+static ISSUE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^.{1,200}, Volume [^,]+, Issue [^,]+(?:, Pages? [^,]+)?, [A-Za-z]+ \d{4}\.?$")
+        .unwrap()
+});
+
 pub(crate) static EDITORIAL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?i)\b(?:news (?:&|and) views|perspective|editorial|comment|correspondence|opinion)s?\b",
@@ -167,7 +174,7 @@ pub(crate) fn plain(html: &str) -> String {
 
 /// An abstract or teaser as plain text, without a citation paragraph before it
 /// (Nature) or a label (arXiv's announcement, "Abstract", Copernicus's
-/// "Abstract."); JATS's tags go as HTML's.
+/// "Abstract."), empty for an issue line; JATS's tags go as HTML's.
 pub(crate) fn abstract_text(html: &str) -> String {
     let decoded = html_escape::decode_html_entities(html);
     let body = match CITATION.captures(&decoded) {
@@ -175,7 +182,10 @@ pub(crate) fn abstract_text(html: &str) -> String {
         _ => &decoded,
     };
     let text = plain(body);
-    LABEL.replace(&text, "").into_owned()
+    match ISSUE.is_match(&text) {
+        true => String::new(),
+        false => LABEL.replace(&text, "").into_owned(),
+    }
 }
 
 /// The authors of names, one or several per name (Wiley's blob, arXiv's list).
@@ -265,6 +275,12 @@ mod tests {
             abstract_text("<p>First.</p><p>Second.</p>"),
             "First. Second."
         );
+        for issue in [
+            "Science, Volume 394, Issue 6823, Page 556-561, October 2026.",
+            "AGU Advances, Volume 7, Issue 8, November 2026.",
+        ] {
+            assert_eq!(abstract_text(issue), "", "{issue}");
+        }
     }
 
     #[test]

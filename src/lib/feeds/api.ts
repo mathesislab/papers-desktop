@@ -98,8 +98,10 @@ export interface FeedDetail {
   url: string | null;
   /** the abstract (a post: its summary), marked where the query or an interest matched */
   abstract: Span[];
-  /** the abstract came from Crossref or OpenAlex, not the feed */
-  abstractLookedUp: boolean;
+  /** the abstract is the text of a feed (a teaser, a summary), not Crossref's or OpenAlex's */
+  abstractFromFeed: boolean;
+  /** its lookups may still find its abstract: `lookUp` asks */
+  abstractPending: boolean;
   /** a post's text as the feed gives it, as plain paragraphs */
   content: string[];
   editorial: boolean;
@@ -275,6 +277,8 @@ export const detail = (id: string, query: string) =>
 export const setTriage = (ids: string[], triage: Triage) =>
   invoke<void>("feeds_triage", { ids, triage });
 export const findPapers = (id: string) => invoke<Linked[]>("feeds_find_papers", { id });
+/** The abstract of an item looked up now; whether it asked (the feeds then change). */
+export const lookUp = (id: string) => invoke<boolean>("feeds_look_up", { id });
 export const pdfStatus = (id: string) => invoke<PdfStatus>("feeds_pdf", { id });
 
 export const subscriptions = () => invoke<SubscriptionInfo[]>("feeds_subscriptions");

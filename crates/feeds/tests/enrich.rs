@@ -1,7 +1,8 @@
 //! The lookups by DOI after a fetch: abstracts for teasers, a preprint and its
 //! paper as one item (Crossref, October 2026: tc-20-5895-2026 and
 //! egusphere-2025-6066), review comments left out, each DOI once, OpenAlex for
-//! what Crossref lacks.
+//! what Crossref lacks, the abstract over a feed's text, the item the reader
+//! opens.
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{Access, Feed, Feeds, ItemKind, LOOKUP, Reply, SourceKind, Stage, Triage};
@@ -169,6 +170,8 @@ fn teasers_first_and_openalex_for_what_crossref_lacks() {
     let openalex = "https://api.openalex.org/works/doi:10.5281/zenodo.17740654?select=id,doi,title,\
         publication_date,authorships,primary_location,abstract_inverted_index,type&api_key=KEY";
     let whole_doi = format!("{WORKS}10.1000/whole");
+    let whole_openalex = "https://api.openalex.org/works/doi:10.1000/whole?select=id,doi,title,\
+        publication_date,authorships,primary_location,abstract_inverted_index,type&api_key=KEY";
     let http = Recorded::new()
         .reply(journal, Reply::ok(journal, items))
         .reply(&zenodo, Reply::status(&zenodo, 404))
@@ -176,15 +179,21 @@ fn teasers_first_and_openalex_for_what_crossref_lacks() {
             openalex,
             Reply::ok(openalex, fixture("openalex-work-doi.json")),
         )
-        .reply(&whole_doi, Reply::status(&whole_doi, 404));
+        .reply(&whole_doi, Reply::status(&whole_doi, 404))
+        .reply(whole_openalex, Reply::status(whole_openalex, 404));
     let report = feeds.fetch(&http, &key).unwrap();
     let urls: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
     assert_eq!(
         urls,
-        [journal, &zenodo, openalex, &whole_doi],
+        [journal, &zenodo, openalex, &whole_doi, whole_openalex],
         "the teaser first"
     );
-    assert_eq!(report.lookups, 3);
+    assert_eq!(report.lookups, 4);
+    assert_eq!(
+        feeds.items()[0].summary.as_deref(),
+        Some(whole.trim()),
+        "the feed's, none found"
+    );
     let dataset = &feeds.items()[1];
     assert_eq!(
         dataset.summary.as_deref(),
@@ -198,7 +207,7 @@ fn teasers_first_and_openalex_for_what_crossref_lacks() {
 }
 
 #[test]
-fn no_openalex_without_a_key() {
+fn openalex_without_a_key() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let journal = "https://example.org/journal.rss";
@@ -209,14 +218,111 @@ fn no_openalex_without_a_key() {
         "Ensembles.",
     )]);
     let zenodo = format!("{WORKS}10.5281/zenodo.17740654?mailto=papers-desktop@example.org");
+    let openalex = "https://api.openalex.org/works/doi:10.5281/zenodo.17740654?select=id,doi,title,\
+        publication_date,authorships,primary_location,abstract_inverted_index,type\
+        &mailto=papers-desktop@example.org";
     let http = Recorded::new()
         .reply(journal, Reply::ok(journal, items))
-        .reply(&zenodo, Reply::status(&zenodo, 404));
+        .reply(&zenodo, Reply::status(&zenodo, 404))
+        .reply(
+            openalex,
+            Reply::ok(openalex, fixture("openalex-work-doi.json")),
+        );
     let access = Access {
         mailto: Some("papers-desktop@example.org".to_string()),
         openalex_key: None,
     };
     feeds.fetch(&http, &access).unwrap();
-    assert_eq!(http.requests().len(), 2);
-    assert_eq!(feeds.items()[0].summary.as_deref(), Some("Ensembles."));
+    assert_eq!(http.requests().len(), 3);
+    assert_eq!(
+        feeds.items()[0].summary.as_deref(),
+        Some("Ensembles of snow water of equivalent for three basins.")
+    );
+}
+
+#[test]
+fn the_abstract_over_the_feeds_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
+    let plain = "A plain-language summary, long enough to pass for an abstract. ".repeat(6);
+    let tc = format!("{WORKS}{TC_DOI}");
+    let http = Recorded::new()
+        .reply(TC, Reply::ok(TC, feed(&[(TITLE, TC_DOI, &plain)])))
+        .reply(
+            &tc,
+            Reply::ok(&tc, fixture("crossref-tc-20-5895-2026.json")),
+        );
+    feeds.fetch(&http, &Access::default()).unwrap();
+    let summary = feeds.items()[0].summary.as_deref().unwrap();
+    assert!(
+        summary.starts_with("Snow estimation in mountainous regions"),
+        "{summary}"
+    );
+}
+
+#[test]
+fn openalex_refusing_leaves_crossref_asked() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    let journal = "https://example.org/journal.rss";
+    feeds.subscribe(rss(journal), SourceKind::Journal).unwrap();
+    let items = feed(&[("One", "10.1000/one", "A."), ("Two", "10.1000/two", "B.")]);
+    let openalex = |doi: &str| {
+        format!(
+            "https://api.openalex.org/works/doi:{doi}?select=id,doi,title,publication_date,\
+             authorships,primary_location,abstract_inverted_index,type"
+        )
+    };
+    let (one, two) = (format!("{WORKS}10.1000/one"), format!("{WORKS}10.1000/two"));
+    let refused = openalex("10.1000/one");
+    let http = Recorded::new()
+        .reply(journal, Reply::ok(journal, items))
+        .reply(&one, Reply::status(&one, 404))
+        .reply(&refused, Reply::status(&refused, 429))
+        .reply(&two, Reply::status(&two, 404));
+    let report = feeds.fetch(&http, &Access::default()).unwrap();
+    let urls: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
+    assert_eq!(urls, [journal, &one, &refused, &two]);
+    assert_eq!(report.lookups, 3);
+}
+
+#[test]
+fn the_reader_looks_up_the_item_it_opens() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
+    let tc = format!("{WORKS}{TC_DOI}");
+    let offline = Recorded::new()
+        .reply(TC, Reply::ok(TC, feed(&[(TITLE, TC_DOI, "A teaser.")])))
+        .fail(&tc, "offline");
+    feeds.fetch(&offline, &Access::default()).unwrap();
+    let item = &feeds.items()[0];
+    assert_eq!(feeds.pending(item), Some(TC_DOI));
+    let id = item.id.clone();
+
+    let online = Recorded::new().reply(
+        &tc,
+        Reply::ok(&tc, fixture("crossref-tc-20-5895-2026.json")),
+    );
+    assert!(
+        feeds
+            .look_up_abstract(&id, &online, &Access::default())
+            .unwrap()
+    );
+    let item = feeds.item(&id).unwrap();
+    assert!(
+        item.summary
+            .as_deref()
+            .unwrap()
+            .starts_with("Snow estimation in mountainous regions")
+    );
+    assert_eq!(feeds.pending(item), None, "Crossref has it");
+    let again = Recorded::new();
+    assert!(
+        !feeds
+            .look_up_abstract(&id, &again, &Access::default())
+            .unwrap()
+    );
+    assert!(again.requests().is_empty());
 }

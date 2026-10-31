@@ -51,6 +51,16 @@ fn futurity_posts_link_their_papers_from_the_feed() {
     let futurity = feeds.subscribe(rss(FUTURITY), SourceKind::News).unwrap();
     let plants = format!("{WORKS}/10.1126/sciadv.aei1213");
     let superbug = format!("{WORKS}/10.1126/sciadv.aeh8222");
+    let openalex = |doi: &str| {
+        format!(
+            "https://api.openalex.org/works/doi:{doi}?select=id,doi,title,publication_date,\
+             authorships,primary_location,abstract_inverted_index,type"
+        )
+    };
+    let (plants_openalex, superbug_openalex) = (
+        openalex("10.1126/sciadv.aei1213"),
+        openalex("10.1126/sciadv.aeh8222"),
+    );
     let title = "Circadian clock protein TIC condensates under salt stress";
     let http = Recorded::new()
         .reply(FUTURITY, Reply::ok(FUTURITY, fixture("futurity.xml")))
@@ -61,10 +71,15 @@ fn futurity_posts_link_their_papers_from_the_feed() {
                 work("10.1126/sciadv.aei1213", title, "Science Advances"),
             ),
         )
-        .reply(&superbug, Reply::status(&superbug, 404));
+        .reply(&superbug, Reply::status(&superbug, 404))
+        .reply(&plants_openalex, Reply::status(&plants_openalex, 404))
+        .reply(&superbug_openalex, Reply::status(&superbug_openalex, 404));
     let report = feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(report.pages, 0, "no pages unless asked");
-    assert_eq!(report.lookups, 2);
+    assert_eq!(
+        report.lookups, 4,
+        "Crossref and OpenAlex, which Crossref lacks"
+    );
     let post = feeds.items()[0].clone();
     assert_eq!(post.kind, ItemKind::News);
     assert_eq!(

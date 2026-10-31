@@ -463,6 +463,18 @@ impl FeedsState {
         self.read(|feeds| found.links.iter().map(|l| linked(feeds, l)).collect())
     }
 
+    /// The abstract of an item looked up now, after a running fetch; whether
+    /// its lookups asked.
+    pub fn look_up(
+        &self,
+        id: &str,
+        http: &dyn papers_feeds::Http,
+        access: &Access,
+    ) -> Result<bool, String> {
+        let running = self.running.lock().unwrap();
+        self.on_copy(&running, |feeds| feeds.look_up_abstract(id, http, access))
+    }
+
     /// The free copy of an item, asked once per DOI this session.
     pub fn pdf(
         &self,
@@ -643,7 +655,10 @@ pub struct FeedDetail {
     arxiv: Option<String>,
     url: Option<String>,
     r#abstract: Vec<Span>,
-    abstract_looked_up: bool,
+    /// the abstract is the text of a feed (a teaser, a summary), not Crossref's or OpenAlex's
+    abstract_from_feed: bool,
+    /// its lookups may still find its abstract: the reader asks (`feeds_look_up`)
+    abstract_pending: bool,
     content: Vec<String>,
     editorial: bool,
     sources: Vec<SourceOf>,
@@ -977,9 +992,6 @@ pub fn detail(
             })
         })
         .collect();
-    let looked_up = item.sources.iter().any(|s| {
-        s.entry.source == LOOKUP && s.entry.summary.is_some() && s.entry.summary == item.summary
-    });
     Ok(FeedDetail {
         id: item.id.clone(),
         kind: item.kind,
@@ -991,7 +1003,8 @@ pub fn detail(
         arxiv: item.arxiv.clone(),
         url: item.url.clone(),
         r#abstract: row.r#abstract,
-        abstract_looked_up: looked_up,
+        abstract_from_feed: item.summary.is_some() && !feeds.abstract_from_work(item),
+        abstract_pending: feeds.pending(item).is_some(),
         content: item.content.as_deref().map(paragraphs).unwrap_or_default(),
         editorial: item.editorial,
         sources: (source_ids(item).into_iter())
@@ -1173,6 +1186,20 @@ pub async fn feeds_find_papers(app: AppHandle, id: String) -> Result<Vec<Linked>
         let found = state.feeds.find_papers(&id, &network, &access);
         let _ = app.emit(CHANGED, ());
         found
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn feeds_look_up(app: AppHandle, id: String) -> Result<bool, String> {
+    blocking(move || {
+        let state = app.state::<AppState>();
+        let (network, access) = network(&state)?;
+        let asked = state.feeds.look_up(&id, &network, &access)?;
+        if asked {
+            let _ = app.emit(CHANGED, ());
+        }
+        Ok(asked)
     })
     .await
 }
