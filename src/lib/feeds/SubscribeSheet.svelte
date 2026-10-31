@@ -57,7 +57,8 @@
 
   let type = $state<FeedType>("rss");
   let text = $state("");
-  let kind = $state<SourceKind>("journal");
+  /** the kind chosen; "guess": a feed read first, its kind guessed (`guessKind`); a sweep's items are papers */
+  let kind = $state<SourceKind | "guess">("guess");
   let busy = $state(false);
   let message = $state<{ text: string; error?: boolean } | null>(null);
   let suggestions = $state<Suggested[] | null>(null);
@@ -177,9 +178,25 @@
     busy = false;
   }
 
-  function subscribeTyped() {
+  async function subscribeTyped() {
     const feed = feedOf(type, text);
-    if (feed) subscribe(feed, kind, type === "words" ? text.trim() : undefined);
+    if (!feed || busy) return;
+    const title = type === "words" ? text.trim() : undefined;
+    if (kind !== "guess") return subscribe(feed, kind, title);
+    if (!("rss" in feed)) return subscribe(feed, "journal", title);
+    busy = true;
+    message = { text: "Reading the feed…" };
+    let guess: api.Guess;
+    try {
+      guess = await api.guessKind(feed.rss);
+    } catch (e) {
+      message = { text: String(e), error: true };
+      busy = false;
+      return;
+    }
+    busy = false;
+    const name = KINDS.find((k) => k.kind === guess.kind)?.name ?? guess.kind;
+    await subscribe(feed, guess.kind, undefined, `as ${name} (${guess.reason}; right-click an item to change it)`);
   }
 
   function onkeydown(e: KeyboardEvent) {
@@ -260,6 +277,7 @@
       <label class="kind">
         Its items are
         <select bind:value={kind}>
+          <option value="guess">{type === "rss" ? "Guessed from the feed" : "Papers"}</option>
           {#each KINDS as k (k.kind)}<option value={k.kind}>{k.name}</option>{/each}
         </select>
       </label>

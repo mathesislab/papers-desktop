@@ -1292,6 +1292,16 @@ pub async fn feeds_library_suggested(app: AppHandle) -> Result<Vec<LibraryJourna
 }
 
 /// The journals OpenAlex finds for a text, the best first, 10 at most.
+/// The kind of the feed at an address, guessed from its items and its title (the Subscribe sheet).
+#[tauri::command]
+pub async fn feeds_guess_kind(app: AppHandle, url: String) -> Result<papers_feeds::Guess, String> {
+    blocking(move || {
+        let (network, access) = network(&app.state::<AppState>())?;
+        papers_feeds::guess_kind(&network, &access, url.trim())
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn feeds_search_journals(app: AppHandle, text: String) -> Result<Vec<Journal>, String> {
     blocking(move || {

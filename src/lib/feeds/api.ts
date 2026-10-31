@@ -283,6 +283,14 @@ export const detail = (id: string, query: string) =>
 export const setTriage = (ids: string[], triage: Triage) =>
   invoke<void>("feeds_triage", { ids, triage });
 export const findPapers = (id: string) => invoke<Linked[]>("feeds_find_papers", { id });
+/** A kind guessed for a feed, and what tells it. */
+export interface Guess {
+  kind: SourceKind;
+  reason: string;
+}
+/** The kind of the feed at an address, guessed from its items (DOIs, preprints) and its title (OpenAlex). */
+export const guessKind = (url: string) => invoke<Guess>("feeds_guess_kind", { url });
+
 /** The abstract of an item looked up now; whether it asked (the feeds then change). */
 export const lookUp = (id: string) => invoke<boolean>("feeds_look_up", { id });
 export const pdfStatus = (id: string) => invoke<PdfStatus>("feeds_pdf", { id });
