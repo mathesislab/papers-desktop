@@ -866,7 +866,7 @@ splitter, `tab.css` the frame of the two tabs):
   authors, journal and date, then a paper's abstract marked by the query and
   the interests (*Summary from the feed* until Crossref or OpenAlex gives
   one; looked up 300 ms after it is shown, once per item), *Why it is here*
-  (each interest's score and terms), its free PDF (`pdfStatus`, asked 300 ms
+  (each interest's score and terms), its free PDF (`pdfOf`, asked 300 ms
   after it is shown, once per item), versions (*preprint in library → Add
   would replace it*), *Covered by*, *Seen in*, and last, set apart and
   quieter, *Similar in your library* (the likeness and the 3 nearest papers

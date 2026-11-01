@@ -7,7 +7,7 @@ import { listen } from "@tauri-apps/api/event";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import * as api from "$lib/feeds/api";
-import type { FeedDetail, FeedRow, PdfStatus, Store, Triage } from "$lib/feeds/api";
+import type { FeedDetail, FeedRow, Store, Triage } from "$lib/feeds/api";
 import { addTarget, pageOf } from "$lib/feeds/items";
 import { isPost } from "$lib/feeds/kinds";
 import { mac, matches, type Shortcut } from "$lib/keys";
@@ -57,8 +57,6 @@ export class ItemList {
 
   readonly #options: ListOptions;
   #noticeTimer: ReturnType<typeof setTimeout> | undefined;
-  /** the free PDFs asked for, by item */
-  readonly #pdfs = new Map<string, Promise<PdfStatus>>();
   /** the items whose abstract was looked up here, once each */
   readonly #lookedUp = new Set<string>();
 
@@ -106,6 +104,11 @@ export class ItemList {
       }, LOOKUP_DELAY);
       return () => clearTimeout(timer);
     });
+  }
+
+  /** the folder of feeds the items are of */
+  get store(): Store {
+    return this.#options.store;
   }
 
   /** the ids of the list, in order */
@@ -159,17 +162,6 @@ export class ItemList {
       return null;
     }
   }
-
-  /** The free PDF of an item, asked once. */
-  pdfOf = (id: string): Promise<PdfStatus> => {
-    let found = this.#pdfs.get(id);
-    if (!found) {
-      found = api.pdfStatus(id, this.#options.store);
-      found.catch(() => this.#pdfs.delete(id));
-      this.#pdfs.set(id, found);
-    }
-    return found;
-  };
 
   /** A triage given to items, shown at once: the list keeps them in place until it is let go (`sticky`), but for
    *  those dismissed, which go, the next selected. The backend tells the tab of the change, which asks for the

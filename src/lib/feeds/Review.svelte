@@ -6,17 +6,16 @@
 
   import { onMount } from "svelte";
   import * as api from "./api";
-  import type { FeedDetail, PdfStatus, Triage } from "./api";
-  import Facts from "./Facts.svelte";
+  import type { FeedDetail, Triage } from "./api";
+  import Facts, { inLibrary } from "./Facts.svelte";
   import PostHtml from "./PostHtml.svelte";
   import { isPost } from "./kinds";
-  import { addTarget } from "./items";
+  import { addTarget, dayText } from "./items";
   import { REVIEW_REQUEST, decide, progressOf, reviewed, startReview, stepReview, summaryOf, type Review } from "./review";
   import Spans from "./Spans.svelte";
 
   let {
     colours,
-    pdfOf,
     onadd,
     ontriage,
     onopen,
@@ -25,7 +24,6 @@
     onclose,
   }: {
     colours: Map<string, string>;
-    pdfOf: (id: string) => Promise<PdfStatus>;
     /** the item's paper added, by the Add sheet; whether it was */
     onadd: (target: { id: string; item: string | null }, pdf: boolean) => Promise<boolean>;
     ontriage: (id: string, triage: Triage) => Promise<void>;
@@ -46,9 +44,7 @@
   let progress = $derived(progressOf(review));
   let by = $derived.by(() => {
     if (!detail) return "";
-    const date = detail.date
-      ? new Date(detail.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
-      : null;
+    const date = detail.date ? dayText(detail.date) : null;
     return [detail.authors.join(", "), detail.journal, date, detail.doi].filter((x): x is string => !!x).join(" · ");
   });
 
@@ -171,11 +167,9 @@
       </div>
       <div class="facts">
         {#if detail.inLibrary.length}
-          <p><span class="badge lib">in library</span>
-            {#each detail.inLibrary as entry (entry)}<button class="link" onclick={() => onentry(entry)}>show</button>{/each}
-          </p>
+          <p>{@render inLibrary(detail.inLibrary, onentry)}</p>
         {/if}
-        <Facts {detail} {colours} {pdfOf} {onitem} {onentry} />
+        <Facts {detail} {colours} {onitem} {onentry} />
       </div>
     </div>
   {:else}
@@ -314,16 +308,6 @@
     margin-left: 3px;
     font: 10px ui-monospace, monospace;
     opacity: 0.7;
-  }
-  .badge {
-    padding: 0 5px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 10.5px;
-  }
-  .badge.lib {
-    border-color: #2f9e6e;
-    color: #2f9e6e;
   }
   .empty {
     margin: auto;

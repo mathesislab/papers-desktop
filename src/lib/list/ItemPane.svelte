@@ -103,7 +103,7 @@
     count={selection.focus !== null && selection.selected.has(selection.focus) ? selection.selected.size : 1}
     byId={list.byId}
     {colours}
-    pdfOf={list.pdfOf}
+    store={list.store}
     {actions}
     {finding}
     {onaddlink}

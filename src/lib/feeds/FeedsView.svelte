@@ -31,9 +31,6 @@
   import {
     SORTS,
     applied,
-    chooseInterest,
-    chooseKind,
-    chooseSource,
     feedChips,
     interestColours,
     nextSort,
@@ -582,12 +579,6 @@
     filters = withoutChip(filters, chip);
   }
 
-  /** Unfold a group of the sources in the sidebar, or fold it. */
-  function fold(group: string, open: boolean) {
-    const rest = filters.open.filter((g) => g !== group);
-    filters.open = open ? [...rest, group] : rest;
-  }
-
   let summary = $derived(
     `${list.rows.length} of ${counts?.all ?? 0}` + (list.selection.selected.size > 1 ? ` · ${list.selection.selected.size} selected` : ""),
   );
@@ -609,17 +600,13 @@
   {#if showSidebar}
     <aside class="sidebar" style:width="{sidebar}px">
       <FeedsSidebar
-        {filters}
+        bind:filters
         {counts}
+        {colours}
         {groups}
         {keepDays}
-        onview={(view) => (filters.view = view)}
-        onkind={(kind, toggle) => (filters = chooseKind(filters, kind, toggle))}
-        oninterest={(name, toggle) => (filters = chooseInterest(filters, name, toggle))}
-        onsource={(title, toggle) => (filters = chooseSource(filters, title, toggle))}
         onsourcemenu={sourceMenu}
         onsubscribe={() => (subscribing = true)}
-        onfold={fold}
       >
         {#snippet saved()}
           <SavedSearches
@@ -680,7 +667,6 @@
       <Review
         bind:this={reviewer}
         {colours}
-        pdfOf={list.pdfOf}
         onadd={list.add}
         ontriage={(id, t) => list.setTo([id], t)}
         onopen={(id) => list.openItems([id])}

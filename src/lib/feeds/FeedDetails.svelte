@@ -5,8 +5,9 @@
   // add, shortlist or show (*Find linked paper* looks for them again).
 
   import type { Snippet } from "svelte";
-  import type { FeedDetail, FeedRow, Linked, PdfStatus } from "./api";
-  import Facts from "./Facts.svelte";
+  import type { FeedDetail, FeedRow, Linked, Store } from "./api";
+  import Facts, { inLibrary } from "./Facts.svelte";
+  import { dayText } from "./items";
   import PostHtml from "./PostHtml.svelte";
   import { ITEM_KINDS, isPost } from "./kinds";
   import Spans from "./Spans.svelte";
@@ -17,7 +18,7 @@
     count,
     byId,
     colours,
-    pdfOf,
+    store = "feeds",
     actions,
     finding = false,
     onaddlink,
@@ -35,7 +36,8 @@
     /** the rows of the list, by id: a linked paper that is an item of the feeds */
     byId: Map<string, FeedRow>;
     colours: Map<string, string>;
-    pdfOf: (id: string) => Promise<PdfStatus>;
+    /** the folder of feeds of the item: its free PDF is asked there */
+    store?: Store;
     /** the buttons of the tab, at the top, for the item shown */
     actions: Snippet<[FeedDetail]>;
     /** a post's papers (the Feeds tab's: the works found in the Search tab are no posts): being looked for; one
@@ -51,9 +53,7 @@
   } = $props();
 
   let post = $derived(isPost(detail.kind));
-  let date = $derived(
-    detail.date ? new Date(detail.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null,
-  );
+  let date = $derived(detail.date ? dayText(detail.date) : null);
   let cited = $derived(detail.cited === null ? null : `cited ${detail.cited.toLocaleString("en-US")}×`);
   let where = $derived([detail.journal, date, cited, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
   const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", search: "found by its title" };
@@ -77,10 +77,7 @@
       {where}
     </p>
     {#if detail.inLibrary.length}
-      <p class="by">
-        <span class="badge lib">in library</span>
-        {#each detail.inLibrary as id (id)}<button class="link" onclick={() => onentry(id)}>show</button>{/each}
-      </p>
+      <p class="by">{@render inLibrary(detail.inLibrary, onentry)}</p>
     {/if}
   </div>
 
@@ -133,7 +130,7 @@
     </section>
   {/if}
 
-  <Facts {detail} {colours} {pdfOf} {onitem} {onentry} />
+  <Facts {detail} {colours} {store} {onitem} {onentry} />
 
   {#if onback}
     <button class="back" onclick={onback}>Back to the list <kbd>Esc</kbd></button>
@@ -264,11 +261,6 @@
   button.back:hover {
     background: var(--line);
   }
-  button.link {
-    padding: 0;
-    border: none;
-    color: var(--accent);
-  }
   kbd,
   .actions :global(kbd) {
     margin-left: 3px;
@@ -297,10 +289,6 @@
     border-radius: 4px;
     color: var(--muted);
     font-size: 10.5px;
-  }
-  .badge.lib {
-    border-color: #2f9e6e;
-    color: #2f9e6e;
   }
   .badge.preprint {
     border-color: #a16207;

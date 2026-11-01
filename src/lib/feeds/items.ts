@@ -142,6 +142,10 @@ export function ago(date: string | null, now = Date.now()): string {
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", ...year });
 }
 
+/** A day as the details say it: "3 Oct 2026". */
+export const dayText = (date: string) =>
+  new Date(date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+
 /** How long ago, in words: "just now", "8 min ago", "3 d ago", "on 3 Oct" (`ago`). */
 export function since(date: string, now = Date.now()): string {
   const when = ago(date, now);
