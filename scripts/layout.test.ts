@@ -14,6 +14,7 @@ test("no layout: the defaults, the Library tab in front", () => {
   assert.equal(layout.feeds.look, "simple");
   assert.ok(layout.feeds.columns.some((c) => c.key === "score"));
   assert.ok(layout.search.columns.some((c) => c.key === "cited"));
+  assert.equal(layout.search.look, "table");
 });
 
 /** a window.json of the version before the tabs' keys were nested */
@@ -38,7 +39,7 @@ test("a layout of an older version: the tab in front, the Feeds and Search tabs'
   assert.deepEqual(layout.feeds.columns, BEFORE.feedColumns);
   assert.equal(layout.feeds.shown, BEFORE.feedsShown);
   assert.equal(layout.feeds.look, "simple");
-  assert.deepEqual(layout.search, { ...BEFORE.search, columns: BEFORE.searchColumns });
+  assert.deepEqual(layout.search, { ...BEFORE.search, columns: BEFORE.searchColumns, look: "table" });
   for (const key of ["view", "feedColumns", "feedsShown", "searchColumns"]) assert.ok(!(key in layout), key);
 });
 
@@ -75,6 +76,12 @@ test("the Feeds tab's list simple unless a table was chosen", () => {
   assert.equal(restore({ feeds: { ...nested, look: "cards" } } as never).feeds.look, "simple");
   // its name of before
   assert.equal(restore({ feeds: { ...nested, look: "calm" } } as never).feeds.look, "simple");
+});
+
+test("the Search tab's list a table unless simple was chosen", () => {
+  assert.equal(restore({ search: { columns: [] } } as never).search.look, "table");
+  assert.equal(restore({ search: { columns: [], look: "simple" } } as never).search.look, "simple");
+  assert.equal(restore({ search: { columns: [], look: "cards" } } as never).search.look, "table");
 });
 
 test("the Starred view of the Feeds tab by its name of before", () => {

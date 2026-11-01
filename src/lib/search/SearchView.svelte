@@ -27,6 +27,7 @@
   import ActionButtons from "$lib/list/ActionButtons.svelte";
   import { ItemList, menuItem, typing } from "$lib/list/ItemList.svelte";
   import ItemPane from "$lib/list/ItemPane.svelte";
+  import LookSwitch from "$lib/list/LookSwitch.svelte";
   import type { SearchLayout } from "$lib/layout";
   import "$lib/list/tab.css";
   import { tabContext } from "$lib/list/tab";
@@ -47,7 +48,8 @@
   let {
     search = $bindable(),
   }: {
-    /** the fields, the recent searches, the search shown and the list's columns: the window's layout keeps them */
+    /** the fields, the recent searches, the search shown, the list's columns and look: the window's layout keeps
+     *  them */
     search: SearchLayout;
   } = $props();
 
@@ -75,6 +77,7 @@
     store: "search",
     query: () => marked,
     reload: () => refresh(),
+    look: () => search.look,
   });
   let results = $derived(search.results);
   /** the query whose words the rows and the details mark */
@@ -398,6 +401,7 @@
         columns: search.columns,
         specs: SEARCH_SPECS,
         menu: SEARCH_ORDER,
+        date: "year",
         unread: false,
         star: SAVED_FOR_LATER.row,
         after: view === "results" && results?.next ? showMore : undefined,
@@ -419,7 +423,8 @@
   </div>
 </main>
 
-<!-- above the list: the search shown as a chip, the count and the order; the selection bar -->
+<!-- above the list: the search shown as a chip, the count and the order, the list simple or a table; the selection
+     bar -->
 {#snippet listBar()}
   <div class="filters">
     {#if view === "starred"}
@@ -437,6 +442,7 @@
         {orderText} ▾
       </button>
     {/if}
+    <LookSwitch bind:look={search.look} />
   </div>
   {#if list.selection.selected.size > 1}
     {@const ids = list.chosen()}

@@ -2,9 +2,10 @@
   // The list of the Feeds tab: the items the filters select, best score, most similar to the library or newest
   // first; and of the Search tab: the works found, in the order OpenAlex gave them (the caller chooses the columns).
   // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
-  // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). The Feeds tab
-  // shows it simple, at first (`look`): no headers, each row taller, its date, then its source, title and authors a
-  // line each, its badges small at its end (SimpleRow). A new item's title is bold; one seen is muted (in the Feeds tab). A
+  // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). Simple
+  // (`look`, the Feeds tab's at first; SimpleRow): no headers, each row taller, its date (an age; in the Search tab,
+  // its year), then its source, title and authors a line each, its badges small at its end. A new item's title is
+  // bold; one seen is muted (in the Feeds tab). A
   // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
   // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
   // selected, dismisses it (or restores it, dismissed).
@@ -32,6 +33,7 @@
     colours,
     libraryOf,
     look = "table",
+    date = "age",
     unread = true,
     star = STAR.row,
     dismiss,
@@ -58,8 +60,11 @@
     colours: Map<string, string>;
     /** the .bib of a paper of the library, by its name, when it has several: the badge of an item in it */
     libraryOf: (id: string) => string | null;
-    /** a table, or simple (the Feeds tab's) */
+    /** a table, or simple */
     look?: Look;
+    /** what the simple list says of the date: an age ("5 min", the Feeds tab's), or the year (the Search tab's, as
+     *  its table's Year column) */
+    date?: "age" | "year";
     /** a new item's title bold, one seen muted */
     unread?: boolean;
     /** what the star of a row says, on and off (the tab's `StarWords`) */
@@ -195,7 +200,7 @@
         {/if}
         <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
         {#if view.simple}
-          <SimpleRow date={ago(row.date, now)} source={sourceOf(row)} sources={row.sources.join(", ")}>
+          <SimpleRow date={date === "age" ? ago(row.date, now) : yearOf(row.date)} source={sourceOf(row)} sources={row.sources.join(", ")}>
             {#snippet title()}<span class="title"><Marked spans={row.title} /></span>{/snippet}
             {#snippet authors()}{@render names(row)}{/snippet}
             {#snippet end()}{@render badgeList(row)}{/snippet}

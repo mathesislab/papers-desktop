@@ -40,7 +40,7 @@ export interface ListOptions {
   reload: () => unknown;
   /** the pages of items opened in the browser */
   opened?: (ids: string[]) => void;
-  /** how the list shows (the Feeds tab's choice); none: a table */
+  /** how the list shows (the tab's choice, which the layout keeps); none: a table */
   look?: () => Look;
 }
 

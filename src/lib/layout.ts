@@ -17,8 +17,9 @@ export type Tab = "library" | "feeds" | "search";
  *  since waits behind *N new*. */
 export type FeedsLayout = { filters: FeedFilters; columns: Shown<FeedColumn>[]; look: Look; shown: string | null };
 
-/** The Search tab: its fields, its recent searches, the search shown; its list's columns. */
-export type SearchLayout = SearchState & { columns: Shown<FeedColumn>[] };
+/** The Search tab: its fields, its recent searches, the search shown; its list's columns, and whether it shows them
+ *  or is simple. */
+export type SearchLayout = SearchState & { columns: Shown<FeedColumn>[]; look: Look };
 
 /** What the window keeps between sessions: the tab in front, the widths of the side panes, whether the details
  *  show, the columns and order of the library's table, the library tab (its library, view, tags and search), the
@@ -75,11 +76,11 @@ const DEFAULTS: Layout = {
   pages: {},
   openTags: [],
   feeds: { filters: NO_FEED_FILTERS, columns: columnsOf(FEED_ORDER, FEED_SPECS), look: "simple", shown: null },
-  search: { ...NO_SEARCH, columns: columnsOf(SEARCH_ORDER, SEARCH_SPECS) },
+  search: { ...NO_SEARCH, columns: columnsOf(SEARCH_ORDER, SEARCH_SPECS), look: "table" },
 };
 
 /** The layout saved (none: the defaults): what a file of an older version does not have takes its default (one of
- *  before version 2 shows the library's star column; the Feeds tab's list, simple), and
+ *  before version 2 shows the library's star column; the Feeds tab's list, simple; the Search tab's, a table), and
  *  what it kept apart (`Before`) comes in its place; the filters of the library tab and of the Feeds tab, and the
  *  Search tab's, are checked (`restored`, `restoredFeeds`, `restoredSearch`), as are the columns of the three tables
  *  (`restoredColumns`: those of the Feeds and Search tabs, once widths by column, become a list in their first
@@ -110,6 +111,7 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
     search: {
       ...restoredSearch(search),
       columns: restoredColumns(search?.columns ?? searchColumns, SEARCH_SPECS, SEARCH_ORDER),
+      look: restoredLook(search?.look, "table"),
     },
   };
 }
