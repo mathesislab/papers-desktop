@@ -1107,10 +1107,13 @@ the details `like` and `nearest` (`{id, key, title, subtitle, cosine}`).
 A fetch runs on a copy of the
 feeds opened from the folder, so the tab reads and triages meanwhile: the
 changes made while it runs are applied at once, kept, and applied again to
-the fetched copy, which then takes the place of the feeds. One fetch at a
-time: a second call (the tab opening while polling fetches) waits for the
-running one and answers its summary; finding the papers of a post works on
-a copy too, after a running fetch. The requests: the crate's `Network` (a
+the fetched copy, which then takes the place of the feeds. `feeds_fetch`
+answers once the feeds are read; what follows runs on a thread of its own,
+holding the work on a copy. One fetch at a time: a second fetch of every
+subscription (the tab opening while polling fetches) waits for the running
+one's feeds read and answers that summary, any other fetch waits for the
+whole of the running one; finding the papers of a post works on a copy too,
+after a running fetch. The requests: the crate's `Network` (a
 browser's user agent) paced per host (`Pacing::polite`), Crossref and
 OpenAlex asked with the settings' address and OpenAlex key, each only when
 set. The last summary and each subscription's last fetch (when, its error)

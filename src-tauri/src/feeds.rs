@@ -7,13 +7,13 @@
 //! Each change made while it runs is applied at once and kept in a journal,
 //! then applied again to the fetched copy, which takes the place of the
 //! feeds. It goes in two phases, each on a copy of its own: the feeds read,
-//! which the tab can show at once, then what follows (the lookups of
-//! Crossref and OpenAlex), the page told of each (`feeds-fetching`). One
-//! fetch at a time: a call while one reads the feeds waits for it, and
-//! answers its summary (the tab opening while the background polling
-//! fetches does not fetch twice); one of a single subscription waits for
-//! the whole fetch, then reads its feed. Finding the papers of a post works
-//! on a copy too, after a running fetch.
+//! whose summary the command answers, then what follows (the lookups of
+//! Crossref and OpenAlex) on a thread of its own, the page told of each
+//! (`feeds-fetching`). One fetch at a time: a fetch of every subscription
+//! asked while another reads the feeds or looks up waits for its feeds read,
+//! and answers its summary (the tab opening while the background polling
+//! fetches does not fetch twice); any other waits for the whole fetch. Finding
+//! the papers of a post works on a copy too, after a running fetch.
 //!
 //! The requests go through the crate's network (a browser's user agent,
 //! which every publisher answers), paced per host; Crossref and OpenAlex
@@ -37,8 +37,8 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use chrono::{DateTime, TimeDelta, Utc};
@@ -113,7 +113,7 @@ pub struct Folder {
     dir: PathBuf,
     live: Mutex<Live>,
     /// held by the work on a copy that runs
-    running: Mutex<()>,
+    running: Arc<Gate>,
     /// the free copy of each DOI asked for, this session
     pdfs: Mutex<HashMap<String, Pdf>>,
     /// counts the builds of the facts of the library: one that ends after a
@@ -122,6 +122,37 @@ pub struct Folder {
     open: Opener,
     /// the event that its items changed
     changed: &'static str,
+}
+
+/// A lock that a thread other than the one that took it can hold and let go
+/// of: the work on a copy, whose fetch reads the feeds on one thread and
+/// looks up what they brought on another.
+#[derive(Default)]
+struct Gate {
+    held: Mutex<bool>,
+    let_go: Condvar,
+}
+
+/// A gate held, until dropped.
+pub struct Held(Arc<Gate>);
+
+impl Gate {
+    /// The gate held, once let go of by the one who holds it.
+    fn hold(self: &Arc<Gate>) -> Held {
+        let mut held = self.held.lock().unwrap_or_else(PoisonError::into_inner);
+        while *held {
+            held = (self.let_go.wait(held)).unwrap_or_else(PoisonError::into_inner);
+        }
+        *held = true;
+        Held(self.clone())
+    }
+}
+
+impl Drop for Held {
+    fn drop(&mut self) {
+        *self.0.held.lock().unwrap_or_else(PoisonError::into_inner) = false;
+        self.0.let_go.notify_one();
+    }
 }
 
 /// The feeds the commands see, the changes made while a copy is worked on,
@@ -149,10 +180,43 @@ struct Fetching {
     path: PathBuf,
     /// held by a fetch while it reads the feeds: a fetch asked meanwhile waits
     reading: Mutex<()>,
-    /// a fetch looks up what its feeds brought
-    following: AtomicBool,
+    /// the summary of the feeds read of a fetch of every subscription, while
+    /// it looks up what they brought: a fetch of every subscription asked
+    /// meanwhile answers it
+    in_flight: Mutex<Option<FetchSummary>>,
     /// read from its file at the first ask
     fetched: Mutex<Option<Fetched>>,
+}
+
+/// A fetch begun: joining the one that looks up, or to read the feeds.
+pub enum Begun<'a> {
+    /// the summary of the feeds read of the fetch of every subscription that
+    /// looks up what they brought
+    Joined(FetchSummary),
+    Reading(Reading<'a>),
+}
+
+/// A fetch to read the feeds, the work on a copy held: of every
+/// subscription, or of one.
+pub struct Reading<'a> {
+    state: &'a FeedsState,
+    only: Option<String>,
+    /// a fetch of every subscription asked meanwhile waits
+    _reading: MutexGuard<'a, ()>,
+    running: Held,
+}
+
+/// What follows the feeds read of a fetch, to look up, the work on a copy
+/// held till it is done: on a thread of its own.
+pub struct Following {
+    running: Held,
+    /// the items before the fetch
+    known: BTreeSet<String>,
+    subscriptions: Vec<Subscription>,
+    /// of the feeds read
+    summary: FetchSummary,
+    /// of every subscription
+    whole: bool,
 }
 
 /// What a fetch did, as the page shows it.
@@ -261,7 +325,7 @@ impl Folder {
         Folder {
             dir,
             live: Mutex::new(Live::default()),
-            running: Mutex::new(()),
+            running: Arc::new(Gate::default()),
             pdfs: Mutex::new(HashMap::new()),
             builds: AtomicU64::new(0),
             open,
@@ -345,10 +409,10 @@ impl Folder {
     }
 
     /// Work on a copy of the feeds, which then takes their place with the
-    /// changes made meanwhile; the running guard is held.
+    /// changes made meanwhile; the running gate is held.
     fn on_copy<T>(
         &self,
-        _running: &MutexGuard<()>,
+        _running: &Held,
         work: impl FnOnce(&mut Feeds) -> papers_feeds::Result<T>,
     ) -> Result<T, String> {
         let mut copy = {
@@ -379,7 +443,7 @@ impl Folder {
         http: &dyn papers_feeds::Http,
         access: &Access,
     ) -> Result<Vec<Linked>, String> {
-        let running = self.running.lock().unwrap();
+        let running = self.running.hold();
         let found = self.on_copy(&running, |feeds| feeds.find_papers(id, http, access))?;
         self.read(|feeds| found.links.iter().map(|l| linked(feeds, l)).collect())
     }
@@ -392,7 +456,7 @@ impl Folder {
         http: &dyn papers_feeds::Http,
         access: &Access,
     ) -> Result<bool, String> {
-        let running = self.running.lock().unwrap();
+        let running = self.running.hold();
         self.on_copy(&running, |feeds| feeds.look_up_abstract(id, http, access))
     }
 
@@ -432,7 +496,7 @@ impl FeedsState {
             fetching: Fetching {
                 path: fetched_path,
                 reading: Mutex::new(()),
-                following: AtomicBool::new(false),
+                in_flight: Mutex::new(None),
                 fetched: Mutex::new(None),
             },
             journals: Mutex::new(None),
@@ -448,71 +512,23 @@ impl FeedsState {
         Ok(work(journals.as_mut().expect("opened")))
     }
 
-    /// Fetches every subscription, or the one of id `only`: the feeds read,
-    /// their summary to `read`, then what follows; the whole summary. A fetch
-    /// of every subscription asked while another one runs answers that one's
-    /// summary once it has read the feeds. `phase` is told where it is.
-    pub fn fetch(
-        &self,
-        only: Option<&str>,
-        http: &dyn papers_feeds::Http,
-        access: &Access,
-        phase: impl Fn(Phase),
-        read: impl FnOnce(&Result<FetchSummary, String>),
-    ) -> Result<FetchSummary, String> {
-        let (folder, fetching) = (&self.folder, &self.fetching);
-        let reading = fetching
-            .reading
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        if only.is_none() && fetching.following.load(Ordering::SeqCst) {
-            drop(reading);
-            let last = self
-                .last_fetch()
-                .and_then(|l| l.ok_or("the fetch failed".to_string()));
-            read(&last);
-            return last;
+    /// A fetch of every subscription, or of the one of id `only`, begun:
+    /// one of every subscription asked while another one looks up joins it;
+    /// else the feeds are to be read, once the work on a copy that runs is
+    /// done.
+    pub fn begin(&self, only: Option<&str>) -> Begun<'_> {
+        let fetching = &self.fetching;
+        let reading = (fetching.reading.lock()).unwrap_or_else(PoisonError::into_inner);
+        let in_flight = fetching.in_flight.lock().unwrap().clone();
+        if let Some(summary) = in_flight.filter(|_| only.is_none()) {
+            return Begun::Joined(summary);
         }
-        let running = folder
-            .running
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        phase(Phase::Reading);
-        let fetched = folder.on_copy(&running, |feeds| {
-            let known = feeds.ids();
-            let report = feeds.read_feeds(only, http, access)?;
-            Ok((report, known))
-        });
-        let (report, known) = match fetched {
-            Ok(fetched) => fetched,
-            Err(e) => {
-                let failed = Err(e);
-                read(&failed);
-                phase(Phase::Done);
-                return failed;
-            }
-        };
-        let (subscriptions, added) =
-            folder.read(|feeds| (feeds.subscriptions().to_vec(), new_items(feeds, &known)))?;
-        let (mut summary, last) = summary(&report, &subscriptions, added, Utc::now());
-        let kept = fetching.keep(only.is_none().then_some(&summary), last, &subscriptions);
-        fetching.following.store(true, Ordering::SeqCst);
-        drop(reading);
-        read(&kept.clone().map(|()| summary.clone()));
-        phase(Phase::LookingUp);
-        let followed = folder.on_copy(&running, |feeds| {
-            let followed = feeds.follow_up(&known, http, access)?;
-            Ok((followed, new_items(feeds, &known)))
-        });
-        fetching.following.store(false, Ordering::SeqCst);
-        phase(Phase::Done);
-        kept?;
-        let (followed, added) = followed?;
-        (summary.lookups, summary.pages, summary.added) = (followed.lookups, followed.pages, added);
-        if only.is_none() {
-            fetching.keep(Some(&summary), Vec::new(), &subscriptions)?;
-        }
-        Ok(summary)
+        Begun::Reading(Reading {
+            state: self,
+            only: only.map(String::from),
+            _reading: reading,
+            running: self.folder.running.hold(),
+        })
     }
 
     /// The summary of the last fetch.
@@ -533,6 +549,68 @@ impl FeedsState {
     /// A subscription as the settings list it, with its last fetch.
     pub fn info(&self, subscription: Subscription) -> Result<SubscriptionInfo, String> {
         Ok(info(subscription, &self.lasts()?))
+    }
+}
+
+impl Reading<'_> {
+    /// The feeds read, on a copy: their summary (kept, unless of a single
+    /// subscription), and what follows, to look up.
+    pub fn read(
+        self,
+        http: &dyn papers_feeds::Http,
+        access: &Access,
+    ) -> Result<(FetchSummary, Following), String> {
+        let (folder, fetching) = (&self.state.folder, &self.state.fetching);
+        let only = self.only.as_deref();
+        let (report, known) = folder.on_copy(&self.running, |feeds| {
+            let known = feeds.ids();
+            Ok((feeds.read_feeds(only, http, access)?, known))
+        })?;
+        let (subscriptions, added) =
+            folder.read(|feeds| (feeds.subscriptions().to_vec(), new_items(feeds, &known)))?;
+        let (summary, last) = summary(&report, &subscriptions, added, Utc::now());
+        let whole = only.is_none();
+        fetching.keep(whole.then_some(&summary), last, &subscriptions)?;
+        if whole {
+            *fetching.in_flight.lock().unwrap() = Some(summary.clone());
+        }
+        let following = Following {
+            running: self.running,
+            known,
+            subscriptions,
+            summary: summary.clone(),
+            whole,
+        };
+        Ok((summary, following))
+    }
+}
+
+impl Following {
+    /// What follows the feeds read, looked up on a copy: the whole summary,
+    /// kept unless of a single subscription.
+    pub fn follow(
+        self,
+        state: &FeedsState,
+        http: &dyn papers_feeds::Http,
+        access: &Access,
+    ) -> Result<FetchSummary, String> {
+        let known = &self.known;
+        let followed = state.folder.on_copy(&self.running, |feeds| {
+            let followed = feeds.follow_up(known, http, access)?;
+            Ok((followed, new_items(feeds, known)))
+        });
+        *state.fetching.in_flight.lock().unwrap() = None;
+        let (followed, added) = followed?;
+        let summary = FetchSummary {
+            lookups: followed.lookups,
+            pages: followed.pages,
+            added,
+            ..self.summary
+        };
+        if self.whole {
+            (state.fetching).keep(Some(&summary), Vec::new(), &self.subscriptions)?;
+        }
+        Ok(summary)
     }
 }
 
@@ -1137,35 +1215,44 @@ pub fn network(state: &AppState) -> Result<(Paced<Network>, Access), String> {
     Ok((network, access))
 }
 
-/// Fetches every subscription, or the one of id `only`, on a thread of its
-/// own, telling the windows; the summary once the feeds are read, what
-/// follows going on.
+/// Fetches every subscription, or the one of id `only`: the summary once
+/// the feeds are read, what follows going on, on a thread of its own; the
+/// windows told where it is.
 fn fetch_now(app: &AppHandle, only: Option<String>) -> Result<FetchSummary, String> {
-    let (send, receive) = std::sync::mpsc::channel();
+    let state = app.state::<AppState>();
+    let reading = match state.feeds.begin(only.as_deref()) {
+        Begun::Joined(summary) => return Ok(summary),
+        Begun::Reading(reading) => reading,
+    };
+    let (network, access) = network(&state)?;
+    tell(app, Phase::Reading);
+    let (summary, following) = match reading.read(&network, &access) {
+        Ok(read) => read,
+        Err(e) => {
+            tell(app, Phase::Done);
+            return Err(e);
+        }
+    };
+    tell(app, Phase::LookingUp);
     let app = app.clone();
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
-        let (network, access) = match network(&state) {
-            Ok(network) => network,
-            Err(e) => return drop(send.send(Err(e))),
-        };
-        let phase = |phase: Phase| {
-            let _ = app.emit(FETCHING, phase);
-            if phase != Phase::Reading {
-                let _ = app.emit(CHANGED, ());
-            }
-        };
-        let read = |summary: &Result<FetchSummary, String>| drop(send.send(summary.clone()));
-        let fetched = state
-            .feeds
-            .fetch(only.as_deref(), &network, &access, phase, read);
-        if let Err(e) = fetched {
-            eprintln!("papers-desktop: cannot fetch the feeds: {e}");
+        let followed = following.follow(&state.feeds, &network, &access);
+        tell(&app, Phase::Done);
+        if let Err(e) = followed {
+            eprintln!("papers-desktop: cannot look up what the feeds brought: {e}");
         }
     });
-    receive
-        .recv()
-        .map_err(|_| "the fetch stopped".to_string())?
+    Ok(summary)
+}
+
+/// The windows told where a fetch is, and that the items changed once it
+/// reads no more.
+fn tell(app: &AppHandle, phase: Phase) {
+    let _ = app.emit(FETCHING, phase);
+    if phase != Phase::Reading {
+        app.state::<AppState>().feeds.folder.tell(app);
+    }
 }
 
 /// Gathers the facts of the library on a thread of its own, the library as
@@ -1643,6 +1730,20 @@ mod tests {
         FeedsState::with_folder(folder, dir.join("feeds-fetched.json"))
     }
 
+    /// A fetch made whole on this thread: the feeds read, then what follows.
+    fn fetch(
+        state: &FeedsState,
+        only: Option<&str>,
+        http: &dyn papers_feeds::Http,
+    ) -> Result<FetchSummary, String> {
+        let reading = match state.begin(only) {
+            Begun::Joined(summary) => return Ok(summary),
+            Begun::Reading(reading) => reading,
+        };
+        let (_, following) = reading.read(http, &Access::default())?;
+        following.follow(state, http, &Access::default())
+    }
+
     fn subscribe(state: &FeedsState, url: &str) -> String {
         let feed = Feed::Rss { url: url.into() };
         let settings = SubscriptionSettings::new(SourceKind::Journal);
@@ -1664,20 +1765,12 @@ mod tests {
             .reply(NEWS, Reply::status(NEWS, 503))
             .reply(TC, Reply::status(TC, 304))
             .fail(NEWS, "offline");
-        let told = Mutex::new(Vec::new());
-        let read = Mutex::new(None);
-        let summary = state
-            .fetch(
-                None,
-                &http,
-                &Access::default(),
-                |phase| told.lock().unwrap().push(phase),
-                |summary| *read.lock().unwrap() = Some(summary.clone()),
-            )
-            .unwrap();
-        let told = told.into_inner().unwrap();
-        assert_eq!(told, [Phase::Reading, Phase::LookingUp, Phase::Done]);
-        assert_eq!(read.into_inner().unwrap(), Some(Ok(summary.clone())));
+        let Begun::Reading(reading) = state.begin(None) else {
+            unreachable!()
+        };
+        let (read, following) = reading.read(&http, &Access::default()).unwrap();
+        let summary = following.follow(&state, &http, &Access::default()).unwrap();
+        assert_eq!(read, summary, "nothing looked up");
         assert_eq!(
             (summary.fetched, summary.unchanged, summary.added),
             (1, 0, 2)
@@ -1692,9 +1785,7 @@ mod tests {
         assert_eq!(lasts[&tc].error, None);
         assert_eq!(lasts[&news].error.as_deref(), Some("HTTP 503"));
 
-        let again = state
-            .fetch(None, &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        let again = fetch(&state, None, &http).unwrap();
         assert_eq!((again.fetched, again.unchanged, again.added), (0, 1, 0));
         assert_eq!(again.failed[0].message, "offline");
         // kept across a start; a subscription gone is dropped at the next fetch
@@ -1705,9 +1796,7 @@ mod tests {
             .apply(move |feeds| feeds.unsubscribe(&gone).map(drop))
             .unwrap();
         let http = Recorded::new().reply(TC, Reply::status(TC, 304));
-        reopened
-            .fetch(None, &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        fetch(&reopened, None, &http).unwrap();
         assert!(!reopened.lasts().unwrap().contains_key(&news));
         assert_eq!(opened(dir.path()).lasts().unwrap().len(), 1);
     }
@@ -1737,9 +1826,7 @@ mod tests {
         let state = opened(dir.path());
         subscribe(&state, TC);
         let http = Recorded::new().reply(TC, atom("TC", &[("a", "Ice", None)]));
-        state
-            .fetch(None, &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        fetch(&state, None, &http).unwrap();
         let id = state.folder.read(|f| f.items()[0].id.clone()).unwrap();
         let feed = atom("TC", &[("a", "Ice", None), ("b", "Firn", None)]);
         let http = Meanwhile {
@@ -1753,9 +1840,7 @@ mod tests {
                 }
             }))),
         };
-        let summary = state
-            .fetch(None, &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        let summary = fetch(&state, None, &http).unwrap();
         assert_eq!(summary.added, 1);
         let read = |f: &Feeds| (f.triage(&id), f.items().len());
         assert_eq!(state.folder.read(read).unwrap(), (Triage::Shortlisted, 2));
@@ -1781,9 +1866,7 @@ mod tests {
                 folder.apply(new).unwrap()
             }))),
         };
-        state
-            .fetch(None, &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        fetch(&state, None, &http).unwrap();
         let names = |state: &FeedsState| {
             state.folder.read(|f| {
                 f.searches()
@@ -1807,20 +1890,58 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let state = Arc::new(opened(dir.path()));
         subscribe(&state, TC);
+        let http = Recorded::new().reply(TC, atom("TC", &[("a", "Ice", None)]));
         // a fetch reading the feeds, which goes on to look up
-        let reading = state.fetching.reading.lock().unwrap();
-        state.fetching.following.store(true, Ordering::SeqCst);
+        let Begun::Reading(reading) = state.begin(None) else {
+            unreachable!()
+        };
         let joining = {
             let state = state.clone();
-            let fetch =
-                move || state.fetch(None, &Recorded::new(), &Access::default(), |_| {}, |_| {});
+            let fetch = move || fetch(&state, None, &Recorded::new());
             std::thread::spawn(fetch)
         };
         std::thread::sleep(Duration::from_millis(50));
         assert!(!joining.is_finished(), "waits while the feeds are read");
-        drop(reading);
-        // no fetch ran, none was kept
-        assert_eq!(joining.join().unwrap(), Err("the fetch failed".to_string()));
+        let (read, following) = reading.read(&http, &Access::default()).unwrap();
+        assert_eq!(
+            joining.join().unwrap(),
+            Ok(read),
+            "the summary of the feeds read"
+        );
+        following.follow(&state, &http, &Access::default()).unwrap();
+    }
+
+    /// A fetch of every subscription asked while a single one looks up
+    /// waits for it, then fetches every subscription: it joins no fetch.
+    #[test]
+    fn a_whole_fetch_waits_for_a_single_subscription_s() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = Arc::new(opened(dir.path()));
+        let tc = subscribe(&state, TC);
+        subscribe(&state, NEWS);
+        let http = Recorded::new().reply(TC, atom("TC", &[("a", "Ice", None)]));
+        let Begun::Reading(reading) = state.begin(Some(&tc)) else {
+            unreachable!()
+        };
+        let (_, following) = reading.read(&http, &Access::default()).unwrap();
+        let whole = {
+            let state = state.clone();
+            std::thread::spawn(move || {
+                let http = Recorded::new()
+                    .reply(TC, Reply::status(TC, 304))
+                    .reply(NEWS, Reply::status(NEWS, 304));
+                fetch(&state, None, &http)
+            })
+        };
+        std::thread::sleep(Duration::from_millis(50));
+        assert!(
+            !whole.is_finished(),
+            "waits while the subscription's lookups run"
+        );
+        following.follow(&state, &http, &Access::default()).unwrap();
+        let whole = whole.join().unwrap().unwrap();
+        assert_eq!((whole.fetched, whole.unchanged), (0, 2), "its own");
+        assert_eq!(state.last_fetch().unwrap(), Some(whole));
     }
 
     #[test]
@@ -1832,18 +1953,14 @@ mod tests {
         let http = Recorded::new()
             .reply(TC, Reply::status(TC, 304))
             .reply(NEWS, Reply::status(NEWS, 304));
-        let whole = state
-            .fetch(None, &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        let whole = fetch(&state, None, &http).unwrap();
         let http = Recorded::new().reply(TC, atom("TC", &[("a", "Ice", None)]));
-        let one = state
-            .fetch(Some(&tc), &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        let one = fetch(&state, Some(&tc), &http).unwrap();
         assert_eq!((one.fetched, one.unchanged, one.added), (1, 0, 1));
         assert_eq!(http.requests().len(), 1, "its feed alone");
         assert_eq!(state.last_fetch().unwrap(), Some(whole));
         assert!(state.lasts().unwrap()[&tc].at >= one.at);
-        let gone = state.fetch(Some("gone"), &http, &Access::default(), |_| {}, |_| {});
+        let gone = fetch(&state, Some("gone"), &http);
         assert!(gone.unwrap_err().contains("gone"));
     }
 
@@ -1887,9 +2004,7 @@ mod tests {
                 &[("a", "Ice", None), ("b", "Firn densification", None)],
             ),
         );
-        state
-            .fetch(None, &http, &Access::default(), |_| {}, |_| {})
-            .unwrap();
+        fetch(&state, None, &http).unwrap();
         let triage = |title: &str| {
             (state.folder)
                 .read(|f| f.triage(&f.items().iter().find(|i| i.title == title).unwrap().id))
