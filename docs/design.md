@@ -1128,7 +1128,8 @@ the rules. *Similar in your library*: the index of the library's papers
 (`Likeness::of`, every .bib file of the library) is built on a thread of its
 own after every read of the library (`load`: at the start, when a .bib file
 changes, after a write), with their identities (`Library::identities`, built
-once per library), given to the feeds (`Folder::set_library`, numbered:
+once per library, given at once, with the index of before till the new one
+is built), given to the feeds (`Folder::set_library`, numbered:
 a build that ends after a newer one is dropped; no index for an empty
 library) and to each copy a fetch opens, so that the rules use them, then
 `feeds-changed`; rows have `like`,

@@ -142,7 +142,7 @@ fn library(bibs: &[PathBuf]) -> Result<Option<(Library, Arc<LibraryFacts>)>> {
     }
     let library = Library::load(bibs)?;
     let facts = LibraryFacts {
-        likeness: Some(Likeness::of(&library)),
+        likeness: Some(Arc::new(Likeness::of(&library))),
         identities: library.identities(),
     };
     Ok(Some((library, Arc::new(facts))))

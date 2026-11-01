@@ -686,10 +686,11 @@ mod tests {
                 title: title.into(),
                 ..Default::default()
             };
-            Arc::new(LibraryFacts {
-                likeness: Some(Likeness::build([doc])),
+            let likeness = Some(Arc::new(Likeness::build([doc])));
+            move |_: Option<&LibraryFacts>| LibraryFacts {
+                likeness,
                 ..LibraryFacts::default()
-            })
+            }
         };
         let folder = &state.folder;
         let (old, new) = (folder.next_build(), folder.next_build());
@@ -726,7 +727,14 @@ mod tests {
                 .unwrap()
         };
         assert!(like("Firn densification").is_some_and(|l| l > 99.9));
-        let empty = Arc::new(LibraryFacts::default());
+        // the identities of a library read again, with the index of before
+        let identities = |old: Option<&LibraryFacts>| LibraryFacts {
+            likeness: old.and_then(|f| f.likeness.clone()),
+            ..LibraryFacts::default()
+        };
+        assert!(folder.set_library(folder.next_build(), identities));
+        assert!(like("Firn densification").is_some_and(|l| l > 99.9));
+        let empty = |_: Option<&LibraryFacts>| LibraryFacts::default();
         assert!(folder.set_library(folder.next_build(), empty));
         assert_eq!(like("Firn densification"), None);
     }

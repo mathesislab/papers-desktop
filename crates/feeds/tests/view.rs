@@ -440,6 +440,7 @@ fn rules_triage_the_new_items_only() {
 /// The facts of a library of one paper, J1 by its DOI, with an index of
 /// the texts of its papers or none.
 fn in_library(likeness: Option<Likeness>) -> Arc<LibraryFacts> {
+    let likeness = likeness.map(Arc::new);
     let j1 = Identity::of(J1.5, "", None);
     Arc::new(LibraryFacts {
         likeness,

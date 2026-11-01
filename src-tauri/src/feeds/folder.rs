@@ -139,15 +139,20 @@ impl Folder {
         self.builds.fetch_add(1, Ordering::SeqCst) + 1
     }
 
-    /// The facts of the library of build `build`, for the feeds and the
-    /// copies opened from now on, unless a newer build was given already:
-    /// whether they were taken.
-    pub fn set_library(&self, build: u64, library: Arc<LibraryFacts>) -> bool {
+    /// The facts of the library of build `build`, made of those it has, for
+    /// the feeds and the copies opened from now on, unless a newer build was
+    /// given already: whether they were taken.
+    pub fn set_library(
+        &self,
+        build: u64,
+        facts: impl FnOnce(Option<&LibraryFacts>) -> LibraryFacts,
+    ) -> bool {
         let mut live = self.live.lock().unwrap();
         if build < live.build {
             return false;
         }
         live.build = build;
+        let library = Arc::new(facts(live.library.as_deref()));
         live.library = Some(library.clone());
         if let Some(feeds) = &mut live.feeds {
             feeds.set_library(library);

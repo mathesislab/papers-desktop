@@ -277,19 +277,27 @@ pub fn index_library(app: &AppHandle) {
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
         let builds = [Store::Feeds, Store::Search].map(|s| (s, s.of(&state).next_build()));
-        let facts = {
-            let library = state.library.read().unwrap();
-            Arc::new(LibraryFacts {
-                likeness: (!library.is_empty()).then(|| Likeness::of(&library)),
-                identities: library.identities(),
-            })
-        };
-        for (store, build) in builds {
-            let folder = store.of(&state);
-            if folder.set_library(build, facts.clone()) {
-                folder.tell(&app);
+        let give = |facts: &dyn Fn(Option<&LibraryFacts>) -> LibraryFacts| {
+            for (store, build) in builds {
+                let folder = store.of(&state);
+                if folder.set_library(build, facts) {
+                    folder.tell(&app);
+                }
             }
-        }
+        };
+        // the identities at once, with the index of before till it is built
+        let library = state.library.read().unwrap();
+        let identities = library.identities();
+        give(&|old| LibraryFacts {
+            likeness: old.and_then(|f| f.likeness.clone()),
+            identities: identities.clone(),
+        });
+        let likeness = (!library.is_empty()).then(|| Arc::new(Likeness::of(&library)));
+        drop(library);
+        give(&|_| LibraryFacts {
+            likeness: likeness.clone(),
+            identities: identities.clone(),
+        });
     });
 }
 

@@ -13,8 +13,9 @@ use crate::model::Item;
 /// The facts of a library.
 #[derive(Debug, Default)]
 pub struct LibraryFacts {
-    /// the index of its papers' texts; none for an empty library
-    pub likeness: Option<Likeness>,
+    /// the index of its papers' texts; none for an empty library, or until
+    /// it is built
+    pub likeness: Option<Arc<Likeness>>,
     /// its papers by DOI and by title and year (core's `Library::identities`)
     pub identities: Arc<Identities>,
 }
