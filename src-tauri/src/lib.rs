@@ -8,6 +8,7 @@ mod fetch;
 mod focus;
 mod hotkey;
 mod input;
+mod library;
 mod main_window;
 #[cfg(target_os = "macos")]
 mod menu;
@@ -1122,6 +1123,10 @@ pub fn run() {
             writer::transfer_entries,
             writer::undo,
             writer::redo,
+            library::library_create,
+            library::library_open,
+            library::library_import,
+            library::library_defaults,
             feeds::feeds_fetch,
             feeds::feeds_last_fetch,
             feeds::feeds_view,

@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 use papers_core::Matching;
 use papers_feeds::OwnService;
+use papers_rs::config::MachineConfig;
 use papers_rs::fetch::openalex::OpenAlex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -18,6 +19,10 @@ pub struct Settings {
     /// the .bib files of the library (~ for the home directory); on first
     /// run, the default library of papers if there is one
     pub bibtex: Vec<PathBuf>,
+    /// the folder of the main papers library (~ for the home directory): where a new .bib file
+    /// goes by default, later the root of sync. Unset, the folder of the default library of
+    /// papers if there is one
+    pub papers_folder: Option<PathBuf>,
     /// global shortcut that shows the panel: Alt+Space by default on macOS,
     /// Ctrl+Alt+Space elsewhere, where Alt+Space opens the window menu (set
     /// in the settings window, it applies at once; in the file, at the next start)
@@ -245,6 +250,7 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             bibtex: Vec::new(),
+            papers_folder: None,
             hotkey: if cfg!(target_os = "macos") {
                 "Alt+Space"
             } else {
@@ -272,8 +278,15 @@ impl Default for Settings {
 
 impl Settings {
     /// The settings of the file, or the defaults; without .bib files, those
-    /// of the default library of papers are taken, and written in the file.
+    /// of the default library of papers are taken, without a papers folder
+    /// its folder, and written in the file.
     pub fn load(path: &Path) -> Result<Settings, String> {
+        Settings::load_with(path, None)
+    }
+
+    /// [`Settings::load`], papers' global configuration given; none: the
+    /// user's (the tests give their own).
+    pub fn load_with(path: &Path, machine: Option<&MachineConfig>) -> Result<Settings, String> {
         let mut settings: Settings = match fs::read_to_string(path) {
             Ok(text) => {
                 serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?
@@ -281,9 +294,23 @@ impl Settings {
             Err(e) if e.kind() == ErrorKind::NotFound => Settings::default(),
             Err(e) => return Err(format!("{}: {e}", path.display())),
         };
-        if settings.bibtex.is_empty() {
-            settings.bibtex = papers_library().into_iter().collect();
-            settings.save(path)?;
+        if settings.bibtex.is_empty() || settings.papers_folder.is_none() {
+            let main = papers_library(machine);
+            let folder = main
+                .as_deref()
+                .and_then(Path::parent)
+                .map(Path::to_path_buf);
+            let first = settings.bibtex.is_empty();
+            if first {
+                settings.bibtex = main.into_iter().collect();
+            }
+            let found = settings.papers_folder.is_none() && folder.is_some();
+            if found {
+                settings.papers_folder = folder;
+            }
+            if first || found {
+                settings.save(path)?;
+            }
         }
         Ok(settings)
     }
@@ -330,6 +357,13 @@ impl Settings {
         })
     }
 
+    /// The folder of the main papers library, ~ expanded; none when unset.
+    pub fn papers_dir(&self) -> Option<PathBuf> {
+        self.papers_folder
+            .as_ref()
+            .map(|p| expand(&p.to_string_lossy()))
+    }
+
     /// The papers command, ~ expanded; empty: to look for.
     pub fn papers_command(&self) -> PathBuf {
         expand(&self.papers.to_string_lossy())
@@ -345,28 +379,18 @@ pub fn expand(path: &str) -> PathBuf {
 }
 
 /// The .bib file of the default library of papers, from its configuration:
-/// the global one names the library, whose own one names the .bib file.
-fn papers_library() -> Option<PathBuf> {
-    let read = |path: PathBuf| -> Option<Value> {
-        serde_json::from_str(&fs::read_to_string(path).ok()?).ok()
+/// the global one (`machine`; none: the user's) names the library, whose own
+/// one names the .bib file.
+pub fn papers_library(machine: Option<&MachineConfig>) -> Option<PathBuf> {
+    let library = match machine {
+        Some(machine) => machine.default_library_path(),
+        None => MachineConfig::load(None).ok()?.default_library_path(),
     };
-    let global = read(config_dir()?.join("papers/config.json"))?;
-    let library = expand(global["default"].as_str()?);
-    let config = read(library.join(".papers/config.json"))?;
-    let bib = library.join(config["bibtex"].as_str()?);
+    let library = PathBuf::from(library?);
+    let config = fs::read_to_string(library.join(".papers/config.json")).ok()?;
+    let config: Value = serde_json::from_str(&config).ok()?;
+    let bib = library.join(expand(config["bibtex"].as_str()?));
     bib.exists().then_some(bib)
-}
-
-/// Where papers keeps its global configuration (platformdirs' user_config_dir).
-fn config_dir() -> Option<PathBuf> {
-    let home = std::env::home_dir()?;
-    if cfg!(target_os = "macos") {
-        Some(home.join("Library/Application Support"))
-    } else {
-        Some(
-            std::env::var_os("XDG_CONFIG_HOME").map_or_else(|| home.join(".config"), PathBuf::from),
-        )
-    }
 }
 
 #[cfg(test)]
@@ -457,7 +481,8 @@ mod tests {
 
     #[test]
     fn the_file_keeps_its_keys_with_the_settings_set_elsewhere_nested() {
-        let json = r#"{"bibtex": ["~/papers.bib"], "hotkey": "Alt+Space", "matching": "word-start",
+        let json = r#"{"bibtex": ["~/papers.bib"], "papers_folder": "~/Papers",
+            "hotkey": "Alt+Space", "matching": "word-start",
             "citation_style": "apa", "check_updates": false, "after_close": "library",
             "text_size": "larger", "writer": "command", "papers": "/bin/papers",
             "email": "me@example.org", "openalex_key": "KEY", "pinned_tags": ["ice", null],
@@ -489,6 +514,45 @@ mod tests {
                 .collect::<Vec<_>>()
         };
         assert_eq!(keys(&common(&Settings::default())), keys(&old));
+    }
+
+    #[test]
+    fn the_papers_folder_is_that_of_the_default_library_of_papers_unless_set() {
+        let dir = tempfile::tempdir().unwrap();
+        let library = dir.path().join("Papers");
+        fs::create_dir_all(library.join(".papers")).unwrap();
+        fs::write(
+            library.join(".papers/config.json"),
+            r#"{"bibtex": "papers.bib"}"#,
+        )
+        .unwrap();
+        fs::write(library.join("papers.bib"), "").unwrap();
+        let mut data = serde_json::Map::new();
+        data.insert("default".into(), library.to_str().unwrap().into());
+        let machine = MachineConfig::new(None, data);
+        // a first run: the library and its folder, written in the file
+        let path = dir.path().join("settings.json");
+        let settings = Settings::load_with(&path, Some(&machine)).unwrap();
+        assert_eq!(settings.bibtex, [library.join("papers.bib")]);
+        assert_eq!(settings.papers_dir(), Some(library.clone()));
+        let written: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(written["papers_folder"], library.to_str().unwrap());
+        // a file from before the setting: its folder too, the .bib files as they are
+        fs::write(&path, r#"{"bibtex": ["/x/refs.bib"]}"#).unwrap();
+        let settings = Settings::load_with(&path, Some(&machine)).unwrap();
+        assert_eq!(settings.bibtex, [PathBuf::from("/x/refs.bib")]);
+        assert_eq!(settings.papers_dir(), Some(library));
+        // set: it stays; without a default library of papers: unset
+        fs::write(
+            &path,
+            r#"{"bibtex": ["/x/refs.bib"], "papers_folder": "~/Elsewhere"}"#,
+        )
+        .unwrap();
+        let settings = Settings::load_with(&path, Some(&machine)).unwrap();
+        assert_eq!(settings.papers_dir(), Some(expand("~/Elsewhere")));
+        fs::write(&path, r#"{"bibtex": ["/x/refs.bib"]}"#).unwrap();
+        let settings = Settings::load_with(&path, Some(&MachineConfig::empty())).unwrap();
+        assert_eq!(settings.papers_folder, None);
     }
 
     #[test]
