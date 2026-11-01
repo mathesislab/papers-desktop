@@ -240,6 +240,10 @@ test("the keys toggle the triage of the selection", () => {
   assert.deepEqual(toggled([it("b", "seen"), it("c", "starred")], "read"), { ids: ["b"], triage: "new" });
   assert.equal(toggled([it("c", "added")], "read"), null);
   assert.equal(toggled([], "star"), null);
+  // an item added keeps being added
+  assert.deepEqual(toggled([it("a", "starred"), it("c", "added")], "star"), { ids: ["a"], triage: "seen" });
+  assert.deepEqual(toggled([it("a", "new"), it("c", "added")], "star"), { ids: ["a"], triage: "starred" });
+  assert.equal(toggled([it("c", "added")], "star"), null);
 });
 
 test("mark all above, ranges, the next after some go", () => {

@@ -40,11 +40,11 @@
     <button
       class="item"
       class:selected={view === "starred"}
-      title="The works saved for later: kept when a new search replaces the results"
+      title="The works starred: kept when a new search replaces the results"
       onclick={() => onview("starred")}
     >
       <span class="mark star">★</span>
-      <span class="name">Saved for later</span><span class="count">{starred}</span>
+      <span class="name">Starred</span><span class="count">{starred}</span>
     </button>
 
     <h4>

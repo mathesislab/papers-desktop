@@ -1,16 +1,19 @@
-// The actions on the items of the Feeds tab, each once: the keys, the row menu, the selection bar, the buttons of the
-// details and Later ▾ read them from here, so that each says its name one way (the menus in title case, `titled`).
-// What they run is the tab's (`Doers`); their names and when they apply are pure, tested by scripts/feeds.test.ts
-// (npm test).
+// The actions on the items of the Feeds and Search tabs, each once: the keys, the row menu, the selection bar, the
+// buttons of the details and Later ▾ read them from here, so that each says its name one way (the menus in title
+// case, `titled`) in both tabs. Those of both (`itemActions`: open, add, star) and the Feeds tab's own
+// (`feedActions`). What they run is the tab's (`Doers`); their names and when they apply are pure, tested by
+// scripts/actions.test.ts (npm test).
 
 import type { ItemKind, Reminder, Triage } from "./api.ts";
 import { isPost } from "./kinds.ts";
-import { toggled, type TriageAction } from "./items.ts";
+import { starrable, toggled, type TriageAction } from "./items.ts";
 
 /** What an action knows of an item: a row of the list, or the details of one (a linked paper not in the list). */
 export type Item = { id: string; kind: ItemKind; triage: Triage; reminder?: Reminder | null; url?: string | null; doi?: string | null };
 
-export type ActionName = "open" | "add" | "addBare" | "find" | "star" | "read" | "dismiss" | "keepUnread" | "later" | "clearReminder";
+/** the actions of both tabs */
+export type ItemActionName = "open" | "add" | "addBare" | "star";
+export type ActionName = ItemActionName | "find" | "read" | "dismiss" | "keepUnread" | "later" | "clearReminder";
 
 export interface Action {
   /** the key that does it to the selection; none: the menus and the buttons only */
@@ -25,15 +28,19 @@ export interface Action {
   run: (ids: string[]) => unknown;
 }
 
-/** What the actions do: the tab's. */
-export interface Doers {
+/** What the actions of both tabs do: the tab's. */
+export interface ItemDoers {
   open: (ids: string[]) => unknown;
   add: (ids: string[], pdf: boolean) => unknown;
+  triage: (action: TriageAction, ids: string[]) => unknown;
+}
+
+/** What the actions of the Feeds tab do. */
+export interface Doers extends ItemDoers {
   /** the papers behind a post looked for again */
   find: (id: string) => unknown;
   /** the item in focus */
   focus: () => string | null;
-  triage: (action: TriageAction, ids: string[]) => unknown;
   keepUnread: (ids: string[]) => unknown;
   /** Later ▾: kept unread, snoozed, the reminder cleared */
   later: (ids: string[]) => unknown;
@@ -51,8 +58,8 @@ export const SNOOZES: { text: string; days: number }[] = [
 const always = () => true;
 const all = (items: Item[], triage: Triage) => items.length > 0 && items.every((i) => i.triage === triage);
 
-/** The actions of the tab, by name. */
-export function feedActions(d: Doers): Record<ActionName, Action> {
+/** The actions of both tabs, by name. */
+export function itemActions(d: ItemDoers): Record<ItemActionName, Action> {
   return {
     open: {
       key: "o",
@@ -76,6 +83,20 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
       hint: "Add to the library without looking for its PDF",
       run: (ids) => d.add(ids, false),
     },
+    star: {
+      key: "s",
+      label: (items) => (all(items.filter(starrable), "starred") ? "Unstar" : "Star"),
+      enabled: (items) => toggled(items, "star") !== null,
+      hint: "Keep it, to come back to it",
+      run: (ids) => d.triage("star", ids),
+    },
+  };
+}
+
+/** The actions of the Feeds tab, by name: those of both, and the triage. */
+export function feedActions(d: Doers): Record<ActionName, Action> {
+  return {
+    ...itemActions(d),
     find: {
       key: "f",
       label: () => "Find linked paper",
@@ -85,12 +106,6 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
         const focus = d.focus();
         if (ids.length) d.find(focus !== null && ids.includes(focus) ? focus : ids[0]);
       },
-    },
-    star: {
-      key: "s",
-      label: (items) => (all(items, "starred") ? "Unstar" : "Star"),
-      enabled: (items) => toggled(items, "star") !== null,
-      run: (ids) => d.triage("star", ids),
     },
     read: {
       key: "m",

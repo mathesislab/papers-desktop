@@ -1,9 +1,9 @@
-// The actions on the items of the Feeds tab: their names, when they apply, the menus' title case.
+// The actions on the items of the Feeds and Search tabs: their names, when they apply, the menus' title case.
 // node --test scripts/ (npm test)
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buttonText, feedActions, titled, type Item } from "../src/lib/feeds/actions.ts";
+import { buttonText, feedActions, itemActions, titled, type Item } from "../src/lib/feeds/actions.ts";
 
 const done: [string, unknown[]][] = [];
 let focus: string | null = null;
@@ -78,4 +78,17 @@ test("the menus in title case, the buttons with their marks", () => {
   assert.equal(buttonText("later", "Later"), "⏰ Later ▾");
   assert.equal(buttonText("open", "Open post"), "Open post ↗");
   assert.equal(buttonText("read", "Mark read"), "Mark read");
+});
+
+test("the Search tab's actions: those of both tabs, said alike", () => {
+  const search = itemActions({ open: () => {}, add: () => {}, triage: () => {} });
+  assert.deepEqual(Object.keys(search).sort(), ["add", "addBare", "open", "star"]);
+  for (const name of ["open", "add", "addBare", "star"] as const) {
+    const items = [item("a", "starred")];
+    assert.equal(search[name].label(items), actions[name].label(items), name);
+    assert.equal(search[name].key, actions[name].key, name);
+  }
+  // an item added keeps being added: the star says the others
+  assert.equal(search.star.label([item("a", "starred"), item("b", "added")]), "Unstar");
+  assert.equal(search.star.enabled([item("b", "added")]), false);
 });

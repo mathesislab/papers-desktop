@@ -15,16 +15,17 @@
   import { label, matches, type Shortcut } from "$lib/keys";
   import { modalOpen } from "$lib/library/modal.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import { ItemList, typing } from "$lib/list/ItemList.svelte";
+  import ActionButtons from "$lib/list/ActionButtons.svelte";
+  import { ItemList, menuItem, typing } from "$lib/list/ItemList.svelte";
   import ItemPane from "$lib/list/ItemPane.svelte";
   import "$lib/list/tab.css";
   import { tabContext } from "$lib/list/tab";
   import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
-  import { SNOOZES, buttonText, feedActions, titled, type Action, type ActionName, type Item } from "./actions";
+  import { SNOOZES, buttonText, feedActions, titled, type ActionName } from "./actions";
   import * as api from "./api";
-  import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo } from "./api";
+  import type { FeedCounts, FeedDetail, FetchSummary, Linked, SubscriptionInfo } from "./api";
   import FeedsSidebar from "./FeedsSidebar.svelte";
   import { FEED_ORDER, FEED_SPECS, type FeedColumn } from "./columns";
   import type { Shown } from "$lib/list/columns";
@@ -50,7 +51,6 @@
     newOlderThan,
     snoozeUntil,
     stale,
-    toggled,
     type TriageAction,
   } from "./items";
   import { SOURCE_KINDS, isPost, sourceKinds } from "./kinds";
@@ -266,23 +266,10 @@
     });
   });
 
-  /** The items of some ids that the actions know: the details shown (they say its link), else the rows. */
-  const itemsOf = (ids: string[]): Item[] =>
-    ids.flatMap((id): Item[] => {
-      const item = list.detail?.id === id ? list.detail : list.byId.get(id);
-      return item ? [item] : [];
-    });
-
-  /** An action as an item of a menu. */
-  const menuItem = (action: Action, ids: string[], items: Item[]) =>
-    MenuItem.new({ text: titled(action.label(items)), enabled: action.enabled(items), action: () => action.run(ids) });
-
-  /** s, x, m: the triage of the items selected toggled (`toggled`); an item not in the list (a linked paper) is
-   *  asked for. */
+  /** s, x, m: the triage of the items selected toggled (`ItemList.toggled`); what comes back to seen is marked
+   *  read. */
   async function triage(action: TriageAction, ids: string[]) {
-    const found = await Promise.all(ids.map((id) => list.byId.get(id) ?? list.detailOf(id)));
-    const items = found.filter((r): r is FeedRow | FeedDetail => !!r);
-    const change = toggled(items, action);
+    const change = await list.toggled(action, ids);
     if (change?.triage === "seen") markRead(change.ids);
     else if (change) list.setTo(change.ids, change.triage);
   }
@@ -352,7 +339,7 @@
   /** Z, Later ▾: kept unread, snoozed for some days, or the reminder cleared. */
   async function laterMenu(ids: string[]) {
     if (!ids.length) return;
-    const items = itemsOf(ids);
+    const items = list.itemsOf(ids);
     const menu = await Menu.new({
       items: [
         await menuItem(actions.keepUnread, ids, items),
@@ -385,7 +372,7 @@
   async function rowMenu(id: string) {
     if (!list.selection.selected.has(id)) list.showItem(id);
     const ids = list.targets();
-    const items = itemsOf(ids);
+    const items = list.itemsOf(ids);
     if (!items.length) return;
     const item = (name: ActionName) => menuItem(actions[name], ids, items);
     const separator = () => PredefinedMenuItem.new({ item: "Separator" });
@@ -685,7 +672,7 @@
         none="No item selected"
         bar={listBar}
         empty={loaded && list.rows.length ? undefined : noRows}
-        actions={itemActions}
+        actions={detailButtons}
         finding={finding !== null && finding === list.detail?.id}
         onaddlink={(link: Linked) => list.add({ id: link.doi, item: link.item }, true)}
         onstarlink={(item) => actions.star.run([item])}
@@ -739,7 +726,7 @@
   </div>
   {#if list.selection.selected.size > 1}
     {@const ids = list.chosen()}
-    {@const items = itemsOf(ids)}
+    {@const items = list.itemsOf(ids)}
     <div class="selbar">
       <span>{list.selection.selected.size} selected</span>
       {#each BAR_BUTTONS as name (name)}
@@ -768,15 +755,9 @@
 {/snippet}
 
 <!-- the buttons of the details, a post's or a paper's: on the selection when the item is in it -->
-{#snippet itemActions(d: FeedDetail)}
+{#snippet detailButtons(d: FeedDetail)}
   {@const ids = list.targetsOr(d.id)}
-  {@const items = itemsOf(ids)}
-  {#each isPost(d.kind) ? POST_BUTTONS : PAPER_BUTTONS as name (name)}
-    {@const action = actions[name]}
-    <button class:primary={name === "add"} class:open={name === "open"} title={action.hint} disabled={!action.enabled(items)} onclick={() => action.run(ids)}>
-      {buttonText(name, action.label(items))}{#if action.key}{" "}<kbd>{action.key.toUpperCase()}</kbd>{/if}
-    </button>
-  {/each}
+  <ActionButtons {actions} names={isPost(d.kind) ? POST_BUTTONS : PAPER_BUTTONS} {ids} items={list.itemsOf(ids)} />
 {/snippet}
 
 <style>

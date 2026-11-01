@@ -27,7 +27,6 @@
     sort,
     colours,
     unread = true,
-    star = { on: "Starred: unstar", off: "Star" },
     after,
     onsort,
     oncolumns,
@@ -51,8 +50,6 @@
     colours: Map<string, string>;
     /** a new item's title bold, one seen muted */
     unread?: boolean;
-    /** what the star of a row says, on and off */
-    star?: { on: string; off: string };
     /** after the last row, in the scroll of the list: *Show 25 more* */
     after?: Snippet;
     onsort?: (sort: Sort) => void;
@@ -140,7 +137,7 @@
             <button
               class="star"
               class:on={row.triage === "starred"}
-              title={row.triage === "starred" ? star.on : star.off}
+              title={row.triage === "starred" ? "Starred: unstar" : "Star"}
               onmousedown={(e) => e.stopPropagation()}
               ondblclick={(e) => e.stopPropagation()}
               onclick={() => onstar(row.id)}>{row.triage === "starred" ? "★" : "☆"}</button

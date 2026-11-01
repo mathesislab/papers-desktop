@@ -8,21 +8,25 @@ import { isPost } from "./kinds.ts";
 /** the keys that change the triage of the items selected */
 export type TriageAction = "star" | "dismiss" | "read";
 
+/** Whether an item can be starred: one added to the library keeps being added. */
+export const starrable = (item: { triage: Triage }) => item.triage !== "added";
+
 /**
  * The triage a key gives the items selected, and which of them it changes. Each key toggles: `s` stars, or when
- * all are starred takes them back to seen; `x` dismisses, or brings back dismissed ones; `m` marks new items
- * seen, or when none is new marks the seen ones new again (a starred, dismissed or added item keeps its
- * triage). None: nothing to change.
+ * all are starred takes them back to seen (an added item keeps its triage); `x` dismisses, or brings back dismissed
+ * ones; `m` marks new items seen, or when none is new marks the seen ones new again (a starred, dismissed or added
+ * item keeps its triage). None: nothing to change.
  */
 export function toggled(items: { id: string; triage: Triage }[], action: TriageAction): { ids: string[]; triage: Triage } | null {
-  const all = (t: Triage) => items.length > 0 && items.every((i) => i.triage === t);
+  const all = (t: Triage, of = items) => of.length > 0 && of.every((i) => i.triage === t);
   const change = (pick: (t: Triage) => boolean, triage: Triage) => {
     const ids = items.filter((i) => pick(i.triage) && i.triage !== triage).map((i) => i.id);
     return ids.length ? { ids, triage } : null;
   };
+  const kept = (t: Triage) => starrable({ triage: t });
   switch (action) {
     case "star":
-      return all("starred") ? change(() => true, "seen") : change(() => true, "starred");
+      return all("starred", items.filter(starrable)) ? change(kept, "seen") : change(kept, "starred");
     case "dismiss":
       return all("dismissed") ? change(() => true, "seen") : change(() => true, "dismissed");
     case "read":

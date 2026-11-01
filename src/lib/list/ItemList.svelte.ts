@@ -4,11 +4,13 @@
 // the list, what was just done said for a moment. A tab makes one as it starts: its effects are the tab's, and the
 // window's context (`tabContext`) its own.
 
+import { MenuItem } from "@tauri-apps/api/menu";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import * as api from "$lib/feeds/api";
 import type { FeedDetail, FeedRow, Store, Triage } from "$lib/feeds/api";
-import { addTarget, pageOf } from "$lib/feeds/items";
+import { titled, type Action, type Item } from "$lib/feeds/actions";
+import { addTarget, pageOf, toggled, type TriageAction } from "$lib/feeds/items";
 import { isPost } from "$lib/feeds/kinds";
 import { mac, matches, type Shortcut } from "$lib/keys";
 import { OPEN_ASK } from "$lib/library/selection";
@@ -18,6 +20,10 @@ import { tabContext, type Tab } from "./tab";
 const ALL: Shortcut = { key: "a", mod: true };
 /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
 const LOOKUP_DELAY = 300;
+
+/** An action as an item of a menu, on the items of those ids. */
+export const menuItem = (action: Action, ids: string[], items: Item[]) =>
+  MenuItem.new({ text: titled(action.label(items)), enabled: action.enabled(items), action: () => action.run(ids) });
 
 /** A key typed in a field. */
 export const typing = (e: KeyboardEvent) =>
@@ -144,6 +150,24 @@ export class ItemList {
   /** ⌘F, /: the search field. */
   focusSearch() {
     this.input?.select();
+  }
+
+  /** The items of some ids that the actions know: the details shown (they say its link), else the rows. */
+  itemsOf(ids: string[]): Item[] {
+    return ids.flatMap((id): Item[] => {
+      const item = this.detail?.id === id ? this.detail : this.byId.get(id);
+      return item ? [item] : [];
+    });
+  }
+
+  /** The triage an action toggles on items (`toggled`), an item not in the list (a linked paper) asked for; none:
+   *  nothing to change. */
+  async toggled(action: TriageAction, ids: string[]): Promise<{ ids: string[]; triage: Triage } | null> {
+    const found = await Promise.all(ids.map((id) => this.byId.get(id) ?? this.detailOf(id)));
+    return toggled(
+      found.filter((r): r is FeedRow | FeedDetail => !!r),
+      action,
+    );
   }
 
   /** The details of an item: those shown, else asked. */

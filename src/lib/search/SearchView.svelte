@@ -3,9 +3,9 @@
   // and add them to the library. The query is the app's (words, "phrases", -word, t:, abs:, a:, j:, y:, doi:, and
   // cites:, citedby: for the works around a work), the Year field added as y:; Enter runs it, a page of 25 works at
   // a time (*Show 25 more* at the end of the list). A new search takes the place of the works found before, but for
-  // those saved for later (the star, S) or added. The sidebar: the works found (Results), those saved for later, the
-  // recent searches. The list and the details are the Feeds tab's (ItemPane, on an ItemList), with the store
-  // "search": the details beside the list or in place of it, as in the Feeds tab. The window
+  // those starred (☆, S) or added. The sidebar: the works found (Results), those starred, the recent searches. The
+  // list and the details are the Feeds tab's (ItemPane, on an ItemList), with the store "search": the details beside
+  // the list or in place of it, its actions those of the Feeds tab's table (`itemActions`). The window
   // (src/routes/main/+page.svelte) keeps the layout (the fields, the recent searches, the search shown), gives
   // what both its Feeds and Search tabs take (`tabContext`), and passes on the commands of the menu and the keys
   // while the tab is in front. The Add sheet is the library's.
@@ -14,12 +14,14 @@
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
   import { onMount } from "svelte";
   import * as feedsApi from "$lib/feeds/api";
-  import type { FeedDetail, FeedRow } from "$lib/feeds/api";
+  import { buttonText, itemActions, type ItemActionName } from "$lib/feeds/actions";
+  import type { FeedDetail } from "$lib/feeds/api";
   import { SEARCH_ORDER, SEARCH_SPECS } from "$lib/feeds/columns";
-  import { mergeRows, toggled } from "$lib/feeds/items";
+  import { mergeRows, type TriageAction } from "$lib/feeds/items";
   import { modalOpen } from "$lib/library/modal.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import { ItemList, typing } from "$lib/list/ItemList.svelte";
+  import ActionButtons from "$lib/list/ActionButtons.svelte";
+  import { ItemList, menuItem, typing } from "$lib/list/ItemList.svelte";
   import ItemPane from "$lib/list/ItemPane.svelte";
   import type { SearchLayout } from "$lib/layout";
   import "$lib/list/tab.css";
@@ -62,7 +64,7 @@
   /** the searches asked: an answer to one before the last is dropped */
   let asked = 0;
 
-  /** the works of the search shown, or those saved for later; those unsaved in *Saved for later* stay in place
+  /** the works of the search shown, or those starred; those unstarred in *Starred* stay in place
    *  until another list is shown */
   const list = new ItemList({
     store: "search",
@@ -75,7 +77,7 @@
   let orderText = $derived(ORDERS.find((o) => o.order === search.order)?.text ?? "");
   let summary = $derived(
     (view === "starred"
-      ? `${list.rows.length} saved`
+      ? `${list.rows.length} starred`
       : results
         ? totalText(results.total) + (results.ids.length < results.total ? ` · ${results.ids.length} shown` : "")
         : "") + (list.selection.selected.size > 1 ? ` · ${list.selection.selected.size} selected` : ""),
@@ -97,8 +99,8 @@
     };
   });
 
-  /** The list again as the works are now: those of the search shown, found again, or those saved for later (those
-   *  unsaved here kept in place); and how many are saved. An answer for a list no longer shown (another list, another
+  /** The list again as the works are now: those of the search shown, found again, or those starred (those unstarred
+   *  here kept in place); and how many are starred. An answer for a list no longer shown (another list, another
    *  search or page of it: another `results`) is dropped. */
   async function refresh() {
     const shown = view;
@@ -131,7 +133,7 @@
   }
 
   /** Enter, Search: the first page of the query of the fields, in place of the works found before (but for those
-   *  saved for later or added); kept in the recent searches. A query OpenAlex cannot be asked (years that are none,
+   *  starred or added); kept in the recent searches. A query OpenAlex cannot be asked (years that are none,
    *  a field it has not) is said where the works would be. */
   async function run() {
     const query = composed(search.query, search.year);
@@ -229,42 +231,44 @@
     }
   }
 
-  /** s, the star: the works starred, or no longer when all are (`toggled`); those added keep being added. */
-  async function star(ids = list.targets()) {
-    const found = await Promise.all(ids.map((id) => list.byId.get(id) ?? list.detailOf(id)));
-    const items = found.filter((r): r is FeedRow | FeedDetail => !!r && r.triage !== "added");
-    const change = toggled(items, "star");
-    if (!change) return;
-    const n = change.ids.length === 1 ? "" : ` ${change.ids.length}`;
-    list.say(change.triage === "starred" ? `Saved${n} for later` : `No longer saved${n}`);
-    await list.setTo(change.ids, change.triage);
+  /** s, the star: the works starred, or no longer when all are (`ItemList.toggled`); those added keep being added. */
+  async function triage(action: TriageAction, ids: string[]) {
+    const change = await list.toggled(action, ids);
+    if (change) await list.setTo(change.ids, change.triage);
   }
+
+  /** what can be done to the works, as in the Feeds tab: the keys, the menu, the buttons */
+  const actions = itemActions({
+    open: (ids) => list.openItems(ids),
+    add: (ids, pdf) => list.addItems(ids, pdf),
+    triage,
+  });
+  /** the buttons of the details, but for the works around it; those of the selection bar */
+  const BUTTONS: ItemActionName[] = ["add", "open", "addBare", "star"];
+  const BAR_BUTTONS: ItemActionName[] = ["add", "star", "open"];
 
   /** Right-click on a row: the works selected when it is one of them, else that work alone. */
   async function rowMenu(id: string) {
     if (!list.selection.selected.has(id)) list.showItem(id);
     const ids = list.targets();
-    const items = ids.map((i) => list.byId.get(i)).filter((r): r is FeedRow => r !== undefined);
+    const items = list.itemsOf(ids);
     if (!items.length) return;
-    const savable = items.filter((r) => r.triage !== "added");
     const one = ids.length === 1 ? await list.detailOf(id) : null;
     const knows = !!one && !!(one.openalex ?? one.doi);
-    const item = (text: string, action: () => void, enabled = true) => MenuItem.new({ text, action, enabled });
+    const item = (name: ItemActionName) => menuItem(actions[name], ids, items);
+    const aroundItem = (text: string, facet: "cites" | "citedby") =>
+      MenuItem.new({ text, action: () => one && around(one, facet), enabled: knows });
     const separator = () => PredefinedMenuItem.new({ item: "Separator" });
     const menu = await Menu.new({
       items: [
-        await item("Open", () => list.openItems(ids)),
-        await item("Add…", () => list.addItems(ids, true)),
-        await item("Add without PDF…", () => list.addItems(ids, false)),
+        await item("open"),
+        await item("add"),
+        await item("addBare"),
         await separator(),
-        await item(
-          savable.length && savable.every((r) => r.triage === "starred") ? "Remove from Saved for Later" : "Save for Later",
-          () => star(ids),
-          savable.length > 0,
-        ),
+        await item("star"),
         await separator(),
-        await item("Cited By", () => one && around(one, "cites"), knows),
-        await item("References", () => one && around(one, "citedby"), knows),
+        await aroundItem("Cited By", "cites"),
+        await aroundItem("References", "citedby"),
       ],
     });
     await menu.popup();
@@ -276,7 +280,7 @@
   }
 
   /** A key of the window while the tab is in front (none while a sheet is open): Enter in the fields runs the
-   *  search; the list's keys move and read (`navKey`); s, a, o act on the selection. */
+   *  search; the list's keys move and read (`navKey`); the keys of the actions act on the selection (s, a, o). */
   export function key(e: KeyboardEvent) {
     if (modalOpen()) return;
     const act = (action: () => unknown) => {
@@ -286,14 +290,8 @@
     const field = e.target === list.input || e.target === yearInput;
     if (field && e.key === "Enter" && !e.isComposing) return act(run);
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-    switch (e.key) {
-      case "s":
-        return act(() => star());
-      case "a":
-        return act(() => list.addItems(list.targets(), true));
-      case "o":
-        return act(() => list.openItems(list.targets()));
-    }
+    const action = Object.values(actions).find((a) => a.key === e.key);
+    if (action) act(() => action.run(list.targets()));
   }
 
   /** An example of the help, in the search field. */
@@ -367,22 +365,21 @@
         specs: SEARCH_SPECS,
         menu: SEARCH_ORDER,
         unread: false,
-        star: { on: "Saved for later: unsave", off: "Save for later" },
         after: view === "results" && results?.next ? showMore : undefined,
         oncolumns: (shown) => (search.columns = shown),
-        onstar: (id) => star([id]),
+        onstar: (id) => actions.star.run([id]),
         onmenu: rowMenu,
       }}
       tint="var(--search)"
       none="No work selected"
       bar={listBar}
       empty={blank ? noRows : undefined}
-      actions={itemActions}
+      actions={detailButtons}
     />
     <footer class="status">
       <span>{searching ? "Searching OpenAlex…" : "OpenAlex's works"}</span>
       <span class="spacer"></span>
-      <span>Saved for later {starredCount}</span>
+      <span>Starred {starredCount}</span>
     </footer>
   </div>
 </main>
@@ -391,7 +388,7 @@
 {#snippet listBar()}
   <div class="filters">
     {#if view === "starred"}
-      <span class="chip"><span class="text">★ Saved for later</span></span>
+      <span class="chip"><span class="text">★ Starred</span></span>
     {:else if results}
       <span class="chip">
         <span class="text" title={results.query}>{results.query}</span>
@@ -407,11 +404,14 @@
     {/if}
   </div>
   {#if list.selection.selected.size > 1}
+    {@const ids = list.chosen()}
+    {@const items = list.itemsOf(ids)}
     <div class="selbar">
       <span>{list.selection.selected.size} selected</span>
-      <button onclick={() => list.addItems(list.chosen(), true)}>Add…</button>
-      <button onclick={() => star(list.chosen())}>☆ Save for later</button>
-      <button onclick={() => list.openItems(list.chosen())}>Open ↗</button>
+      {#each BAR_BUTTONS as name (name)}
+        {@const action = actions[name]}
+        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action.label(items))}</button>
+      {/each}
       <span class="spacer"></span>
       <button class="plain" onclick={() => list.selection.only(list.selection.focus)}>Clear selection</button>
     </div>
@@ -431,7 +431,7 @@
   {:else}
     <p class="empty">
       {view === "starred"
-        ? "Nothing saved for later. ☆ or S keeps a work found, to come back to it without searching again."
+        ? "Nothing starred. ☆ or S keeps a work found, to come back to it without searching again."
         : "No works found."}
     </p>
   {/if}
@@ -446,18 +446,12 @@
   {/if}
 {/snippet}
 
-<!-- the buttons of the details: add, open, save for later, the works around it -->
-{#snippet itemActions(d: FeedDetail)}
+<!-- the buttons of the details: those of the table, on the selection when the work is in it; the works around it -->
+{#snippet detailButtons(d: FeedDetail)}
+  {@const ids = list.targetsOr(d.id)}
   <!-- the works around it are searched by its OpenAlex id, else its DOI -->
   {@const unknown = !d.openalex && !d.doi}
-  <button class="primary" onclick={() => list.addItems(list.targetsOr(d.id), true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
-  <button class="open" onclick={() => list.openItems(list.targetsOr(d.id))} disabled={!d.url && !d.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
-  <button onclick={() => list.addItems(list.targetsOr(d.id), false)} title="Add to the library without looking for its PDF">Add without PDF</button>
-  {#if d.triage !== "added"}
-    <button onclick={() => star(list.targetsOr(d.id))} title="Keep it, to find it again without searching: a new search does not drop it">
-      {d.triage === "starred" ? "★ Saved for later" : "☆ Save for later"} <kbd>S</kbd>
-    </button>
-  {/if}
+  <ActionButtons {actions} names={BUTTONS} {ids} items={list.itemsOf(ids)} />
   <button onclick={() => around(d, "cites")} disabled={unknown} title="Search the works that cite it, the most cited first">Cited by</button>
   <button onclick={() => around(d, "citedby")} disabled={unknown} title="Search the works it cites, the most cited first">References</button>
 {/snippet}
@@ -481,7 +475,7 @@
       cites (<code>citedby:W…</code>), the most cited first.
     </p>
     <p>
-      ☆ (S) saves a work for later: a new search replaces the works found, but for those saved for later or added.
+      ☆ (S) stars a work, to come back to it: a new search replaces the works found, but for those starred or added.
       <b>Follow this search</b> brings its new works into the Feeds tab.
     </p>
   </div>
