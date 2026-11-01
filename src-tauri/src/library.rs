@@ -74,7 +74,7 @@ fn machine(state: &AppState) -> Result<MachineConfig, String> {
 }
 
 /// A change of the .bib files of the settings, on a thread of its own; then the library is read
-/// again, as after the settings window saves them, and the windows told (`status`).
+/// again, as after the settings window saves them, and the windows told (`settings`, `status`).
 async fn change<T: Send + 'static>(
     app: AppHandle,
     op: impl FnOnce(&Path, MachineConfig) -> Result<T, String> + Send + 'static,
@@ -82,6 +82,7 @@ async fn change<T: Send + 'static>(
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let done = op(&state.settings_path, machine(&state)?)?;
+        crate::settings_changed(&app);
         crate::load(&app);
         Ok(done)
     })

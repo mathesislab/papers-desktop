@@ -32,8 +32,8 @@
 
   onMount(() => {
     load();
-    const unlisten = listen<string>("section", (e) => showSection(e.payload));
-    return () => unlisten.then((f) => f());
+    const unlisten = [listen<string>("section", (e) => showSection(e.payload)), prefs.follow()];
+    return () => unlisten.forEach((u) => u.then((f) => f()));
   });
 
   /** Fill the window, then show it: it is made hidden, not to flash empty.

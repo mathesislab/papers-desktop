@@ -420,6 +420,7 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
     {
         state.downloads.apply(&app, &settings);
     }
+    settings_changed(&app);
     reload(&app);
     Ok(())
 }
@@ -623,6 +624,12 @@ fn resize_panel(app: &AppHandle) -> Result<(), String> {
         panel.set_position(PhysicalPosition::new(x, position.y))
     };
     resize().map_err(|e| e.to_string())
+}
+
+/// Tell the windows that show the settings that the file changed (`settings`): the settings
+/// window, the welcome window, each saving all the settings it loaded, read them again.
+fn settings_changed(app: &AppHandle) {
+    let _ = app.emit("settings", ());
 }
 
 /// Re-read the settings and the library, in the background.

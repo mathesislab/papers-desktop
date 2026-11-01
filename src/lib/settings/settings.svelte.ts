@@ -1,13 +1,18 @@
 // The settings of the settings window (src/routes/settings): as saved, with what the window shows beside them (the
-// bundled citation styles, whether the app starts at login, the home folder); a change saved at once (`save`); the
-// line at the foot of the window that says it was saved, or why not (`notice`). The page makes one, as it starts; its
-// tabs take it.
+// bundled citation styles, whether the app starts at login, the home folder); a change saved at once (`save`), read
+// again when another window changes them (`follow`); the line at the foot of the window that says it was saved, or why
+// not (`notice`). The page makes one, as it starts; its tabs take it. The welcome window (src/routes/welcome) has one
+// too.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 // Mirrors src-tauri/src/settings.rs and the SettingsView of lib.rs
 export type Settings = {
   bibtex: string[];
+  /** the folder of the main papers library (~ for the home folder): where a new .bib goes by default; kept once
+   *  set. None: papers has no default library, and none was made or chosen */
+  papers_folder: string | null;
   hotkey: string;
   /** on Linux only */
   selection_hotkey?: string;
@@ -40,8 +45,21 @@ export type Settings = {
 };
 export type View = { settings: Settings; styles: string[]; start_at_login: boolean; home: string | null };
 
+/** mirrors library::ImportReport: what `library_import` did */
+export type ImportReport = { added: number; duplicates: number; missingPdfs: number };
+
 /** The name of a file, without its folder. */
 export const fileName = (path: string) => path.split(/[\\/]/).pop()!;
+
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** What an import did, in a line: "Imported 12 entries into papers.bib, 3 already there, 1 PDF not found". */
+export function imported(report: ImportReport, bib: string): string {
+  const said = [`Imported ${count(report.added, "entry", "entries")} into ${fileName(bib)}`];
+  if (report.duplicates) said.push(`${report.duplicates} already there`);
+  if (report.missingPdfs) said.push(`${count(report.missingPdfs, "PDF", "PDFs")} not found`);
+  return said.join(", ");
+}
 
 export class Preferences {
   /** none until loaded */
@@ -61,6 +79,12 @@ export class Preferences {
     this.styles = view.styles;
     this.startAtLogin = view.start_at_login;
     this.home = view.home;
+  }
+
+  /** Read the settings again whenever a window, or the app, changes them (`settings`): a save of this window
+   *  starts from them, not to undo the other change. To stop, the function the promise gives. */
+  follow() {
+    return listen("settings", () => this.load());
   }
 
   /** Save a change, which applies at once; on failure, show the settings as they are. Whether it was saved. */
@@ -84,10 +108,15 @@ export class Preferences {
     return this.home && path.startsWith(this.home + "/") ? "~" + path.slice(this.home.length) : path;
   }
 
-  /** Say something at the foot of the window. */
-  show = (text: string, error: boolean) => {
+  /** A path with the home folder for ~, as the commands take it. */
+  expand(path: string): string {
+    return this.home && path.startsWith("~/") ? this.home + path.slice(1) : path;
+  }
+
+  /** Say something at the foot of the window: a failure, or a report to read (`kept`), until the next. */
+  show = (text: string, error: boolean, kept = false) => {
     this.notice = { text, error };
     clearTimeout(this.#timer);
-    if (!error) this.#timer = setTimeout(() => (this.notice = null), 1500);
+    if (!error && !kept) this.#timer = setTimeout(() => (this.notice = null), 1500);
   };
 }
