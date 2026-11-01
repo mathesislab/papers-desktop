@@ -547,13 +547,20 @@ impl Mark {
         })
     }
 
-    /// The mark of two merged items: the strongest decision, the latest if equal.
+    /// The mark of two merged items: the strongest decision, the latest if
+    /// equal; a new one keeps the earliest reminder of the two.
     pub(crate) fn stronger(self, other: Mark) -> Mark {
-        match self.triage.weight().cmp(&other.triage.weight()) {
+        let stronger = match self.triage.weight().cmp(&other.triage.weight()) {
             std::cmp::Ordering::Greater => self,
             std::cmp::Ordering::Less => other,
             std::cmp::Ordering::Equal if self.at >= other.at => self,
             std::cmp::Ordering::Equal => other,
+        };
+        let pending = |m: Mark| m.remind.filter(|_| m.triage == Triage::New);
+        let remind = [pending(self), pending(other)].into_iter().flatten().min();
+        Mark {
+            remind: remind.filter(|_| stronger.triage == Triage::New),
+            ..stronger
         }
     }
 }
@@ -572,6 +579,31 @@ mod tests {
             assert_eq!(json.as_str(), Some(value.to_string().as_str()));
             assert!(value.to_string().parse::<T>().is_ok_and(|v| v == value));
         }
+    }
+
+    #[test]
+    fn merged_marks_keep_the_earliest_reminder_of_a_new_item() {
+        use chrono::TimeZone;
+        let day = |d| Utc.with_ymd_and_hms(2026, 11, d, 0, 0, 0).unwrap();
+        let snoozed = |at, till| Mark {
+            remind: Some(day(till)),
+            ..Mark::new(Triage::New, day(at))
+        };
+        let new = Mark::new(Triage::New, day(5));
+        assert_eq!(
+            snoozed(1, 9).stronger(new).remind,
+            Some(day(9)),
+            "the later one's"
+        );
+        assert_eq!(new.stronger(snoozed(1, 9)).remind, Some(day(9)));
+        let earliest = snoozed(1, 9).stronger(snoozed(2, 7));
+        assert_eq!((earliest.at, earliest.remind), (day(2), Some(day(7))));
+        let seen = Mark::new(Triage::Seen, day(3));
+        assert_eq!(
+            snoozed(1, 9).stronger(seen),
+            seen,
+            "another triage clears it"
+        );
     }
 
     #[test]
