@@ -199,6 +199,21 @@ fn update(
     feeds.edit_subscription(id, settings)
 }
 
+/// Something done to the item of each id, those of no item (gone since the
+/// page listed them, or pruned on a fetched copy) passed over.
+fn each(
+    ids: &[String],
+    mut f: impl FnMut(&str) -> papers_feeds::Result<()>,
+) -> papers_feeds::Result<()> {
+    for id in ids {
+        match f(id) {
+            Ok(()) | Err(papers_feeds::Error::NoItem { .. }) => {}
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(())
+}
+
 /// A field that is there, null or not.
 fn present<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<String>>, D::Error> {
     Option::<String>::deserialize(d).map(Some)
@@ -372,7 +387,7 @@ pub async fn feeds_triage(
     blocking(move || {
         let state = app.state::<AppState>();
         store.of(&state).change(&app, move |feeds| {
-            (ids.iter()).try_for_each(|id| feeds.set_triage(id, triage))
+            each(&ids, |id| feeds.set_triage(id, triage))
         })
     })
     .await
@@ -388,9 +403,7 @@ pub async fn feeds_remind(
     let when = until.unwrap_or_else(Utc::now);
     blocking(move || {
         let state = app.state::<AppState>();
-        (state.feeds.folder).change(&app, move |feeds| {
-            ids.iter().try_for_each(|id| feeds.remind(id, when))
-        })
+        (state.feeds.folder).change(&app, move |feeds| each(&ids, |id| feeds.remind(id, when)))
     })
     .await
 }
@@ -652,6 +665,21 @@ impl FeedsState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn items_gone_are_passed_over() {
+        let mut done = Vec::new();
+        let ids = ["a", "gone", "b"].map(String::from);
+        each(&ids, |id| {
+            if id == "gone" {
+                return Err(papers_feeds::Error::NoItem { id: id.into() });
+            }
+            done.push(id.to_string());
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(done, ["a", "b"]);
+    }
 
     #[test]
     fn a_subscription_patched_as_the_page_writes_it() {
