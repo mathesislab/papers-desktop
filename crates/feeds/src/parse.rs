@@ -141,10 +141,6 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
     // a post's HTML, shown as it is (its images): the content, else the description
     let content = content.or_else(|| description.map(String::from));
     Entry {
-        source: sub.id.clone(),
-        origin: Origin::Feed,
-        guid: e.id,
-        title,
         authors,
         journal,
         date: e.published.or(e.updated),
@@ -154,20 +150,15 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
         summary,
         content: content.filter(|_| post),
         editorial,
-        kind,
-        versions: Vec::new(),
-        cited: None,
+        ..Entry::new(&sub.id, Origin::Feed, e.id, title, kind)
     }
 }
 
 /// The kind of an entry of a subscription: a journal's preprint (a preprint
 /// server's DOI, or an arXiv id and no DOI) is a preprint.
 pub(crate) fn kind_of(sub: SourceKind, doi: Option<&str>, arxiv: bool) -> ItemKind {
-    match (sub, doi) {
-        (SourceKind::Journal, Some(doi)) if is_preprint_doi(doi) => ItemKind::Preprint,
-        (SourceKind::Journal, None) if arxiv => ItemKind::Preprint,
-        (kind, _) => kind.item_kind(),
-    }
+    let preprint = doi.map_or(arxiv, is_preprint_doi);
+    sub.item_kind().promoted(preprint)
 }
 
 /// The text of a feed-rs text, plain.

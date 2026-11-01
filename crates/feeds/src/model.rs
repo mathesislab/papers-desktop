@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::normalize::{canonical_issn, canonical_url, feed_key, short_id};
+use crate::parse::EDITORIAL;
 use crate::{Error, Result};
 
 /// The words of an enum's values, as its JSON writes them: `as_str`,
@@ -91,6 +92,15 @@ impl ItemKind {
     /// A post (news or blog), about papers rather than one.
     pub fn is_post(self) -> bool {
         matches!(self, ItemKind::News | ItemKind::Blog)
+    }
+
+    /// This kind, or a preprint for a paper that is one (a journal's feed
+    /// or sweep lists preprints too).
+    pub fn promoted(self, preprint: bool) -> ItemKind {
+        match self {
+            ItemKind::Paper if preprint => ItemKind::Preprint,
+            kind => kind,
+        }
     }
 }
 
@@ -282,6 +292,31 @@ pub struct Entry {
 
 /// The source of the works looked up by DOI (abstracts, authors, versions).
 pub const LOOKUP: &str = "lookup";
+
+impl Entry {
+    /// An entry of a source, of an origin, by its guid: its title (an
+    /// editorial if the title says so) and its kind, nothing else known yet.
+    pub fn new(source: &str, origin: Origin, guid: String, title: String, kind: ItemKind) -> Entry {
+        Entry {
+            source: source.to_string(),
+            origin,
+            guid,
+            editorial: EDITORIAL.is_match(&title),
+            title,
+            authors: Vec::new(),
+            journal: None,
+            date: None,
+            doi: None,
+            arxiv: None,
+            url: None,
+            summary: None,
+            content: None,
+            kind,
+            versions: Vec::new(),
+            cited: None,
+        }
+    }
+}
 
 impl Origin {
     /// The origin of an entry kept before entries had one: a work if it is

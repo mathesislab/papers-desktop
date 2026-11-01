@@ -11,7 +11,7 @@ use serde::Deserialize;
 use crate::http::{Access, doi_path, with_query};
 use crate::model::{Entry, ItemKind, Origin};
 use crate::normalize::{arxiv_id, canonical_doi, is_preprint_doi};
-use crate::parse::{EDITORIAL, plain};
+use crate::parse::plain;
 
 pub(crate) const WORKS: &str = "https://api.openalex.org/works";
 const SOURCES: &str = "https://api.openalex.org/sources";
@@ -202,11 +202,6 @@ impl Work {
         let title = self.title.as_deref().map(plain).unwrap_or_default();
         let location = self.primary_location.as_ref();
         Entry {
-            source: source.to_string(),
-            origin: Origin::Work,
-            guid: self.id.clone(),
-            editorial: EDITORIAL.is_match(&title),
-            title,
             authors: self
                 .authorships
                 .iter()
@@ -219,14 +214,15 @@ impl Work {
             arxiv: doi.as_deref().and_then(arxiv_id),
             url: location.and_then(|l| l.landing_page_url.clone()),
             summary: self.abstract_text(),
-            content: None,
-            kind: match kind {
-                ItemKind::Paper if preprint => ItemKind::Preprint,
-                kind => kind,
-            },
-            versions: Vec::new(),
             cited: self.cited_by_count,
             doi,
+            ..Entry::new(
+                source,
+                Origin::Work,
+                self.id.clone(),
+                title,
+                kind.promoted(preprint),
+            )
         }
     }
 }

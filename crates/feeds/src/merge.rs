@@ -334,7 +334,7 @@ fn assemble(id: String, sources: Vec<Source>, links: Vec<Linked>) -> Item {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::ItemKind;
+    use crate::model::{ItemKind, Origin};
     use chrono::TimeZone;
 
     fn at(day: u32) -> DateTime<Utc> {
@@ -342,23 +342,11 @@ mod tests {
     }
 
     fn entry(source: &str, guid: &str, title: &str, author: &str) -> Entry {
+        let (guid, title) = (guid.to_string(), title.to_string());
         Entry {
-            source: source.to_string(),
-            origin: crate::model::Origin::Feed,
-            guid: guid.to_string(),
-            title: title.to_string(),
             authors: vec![author.to_string()],
-            journal: None,
             date: Some(at(20)),
-            doi: None,
-            arxiv: None,
-            url: None,
-            summary: None,
-            content: None,
-            editorial: false,
-            kind: ItemKind::Paper,
-            versions: Vec::new(),
-            cited: None,
+            ..Entry::new(source, Origin::Feed, guid, title, ItemKind::Paper)
         }
     }
 
@@ -497,7 +485,7 @@ mod tests {
         );
         let mut looked_up = tc.clone();
         looked_up.source = crate::model::LOOKUP.to_string();
-        looked_up.origin = crate::model::Origin::Work;
+        looked_up.origin = Origin::Work;
         looked_up.versions = vec![
             Version {
                 doi: "10.5194/tc-20-5895-2026".to_string(),

@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::http::{Access, doi_path, with_query};
 use crate::model::{Entry, ItemKind, Origin, Stage, Version};
 use crate::normalize::{arxiv_id, canonical_doi, is_attachment_doi, is_preprint_doi};
-use crate::parse::{EDITORIAL, abstract_text, plain};
+use crate::parse::{abstract_text, plain};
 
 const WORKS: &str = "https://api.crossref.org/works";
 
@@ -234,27 +234,17 @@ impl Work {
             .as_deref()
             .map(abstract_text)
             .filter(|s| !s.is_empty());
-        let kind = match kind {
-            ItemKind::Paper if preprint => ItemKind::Preprint,
-            kind => kind,
-        };
+        let kind = kind.promoted(preprint);
         Some(Entry {
-            source: source.to_string(),
-            origin: Origin::Work,
-            guid: doi.clone(),
-            editorial: EDITORIAL.is_match(&title),
-            title,
             authors,
             journal: self.container_title.first().map(|t| plain(t)),
             date: self.date(),
             arxiv: arxiv_id(&doi),
             url: self.url.clone(),
             summary,
-            content: None,
-            kind,
             versions: self.versions(&doi, preprint),
-            cited: None,
-            doi: Some(doi),
+            doi: Some(doi.clone()),
+            ..Entry::new(source, Origin::Work, doi, title, kind)
         })
     }
 }
