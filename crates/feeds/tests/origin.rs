@@ -95,9 +95,13 @@ fn a_folder_of_before_is_brought_up_to_date_once() {
     feeds.found(entries, false).unwrap();
 
     // as written before entries had an origin, and the page read of the post
-    // kept by its id
+    // kept by its id; one by its URL, as a migration cut short left it
     let post = feeds.items().iter().find(|i| i.title == "Paper post");
-    let read = format!(r#"{{"page:{}": "2026-10-30T00:00:00Z"}}"#, post.unwrap().id);
+    let read = format!(
+        r#"{{"page:{}": "2026-10-30T00:00:00Z",
+            "page:https://example.org/other": "2026-10-30T00:00:00Z"}}"#,
+        post.unwrap().id
+    );
     std::fs::write(dir.path().join("lookups.json"), read).unwrap();
     let path = dir.path().join("items.json");
     let mut json: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
@@ -125,7 +129,13 @@ fn a_folder_of_before_is_brought_up_to_date_once() {
     let lookups = std::fs::read_to_string(dir.path().join("lookups.json")).unwrap();
     let lookups: Value = serde_json::from_str(&lookups).unwrap();
     let keys: Vec<&String> = lookups.as_object().unwrap().keys().collect();
-    assert_eq!(keys, ["page:https://example.org/post"]);
+    assert_eq!(
+        keys,
+        [
+            "page:https://example.org/other",
+            "page:https://example.org/post"
+        ]
+    );
 
     // a sweep's item stays a work once the sweep is unsubscribed
     feeds.unsubscribe(&sweep).unwrap();

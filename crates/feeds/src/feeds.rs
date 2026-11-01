@@ -82,13 +82,17 @@ impl Feeds {
             }
         }
         if format < 2 {
-            // the post's id after `page:`, which merging leaves behind
-            let read: Vec<(String, DateTime<Utc>)> = (self.lookups.iter())
-                .filter_map(|(key, &at)| Some((key.strip_prefix("page:")?.to_string(), at)))
+            // the post's id after `page:`, which merging leaves behind; a key
+            // of no item's id (a URL, if this ran before) stays as it is
+            let read: Vec<(String, Option<String>, DateTime<Utc>)> = (self.lookups.iter())
+                .filter_map(|(key, &at)| {
+                    let item = self.item(key.strip_prefix("page:")?)?;
+                    Some((key.clone(), item.url.clone(), at))
+                })
                 .collect();
-            for (id, at) in read {
-                self.lookups.remove(&format!("page:{id}"));
-                if let Some(url) = self.item(&id).and_then(|i| i.url.clone()) {
+            for (key, url, at) in read {
+                self.lookups.remove(&key);
+                if let Some(url) = url {
                     self.lookups.insert(Lookup::Page(&url).key(), at);
                 }
             }
@@ -99,10 +103,12 @@ impl Feeds {
             let merged = merger.finish();
             self.keep_marks(merged);
         }
+        // `items.json` last: it says the format, and each step can be made
+        // again on what the others wrote
         self.items.format = FORMAT;
-        store::write(&self.dir, ITEMS, &self.items)?;
         store::write(&self.dir, STATE, &self.state)?;
-        store::write(&self.dir, LOOKUPS, &self.lookups)
+        store::write(&self.dir, LOOKUPS, &self.lookups)?;
+        store::write(&self.dir, ITEMS, &self.items)
     }
 
     pub fn subscriptions(&self) -> &[Subscription] {
