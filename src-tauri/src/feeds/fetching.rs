@@ -390,7 +390,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use papers_feeds::http::Recorded;
-    use papers_feeds::{Reply, Request, Rule, Search, Sort, Triage};
+    use papers_feeds::{Reply, Request, Rule, SavedView, Sort, Triage};
 
     use super::*;
     use std::time::Duration;
@@ -550,11 +550,11 @@ mod tests {
     }
 
     #[test]
-    fn saved_searches_set_during_a_fetch_stay_and_a_bad_one_is_refused() {
+    fn saved_views_set_during_a_fetch_stay_and_a_bad_one_is_refused() {
         let dir = tempfile::tempdir().unwrap();
         let state = FeedsState::on_clock(dir.path());
         state.subscribed(TC);
-        let search = |name: &str| Search {
+        let view = |name: &str| SavedView {
             name: name.to_string(),
             query: "is:new".to_string(),
             sort: Sort::Score,
@@ -563,21 +563,21 @@ mod tests {
             inner: Recorded::new().reply(TC, atom("TC", &[("a", "Ice", None)])),
             state: &state,
             change: Mutex::new(Some(Box::new(move |folder: &Folder| {
-                let new = move |f: &mut Feeds| f.set_searches(vec![search("New")]);
+                let new = move |f: &mut Feeds| f.set_saved_views(vec![view("New")]);
                 folder.apply(new).unwrap()
             }))),
         };
         fetch(&state, None, &http).unwrap();
         let names = |state: &FeedsState| {
             state.folder.read(|f| {
-                f.searches()
+                f.saved_views()
                     .iter()
-                    .map(|s| s.name.clone())
+                    .map(|v| v.name.clone())
                     .collect::<Vec<_>>()
             })
         };
         assert_eq!(names(&state).unwrap(), ["New"]);
-        let twice = move |f: &mut Feeds| f.set_searches(vec![search("A"), search("a")]);
+        let twice = move |f: &mut Feeds| f.set_saved_views(vec![view("A"), view("a")]);
         assert!(state.folder.apply(twice).is_err());
         assert_eq!(
             names(&FeedsState::on_clock(dir.path())).unwrap(),

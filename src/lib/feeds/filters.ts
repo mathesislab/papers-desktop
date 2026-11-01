@@ -87,7 +87,7 @@ const asksDismissed = (query: string) =>
   queryTerms(query, FEED_FIELDS).some((t) => t.field === "is" && t.values.some((v) => v.trim().toLowerCase() === "dismissed"));
 
 /** The query of the choices: a term per group of the sidebar, then the text typed (`is:new kind:paper,preprint
- *  prof:AMOC melt`). The whole query of the tab: what a saved search keeps (see `decompose`, which takes the choices
+ *  prof:AMOC melt`). The whole query of the tab: what a saved view keeps (see `decompose`, which takes the choices
  *  back: they come first). */
 export function queryOf(f: FeedFilters): string {
   return [
@@ -174,14 +174,14 @@ export function sameQuery(a: string, b: string): boolean {
   return canonical(a) === canonical(b);
 }
 
-/** A saved search applied: its choices, text and order in place of the tab's (the groups unfolded stay). */
+/** A saved view applied: its choices, text and order in place of the tab's (the groups unfolded stay). */
 export const applied = (f: FeedFilters, search: { query: string; sort: Sort }): FeedFilters => ({
   ...f,
   ...decompose(search.query),
   sort: search.sort,
 });
 
-/** Whether a saved search is what the tab shows: the same query, the same order. */
+/** Whether a saved view is what the tab shows: the same query, the same order. */
 export const isShown = (f: FeedFilters, search: { query: string; sort: Sort }) =>
   search.sort === f.sort && sameQuery(search.query, queryOf(f));
 

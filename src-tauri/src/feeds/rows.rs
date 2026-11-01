@@ -53,7 +53,7 @@ pub struct FeedRow {
     cited: Option<u64>,
 }
 
-/// The counts of the sidebar, the subscriptions by title, the saved searches by name.
+/// The counts of the sidebar, the subscriptions by title, the saved views by name.
 #[derive(Debug, Serialize)]
 pub struct FeedCounts {
     all: usize,
@@ -61,7 +61,7 @@ pub struct FeedCounts {
     total: FeedGroups,
     /// those new
     unread: FeedGroups,
-    searches: BTreeMap<String, usize>,
+    views: BTreeMap<String, usize>,
 }
 
 /// Items by kind, interest and subscription (by title).
@@ -215,7 +215,7 @@ pub fn view(feeds: &Feeds, matching: Matching, request: &ViewRequest) -> FeedVie
             is: view.counts.is,
             total: FeedGroups::of(view.counts.total, &rows.titles),
             unread: FeedGroups::of(view.counts.unread, &rows.titles),
-            searches: view.counts.searches,
+            views: view.counts.views,
         },
         rows: view.rows.into_iter().map(|row| rows.row(row)).collect(),
     }

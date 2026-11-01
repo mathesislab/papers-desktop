@@ -1,5 +1,5 @@
 //! The `feeds` program: the commands of the feeds crate on a folder, as paper-feeder's job
-//! and more (subscribe, fetch, list, show, mark, the interests, rules and saved searches, the
+//! and more (subscribe, fetch, list, show, mark, the interests, rules and saved views, the
 //! RSS digest). With `--library`, the .bib files of a library
 //! tell how like its papers an item is (`like:`), and whether it is one (`is:inlibrary`).
 //!
@@ -9,10 +9,10 @@
 mod cli;
 mod digest;
 mod items;
-mod searches;
 mod settings;
 mod subs;
 mod text;
+mod views;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -197,7 +197,7 @@ fn dispatch(ctx: &mut Ctx, command: Command) -> Result<()> {
         Command::Prune => items::prune(ctx),
         Command::Interests(a) => settings::interests(ctx, a),
         Command::Rules(a) => settings::rules(ctx, a),
-        Command::Searches(a) => searches::searches(ctx, a),
+        Command::Views(a) => views::views(ctx, a),
         Command::Config(a) => settings::config(ctx, a),
         Command::Opml(a) => subs::opml(ctx, a),
         Command::Digest(a) => digest::digest(ctx, a),

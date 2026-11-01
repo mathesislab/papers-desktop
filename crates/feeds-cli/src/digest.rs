@@ -9,8 +9,8 @@ use chrono::{DateTime, TimeDelta, Utc};
 use papers_feeds::{Item, ItemKind, Row, Sort, ViewRequest};
 
 use crate::cli::DigestArgs;
-use crate::searches::{saved, with_saved};
 use crate::text::{authors, day, link, newest};
+use crate::views::{saved, with_saved};
 use crate::{Ctx, Error, Result};
 
 /// The stylesheet of paper-feeder's page.

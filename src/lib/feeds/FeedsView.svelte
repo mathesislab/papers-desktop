@@ -121,11 +121,11 @@
   let groups = $derived(sourceGroups(subscriptions, counts));
   let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
   let shortlisted = $derived(counts?.is.shortlisted ?? 0);
-  /** the saved searches of the sidebar; the one the tab shows */
-  let searches = $state<api.SavedSearch[]>([]);
+  /** the saved views of the sidebar; the one the tab shows */
+  let views = $state<api.SavedView[]>([]);
   /** how many days the feeds keep an item (the setting): what *All* reaches back */
   let keepDays = $state<number | null>(null);
-  let shownSearch = $derived(searches.find((s) => isShown(filters, s))?.name ?? null);
+  let shownView = $derived(views.find((v) => isShown(filters, v))?.name ?? null);
 
   /** what can be done to the items: the keys, the menus, the buttons */
   const actions = feedActions({
@@ -175,10 +175,10 @@
 
   onDestroy(() => dwell.stop());
 
-  /** The tab opened: the subscriptions, the saved searches, and a fetch when the last is older than 15 minutes. */
+  /** The tab opened: the subscriptions, the saved views, and a fetch when the last is older than 15 minutes. */
   async function start() {
     try {
-      [last, subscriptions, searches] = await Promise.all([api.lastFetch(), api.subscriptions(), api.savedSearches()]);
+      [last, subscriptions, views] = await Promise.all([api.lastFetch(), api.subscriptions(), api.savedViews()]);
     } catch (e) {
       failure = String(e);
     }
@@ -544,24 +544,27 @@
     if (action) act(() => action.run(list.targets()));
   }
 
-  /** The saved searches changed: kept (their counts come with the list again). */
-  async function keepSearches(saved: api.SavedSearch[]) {
+  /** The saved views changed: kept (their counts come with the list again). */
+  async function keepViews(saved: api.SavedView[]) {
     try {
-      await api.setSavedSearches(saved);
-      searches = saved;
+      await api.setSavedViews(saved);
+      views = saved;
     } catch (e) {
       list.say(String(e));
     }
   }
 
-  /** A saved search shown: its choices, search and order in place of the tab's. */
-  function applySearch(name: string) {
-    const search = searches.find((s) => sameName(s.name, name));
-    if (search) filters = applied(filters, search);
+  /** A saved view shown: its choices, search and order in place of the tab's. */
+  function applyView(name: string) {
+    const view = views.find((v) => sameName(v.name, name));
+    if (view) filters = applied(filters, view);
   }
 
-  /** What the tab shows, as a saved search. */
-  const current = (name: string): api.SavedSearch => ({ name, query: queryOf(filters), sort: filters.sort });
+  /** What the tab shows, as a saved view. */
+  const current = (name: string): api.SavedView => ({ name, query: queryOf(filters), sort: filters.sort });
+
+  /** Why a view cannot be named so (that of `own`, being renamed, aside); none: it can. */
+  const viewRefusal = (name: string, own?: string) => refusal(views, name, own, "view");
 
   function dropChip(chip: FeedChip) {
     filters = withoutChip(filters, chip);
@@ -598,13 +601,15 @@
       >
         {#snippet saved()}
           <SavedSearches
-            searches={searches.map((s) => ({ name: s.name, count: counts?.searches?.[s.name] ?? 0 }))}
-            shown={shownSearch}
-            refusal={(name, own) => refusal(searches, name, own)}
-            onapply={applySearch}
-            onrename={(name, to) => keepSearches(renamed(searches, name, to))}
-            onupdate={(name) => keepSearches(changed(searches, name, () => current(name)))}
-            ondelete={(name) => keepSearches(removed(searches, name))}
+            searches={views.map((v) => ({ name: v.name, count: counts?.views?.[v.name] ?? 0 }))}
+            heading="Saved views"
+            noun="view"
+            shown={shownView}
+            refusal={viewRefusal}
+            onapply={applyView}
+            onrename={(name, to) => keepViews(renamed(views, name, to))}
+            onupdate={(name) => keepViews(changed(views, name, () => current(name)))}
+            ondelete={(name) => keepViews(removed(views, name))}
           />
         {/snippet}
       </FeedsSidebar>
@@ -628,10 +633,11 @@
         {/if}
       </div>
       <SaveSearch
-        shown={shownSearch !== null}
+        shown={shownView !== null}
+        noun="view"
         suggestion={chips.map((c) => c.text).join(" · ") || "All items"}
-        refusal={(name) => refusal(searches, name)}
-        onsave={(name) => keepSearches(added(searches, current(name)))}
+        refusal={viewRefusal}
+        onsave={(name) => keepViews(added(views, current(name)))}
       />
       <span class="notice">{list.notice ?? ""}</span>
       <span class="spacer"></span>

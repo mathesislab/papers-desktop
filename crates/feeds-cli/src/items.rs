@@ -4,8 +4,8 @@ use papers_feeds::{Feeds, Item, Row, Sort, Triage, ViewRequest};
 use serde_json::{Value, json};
 
 use crate::cli::{FindArgs, ListArgs, MarkArgs, ShowArgs};
-use crate::searches::{saved, with_saved};
 use crate::text::{day, newest, source_label, table, wrap};
+use crate::views::{saved, with_saved};
 use crate::{Ctx, Error, Result, fail};
 
 /// The mark of a state in the list.
@@ -43,7 +43,7 @@ fn row_json(feeds: &Feeds, row: &Row, item: &Item) -> Value {
     })
 }
 
-/// `feeds list`: the items a query (and a saved search) passes, one line each, or as JSON.
+/// `feeds list`: the items a query (and a saved view) passes, one line each, or as JSON.
 pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
     let feeds = ctx.open()?;
     let search = a

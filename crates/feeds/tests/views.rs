@@ -1,9 +1,9 @@
-//! Saved searches: kept in `config.json`, their names checked, their counts
-//! in the view; and the dismissed items, which a query shows when it names them.
+//! Saved views: kept in `config.json`, their names checked, their counts in
+//! the view; and the dismissed items, which a query shows when it names them.
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Error, Feed, Feeds, Reply, Search, Sort, SourceKind, SubscriptionSettings, Triage,
+    Access, Error, Feed, Feeds, Reply, SavedView, Sort, SourceKind, SubscriptionSettings, Triage,
     ViewRequest,
 };
 
@@ -26,8 +26,8 @@ fn atom(entries: &[(&str, &str)]) -> Vec<u8> {
     .into_bytes()
 }
 
-fn search(name: &str, query: &str, sort: Sort) -> Search {
-    Search {
+fn view(name: &str, query: &str, sort: Sort) -> SavedView {
+    SavedView {
         name: name.to_string(),
         query: query.to_string(),
         sort,
@@ -53,66 +53,73 @@ fn feeds(dir: &std::path::Path) -> Feeds {
 }
 
 #[test]
-fn saved_searches_are_kept_and_named_once() {
+fn saved_views_are_kept_and_named_once() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = feeds(dir.path());
-    assert!(feeds.searches().is_empty());
+    assert!(feeds.saved_views().is_empty());
     let saved = vec![
-        search(" Ice ", "ice kind:paper", Sort::Score),
-        search("All", "", Sort::Newest),
+        view(" Ice ", "ice kind:paper", Sort::Score),
+        view("All", "", Sort::Newest),
     ];
-    feeds.set_searches(saved).unwrap();
+    feeds.set_saved_views(saved).unwrap();
     let feeds = Feeds::open(dir.path()).unwrap();
     assert_eq!(
-        feeds.searches(),
+        feeds.saved_views(),
         [
-            search("Ice", "ice kind:paper", Sort::Score),
-            search("All", "", Sort::Newest)
+            view("Ice", "ice kind:paper", Sort::Score),
+            view("All", "", Sort::Newest)
         ],
         "in their order, the names trimmed"
     );
     assert_eq!(
-        feeds.saved_search("ICE").map(|s| s.query.as_str()),
+        feeds.saved_view("ICE").map(|s| s.query.as_str()),
         Some("ice kind:paper")
     );
-    assert!(feeds.saved_search("none").is_none());
+    assert!(feeds.saved_view("none").is_none());
 
     // a blank name, or one given twice in any case: nothing changes
     let mut feeds = feeds;
     let refused = |feeds: &mut Feeds, names: &[&str]| {
-        let searches = names.iter().map(|n| search(n, "", Sort::Newest)).collect();
-        match feeds.set_searches(searches) {
-            Err(Error::Search { name, .. }) => name,
+        let views = names.iter().map(|n| view(n, "", Sort::Newest)).collect();
+        match feeds.set_saved_views(views) {
+            Err(Error::View { name, .. }) => name,
             other => panic!("{other:?}"),
         }
     };
     assert_eq!(refused(&mut feeds, &["a", "  "]), "");
     assert_eq!(refused(&mut feeds, &["Ice", "ice"]), "ice");
-    assert_eq!(feeds.searches().len(), 2);
+    assert_eq!(feeds.saved_views().len(), 2);
 
-    // a config.json without them, or a search without its sort
+    // a config.json without them, or a view without its sort, under the key of before
     let config = dir.path().join("config.json");
     std::fs::write(
         &config,
         r#"{"searches": [{"name": "x", "query": "is:new"}]}"#,
     )
     .unwrap();
-    let feeds = Feeds::open(dir.path()).unwrap();
-    assert_eq!(feeds.searches(), [search("x", "is:new", Sort::Newest)]);
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    assert_eq!(feeds.saved_views(), [view("x", "is:new", Sort::Newest)]);
+    // written under the key of now
+    let views = feeds.saved_views().to_vec();
+    feeds.set_saved_views(views).unwrap();
+    let written: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&config).unwrap()).unwrap();
+    assert_eq!(written["views"][0]["name"], "x");
+    assert!(written.get("searches").is_none());
     std::fs::write(&config, "{}").unwrap();
-    assert!(Feeds::open(dir.path()).unwrap().searches().is_empty());
+    assert!(Feeds::open(dir.path()).unwrap().saved_views().is_empty());
 }
 
 #[test]
-fn the_counts_of_the_saved_searches_are_what_they_show() {
+fn the_counts_of_the_saved_views_are_what_they_show() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = feeds(dir.path());
     feeds
-        .set_searches(vec![
-            search("Ice", "ice", Sort::Newest),
-            search("Dismissed", "is:dismissed", Sort::Newest),
-            search("Everything", "", Sort::Newest),
-            search("None", "glacier", Sort::Newest),
+        .set_saved_views(vec![
+            view("Ice", "ice", Sort::Newest),
+            view("Dismissed", "is:dismissed", Sort::Newest),
+            view("Everything", "", Sort::Newest),
+            view("None", "glacier", Sort::Newest),
         ])
         .unwrap();
     // whatever the query of the request
@@ -120,7 +127,7 @@ fn the_counts_of_the_saved_searches_are_what_they_show() {
         query: "kind:news firn",
         ..ViewRequest::default()
     };
-    let counts = feeds.view(&request).counts.searches;
+    let counts = feeds.view(&request).counts.views;
     let count = |name: &str| counts.get(name).copied();
     assert_eq!(count("Ice"), Some(1), "the dismissed one left out");
     assert_eq!(count("Dismissed"), Some(1));

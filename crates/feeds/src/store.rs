@@ -1,5 +1,5 @@
 //! The files of a feeds folder: `config.json` (the subscriptions, interests,
-//! rules, saved searches, the days kept), `items.json` (the items and the aliases of merged
+//! rules, saved views, the days kept), `items.json` (the items and the aliases of merged
 //! ones), `state.json` (the triage of each item), `http.json` (the
 //! validators of each subscription's last answer, the time of its last
 //! sweep), `lookups.json` (what was looked up, and when), `journals.json`
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::interest::Interest;
 use crate::model::{Item, Mark, Subscription};
 use crate::rules::Rule;
-use crate::searches::Search;
+use crate::views::SavedView;
 use crate::{Error, Result};
 
 pub(crate) const CONFIG: &str = "config.json";
@@ -38,9 +38,9 @@ pub(crate) struct Config {
     pub subscriptions: Vec<Subscription>,
     #[serde(flatten)]
     pub settings: FeedSettings,
-    /// the saved searches, in the order of the sidebar
-    #[serde(default)]
-    pub searches: Vec<Search>,
+    /// the saved views, in the order of the sidebar (`searches` before)
+    #[serde(default, alias = "searches")]
+    pub views: Vec<SavedView>,
 }
 
 /// The settings of the feeds, set together (`Feeds::set_settings`).

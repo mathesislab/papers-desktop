@@ -1,12 +1,14 @@
 <script lang="ts">
-  // The Saved section at the top of a tab's sidebar: the saved searches with their counts; a click shows one in
-  // place of the filters chosen, the one shown is selected. Right-click: rename it (in its row), update it to the
-  // filters shown, delete it.
+  // The Saved section at the top of a tab's sidebar: the saved searches (the Feeds tab's saved views) with their
+  // counts; a click shows one in place of the filters chosen, the one shown is selected. Right-click: rename it (in
+  // its row), update it to the filters shown, delete it.
 
   import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 
   let {
     searches,
+    heading = "Saved",
+    noun = "search",
     shown,
     refusal,
     onapply,
@@ -16,6 +18,9 @@
   }: {
     /** in their order, each with the number of what it shows */
     searches: { name: string; count: number }[];
+    /** the section's heading, and what the tab calls a search saved */
+    heading?: string;
+    noun?: string;
     /** the name of the saved search the tab shows; none */
     shown: string | null;
     /** why a search cannot be renamed so (its own name aside); none: it can */
@@ -77,7 +82,7 @@
 </script>
 
 {#if searches.length}
-  <h4>Saved</h4>
+  <h4>{heading}</h4>
   {#each searches as search (search.name)}
     {#if editing === search.name}
       <div class="item" title={refused ?? undefined}>
@@ -85,7 +90,7 @@
           bind:this={field}
           bind:value={draft}
           class:refused={refused !== null && draft.trim() !== search.name}
-          aria-label="Rename the saved search"
+          aria-label="Rename the saved {noun}"
           spellcheck="false"
           autocomplete="off"
           onkeydown={fieldKey}

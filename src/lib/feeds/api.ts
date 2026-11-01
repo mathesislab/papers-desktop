@@ -63,8 +63,8 @@ export interface FeedCounts {
   total: FeedGroups;
   /** those new */
   unread: FeedGroups;
-  /** what each saved search shows, by its name */
-  searches: Record<string, number>;
+  /** what each saved view shows, by its name */
+  views: Record<string, number>;
 }
 
 /** Items by kind, interest and subscription. */
@@ -221,8 +221,8 @@ export interface FeedSettings {
   pollMinutes: number;
 }
 
-/** A saved search of the sidebar: the whole query of the tab's choices (filters.ts, `queryOf`) and the order. */
-export interface SavedSearch {
+/** A saved view of the sidebar: the whole query of the tab's choices (filters.ts, `queryOf`) and the order. */
+export interface SavedView {
   name: string;
   query: string;
   sort: Sort;
@@ -351,9 +351,9 @@ export const settings = () => invoke<FeedSettings>("feeds_settings");
 export const setSettings = (settings: FeedSettings) =>
   invoke<void>("feeds_set_settings", { settings });
 
-export const savedSearches = () => invoke<SavedSearch[]>("feeds_searches");
+export const savedViews = () => invoke<SavedView[]>("feeds_saved_views");
 /** Refused for a blank name, or one given twice. */
-export const setSavedSearches = (searches: SavedSearch[]) => invoke<void>("feeds_set_searches", { searches });
+export const setSavedViews = (views: SavedView[]) => invoke<void>("feeds_set_saved_views", { views });
 
 /** Where a fetch is: reading the feeds, looking up what they brought (Crossref, OpenAlex), done. */
 export type FetchPhase = "reading" | "looking-up" | "done";

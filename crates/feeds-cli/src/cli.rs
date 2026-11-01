@@ -51,8 +51,9 @@ pub enum Command {
     Interests(JsonArg),
     /// The rules that triage new items
     Rules(JsonArg),
-    /// The saved searches (as the Feeds tab's sidebar): name, order, query; or one added or removed
-    Searches(SearchesArgs),
+    /// The saved views (as the Feeds tab's sidebar): name, order, query; or one added or removed
+    #[command(alias = "searches")]
+    Views(ViewsArgs),
     /// The folder and the settings; `keep-days` and `lookback-days` change one
     Config(ConfigArgs),
     /// The subscriptions as OPML, the list feed readers exchange
@@ -172,11 +173,11 @@ pub struct EditArgs {
 pub struct ListArgs {
     /// A query: words, `kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...
     pub query: Vec<String>,
-    /// The items of a saved search (and of the query, if there is one)
+    /// The items of a saved view (and of the query, if there is one)
     #[arg(long, value_name = "NAME")]
     pub saved: Option<String>,
     /// The order: score (the best first), newest, or like (the most like the library first, with
-    /// --library) [default: the saved search's, else newest]
+    /// --library) [default: the saved view's, else newest]
     #[arg(long)]
     pub sort: Option<Sort>,
     /// Only these kinds, separated by commas: paper, preprint, news, blog
@@ -231,7 +232,7 @@ pub struct DigestArgs {
     /// Which items: a query, best score first [default: score:3-, none with --saved]
     #[arg(long)]
     pub query: Option<String>,
-    /// The items of a saved search (and of --query, if given)
+    /// The items of a saved view (and of --query, if given)
     #[arg(long, value_name = "NAME")]
     pub saved: Option<String>,
     /// Only the items of the last days (by their date, else when first fetched)
@@ -245,21 +246,21 @@ pub struct DigestArgs {
     pub link: String,
 }
 
-/// `feeds searches`.
+/// `feeds views`.
 #[derive(Debug, Args)]
 #[command(args_conflicts_with_subcommands = true)]
-pub struct SearchesArgs {
+pub struct ViewsArgs {
     #[command(subcommand)]
-    pub action: Option<SearchAction>,
+    pub action: Option<ViewAction>,
     /// As JSON
     #[arg(long)]
     pub json: bool,
 }
 
-/// What `feeds searches` changes.
+/// What `feeds views` changes.
 #[derive(Debug, Subcommand)]
-pub enum SearchAction {
-    /// Save a query under a name, in place of the search of that name (in any case)
+pub enum ViewAction {
+    /// Save a query under a name, in place of the view of that name (in any case)
     Add {
         name: String,
         /// The query, as `list` takes it (`is:new kind:paper prof:AMOC`)
@@ -269,6 +270,6 @@ pub enum SearchAction {
         #[arg(long, default_value = "newest")]
         sort: Sort,
     },
-    /// Forget a saved search
+    /// Forget a saved view
     Remove { name: String },
 }

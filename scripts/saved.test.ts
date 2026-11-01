@@ -30,6 +30,8 @@ test("the list: a name once in any case, added at the end, renamed, changed, rem
   // renaming: its own name, in another case, is no refusal
   assert.equal(refusal(list, "ICE", "Ice"), null);
   assert.equal(refusal(list, "amoc", "Ice"), "A saved search has that name");
+  // the Feeds tab's: views
+  assert.equal(refusal(list, "ice", undefined, "view"), "A saved view has that name");
   assert.deepEqual(added(list, { name: " Firn ", n: 3 }).map((s) => s.name), ["AMOC", "Ice", "Firn"]);
   assert.deepEqual(renamed(list, "amoc", " Overturning "), [{ name: "Overturning", n: 1 }, list[1]]);
   assert.deepEqual(changed(list, "Ice", (s) => ({ ...s, n: 9 })), [list[0], { name: "Ice", n: 9 }]);

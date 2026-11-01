@@ -6,12 +6,15 @@
 
   let {
     shown,
+    noun = "search",
     suggestion,
     refusal,
     onsave,
   }: {
     /** a saved search is what the tab shows */
     shown: boolean;
+    /** what the tab calls a search saved */
+    noun?: string;
     /** the name offered: the filters in a few words */
     suggestion: string;
     /** why a name cannot be given; none: it can */
@@ -53,14 +56,14 @@
     class="star"
     class:on={shown}
     class:open={naming}
-    title={shown ? "A saved search shows this; save it under another name" : "Save the search, with the filters chosen"}
-    aria-label="Save the search"
+    title={shown ? `A saved ${noun} shows this; save it under another name` : `Save the ${noun}, with the filters chosen`}
+    aria-label="Save the {noun}"
     onclick={() => (naming ? (naming = false) : open())}>{shown ? "★" : "☆"}</button
   >
   {#if naming}
     <button class="backdrop" aria-label="Close" onclick={() => (naming = false)}></button>
     <form class="pop" onsubmit={save}>
-      <label for="saved-name">Save the search as</label>
+      <label for="saved-name">Save the {noun} as</label>
       <div class="line">
         <input
           id="saved-name"

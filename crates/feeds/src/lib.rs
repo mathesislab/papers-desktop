@@ -16,7 +16,7 @@
 //! facts of the library, given to [`Feeds::set_library`], tell how like its
 //! papers an item is (`like:`) and whether it is one (`is:inlibrary`);
 //! [`Feeds::view`] gives the items a query shows and the counts of the
-//! sidebar, those of the saved [`Search`]es too. The subscriptions go out and come in as OPML; [`suggested`]
+//! sidebar, those of the [`SavedView`]s too. The subscriptions go out and come in as OPML; [`suggested`]
 //! lists some to start with, [`library_journals`] the journals of the
 //! library's papers, which [`Journals`] looks up in OpenAlex, as
 //! [`search_journals`] finds others; [`site_feed`] the feed a journal's site
@@ -44,11 +44,11 @@ mod pdf;
 pub mod query;
 mod rules;
 mod search;
-mod searches;
 mod store;
 mod suggested;
 mod sweep;
 mod view;
+mod views;
 
 use std::path::PathBuf;
 
@@ -77,11 +77,11 @@ pub use search::{
     Asked, FOUND, Order, PER_SEARCH, Page, Resolved, SEARCH_FACETS, ask, follow_filter, resolve,
     search_url, search_works,
 };
-pub use searches::Search;
 pub use store::{FeedSettings, LOOKBACK_DAYS};
 pub use suggested::{Suggested, suggested};
 pub use sweep::SWEEP_PAGES;
 pub use view::{Counts, Groups, Row, Sort, View, ViewRequest};
+pub use views::SavedView;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -102,9 +102,9 @@ pub enum Error {
     /// an interest whose term or pattern is no regex, or whose name is taken
     #[error("interest {name}: {message}")]
     Interest { name: String, message: String },
-    /// a saved search without a name, or whose name is taken
-    #[error("saved search {name:?}: {message}")]
-    Search { name: String, message: String },
+    /// a saved view without a name, or whose name is taken
+    #[error("saved view {name:?}: {message}")]
+    View { name: String, message: String },
     /// the paper behind an item that is not a post (news or blog)
     #[error("{id}: not a post")]
     NotAPost { id: String },

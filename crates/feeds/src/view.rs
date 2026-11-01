@@ -99,8 +99,8 @@ pub struct Counts {
     pub total: Groups,
     /// those new (`is:new`: not snoozed)
     pub unread: Groups,
-    /// the items each saved search shows (dismissed ones unless it asks), by name
-    pub searches: BTreeMap<String, usize>,
+    /// the items each saved view shows (dismissed ones unless it asks), by name
+    pub views: BTreeMap<String, usize>,
 }
 
 /// Items by kind, interest and subscription.
@@ -145,8 +145,8 @@ impl Feeds {
     pub fn view(&self, request: &ViewRequest) -> View {
         let query = parse(request.query);
         let dismissed = request.dismissed || names_dismissed(&query);
-        let searches: Vec<_> = (self.searches().iter())
-            .map(|s| (&s.name, parse(&s.query)))
+        let views: Vec<_> = (self.saved_views().iter())
+            .map(|v| (&v.name, parse(&v.query)))
             .map(|(name, query)| (name, names_dismissed(&query), query))
             .collect();
         let mut counts = Counts::default();
@@ -163,9 +163,9 @@ impl Feeds {
             if live {
                 counts.add(item, &seen);
             }
-            for (name, dismissed, search) in &searches {
-                if (live || *dismissed) && seen.record.check(search, request.matching).is_some() {
-                    *counts.searches.entry(name.to_string()).or_default() += 1;
+            for (name, dismissed, view) in &views {
+                if (live || *dismissed) && seen.record.check(view, request.matching).is_some() {
+                    *counts.views.entry(name.to_string()).or_default() += 1;
                 }
             }
             if !live && !dismissed {

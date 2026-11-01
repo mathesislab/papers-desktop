@@ -1,4 +1,4 @@
-//! `feeds searches`, and `--saved` of `list` and `digest`, on the recorded feeds of the feeds
+//! `feeds views`, and `--saved` of `list` and `digest`, on the recorded feeds of the feeds
 //! crate (The Cryosphere's, Futurity's).
 
 mod support;
@@ -33,16 +33,14 @@ fn ids(list: &str) -> Vec<String> {
 }
 
 #[test]
-fn searches_are_added_listed_replaced_and_removed() {
+fn views_are_added_listed_replaced_and_removed() {
     let s = fetched();
-    assert_eq!(s.ok(&["searches"]), "");
-    assert_eq!(
-        s.ok(&["searches", "add", "News", "kind:news"]),
-        "saved News\n"
-    );
+    assert_eq!(s.ok(&["views"]), "");
+    assert_eq!(s.ok(&["searches"]), "", "the name of before");
+    assert_eq!(s.ok(&["views", "add", "News", "kind:news"]), "saved News\n");
     assert_eq!(
         s.ok(&[
-            "searches",
+            "views",
             "add",
             "Ice",
             "is:new",
@@ -53,46 +51,39 @@ fn searches_are_added_listed_replaced_and_removed() {
         "saved Ice\n"
     );
     assert_eq!(
-        s.ok(&["searches"]),
+        s.ok(&["views"]),
         "News  newest  kind:news\nIce   score   is:new prof:\"Sea ice\"\n"
     );
     assert_eq!(
-        s.json(&["searches", "--json"])[1],
+        s.json(&["views", "--json"])[1],
         serde_json::json!({"name": "Ice", "query": "is:new prof:\"Sea ice\"", "sort": "score"})
     );
     // the same name in another case: in its place
     assert_eq!(
-        s.ok(&["searches", "add", "news", "kind:news,blog"]),
+        s.ok(&["views", "add", "news", "kind:news,blog"]),
         "replaced news\n"
     );
-    assert_eq!(
-        s.json(&["searches", "--json"])[0]["query"],
-        "kind:news,blog"
-    );
-    assert_eq!(s.ok(&["searches", "remove", "ICE"]), "removed Ice\n");
-    assert_eq!(s.json(&["searches", "--json"]).as_array().unwrap().len(), 1);
+    assert_eq!(s.json(&["views", "--json"])[0]["query"], "kind:news,blog");
+    assert_eq!(s.ok(&["views", "remove", "ICE"]), "removed Ice\n");
+    assert_eq!(s.json(&["views", "--json"]).as_array().unwrap().len(), 1);
 
-    let unknown = s.run(&["searches", "remove", "Ice"]);
+    let unknown = s.run(&["views", "remove", "Ice"]);
     assert_eq!(
         (unknown.code, unknown.err.as_str()),
-        (1, "feeds: error: Ice: no such saved search\n")
+        (1, "feeds: error: Ice: no such saved view\n")
     );
-    let blank = s.run(&["searches", "add", " ", "x"]);
+    let blank = s.run(&["views", "add", " ", "x"]);
     assert_eq!(blank.code, 1, "{}", blank.err);
-    assert_eq!(
-        s.run(&["searches", "add", "x"]).code,
-        2,
-        "a query is needed"
-    );
+    assert_eq!(s.run(&["views", "add", "x"]).code, 2, "a query is needed");
 }
 
 #[test]
-fn list_and_digest_take_a_saved_search_and_a_query_too() {
+fn list_and_digest_take_a_saved_view_and_a_query_too() {
     let s = fetched();
-    s.ok(&["searches", "add", "Papers", "kind:paper", "--sort", "score"]);
+    s.ok(&["views", "add", "Papers", "kind:paper", "--sort", "score"]);
     let papers = ids(&s.ok(&["list", "--saved", "papers"]));
     assert_eq!(papers.len(), 3);
-    // in the order of the saved search, unless asked otherwise
+    // in the order of the saved view, unless asked otherwise
     assert_eq!(
         papers,
         ids(&s.ok(&["list", "kind:paper", "--sort", "score"]))
@@ -116,9 +107,9 @@ fn list_and_digest_take_a_saved_search_and_a_query_too() {
         3
     );
     let unknown = s.run(&["list", "--saved", "None"]);
-    assert_eq!(unknown.err, "feeds: error: None: no such saved search\n");
+    assert_eq!(unknown.err, "feeds: error: None: no such saved view\n");
 
-    // the digest: the saved search alone, without the default score:3-, or with --query
+    // the digest: the saved view alone, without the default score:3-, or with --query
     let rss = s.path("feed.xml");
     let rss = rss.to_str().unwrap();
     let digest = |args: &[&str]| {

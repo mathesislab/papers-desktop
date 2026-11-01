@@ -50,8 +50,8 @@ use chrono::{DateTime, TimeDelta, Utc};
 use papers_core::Likeness;
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
-    Access, Feed, Feeds, Interest, Journals, LibraryFacts, Network, Pdf, Rule, Search, SourceKind,
-    Subscription, SubscriptionSettings, Triage,
+    Access, Feed, Feeds, Interest, Journals, LibraryFacts, Network, Pdf, Rule, SavedView,
+    SourceKind, Subscription, SubscriptionSettings, Triage,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -545,23 +545,23 @@ pub async fn feeds_settings(app: AppHandle) -> Result<FeedSettings, String> {
     .await
 }
 
-/// The saved searches of the sidebar, in their order.
+/// The saved views of the sidebar, in their order.
 #[tauri::command]
-pub async fn feeds_searches(app: AppHandle) -> Result<Vec<Search>, String> {
+pub async fn feeds_saved_views(app: AppHandle) -> Result<Vec<SavedView>, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        state.feeds.folder.read(|feeds| feeds.searches().to_vec())
+        state.feeds.folder.read(|feeds| feeds.saved_views().to_vec())
     })
     .await
 }
 
-/// Sets the saved searches; refused, nothing changed, for a blank name or one
+/// Sets the saved views; refused, nothing changed, for a blank name or one
 /// given twice.
 #[tauri::command]
-pub async fn feeds_set_searches(app: AppHandle, searches: Vec<Search>) -> Result<(), String> {
+pub async fn feeds_set_saved_views(app: AppHandle, views: Vec<SavedView>) -> Result<(), String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        (state.feeds.folder).change(&app, move |feeds| feeds.set_searches(searches.clone()))
+        (state.feeds.folder).change(&app, move |feeds| feeds.set_saved_views(views.clone()))
     })
     .await
 }
