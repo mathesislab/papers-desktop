@@ -1,21 +1,16 @@
 //! Subscribing, unsubscribing, the table of subscriptions, and the fetch.
 
-use papers_feeds::{Feed, Outcome, SourceKind, SubscriptionSettings};
+use papers_feeds::{Feed, Outcome, SourceKind, SubscriptionSettings, preprint_host};
 
 use crate::cli::{AccessArgs, EditArgs, IdArg, JsonArg, OpmlArgs, OpmlCommand, SubscribeArgs};
 use crate::text::{label, table};
 use crate::{Ctx, Error, Result, fail};
 /// The kind of a feed's items when none is said: preprints for arXiv and the preprint servers,
 /// else journal.
-pub fn guess_kind(feed: &Feed) -> SourceKind {
-    let host = match feed {
-        Feed::Rss { url } => url.split('/').nth(2).unwrap_or_default().to_lowercase(),
-        _ => String::new(),
-    };
-    let preprints = ["arxiv", "rxiv", "egusphere", "essopenarchive"];
-    match preprints.iter().any(|p| host.contains(p)) {
-        true => SourceKind::Preprints,
-        false => SourceKind::Journal,
+fn guess_kind(feed: &Feed) -> SourceKind {
+    match feed {
+        Feed::Rss { url } if preprint_host(url) => SourceKind::Preprints,
+        _ => SourceKind::Journal,
     }
 }
 
@@ -30,7 +25,7 @@ pub fn subscribe(ctx: &mut Ctx, a: SubscribeArgs) -> Result<()> {
     let mut feeds = ctx.open()?;
     let settings = SubscriptionSettings {
         title: a.title,
-        kind: a.kind.map_or_else(|| guess_kind(&feed), SourceKind::from),
+        kind: a.kind.unwrap_or_else(|| guess_kind(&feed)),
         journal: a.journal,
         fetch_pages: a.fetch_pages,
         boost: a.boost.unwrap_or(0.0),
@@ -40,7 +35,7 @@ pub fn subscribe(ctx: &mut Ctx, a: SubscribeArgs) -> Result<()> {
     writeln!(
         ctx.out,
         "subscribed {id} ({}) {feed}",
-        kind_name(subscription.settings.kind)
+        subscription.settings.kind
     )?;
     Ok(())
 }
@@ -56,16 +51,6 @@ pub fn edit(ctx: &mut Ctx, a: EditArgs) -> Result<()> {
     let boost = s.settings.boost;
     writeln!(ctx.out, "edited {} {}: boost {boost}", s.id, s.feed)?;
     Ok(())
-}
-
-/// The name of a subscription's kind, as `--kind` takes it.
-pub fn kind_name(kind: SourceKind) -> &'static str {
-    match kind {
-        SourceKind::Journal => "journal",
-        SourceKind::Preprints => "preprints",
-        SourceKind::News => "news",
-        SourceKind::Blog => "blog",
-    }
 }
 
 /// `feeds unsubscribe`: ends a subscription.
@@ -98,7 +83,7 @@ pub fn subscriptions(ctx: &mut Ctx, a: JsonArg) -> Result<()> {
         let name = (settings.title.clone())
             .or_else(|| settings.journal.clone())
             .unwrap_or_default();
-        let mut row = vec![s.id.clone(), kind_name(settings.kind).to_string(), name];
+        let mut row = vec![s.id.clone(), settings.kind.to_string(), name];
         if boosted {
             row.push(match settings.boost {
                 0.0 => String::new(),

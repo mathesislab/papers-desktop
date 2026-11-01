@@ -32,6 +32,15 @@ pub struct Guess {
     pub reason: String,
 }
 
+/// Whether an address is of a preprint server (its host, or a subdomain).
+pub fn preprint_host(url: &str) -> bool {
+    let host = url::Url::parse(url)
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_lowercase))
+        .unwrap_or_default();
+    (PREPRINT_HOSTS.iter()).any(|h| host == *h || host.ends_with(&format!(".{h}")))
+}
+
 /// The kind of the feed at an address: read (as a subscription fetches it),
 /// its items' identifiers counted; its title looked for among OpenAlex's
 /// journals if they have none. An error if the feed cannot be read.
@@ -42,14 +51,7 @@ pub fn guess_kind(http: &dyn Http, access: &Access, url: &str) -> Result<Guess, 
             reason: reason.to_string(),
         })
     };
-    let host = url::Url::parse(url)
-        .ok()
-        .and_then(|u| u.host_str().map(str::to_lowercase))
-        .unwrap_or_default();
-    if PREPRINT_HOSTS
-        .iter()
-        .any(|h| host == *h || host.ends_with(&format!(".{h}")))
-    {
+    if preprint_host(url) {
         return guess(SourceKind::Preprints, "a preprint server");
     }
     let reply = get_ok(http, url, FEED_ACCEPT)?;

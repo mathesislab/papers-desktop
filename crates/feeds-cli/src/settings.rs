@@ -58,13 +58,7 @@ pub fn rules(ctx: &mut Ctx, a: JsonArg) -> Result<()> {
         return Ok(());
     }
     for rule in feeds.rules() {
-        let then = serde_json::to_value(rule.then).expect("json");
-        writeln!(
-            ctx.out,
-            "{:?} -> {}",
-            rule.when,
-            then.as_str().unwrap_or_default()
-        )?;
+        writeln!(ctx.out, "{:?} -> {}", rule.when, rule.then)?;
     }
     Ok(())
 }
@@ -107,11 +101,11 @@ pub fn config(ctx: &mut Ctx, a: ConfigArgs) -> Result<()> {
             access
                 .mailto
                 .clone()
-                .unwrap_or_else(|| state(false, "FEEDS_MAILTO")),
+                .unwrap_or_else(|| state(false, "PAPERS_MAILTO")),
         ),
         (
             "openalex key",
-            state(access.openalex_key.is_some(), "OPENALEX_KEY"),
+            state(access.openalex_key.is_some(), "OPENALEX_API_KEY"),
         ),
     ];
     for (name, value) in rows {

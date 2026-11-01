@@ -53,7 +53,7 @@ mod view;
 use std::path::PathBuf;
 
 pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
-pub use guess::{Guess, guess_kind};
+pub use guess::{Guess, guess_kind, preprint_host};
 pub use html::safe_html;
 pub use feeds::{Feeds, Now};
 pub use fetch::{FeedReport, FetchReport, FollowUp, Outcome};

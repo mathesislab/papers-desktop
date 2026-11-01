@@ -1,26 +1,10 @@
 //! The saved searches of the Feeds tab: listed, added, removed; and `--saved` of `list` and `digest`.
 
-use papers_feeds::{Feeds, Search, Sort};
+use papers_feeds::{Feeds, Search};
 
-use crate::cli::{SearchAction, SearchesArgs, SortArg};
+use crate::cli::{SearchAction, SearchesArgs};
 use crate::text::table;
 use crate::{Ctx, Result, fail};
-
-impl From<SortArg> for Sort {
-    fn from(sort: SortArg) -> Sort {
-        match sort {
-            SortArg::Score => Sort::Score,
-            SortArg::Newest => Sort::Newest,
-            SortArg::Like => Sort::Like,
-        }
-    }
-}
-
-/// The word of an order.
-fn sort_name(sort: Sort) -> String {
-    let json = serde_json::to_value(sort).expect("json");
-    json.as_str().unwrap_or_default().to_string()
-}
 
 /// A saved search by its name, in any case, or the error.
 pub(crate) fn saved<'a>(feeds: &'a Feeds, name: &str) -> Result<&'a Search> {
@@ -48,7 +32,7 @@ pub fn searches(ctx: &mut Ctx, a: SearchesArgs) -> Result<()> {
             writeln!(ctx.out, "{json}")?;
         }
         None => {
-            let row = |s: &Search| vec![s.name.clone(), sort_name(s.sort), s.query.clone()];
+            let row = |s: &Search| vec![s.name.clone(), s.sort.to_string(), s.query.clone()];
             let rows: Vec<Vec<String>> = feeds.searches().iter().map(row).collect();
             write!(ctx.out, "{}", table(&rows))?;
         }
@@ -56,7 +40,7 @@ pub fn searches(ctx: &mut Ctx, a: SearchesArgs) -> Result<()> {
             let search = Search {
                 name: name.trim().to_string(),
                 query: query.join(" "),
-                sort: sort.into(),
+                sort,
             };
             let mut list = feeds.searches().to_vec();
             let said = match list

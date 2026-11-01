@@ -698,9 +698,10 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   the paper behind a post, interests, rules, scores, triage, the store.
 - `crates/feeds-cli` (`feeds`, package `papers-feeds-cli`): subscribe,
   edit, fetch, list, show, find, mark, prune, the interests and rules,
-  `opml import|export`, `config` (`keep-days`, `lookback-days`), the import
-  of a paper-feeder setup, the RSS and HTML digest: paper-feeder's job,
-  which it replaces. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
+  `opml import|export`, `config` (`keep-days`, `lookback-days`), the RSS
+  and HTML digest: paper-feeder's job, which it replaces. The APIs are asked
+  with `--mailto` and `--openalex-key`, else papers-rs's `PAPERS_MAILTO` and
+  `OPENALEX_API_KEY`. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
   data folder) is the folder; not the app's while it runs, nothing locks it.
   `--library <file.bib>` (repeated) indexes a library for `like:`, `--sort
   like` and the nearest papers of `show`.
@@ -944,14 +945,9 @@ is part of the score wherever the score is used (`score:`, `prof:` through
 `reached`, the sort, the rules, the digest's `score:3-`). Set in the
 settings (a field of the subscription's editor), by `feeds subscribe
 --boost N` or `feeds edit <id> --boost N`; `feeds subscriptions` shows it.
-`feeds import-paper-feeder` maps `score_boost: N` to `boost: N`, and
-`always_include: true` to a rule `{when: src:"<subscription title>", then:
-shortlist}` (by the id if the subscription has no title) added after the
-rules there are: paper-feeder's source kept every item of the source,
-unless an exclude vetoed it, where the rule shortlists the new items
-whatever the interest says. Both are set for the subscriptions the import
-adds only: a second import leaves the boosts and rules as the user made
-them. `lookback_days` of a query stays without equivalent (warned).
+(paper-feeder's `score_boost: N` is `boost: N`; its `always_include` a rule
+`{when: src:"<subscription title>", then: shortlist}`. The one-time import
+of a paper-feeder setup, `feeds import-paper-feeder`, is gone.)
 
 **Saved searches**: `{name, query, sort}` in `config.json` (`searches`,
 in the order of the sidebar; `Feeds::searches`, `saved_search` by a name in

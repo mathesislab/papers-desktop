@@ -1,6 +1,6 @@
 //! The items: the list, one in full, the papers behind a post, the triage, the prune.
 
-use papers_feeds::{Confidence, Feeds, Item, ItemKind, Row, Sort, Triage, Via, ViewRequest};
+use papers_feeds::{Feeds, Item, Row, Sort, Triage, ViewRequest};
 use serde_json::{Value, json};
 
 use crate::cli::{FindArgs, ListArgs, MarkArgs, ShowArgs};
@@ -53,12 +53,10 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
         .transpose()?;
     let mut query = with_saved(search, &a.query.join(" "));
     if !a.kind.is_empty() {
-        let kinds: Vec<&str> = a.kind.iter().map(|&k| ItemKind::from(k).as_str()).collect();
+        let kinds: Vec<&str> = a.kind.iter().map(|k| k.as_str()).collect();
         query = format!("{query} kind:{}", kinds.join(","));
     }
-    let sort = a
-        .sort
-        .map_or(search.map_or(Sort::Newest, |s| s.sort), Sort::from);
+    let sort = (a.sort).unwrap_or(search.map_or(Sort::Newest, |s| s.sort));
     if sort == Sort::Like && ctx.library.is_none() {
         return fail("sorting by like needs the library: --library <file.bib>");
     }
@@ -203,7 +201,7 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
     let versions = item
         .versions
         .iter()
-        .map(|v| format!("{} ({:?})", v.doi, v.stage).to_lowercase());
+        .map(|v| format!("{} ({})", v.doi, v.stage));
     section("versions", versions.collect());
     let links = item.links.iter().map(|l| {
         let known = feeds
@@ -211,7 +209,7 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
             .iter()
             .find(|i| i.versions.iter().any(|v| v.doi == l.doi));
         let title = known.map_or(String::new(), |i| format!("  {} [{}]", i.title, i.id));
-        let (confidence, via) = (confidence_name(l.confidence), via_name(l.via));
+        let (confidence, via) = (l.confidence, l.via);
         format!("{}  {confidence}, via {via}{title}", l.doi)
     });
     section("papers", links.collect());
@@ -238,23 +236,6 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
     Ok(())
 }
 
-/// How sure a linked paper is, as a word.
-fn confidence_name(confidence: Confidence) -> &'static str {
-    match confidence {
-        Confidence::High => "high",
-        Confidence::Low => "low",
-    }
-}
-
-/// Where a linked paper was found, as a word.
-fn via_name(via: Via) -> &'static str {
-    match via {
-        Via::Feed => "feed",
-        Via::Page => "page",
-        Via::Search => "search",
-    }
-}
-
 /// `feeds find`: looks again for the papers behind a post.
 pub fn find(ctx: &mut Ctx, a: FindArgs) -> Result<()> {
     let access = ctx.access(&a.access);
@@ -279,7 +260,7 @@ pub fn find(ctx: &mut Ctx, a: FindArgs) -> Result<()> {
                 .iter()
                 .find(|i| i.versions.iter().any(|v| v.doi == l.doi));
             let title = known.map_or(String::new(), |i| format!("{} [{}]", i.title, i.id));
-            let how = format!("{}, via {}", confidence_name(l.confidence), via_name(l.via));
+            let how = format!("{}, via {}", l.confidence, l.via);
             vec![l.doi.clone(), how, title]
         })
         .collect();
@@ -290,7 +271,7 @@ pub fn find(ctx: &mut Ctx, a: FindArgs) -> Result<()> {
 /// `feeds mark`: sets the state of items; none changes if one is unknown.
 pub fn mark(ctx: &mut Ctx, a: MarkArgs) -> Result<()> {
     let mut feeds = ctx.open()?;
-    let triage = Triage::from(a.state);
+    let triage = a.state;
     let ids: Vec<String> = a
         .ids
         .iter()

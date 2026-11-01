@@ -10,7 +10,7 @@ cargo install --path crates/feeds-cli        # the program is `feeds`
 
 feeds subscribe https://www.nature.com/ngeo.rss
 feeds subscribe --issn 1994-0424 --journal "The Cryosphere"      # a Crossref sweep
-feeds subscribe --openalex primary_topic.id:T10644               # OPENALEX_KEY helps
+feeds subscribe --openalex primary_topic.id:T10644               # OPENALEX_API_KEY helps
 feeds fetch --mailto me@example.org
 feeds list "sea ice" --sort score --limit 20
 feeds --library ~/lit/papers.bib list like:30- --sort like      # like the papers of a library
@@ -26,7 +26,7 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `subscribe <url> \| --issn <issn> \| --openalex <filter>` | `--kind journal\|preprints\|news\|blog` (arXiv and preprint servers: preprints, else journal), `--title`, `--journal`, `--fetch-pages`, `--boost N` (added to the score of its items, e.g. 2 for "cites my work") |
 | `edit <id> --boost N` | change the boost of a subscription (0 for none); the strongest of the subscriptions that list an item counts |
 | `unsubscribe <id>`, `subscriptions [--json]` | |
-| `fetch` | `--mailto <address>` (env `FEEDS_MAILTO`), `--openalex-key <key>` (env `OPENALEX_KEY`); one request at a time per host; a feed that fails is reported, the others go on |
+| `fetch` | `--mailto <address>` (env `PAPERS_MAILTO`), `--openalex-key <key>` (env `OPENALEX_API_KEY`, as papers-rs); one request at a time per host; a feed that fails is reported, the others go on |
 | `list [QUERY]...` | `--saved <name>`, `--sort score\|newest\|like` (default: the saved search's, else newest), `--kind paper,preprint,news,blog`, `--limit N`, `--dismissed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...), with `--saved` both hold |
 | `show <id> [--json]`, `find <id>` | everything known of an item (with `--library`, its likeness and the 3 nearest papers of the library); the papers behind a post (needs the network) |
 | `mark <state> <id>...` | `new`, `seen`, `shortlisted`, `dismissed`, `added` |
@@ -36,7 +36,6 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `config keep-days <N>`, `config lookback-days <N>` | the days an item no feed lists is kept (90), the days a first sweep looks back (14); at least 1 |
 | `searches [--json]` | the saved searches of the Feeds tab: name, order, query |
 | `searches add <name> <query>...`, `searches remove <name>` | `--sort score\|newest\|like` (newest); a name in any case: `add` replaces the search of that name |
-| `import-paper-feeder <sources.yaml> <scoring.yaml>` | `--interest <name>` (default `Interests`), `--issn-via crossref\|openalex` |
 | `digest --rss <file> --html <file>` | `--query` (default `score:3-`, none with `--saved`), `--saved <name>`, `--days` (7), `--title`, `--link` |
 
 Dismissed items are left out unless the query has an `is:` term on them (`is:dismissed`), or
@@ -53,21 +52,7 @@ papers. Without it, `like:` matches nothing.
 **Do not point it at the folder of the app while the app runs**: nothing locks the files, and one
 writes over the other.
 
-## From paper-feeder
-
-`feeds import-paper-feeder config/sources.yaml config/scoring.yaml` makes subscriptions of the
-`rss:` entries (the `journal:` is kept; arXiv is preprints), of the `openalex:` queries and the
-`crossref:` ISSNs (the ISSNs under `openalex:` are Crossref sweeps, which need no key, or with
-`--issn-via openalex` the filter `primary_location.source.issn:<issn>`); sets the lookback; and
-turns the lexicon into one interest (`publish_min_score` is its minimum, `title_boost` the
-boost). The `score_boost` of a source is the boost of its subscription; its `always_include` is a
-rule that shortlists the new items of the subscription (`src:"<its title>"` → shortlist, by its id
-if it has no title), added after the rules there are. Unlike `always_include`, the rule does not
-yield to the exclusions of the interest. Importing again changes nothing but the interest: the
-boost and rule of a subscription there already stay as they are. Warnings on the error stream
-list what has no equivalent yet and is skipped: the `lookback_days` of a query, a pattern that is
-no Rust regex (look-around), and the settings not used (`window_days`, `retention_days`,
-`render`, `serendipity_count`, `llm_rerank`). The `mailto` is not stored: set `FEEDS_MAILTO`.
+## The digest
 
 `feeds digest` is `render.py`: the RSS has the DOI (else the link) as guid, the authors as
 `dc:creator`, the journal as category, and "journal — matched: terms" before the abstract; the

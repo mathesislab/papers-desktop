@@ -1,6 +1,6 @@
 //! The `feeds` program: the commands of the feeds crate on a folder, as paper-feeder's job
 //! and more (subscribe, fetch, list, show, mark, the interests, rules and saved searches, the
-//! import of a paper-feeder setup, the RSS digest). With `--library`, the .bib files of a library
+//! RSS digest). With `--library`, the .bib files of a library
 //! tell how like its papers an item is (`like:`), and whether it is one (`is:inlibrary`).
 //!
 //! [`run`] is the whole program, on a [`Host`] (the environment, the clock, where requests
@@ -9,7 +9,6 @@
 mod cli;
 mod digest;
 mod items;
-mod paperfeeder;
 mod searches;
 mod settings;
 mod subs;
@@ -101,7 +100,7 @@ impl Ctx<'_> {
         (self.host.env)(name).filter(|v| !v.trim().is_empty())
     }
 
-    /// What the APIs are asked with: the option, else the environment.
+    /// What the APIs are asked with: the option, else the environment (papers-rs's names).
     pub fn access(&self, args: &AccessArgs) -> Access {
         let option = |value: &Option<String>, name: &str| {
             value
@@ -110,8 +109,8 @@ impl Ctx<'_> {
                 .or_else(|| self.env(name))
         };
         Access {
-            mailto: option(&args.mailto, "FEEDS_MAILTO"),
-            openalex_key: option(&args.openalex_key, "OPENALEX_KEY"),
+            mailto: option(&args.mailto, "PAPERS_MAILTO"),
+            openalex_key: option(&args.openalex_key, "OPENALEX_API_KEY"),
         }
     }
 
@@ -201,7 +200,6 @@ fn dispatch(ctx: &mut Ctx, command: Command) -> Result<()> {
         Command::Searches(a) => searches::searches(ctx, a),
         Command::Config(a) => settings::config(ctx, a),
         Command::Opml(a) => subs::opml(ctx, a),
-        Command::ImportPaperFeeder(a) => paperfeeder::import(ctx, a),
         Command::Digest(a) => digest::digest(ctx, a),
     }
 }

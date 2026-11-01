@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
-use papers_feeds::{ItemKind, SourceKind, Triage};
+use clap::{ArgGroup, Args, Parser, Subcommand};
+use papers_feeds::{ItemKind, Sort, SourceKind, Triage};
 
 /// The new papers of journals, preprint servers, news sites and blogs: what paper-feeder did, and more.
 #[derive(Debug, Parser)]
@@ -57,8 +57,6 @@ pub enum Command {
     Config(ConfigArgs),
     /// The subscriptions as OPML, the list feed readers exchange
     Opml(OpmlArgs),
-    /// Migrate a paper-feeder setup (sources.yaml and scoring.yaml)
-    ImportPaperFeeder(ImportArgs),
     /// Write the items of the last days that reach an interest as an RSS feed or an HTML page
     #[command(group(ArgGroup::new("output").required(true).multiple(true).args(["rss", "html"])))]
     Digest(DigestArgs),
@@ -67,10 +65,10 @@ pub enum Command {
 /// What the APIs of Crossref and OpenAlex are asked with.
 #[derive(Debug, Args)]
 pub struct AccessArgs {
-    /// An address for the polite pools of Crossref and OpenAlex [env: FEEDS_MAILTO]
+    /// An address for the polite pools of Crossref and OpenAlex [env: PAPERS_MAILTO]
     #[arg(long, value_name = "ADDRESS")]
     pub mailto: Option<String>,
-    /// OpenAlex's key, which raises its small daily budget without one [env: OPENALEX_KEY]
+    /// OpenAlex's key, which raises its small daily budget without one [env: OPENALEX_API_KEY]
     #[arg(long, value_name = "KEY")]
     pub openalex_key: Option<String>,
 }
@@ -87,26 +85,6 @@ pub struct JsonArg {
     /// As JSON
     #[arg(long)]
     pub json: bool,
-}
-
-/// What a subscription is for: the items' kind.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum KindArg {
-    Journal,
-    Preprints,
-    News,
-    Blog,
-}
-
-impl From<KindArg> for SourceKind {
-    fn from(kind: KindArg) -> SourceKind {
-        match kind {
-            KindArg::Journal => SourceKind::Journal,
-            KindArg::Preprints => SourceKind::Preprints,
-            KindArg::News => SourceKind::News,
-            KindArg::Blog => SourceKind::Blog,
-        }
-    }
 }
 
 /// `feeds config`.
@@ -160,9 +138,10 @@ pub struct SubscribeArgs {
     /// Sweep the new works of an OpenAlex filter, e.g. `primary_topic.id:T10644` (needs a key)
     #[arg(long, value_name = "FILTER")]
     pub openalex: Option<String>,
-    /// What its items are [default: preprints for arXiv and the preprint servers, else journal]
-    #[arg(long, value_enum)]
-    pub kind: Option<KindArg>,
+    /// What its items are: journal, preprints, news or blog [default: preprints for arXiv and the
+    /// preprint servers, else journal]
+    #[arg(long)]
+    pub kind: Option<SourceKind>,
     /// A title of its own, over the feed's
     #[arg(long)]
     pub title: Option<String>,
@@ -172,7 +151,7 @@ pub struct SubscribeArgs {
     /// Fetch the page of each item at fetch time (to find the paper of a post)
     #[arg(long)]
     pub fetch_pages: bool,
-    /// Added to the score of its items, e.g. 2 for "cites my work" (paper-feeder's score_boost)
+    /// Added to the score of its items, e.g. 2 for "cites my work"
     #[arg(long, value_name = "N", allow_negative_numbers = true)]
     pub boost: Option<f64>,
 }
@@ -188,35 +167,6 @@ pub struct EditArgs {
     pub boost: f64,
 }
 
-/// The order of `feeds list`.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum SortArg {
-    Score,
-    Newest,
-    /// The most like the library first (needs --library)
-    Like,
-}
-
-/// The kinds of an item.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum ItemKindArg {
-    Paper,
-    Preprint,
-    News,
-    Blog,
-}
-
-impl From<ItemKindArg> for ItemKind {
-    fn from(kind: ItemKindArg) -> ItemKind {
-        match kind {
-            ItemKindArg::Paper => ItemKind::Paper,
-            ItemKindArg::Preprint => ItemKind::Preprint,
-            ItemKindArg::News => ItemKind::News,
-            ItemKindArg::Blog => ItemKind::Blog,
-        }
-    }
-}
-
 /// `feeds list`.
 #[derive(Debug, Args)]
 pub struct ListArgs {
@@ -225,13 +175,13 @@ pub struct ListArgs {
     /// The items of a saved search (and of the query, if there is one)
     #[arg(long, value_name = "NAME")]
     pub saved: Option<String>,
-    /// The order: the best score first, the newest, or the most like the library [default: the saved
-    /// search's, else newest]
-    #[arg(long, value_enum)]
-    pub sort: Option<SortArg>,
-    /// Only these kinds, separated by commas
-    #[arg(long, value_enum, value_delimiter = ',')]
-    pub kind: Vec<ItemKindArg>,
+    /// The order: score (the best first), newest, or like (the most like the library first, with
+    /// --library) [default: the saved search's, else newest]
+    #[arg(long)]
+    pub sort: Option<Sort>,
+    /// Only these kinds, separated by commas: paper, preprint, news, blog
+    #[arg(long, value_delimiter = ',')]
+    pub kind: Vec<ItemKind>,
     /// At most this many
     #[arg(long, value_name = "N")]
     pub limit: Option<usize>,
@@ -260,59 +210,13 @@ pub struct FindArgs {
     pub access: AccessArgs,
 }
 
-/// The states of an item.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum StateArg {
-    New,
-    Seen,
-    Shortlisted,
-    Dismissed,
-    Added,
-}
-
-impl From<StateArg> for Triage {
-    fn from(state: StateArg) -> Triage {
-        match state {
-            StateArg::New => Triage::New,
-            StateArg::Seen => Triage::Seen,
-            StateArg::Shortlisted => Triage::Shortlisted,
-            StateArg::Dismissed => Triage::Dismissed,
-            StateArg::Added => Triage::Added,
-        }
-    }
-}
-
 /// `feeds mark`.
 #[derive(Debug, Args)]
 pub struct MarkArgs {
-    #[arg(value_enum)]
-    pub state: StateArg,
+    /// new, seen, shortlisted, dismissed or added
+    pub state: Triage,
     #[arg(required = true)]
     pub ids: Vec<String>,
-}
-
-/// Where the ISSNs of OpenAlex's journal list go.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum IssnVia {
-    /// A Crossref sweep: needs no key
-    Crossref,
-    /// An OpenAlex filter `primary_location.source.issn:ISSN`, as paper-feeder's
-    Openalex,
-}
-
-/// `feeds import-paper-feeder`.
-#[derive(Debug, Args)]
-pub struct ImportArgs {
-    /// paper-feeder's config/sources.yaml
-    pub sources: PathBuf,
-    /// paper-feeder's config/scoring.yaml
-    pub scoring: PathBuf,
-    /// The name of the interest the lexicon becomes
-    #[arg(long, value_name = "NAME", default_value = "Interests")]
-    pub interest: String,
-    /// What the ISSNs listed under `openalex:` become
-    #[arg(long, value_enum, default_value = "crossref")]
-    pub issn_via: IssnVia,
 }
 
 /// `feeds digest`.
@@ -361,9 +265,9 @@ pub enum SearchAction {
         /// The query, as `list` takes it (`is:new kind:paper prof:AMOC`)
         #[arg(required = true)]
         query: Vec<String>,
-        /// The order of its items
-        #[arg(long, value_enum, default_value = "newest")]
-        sort: SortArg,
+        /// The order of its items: score, newest or like
+        #[arg(long, default_value = "newest")]
+        sort: Sort,
     },
     /// Forget a saved search
     Remove { name: String },

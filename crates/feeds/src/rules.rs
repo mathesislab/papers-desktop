@@ -9,7 +9,7 @@ use papers_core::Matching;
 use serde::{Deserialize, Serialize};
 
 use crate::feeds::Feeds;
-use crate::model::{Mark, Triage};
+use crate::model::{Mark, Triage, words};
 use crate::query::parse;
 
 /// What to do with a new item that matches a query.
@@ -28,6 +28,12 @@ pub enum Action {
     Dismiss,
     Seen,
 }
+
+words!(Action {
+    Shortlist => "shortlist",
+    Dismiss => "dismiss",
+    Seen => "seen",
+});
 
 impl Action {
     pub fn triage(self) -> Triage {

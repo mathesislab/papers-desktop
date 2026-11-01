@@ -56,8 +56,8 @@ fn config_prints_the_folder_and_the_settings() {
          title boost   2.5\n\
          keep days     30\n\
          lookback days 7\n\
-         mailto        not set (FEEDS_MAILTO, or the option of fetch)\n\
-         openalex key  not set (OPENALEX_KEY, or the option of fetch)\n",
+         mailto        not set (PAPERS_MAILTO, or the option of fetch)\n\
+         openalex key  not set (OPENALEX_API_KEY, or the option of fetch)\n",
         dir.display()
     );
     assert_eq!(out, expected);
@@ -65,13 +65,13 @@ fn config_prints_the_folder_and_the_settings() {
     let ran = s.run_env(
         &["config"],
         &[
-            ("FEEDS_MAILTO", "me@example.org"),
-            ("OPENALEX_KEY", "secret"),
+            ("PAPERS_MAILTO", "me@example.org"),
+            ("OPENALEX_API_KEY", "secret"),
         ],
     );
     assert!(
         ran.out
-            .contains("mailto        me@example.org\nopenalex key  set (OPENALEX_KEY)\n"),
+            .contains("mailto        me@example.org\nopenalex key  set (OPENALEX_API_KEY)\n"),
         "{}",
         ran.out
     );
@@ -82,7 +82,7 @@ fn config_prints_the_folder_and_the_settings() {
 fn the_apis_are_asked_with_the_option_over_the_environment() {
     let s = Sandbox::new(Recorded::new());
     s.ok(&["subscribe", "--issn", "1994-0424"]);
-    let env = [("FEEDS_MAILTO", "env@example.org")];
+    let env = [("PAPERS_MAILTO", "env@example.org")];
     s.run_env(&["fetch", "--mailto", "option@example.org"], &env);
     s.run_env(&["fetch"], &env);
     s.run(&["fetch"]);
