@@ -134,11 +134,26 @@ fn is_zero(x: &f64) -> bool {
     *x == 0.0
 }
 
+/// Where an entry's data came from: a feed's text, or a work of Crossref or
+/// OpenAlex (a sweep's, a lookup's, a paper of a post, a search's).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Origin {
+    #[default]
+    Feed,
+    Work,
+}
+
 /// One item of one feed, as the feed gives it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
-    /// the subscription's id; [`LOOKUP`] for a work looked up by its DOI
+    /// what it was fetched under: a subscription's id, [`LOOKUP`] for a work
+    /// looked up by its DOI, [`crate::FOUND`] for a work searched
     pub source: String,
+    /// a feed's entry or a work (those of before were given theirs when
+    /// their folder opened)
+    #[serde(default)]
+    pub origin: Origin,
     /// the feed's id of the item (its guid, Atom id, or feed-rs's hash of the link)
     pub guid: String,
     pub title: String,
@@ -170,6 +185,23 @@ pub struct Entry {
 
 /// The source of the works looked up by DOI (abstracts, authors, versions).
 pub const LOOKUP: &str = "lookup";
+
+impl Origin {
+    /// The origin of an entry kept before entries had one: a work if it is
+    /// a lookup's or a search's, if it has versions (Crossref's work has its
+    /// own DOI among them, a feed's entry none) or an OpenAlex id, or if its
+    /// subscription is a sweep.
+    pub(crate) fn of_old(entry: &Entry, subscription: Option<&Subscription>) -> Origin {
+        let work = [LOOKUP, crate::FOUND].contains(&entry.source.as_str())
+            || !entry.versions.is_empty()
+            || entry.guid.starts_with("https://openalex.org/")
+            || subscription.is_some_and(|s| !matches!(s.feed, Feed::Rss { .. }));
+        match work {
+            true => Origin::Work,
+            false => Origin::Feed,
+        }
+    }
+}
 
 /// An entry of an item, and when it was first fetched.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

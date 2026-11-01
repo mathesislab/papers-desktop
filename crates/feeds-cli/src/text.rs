@@ -1,7 +1,7 @@
 //! Plain text for the terminal: days, tables, wrapped paragraphs.
 
 use chrono::{DateTime, Utc};
-use papers_feeds::{Feeds, Item, Subscription};
+use papers_feeds::{Entry, Feeds, Item, Subscription};
 
 /// A day as `2026-10-31`.
 pub fn day(time: DateTime<Utc>) -> String {
@@ -78,12 +78,12 @@ pub fn label(subscription: &Subscription) -> String {
     named.unwrap_or_else(|| subscription.feed.to_string())
 }
 
-/// What a source of an entry is called: a subscription's label, the lookup, or its id.
-pub fn source_label(feeds: &Feeds, id: &str) -> String {
-    match feeds.subscriptions().iter().find(|s| s.id == id) {
-        Some(subscription) => label(subscription),
-        None => id.to_string(),
-    }
+/// What the source of an entry is called: its subscription's label, else what it was fetched
+/// under (the lookup, a subscription ended).
+pub fn source_label(feeds: &Feeds, entry: &Entry) -> String {
+    feeds
+        .subscription_of(entry)
+        .map_or_else(|| entry.source.clone(), label)
 }
 
 /// The link of an item: its DOI's address, else its URL.

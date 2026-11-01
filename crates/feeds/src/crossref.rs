@@ -8,7 +8,7 @@ use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use serde::Deserialize;
 
 use crate::http::{Access, doi_path, with_query};
-use crate::model::{Entry, ItemKind, Stage, Version};
+use crate::model::{Entry, ItemKind, Origin, Stage, Version};
 use crate::normalize::{arxiv_id, canonical_doi, is_attachment_doi, is_preprint_doi};
 use crate::parse::{EDITORIAL, abstract_text, plain};
 
@@ -240,6 +240,7 @@ impl Work {
         };
         Some(Entry {
             source: source.to_string(),
+            origin: Origin::Work,
             guid: doi.clone(),
             editorial: EDITORIAL.is_match(&title),
             title,

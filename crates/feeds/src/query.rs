@@ -82,7 +82,7 @@ pub(crate) struct Seen {
     pub like: Option<Like>,
     /// its `is:` values, `unread` left out
     pub is: Vec<String>,
-    /// the ids of its subscriptions
+    /// the ids of its subscriptions (not a lookup's or a search's source)
     pub sources: Vec<String>,
 }
 
@@ -103,17 +103,9 @@ impl Feeds {
             is.push("editorial".to_string());
         }
         is.extend(extra);
-        let mut sources: Vec<String> = item
-            .sources
-            .iter()
-            .map(|s| s.entry.source.clone())
-            .collect();
-        sources.sort();
-        sources.dedup();
-        let titles = sources.iter().filter_map(|id| {
-            let subscription = self.subscriptions().iter().find(|s| &s.id == id);
-            subscription.and_then(|s| s.title.as_deref())
-        });
+        let subscriptions = self.subscriptions_of(item);
+        let sources: Vec<String> = subscriptions.iter().map(|s| s.id.clone()).collect();
+        let titles = subscriptions.iter().filter_map(|s| s.title.as_deref());
         let src: Vec<&str> = sources.iter().map(String::as_str).chain(titles).collect();
         let prof = scores.iter().filter(|s| s.reached).map(|s| &s.interest);
         let summary = item.summary.as_deref().unwrap_or("");

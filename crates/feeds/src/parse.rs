@@ -10,7 +10,7 @@ use feed_rs::model::{self, Text};
 use regex::Regex;
 
 use crate::extras::{Extra, Extras};
-use crate::model::{Entry, ItemKind, SourceKind, Subscription};
+use crate::model::{Entry, ItemKind, Origin, SourceKind, Subscription};
 use crate::normalize::{TAG, arxiv_id, canonical_doi, is_preprint_doi};
 use crate::{Error, Result};
 
@@ -141,6 +141,7 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
     let content = content.or_else(|| description.map(String::from));
     Entry {
         source: sub.id.clone(),
+        origin: Origin::Feed,
         guid: e.id,
         title,
         authors,

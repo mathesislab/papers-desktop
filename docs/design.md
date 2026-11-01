@@ -763,7 +763,12 @@ closing "(Journal, doi)"), else the DOIs and publisher links of the first
 paragraphs (not the references, sidebars or the page's own or a news DOI),
 else the title in Crossref; up to 3, marked low confidence when none wins.
 A linked DOI that is not an item becomes a paper of the post's source; it
-then shows *Covered by*. phys.org answers a program with a Cloudflare
+then shows *Covered by*. Each entry keeps where its data came from
+(`origin`: `feed`, the text of a feed, or `work`, Crossref's or OpenAlex's
+work of a sweep, a lookup, a post's paper or a search), whatever it was
+fetched under (`source`: a subscription, `lookup`, `search`); `src:` and the
+sidebar's sources are the subscriptions alone. `items.json` has a `format`:
+the entries of before are given their origin once, when the folder opens. phys.org answers a program with a Cloudflare
 challenge (403), so its pages give nothing.
 
 **Triage**: new → seen → shortlisted, dismissed or added. Keys: `j`/`k`,

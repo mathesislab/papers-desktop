@@ -281,10 +281,7 @@ impl Feeds {
     /// The boost of an item: the strongest of the subscriptions that list it
     /// (an entry of a lookup, or of a subscription since ended, has none).
     fn boost(&self, item: &Item) -> f64 {
-        let subscription = |id: &str| self.subscriptions().iter().find(|s| s.id == id);
-        item.sources
-            .iter()
-            .filter_map(|s| subscription(&s.entry.source))
+        (self.subscriptions_of(item).into_iter())
             .map(|s| s.boost)
             .reduce(f64::max)
             .unwrap_or(0.0)

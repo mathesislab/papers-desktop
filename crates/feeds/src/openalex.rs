@@ -9,7 +9,7 @@ use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use serde::Deserialize;
 
 use crate::http::{Access, doi_path, with_query};
-use crate::model::{Entry, ItemKind};
+use crate::model::{Entry, ItemKind, Origin};
 use crate::normalize::{arxiv_id, canonical_doi, is_preprint_doi};
 use crate::parse::{EDITORIAL, plain};
 
@@ -203,6 +203,7 @@ impl Work {
         let location = self.primary_location.as_ref();
         Entry {
             source: source.to_string(),
+            origin: Origin::Work,
             guid: self.id.clone(),
             editorial: EDITORIAL.is_match(&title),
             title,

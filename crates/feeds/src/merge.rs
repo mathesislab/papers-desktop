@@ -344,6 +344,7 @@ mod tests {
     fn entry(source: &str, guid: &str, title: &str, author: &str) -> Entry {
         Entry {
             source: source.to_string(),
+            origin: crate::model::Origin::Feed,
             guid: guid.to_string(),
             title: title.to_string(),
             authors: vec![author.to_string()],
@@ -496,6 +497,7 @@ mod tests {
         );
         let mut looked_up = tc.clone();
         looked_up.source = crate::model::LOOKUP.to_string();
+        looked_up.origin = crate::model::Origin::Work;
         looked_up.versions = vec![
             Version {
                 doi: "10.5194/tc-20-5895-2026".to_string(),

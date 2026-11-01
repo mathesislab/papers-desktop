@@ -224,7 +224,7 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
         let listed = if s.listed { "listed" } else { "not listed" };
         format!(
             "{}  first seen {}, {listed}",
-            source_label(&feeds, &s.entry.source),
+            source_label(&feeds, &s.entry),
             day(s.first_seen)
         )
     });

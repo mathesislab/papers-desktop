@@ -13,11 +13,12 @@ use papers_core::{Like, Likeness};
 use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::interest::{self, Lexicon};
 use crate::merge::{Merger, refresh};
-use crate::model::{Entry, Feed, Item, Mark, Reminder, SourceKind, Subscription, Triage};
+use crate::model::{Entry, Feed, Item, Mark, Origin, Reminder, SourceKind, Subscription, Triage};
 use crate::normalize::{is_attachment_doi, short_id};
 use crate::parse::{kind_of, parse};
 use crate::store::{
-    self, CONFIG, Config, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State, Validated, Validators,
+    self, CONFIG, Config, FORMAT, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State, Validated,
+    Validators,
 };
 use crate::{Error, Result};
 
@@ -83,7 +84,8 @@ impl Feeds {
         Feeds::open_with(dir, Box::new(Utc::now))
     }
 
-    /// The feeds of a folder, on another clock.
+    /// The feeds of a folder, on another clock; the items of an older
+    /// format brought up to this one.
     pub fn open_with(dir: &Path, now: Now) -> Result<Feeds> {
         let dir = store::folder(dir)?;
         let config: Config = store::read(&dir, CONFIG)?;
@@ -98,12 +100,49 @@ impl Feeds {
             now,
             likeness: None,
         };
+        feeds.migrate()?;
         feeds.prune()?;
         Ok(feeds)
     }
 
+    /// The items of an older format brought up to [`FORMAT`], written: the
+    /// origin of each entry (1).
+    fn migrate(&mut self) -> Result<()> {
+        if self.items.format >= FORMAT {
+            return Ok(());
+        }
+        let subscriptions = &self.config.subscriptions;
+        for source in self.items.items.iter_mut().flat_map(|i| &mut i.sources) {
+            let subscription = subscriptions.iter().find(|s| s.id == source.entry.source);
+            source.entry.origin = Origin::of_old(&source.entry, subscription);
+        }
+        self.items.format = FORMAT;
+        store::write(&self.dir, ITEMS, &self.items)
+    }
+
     pub fn subscriptions(&self) -> &[Subscription] {
         &self.config.subscriptions
+    }
+
+    /// The subscription an entry was fetched under, if it is one (not a
+    /// lookup's or a search's) and it still is.
+    pub fn subscription_of(&self, entry: &Entry) -> Option<&Subscription> {
+        self.subscriptions().iter().find(|s| s.id == entry.source)
+    }
+
+    /// The subscriptions of an item's entries, each once, in their order.
+    pub fn subscriptions_of(&self, item: &Item) -> Vec<&Subscription> {
+        let mut subscriptions: Vec<&Subscription> = Vec::new();
+        for subscription in item
+            .sources
+            .iter()
+            .filter_map(|s| self.subscription_of(&s.entry))
+        {
+            if !subscriptions.iter().any(|s| s.id == subscription.id) {
+                subscriptions.push(subscription);
+            }
+        }
+        subscriptions
     }
 
     /// A new subscription of a feed (its address canonical) or a sweep,

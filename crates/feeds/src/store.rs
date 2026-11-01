@@ -82,13 +82,30 @@ fn lookback_days() -> u32 {
     LOOKBACK_DAYS
 }
 
+/// The format of `items.json`: since 1, each entry has its origin.
+pub(crate) const FORMAT: u32 = 1;
+
 /// `items.json`: the items, and the ids of merged items to the item they went into.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Items {
+    /// the format it was written in, 0 for one before formats; brought up to
+    /// [`FORMAT`] when the folder opens
+    #[serde(default)]
+    pub format: u32,
     #[serde(default)]
     pub items: Vec<Item>,
     #[serde(default)]
     pub aliases: BTreeMap<String, String>,
+}
+
+impl Default for Items {
+    fn default() -> Items {
+        Items {
+            format: FORMAT,
+            items: Vec::new(),
+            aliases: BTreeMap::new(),
+        }
+    }
 }
 
 /// `state.json`: the triage of items, by id.

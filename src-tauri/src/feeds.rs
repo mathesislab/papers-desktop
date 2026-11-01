@@ -45,8 +45,8 @@ use papers_core::{Identity, Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Entry, Feed, Feeds, FetchReport, Groups, Interest, Item, ItemKind, Journal,
-    Journals, LOOKUP, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort,
-    SourceKind, Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
+    Journals, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort, SourceKind,
+    Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -989,19 +989,6 @@ pub struct FeedSettings {
     poll_minutes: u32,
 }
 
-/// The ids of a subscription's titles, the lookups' left out.
-fn source_ids(item: &Item) -> Vec<&str> {
-    let mut ids: Vec<&str> = item
-        .sources
-        .iter()
-        .map(|s| s.entry.source.as_str())
-        .collect();
-    ids.retain(|&id| id != LOOKUP);
-    ids.sort_unstable();
-    ids.dedup();
-    ids
-}
-
 /// The item of a DOI, its own or one of its versions', but `not` this one.
 fn item_of_doi<'a>(feeds: &'a Feeds, doi: &str, not: &str) -> Option<&'a Item> {
     let has = |i: &&Item| i.doi.as_deref() == Some(doi) || i.versions.iter().any(|v| v.doi == doi);
@@ -1097,8 +1084,8 @@ impl<'a> Rows<'a> {
         FeedRow {
             kind: item.kind,
             journal: item.journal.clone(),
-            sources: (source_ids(item).iter())
-                .filter_map(|id| self.titles.get(id).cloned())
+            sources: (feeds.subscriptions_of(item).into_iter())
+                .map(title_of)
                 .collect(),
             date: item.date,
             triage: feeds.triage(&item.id),
@@ -1132,11 +1119,9 @@ pub fn detail(
         .item(id)
         .ok_or_else(|| format!("{id}: no such item"))?;
     let row = feeds.row_of(id, query, matching).expect("an item");
-    let subscription = |id: &str| feeds.subscriptions().iter().find(|s| s.id == id);
     let first_source = |item: &Item| {
-        let id = source_ids(item).first().map(|id| id.to_string());
-        id.map(|id| subscription(&id).map_or(id, title_of))
-            .unwrap_or_default()
+        let first = feeds.subscriptions_of(item).into_iter().next();
+        first.map(title_of).unwrap_or_default()
     };
     let index = InLibrary::of(library);
     let in_library = index.same(item);
@@ -1172,8 +1157,7 @@ pub fn detail(
         abstract_pending: feeds.pending(item).is_some(),
         content: (item.content.as_deref()).map(|html| safe_html(html, item.url.as_deref())),
         editorial: item.editorial,
-        sources: (source_ids(item).into_iter())
-            .filter_map(subscription)
+        sources: (feeds.subscriptions_of(item).into_iter())
             .map(|s| SourceOf {
                 id: s.id.clone(),
                 title: title_of(s),

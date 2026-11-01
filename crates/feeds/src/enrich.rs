@@ -13,7 +13,7 @@ use crate::crossref::{self, Message};
 use crate::feeds::Feeds;
 use crate::http::{Access, Http, get_json};
 use crate::links::{Reach, sure};
-use crate::model::{Entry, Feed, Item, ItemKind, LOOKUP};
+use crate::model::{Entry, Item, ItemKind, LOOKUP, Origin};
 use crate::openalex;
 use crate::{Error, Result};
 
@@ -195,7 +195,7 @@ impl Feeds {
         let doi = item.doi.as_deref().filter(|_| !item.kind.is_post())?;
         let asked = |api: &str| self.lookups.contains_key(&format!("{api}:{doi}"));
         let work = (item.sources.iter().map(|s| &s.entry))
-            .find(|e| e.doi.as_deref() == Some(doi) && self.is_work(e));
+            .find(|e| e.doi.as_deref() == Some(doi) && e.origin == Origin::Work);
         let wants = wants_abstract(work.and_then(|e| e.summary.as_deref()));
         (!asked("crossref") || (wants && !asked("openalex"))).then_some(doi)
     }
@@ -205,14 +205,7 @@ impl Feeds {
     pub fn abstract_from_work(&self, item: &Item) -> bool {
         item.summary.is_some()
             && (item.sources.iter().map(|s| &s.entry))
-                .any(|e| self.is_work(e) && e.summary == item.summary)
-    }
-
-    /// Whether an entry is a work of Crossref or OpenAlex: looked up, or of a sweep.
-    fn is_work(&self, entry: &Entry) -> bool {
-        entry.source == LOOKUP
-            || (self.subscriptions().iter())
-                .any(|s| s.id == entry.source && !matches!(s.feed, Feed::Rss { .. }))
+                .any(|e| e.origin == Origin::Work && e.summary == item.summary)
     }
 
     /// Looks up the abstract of an item now (the reader opening it), if its
