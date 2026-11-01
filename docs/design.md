@@ -810,13 +810,12 @@ challenge (403), so its pages give nothing.
 **Triage**: new → seen → starred, dismissed or added (`starred` was
 `shortlisted`, still read in `state.json`). Keys: `j`/`k`, `s` star (an added
 item stays added), `x` dismiss, `m` read, `o` open, `a` add, `f` find the
-paper of a post. *Review* steps through the starred items one paper at a time:
-the abstract, why it is there, free PDF or not, the versions, the closest
-library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
+paper of a post. The actions on an item are also in its details and the menu
+of its row.
 
 **The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
-`FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
-`filters.ts`, `items.ts`, `review.ts`, `actions.ts`, `kinds.ts` (the kinds
+`FeedDetails`, `Facts`, `SubscribeSheet`; the pure parts in
+`filters.ts`, `items.ts`, `actions.ts`, `kinds.ts` (the kinds
 of items and subscriptions, each named once), `subscriptions.ts` (their
 groups, a feed in a line, whether one is followed already: the Subscribe
 sheet and the settings subscribe alike, with the title) and `columns.ts`
@@ -943,12 +942,6 @@ Library tab):
   list itself only when its filters change or it is brought up to date
   (⌘R, *N new · Show*, a fetch asked for: `bringUpToDate`), and the phase
   event alone says whether a fetch is under way.
-- *Review* (`⌘↩`, the button): the starred items as they are when the review
-  begins, by score, one item at a time over the list and the details, with
-  a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
-  without PDF, `o` open, `l` later (stays starred), `x` dismiss, `j`/`k`,
-  `Esc` leaves. The facts are the details' (`Facts`), *Similar in your
-  library* among them.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN, an OpenAlex
   filter or *Words*, with the kind of its items (the user's choice, Journal
   by default), or one of the suggested subscriptions in their groups (those
@@ -1202,12 +1195,12 @@ the last resort, once per DOI a session.
 **PDF**: the Add sheet's (OpenAlex locations, `citation_pdf_url`, arXiv);
 one paper at a time, when asked.
 
-**Commits**, in order: the plan (this); core: the query over a `Record`;
-the main window as `LibraryView` under a tab bar; feeds: items, parsing,
-merging, store; feeds: sweeps, abstracts, the paper of a post; feeds:
-interests, rules, scores; feeds-cli; the app's commands and settings; the
-Feeds tab; Review; *Similar in your library* (core's index; `like:`, the sort,
-`--library`; the app and the tab).
+**Commits**, in order: the plan (this); core: the query over a `Record`; the
+main window as `LibraryView` under a tab bar; feeds: items, parsing, merging,
+store; feeds: sweeps, abstracts, the paper of a post; feeds: interests, rules,
+scores; feeds-cli; the app's commands and settings; the Feeds tab; Review
+(removed since: the details and the row menu act on an item); *Similar in your
+library* (core's index; `like:`, the sort, `--library`; the app and the tab).
 
 ## Search (P1, branch `feed-reading`)
 

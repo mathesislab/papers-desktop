@@ -3,10 +3,10 @@
 </script>
 
 <script lang="ts">
-  // What tells whether a paper of the feeds is worth adding, in the details and in the Review: why it is here (the
-  // interests and the terms that matched), its free PDF (looked up a moment after it is shown, once per item), its
-  // versions, the posts that cover it, where it was seen, and last, set apart and quieter than what is read, the
-  // papers of the library similar to it (each shown in the Library tab on a click).
+  // What tells whether a paper of the feeds is worth adding, in the details: why it is here (the interests and the
+  // terms that matched), its free PDF (looked up a moment after it is shown, once per item), its versions, the posts
+  // that cover it, where it was seen, and last, set apart and quieter than what is read, the papers of the library
+  // similar to it (each shown in the Library tab on a click).
 
   import { pdfOf, type FeedDetail, type PdfStatus, type Store } from "./api";
 
@@ -60,7 +60,7 @@
   };
 </script>
 
-<!-- the library's papers of the same item (its DOI, or its title and year), each to show: the details' and the Review's -->
+<!-- the library's papers of the same item (its DOI, or its title and year), each to show: the details' -->
 {#snippet inLibrary(ids: string[], onentry: (id: string) => void)}
   <span class="badge lib">in library</span>
   {#each ids as id (id)}<button class="link" onclick={() => onentry(id)}>show</button>{/each}

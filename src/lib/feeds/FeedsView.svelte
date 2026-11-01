@@ -2,10 +2,10 @@
   // The Feeds tab of the main window (docs/design.md, Feeds; the mockup docs/mockups/feeds.html): the sidebar (the
   // views, kinds, interests and sources), the list of the items its choices and the search select and the details
   // of the one selected (ItemPane, on an ItemList: beside the list or in place of it, as the window's switch says);
-  // the keys of the triage; the Review of the starred items, over the list and the details; the Subscribe sheet.
-  // The window (src/routes/main/+page.svelte) keeps the layout, gives what both its Feeds and Search tabs take
-  // (`tabContext`), and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is
-  // the library's: it opens over this tab, which stays in front after the paper is added.
+  // the keys of the triage; the Subscribe sheet. The window (src/routes/main/+page.svelte) keeps the layout, gives
+  // what both its Feeds and Search tabs take (`tabContext`), and passes on the commands of the menu and the keys
+  // while the tab is in front. The Add sheet is the library's: it opens over this tab, which stays in front after
+  // the paper is added.
 
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -29,7 +29,6 @@
   import FeedsSidebar from "./FeedsSidebar.svelte";
   import { FEED_ORDER, FEED_SPECS, type FeedColumn } from "./columns";
   import type { Shown } from "$lib/list/columns";
-  import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
     SORTS,
@@ -75,7 +74,6 @@
 
   const REFRESH: Shortcut = { key: "r", mod: true };
   const FETCH: Shortcut = { key: "r", mod: true, shift: true };
-  const REVIEW: Shortcut = { key: "Enter", mod: true };
 
   let counts = $state<FeedCounts | null>(null);
   let subscriptions = $state<SubscriptionInfo[]>([]);
@@ -90,9 +88,6 @@
   let lookingUp = $state(false);
   /** the failures of the last fetch, listed */
   let failures = $state(false);
-  /** the Review of the starred items, over the list and the details */
-  let reviewing = $state(false);
-  let reviewer = $state<ReturnType<typeof Review>>();
   /** the Subscribe sheet, open; whether a subscription was made in it (fetched when it closes) */
   let subscribing = $state(false);
   let subscribed = false;
@@ -497,12 +492,6 @@
     subscribed = false;
   }
 
-  /** ⌘↩: the Review of the starred items; again, or Esc in it, the list. */
-  function toggleReview() {
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    reviewing = !reviewing;
-  }
-
 
   /** ⌘F, /: the search field. */
   export function focusSearch() {
@@ -510,7 +499,7 @@
   }
 
   /** A key of the window while the tab is in front (none while a sheet is open): ⌘R brings the list up to date,
-   *  ⇧⌘R fetches, ⌘↩ starts the Review (which then has the keys); the list's keys move and read (`navKey`); the
+   *  ⇧⌘R fetches; the list's keys move and read (`navKey`); the
    *  keys of the actions act on the selection (s, x, m, u, z, o, a, f); ⇧Space marks all above as read. */
   export function key(e: KeyboardEvent) {
     if (modalOpen()) return;
@@ -520,8 +509,6 @@
     };
     if (matches(e, REFRESH)) return act(() => bringUpToDate(false));
     if (matches(e, FETCH)) return act(() => fetchNow());
-    if (matches(e, REVIEW)) return act(toggleReview);
-    if (reviewing && !typing(e)) return reviewer?.key(e);
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === " " && e.shiftKey) return act(() => markAbove());
     if (e.shiftKey) return;
@@ -638,47 +625,28 @@
       <button class="tool" title="Subscribe to a journal, a preprint server, a news site or a blog, or unsubscribe" onclick={() => (subscribing = true)}>
         Subscribe…
       </button>
-      <button class="tool primary" class:on={reviewing} title="Review the starred items, one at a time ({label(REVIEW)})" onclick={toggleReview}>
-        {reviewing ? "Leave review" : `Review starred (${starred})`}
-      </button>
     </header>
-    {#if reviewing}
-      <Review
-        bind:this={reviewer}
-        colours={tab.colours}
-        onadd={list.add}
-        ontriage={(id, t) => list.setTo([id], t)}
-        onopen={(id) => list.openItems([id])}
-        onitem={(id) => {
-          toggleReview();
-          list.showItem(id);
-        }}
-        onentry={tab.onentry}
-        onclose={toggleReview}
-      />
-    {:else}
-      <ItemPane
-        {list}
-        table={{
-          columns,
-          specs: FEED_SPECS,
-          menu: FEED_ORDER,
-          sort: filters.sort,
-          onsort: (sort) => (filters.sort = sort),
-          oncolumns: (shown) => (columns = shown),
-          onstar: (id) => actions.star.run([id]),
-          onmenu: rowMenu,
-        }}
-        none="No item selected"
-        bar={listBar}
-        empty={loaded && list.rows.length ? undefined : noRows}
-        actions={detailButtons}
-        finding={finding !== null && finding === list.detail?.id}
-        onaddlink={(link: Linked) => list.add({ id: link.doi, item: link.item }, true)}
-        onstarlink={(item) => actions.star.run([item])}
-        onfind={find}
-      />
-    {/if}
+    <ItemPane
+      {list}
+      table={{
+        columns,
+        specs: FEED_SPECS,
+        menu: FEED_ORDER,
+        sort: filters.sort,
+        onsort: (sort) => (filters.sort = sort),
+        oncolumns: (shown) => (columns = shown),
+        onstar: (id) => actions.star.run([id]),
+        onmenu: rowMenu,
+      }}
+      none="No item selected"
+      bar={listBar}
+      empty={loaded && list.rows.length ? undefined : noRows}
+      actions={detailButtons}
+      finding={finding !== null && finding === list.detail?.id}
+      onaddlink={(link: Linked) => list.add({ id: link.doi, item: link.item }, true)}
+      onstarlink={(item) => actions.star.run([item])}
+      onfind={find}
+    />
     <footer class="status">
       <span>
         {fetching ? "Fetching…" : lookingUp ? "Looking up in Crossref and OpenAlex…" : fetchLine(last, now)}
@@ -767,16 +735,6 @@
     background: color-mix(in srgb, var(--feeds) 14%, transparent);
     color: var(--feeds);
     font-weight: 500;
-  }
-  .tool.primary {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-  .tool.primary.on {
-    border-color: var(--border);
-    background: var(--line);
-    color: var(--fg);
   }
   .tool.busy .spin {
     animation: spin 1s linear infinite;

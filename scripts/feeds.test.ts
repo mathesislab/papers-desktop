@@ -1,4 +1,4 @@
-// The Feeds tab: its filters, the triage of the keys, the list kept in place, seen on dwell, the review.
+// The Feeds tab: its filters, the triage of the keys, the list kept in place, seen on dwell.
 // node --test scripts/ (npm test)
 
 import assert from "node:assert/strict";
@@ -46,7 +46,6 @@ import {
   toggled,
 } from "../src/lib/feeds/items.ts";
 import { ITEM_KINDS, SOURCE_KINDS, isItemKind, isPost, itemKinds, sourceKinds } from "../src/lib/feeds/kinds.ts";
-import { decide, progressOf, reviewed, startReview, stepReview, summaryOf } from "../src/lib/feeds/review.ts";
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
 
@@ -370,25 +369,6 @@ test("seen on dwell: an item that stays, not one passed over", () => {
   } finally {
     mock.timers.reset();
   }
-});
-
-test("the review steps through the starred items", () => {
-  let r = startReview(["a", "b", "c"]);
-  assert.equal(reviewed(r), "a");
-  assert.deepEqual(progressOf(r), { text: "1 of 3", fraction: 0 });
-  r = decide(r, "added");
-  assert.equal(reviewed(r), "b");
-  r = stepReview(r, -5);
-  assert.equal(reviewed(r), "a");
-  r = stepReview(r, 1);
-  r = decide(r, "later");
-  r = decide(r, "dismissed");
-  assert.equal(reviewed(r), null);
-  assert.equal(progressOf(r).text, "3 of 3, done");
-  assert.equal(decide(r, "added"), r);
-  assert.equal(summaryOf(r), "1 added, 1 dismissed, 1 for later");
-  assert.equal(summaryOf(stepReview(startReview(["a", "b"]), 9)), "0 added, 0 dismissed, 0 for later, 2 passed");
-  assert.equal(progressOf(startReview([])).text, "nothing starred");
 });
 
 test("the kinds, named once", () => {

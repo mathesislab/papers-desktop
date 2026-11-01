@@ -99,7 +99,7 @@ export interface Linked {
   title: string | null;
 }
 
-/** An item, for the details pane and the review. */
+/** An item, for the details pane. */
 export interface FeedDetail {
   id: string;
   kind: ItemKind;

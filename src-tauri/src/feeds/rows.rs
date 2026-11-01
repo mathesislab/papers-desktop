@@ -107,7 +107,7 @@ pub struct Linked {
     title: Option<String>,
 }
 
-/// An item, for the details pane and the review.
+/// An item, for the details pane.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedDetail {
