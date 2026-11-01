@@ -127,6 +127,7 @@
     store: "feeds",
     query: () => request.query,
     onadd: (initial) => onadd(initial),
+    reload: () => load(true),
     // an item opened is seen
     opened: (ids) => {
       const fresh = ids.filter((id) => list.byId.get(id)?.triage === "new");
@@ -148,6 +149,7 @@
     open: (ids) => list.openItems(ids),
     add: (ids, pdf) => list.addItems(ids, pdf),
     find: (id) => find(id),
+    focus: () => list.selection.focus,
     triage,
     keepUnread,
     later: laterMenu,
@@ -283,10 +285,10 @@
     });
   });
 
-  /** The items of some ids that the actions know: the rows, else the details shown. */
+  /** The items of some ids that the actions know: the details shown (they say its link), else the rows. */
   const itemsOf = (ids: string[]): Item[] =>
     ids.flatMap((id): Item[] => {
-      const item = list.byId.get(id) ?? (list.detail?.id === id ? list.detail : undefined);
+      const item = list.detail?.id === id ? list.detail : list.byId.get(id);
       return item ? [item] : [];
     });
 
@@ -346,7 +348,8 @@
     remindOf(ids, null);
   }
 
-  /** Items new again, to be reminded of in some days (snoozed till then), else now (kept unread). */
+  /** Items new again, to be reminded of in some days (snoozed till then), else now (kept unread); shown at once,
+   *  the list again if refused. */
   async function remindOf(ids: string[], days: number | null) {
     if (!ids.length) return;
     const until = days === null ? null : snoozeUntil(days, new Date());
@@ -361,6 +364,7 @@
       list.say(until ? `Snoozed${n} until ${until.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}` : `Kept${n} unread`);
     } catch (e) {
       list.say(String(e));
+      load(true);
     }
   }
 

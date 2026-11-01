@@ -398,6 +398,7 @@ test("the kinds, named once", () => {
   assert.deepEqual(sourceKinds, ["journal", "preprints", "news", "blog"]);
   assert.equal(isItemKind("preprint"), true);
   assert.equal(isItemKind("preprints"), false);
+  assert.equal(isItemKind("constructor"), false);
   assert.equal(isPost("news") && isPost("blog") && !isPost("paper") && !isPost("preprint"), true);
   // the sidebar's groups of sources take the kinds' plurals
   assert.deepEqual(

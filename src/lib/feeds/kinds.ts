@@ -30,7 +30,7 @@ export const SOURCE_KINDS: Record<SourceKind, Omit<Kind, "mark"> & { hint?: stri
 export const itemKinds = Object.keys(ITEM_KINDS) as ItemKind[];
 export const sourceKinds = Object.keys(SOURCE_KINDS) as SourceKind[];
 
-export const isItemKind = (v: unknown): v is ItemKind => typeof v === "string" && v in ITEM_KINDS;
+export const isItemKind = (v: unknown): v is ItemKind => typeof v === "string" && Object.hasOwn(ITEM_KINDS, v);
 
 /** A post: news or a blog; the rest are papers. */
 export const isPost = (kind: ItemKind) => kind === "news" || kind === "blog";

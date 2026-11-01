@@ -31,6 +31,8 @@ export interface Doers {
   add: (ids: string[], pdf: boolean) => unknown;
   /** the papers behind a post looked for again */
   find: (id: string) => unknown;
+  /** the item in focus */
+  focus: () => string | null;
   triage: (action: TriageAction, ids: string[]) => unknown;
   keepUnread: (ids: string[]) => unknown;
   /** Later ▾: kept unread, snoozed, the reminder cleared */
@@ -55,8 +57,8 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
     open: {
       key: "o",
       label: (items) => (items.length === 1 && isPost(items[0].kind) ? "Open post" : "Open"),
-      // a row does not say its link: it is looked for when opened
-      enabled: (items) => items.some((i) => i.url !== null || !!i.doi),
+      // a post by its link, a paper by its link or its DOI; a row does not say them: they are looked for when opened
+      enabled: (items) => items.some((i) => i.url === undefined || !!i.url || (!isPost(i.kind) && !!i.doi)),
       hint: "Open its page in the browser",
       run: d.open,
     },
@@ -78,7 +80,11 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
       key: "f",
       label: () => "Find linked paper",
       enabled: (items) => items.length === 1 && isPost(items[0].kind),
-      run: (ids) => ids.length && d.find(ids[0]),
+      // the item in focus, when it is one of them
+      run: (ids) => {
+        const focus = d.focus();
+        if (ids.length) d.find(focus !== null && ids.includes(focus) ? focus : ids[0]);
+      },
     },
     star: {
       key: "s",

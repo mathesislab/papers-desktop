@@ -15,7 +15,7 @@
     journal: { name: "Journal / source", width: 150 },
     date: { name: "Date", width: 58, least: 58 },
     year: { name: "Year", width: 50, least: 48 },
-    badges: { name: "", width: 190 },
+    badges: { name: "Badges", width: 190 },
   };
 
   /** the columns of the Feeds tab at first, in their order: those its menu offers */
@@ -115,11 +115,12 @@
     () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
   );
 
-  /** A header: its arrow when the list is sorted by it. */
+  /** A header: its name, its arrow when the list is sorted by it. */
   function heading(column: FeedColumn) {
     const by = SORTS[column];
     const sorted = !!by && sort === by.sort;
-    return { arrow: sorted ? "▾" : undefined, title: onsort ? by?.title : undefined, sorted };
+    // the badges speak for themselves: no name over them
+    return { name: column === "badges" ? "" : undefined, arrow: sorted ? "▾" : undefined, title: onsort ? by?.title : undefined, sorted };
   }
 
   /** A header clicked: the list sorted by it, if it sorts. */

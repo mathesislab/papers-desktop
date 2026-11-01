@@ -6,10 +6,12 @@ import { test } from "node:test";
 import { buttonText, feedActions, titled, type Item } from "../src/lib/feeds/actions.ts";
 
 const done: [string, unknown[]][] = [];
+let focus: string | null = null;
 const actions = feedActions({
   open: (ids) => done.push(["open", ids]),
   add: (ids, pdf) => done.push(["add", [ids, pdf]]),
   find: (id) => done.push(["find", [id]]),
+  focus: () => focus,
   triage: (action, ids) => done.push([action, ids]),
   keepUnread: (ids) => done.push(["keepUnread", ids]),
   later: (ids) => done.push(["later", ids]),
@@ -37,10 +39,12 @@ test("when an action applies", () => {
   assert.equal(actions.find.enabled([item("a")]), false);
   assert.equal(actions.clearReminder.enabled([item("a")]), false);
   assert.equal(actions.clearReminder.enabled([item("a", "new", { reminder: "snoozed" })]), true);
-  // a row does not say its link; the details do
+  // a row does not say its link; the details do: a post's page by its link, a paper's by its link or DOI
   assert.equal(actions.open.enabled([item("a")]), true);
   assert.equal(actions.open.enabled([item("a", "new", { url: null, doi: null })]), false);
   assert.equal(actions.open.enabled([item("a", "new", { url: null, doi: "10.1/x" })]), true);
+  assert.equal(actions.open.enabled([item("a", "new", { kind: "news", url: null, doi: "10.1/x" })]), false);
+  assert.equal(actions.open.enabled([item("a", "new", { kind: "news", url: "https://x.org" })]), true);
 });
 
 test("what the actions run, and their keys", () => {
@@ -48,9 +52,16 @@ test("what the actions run, and their keys", () => {
   actions.star.run(["a"]);
   actions.addBare.run(["b"]);
   actions.find.run(["c", "d"]);
+  // the item in focus, when it is one of them
+  focus = "d";
+  actions.find.run(["c", "d"]);
+  focus = "z";
+  actions.find.run(["c", "d"]);
   assert.deepEqual(done, [
     ["shortlist", ["a"]],
     ["add", [["b"], false]],
+    ["find", ["c"]],
+    ["find", ["d"]],
     ["find", ["c"]],
   ]);
   const keys = Object.values(actions).flatMap((a) => (a.key ? [a.key] : []));
