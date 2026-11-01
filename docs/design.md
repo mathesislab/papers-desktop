@@ -55,9 +55,10 @@ Three panes, each resized by dragging, the right one hidden on demand:
   sorts, a header dragged moves its column, a right-click shows or hides
   columns, an edge resizes, following the pointer (the title, else the last
   column, takes the room left; after it, an edge resizes the column after it,
-  the title giving or taking the room; each column has a least width). The
-  layout keeps each table's columns as a list of `{key, width}`; that of an
-  older version is read (the library's `{column, width}`, the Feeds and
+  the title giving or taking the room; each column has a least width; their
+  names and widths at first in `library/columns.ts` and `feeds/columns.ts`).
+  The layout keeps each table's columns as a list of `{key, width}`; that of
+  an older version is read (the library's `{column, width}`, the Feeds and
   Search tabs' widths by column, in their first order). A line
   above it shows the filters that are on as chips, each with an ×:
   `papers.bib › No PDF › amoc › "ice"`; with no filter, there is no line.
@@ -76,10 +77,12 @@ not have it gets that). With the library in front
 *Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
 Library → paper 1 → … → Library; `⌘1` shows the library.
 
-**Library and Feeds.** A switch at the start of the toolbar, *Library |
-Feeds* (`⌘1`, `⌘2`, in the Window menu; *Feeds* green when in front), shows one of the two tabs of the
-window (`LibraryView.svelte`, `FeedsView.svelte`; the page keeps the layout
-and passes the commands on). The papers open are tabs of the Library:
+**Library, Feeds and Search.** A switch at the start of the toolbar, *Library |
+Feeds | Search* (`⌘1`, `⌘2`, `⌘3`, in the Window menu; *Feeds* green and
+*Search* violet when in front), shows one of the tabs of the window
+(`LibraryView.svelte`, `FeedsView.svelte`, `SearchView.svelte`; the page,
+`src/routes/main/+page.svelte`, keeps the layout, the tabs in one table
+(`TABS`) shown as their switches say, and passes the commands on). The papers open are tabs of the Library:
 `⌃Tab` and `⌘⇧]` go through them there only. `⌘1` from Feeds shows the Library
 as it was left (a paper in front stays), in it the library. The library
 stays behind the feeds, hidden, with its selection, scroll and edit; its
@@ -87,9 +90,12 @@ PDF view steps aside (`Reader.cover`) and its keys are off. In Feeds `⌘W`
 closes the window, `⌘N` opens the Add sheet, `⌘F` goes to the search of the
 feeds, and a paper opened from the panel (or shown after it was added from
 the library) brings the Library back. The page passes the keys to the tab in
-front only (`LibraryView.key`, `FeedsView.key`): neither tab's keys leak into
-the other. The tab in front is kept in the layout (`view`), and the Feeds
-tab's choices too (`feeds`: below).
+front only (`LibraryView.key`, `FeedsView.key`, `SearchView.key`): no tab's
+keys leak into another. The layout (`src/lib/layout.ts`, pure and tested by
+`scripts/layout.test.ts`) keeps the tab in front (`tab`), the Feeds tab's own
+(`feeds: {filters, columns, shown}`, below) and the Search tab's (`search`:
+its state and columns); a layout of before (`view`, `feedColumns`,
+`feedsShown`, `searchColumns` beside the rest) is read into them.
 
 **The library tab is the current set**, and keeps it while papers are opened
 and closed: going back shows the same list, the selection and where it was
@@ -130,7 +136,7 @@ and come back at the next start; a .bib file no longer in the library is
 dropped.
 
 **Saved searches** (`SaveSearch.svelte`, `SavedSearches.svelte`, `saved.ts`,
-shared with the Feeds tab): the ☆ next to the search field saves the
+shared with the Feeds tab, whose saved views they are): the ☆ next to the search field saves the
 filters shown and the sort of the table under a name, typed in a field that
 opens under it (the filters in a few words offered; a blank name or one
 taken, in any case, refused); ★ when a saved search is what the tab shows.
@@ -144,7 +150,7 @@ Right-click: *Rename…* (in its row), *Update to the Filters Shown*,
 *Delete*. Kept in `settings.json`, `saved_searches: [{name, filters,
 sort}]` (the page's shapes, checked by `restored` when read;
 `set_saved_searches`, as the pinned tags: not in the settings window, which
-keeps them when it saves). A paper shown after it was added or merged takes the filters off if
+keeps them when it saves, `Elsewhere`). A paper shown after it was added or merged takes the filters off if
 they would hide it.
 
 **Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
@@ -709,8 +715,8 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   queries, arXiv), merging, abstracts from Crossref or OpenAlex by DOI,
   the paper behind a post, interests, rules, scores, triage, the store.
 - `crates/feeds-cli` (`feeds`, package `papers-feeds-cli`): subscribe,
-  edit, fetch, list, show, find, mark, prune, the interests and rules,
-  `opml import|export`, `config` (`keep-days`, `lookback-days`), the RSS
+  edit, fetch, list, show, find, mark, prune, the interests, rules and saved
+  views, `opml import|export`, `config` (`keep-days`, `lookback-days`), the RSS
   and HTML digest: paper-feeder's job, which it replaces. The APIs are asked
   with `--mailto` and `--openalex-key`, else papers-rs's `PAPERS_MAILTO` and
   `OPENALEX_API_KEY`. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
@@ -769,12 +775,13 @@ teaser (< 300 characters) first, 50 per fetch; the item the reader shows is
 looked up at once (`feeds_look_up`). The abstract looked up wins over the
 feed's text (a teaser, a plain-language summary); an issue line ("Science,
 Volume 394, Issue 6823, Page 556-561, October 2026.") is no abstract. A post links to its papers
-(`links: [Linked { doi, confidence: high|low, via: feed|page|search }]`): a
+(`links: [Linked { doi, confidence: high|low, via: feed|page|title }]`; `search`
+before, still read): a
 labelled block of the feed or of its page first (Futurity "Original Study
 DOI", ScienceDaily "Journal Reference", phys.org "More information", Eos's
 closing "(Journal, doi)"), else the DOIs and publisher links of the first
 paragraphs (not the references, sidebars or the page's own or a news DOI),
-else the title in Crossref; up to 3, marked low confidence when none wins.
+else the title in Crossref (`by_title`); up to 3, marked low confidence when none wins.
 A linked DOI that is not an item becomes a paper of the post's source; it
 then shows *Covered by*. Each entry keeps where its data came from
 (`origin`: `feed`, the text of a feed, or `work`, Crossref's or OpenAlex's
@@ -787,27 +794,33 @@ the post's id, which merging leaves behind), the items of one article's page
 (merged before pages were compared) made one. phys.org answers a program with a Cloudflare
 challenge (403), so its pages give nothing.
 
-**Triage**: new → seen → shortlisted, dismissed or added. Keys: `j`/`k`,
-`s` shortlist, `x` dismiss, `m` read, `o` open, `a` add, `f` find the
-paper of a post. *Review* steps through the shortlist one paper at a time:
+**Triage**: new → seen → starred, dismissed or added (`starred` was
+`shortlisted`, still read in `state.json`). Keys: `j`/`k`, `s` star (an added
+item stays added), `x` dismiss, `m` read, `o` open, `a` add, `f` find the
+paper of a post. *Review* steps through the starred items one paper at a time:
 the abstract, why it is there, free PDF or not, the versions, the closest
 library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 
 **The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
 `FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
 `filters.ts`, `items.ts`, `review.ts`, `actions.ts`, `kinds.ts` (the kinds
-of items and subscriptions, each named once) and `subscriptions.ts` (their
+of items and subscriptions, each named once), `subscriptions.ts` (their
 groups, a feed in a line, whether one is followed already: the Subscribe
-sheet and the settings subscribe alike, with the title), tested by
+sheet and the settings subscribe alike, with the title) and `columns.ts`
+(the columns of the list, the Search tab's too), tested by
 `scripts/feeds.test.ts` and `scripts/actions.test.ts`; the
 list and the details, shared with the Search tab, in `src/lib/list/`:
 `ItemList` the rows, the selection, the item read or shown, the keys that
-move, open and add, `ItemPane` the table, `Reader`, the details and the
-splitter, `tab.css` the frame of the two tabs):
+move, open and add, the triage a key toggles, `ItemPane` the table, `Reader`,
+the details and the splitter, `ActionButtons` the buttons of the details,
+`tab.css` the frame of the two tabs, `tab.ts` what the window gives both
+tabs alike through the context: the switch of the tabs, *beside*, the
+panes' widths, the interests' colours, the Add sheet, a paper shown in the
+Library tab):
 
-- *Sidebar*: Views (Unread `is:new`, Starred, Snoozed, Added, All · *N days*:
-  the keep-days of the settings), Kinds,
-  Interests, Sources grouped by kind (the sweeps of Crossref and OpenAlex
+- *Sidebar*: Views (Unread `is:new`, Starred `is:starred`, Snoozed, Added,
+  All · *N days*: the keep-days of the settings), Kinds,
+  Interests (those some items reach), Sources grouped by kind (the sweeps of Crossref and OpenAlex
   apart; a group folds). A view shows the number of its items; a kind, an
   interest, a source or a group of them the number of its unread ones (none:
   no number), the total on hover (`counts.unread`, `counts.total`: every
@@ -821,23 +834,24 @@ splitter, `tab.css` the frame of the two tabs):
   with several); the backend is asked for a term per group, any of its
   choices (`is:new kind:preprint prof:"Ice sheets" src:"The
   Cryosphere",GRL`; the query is the whole of the tab's choices,
-  `queryOf`), then the typed text, and `-is:dismissed` unless the query has
-  an `is:` term on `dismissed`. No kind chosen: every kind (papers and posts
+  `queryOf`), then the typed text; `Feeds::view` leaves the dismissed items
+  out unless the query has an `is:` term on `dismissed`. No kind chosen: every kind (papers and posts
   together; the *Papers | Posts | All* of before is gone, a source of posts
   chosen showing nothing under *Papers*). The choices,
   the sort, the search and the groups unfolded are kept in the layout
-  (`feeds`; a file without it takes the defaults; the single `kind`,
-  `interest` and `source` of before become groups of one).
-- *Saved searches*: as the library's (above), the ☆ next to the search and a
-  *Saved* section at the top of the sidebar, each with its count
-  (`counts.searches`, from the backend). One keeps `queryOf` and the sort
-  (`feeds_set_searches`, in the feeds' `config.json`, so the CLI's `--saved`
-  takes them too). A click takes the query apart (`decompose`, pure and
+  (`feeds.filters`; a file without it takes the defaults; the single `kind`,
+  `interest` and `source` of before become groups of one, the view
+  `shortlist` of before `starred`).
+- *Saved views*: as the library's saved searches (above), the ☆ next to the
+  search and a *Saved views* section at the top of the sidebar, each with its
+  count (`counts.views`, from the backend). One keeps `queryOf` and the sort
+  (`feeds_set_saved_views`, in the feeds' `config.json`, so the CLI's
+  `--saved` takes them too). A click takes the query apart (`decompose`, pure and
   tested: its first `is:` of a view, `kind:`, `prof:` and `src:` terms, not
   excluding, become the choices, the rest the text typed; `queryOf` of it is the
   same query) and shows it with its sort; the one shown is selected
   (`sameQuery` and the sort).
-- *List*: virtualised as the library's table: a mark (★ shortlisted, ✓
+- *List*: virtualised as the library's table: a mark (★ starred, ✓
   added, the kind of a post or preprint), the score, the likeness to the
   library (*Similar*, 0–100; – before the library is indexed), the title (bold
   while new, muted once seen), authors, journal or source, age, badges (*in
@@ -847,10 +861,11 @@ splitter, `tab.css` the frame of the two tabs):
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a dismissed item goes, the next
-  selected. A ☆ at the start of a row stars it (*Starred*: the shortlist),
-  or unstars it. The actions on items are one table (`actions.ts`), which the
-  keys, the row menu, the selection bar, the buttons of the details and
-  *Later ▾* read, each named one way (*Mark read* or *Mark unread*, *Star* or
+  selected. A ☆ at the start of a row stars it (*Starred*), or unstars it.
+  The actions on items are one table (`actions.ts`: `itemActions` open, add
+  and star, the Search tab's too; `feedActions` those and the triage), which
+  the keys, the row menu, the selection bar, the buttons of the details and
+  *Later ▾* read in both tabs, each named one way (*Mark read* or *Mark unread*, *Star* or
   *Unstar*, *Dismiss* or *Restore*: a toggle says which way it goes; marking
   read above 50 asks first, and says *Marked 12 read*). With several rows
   selected, a bar above the list marks them read or unread, stars,
@@ -860,7 +875,7 @@ splitter, `tab.css` the frame of the two tabs):
   News & Press, General), which its items take at once.
 - *Held updates*: a fetch in the background (polling) does not change the
   list: the items first fetched after the list was last brought up to date
-  (`shown`, the layout's `feedsShown`) are neither listed nor counted, and
+  (`shown`, the layout's `feeds.shown`) are neither listed nor counted, and
   wait behind *N new · Show*; a fetch asked for (⇧⌘R, *Fetch*, a
   subscription) shows them at once. ⌘R brings the list up to date without
   fetching: what was held back, the items triaged here gone from where they
@@ -873,8 +888,9 @@ splitter, `tab.css` the frame of the two tabs):
 - *Reading*: by default a click or Enter opens the item over the list, its
   row pinned at the top (▾); Esc, the row or *Back to the list* at the end of
   the item goes back to the list, where it was,
-  and ↑↓ go through the items. *Details beside the list* (the settings,
-  Window → Feeds Details Beside the List) shows them beside it instead.
+  and ↑↓ go through the items. *Details beside the list* (the switch
+  `feeds-beside`: the settings, Window → Feeds Details Beside the List) shows
+  them beside it instead, in both tabs.
 - *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
   passed over faster (j held down) stays new: its title went by, its
   details were not read. `⇧Space` (and the row menu's *Mark All Above as
@@ -891,7 +907,7 @@ splitter, `tab.css` the frame of the two tabs):
   of the library, each with its authors, year, journal and cosine, shown in
   the Library tab on a click). A post's HTML (`safe_html`, ammonia: its
   text, links and images, an image's title under it), then its linked papers as
-  cards (Add by the DOI, Shortlist, Show paper), *Find linked paper*
+  cards (Add by the DOI, Star, Show paper), *Find linked paper*
   (`findPapers`). The list's columns are moved, shown or hidden and resized
   as the library's (above; each header has a least width that fits its name
   and sort arrow).
@@ -913,10 +929,10 @@ splitter, `tab.css` the frame of the two tabs):
   list itself only when its filters change or it is brought up to date
   (⌘R, *N new · Show*, a fetch asked for: `bringUpToDate`), and the phase
   event alone says whether a fetch is under way.
-- *Review* (`⌘↩`, the button): the shortlist as it is when the review
+- *Review* (`⌘↩`, the button): the starred items as they are when the review
   begins, by score, one item at a time over the list and the details, with
   a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
-  without PDF, `o` open, `l` later (stays shortlisted), `x` dismiss, `j`/`k`,
+  without PDF, `o` open, `l` later (stays starred), `x` dismiss, `j`/`k`,
   `Esc` leaves. The facts are the details' (`Facts`), *Similar in your
   library* among them.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN, an OpenAlex
@@ -977,24 +993,25 @@ is part of the score wherever the score is used (`score:`, `prof:` through
 settings (a field of the subscription's editor), by `feeds subscribe
 --boost N` or `feeds edit <id> --boost N`; `feeds subscriptions` shows it.
 (paper-feeder's `score_boost: N` is `boost: N`; its `always_include` a rule
-`{when: src:"<subscription title>", then: shortlist}`. The one-time import
+`{when: src:"<subscription title>", then: star}`. The one-time import
 of a paper-feeder setup, `feeds import-paper-feeder`, is gone.)
 
-**Saved searches**: `{name, query, sort}` in `config.json` (`searches`,
-in the order of the sidebar; `Feeds::searches`, `saved_search` by a name in
-any case, `set_searches`, which refuses a blank name or one given twice in
-any case). The query is the whole of the tab's choices (below); dismissed
-items are left out unless it has an `is:` term on them (`query::live`, as
-the app's and the CLI's lists). `Feeds::view` counts the items each one
-shows (`counts.searches`, by name), whatever the request. CLI: `feeds
-searches [--json]`, `searches add NAME QUERY... [--sort score|newest|like]` (in
-place of the search of that name), `searches remove NAME`, and `--saved
-NAME` on `list` (its sort unless `--sort`) and `digest` (no default
-`score:3-` then), with the query typed too.
+**Saved views** (`views.rs`, `SavedView`): `{name, query, sort}` in
+`config.json` (`views`, `searches` before and still read; in the order of
+the sidebar; `Feeds::saved_views`, `saved_view` by a name in any case,
+`set_saved_views`, which refuses a blank name or one given twice in any
+case: `Error::View`). The query is the whole of the tab's choices (below);
+dismissed items are left out unless it has an `is:` term on them, as the
+app's and the CLI's lists. `Feeds::view` counts the items each one shows
+(`counts.views`, by name), whatever the request. CLI: `feeds views [--json]`
+(`searches` also), `views add NAME QUERY... [--sort score|newest|like]` (in
+place of the view of that name), `views remove NAME`, and `--saved NAME` on
+`list` (its sort unless `--sort`) and `digest` (no default `score:3-` then),
+with the query typed too.
 
-**Rules**: `{when, then}`, a query of the feeds and `shortlist`,
-`dismiss` or `seen` (`prof:amoc score:6-` → shortlist, `t:editorial` →
-dismiss). They act on the items a fetch brings, the first that matches
+**Rules**: `{when, then}`, a query of the feeds and `star` (`shortlist`
+before, still read), `dismiss` or `seen` (`prof:amoc score:6-` → star,
+`t:editorial` → dismiss). They act on the items a fetch brings, the first that matches
 deciding, never on an item with a triage.
 
 **Likeness** (*Similar in your library*): how close an item is to the
@@ -1015,13 +1032,14 @@ the library), and computed when asked as the scores are: the number
 `like:` of the query (none without an index: `like:` then matches nothing),
 `Row.like`, `Sort::Like` (the most like first, then the newest),
 `Feeds::like(item)` for the nearest, and the rules at a fetch (`like:40-` →
-shortlist). A library of 2,353 papers (titles; one abstract) is indexed in
+star). A library of 2,353 papers (titles; one abstract) is indexed in
 5 ms (release); an item with an abstract is scored in about 16 µs, a view of
 5,000 items in about 80 ms.
 
 **The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
-`is:` (new or unread, seen, shortlisted, dismissed, added, editorial,
-`inlibrary` with the library's facts), `src:` (a subscription's title or id),
+`is:` (new or unread, seen, starred, dismissed, added, editorial,
+`inlibrary` with the library's facts; `is:shortlisted` of before is a value
+no item has), `src:` (a subscription's title or id),
 `prof:` (the interests whose `min_score` the item reaches), and the numbers
 `score:` (its best score) and `like:` (its likeness, with an index); an item's record is its title, the family names
 of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
@@ -1032,7 +1050,8 @@ terms), and the counts of the sidebar: as the library's, over every live
 item (not dismissed) whatever the query, by `is:`, kind, interest and
 subscription. Dismissed items are rows only if the query names them
 (`is:dismissed`, `-is:seen,dismissed`: core's `Query::names`), decided once
-by the view for its rows and for each saved search.
+by the view for its rows and for each saved view; the page asks for the
+query of its choices alone.
 
 **When**: on opening the Feeds tab (the tab calls `feeds_fetch` when shown
 and the last fetch, `feeds_last_fetch`, is older than 15 minutes) and on
@@ -1046,7 +1065,7 @@ a subscription marked so.
 **Store**: JSON in the app data folder, `feeds/` (the subscriptions and
 interests, the items, the triage state, the ETags and the last sweeps, the
 lookups made, the journals looked up in OpenAlex), never the .bib. An item no feed lists goes after `keep_days`
-(90), on opening and after a fetch; shortlisted and added stay.
+(90), on opening and after a fetch; starred and added stay.
 
 **Settings**: a *Feeds* section of the settings window
 (`src/lib/settings/FeedsSettings.svelte`): the subscriptions (each with its
@@ -1060,11 +1079,21 @@ message), the days kept, the lookback, background polling (the command line does
 the OPML, the days kept and the lookback too: `feeds opml import|export`,
 `feeds config keep-days|lookback-days`). Polling is in
 `settings.json` (`feeds_poll`, false; `feeds_poll_minutes`, 60, 5 at least),
-the rest in `feeds/config.json`. *Show the Feeds tab* (`feeds_tab` of
-`settings.json`, on by default; also Window → *Show Feeds Tab*, ticked while
-shown): hidden, the main window has the Library tab alone, without the switch,
-and Window → *Feeds* is off (`feeds_set_tab` tells the windows, `feeds-tab`,
-and the menu follows).
+the rest in `feeds/config.json`.
+
+**The switches** of the main window (`Toggle`, `src-tauri/src/toggle.rs`,
+`src/lib/toggles.ts`): `feeds-tab`, `search-tab` and `feeds-beside`, in the
+settings' Feeds section and the Window menu (*Show Feeds Tab*, *Show Search
+Tab*, *Feeds Details Beside the List*, ticked while on; the id of each item
+is its switch). `toggle(toggle) -> bool` reads one, `set_toggle(toggle, on)`
+sets it, tells every window (the event `toggle`, `{toggle, on}`) and the menu
+follows (`menu::sync`, from all three). In `settings.json` as `feeds_tab`
+(on), `search_tab` (on) and `feeds_beside` (off). A tab hidden: the main
+window has the Library tab alone (without the switch, both hidden), and
+Window → *Feeds* (*Search*) is off. What the settings window does not set
+(the pinned tags, the library's saved searches, the polling, the switches) is
+one flattened `Elsewhere` of `Settings`: the file keeps its keys, and its
+*Save* keeps that part as it is (`save_settings`).
 
 **The suggested list** (`papers_feeds::suggested`, for the climate and the
 Earth's surface): Copernicus (TC, CP, ESD, GMD, BG, ACP, OS, NHESS, ESSD,
@@ -1107,18 +1136,21 @@ discovery; the contract `src/lib/feeds/api.ts`): `feeds_fetch`, `feeds_last_fetc
 `feeds_subscriptions`, `feeds_unsubscribe`,
 `feeds_update_subscription`, `feeds_suggested`,
 `feeds_library_suggested` (the journals of the library, `{title, papers,
-follow}`, at once: `follow` is `{by: "suggested", suggested}`, `{by:
-"journal", journal}`, `{by: "unknown"}` or `{by: "pending"}`),
+follow}`, at once: `follow` is the crate's `Follow`, `{by: "suggested",
+...the suggestion}`, `{by: "journal", ...the journal}`, `{by: "unknown"}` or
+`{by: "pending"}`),
 `feeds_lookup_journal(title)` (the `follow` of a pending one),
 `feeds_search_journals(text)`, `feeds_journal_feed(journal)` (`{homepage,
 feed}`: `feed` `{site: "found", url, title}`, `{site: "other", url,
 title}`, `{site: "refused", reason}`, `{site: "feedrefused", url,
 reason}`, `{site: "notafeed", url}`, `{site: "nofeed"}`, or null without a
 home page; nothing subscribed),
-`feeds_subscribe(feed, kind, title?)`, `feeds_import_opml`,
-`feeds_export_opml`, `feeds_settings`, `feeds_set_settings`,
-`feeds_searches`, `feeds_set_searches` (refused for a blank name or one
-given twice; a change of the journal, as the others); the events
+`feeds_subscribe(feed, kind, title?)` (a feed as the crate writes it:
+`{url}`, `{issn}` or `{openalex}`, as a subscription's `feed`),
+`feeds_import_opml`, `feeds_export_opml`, `feeds_settings`,
+`feeds_set_settings`, `feeds_saved_views`, `feeds_set_saved_views` (refused
+for a blank name or one given twice; a change of the journal, as the
+others); the events
 `feeds-changed` (a fetch, a change, papers found) and `feeds-fetching`
 (true, false). The feeds of `app_data_dir/feeds` are opened at the first
 command. *In library*: a row's and the details' library entries of the same
@@ -1165,7 +1197,7 @@ Feeds tab; Review; *Similar in your library* (core's index; `like:`, the sort,
 
 ## Search (P1, branch `feed-reading`)
 
-A third tab, *Search* (⌘3; hidden by the setting `search_tab` or Window →
+A third tab, *Search* (⌘3; hidden by the switch `search-tab`, Window →
 Show Search Tab): OpenAlex's works searched as a search engine of papers
 does, to find a paper and add it.
 
@@ -1193,13 +1225,13 @@ the list it was asked for was replaced (another search, page or list: another
 (`app_data_dir/search`, `Store::Search`), so the rows, the details, the
 abstracts looked up, the free PDF, the Add sheet, *in library* and *Similar in
 your library* are the Feeds tab's (the item commands take the store). A new
-search drops the works found before but those *saved for later* (☆, `s`:
-shortlisted in that folder, apart from the Feeds tab's Starred: works kept
-from a search, not yet sure to add) and those added. Each keeps the
+search drops the works found before but those starred (☆, `s`: in that
+folder, apart from the Feeds tab's Starred: works kept from a search, not yet
+sure to add; `search_starred`) and those added. Each keeps the
 citations OpenAlex counted (`cited`, the *Cited* column). The tab keeps the
-search shown (its ids, total, cursor) and the 20 last searches in the
-window's layout; the sidebar: Results, *Saved for later (N)*, Recent
-searches.
+search shown (its ids, total, cursor), the 20 last searches and the columns
+in the window's layout (`search`); the sidebar: Results, *Starred (N)*,
+Recent searches.
 
 **Around a paper**: *Cited by* (`cites:`) and *References* (`citedby:`)
 search again, the most cited first. **Follow this search** subscribes the
@@ -1208,8 +1240,13 @@ the titles and abstracts, then its filters), fetched at once.
 
 The list and the details are the Feeds tab's (`ItemList`, `ItemPane`: the
 columns and the buttons given by the tab; `Reader`, the item read in place of
-the list, by the setting `feeds_beside`; the same keys to move, `/` with or
-without ⇧), in the tab's violet (`--search`).
+the list, by the switch `feeds-beside`; the same keys to move, `/` with or
+without ⇧), in the tab's violet (`--search`). Its actions are the table's
+of both tabs (`itemActions`: *Open*, *Add…*, *Add without PDF…*, *Star*,
+the keys `o`, `a`, `s`), in the keys, the row menu (then *Cited By*,
+*References*), the selection bar and the buttons of the details, said as in
+the Feeds tab. The interests' colours are those of the settings, in their
+order, given by the window to both tabs: an interest has one colour.
 
 ## Later, optional: Spotlight add-on
 
