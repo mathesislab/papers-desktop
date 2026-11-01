@@ -18,6 +18,7 @@
   import ActionButtons from "$lib/list/ActionButtons.svelte";
   import { ItemList, menuItem, typing } from "$lib/list/ItemList.svelte";
   import ItemPane from "$lib/list/ItemPane.svelte";
+  import LookSwitch from "$lib/list/LookSwitch.svelte";
   import "$lib/list/tab.css";
   import { tabContext } from "$lib/list/tab";
   import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
@@ -27,8 +28,8 @@
   import * as api from "./api";
   import type { FeedCounts, FeedDetail, FetchSummary, Linked, SubscriptionInfo } from "./api";
   import FeedsSidebar from "./FeedsSidebar.svelte";
-  import { FEED_ORDER, FEED_SPECS, type FeedColumn, type Look } from "./columns";
-  import type { Shown } from "$lib/list/columns";
+  import { FEED_ORDER, FEED_SPECS, type FeedColumn } from "./columns";
+  import type { Look, Shown } from "$lib/list/columns";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
     SORTS,
@@ -102,11 +103,6 @@
   const POST_BUTTONS: ActionName[] = ["open", "read", "star", "dismiss", "later"];
   const PAPER_BUTTONS: ActionName[] = ["add", "open", "addBare", "star", "dismiss", "later"];
   const BAR_BUTTONS: ActionName[] = ["read", "star", "dismiss", "later"];
-  /** the looks of the list, as its switch says them */
-  const LOOKS: { look: Look; name: string; title: string }[] = [
-    { look: "simple", name: "Simple", title: "Each item in three lines: its source, its title, its authors" },
-    { look: "table", name: "Table", title: "The columns, to sort, move and resize by their headers" },
-  ];
 
   let request = $derived(requestOf(filters));
   /** the items the filters select; those triaged here stay in place until the filters change */
@@ -710,13 +706,7 @@
     <button class="sort" title={sortHint} onclick={() => (filters.sort = nextSort(filters.sort))}>
       {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}
     </button>
-    <span class="looks" role="radiogroup" aria-label="How the list shows">
-      {#each LOOKS as l (l.look)}
-        <button role="radio" aria-checked={look === l.look} class:on={look === l.look} title={l.title} onclick={() => (look = l.look)}>
-          {l.name}
-        </button>
-      {/each}
-    </span>
+    <LookSwitch bind:look />
   </div>
   {#if list.selection.selected.size > 1}
     {@const ids = list.chosen()}
@@ -775,31 +765,6 @@
   }
   .chip {
     max-width: 260px;
-  }
-
-  /* the switch of the list's look: two halves, the one on tinted */
-  .looks {
-    display: inline-flex;
-    margin-left: 4px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    overflow: hidden;
-  }
-  .looks button {
-    padding: 0 7px;
-    border: none;
-    background: none;
-    color: var(--muted);
-    font: inherit;
-    font-size: 11px;
-    line-height: 17px;
-  }
-  .looks button + button {
-    border-left: 1px solid var(--border);
-  }
-  .looks button.on {
-    background: color-mix(in srgb, var(--feeds) 14%, transparent);
-    color: var(--fg);
   }
 
   /* the failures of the last fetch */

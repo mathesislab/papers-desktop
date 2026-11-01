@@ -2,11 +2,11 @@
 // commands `layout` and `save_layout`), and that of an older version read. Pure, tested by scripts/layout.test.ts
 // (npm test).
 
-import { FEED_ORDER, FEED_SPECS, SEARCH_ORDER, SEARCH_SPECS, type FeedColumn, type Look } from "./feeds/columns.ts";
+import { FEED_ORDER, FEED_SPECS, SEARCH_ORDER, SEARCH_SPECS, type FeedColumn } from "./feeds/columns.ts";
 import { NO_FEED_FILTERS, restoredFeeds, type FeedFilters } from "./feeds/filters.ts";
 import { COLUMNS, DEFAULT_COLUMNS, DEFAULT_ORDER, type Column, type Sort } from "./library/columns.ts";
 import { NO_FILTERS, restored, type Filters } from "./library/filters.ts";
-import { columnsOf, restoredColumns, withColumn, type Shown } from "./list/columns.ts";
+import { columnsOf, restoredColumns, restoredLook, withColumn, type Look, type Shown } from "./list/columns.ts";
 import { NO_SEARCH, restoredSearch, type SearchState } from "./search/state.ts";
 
 /** A tab of the window: the library (with the papers open), the feeds, or the search of OpenAlex. */
@@ -104,7 +104,7 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
     feeds: {
       filters: restoredFeeds(feeds.filters as Partial<FeedFilters> | undefined),
       columns: restoredColumns(feeds.columns, FEED_SPECS, FEED_ORDER),
-      look: feeds.look === "table" ? "table" : "simple",
+      look: restoredLook(feeds.look, "simple"),
       shown: typeof feeds.shown === "string" ? feeds.shown : null,
     },
     search: {

@@ -2,7 +2,8 @@
 // shown, in their order, each with its width; the one that takes the room left (the title, else the last), whose
 // width is its least; each column's least width; the widths drawn; how an edge of a header resizes (the column to
 // its left, the last column giving the room), how a header dragged moves its column, the menu that shows or hides
-// one, the layout of an older version read. Pure functions, tested by scripts/columns.test.ts (npm test).
+// one, the layout of an older version read. A list shows them, or is simple: no columns, a row of three lines
+// (SimpleRow). Pure functions, tested by scripts/columns.test.ts (npm test).
 
 /** A column shown, and its width in pixels (the flexible column's: its least). */
 export type Shown<K extends string = string> = { key: K; width: number };
@@ -42,6 +43,21 @@ export function gridOf<K extends string>(lead: number[], shown: Shown<K>[], spec
   const flexible = flexibleOf(shown);
   return [...lead.map((w) => `${w}px`), ...widths.map((w, i) => (i === flexible ? `minmax(${w}px, 1fr)` : `${w}px`))].join(" ");
 }
+
+/** How a list shows its rows: simple, a row of three lines (the journal or source, the title, the authors) after a
+ *  date or a year, no headers; or a table of its columns, whose headers move and resize them (and sort the list). */
+export type Look = "simple" | "table";
+
+/** The look of a list as the layout saved it (`calm`, the simple look's name of before, is simple); else `fallback`,
+ *  the tab's at first. */
+export function restoredLook(saved: unknown, fallback: Look): Look {
+  if (saved === "simple" || saved === "calm") return "simple";
+  return saved === "table" ? "table" : fallback;
+}
+
+/** The grid of a row of a simple list: the columns of its lead, its date or year, its three lines taking the room
+ *  left, what its end shows (the badges, the tags). */
+export const simpleGridOf = (lead: number[]) => [...lead.map((w) => `${w}px`), "62px", "minmax(0, 1fr)", "auto"].join(" ");
 
 /** The width of a row with every column at its width: the table scrolls across under it. */
 export const widthOf = <K extends string>(lead: number[], shown: Shown<K>[], specs: Specs<K>) =>

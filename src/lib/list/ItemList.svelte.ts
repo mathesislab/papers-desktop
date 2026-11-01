@@ -11,13 +11,13 @@ import * as api from "$lib/feeds/api";
 import type { FeedDetail, FeedRow, Store, Triage } from "$lib/feeds/api";
 import { titled, type Action, type Item } from "$lib/feeds/actions";
 import { addTarget, pageOf, toggled, type TriageAction } from "$lib/feeds/items";
-import { SIMPLE_ROW, type Look } from "$lib/feeds/columns";
 import { isPost } from "$lib/feeds/kinds";
 import { mac, matches, type Shortcut } from "$lib/keys";
 import { OPEN_ASK } from "$lib/library/selection";
+import type { Look } from "./columns";
 import { Selection } from "./selection.svelte";
 import { tabContext, type Tab } from "./tab";
-import { ROW } from "./virtual.svelte";
+import { rowOf } from "./virtual.svelte";
 
 const ALL: Shortcut = { key: "a", mod: true };
 /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
@@ -266,7 +266,7 @@ export class ItemList {
     const go = (to: number | "first" | "last", extend = e.shiftKey) => act(() => this.selection.move(this.ids, to, extend));
     if (e.key === "ArrowDown") return go(mod ? "last" : 1);
     if (e.key === "ArrowUp") return go(mod ? "first" : -1);
-    const page = pageRows(this.look === "simple" ? SIMPLE_ROW : ROW);
+    const page = pageRows(rowOf(this.look));
     if (e.key === "PageDown") return go(page);
     if (e.key === "PageUp") return go(-page);
     if (typing(e)) return e.key === "Escape" && act(() => (e.target as HTMLElement).blur());

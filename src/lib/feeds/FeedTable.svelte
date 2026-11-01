@@ -4,19 +4,20 @@
   // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
   // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). The Feeds tab
   // shows it simple, at first (`look`): no headers, each row taller, its date, then its source, title and authors a
-  // line each, its badges small at its end. A new item's title is bold; one seen is muted (in the Feeds tab). A
+  // line each, its badges small at its end (SimpleRow). A new item's title is bold; one seen is muted (in the Feeds tab). A
   // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
   // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
   // selected, dismisses it (or restores it, dismissed).
 
   import type { Snippet } from "svelte";
-  import { gridOf, widthOf, type Shown, type Specs } from "$lib/list/columns";
+  import { gridOf, simpleGridOf, widthOf, type Look, type Shown, type Specs } from "$lib/list/columns";
+  import SimpleRow from "$lib/list/SimpleRow.svelte";
   import TableHead from "$lib/list/TableHead.svelte";
-  import { ROW, Rows } from "$lib/list/virtual.svelte";
+  import { Rows } from "$lib/list/virtual.svelte";
   import Marked from "$lib/Marked.svelte";
   import { STAR, rowHint, type Action } from "./actions";
   import type { FeedRow, Sort } from "./api";
-  import { SIMPLE_ROW, type FeedColumn, type Look } from "./columns";
+  import type { FeedColumn } from "./columns";
   import { ago, badges, citedText, likeText, scoreHint, scoreText, yearOf } from "./items";
   import { ITEM_KINDS, isPost } from "./kinds";
 
@@ -79,6 +80,7 @@
 
   /** the star and the mark, before the columns */
   const LEAD = [22, 18];
+  const SIMPLE_GRID = simpleGridOf(LEAD);
   /** the columns that sort the list, by what, and what their headers say on hover */
   const SORTS: Partial<Record<FeedColumn, { sort: Sort; title: string }>> = {
     score: { sort: "score", title: "Best score first" },
@@ -87,15 +89,13 @@
   };
 
   let now = $state(Date.now());
-  let simple = $derived(look === "simple");
   let template = $derived(gridOf(LEAD, columns, specs));
   let minWidth = $derived(widthOf(LEAD, columns, specs));
-  /** only the rows in view drawn; the one in focus scrolled into view (simple, no headers over the rows) */
+  /** only the rows in view drawn; the one in focus scrolled into view */
   const view = new Rows({
     count: () => rows.length,
     focus: () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
-    row: () => (simple ? SIMPLE_ROW : ROW),
-    head: () => (simple ? 0 : ROW),
+    look: () => look,
   });
 
   /** A header: its name, its arrow when the list is sorted by it; on hover, what the column is and the order a
@@ -146,7 +146,7 @@
 
 <div
   class="table"
-  class:simple
+  class:simple={view.simple}
   role="grid"
   aria-rowcount={rows.length}
   bind:this={view.table}
@@ -154,13 +154,13 @@
   bind:clientWidth={view.width}
   onscroll={view.scrolled}
 >
-  {#if !simple}
+  {#if !view.simple}
     <TableHead lead={LEAD} room={view.width} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
   {/if}
   <div
     class="rows"
     style:height="{rows.length * view.row}px"
-    style:min-width={simple ? null : `${minWidth}px`}
+    style:min-width={view.simple ? null : `${minWidth}px`}
     style:--end="{view.scrollLeft + view.width}px"
   >
     {#each rows.slice(view.first, view.last) as row, i (row.id)}
@@ -173,7 +173,7 @@
         aria-selected={selected.has(row.id)}
         style:top="{(view.first + i) * view.row}px"
         style:height="{view.row}px"
-        style:grid-template-columns={simple ? null : template}
+        style:grid-template-columns={view.simple ? SIMPLE_GRID : template}
         onmousedown={(e) => onselect(row.id, e)}
         ondblclick={() => onopen(row.id)}
         oncontextmenu={(e) => {
@@ -194,14 +194,12 @@
           >
         {/if}
         <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
-        {#if simple}
-          <span class="muted date">{ago(row.date, now)}</span>
-          <span class="lines">
-            <span class="muted small" title={row.sources.join(", ")}>{sourceOf(row)}</span>
-            <span class="title"><Marked spans={row.title} /></span>
-            <span class="muted small">{@render names(row)}</span>
-          </span>
-          {@render badgeList(row)}
+        {#if view.simple}
+          <SimpleRow date={ago(row.date, now)} source={sourceOf(row)} sources={row.sources.join(", ")}>
+            {#snippet title()}<span class="title"><Marked spans={row.title} /></span>{/snippet}
+            {#snippet authors()}{@render names(row)}{/snippet}
+            {#snippet end()}{@render badgeList(row)}{/snippet}
+          </SimpleRow>
         {:else}
           {#each columns as { key: column } (column)}
             {#if column === "score"}
@@ -252,11 +250,7 @@
     display: grid;
     align-items: center;
   }
-  /* simple: the star, the mark, the date, the three lines taking the room left, the badges */
-  .simple .row {
-    grid-template-columns: 22px 18px 62px minmax(0, 1fr) auto;
-  }
-  /* the badges clear of the ✕ */
+  /* simple, the badges clear of the ✕ */
   .simple .row:has(.remove) {
     padding-right: 26px;
   }
@@ -275,29 +269,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  .lines {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-  .lines > span {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    line-height: 16px;
-  }
-  .lines > .small {
-    font-size: 11px;
-    line-height: 14px;
-  }
-  .simple .date {
-    font-size: 12px;
-  }
-  /* simple, the badges quiet: smaller, as many as fit */
-  .simple .badges {
-    max-width: 220px;
-    overflow: hidden;
-  }
+  /* simple, the badges quiet: smaller */
   .simple .badge {
     font-size: 10px;
     line-height: 14px;
