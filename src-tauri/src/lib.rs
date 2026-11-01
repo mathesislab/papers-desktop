@@ -113,7 +113,7 @@ struct AppState {
     /// the feeds of the Feeds tab, opened at its first command
     feeds: feeds::FeedsState,
     /// the works found in the Search tab, opened at its first command
-    search: feeds::FeedsState,
+    search: feeds::Folder,
     /// the Search tab's last query, its journals and works looked up
     resolved: search::LastResolved,
 }
@@ -967,10 +967,9 @@ pub fn run() {
                     app.path().app_data_dir()?.join("feeds"),
                     app.path().app_data_dir()?.join("feeds-fetched.json"),
                 ),
-                // never fetched: no summary is kept
-                search: feeds::FeedsState::new(
+                search: feeds::Folder::new(
                     app.path().app_data_dir()?.join("search"),
-                    app.path().app_data_dir()?.join("search-fetched.json"),
+                    search::CHANGED,
                 ),
                 resolved: search::LastResolved::default(),
             });

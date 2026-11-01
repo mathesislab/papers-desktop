@@ -1,6 +1,6 @@
 //! The Search tab: the commands of `src/lib/search/api.ts` over OpenAlex's
 //! works (crates/feeds' `search_works`) and the folder of the works found,
-//! `app_data_dir/search` (a `FeedsState` of its own, `Store::Search`). A
+//! `app_data_dir/search` (a `Folder` of its own, `Store::Search`). A
 //! search's first page takes the place of the works found before, but for
 //! those saved for later (shortlisted) or added; the next page adds to it.
 //! The last query's journals and works looked up are kept for its next pages
@@ -18,11 +18,12 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::AppState;
-use crate::feeds::{
-    Applied, Change, FeedRow, Rows, Store, SubscriptionInfo, change_in, network, subscription_of,
-};
+use crate::feeds::{FeedRow, Rows, SubscriptionInfo, network};
 use crate::fetch::blocking;
 use crate::settings::Settings;
+
+/// The items' event of the Search tab: the works found changed.
+pub const CHANGED: &str = "search-changed";
 
 /// The Search tab shown or hidden, to every window: whether it is shown.
 pub const TAB_EVENT: &str = "search-tab";
@@ -85,10 +86,8 @@ pub async fn search_run(
         let resolved = state.resolved.of(&query, &network, &access)?;
         let found = search_works(&network, &access, &resolved, order, cursor.as_deref())?;
         let fresh = cursor.is_none();
-        let ids = match change_in(&app, Store::Search, Change::Found(found.entries, fresh))? {
-            Applied::Ids(ids) => ids,
-            _ => Vec::new(),
-        };
+        let entries = found.entries;
+        let ids = (state.search).change(&app, move |feeds| feeds.found(entries.clone(), fresh))?;
         Ok(SearchPage {
             rows: rows_of(&app, &ids, &query)?,
             total: found.total,
@@ -121,8 +120,10 @@ pub async fn search_follow(app: AppHandle, query: String) -> Result<Subscription
             title: Some(query),
             ..SubscriptionSettings::new(SourceKind::Journal)
         };
-        let applied = change_in(&app, Store::Feeds, Change::Subscribe(feed, settings))?;
-        subscription_of(&app, applied)
+        let subscription = (state.feeds.folder).change(&app, move |feeds| {
+            feeds.subscribe(feed.clone(), settings.clone())
+        })?;
+        state.feeds.info(subscription)
     })
     .await
 }

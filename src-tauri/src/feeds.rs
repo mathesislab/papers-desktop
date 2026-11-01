@@ -45,7 +45,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use papers_core::{Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
-    Access, Confidence, Entry, Feed, FeedReport, Feeds, Groups, Interest, Item, ItemKind, Journal,
+    Access, Confidence, Feed, FeedReport, Feeds, Groups, Interest, Item, ItemKind, Journal,
     Journals, LibraryFacts, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort,
     SourceKind, Stage, Subscription, SubscriptionSettings, Triage, Via,
     ViewRequest as CrateRequest, safe_html,
@@ -61,12 +61,9 @@ use crate::settings::Settings;
 const CHANGED: &str = "feeds-changed";
 const FETCHING: &str = "feeds-fetching";
 
-/// The items' events of the Search tab: the items changed.
-pub const SEARCH_CHANGED: &str = "search-changed";
-
-/// The folder of feeds an item is of: the Feeds tab's, or the works found in
-/// the Search tab (`crate::search`), whose items the same commands show and
-/// triage.
+/// The folder of feeds an item is of, as the page names it: the Feeds tab's,
+/// or the works found in the Search tab (`crate::search`), whose items the
+/// same commands show and triage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Store {
@@ -75,18 +72,10 @@ pub enum Store {
 }
 
 impl Store {
-    pub fn of(self, state: &AppState) -> &FeedsState {
+    pub fn of(self, state: &AppState) -> &Folder {
         match self {
-            Store::Feeds => &state.feeds,
+            Store::Feeds => &state.feeds.folder,
             Store::Search => &state.search,
-        }
-    }
-
-    /// The event that its items changed.
-    pub fn changed(self) -> &'static str {
-        match self {
-            Store::Feeds => CHANGED,
-            Store::Search => SEARCH_CHANGED,
         }
     }
 }
@@ -111,28 +100,28 @@ const LEAST_MINUTES: u32 = 5;
 /// Opens the feeds of a folder: on the clock, or a test's.
 type Opener = Box<dyn Fn(&Path) -> papers_feeds::Result<Feeds> + Send + Sync>;
 
-/// The feeds of the app, and what is kept of their fetches.
-pub struct FeedsState {
+/// A change of the feeds, kept to make again on a copy that was fetched
+/// (what no longer applies, an item gone, a feed subscribed twice, passed
+/// over).
+type Journalled = Arc<dyn Fn(&mut Feeds) + Send + Sync>;
+
+/// A folder of feeds, opened at its first command and kept: the feeds the
+/// commands see, and a copy worked on meanwhile (a fetch, the papers of a
+/// post, an abstract looked up), the changes made while it runs made again
+/// on it before it takes their place.
+pub struct Folder {
     dir: PathBuf,
-    /// `feeds-fetched.json`: the last summary, each subscription's last fetch
-    fetched_path: PathBuf,
     live: Mutex<Live>,
-    /// held by the fetch (or the finding of papers) that runs
+    /// held by the work on a copy that runs
     running: Mutex<()>,
-    /// held by a fetch while it reads the feeds: a fetch asked meanwhile waits
-    reading: Mutex<()>,
-    /// a fetch looks up what its feeds brought
-    following: AtomicBool,
-    /// read from its file at the first ask
-    fetched: Mutex<Option<Fetched>>,
     /// the free copy of each DOI asked for, this session
     pdfs: Mutex<HashMap<String, Pdf>>,
-    /// the journals looked up in OpenAlex, opened at the first ask
-    journals: Mutex<Option<Journals>>,
-    open: Opener,
     /// counts the builds of the facts of the library: one that ends after a
     /// newer one is dropped
     builds: AtomicU64,
+    open: Opener,
+    /// the event that its items changed
+    changed: &'static str,
 }
 
 /// The feeds the commands see, the changes made while a copy is worked on,
@@ -140,78 +129,30 @@ pub struct FeedsState {
 #[derive(Default)]
 struct Live {
     feeds: Option<Feeds>,
-    journal: Option<Vec<Change>>,
+    journal: Option<Vec<Journalled>>,
     library: Option<Arc<LibraryFacts>>,
     /// the build of `library`
     build: u64,
 }
 
-/// A change of the feeds, kept to apply again to a copy that was fetched.
-#[derive(Debug, Clone)]
-pub enum Change {
-    Triage(Vec<String>, Triage),
-    /// new, to be reminded of then (snoozed till then)
-    Remind(Vec<String>, DateTime<Utc>),
-    Subscribe(Feed, SubscriptionSettings),
-    Unsubscribe(String),
-    Update(String, SubscriptionPatch),
-    Settings(Box<papers_feeds::FeedSettings>),
-    /// an OPML text
-    Import(String),
-    /// the saved searches, all of them
-    Searches(Vec<Search>),
-    /// the works of a search, its first page (fresh) or the next
-    Found(Vec<Entry>, bool),
+/// The feeds of the Feeds tab, their fetches, and the journals looked up.
+pub struct FeedsState {
+    pub folder: Folder,
+    fetching: Fetching,
+    /// the journals looked up in OpenAlex, opened at the first ask
+    journals: Mutex<Option<Journals>>,
 }
 
-/// What a change gives back.
-#[derive(Debug)]
-pub enum Applied {
-    Done,
-    Subscription(Subscription),
-    Count(usize),
-    Ids(Vec<String>),
-}
-
-impl Change {
-    fn apply(&self, feeds: &mut Feeds) -> papers_feeds::Result<Applied> {
-        Ok(match self {
-            Change::Triage(ids, triage) => {
-                for id in ids {
-                    feeds.set_triage(id, *triage)?;
-                }
-                Applied::Done
-            }
-            Change::Remind(ids, when) => {
-                for id in ids {
-                    feeds.remind(id, *when)?;
-                }
-                Applied::Done
-            }
-            Change::Subscribe(feed, settings) => {
-                Applied::Subscription(feeds.subscribe(feed.clone(), settings.clone())?)
-            }
-            Change::Unsubscribe(id) => {
-                feeds.unsubscribe(id)?;
-                Applied::Done
-            }
-            Change::Update(id, patch) => {
-                let mut settings = feeds.subscription(id)?.settings.clone();
-                patch.clone().apply(&mut settings);
-                Applied::Subscription(feeds.edit_subscription(id, settings)?)
-            }
-            Change::Settings(settings) => {
-                feeds.set_settings(settings.as_ref().clone())?;
-                Applied::Done
-            }
-            Change::Import(text) => Applied::Count(feeds.import_opml(text)?),
-            Change::Searches(searches) => {
-                feeds.set_searches(searches.clone())?;
-                Applied::Done
-            }
-            Change::Found(entries, fresh) => Applied::Ids(feeds.found(entries.clone(), *fresh)?),
-        })
-    }
+/// The fetches of the feeds, one at a time, and what is kept of them.
+struct Fetching {
+    /// `feeds-fetched.json`: the last summary, each subscription's last fetch
+    path: PathBuf,
+    /// held by a fetch while it reads the feeds: a fetch asked meanwhile waits
+    reading: Mutex<()>,
+    /// a fetch looks up what its feeds brought
+    following: AtomicBool,
+    /// read from its file at the first ask
+    fetched: Mutex<Option<Fetched>>,
 }
 
 /// What a fetch did, as the page shows it.
@@ -309,25 +250,22 @@ fn summary(
     (summary, last)
 }
 
-impl FeedsState {
-    /// The feeds of a folder, not opened yet; what is kept of their fetches in a file.
-    pub fn new(dir: PathBuf, fetched_path: PathBuf) -> FeedsState {
-        FeedsState::with_opener(dir, fetched_path, Box::new(Feeds::open))
+impl Folder {
+    /// The feeds of a folder, not opened yet; `changed` the event that its
+    /// items changed.
+    pub fn new(dir: PathBuf, changed: &'static str) -> Folder {
+        Folder::with_opener(dir, changed, Box::new(Feeds::open))
     }
 
-    fn with_opener(dir: PathBuf, fetched_path: PathBuf, open: Opener) -> FeedsState {
-        FeedsState {
+    fn with_opener(dir: PathBuf, changed: &'static str, open: Opener) -> Folder {
+        Folder {
             dir,
-            fetched_path,
             live: Mutex::new(Live::default()),
             running: Mutex::new(()),
-            reading: Mutex::new(()),
-            following: AtomicBool::new(false),
-            fetched: Mutex::new(None),
             pdfs: Mutex::new(HashMap::new()),
-            journals: Mutex::new(None),
-            open,
             builds: AtomicU64::new(0),
+            open,
+            changed,
         }
     }
 
@@ -347,6 +285,11 @@ impl FeedsState {
             live.feeds = Some(self.opened(&live)?);
         }
         Ok(live)
+    }
+
+    /// The windows told that its items changed.
+    pub fn tell(&self, app: &AppHandle) {
+        let _ = app.emit(self.changed, ());
     }
 
     /// The number of a new build of the facts of the library.
@@ -370,30 +313,35 @@ impl FeedsState {
         true
     }
 
-    /// Something done with the journals looked up, opened if they are not yet.
-    pub fn journals<T>(&self, work: impl FnOnce(&mut Journals) -> T) -> Result<T, String> {
-        let mut journals = self.journals.lock().unwrap();
-        if journals.is_none() {
-            *journals = Some(Journals::open(&self.dir).map_err(|e| e.to_string())?);
-        }
-        Ok(work(journals.as_mut().expect("opened")))
-    }
-
     /// Something read of the feeds.
     pub fn read<T>(&self, read: impl FnOnce(&Feeds) -> T) -> Result<T, String> {
         let live = self.live()?;
         Ok(read(live.feeds.as_ref().expect("opened")))
     }
 
-    /// A change of the feeds, now, and again on the copy a fetch works on.
-    pub fn change(&self, change: Change) -> Result<Applied, String> {
+    /// A change of the feeds, now, and again on the copy a fetch works on;
+    /// the windows told.
+    pub fn change<T: Send + 'static>(
+        &self,
+        app: &AppHandle,
+        f: impl Fn(&mut Feeds) -> papers_feeds::Result<T> + Send + Sync + 'static,
+    ) -> Result<T, String> {
+        let done = self.apply(f)?;
+        self.tell(app);
+        Ok(done)
+    }
+
+    /// [`Folder::change`], the windows not told.
+    fn apply<T: Send + 'static>(
+        &self,
+        f: impl Fn(&mut Feeds) -> papers_feeds::Result<T> + Send + Sync + 'static,
+    ) -> Result<T, String> {
         let mut live = self.live()?;
-        let feeds = live.feeds.as_mut().expect("opened");
-        let applied = change.apply(feeds).map_err(|e| e.to_string())?;
+        let done = f(live.feeds.as_mut().expect("opened")).map_err(|e| e.to_string())?;
         if let Some(journal) = &mut live.journal {
-            journal.push(change);
+            journal.push(Arc::new(move |feeds: &mut Feeds| drop(f(feeds))));
         }
-        Ok(applied)
+        Ok(done)
     }
 
     /// Work on a copy of the feeds, which then takes their place with the
@@ -414,8 +362,7 @@ impl FeedsState {
         let journal = live.journal.take().unwrap_or_default();
         let done = done.map_err(|e| e.to_string())?;
         for change in &journal {
-            // what no longer applies (an item gone, a feed subscribed twice) is passed over
-            let _ = change.apply(&mut copy);
+            change(&mut copy);
         }
         // the facts gathered meanwhile
         if let Some(library) = &live.library {
@@ -423,118 +370,6 @@ impl FeedsState {
         }
         live.feeds = Some(copy);
         Ok(done)
-    }
-
-    /// Fetches every subscription, or the one of id `only`: the feeds read,
-    /// their summary to `read`, then what follows; the whole summary. A fetch
-    /// of every subscription asked while another one runs answers that one's
-    /// summary once it has read the feeds. `phase` is told where it is.
-    pub fn fetch(
-        &self,
-        only: Option<&str>,
-        http: &dyn papers_feeds::Http,
-        access: &Access,
-        phase: impl Fn(Phase),
-        read: impl FnOnce(&Result<FetchSummary, String>),
-    ) -> Result<FetchSummary, String> {
-        let reading = self.reading.lock().unwrap_or_else(PoisonError::into_inner);
-        if only.is_none() && self.following.load(Ordering::SeqCst) {
-            drop(reading);
-            let last = self
-                .last_fetch()
-                .and_then(|l| l.ok_or("the fetch failed".to_string()));
-            read(&last);
-            return last;
-        }
-        let running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
-        phase(Phase::Reading);
-        let fetched = self.on_copy(&running, |feeds| {
-            let known = feeds.ids();
-            let report = feeds.read_feeds(only, http, access)?;
-            Ok((report, known))
-        });
-        let (report, known) = match fetched {
-            Ok(fetched) => fetched,
-            Err(e) => {
-                let failed = Err(e);
-                read(&failed);
-                phase(Phase::Done);
-                return failed;
-            }
-        };
-        let (subscriptions, added) =
-            self.read(|feeds| (feeds.subscriptions().to_vec(), new_items(feeds, &known)))?;
-        let (mut summary, last) = summary(&report, &subscriptions, added, Utc::now());
-        let kept = self.keep(only.is_none().then_some(&summary), last, &subscriptions);
-        self.following.store(true, Ordering::SeqCst);
-        drop(reading);
-        read(&kept.clone().map(|()| summary.clone()));
-        phase(Phase::LookingUp);
-        let followed = self.on_copy(&running, |feeds| {
-            let followed = feeds.follow_up(&known, http, access)?;
-            Ok((followed, new_items(feeds, &known)))
-        });
-        self.following.store(false, Ordering::SeqCst);
-        phase(Phase::Done);
-        kept?;
-        let (followed, added) = followed?;
-        (summary.lookups, summary.pages, summary.added) = (followed.lookups, followed.pages, added);
-        if only.is_none() {
-            self.keep(Some(&summary), Vec::new(), &subscriptions)?;
-        }
-        Ok(summary)
-    }
-
-    /// Keeps a fetch's summary, unless of a single subscription, and each
-    /// subscription's last fetch, those of subscriptions gone dropped.
-    fn keep(
-        &self,
-        summary: Option<&FetchSummary>,
-        last: Vec<(String, Last)>,
-        subscriptions: &[Subscription],
-    ) -> Result<(), String> {
-        let mut fetched = self.fetched()?;
-        let kept = fetched.as_mut().expect("read");
-        if let Some(summary) = summary {
-            kept.summary = Some(summary.clone());
-        }
-        kept.last.extend(last);
-        kept.last
-            .retain(|id, _| subscriptions.iter().any(|s| &s.id == id));
-        let json = serde_json::to_string_pretty(kept).unwrap();
-        let path = &self.fetched_path;
-        let error = |e: std::io::Error| format!("{}: {e}", path.display());
-        std::fs::create_dir_all(path.parent().unwrap()).map_err(error)?;
-        std::fs::write(path, json + "\n").map_err(error)
-    }
-
-    /// What is kept of the fetches, read from its file the first time.
-    fn fetched(&self) -> Result<MutexGuard<'_, Option<Fetched>>, String> {
-        let mut fetched = self.fetched.lock().unwrap();
-        if fetched.is_none() {
-            let kept = match std::fs::read_to_string(&self.fetched_path) {
-                // a file that does not parse is started again
-                Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Fetched::default(),
-                Err(e) => return Err(format!("{}: {e}", self.fetched_path.display())),
-            };
-            *fetched = Some(kept);
-        }
-        Ok(fetched)
-    }
-
-    /// The summary of the last fetch.
-    pub fn last_fetch(&self) -> Result<Option<FetchSummary>, String> {
-        Ok(self.fetched()?.as_ref().and_then(|f| f.summary.clone()))
-    }
-
-    /// The last fetch of each subscription.
-    fn lasts(&self) -> Result<BTreeMap<String, Last>, String> {
-        Ok(self
-            .fetched()?
-            .as_ref()
-            .map(|f| f.last.clone())
-            .unwrap_or_default())
     }
 
     /// The papers behind a post, looked for again, after a running fetch.
@@ -582,6 +417,162 @@ impl FeedsState {
             self.pdfs.lock().unwrap().insert(doi, pdf.clone());
         }
         Ok(pdf)
+    }
+}
+
+impl FeedsState {
+    /// The feeds of a folder, not opened yet; what is kept of their fetches in a file.
+    pub fn new(dir: PathBuf, fetched_path: PathBuf) -> FeedsState {
+        FeedsState::with_folder(Folder::new(dir, CHANGED), fetched_path)
+    }
+
+    fn with_folder(folder: Folder, fetched_path: PathBuf) -> FeedsState {
+        FeedsState {
+            folder,
+            fetching: Fetching {
+                path: fetched_path,
+                reading: Mutex::new(()),
+                following: AtomicBool::new(false),
+                fetched: Mutex::new(None),
+            },
+            journals: Mutex::new(None),
+        }
+    }
+
+    /// Something done with the journals looked up, opened if they are not yet.
+    pub fn journals<T>(&self, work: impl FnOnce(&mut Journals) -> T) -> Result<T, String> {
+        let mut journals = self.journals.lock().unwrap();
+        if journals.is_none() {
+            *journals = Some(Journals::open(&self.folder.dir).map_err(|e| e.to_string())?);
+        }
+        Ok(work(journals.as_mut().expect("opened")))
+    }
+
+    /// Fetches every subscription, or the one of id `only`: the feeds read,
+    /// their summary to `read`, then what follows; the whole summary. A fetch
+    /// of every subscription asked while another one runs answers that one's
+    /// summary once it has read the feeds. `phase` is told where it is.
+    pub fn fetch(
+        &self,
+        only: Option<&str>,
+        http: &dyn papers_feeds::Http,
+        access: &Access,
+        phase: impl Fn(Phase),
+        read: impl FnOnce(&Result<FetchSummary, String>),
+    ) -> Result<FetchSummary, String> {
+        let (folder, fetching) = (&self.folder, &self.fetching);
+        let reading = fetching
+            .reading
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if only.is_none() && fetching.following.load(Ordering::SeqCst) {
+            drop(reading);
+            let last = self
+                .last_fetch()
+                .and_then(|l| l.ok_or("the fetch failed".to_string()));
+            read(&last);
+            return last;
+        }
+        let running = folder
+            .running
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        phase(Phase::Reading);
+        let fetched = folder.on_copy(&running, |feeds| {
+            let known = feeds.ids();
+            let report = feeds.read_feeds(only, http, access)?;
+            Ok((report, known))
+        });
+        let (report, known) = match fetched {
+            Ok(fetched) => fetched,
+            Err(e) => {
+                let failed = Err(e);
+                read(&failed);
+                phase(Phase::Done);
+                return failed;
+            }
+        };
+        let (subscriptions, added) =
+            folder.read(|feeds| (feeds.subscriptions().to_vec(), new_items(feeds, &known)))?;
+        let (mut summary, last) = summary(&report, &subscriptions, added, Utc::now());
+        let kept = fetching.keep(only.is_none().then_some(&summary), last, &subscriptions);
+        fetching.following.store(true, Ordering::SeqCst);
+        drop(reading);
+        read(&kept.clone().map(|()| summary.clone()));
+        phase(Phase::LookingUp);
+        let followed = folder.on_copy(&running, |feeds| {
+            let followed = feeds.follow_up(&known, http, access)?;
+            Ok((followed, new_items(feeds, &known)))
+        });
+        fetching.following.store(false, Ordering::SeqCst);
+        phase(Phase::Done);
+        kept?;
+        let (followed, added) = followed?;
+        (summary.lookups, summary.pages, summary.added) = (followed.lookups, followed.pages, added);
+        if only.is_none() {
+            fetching.keep(Some(&summary), Vec::new(), &subscriptions)?;
+        }
+        Ok(summary)
+    }
+
+    /// The summary of the last fetch.
+    pub fn last_fetch(&self) -> Result<Option<FetchSummary>, String> {
+        Ok(self
+            .fetching
+            .fetched()?
+            .as_ref()
+            .and_then(|f| f.summary.clone()))
+    }
+
+    /// The last fetch of each subscription.
+    fn lasts(&self) -> Result<BTreeMap<String, Last>, String> {
+        let fetched = self.fetching.fetched()?;
+        Ok(fetched.as_ref().map(|f| f.last.clone()).unwrap_or_default())
+    }
+
+    /// A subscription as the settings list it, with its last fetch.
+    pub fn info(&self, subscription: Subscription) -> Result<SubscriptionInfo, String> {
+        Ok(info(subscription, &self.lasts()?))
+    }
+}
+
+impl Fetching {
+    /// Keeps a fetch's summary, unless of a single subscription, and each
+    /// subscription's last fetch, those of subscriptions gone dropped.
+    fn keep(
+        &self,
+        summary: Option<&FetchSummary>,
+        last: Vec<(String, Last)>,
+        subscriptions: &[Subscription],
+    ) -> Result<(), String> {
+        let mut fetched = self.fetched()?;
+        let kept = fetched.as_mut().expect("read");
+        if let Some(summary) = summary {
+            kept.summary = Some(summary.clone());
+        }
+        kept.last.extend(last);
+        kept.last
+            .retain(|id, _| subscriptions.iter().any(|s| &s.id == id));
+        let json = serde_json::to_string_pretty(kept).unwrap();
+        let path = &self.path;
+        let error = |e: std::io::Error| format!("{}: {e}", path.display());
+        std::fs::create_dir_all(path.parent().unwrap()).map_err(error)?;
+        std::fs::write(path, json + "\n").map_err(error)
+    }
+
+    /// What is kept of the fetches, read from its file the first time.
+    fn fetched(&self) -> Result<MutexGuard<'_, Option<Fetched>>, String> {
+        let mut fetched = self.fetched.lock().unwrap();
+        if fetched.is_none() {
+            let kept = match std::fs::read_to_string(&self.path) {
+                // a file that does not parse is started again
+                Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Fetched::default(),
+                Err(e) => return Err(format!("{}: {e}", self.path.display())),
+            };
+            *fetched = Some(kept);
+        }
+        Ok(fetched)
     }
 }
 
@@ -810,15 +801,15 @@ pub struct SubscriptionPatch {
 impl SubscriptionPatch {
     /// Sets what it has (a blank title or journal is none once edited: the
     /// feed's own again).
-    fn apply(self, settings: &mut SubscriptionSettings) {
-        if let Some(title) = self.title {
-            settings.title = Some(title);
+    fn apply(&self, settings: &mut SubscriptionSettings) {
+        if let Some(title) = &self.title {
+            settings.title = Some(title.clone());
         }
         if let Some(kind) = self.kind {
             settings.kind = kind;
         }
-        if let Some(journal) = self.journal {
-            settings.journal = journal;
+        if let Some(journal) = &self.journal {
+            settings.journal = journal.clone();
         }
         if let Some(fetch_pages) = self.fetch_pages {
             settings.fetch_pages = fetch_pages;
@@ -827,6 +818,17 @@ impl SubscriptionPatch {
             settings.boost = boost;
         }
     }
+}
+
+/// A subscription's settings changed by a patch.
+fn update(
+    feeds: &mut Feeds,
+    id: &str,
+    patch: &SubscriptionPatch,
+) -> papers_feeds::Result<Subscription> {
+    let mut settings = feeds.subscription(id)?.settings.clone();
+    patch.apply(&mut settings);
+    feeds.edit_subscription(id, settings)
 }
 
 /// A field that is there, null or not.
@@ -1166,26 +1168,6 @@ fn fetch_now(app: &AppHandle, only: Option<String>) -> Result<FetchSummary, Stri
         .map_err(|_| "the fetch stopped".to_string())?
 }
 
-/// A change of the feeds, the windows told.
-fn change(app: &AppHandle, change: Change) -> Result<Applied, String> {
-    change_in(app, Store::Feeds, change)
-}
-
-/// A change of a store, the windows told.
-pub fn change_in(app: &AppHandle, store: Store, change: Change) -> Result<Applied, String> {
-    let applied = store.of(&app.state::<AppState>()).change(change)?;
-    let _ = app.emit(store.changed(), ());
-    Ok(applied)
-}
-
-/// The subscription a change gives.
-pub fn subscription_of(app: &AppHandle, applied: Applied) -> Result<SubscriptionInfo, String> {
-    match applied {
-        Applied::Subscription(s) => Ok(info(s, &app.state::<AppState>().feeds.lasts()?)),
-        _ => Err("no subscription".to_string()),
-    }
-}
-
 /// Gathers the facts of the library on a thread of its own, the library as
 /// it is now (the index of its papers, none for an empty library; their
 /// identities), and gives them to the feeds and to the works found; the page
@@ -1203,8 +1185,9 @@ pub fn index_library(app: &AppHandle) {
             })
         };
         for (store, build) in builds {
-            if store.of(&state).set_library(build, facts.clone()) {
-                let _ = app.emit(store.changed(), ());
+            let folder = store.of(&state);
+            if folder.set_library(build, facts.clone()) {
+                folder.tell(&app);
             }
         }
     });
@@ -1248,7 +1231,7 @@ pub async fn feeds_view(app: AppHandle, request: ViewRequest) -> Result<FeedView
     blocking(move || {
         let state = app.state::<AppState>();
         let matching = *state.matching.read().unwrap();
-        state.feeds.read(|feeds| view(feeds, matching, &request))
+        (state.feeds.folder).read(|feeds| view(feeds, matching, &request))
     })
     .await
 }
@@ -1278,7 +1261,13 @@ pub async fn feeds_triage(
     ids: Vec<String>,
     triage: Triage,
 ) -> Result<(), String> {
-    blocking(move || change_in(&app, store, Change::Triage(ids, triage)).map(drop)).await
+    blocking(move || {
+        let state = app.state::<AppState>();
+        store.of(&state).change(&app, move |feeds| {
+            (ids.iter()).try_for_each(|id| feeds.set_triage(id, triage))
+        })
+    })
+    .await
 }
 
 /// Items new, to be reminded of `until` (snoozed till then), else now (kept unread).
@@ -1289,7 +1278,13 @@ pub async fn feeds_remind(
     until: Option<DateTime<Utc>>,
 ) -> Result<(), String> {
     let when = until.unwrap_or_else(Utc::now);
-    blocking(move || change(&app, Change::Remind(ids, when)).map(drop)).await
+    blocking(move || {
+        let state = app.state::<AppState>();
+        (state.feeds.folder).change(&app, move |feeds| {
+            ids.iter().try_for_each(|id| feeds.remind(id, when))
+        })
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1297,8 +1292,8 @@ pub async fn feeds_find_papers(app: AppHandle, id: String) -> Result<Vec<Linked>
     blocking(move || {
         let state = app.state::<AppState>();
         let (network, access) = network(&state)?;
-        let found = state.feeds.find_papers(&id, &network, &access);
-        let _ = app.emit(CHANGED, ());
+        let found = state.feeds.folder.find_papers(&id, &network, &access);
+        state.feeds.folder.tell(&app);
         found
     })
     .await
@@ -1309,9 +1304,10 @@ pub async fn feeds_look_up(app: AppHandle, store: Store, id: String) -> Result<b
     blocking(move || {
         let state = app.state::<AppState>();
         let (network, access) = network(&state)?;
-        let asked = store.of(&state).look_up(&id, &network, &access)?;
+        let folder = store.of(&state);
+        let asked = folder.look_up(&id, &network, &access)?;
         if asked {
-            let _ = app.emit(store.changed(), ());
+            folder.tell(&app);
         }
         Ok(asked)
     })
@@ -1333,7 +1329,7 @@ pub async fn feeds_subscriptions(app: AppHandle) -> Result<Vec<SubscriptionInfo>
     blocking(move || {
         let state = app.state::<AppState>();
         let lasts = state.feeds.lasts()?;
-        let subscriptions = state.feeds.read(|feeds| feeds.subscriptions().to_vec())?;
+        let subscriptions = (state.feeds.folder).read(|feeds| feeds.subscriptions().to_vec())?;
         Ok(subscriptions.into_iter().map(|s| info(s, &lasts)).collect())
     })
     .await
@@ -1351,16 +1347,24 @@ pub async fn feeds_subscribe(
         title,
         ..SubscriptionSettings::new(kind)
     };
+    let feed = Feed::from(feed);
     blocking(move || {
-        let applied = change(&app, Change::Subscribe(feed.into(), settings))?;
-        subscription_of(&app, applied)
+        let state = app.state::<AppState>();
+        let subscription = (state.feeds.folder).change(&app, move |feeds| {
+            feeds.subscribe(feed.clone(), settings.clone())
+        })?;
+        state.feeds.info(subscription)
     })
     .await
 }
 
 #[tauri::command]
 pub async fn feeds_unsubscribe(app: AppHandle, id: String) -> Result<(), String> {
-    blocking(move || change(&app, Change::Unsubscribe(id)).map(drop)).await
+    blocking(move || {
+        let state = app.state::<AppState>();
+        (state.feeds.folder).change(&app, move |feeds| feeds.unsubscribe(&id).map(drop))
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1370,8 +1374,10 @@ pub async fn feeds_update_subscription(
     patch: SubscriptionPatch,
 ) -> Result<SubscriptionInfo, String> {
     blocking(move || {
-        let applied = change(&app, Change::Update(id, patch))?;
-        subscription_of(&app, applied)
+        let state = app.state::<AppState>();
+        let subscription =
+            (state.feeds.folder).change(&app, move |feeds| update(feeds, &id, &patch))?;
+        state.feeds.info(subscription)
     })
     .await
 }
@@ -1470,10 +1476,8 @@ pub async fn feeds_import_opml(app: AppHandle, path: PathBuf) -> Result<usize, S
     blocking(move || {
         let text =
             std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        match change(&app, Change::Import(text))? {
-            Applied::Count(added) => Ok(added),
-            _ => Err("no count".to_string()),
-        }
+        let state = app.state::<AppState>();
+        (state.feeds.folder).change(&app, move |feeds| feeds.import_opml(&text))
     })
     .await
 }
@@ -1481,7 +1485,7 @@ pub async fn feeds_import_opml(app: AppHandle, path: PathBuf) -> Result<usize, S
 #[tauri::command]
 pub async fn feeds_export_opml(app: AppHandle, path: PathBuf) -> Result<(), String> {
     blocking(move || {
-        let opml = app.state::<AppState>().feeds.read(Feeds::opml)?;
+        let opml = app.state::<AppState>().feeds.folder.read(Feeds::opml)?;
         std::fs::write(&path, opml).map_err(|e| format!("{}: {e}", path.display()))
     })
     .await
@@ -1492,7 +1496,7 @@ pub async fn feeds_settings(app: AppHandle) -> Result<FeedSettings, String> {
     blocking(move || {
         let state = app.state::<AppState>();
         let settings = Settings::load(&state.settings_path)?;
-        state.feeds.read(|feeds| {
+        state.feeds.folder.read(|feeds| {
             let kept = feeds.settings().clone();
             FeedSettings {
                 interests: kept.interests,
@@ -1513,7 +1517,7 @@ pub async fn feeds_settings(app: AppHandle) -> Result<FeedSettings, String> {
 pub async fn feeds_searches(app: AppHandle) -> Result<Vec<Search>, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        state.feeds.read(|feeds| feeds.searches().to_vec())
+        state.feeds.folder.read(|feeds| feeds.searches().to_vec())
     })
     .await
 }
@@ -1522,7 +1526,11 @@ pub async fn feeds_searches(app: AppHandle) -> Result<Vec<Search>, String> {
 /// given twice.
 #[tauri::command]
 pub async fn feeds_set_searches(app: AppHandle, searches: Vec<Search>) -> Result<(), String> {
-    blocking(move || change(&app, Change::Searches(searches)).map(drop)).await
+    blocking(move || {
+        let state = app.state::<AppState>();
+        (state.feeds.folder).change(&app, move |feeds| feeds.set_searches(searches.clone()))
+    })
+    .await
 }
 
 /// Sets the settings of the feeds; refused, nothing changed, with the
@@ -1537,8 +1545,8 @@ pub async fn feeds_set_settings(app: AppHandle, settings: FeedSettings) -> Resul
             keep_days: settings.keep_days,
             lookback_days: settings.lookback_days,
         };
-        change(&app, Change::Settings(Box::new(kept)))?;
         let state = app.state::<AppState>();
+        (state.feeds.folder).change(&app, move |feeds| feeds.set_settings(kept.clone()))?;
         let mut kept = Settings::load(&state.settings_path)?;
         kept.feeds_poll = settings.poll;
         kept.feeds_poll_minutes = settings.poll_minutes.max(LEAST_MINUTES);
@@ -1631,21 +1639,17 @@ mod tests {
     fn opened(dir: &Path) -> FeedsState {
         let now = Utc.with_ymd_and_hms(2026, 10, 31, 8, 0, 0).unwrap();
         let open: Opener = Box::new(move |dir| Feeds::open_with(dir, Box::new(move || now)));
-        FeedsState::with_opener(dir.join("feeds"), dir.join("feeds-fetched.json"), open)
+        let folder = Folder::with_opener(dir.join("feeds"), CHANGED, open);
+        FeedsState::with_folder(folder, dir.join("feeds-fetched.json"))
     }
 
     fn subscribe(state: &FeedsState, url: &str) -> String {
         let feed = Feed::Rss { url: url.into() };
-        match state
-            .change(Change::Subscribe(
-                feed,
-                SubscriptionSettings::new(SourceKind::Journal),
-            ))
-            .unwrap()
-        {
-            Applied::Subscription(s) => s.id,
-            _ => unreachable!(),
-        }
+        let settings = SubscriptionSettings::new(SourceKind::Journal);
+        let subscription = (state.folder)
+            .apply(move |feeds| feeds.subscribe(feed.clone(), settings.clone()))
+            .unwrap();
+        subscription.id
     }
 
     #[test]
@@ -1696,7 +1700,10 @@ mod tests {
         // kept across a start; a subscription gone is dropped at the next fetch
         let reopened = opened(dir.path());
         assert_eq!(reopened.last_fetch().unwrap(), Some(again));
-        reopened.change(Change::Unsubscribe(news.clone())).unwrap();
+        let gone = news.clone();
+        (reopened.folder)
+            .apply(move |feeds| feeds.unsubscribe(&gone).map(drop))
+            .unwrap();
         let http = Recorded::new().reply(TC, Reply::status(TC, 304));
         reopened
             .fetch(None, &http, &Access::default(), |_| {}, |_| {})
@@ -1706,16 +1713,19 @@ mod tests {
     }
 
     /// The network of a test that changes the feeds while it is asked.
+    /// A change of a folder, made while it is fetched.
+    type Edit<'a> = Box<dyn FnOnce(&Folder) + Send + 'a>;
+
     struct Meanwhile<'a> {
         inner: Recorded,
         state: &'a FeedsState,
-        change: Mutex<Option<Change>>,
+        change: Mutex<Option<Edit<'a>>>,
     }
 
     impl papers_feeds::Http for Meanwhile<'_> {
         fn get(&self, request: &Request) -> Result<Reply, String> {
             if let Some(change) = self.change.lock().unwrap().take() {
-                self.state.change(change).unwrap();
+                change(&self.state.folder);
             }
             self.inner.get(request)
         }
@@ -1730,19 +1740,25 @@ mod tests {
         state
             .fetch(None, &http, &Access::default(), |_| {}, |_| {})
             .unwrap();
-        let id = state.read(|f| f.items()[0].id.clone()).unwrap();
+        let id = state.folder.read(|f| f.items()[0].id.clone()).unwrap();
         let feed = atom("TC", &[("a", "Ice", None), ("b", "Firn", None)]);
         let http = Meanwhile {
             inner: Recorded::new().reply(TC, feed),
             state: &state,
-            change: Mutex::new(Some(Change::Triage(vec![id.clone()], Triage::Shortlisted))),
+            change: Mutex::new(Some(Box::new({
+                let id = id.clone();
+                move |folder: &Folder| {
+                    let shortlist = move |f: &mut Feeds| f.set_triage(&id, Triage::Shortlisted);
+                    folder.apply(shortlist).unwrap()
+                }
+            }))),
         };
         let summary = state
             .fetch(None, &http, &Access::default(), |_| {}, |_| {})
             .unwrap();
         assert_eq!(summary.added, 1);
-        assert_eq!(state.read(|f| f.triage(&id)).unwrap(), Triage::Shortlisted);
-        assert_eq!(state.read(|f| f.items().len()).unwrap(), 2);
+        let read = |f: &Feeds| (f.triage(&id), f.items().len());
+        assert_eq!(state.folder.read(read).unwrap(), (Triage::Shortlisted, 2));
         let reopened = Feeds::open(&dir.path().join("feeds")).unwrap();
         assert_eq!(reopened.triage(&id), Triage::Shortlisted, "written");
     }
@@ -1760,13 +1776,16 @@ mod tests {
         let http = Meanwhile {
             inner: Recorded::new().reply(TC, atom("TC", &[("a", "Ice", None)])),
             state: &state,
-            change: Mutex::new(Some(Change::Searches(vec![search("New")]))),
+            change: Mutex::new(Some(Box::new(move |folder: &Folder| {
+                let new = move |f: &mut Feeds| f.set_searches(vec![search("New")]);
+                folder.apply(new).unwrap()
+            }))),
         };
         state
             .fetch(None, &http, &Access::default(), |_| {}, |_| {})
             .unwrap();
         let names = |state: &FeedsState| {
-            state.read(|f| {
+            state.folder.read(|f| {
                 f.searches()
                     .iter()
                     .map(|s| s.name.clone())
@@ -1774,8 +1793,8 @@ mod tests {
             })
         };
         assert_eq!(names(&state).unwrap(), ["New"]);
-        let twice = Change::Searches(vec![search("A"), search("a")]);
-        assert!(state.change(twice).is_err());
+        let twice = move |f: &mut Feeds| f.set_searches(vec![search("A"), search("a")]);
+        assert!(state.folder.apply(twice).is_err());
         assert_eq!(
             names(&opened(dir.path())).unwrap(),
             ["New"],
@@ -1789,8 +1808,8 @@ mod tests {
         let state = Arc::new(opened(dir.path()));
         subscribe(&state, TC);
         // a fetch reading the feeds, which goes on to look up
-        let reading = state.reading.lock().unwrap();
-        state.following.store(true, Ordering::SeqCst);
+        let reading = state.fetching.reading.lock().unwrap();
+        state.fetching.following.store(true, Ordering::SeqCst);
         let joining = {
             let state = state.clone();
             let fetch =
@@ -1840,7 +1859,9 @@ mod tests {
             }],
             ..papers_feeds::FeedSettings::default()
         };
-        state.change(Change::Settings(Box::new(kept))).unwrap();
+        (state.folder)
+            .apply(move |f| f.set_settings(kept.clone()))
+            .unwrap();
         let index = |title: &str| {
             let doc = papers_core::Doc {
                 id: "lib".into(),
@@ -1852,10 +1873,11 @@ mod tests {
                 ..LibraryFacts::default()
             })
         };
-        let (old, new) = (state.next_build(), state.next_build());
-        assert!(state.set_library(new, index("Firn densification")));
+        let folder = &state.folder;
+        let (old, new) = (folder.next_build(), folder.next_build());
+        assert!(folder.set_library(new, index("Firn densification")));
         assert!(
-            !state.set_library(old, index("Ice")),
+            !folder.set_library(old, index("Ice")),
             "an older build is dropped"
         );
         let http = Recorded::new().reply(
@@ -1869,7 +1891,7 @@ mod tests {
             .fetch(None, &http, &Access::default(), |_| {}, |_| {})
             .unwrap();
         let triage = |title: &str| {
-            state
+            (state.folder)
                 .read(|f| f.triage(&f.items().iter().find(|i| i.title == title).unwrap().id))
                 .unwrap()
         };
@@ -1880,7 +1902,7 @@ mod tests {
         );
         assert_eq!(triage("Ice"), Triage::New);
         let like = |title: &str| {
-            state
+            (state.folder)
                 .read(|f| {
                     f.like(f.items().iter().find(|i| i.title == title).unwrap())
                         .map(|l| l.score)
@@ -1889,7 +1911,7 @@ mod tests {
         };
         assert!(like("Firn densification").is_some_and(|l| l > 99.9));
         let empty = Arc::new(LibraryFacts::default());
-        assert!(state.set_library(state.next_build(), empty));
+        assert!(folder.set_library(folder.next_build(), empty));
         assert_eq!(like("Firn densification"), None);
     }
 
@@ -1956,13 +1978,12 @@ mod tests {
             title: title.clone(),
             ..SubscriptionSettings::new(SourceKind::Journal)
         };
-        let Applied::Subscription(s) = state.change(Change::Subscribe(feed, settings)).unwrap()
-        else {
-            unreachable!()
-        };
+        let s = (state.folder)
+            .apply(move |f| f.subscribe(feed.clone(), settings.clone()))
+            .unwrap();
         assert_eq!(s.settings.title, title);
         assert_eq!(
-            state
+            (state.folder)
                 .read(|f| f.subscriptions()[0].settings.title.clone())
                 .unwrap(),
             title
@@ -2027,10 +2048,9 @@ mod tests {
         let id = subscribe(&state, "https://eos.org/feed");
         let update = |patch: &str| {
             let patch: SubscriptionPatch = serde_json::from_str(patch).unwrap();
-            match state.change(Change::Update(id.clone(), patch)).unwrap() {
-                Applied::Subscription(s) => s.settings,
-                _ => unreachable!(),
-            }
+            let id = id.clone();
+            let edited = state.folder.apply(move |f| update(f, &id, &patch));
+            edited.unwrap().settings
         };
         update(r#"{"title": "Eos", "journal": "Eos"}"#);
         let eos = update(r#"{"title": " ", "kind": "news", "journal": null}"#);
