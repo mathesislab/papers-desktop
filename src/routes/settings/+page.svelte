@@ -1,103 +1,45 @@
 <script lang="ts">
-  import { getVersion } from "@tauri-apps/api/app";
+  // The settings window: a bar of tabs (⌘1…⌘5, Ctrl elsewhere), the tab shown, which scrolls, and the line at its
+  // foot. The tabs stay made while the window is open: each keeps what is typed in it, and where it was scrolled.
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { open } from "@tauri-apps/plugin-dialog";
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
-  import { mac, matches, zoomStep } from "$lib/keys";
-  import { writers as listWriters } from "$lib/library/writes";
+  import { label, matches, zoomStep } from "$lib/keys";
+  import AdvancedSettings from "$lib/settings/AdvancedSettings.svelte";
   import FeedsSettings from "$lib/settings/FeedsSettings.svelte";
-  import { Preferences, type Settings, type View } from "$lib/settings/settings.svelte";
-  import type { Writer } from "$lib/types";
+  import GeneralSettings from "$lib/settings/GeneralSettings.svelte";
+  import LibrarySettings from "$lib/settings/LibrarySettings.svelte";
+  import SearchSettings from "$lib/settings/SearchSettings.svelte";
+  import { Preferences } from "$lib/settings/settings.svelte";
+  import { Updates } from "$lib/settings/updates.svelte";
 
-  /** mirrors cli_tool::Status */
-  type Cli = {
-    available: boolean;
-    link: string | null;
-    state: "missing" | "ours" | "foreign";
-    points_to: string | null;
-    current: boolean;
-  };
-  /** mirrors cli_tool::Failure */
-  type CliFailure = { kind: "foreign" | "denied" | "failed"; message: string };
-  /** mirrors cli_tool::PathAdvice: `line` to add to the startup file `file` of the shell; `added`: it is there already */
-  type CliPath = { on_path: boolean; line: string; file: string | null; added: boolean };
-  /** mirrors update::Available */
-  type Update = { version: string };
-  /** mirrors update::Installed */
-  type Installed = { version: string; from: string };
-
-  /** the option of the style menu that asks for a .csl file */
-  const OTHER = "\u0000other";
+  /** the tabs, in the order of the bar and of their keys; their ids are the sections `open_settings` names */
+  const TABS = [
+    { id: "library", name: "Library" },
+    { id: "feeds", name: "Feeds" },
+    { id: "search", name: "Search" },
+    { id: "general", name: "General" },
+    { id: "advanced", name: "Advanced" },
+  ] as const;
+  type Tab = (typeof TABS)[number]["id"];
 
   const prefs = new Preferences();
-  const { save, show } = prefs;
-  let settings = $derived(prefs.settings);
-  let home = $derived(prefs.home);
-  /** the hotkey whose keys are being recorded */
-  type HotkeyField = "hotkey" | "selection_hotkey";
-  let recording = $state<HotkeyField | null>(null);
-
-  // a style that is not bundled: a .csl file
-  let custom = $derived(
-    settings && !prefs.styles.includes(settings.citation_style) ? settings.citation_style : null,
-  );
-
-  // updates: the version found, and where its install is; the one installed
-  // just before this start
-  let version = $state("");
-  let update = $state<Update | null>(null);
-  let installed = $state<Installed | null>(null);
-  let updating = $state<"idle" | "checking" | "current" | "installing" | "failed">("idle");
-  let updateError = $state("");
-  let progress = $state<{ done: number; total: number | null }>({ done: 0, total: null });
-
-  let updateStatus = $derived.by(() => {
-    switch (updating) {
-      case "checking":
-        return "Looking for updates…";
-      case "current":
-        return "Papers Desktop is up to date.";
-      case "failed":
-        return updateError;
-      case "installing":
-        return progress.total
-          ? `Downloading… ${Math.round((100 * progress.done) / progress.total)}%`
-          : "Downloading…";
-      default:
-        return update ? `Version ${update.version} is available.` : "";
-    }
-  });
+  const updates = new Updates();
+  /** the tab shown: the last one while the window is open; Library at first */
+  let tab = $state<Tab>("library");
 
   onMount(() => {
     load();
-    const unlisten = [
-      listen<Update | null>("update", (e) => (update = e.payload)),
-      listen<[number, number | null]>("update-progress", (e) => {
-        progress = { done: e.payload[0], total: e.payload[1] };
-      }),
-      listen<string>("section", (e) => showSection(e.payload)),
-      // the panel hidden, or its folder chosen, in the main window
-      listen("downloads", syncDownloads),
-      // ⌘+ and ⌘- in another window
-      listen<Settings["text_size"]>("text-size", (e) => {
-        if (settings) settings.text_size = e.payload;
-      }),
-    ];
-    return () => unlisten.forEach((u) => u.then((f) => f()));
+    const unlisten = listen<string>("section", (e) => showSection(e.payload));
+    return () => unlisten.then((f) => f());
   });
 
   /** Fill the window, then show it: it is made hidden, not to flash empty.
    *  Its URL may name a section to show ("settings#updates"). */
   async function load() {
-    await Promise.allSettled([
-      refresh(),
-      getVersion().then((v) => (version = v)),
-      invoke<Update | null>("found_update").then((found) => (update = found)),
-      invoke<Installed | null>("installed_update").then((done) => (installed = done)),
-    ]);
+    await Promise.allSettled([prefs.load(), updates.load()]);
     await tick();
     const window = getCurrentWindow();
     await window.show();
@@ -105,597 +47,72 @@
     if (location.hash) showSection(location.hash.slice(1));
   }
 
-  /** Scroll to a section; the updates also look for one, unless found. */
-  function showSection(id: string) {
-    document.getElementById(id)?.scrollIntoView({ block: "start" });
-    if (id === "updates" && !update && updating !== "checking" && updating !== "installing") checkUpdate();
-  }
-
-  async function checkUpdate() {
-    updating = "checking";
-    try {
-      update = await invoke<Update | null>("check_update");
-      updating = update ? "idle" : "current";
-    } catch (err) {
-      updateError = `Cannot look for updates: ${err}`;
-      updating = "failed";
+  /** Show a section the app names: a tab, or "updates", those of the General tab, which also look for one unless
+   *  found. */
+  async function showSection(section: string) {
+    if (section === "updates") {
+      tab = "general";
+      await tick();
+      document.getElementById("updates")?.scrollIntoView({ block: "start" });
+      updates.lookFor();
+      return;
     }
+    const named = TABS.find((t) => t.id === section);
+    if (named) tab = named.id;
   }
 
-  /** Download and install the update; the app then restarts. */
-  async function installUpdate() {
-    updating = "installing";
-    try {
-      await invoke("install_update");
-    } catch (err) {
-      updateError = `Cannot install the update: ${err}`;
-      updating = "failed";
-    }
-  }
+  /** the key of the tab at `i`: its digit, whatever the layout types there */
+  const shortcut = (i: number) => ({ key: String(i + 1), code: `Digit${i + 1}`, mod: true });
 
-  async function refresh() {
-    await prefs.load();
-    writers = await listWriters();
-    cli = await invoke<Cli>("cli_status");
-    // starts the shell of the user: not waited for
-    findCliPath();
-  }
-
-  /** the papers-rs command line tool: its link, and whether ~/.local/bin is in the PATH of the user's shell */
-  let cli = $state<Cli | null>(null);
-  let cliBusy = $state(false);
-  let cliPath = $state<CliPath | null>(null);
-
-  async function findCliPath() {
-    cliPath = null;
-    if (cli?.state !== "ours") return;
-    try {
-      cliPath = await invoke<CliPath>("cli_path");
-    } catch {
-      cliPath = null;
-    }
-  }
-
-  /** Add ~/.local/bin to the PATH in the startup file of the shell, on the click. */
-  async function addCliPath() {
-    cliBusy = true;
-    try {
-      cliPath = await invoke<CliPath>("add_cli_path");
-      show(`Added to ${tilde(cliPath.file ?? "")}`, false);
-    } catch (err) {
-      show((err as CliFailure).message ?? String(err), true);
-    } finally {
-      cliBusy = false;
-    }
-  }
-
-  let cliStatus = $derived.by(() => {
-    if (!cli) return "";
-    if (!cli.available) return "Not in this build of the app";
-    const link = cli.link ? tilde(cli.link) : "";
-    if (cli.state === "foreign") return `${link} is another program: left as it is`;
-    if (cli.state === "missing") return "Not installed";
-    return cli.current ? `Installed: ${link}` : `${link} points to another copy: ${tilde(cli.points_to ?? "")}`;
-  });
-
-  async function changeCli(command: "install_cli" | "uninstall_cli") {
-    cliBusy = true;
-    try {
-      cli = await invoke<Cli>(command);
-      show(command === "install_cli" ? "Installed" : "Removed", false);
-      findCliPath();
-    } catch (err) {
-      show((err as CliFailure).message ?? String(err), true);
-    } finally {
-      cliBusy = false;
-    }
-  }
-
-  /** A path with ~ for the home folder. */
-  function tilde(path: string): string {
-    return home && path.startsWith(home + "/") ? "~" + path.slice(home.length) : path;
-  }
-
-  /** how each .bib file is written: by papers-rs, by a papers command, or by the app */
-  let writers = $state<Writer[]>([]);
-
-  function writtenBy(file: string): Writer | undefined {
-    const path = home && file.startsWith("~/") ? home + file.slice(1) : file;
-    return writers.find((w) => w.bib === path);
-  }
-
-  async function addBibs() {
-    const picked = await open({
-      multiple: true,
-      title: "Add .bib files",
-      filters: [{ name: "BibTeX", extensions: ["bib"] }],
-    });
-    if (!picked || !settings) return;
-    const added = (Array.isArray(picked) ? picked : [picked]).filter(
-      (file) => !settings!.bibtex.includes(file),
-    );
-    if (added.length) await save({ bibtex: [...settings.bibtex, ...added] });
-  }
-
-  /** The settings of the Downloads panel as they are now. */
-  async function syncDownloads() {
-    if (!settings) return;
-    const { settings: now } = await invoke<View>("get_settings");
-    settings.downloads_panel = now.downloads_panel;
-    settings.downloads_folder = now.downloads_folder;
-  }
-
-  async function chooseDownloads() {
-    const folder = await open({
-      directory: true,
-      title: "The folder of the Downloads panel",
-      defaultPath: settings?.downloads_folder.replace(/^~(?=\/)/, home ?? "~"),
-    });
-    if (typeof folder === "string") await save({ downloads_folder: folder });
-  }
-
-  async function chooseStyle(e: Event & { currentTarget: HTMLSelectElement }) {
-    const value = e.currentTarget.value;
-    if (value !== OTHER) return save({ citation_style: value });
-    // the menu shows the current style until a file is chosen
-    e.currentTarget.value = settings!.citation_style;
-    const file = await open({ title: "A CSL style", filters: [{ name: "CSL style", extensions: ["csl"] }] });
-    if (typeof file === "string") await save({ citation_style: file });
-  }
-
-  /** a service of *Search online* being added */
-  let service = $state({ name: "", url: "" });
-
-  /** The service typed, after the others: saved, the fields emptied; refused, said, the fields kept. */
-  async function addService() {
-    if (!settings) return;
-    const typed = { name: service.name.trim(), url: service.url.trim() };
-    if (await save({ search_services: [...settings.search_services, typed] })) service = { name: "", url: "" };
-  }
-
-  let recentCleared = $state(false);
-
-  async function clearRecent() {
-    await invoke("clear_recent");
-    recentCleared = true;
-  }
-
-  async function releaseNotes(of: string) {
-    try {
-      await invoke("release_notes", { version: of });
-    } catch (err) {
-      show(String(err), true);
-    }
-  }
-
-  async function sendFeedback() {
-    try {
-      await invoke("send_feedback");
-    } catch (err) {
-      show(String(err), true);
-    }
-  }
-
-  async function toggleStartAtLogin() {
-    try {
-      prefs.startAtLogin = await invoke<boolean>("set_start_at_login", { on: !prefs.startAtLogin });
-    } catch (err) {
-      show(String(err), true);
-    }
-  }
-
-  /** While recording, the keys pressed become the hotkey; Esc gives up. */
+  /** ⌘W closes the window, ⌘+ and ⌘- change the text size, ⌘1…⌘5 show a tab. A hotkey being recorded takes the
+   *  keys before (SearchSettings). */
   function onkeydown(e: KeyboardEvent) {
-    if (!recording) {
-      if (matches(e, { key: "w", mod: true })) getCurrentWindow().close();
-      const zoom = zoomStep(e);
-      if (zoom !== null) {
-        e.preventDefault();
-        invoke("text_size_step", { steps: zoom });
-      }
-      return;
+    if (matches(e, { key: "w", mod: true })) getCurrentWindow().close();
+    const zoom = zoomStep(e);
+    if (zoom !== null) {
+      e.preventDefault();
+      invoke("text_size_step", { steps: zoom });
     }
-    e.preventDefault();
-    if (e.key === "Escape") {
-      recording = null;
-      return;
+    const n = TABS.findIndex((_, i) => matches(e, shortcut(i)));
+    if (n >= 0) {
+      e.preventDefault();
+      tab = TABS[n].id;
     }
-    const key = keyName(e.code);
-    if (!key) return; // a modifier, so far
-    const modifiers = [e.ctrlKey && "Ctrl", e.altKey && "Alt", e.shiftKey && "Shift", e.metaKey && "Cmd"];
-    const held = modifiers.filter((m): m is string => !!m);
-    if (!held.length) {
-      show(`A hotkey needs a modifier: ${mac ? "⌘, ⌥, ⌃ or ⇧" : "Ctrl, Alt or Shift"}`, true);
-      return;
-    }
-    const field = recording;
-    recording = null;
-    save({ [field]: [...held, key].join("+") });
-  }
-
-  /** The name of a key for the hotkey ("KeyP" is P), or none for a modifier. */
-  function keyName(code: string): string | null {
-    if (/^(Meta|OS|Control|Alt|Shift)(Left|Right)?$|^(Fn|CapsLock)$/.test(code)) return null;
-    return code.replace(/^Key/, "").replace(/^Digit/, "");
-  }
-
-  /** "Alt+Space" as ⌥Space on macOS. */
-  function pretty(hotkey: string): string {
-    if (!mac) return hotkey;
-    const symbols: Record<string, string> = { Ctrl: "⌃", Control: "⌃", Alt: "⌥", Option: "⌥", Shift: "⇧", Cmd: "⌘", Command: "⌘", Super: "⌘" };
-    const parts = hotkey.split("+");
-    const key = parts.pop()!;
-    return parts.map((part) => symbols[part] ?? part).join("") + key;
-  }
-
-  const styleName = (name: string) =>
-    name.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
-  const fileName = (path: string) => path.split(/[\\/]/).pop()!;
-
-  /** The folder of a file, with ~ for the home folder. */
-  function folder(path: string): string {
-    const dir = path.slice(0, path.length - fileName(path).length - 1);
-    return home && dir.startsWith(home) ? "~" + dir.slice(home.length) : dir;
   }
 </script>
 
 <svelte:window {onkeydown} />
 
-{#snippet recorder(field: HotkeyField, keys: string)}
-  <button
-    class="hotkey"
-    class:recording={recording === field}
-    onclick={() => (recording = recording === field ? null : field)}
-  >
-    {recording === field ? "Press the keys…" : pretty(keys)}
-  </button>
-{/snippet}
-
-{#if settings}
-  <main>
-    <section>
-      <h2>Library</h2>
-      <ul class="files">
-        {#each settings.bibtex as file (file)}
-          <li>
-            <span class="file" title={file}>
-              <span>{fileName(file)}</span>
-              <span class="path">{folder(file)}</span>
-              {#if writtenBy(file)}
-                {@const writer = writtenBy(file)!}
-                <span class="path" class:error={writer.kind === "papers-missing" || writer.problem !== null}>
-                  {writer.problem ??
-                    (writer.kind === "papers-rs"
-                      ? "A papers library, written by papers-rs (built in)"
-                      : writer.kind === "papers"
-                        ? `A papers library, written by papers ${writer.version}`
-                        : writer.kind === "native"
-                          ? "Written by the app"
-                          : "A papers library: read-only until the papers command (3.0.0b4 or later) is found")}
-                </span>
-              {/if}
-            </span>
-            <button
-              class="remove"
-              title="Remove from the library"
-              onclick={() => save({ bibtex: settings!.bibtex.filter((f) => f !== file) })}>✕</button
-            >
-          </li>
+{#if prefs.settings}
+  <main class="settings">
+    <div class="tabs" role="tablist" aria-label="Settings">
+      {#each TABS as t, i (t.id)}
+        <button
+          role="tab"
+          id="tab-{t.id}"
+          aria-selected={tab === t.id}
+          aria-controls="panel-{t.id}"
+          class:on={tab === t.id}
+          title={label(shortcut(i))}
+          onclick={() => (tab = t.id)}>{t.name}</button
+        >
+      {/each}
+    </div>
+    {#each TABS as t (t.id)}
+      <div class="panel" role="tabpanel" id="panel-{t.id}" aria-labelledby="tab-{t.id}" hidden={tab !== t.id}>
+        {#if t.id === "library"}
+          <LibrarySettings {prefs} />
+        {:else if t.id === "feeds"}
+          <FeedsSettings notify={prefs.show} />
+        {:else if t.id === "search"}
+          <SearchSettings {prefs} shown={tab === "search"} />
+        {:else if t.id === "general"}
+          <GeneralSettings {prefs} {updates} />
         {:else}
-          <li class="none">No .bib file: add the files of your library.</li>
-        {/each}
-      </ul>
-      <button onclick={addBibs}>Add .bib Files…</button>
-      <p class="hint">The panel searches them all, and reloads one when it changes.</p>
-      <label class="row">
-        <span>
-          <span class="label">Writes papers libraries</span>
-          <span class="hint">Built in, or a command of the papers standard; the files and the history are the same</span>
-        </span>
-        <select
-          value={settings.writer}
-          onchange={(e) => save({ writer: e.currentTarget.value as Settings["writer"] })}
-        >
-          <option value="built-in">Built in (papers-rs)</option>
-          <option value="command">A papers command</option>
-        </select>
-      </label>
-      {#if settings.writer === "command"}
-        <label class="row">
-          <span>
-            <span class="label">papers command</span>
-            <span class="hint">Its path; empty: the one your shell finds</span>
-          </span>
-          <input
-            class="text"
-            type="text"
-            placeholder="papers"
-            spellcheck="false"
-            value={settings.papers}
-            onchange={(e) => save({ papers: e.currentTarget.value.trim() })}
-          />
-        </label>
-      {/if}
-      <label class="row">
-        <span>
-          <span class="label">Downloads panel</span>
-          <span class="hint"
-            >Under the sidebar: the PDFs of a folder outside the library, to drag into it. Only the names, sizes and
-            dates of that folder are read.</span
-          >
-        </span>
-        <input
-          type="checkbox"
-          class="switch"
-          checked={settings.downloads_panel}
-          onchange={(e) => save({ downloads_panel: e.currentTarget.checked })}
-        />
-      </label>
-      {#if settings.downloads_panel}
-        <div class="row">
-          <span>
-            <span class="label">Downloads folder</span>
-            <span class="hint" title={settings.downloads_folder}>{tilde(settings.downloads_folder)}</span>
-          </span>
-          <button onclick={chooseDownloads}>Choose…</button>
-        </div>
-      {/if}
-    </section>
-
-    <section>
-      <h2>Citations</h2>
-      <label class="row">
-        <span>
-          <span class="label">Style</span>
-          <span class="hint">Of the citation in the preview</span>
-        </span>
-        <select value={settings.citation_style} onchange={chooseStyle}>
-          {#each prefs.styles as name (name)}<option value={name}>{styleName(name)}</option>{/each}
-          {#if custom}<option value={custom}>{fileName(custom)}</option>{/if}
-          <option value={OTHER}>Other .csl File…</option>
-        </select>
-      </label>
-    </section>
-
-    <section id="search">
-      <h2>Search</h2>
-      <div class="row">
-        <span>
-          <span class="label">Hotkey</span>
-          <span class="hint">Shows the panel, from any app</span>
-        </span>
-        {@render recorder("hotkey", settings.hotkey)}
-      </div>
-      {#if settings.selection_hotkey !== undefined}
-        <div class="row">
-          <span>
-            <span class="label">Search the selection</span>
-            <span class="hint">Finds the text selected in any app</span>
-          </span>
-          {@render recorder("selection_hotkey", settings.selection_hotkey)}
-        </div>
-      {:else if mac}
-        <div class="row">
-          <span>
-            <span class="label">Search the selection</span>
-            <span class="hint"
-              >In any app: Services → Search Papers. System Settings → Keyboard → Keyboard Shortcuts → Services
-              gives it a shortcut.</span
-            >
-          </span>
-        </div>
-      {/if}
-      <label class="row">
-        <span>
-          <span class="label">Match inside words</span>
-          <span class="hint">“stab” also finds Multistability</span>
-        </span>
-        <input
-          type="checkbox"
-          class="switch"
-          checked={settings.matching === "inside-words"}
-          onchange={(e) => save({ matching: e.currentTarget.checked ? "inside-words" : "word-start" })}
-        />
-      </label>
-      <h3>Search online</h3>
-      <p class="hint">
-        The services of the Search tab's <b>Online ▾</b>, after Google Scholar and Google: the query opened in the
-        browser. In the address, <code>{"{query}"}</code> is the query as words, <code>{"{scholar}"}</code> as Google
-        Scholar takes it (<code>author:</code>, <code>intitle:</code>, <code>source:</code>).
-      </p>
-      <ul class="files">
-        {#each settings.search_services as s, i (s.name)}
-          <li>
-            <span class="file" title={s.url}>
-              <span>{s.name}</span>
-              <span class="path">{s.url}</span>
-            </span>
-            <button
-              class="remove"
-              title="Remove the service"
-              onclick={() => save({ search_services: settings!.search_services.filter((_, j) => j !== i) })}>✕</button
-            >
-          </li>
-        {/each}
-      </ul>
-      <form
-        class="service"
-        onsubmit={(e) => {
-          e.preventDefault();
-          addService();
-        }}
-      >
-        <input class="text name" type="text" placeholder="Name" spellcheck="false" bind:value={service.name} />
-        <input
-          class="text"
-          type="text"
-          placeholder={"https://…?q={query}"}
-          spellcheck="false"
-          autocomplete="off"
-          bind:value={service.url}
-        />
-        <button type="submit" disabled={!service.name.trim() || !service.url.trim()}>Add</button>
-      </form>
-    </section>
-
-    <FeedsSettings notify={show} />
-
-    <section>
-      <h2>General</h2>
-      <label class="row">
-        <span class="label">Start at login</span>
-        <input type="checkbox" class="switch" checked={prefs.startAtLogin} onchange={toggleStartAtLogin} />
-      </label>
-      <label class="row">
-        <span>
-          <span class="label">Text size</span>
-          <span class="hint">Zooms every window ({mac ? "⌘+ ⌘- ⌘0" : "Ctrl+ + - 0"})</span>
-        </span>
-        <select
-          value={settings.text_size}
-          onchange={(e) => save({ text_size: e.currentTarget.value as Settings["text_size"] })}
-        >
-          <option value="smallest">Smallest</option>
-          <option value="smaller">Smaller</option>
-          <option value="default">Default</option>
-          <option value="larger">Larger</option>
-          <option value="largest">Largest</option>
-        </select>
-      </label>
-      <div class="row">
-        <span>
-          <span class="label">Recent papers</span>
-          <span class="hint">The papers opened or copied last, listed in the empty panel</span>
-        </span>
-        <button disabled={recentCleared} onclick={clearRecent}>{recentCleared ? "Cleared" : "Clear"}</button>
-      </div>
-      <label class="row">
-        <span>
-          <span class="label">After closing a paper</span>
-          <span class="hint">In the main window ({mac ? "⌘W" : "Ctrl+W"})</span>
-        </span>
-        <select
-          value={settings.after_close}
-          onchange={(e) => save({ after_close: e.currentTarget.value as Settings["after_close"] })}
-        >
-          <option value="next">Show what was shown before it</option>
-          <option value="library">Show the library</option>
-        </select>
-      </label>
-      <div class="row">
-        <span>
-          <span class="label">Command line tool</span>
-          <span class="hint" class:error={cli?.state === "foreign"}>{cliStatus}</span>
-          <span class="hint"
-            >papers-rs is the same program as the built-in writer; papers (Python) can be installed alongside.</span
-          >
-          {#if cliPath && !cliPath.on_path}
-            <span class="hint">~/.local/bin is not in the PATH of your shell. Add this line to its startup file:</span>
-            <code class="cmd">{cliPath.line}</code>
-            {#if cliPath.added}
-              <span class="hint">It is in {tilde(cliPath.file ?? "")} already: open a new terminal.</span>
-            {/if}
-          {/if}
-        </span>
-        {#if cli?.available && cli.state !== "foreign"}
-          <span class="buttons">
-            {#if cliPath && !cliPath.on_path && cliPath.file && !cliPath.added}
-              <button disabled={cliBusy} onclick={addCliPath}>Add to {tilde(cliPath.file)}</button>
-            {/if}
-            {#if cli.state === "ours"}
-              <button disabled={cliBusy} onclick={() => changeCli("uninstall_cli")}>Uninstall</button>
-            {/if}
-            {#if cli.state === "missing" || !cli.current}
-              <button disabled={cliBusy} onclick={() => changeCli("install_cli")}>
-                {cli.state === "missing" ? "Install" : "Point to This App"}
-              </button>
-            {/if}
-          </span>
+          <AdvancedSettings {prefs} />
         {/if}
       </div>
-      <label class="row">
-        <span>
-          <span class="label">Email</span>
-          <span class="hint">Sent to doi.org and OpenAlex, which answer faster to programs that give one (optional).</span>
-        </span>
-        <input
-          class="text"
-          type="email"
-          placeholder="you@example.org"
-          spellcheck="false"
-          autocapitalize="off"
-          value={settings.email}
-          onchange={(e) => save({ email: e.currentTarget.value.trim() })}
-        />
-      </label>
-      <label class="row">
-        <span>
-          <span class="label">OpenAlex API key</span>
-          <span class="hint">Free key from openalex.org: more searches a day than without (optional)</span>
-        </span>
-        <input
-          class="text"
-          type="password"
-          autocomplete="off"
-          spellcheck="false"
-          value={settings.openalex_key}
-          onchange={(e) => save({ openalex_key: e.currentTarget.value.trim() })}
-        />
-      </label>
-    </section>
-
-    <section id="updates">
-      <h2>Updates</h2>
-      <div class="row">
-        <span>
-          <span class="label">Version {version}</span>
-          <span class="hint" class:error={updating === "failed"}>{updateStatus}</span>
-        </span>
-        {#if update}
-          <button class="primary" disabled={updating === "installing"} onclick={installUpdate}>
-            Install {update.version} and Restart
-          </button>
-        {:else}
-          <button disabled={updating === "checking"} onclick={checkUpdate}>Check for Updates Now</button>
-        {/if}
-      </div>
-      {#if updating === "installing"}
-        <progress value={progress.done} max={progress.total ?? undefined}></progress>
-      {/if}
-      {#if installed}
-        {@const done = installed}
-        <p class="news">
-          Updated from {done.from}.
-          <button class="link" onclick={() => releaseNotes(done.version)}>What's new in {done.version}</button>
-        </p>
-      {/if}
-      {#if update}
-        {@const found = update}
-        <p class="news">
-          <button class="link" onclick={() => releaseNotes(found.version)}>What's new in {found.version}</button>
-        </p>
-      {/if}
-      <label class="row">
-        <span>
-          <span class="label">Check for updates automatically</span>
-          <span class="hint">At start and twice a day; installed only when you ask</span>
-        </span>
-        <input
-          type="checkbox"
-          class="switch"
-          checked={settings.check_updates}
-          onchange={(e) => save({ check_updates: e.currentTarget.checked })}
-        />
-      </label>
-      <div class="row">
-        <span>
-          <span class="label">Feedback</span>
-          <span class="hint">Report a problem or suggest an idea, on GitHub</span>
-        </span>
-        <button onclick={sendFeedback}>Send Feedback…</button>
-      </div>
-    </section>
-
+    {/each}
     <footer class:error={prefs.notice?.error}>{prefs.notice?.text ?? "Changes apply at once."}</footer>
   </main>
 {/if}
@@ -714,222 +131,53 @@
   main {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 20px 22px 16px;
+    height: 100vh;
   }
 
-  h2 {
-    margin: 0 0 6px 2px;
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  section {
-    padding: 4px 14px 12px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--menu-bg);
-  }
-  section h2 {
-    margin: 10px 0 4px;
-  }
-
-  .row {
+  /* the bar of tabs: the one shown lifted, in the accent */
+  .tabs {
+    flex: none;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 8px 0;
-  }
-  .row + .row {
-    border-top: 1px solid var(--line);
-  }
-  .label {
-    display: block;
-  }
-  .hint {
-    display: block;
-    margin-top: 1px;
-    color: var(--muted);
-    font-size: 11.5px;
-  }
-
-  .files {
-    margin: 4px 0 10px;
-    padding: 0;
-    list-style: none;
-  }
-  .files li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 0;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--line);
+    background: var(--sidebar);
   }
-  .files .file {
-    flex: 1;
-    min-width: 0;
-  }
-  .files .file > span {
-    display: block;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .files .path {
-    color: var(--muted);
-    font-size: 11px;
-  }
-  .files .path.error {
-    color: var(--error);
-  }
-  input.text {
-    width: 220px;
-    padding: 4px 8px;
-    border: 1px solid var(--border);
+  .tabs button {
+    padding: 4px 12px;
+    border: 1px solid transparent;
     border-radius: 6px;
-    background: transparent;
-    color: var(--fg);
-    font: inherit;
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 12px;
-  }
-  .buttons {
-    display: flex;
-    flex: none;
-    gap: 6px;
-  }
-  code.cmd {
-    display: block;
-    margin-top: 4px;
-    font-size: 11px;
-    word-break: break-all;
-    -webkit-user-select: text;
-    user-select: text;
-  }
-  .files .none {
-    color: var(--muted);
-  }
-  section h3 {
-    margin: 14px 0 2px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  code {
-    font-size: 11px;
-  }
-  /* a service of Search online being added: its name, its address taking the room */
-  .service {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-  .service input.text {
-    flex: 1;
-    width: auto;
-    min-width: 0;
-  }
-  .service input.name {
-    flex: none;
-    width: 110px;
-  }
-
-  button,
-  select {
-    font: inherit;
-    color: var(--fg);
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    cursor: pointer;
-  }
-  select {
-    max-width: 230px;
-  }
-  .remove {
-    padding: 0 6px;
-    border: none;
     background: none;
     color: var(--muted);
   }
-  .remove:hover {
-    color: var(--error);
+  .tabs button:hover {
+    color: var(--fg);
   }
-  button.primary {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-  button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  progress {
-    width: 100%;
-    margin: 2px 0 8px;
-    accent-color: var(--accent);
-  }
-  .news {
-    margin: 0 0 6px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  button.link {
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--accent);
-    font-size: inherit;
-    cursor: pointer;
-  }
-  .hint.error {
-    color: var(--error);
-  }
-  .hotkey {
-    min-width: 120px;
-    font-variant-numeric: tabular-nums;
-  }
-  .hotkey.recording {
-    border-color: var(--accent);
+  .tabs button.on {
+    border-color: var(--line);
+    background: var(--menu-bg);
     color: var(--accent);
   }
 
-  .switch {
-    appearance: none;
-    flex: none;
-    position: relative;
-    width: 34px;
-    height: 20px;
-    margin: 0;
-    border-radius: 10px;
-    background: var(--border);
-    cursor: pointer;
-    transition: background 0.15s;
+  /* a tab: its cards, scrolled on their own */
+  .panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 22px;
   }
-  .switch::before {
-    content: "";
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #ffffff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    transition: transform 0.15s;
-  }
-  .switch:checked {
-    background: var(--accent);
-  }
-  .switch:checked::before {
-    transform: translateX(14px);
+  .panel[hidden] {
+    display: none;
   }
 
   footer {
+    flex: none;
+    padding: 8px 22px 10px;
+    border-top: 1px solid var(--line);
     color: var(--muted);
     font-size: 11.5px;
     text-align: center;

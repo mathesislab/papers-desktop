@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The Feeds section of the settings window: the subscriptions (added by
+  // The Feeds tab of the settings window: the subscriptions (added by
   // address, ISSN or OpenAlex filter, or from the suggested list; edited;
   // OPML in and out), the interests and the rules, the days kept, the
   // background polling; the switches of the main window (whether the Feeds and Search tabs show, the details beside
@@ -13,6 +13,7 @@
   import { SOURCE_KINDS, sourceKinds } from "$lib/feeds/kinds";
   import { feedOf, feedText, sameFeed, subscriptionOf, type FeedType } from "$lib/feeds/subscriptions";
   import { onToggle, setToggle, toggles, type Toggle, type Toggles } from "$lib/toggles";
+  import "./settings.css";
 
   let { notify }: { notify: (text: string, error: boolean) => void } = $props();
 
@@ -258,7 +259,7 @@
   const blankLine = (): Line => ({ pattern: false, text: "", weight: 1, label: "" });
 </script>
 
-<section id="feeds">
+<section>
   <h2>Feeds</h2>
 
   {#each SWITCHES as s (s.toggle)}
@@ -457,46 +458,15 @@
 </section>
 
 <style>
-  section {
-    padding: 4px 14px 12px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--menu-bg);
-  }
-  h2 {
-    margin: 10px 0 4px 2px;
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  h3 {
-    margin: 14px 0 2px;
-    font-size: 12px;
-    font-weight: 600;
-  }
   p.hint {
     margin: 2px 0 6px;
-  }
-  .hint {
-    display: block;
-    color: var(--muted);
-    font-size: 11.5px;
   }
   .hint.inline {
     display: inline;
   }
   .hint.error {
-    color: var(--error);
     -webkit-user-select: text;
     user-select: text;
-  }
-  .label {
-    display: block;
-  }
-  code {
-    font-size: 11px;
   }
 
   .subs {
@@ -604,17 +574,6 @@
     color: var(--muted);
   }
 
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 8px 0;
-  }
-  .row + .row {
-    border-top: 1px solid var(--line);
-  }
-
   input.text,
   input.num {
     padding: 3px 7px;
@@ -640,21 +599,7 @@
     width: 56px;
   }
   .buttons {
-    display: flex;
-    flex: none;
-    gap: 6px;
     justify-content: flex-end;
-  }
-
-  button,
-  select {
-    font: inherit;
-    color: var(--fg);
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    cursor: pointer;
   }
   select {
     max-width: 120px;
@@ -663,55 +608,12 @@
     padding: 2px 8px;
     font-size: 12px;
   }
-  button.primary {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-  button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  .remove,
+  /* the ▸ of an interest, drawn as the ✕ of settings.css */
   .disclosure {
     flex: none;
     padding: 0 6px;
     border: none;
     background: none;
     color: var(--muted);
-  }
-  .remove:hover {
-    color: var(--error);
-  }
-
-  .switch {
-    appearance: none;
-    flex: none;
-    position: relative;
-    width: 34px;
-    height: 20px;
-    margin: 0;
-    border-radius: 10px;
-    background: var(--border);
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  .switch::before {
-    content: "";
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #ffffff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    transition: transform 0.15s;
-  }
-  .switch:checked {
-    background: var(--accent);
-  }
-  .switch:checked::before {
-    transform: translateX(14px);
   }
 </style>

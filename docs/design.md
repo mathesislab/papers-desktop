@@ -273,7 +273,9 @@ details shown or not are kept in the data folder of the app (`window.json`), as
 the recent papers are (`recent.json`) and the dates added (`added.json`); the window opens again at start if it was open at the end.
 
 A gear button at the bottom of the sidebar opens the settings window, as the
-app menu's Settings… does.
+app menu's Settings… does. Its tabs, Library, Feeds, Search, General and Advanced
+(`⌘1`…`⌘5`), are the sections `open_settings` names; `updates` is the Updates of
+General, looked for at once. The tab shown stays while the window is open; Library at first.
 
 **Text size** (setting, five levels: Smallest 0.9, Smaller 1.0, Default 1.1,
 Larger 1.25, Largest 1.4; Smaller is the size before the setting): the zoom of
@@ -1075,7 +1077,7 @@ interests, the items, the triage state, the ETags and the last sweeps, the
 lookups made, the journals looked up in OpenAlex), never the .bib. An item no feed lists goes after `keep_days`
 (90), on opening and after a fetch; starred and added stay.
 
-**Settings**: a *Feeds* section of the settings window
+**Settings**: the *Feeds* tab of the settings window
 (`src/lib/settings/FeedsSettings.svelte`): the subscriptions (each with its
 kind, feed and last outcome; added by a feed's URL, an ISSN or an OpenAlex
 filter, or from the suggested list, by group; edited: title, kind, journal,

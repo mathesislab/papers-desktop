@@ -1,6 +1,7 @@
 // The settings of the settings window (src/routes/settings): as saved, with what the window shows beside them (the
 // bundled citation styles, whether the app starts at login, the home folder); a change saved at once (`save`); the
-// line at the foot of the window that says it was saved, or why not (`notice`). The page makes one, as it starts.
+// line at the foot of the window that says it was saved, or why not (`notice`). The page makes one, as it starts; its
+// tabs take it.
 
 import { invoke } from "@tauri-apps/api/core";
 
@@ -33,11 +34,14 @@ export type Settings = {
   /** the user's services of the Search tab's *Search online*, after Google Scholar and Google: a name and an address
    *  with {query} or {scholar} in it (checked when saved) */
   search_services: { name: string; url: string }[];
-  /** the background polling of the feeds: set in their section (feeds_set_settings), kept as they are here */
+  /** the background polling of the feeds: set in the Feeds tab (feeds_set_settings), kept as they are here */
   feeds_poll: boolean;
   feeds_poll_minutes: number;
 };
 export type View = { settings: Settings; styles: string[]; start_at_login: boolean; home: string | null };
+
+/** The name of a file, without its folder. */
+export const fileName = (path: string) => path.split(/[\\/]/).pop()!;
 
 export class Preferences {
   /** none until loaded */
@@ -74,6 +78,11 @@ export class Preferences {
       return false;
     }
   };
+
+  /** A path with ~ for the home folder. */
+  tilde(path: string): string {
+    return this.home && path.startsWith(this.home + "/") ? "~" + path.slice(this.home.length) : path;
+  }
 
   /** Say something at the foot of the window. */
   show = (text: string, error: boolean) => {

@@ -1,0 +1,175 @@
+/* What the tabs of the settings window share (src/routes/settings, `<main class="settings">`; LibrarySettings,
+   FeedsSettings and the others): the cards of a tab and their headings, the row of a setting (its label and hint,
+   the control at the end), a list of files, the fields, buttons and menus, the switches. `:where` leaves each rule
+   the weight of its last selector, which a tab's own styles add to. */
+
+:where(main.settings) section {
+  padding: 4px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--menu-bg);
+}
+:where(main.settings) h2 {
+  margin: 10px 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+:where(main.settings) h3 {
+  margin: 14px 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* a setting: its label and hint, its control at the end */
+:where(main.settings) .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+:where(main.settings) .row + .row {
+  border-top: 1px solid var(--line);
+}
+:where(main.settings) .label {
+  display: block;
+}
+:where(main.settings) .hint {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+:where(main.settings) .hint.error {
+  color: var(--error);
+}
+:where(main.settings) code {
+  font-size: 11px;
+}
+
+/* a list of files, or of services: a name, its path under it, a ✕ at the end */
+:where(main.settings) .files {
+  margin: 4px 0 10px;
+  padding: 0;
+  list-style: none;
+}
+:where(main.settings) .files li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+:where(main.settings) .files .file {
+  flex: 1;
+  min-width: 0;
+}
+:where(main.settings) .files .file > span {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:where(main.settings) .files .path {
+  color: var(--muted);
+  font-size: 11px;
+}
+:where(main.settings) .files .path.error {
+  color: var(--error);
+}
+:where(main.settings) .files .none {
+  color: var(--muted);
+}
+
+:where(main.settings) input.text {
+  width: 220px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+:where(main.settings) .buttons {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+:where(main.settings) button,
+:where(main.settings) select {
+  font: inherit;
+  color: var(--fg);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+}
+:where(main.settings) select {
+  max-width: 230px;
+}
+:where(main.settings) button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+:where(main.settings) button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+:where(main.settings) button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: inherit;
+  cursor: pointer;
+}
+:where(main.settings) .remove {
+  flex: none;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+:where(main.settings) .remove:hover {
+  color: var(--error);
+}
+
+/* a checkbox drawn as a switch */
+:where(main.settings) .switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+:where(main.settings) .switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+:where(main.settings) .switch:checked {
+  background: var(--accent);
+}
+:where(main.settings) .switch:checked::before {
+  transform: translateX(14px);
+}

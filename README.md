@@ -134,8 +134,8 @@ filters.
 
 ## Settings
 
-The settings window (menu-bar icon → Settings…, or `⌘,` in the panel) sets
-the `.bib` files of the library, the hotkey (click it and press the new
+The settings window (menu-bar icon → Settings…, or `⌘,` in the panel), in
+tabs (`⌘1`…`⌘5`), sets the `.bib` files of the library, the hotkey (click it and press the new
 keys) and, on Linux, the hotkey that searches the selection, matching
 inside words, the citation style, Start at Login and updates.
 Changes apply at once.
