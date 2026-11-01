@@ -190,12 +190,12 @@ export class ItemList {
   }
 
   /** A triage given to items, shown at once: the list keeps them in place until it is let go (`sticky`), but for
-   *  those dismissed, which go, the next selected. The backend tells the tab of the change, which asks for the
+   *  those removed, which go, the next selected. The backend tells the tab of the change, which asks for the
    *  list again; refused, the list again here, as it is. */
   async setTo(ids: string[], triage: Triage) {
     if (!ids.length) return;
     const set = new Set(ids);
-    if (triage === "dismissed") {
+    if (triage === "removed") {
       this.selection.nextAfter(this.ids, set);
       for (const id of ids) this.sticky.delete(id);
       this.rows = this.rows.filter((r) => !set.has(r.id));

@@ -4,9 +4,9 @@
 //! of the sidebar.
 //!
 //! The counts are those of the library's sidebar: over every live item (not
-//! dismissed), whatever the query; a saved search's are the items it shows.
-//! The rows, as a saved search's, leave the dismissed items out unless the
-//! query names them (`is:dismissed`).
+//! removed), whatever the query; a saved search's are the items it shows.
+//! The rows, as a saved search's, leave the removed items out unless the
+//! query names them (`is:removed`).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ops::Range;
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::feeds::Feeds;
 use crate::interest::{Score, joined};
 use crate::model::{Item, ItemKind, Reminder, Triage, words};
-use crate::query::{Seen, best, names_dismissed, parse};
+use crate::query::{Seen, best, names_removed, parse};
 
 /// The order of the rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -47,8 +47,8 @@ pub struct ViewRequest<'a> {
     pub query: &'a str,
     pub matching: Matching,
     pub sort: Sort,
-    /// the dismissed items too, whatever the query
-    pub dismissed: bool,
+    /// the removed items too, whatever the query
+    pub removed: bool,
     /// when the list was last brought up to date: the items first fetched
     /// since are held back (neither listed nor counted, `View::held`); none:
     /// every item
@@ -60,7 +60,7 @@ pub struct ViewRequest<'a> {
 pub struct View {
     pub rows: Vec<Row>,
     pub counts: Counts,
-    /// the items held back, first fetched since the list was shown (not dismissed)
+    /// the items held back, first fetched since the list was shown (not removed)
     pub held: usize,
 }
 
@@ -89,7 +89,7 @@ pub struct Row {
     pub covered_by: usize,
 }
 
-/// The live items (not dismissed) of each group of the sidebar; a value no
+/// The live items (not removed) of each group of the sidebar; a value no
 /// live item has is left out.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Counts {
@@ -99,7 +99,7 @@ pub struct Counts {
     pub total: Groups,
     /// those new (`is:new`: not snoozed)
     pub unread: Groups,
-    /// the items each saved view shows (dismissed ones unless it asks), by name
+    /// the items each saved view shows (removed ones unless it asks), by name
     pub views: BTreeMap<String, usize>,
 }
 
@@ -144,10 +144,10 @@ impl Feeds {
     /// The items a request shows, and the counts of the sidebar.
     pub fn view(&self, request: &ViewRequest) -> View {
         let query = parse(request.query);
-        let dismissed = request.dismissed || names_dismissed(&query);
+        let removed = request.removed || names_removed(&query);
         let views: Vec<_> = (self.saved_views().iter())
             .map(|v| (&v.name, parse(&v.query)))
-            .map(|(name, query)| (name, names_dismissed(&query), query))
+            .map(|(name, query)| (name, names_removed(&query), query))
             .collect();
         let mut counts = Counts::default();
         let mut rows = Vec::new();
@@ -155,7 +155,7 @@ impl Feeds {
         let covering = self.covering();
         for item in self.items() {
             let seen = self.seen(item);
-            let live = seen.triage() != Triage::Dismissed;
+            let live = seen.triage() != Triage::Removed;
             if request.shown.is_some_and(|shown| item.first_seen() > shown) {
                 held += usize::from(live);
                 continue;
@@ -163,12 +163,12 @@ impl Feeds {
             if live {
                 counts.add(item, &seen);
             }
-            for (name, dismissed, view) in &views {
-                if (live || *dismissed) && seen.record.check(view, request.matching).is_some() {
+            for (name, removed, view) in &views {
+                if (live || *removed) && seen.record.check(view, request.matching).is_some() {
                     *counts.views.entry(name.to_string()).or_default() += 1;
                 }
             }
-            if !live && !dismissed {
+            if !live && !removed {
                 continue;
             }
             if let Some(marks) = seen.record.check(&query, request.matching) {

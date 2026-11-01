@@ -61,7 +61,7 @@ look for the free PDF, so a prefill always goes through the DOI.
 **State.** All of it lives in `app_data_dir`, never in the .bib:
 - the subscriptions;
 - the items;
-- each item's triage state: new → seen → shortlisted, dismissed or added.
+- each item's triage state: new → seen → shortlisted, removed or added.
 
 ## Proposal 1: Reader (Feedly, NetNewsWire)
 
@@ -75,10 +75,10 @@ A chronological reader, with as little added as possible.
   a mute list. A saved search is a virtual feed.
 - Triage:
   - `j`/`k` move; an item becomes seen when it scrolls past.
-  - `s` shortlists, `x` dismisses, `o` opens in the browser, `a` adds.
+  - `s` shortlists, `x` removes, `o` opens in the browser, `a` adds.
   - *Add shortlist* opens the Add sheet for each shortlisted paper in
     turn: Add or Skip, then the next.
-- Storage: JSON (`feeds.json` and `feed-items.json`). Seen and dismissed
+- Storage: JSON (`feeds.json` and `feed-items.json`). Seen and removed
   items are pruned after N days.
 - Effort: small. It is mostly the RSS parser, the merging, the tab, and
   the Add prefill.
@@ -104,7 +104,7 @@ explains why an item matched.
 - Rules (condition → action):
   - a profile score ≥ N → shortlist;
   - an author followed → shortlist;
-  - an editorial (*News & Views*, *Comment*) → dismiss;
+  - an editorial (*News & Views*, *Comment*) → remove;
   - a term → mute.
 - Every card shows a score, the terms that matched (highlighted in the
   title and abstract), and the rule that acted.
@@ -124,7 +124,7 @@ Proposal 2's stream and filters, with a separate **Review** mode for
 deciding to download.
 
 - **Skim** is a dense list (title, journal, score, badges). `s` shortlists
-  and `x` dismisses. Nothing opens.
+  and `x` removes. Nothing opens.
 - **Review** steps through the Shortlist one paper at a time, in a
   full-width card that shows:
   - the full abstract (enriched) and the authors, with followed authors
@@ -141,9 +141,9 @@ deciding to download.
     already found, then moves to the next card.
   - `b`: Add without PDF.
   - `o`: open in the browser.
-  - `x`: dismiss.
+  - `x`: remove.
   - `l`: later, which keeps the paper on the shortlist.
-- Learning: shortlist, add and dismiss are positive and negative
+- Learning: shortlist, add and remove are positive and negative
   examples. Proposal 2's score is joined by a ranker trained on them
   (arxiv-sanity's linear SVM over TF-IDF, then optionally local embeddings
   with `fastembed`). It stays explainable: "like X, Y in your library".
@@ -226,7 +226,7 @@ The same split as papers-rs and core:
 - **`crates/feeds-cli`** (`feeds`):
   - `feeds subscribe <url> [--kind]`, `feeds fetch`;
   - `feeds list [query] [--json]`, `feeds show <id>`;
-  - `feeds resolve <id>`, `feeds mark <id> seen|short|dismiss`;
+  - `feeds resolve <id>`, `feeds mark <id> seen|short|remove`;
   - `feeds export --rss|--opml`.
 
   It is testable and scriptable without the app. With `export --rss` it

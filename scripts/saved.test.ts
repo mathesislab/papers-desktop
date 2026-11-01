@@ -62,7 +62,7 @@ test("a query of the feeds taken apart into the choices, and put together again"
     "is:new kind:paper,preprint",
     'greenland is:starred kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL',
     'src:tc,"Nature Geosci" t:"ice sheet" -kind:news a:moreau,ito y:2020-',
-    "is:dismissed kind:news,blog prof:AMOC,Firn melt -is:seen",
+    "is:removed kind:news,blog prof:AMOC,Firn melt -is:seen",
     "kind:blog,paper score:3- is:added",
     'is:new is:seen src:"a, b" src:c',
   ];

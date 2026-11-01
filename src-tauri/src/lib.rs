@@ -7,6 +7,7 @@ mod fetch;
 #[cfg(target_os = "macos")]
 mod focus;
 mod hotkey;
+mod identifier;
 mod input;
 mod library;
 mod main_window;
@@ -983,6 +984,10 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    // the folders of the identifier of before, before the plugins and the
+    // webviews read them
+    identifier::migrate(&context.config().identifier);
     tauri::Builder::default()
         // a second launch toggles the panel of the running app: under Wayland
         // a desktop shortcut that launches the app stands in for the hotkey
@@ -1236,7 +1241,7 @@ pub fn run() {
             toggle::toggle,
             toggle::set_toggle
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
 

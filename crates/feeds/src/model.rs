@@ -473,7 +473,9 @@ pub enum Triage {
     /// `shortlisted` in the state of before
     #[serde(alias = "shortlisted")]
     Starred,
-    Dismissed,
+    /// `dismissed` in the state of before: an alias kept on purpose
+    #[serde(alias = "dismissed")]
+    Removed,
     /// added to the library
     Added,
 }
@@ -482,7 +484,7 @@ words!(Triage {
     New => "new",
     Seen => "seen",
     Starred => "starred",
-    Dismissed => "dismissed",
+    Removed => "removed",
     Added => "added",
 });
 
@@ -493,7 +495,7 @@ impl Triage {
         match self {
             Triage::New => 0,
             Triage::Seen => 1,
-            Triage::Dismissed => 2,
+            Triage::Removed => 2,
             Triage::Starred => 3,
             Triage::Added => 4,
         }
@@ -620,7 +622,7 @@ mod tests {
             triage[0],
             triage[1],
             triage[2],
-            Triage::Dismissed,
+            Triage::Removed,
             Triage::Added,
         ]);
         same_as_json(&[Reminder::Snoozed, Reminder::Due]);
@@ -641,6 +643,14 @@ mod tests {
         assert_eq!(triage, Triage::Starred);
         assert_eq!(serde_json::to_string(&triage).unwrap(), r#""starred""#);
         assert!("shortlisted".parse::<Triage>().is_err(), "its word no more");
+    }
+
+    #[test]
+    fn a_removal_of_before_reads_as_removed() {
+        let triage: Triage = serde_json::from_str(r#""dismissed""#).unwrap();
+        assert_eq!(triage, Triage::Removed);
+        assert_eq!(serde_json::to_string(&triage).unwrap(), r#""removed""#);
+        assert!("dismissed".parse::<Triage>().is_err(), "its word no more");
     }
 
     #[test]

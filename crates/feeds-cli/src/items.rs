@@ -14,7 +14,7 @@ fn marker(triage: Triage) -> &'static str {
         Triage::New => " ",
         Triage::Seen => ".",
         Triage::Starred => "*",
-        Triage::Dismissed => "x",
+        Triage::Removed => "x",
         Triage::Added => "+",
     }
 }
@@ -63,7 +63,7 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
     let request = ViewRequest {
         query: &query,
         sort,
-        dismissed: a.dismissed,
+        removed: a.removed,
         ..ViewRequest::default()
     };
     let view = feeds.view(&request);

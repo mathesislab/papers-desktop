@@ -3309,6 +3309,7 @@ version = "0.7.0"
 dependencies = [
  "block2",
  "chrono",
+ "dirs 7.0.0",
  "gtk",
  "notify",
  "objc2",

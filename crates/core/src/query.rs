@@ -49,7 +49,7 @@ impl Query {
     }
 
     /// Whether a term of a facet names a value, to include or to exclude:
-    /// `is:dismissed` and `-is:seen,dismissed` name `dismissed`.
+    /// `is:removed` and `-is:seen,removed` name `removed`.
     pub fn names(&self, facet: &str, value: &str) -> bool {
         let facet = Field::Facet(facet.to_ascii_lowercase());
         (self.terms.iter().filter(|t| t.field == facet))
@@ -584,15 +584,11 @@ mod tests {
             facets: &["is"],
             numbers: &[],
         };
-        let names = |query: &str| Query::parse(query, schema).names("is", "dismissed");
-        for query in [
-            "is:dismissed",
-            "x -IS:seen,dismissed",
-            "is:new,\"dismissed\"",
-        ] {
+        let names = |query: &str| Query::parse(query, schema).names("is", "removed");
+        for query in ["is:removed", "x -IS:seen,removed", "is:new,\"removed\""] {
             assert!(names(query), "{query}");
         }
-        for query in ["", "dismissed is:new", "kind:dismissed"] {
+        for query in ["", "removed is:new", "kind:removed"] {
             assert!(!names(query), "{query}");
         }
     }
@@ -668,10 +664,10 @@ mod tests {
             negated,
         };
         assert_eq!(
-            parse_with(r#"Kind:paper -is:dismissed src:"The Cryosphere" src:*sphere is:"#),
+            parse_with(r#"Kind:paper -is:removed src:"The Cryosphere" src:*sphere is:"#),
             [
                 facet("kind", &["paper"], false),
-                facet("is", &["dismissed"], true),
+                facet("is", &["removed"], true),
                 facet("src", &["the cryosphere"], false),
                 facet("src", &["", "sphere"], false),
             ]

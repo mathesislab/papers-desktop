@@ -27,9 +27,9 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `edit <id> --boost N` | change the boost of a subscription (0 for none); the strongest of the subscriptions that list an item counts |
 | `unsubscribe <id>`, `subscriptions [--json]` | |
 | `fetch` | `--mailto <address>` (env `PAPERS_MAILTO`), `--openalex-key <key>` (env `OPENALEX_API_KEY`, as papers-rs); one request at a time per host; a feed that fails is reported, the others go on |
-| `list [QUERY]...` | `--saved <name>`, `--sort score\|newest\|like` (default: the saved view's, else newest), `--kind paper,preprint,news,blog`, `--limit N`, `--dismissed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...), with `--saved` both hold |
+| `list [QUERY]...` | `--saved <name>`, `--sort score\|newest\|like` (default: the saved view's, else newest), `--kind paper,preprint,news,blog`, `--limit N`, `--removed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...), with `--saved` both hold |
 | `show <id> [--json]`, `find <id>` | everything known of an item (with `--library`, its likeness and the 3 nearest papers of the library); the papers behind a post (needs the network) |
-| `mark <state> <id>...` | `new`, `seen`, `starred`, `dismissed`, `added` |
+| `mark <state> <id>...` | `new`, `seen`, `starred`, `removed`, `added` |
 | `prune` | the old items no feed lists go (done on opening too) |
 | `opml import <file>`, `opml export [file]` | the subscriptions as OPML, as the app's settings read and write it (to the standard output without a file); import passes over those followed already |
 | `interests`, `rules`, `config` | what is set; `--json` for the first two |
@@ -38,8 +38,8 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `views add <name> <query>...`, `views remove <name>` | `--sort score\|newest\|like` (newest); a name in any case: `add` replaces the view of that name |
 | `digest --rss <file> --html <file>` | `--query` (default `score:3-`, none with `--saved`), `--saved <name>`, `--days` (7), `--title`, `--link` |
 
-Dismissed items are left out unless the query has an `is:` term on them (`is:dismissed`), or
-`list --dismissed`. A saved view keeps the whole query of the tab's choices (`is:new
+Removed items are left out unless the query has an `is:` term on them (`is:removed`), or
+`list --removed`. A saved view keeps the whole query of the tab's choices (`is:new
 kind:paper,preprint prof:AMOC` and the text typed), in `config.json` (`views`; `searches`
 before).
 

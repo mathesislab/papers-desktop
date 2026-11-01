@@ -28,6 +28,7 @@ papers-rs = { version = "0.1.0", path = "../crates/papers-rs" }
 papers-feeds = { version = "0.1.0", path = "../crates/feeds" }
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 tempfile = "3"
+dirs = "7"
 notify = "8"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"

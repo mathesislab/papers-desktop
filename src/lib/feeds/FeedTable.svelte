@@ -8,7 +8,7 @@
   // bold; one seen is muted (in the Feeds tab). A
   // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
   // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
-  // selected, dismisses it (or restores it, dismissed).
+  // selected, removes it (or restores it, removed).
 
   import type { Snippet } from "svelte";
   import { gridOf, simpleGridOf, widthOf, type Look, type Shown, type Specs } from "$lib/list/columns";
@@ -36,7 +36,7 @@
     date = "age",
     unread = true,
     star = STAR.row,
-    dismiss,
+    remove,
     after,
     onsort,
     oncolumns,
@@ -69,8 +69,8 @@
     unread?: boolean;
     /** what the star of a row says, on and off (the tab's `StarWords`) */
     star?: { on: string; off: string };
-    /** the ✕ of a row: what it does to the item (the Feeds tab's dismiss); none: no ✕ */
-    dismiss?: Action;
+    /** the ✕ of a row: what it does to the item (the Feeds tab's remove); none: no ✕ */
+    remove?: Action;
     /** after the last row, in the scroll of the list: *Show 25 more* */
     after?: Snippet;
     onsort?: (sort: Sort) => void;
@@ -228,14 +228,14 @@
             {/if}
           {/each}
         {/if}
-        {#if dismiss}
+        {#if remove}
           <button
             class="remove"
-            title={rowHint(dismiss, [row])}
-            aria-label={dismiss.label([row])}
+            title={rowHint(remove, [row])}
+            aria-label={remove.label([row])}
             onmousedown={(e) => e.stopPropagation()}
             ondblclick={(e) => e.stopPropagation()}
-            onclick={() => dismiss.run([row.id])}>✕</button
+            onclick={() => remove.run([row.id])}>✕</button
           >
         {/if}
       </div>
@@ -283,10 +283,10 @@
     font-weight: 600;
   }
   .row.seen,
-  .row.dismissed {
+  .row.removed {
     color: var(--muted);
   }
-  .row.dismissed .title {
+  .row.removed .title {
     text-decoration: line-through;
   }
   .row.selected {

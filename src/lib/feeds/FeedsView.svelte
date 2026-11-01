@@ -100,9 +100,9 @@
   /** above this many, Mark read asks first */
   const MARK_ASK = 50;
   /** the buttons of the details, a post's and a paper's; those of the selection bar */
-  const POST_BUTTONS: ActionName[] = ["open", "read", "star", "dismiss", "later"];
-  const PAPER_BUTTONS: ActionName[] = ["add", "open", "addBare", "star", "dismiss", "later"];
-  const BAR_BUTTONS: ActionName[] = ["read", "star", "dismiss", "later"];
+  const POST_BUTTONS: ActionName[] = ["open", "read", "star", "remove", "later"];
+  const PAPER_BUTTONS: ActionName[] = ["add", "open", "addBare", "star", "remove", "later"];
+  const BAR_BUTTONS: ActionName[] = ["read", "star", "remove", "later"];
 
   let request = $derived(requestOf(filters));
   /** the items the filters select; those triaged here stay in place until the filters change */
@@ -397,7 +397,7 @@
         await separator(),
         await item("star"),
         await item("read"),
-        await item("dismiss"),
+        await item("remove"),
         await item("keepUnread"),
         await Submenu.new({
           text: "Snooze",
@@ -649,7 +649,7 @@
         onsort: (sort) => (filters.sort = sort),
         oncolumns: (shown) => (columns = shown),
         onstar: (id) => actions.star.run([id]),
-        dismiss: actions.dismiss,
+        remove: actions.remove,
         onmenu: rowMenu,
       }}
       none="No item selected"
