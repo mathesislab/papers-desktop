@@ -92,7 +92,6 @@
     store: "search",
     query: () => marked,
     onadd: (initial) => onadd(initial),
-    reload: () => refresh(),
   });
   let results = $derived(search.results);
   /** the query whose words the rows and the details mark */

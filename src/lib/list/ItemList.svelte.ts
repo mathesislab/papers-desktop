@@ -30,8 +30,6 @@ export interface ListOptions {
   /** the library's Add sheet, over the tab: a DOI (or arXiv id) to fetch, its free PDF looked for or not. The
    *  answer is what was added, said; none when the sheet was closed */
   onadd: (initial: { id: string; pdf: boolean }) => Promise<string | null>;
-  /** the list again, after a triage */
-  reload: () => Promise<void>;
   /** the pages of items opened in the browser */
   opened?: (ids: string[]) => void;
 }
@@ -174,7 +172,8 @@ export class ItemList {
   };
 
   /** A triage given to items, shown at once: the list keeps them in place until it is let go (`sticky`), but for
-   *  those dismissed, which go, the next selected. Then the list again. */
+   *  those dismissed, which go, the next selected. The backend tells the tab of the change, which asks for the
+   *  list again. */
   async setTo(ids: string[], triage: Triage) {
     if (!ids.length) return;
     const set = new Set(ids);
@@ -192,7 +191,6 @@ export class ItemList {
     } catch (e) {
       this.say(String(e));
     }
-    await this.#options.reload();
   }
 
   /** o, a double-click: the page of each item in the browser (above 5, after asking). */

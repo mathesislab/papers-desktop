@@ -889,7 +889,11 @@ splitter, `tab.css` the frame of the two tabs):
   event says the phase (`reading`, `looking-up`, `done`), the
   status line the last fetch (*fetched 8 min ago · 12 new · 3 not modified ·
   1 failed*, the failures listed on hover and click); `feeds-changed` reads
-  the list again.
+  the list again. That event alone does after a change, here or elsewhere
+  (a triage, a fetch, papers found, a subscription): the tab asks for the
+  list itself only when its filters change or it is brought up to date
+  (⌘R, *N new · Show*, a fetch asked for: `bringUpToDate`), and the phase
+  event alone says whether a fetch is under way.
 - *Review* (`⌘↩`, the button): the shortlist as it is when the review
   begins, by score, one item at a time over the list and the details, with
   a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`

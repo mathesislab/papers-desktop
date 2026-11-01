@@ -129,7 +129,6 @@
     store: "feeds",
     query: () => request.query,
     onadd: (initial) => onadd(initial),
-    reload: () => load(true),
     // an item opened is seen
     opened: (ids) => {
       const fresh = ids.filter((id) => list.byId.get(id)?.triage === "new");
@@ -164,13 +163,15 @@
 
   onMount(() => {
     const unlisten = [
-      // a fetch in the background (polling) or from here
+      // where a fetch is, in the background (polling) or from here; the feeds read, the summary and the
+      // subscriptions again
       listen<api.FetchPhase>(api.EVENTS.fetching, (e) => {
         fetching = e.payload === "reading";
         lookingUp = e.payload === "looking-up";
-        if (!fetching) refresh();
+        if (!fetching) readFetch();
       }),
-      // a fetch, a triage from elsewhere, papers found
+      // what changed the items, here or elsewhere (a triage, a fetch, papers found, a subscription): the list again,
+      // which nothing else asks for after a change
       listen(api.EVENTS.changed, () => {
         list.version++;
         load(true);
@@ -209,11 +210,10 @@
     }
   }
 
-  /** ⇧⌘R, ↻: every subscription fetched, or the one of id `only`; the list again once the feeds are read (the
-   *  lookups that follow go on, the list again when they end). */
+  /** ⇧⌘R, ↻: every subscription fetched, or the one of id `only` (the phases of the fetch say where it is; one
+   *  asked while another reads the feeds waits for it, and a full one then answers its summary); what it brought
+   *  shown at once, unless `show` is off (the fetch of a tab opening). */
   async function fetchNow(show = true, only?: string) {
-    if (fetching) return;
-    fetching = true;
     failures = false;
     try {
       const summary = await api.fetchFeeds(only);
@@ -221,35 +221,26 @@
       if (failed) list.say(`${failed} ${failed === 1 ? "subscription" : "subscriptions"} failed`);
     } catch (e) {
       list.say(String(e));
-    } finally {
-      fetching = false;
     }
-    if (show) shown = new Date().toISOString();
-    await refresh();
+    if (show) bringUpToDate(true);
   }
 
-  /** N new · Show: what was fetched since the list was shown, into it. */
-  function showHeld() {
+  /** The list brought up to date: what was fetched since it was shown, held back, into it. ⌘R (`keep` off) also
+   *  lets go the items triaged here, which leave where they no longer belong, and sorts it again; *N new · Show*
+   *  and a fetch asked for here keep them in place. */
+  function bringUpToDate(keep: boolean) {
+    if (!keep) list.sticky.clear();
     shown = new Date().toISOString();
-    load(true);
+    load(keep);
   }
 
-  /** ⌘R: the list brought up to date, nothing fetched: what was held back in, the items triaged here gone from
-   *  where they no longer belong, sorted again. */
-  function refreshList() {
-    list.sticky.clear();
-    shown = new Date().toISOString();
-    load(false);
-  }
-
-  /** After a fetch: the subscriptions, the summary of the fetch, the list. */
-  async function refresh() {
+  /** A fetch read the feeds, or ended: its summary and the subscriptions again. */
+  async function readFetch() {
     try {
       [last, subscriptions] = await Promise.all([api.lastFetch(), api.subscriptions()]);
     } catch {
       // the list says what is wrong
     }
-    await load(true);
   }
 
   let asked = 0;
@@ -373,7 +364,6 @@
     } catch (e) {
       list.say(String(e));
     }
-    await load(true);
   }
 
   /** Z, Later ▾: kept unread, snoozed for some days, or the reminder cleared. */
@@ -401,8 +391,6 @@
     try {
       const found = await api.findPapers(id);
       list.say(found.length ? `Found ${found.length} ${found.length === 1 ? "paper" : "papers"}` : "No paper found");
-      list.version++;
-      await load(true);
     } catch (e) {
       list.say(String(e));
     } finally {
@@ -510,7 +498,6 @@
     } catch (e) {
       list.say(String(e));
     }
-    load(true);
   }
 
   /** A subscription ended, here or in the Subscribe sheet. */
@@ -522,13 +509,12 @@
     }
   }
 
-  /** A subscription set to another kind, from the row menu: its items move at once. */
+  /** A subscription set to another kind, from the menus: its items move at once, it to the sources of that kind. */
   async function setKind(id: string, title: string, kind: api.SourceKind) {
     try {
-      await api.updateSubscription(id, { kind });
+      const info = await api.updateSubscription(id, { kind });
+      subscriptions = subscriptions.map((s) => (s.id === id ? info : s));
       list.say(`${title}: ${SOURCE_KINDS[kind].name}`);
-      list.version++;
-      await load(true);
     } catch (e) {
       list.say(String(e));
     }
@@ -538,7 +524,6 @@
   function closeSubscribe() {
     subscribing = false;
     if (subscribed) fetchNow();
-    else load(true);
     subscribed = false;
   }
 
@@ -546,7 +531,6 @@
   function toggleReview() {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     reviewing = !reviewing;
-    if (!reviewing) load(true);
   }
 
 
@@ -564,7 +548,7 @@
       e.preventDefault();
       action();
     };
-    if (matches(e, REFRESH)) return act(refreshList);
+    if (matches(e, REFRESH)) return act(() => bringUpToDate(false));
     if (matches(e, FETCH)) return act(() => fetchNow());
     if (matches(e, REVIEW)) return act(toggleReview);
     if (reviewing && !typing(e)) return reviewer?.key(e);
@@ -575,12 +559,11 @@
     if (action) act(() => action.run(list.targets()));
   }
 
-  /** The saved searches changed: kept, then their counts again. */
+  /** The saved searches changed: kept (their counts come with the list again). */
   async function keepSearches(saved: api.SavedSearch[]) {
     try {
       await api.setSavedSearches(saved);
       searches = saved;
-      await load(true);
     } catch (e) {
       list.say(String(e));
     }
@@ -678,7 +661,7 @@
       <span class="notice">{list.notice ?? ""}</span>
       <span class="spacer"></span>
       {#if held}
-        <button class="tool held" title="Show what was fetched since the list was brought up to date ({label(REFRESH)} also sorts it again)" onclick={showHeld}>
+        <button class="tool held" title="Show what was fetched since the list was brought up to date ({label(REFRESH)} also sorts it again)" onclick={() => bringUpToDate(true)}>
           {held} new · Show
         </button>
       {/if}
