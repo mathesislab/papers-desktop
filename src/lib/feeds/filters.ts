@@ -17,6 +17,7 @@ import type {
   SubscriptionInfo,
   ViewRequest,
 } from "./api.ts";
+import { ITEM_KINDS, SOURCE_KINDS, isItemKind } from "./kinds.ts";
 
 /** the views of the sidebar: the items by their triage */
 export type Shelf = "unread" | "shortlist" | "snoozed" | "added" | "all";
@@ -53,24 +54,6 @@ export const SHELVES: { view: Shelf; name: string; term: string | null }[] = [
   { view: "all", name: "All", term: null },
 ];
 
-/** The kinds of a subscription, as the menus name them. */
-export const SOURCE_KINDS: { kind: SourceKind; name: string }[] = [
-  { kind: "journal", name: "Journal" },
-  { kind: "preprints", name: "Preprint Server" },
-  { kind: "news", name: "News & Press" },
-  { kind: "blog", name: "General" },
-];
-
-export const KINDS: { kind: ItemKind; name: string }[] = [
-  { kind: "paper", name: "Papers" },
-  { kind: "preprint", name: "Preprints" },
-  { kind: "news", name: "News & press" },
-  { kind: "blog", name: "General" },
-];
-
-/** A post: news or a blog; the rest are papers. */
-export const isPost = (kind: ItemKind) => kind === "news" || kind === "blog";
-
 const text = (v: unknown): v is string => typeof v === "string";
 
 /** The orders of the list, in the order the count above it goes through them. */
@@ -82,8 +65,6 @@ export const SORTS: { sort: Sort; text: string }[] = [
 
 /** The order after this one, for the count above the list. */
 export const nextSort = (sort: Sort): Sort => SORTS[(SORTS.findIndex((s) => s.sort === sort) + 1) % SORTS.length].sort;
-
-const isKind = (v: unknown): v is ItemKind => KINDS.some((k) => k.kind === v);
 
 /** The values of a choice as saved: several, or one of an older version (`kind`, `interest`, `source`). */
 function values<T extends string>(many: unknown, one: unknown, valid: (v: unknown) => v is T): T[] {
@@ -99,7 +80,7 @@ export function restoredFeeds(
   const d = NO_FEED_FILTERS;
   return {
     view: SHELVES.find((s) => s.view === saved?.view)?.view ?? d.view,
-    kinds: values(saved?.kinds, saved?.kind, isKind),
+    kinds: values(saved?.kinds, saved?.kind, isItemKind),
     interests: values(saved?.interests, saved?.interest, text),
     sources: values(saved?.sources, saved?.source, text),
     sort: SORTS.find((s) => s.sort === saved?.sort)?.sort ?? d.sort,
@@ -181,7 +162,7 @@ export function decompose(query: string): Choices {
     const shelf = SHELVES.find((s) => s.term === `is:${lower[0] === "unread" ? "new" : lower[0]}`);
     if (free && field === "is" && vals.length === 1 && shelf) {
       f.view = shelf.view;
-    } else if (free && field === "kind" && lower.every(isKind)) {
+    } else if (free && field === "kind" && lower.every(isItemKind)) {
       f.kinds = [...new Set(lower)] as ItemKind[];
     } else if (free && field === "prof") {
       f.interests = vals;
@@ -223,9 +204,8 @@ const several = (name: string, values: string[]) => (values.length > 1 ? `${name
 /** The chips of the choices made, in the order view › kinds › interests › sources › search. */
 export function feedChips(f: FeedFilters): FeedChip[] {
   const list: FeedChip[] = [];
-  const kindName = (kind: ItemKind) => KINDS.find((k) => k.kind === kind)?.name ?? kind;
   if (f.view !== "all") list.push({ kind: "view", text: SHELVES.find((s) => s.view === f.view)?.name ?? f.view });
-  if (f.kinds.length) list.push({ kind: "kind", text: several("Kind", f.kinds.map(kindName)) });
+  if (f.kinds.length) list.push({ kind: "kind", text: several("Kind", f.kinds.map((k) => ITEM_KINDS[k].plural)) });
   if (f.interests.length) list.push({ kind: "interest", text: several("Interest", f.interests) });
   if (f.sources.length) list.push({ kind: "source", text: several("Source", f.sources) });
   if (f.query.trim()) list.push({ kind: "search", text: `"${f.query.trim()}"` });
@@ -270,11 +250,11 @@ export type SourceGroup = {
 };
 
 export const SOURCE_GROUPS: { group: SourceGroup["group"]; name: string }[] = [
-  { group: "journal", name: "Journals" },
-  { group: "preprints", name: "Preprint servers" },
+  { group: "journal", name: SOURCE_KINDS.journal.plural },
+  { group: "preprints", name: SOURCE_KINDS.preprints.plural },
   { group: "sweeps", name: "Sweeps (Crossref, OpenAlex)" },
-  { group: "news", name: "News & press" },
-  { group: "blog", name: "General" },
+  { group: "news", name: SOURCE_KINDS.news.plural },
+  { group: "blog", name: SOURCE_KINDS.blog.plural },
 ];
 
 const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });

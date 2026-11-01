@@ -6,6 +6,7 @@ import { mock, test } from "node:test";
 import type { FeedCounts, FeedRow, Journal, SubscriptionInfo, Triage } from "../src/lib/feeds/api.ts";
 import {
   NO_FEED_FILTERS,
+  SOURCE_GROUPS,
   chooseInterest,
   chooseKind,
   chooseSource,
@@ -42,6 +43,7 @@ import {
   stale,
   toggled,
 } from "../src/lib/feeds/items.ts";
+import { ITEM_KINDS, SOURCE_KINDS, isItemKind, isPost, itemKinds, sourceKinds } from "../src/lib/feeds/kinds.ts";
 import { Dwell, decide, progressOf, reviewed, startReview, stepReview, summaryOf } from "../src/lib/feeds/review.ts";
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
@@ -382,4 +384,20 @@ test("the review steps through the shortlist", () => {
   assert.equal(summaryOf(r), "1 added, 1 dismissed, 1 for later");
   assert.equal(summaryOf(stepReview(startReview(["a", "b"]), 9)), "0 added, 0 dismissed, 0 for later, 2 passed");
   assert.equal(progressOf(startReview([])).text, "nothing starred");
+});
+
+test("the kinds, named once", () => {
+  assert.deepEqual(itemKinds, ["paper", "preprint", "news", "blog"]);
+  assert.deepEqual(sourceKinds, ["journal", "preprints", "news", "blog"]);
+  assert.equal(isItemKind("preprint"), true);
+  assert.equal(isItemKind("preprints"), false);
+  assert.equal(isPost("news") && isPost("blog") && !isPost("paper") && !isPost("preprint"), true);
+  // the sidebar's groups of sources take the kinds' plurals
+  assert.deepEqual(
+    SOURCE_GROUPS.map((g) => g.name),
+    ["Journals", "Preprint servers", "Sweeps (Crossref, OpenAlex)", "News & press", "General"],
+  );
+  assert.equal(feedChips(f({ kinds: ["paper", "news"] }))[1].text, "Kind: Papers, News & press");
+  assert.equal(ITEM_KINDS.blog.name, "general");
+  assert.equal(SOURCE_KINDS.preprints.name, "Preprint server");
 });

@@ -16,6 +16,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { holdModal } from "$lib/library/modal.svelte";
   import * as api from "./api";
+  import { SOURCE_KINDS, sourceKinds } from "./kinds";
   import type { Follow, Journal, LibraryJournal, SourceKind, Suggested, SubscriptionInfo } from "./api";
   import {
     choiceFeed,
@@ -55,12 +56,6 @@
       placeholder:
         "ice sheet AND (tipping OR collapse): new papers whose title or abstract has them (OpenAlex key helps)",
     },
-  ];
-  const KINDS: { kind: SourceKind; name: string }[] = [
-    { kind: "journal", name: "Journal" },
-    { kind: "preprints", name: "Preprint server" },
-    { kind: "news", name: "News & press" },
-    { kind: "blog", name: "General (blogs, comics, …)" },
   ];
 
   let type = $state<FeedType>("rss");
@@ -241,7 +236,7 @@
       return;
     }
     busy = false;
-    const name = KINDS.find((k) => k.kind === guess.kind)?.name ?? guess.kind;
+    const name = SOURCE_KINDS[guess.kind].name;
     await subscribe(feed, guess.kind, undefined, `as ${name} (${guess.reason}; right-click an item to change it)`);
   }
 
@@ -334,7 +329,7 @@
         Its items are
         <select bind:value={kind}>
           <option value="guess">{type === "rss" ? "Guessed from the feed" : "Papers"}</option>
-          {#each KINDS as k (k.kind)}<option value={k.kind}>{k.name}</option>{/each}
+          {#each sourceKinds as kind (kind)}{@const k = SOURCE_KINDS[kind]}<option value={kind}>{k.name}{k.hint ? ` (${k.hint})` : ""}</option>{/each}
         </select>
       </label>
     </div>
@@ -441,7 +436,7 @@
           {#each list as s (s.title)}
             <div class="suggestion">
               <span class="title" title={s.title}>{s.title}</span>
-              <span class="muted">{KINDS.find((k) => k.kind === s.kind)?.name ?? s.kind}</span>
+              <span class="muted">{SOURCE_KINDS[s.kind].name}</span>
               {@render follow(s.feed, s.kind)}
             </div>
           {/each}

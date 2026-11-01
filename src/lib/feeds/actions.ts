@@ -4,7 +4,7 @@
 // (npm test).
 
 import type { ItemKind, Reminder, Triage } from "./api.ts";
-import { isPost } from "./filters.ts";
+import { isPost } from "./kinds.ts";
 import { toggled, type TriageAction } from "./items.ts";
 
 /** What an action knows of an item: a row of the list, or the details of one (a linked paper not in the list). */

@@ -9,7 +9,7 @@
   import type { FeedDetail, PdfStatus, Triage } from "./api";
   import Facts from "./Facts.svelte";
   import PostHtml from "./PostHtml.svelte";
-  import { isPost } from "./filters";
+  import { isPost } from "./kinds";
   import { addTarget } from "./items";
   import { REVIEW_REQUEST, decide, progressOf, reviewed, startReview, stepReview, summaryOf, type Review } from "./review";
   import Spans from "./Spans.svelte";

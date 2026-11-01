@@ -33,8 +33,9 @@
 
   import type { Snippet } from "svelte";
   import Marked from "$lib/Marked.svelte";
-  import type { FeedRow, ItemKind, Sort } from "./api";
+  import type { FeedRow, Sort } from "./api";
   import { ago, badges, citedText, likeText, scoreText, yearOf } from "./items";
+  import { ITEM_KINDS, isPost } from "./kinds";
 
   let {
     rows,
@@ -87,7 +88,6 @@
   const ROW = 26;
   /** rows drawn above and below the ones in view, for a smooth scroll */
   const EXTRA = 12;
-  const KIND_MARK: Record<ItemKind, string> = { paper: "", preprint: "◐", news: "✦", blog: "✎" };
   const STAR = 22;
   const MARK = 18;
   const MIN_WIDTH = 30;
@@ -246,7 +246,7 @@
               onclick={() => onstar(row.id)}>{row.triage === "shortlisted" ? "★" : "☆"}</button
             >
           {/if}
-          <span class="mark {row.kind}" title={row.kind}>{KIND_MARK[row.kind]}</span>
+          <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
           {#each columns as column (column)}
             {#if column === "score"}
               <span class="score">{scoreText(row.score)}</span>
@@ -260,8 +260,8 @@
               <span class="muted">
                 {#if row.authors.length}
                   {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
-                {:else if row.kind === "news" || row.kind === "blog"}
-                  {row.kind === "news" ? "news" : "general"}
+                {:else if isPost(row.kind)}
+                  {ITEM_KINDS[row.kind].name}
                 {/if}
               </span>
             {:else if column === "journal"}

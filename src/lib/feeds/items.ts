@@ -3,6 +3,7 @@
 
 import { arxivDoi } from "../arxiv.ts";
 import type { FeedDetail, FeedRow, FetchSummary, Linked, Reminder, Triage } from "./api.ts";
+import { isPost } from "./kinds.ts";
 
 /** the keys that change the triage of the items selected */
 export type TriageAction = "shortlist" | "dismiss" | "read";
@@ -84,7 +85,7 @@ export const bestLink = (links: Linked[]): Linked | null => links.find((l) => l.
  * paper, by its DOI, and that paper's item when it is one. None: nothing to add (a post without a link).
  */
 export function addTarget(d: Pick<FeedDetail, "id" | "kind" | "doi" | "arxiv" | "links">): { id: string; item: string | null } | null {
-  if (d.kind === "news" || d.kind === "blog") {
+  if (isPost(d.kind)) {
     const link = bestLink(d.links);
     return link ? { id: link.doi, item: link.item } : d.doi ? { id: d.doi, item: d.id } : null;
   }

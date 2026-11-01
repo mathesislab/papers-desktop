@@ -8,7 +8,7 @@
   import type { FeedDetail, FeedRow, Linked, PdfStatus } from "./api";
   import Facts from "./Facts.svelte";
   import PostHtml from "./PostHtml.svelte";
-  import { isPost } from "./filters";
+  import { ITEM_KINDS, isPost } from "./kinds";
   import Spans from "./Spans.svelte";
 
   let {
@@ -56,7 +56,6 @@
   );
   let cited = $derived(detail.cited === null ? null : `cited ${detail.cited.toLocaleString("en-US")}×`);
   let where = $derived([detail.journal, date, cited, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
-  const KIND: Record<FeedDetail["kind"], string> = { paper: "paper", preprint: "preprint", news: "news & press", blog: "general" };
   const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", search: "found by its title" };
 </script>
 
@@ -73,7 +72,7 @@
     <h3><Spans spans={detail.title} /></h3>
     {#if detail.authors.length}<p class="authors">{detail.authors.join(", ")}</p>{/if}
     <p class="by">
-      {#if detail.kind !== "paper"}<span class="badge {detail.kind}">{KIND[detail.kind]}</span>{/if}
+      {#if detail.kind !== "paper"}<span class="badge {detail.kind}">{ITEM_KINDS[detail.kind].name}</span>{/if}
       {#if detail.editorial}<span class="badge">editorial</span>{/if}
       {where}
     </p>

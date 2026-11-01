@@ -29,7 +29,6 @@
   import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
-    SOURCE_KINDS,
     SORTS,
     applied,
     chooseInterest,
@@ -37,7 +36,6 @@
     chooseSource,
     feedChips,
     interestColours,
-    isPost,
     nextSort,
     isShown,
     queryOf,
@@ -57,6 +55,7 @@
     toggled,
     type TriageAction,
   } from "./items";
+  import { SOURCE_KINDS, isPost, sourceKinds } from "./kinds";
   import { Dwell } from "./review";
 
   let {
@@ -425,8 +424,8 @@
       Submenu.new({
         text: sources.length === 1 ? "Source Is" : `${s.title} Is`,
         items: await Promise.all(
-          SOURCE_KINDS.map((k) =>
-            CheckMenuItem.new({ text: k.name, checked: s.kind === k.kind, action: () => setKind(s.id, s.title, k.kind) }),
+          sourceKinds.map((kind) =>
+            CheckMenuItem.new({ text: titled(SOURCE_KINDS[kind].name), checked: s.kind === kind, action: () => setKind(s.id, s.title, kind) }),
           ),
         ),
       });
@@ -467,12 +466,12 @@
               await Submenu.new({
                 text: "Source Is",
                 items: await Promise.all(
-                  SOURCE_KINDS.map((k) =>
+                  sourceKinds.map((kind) =>
                     CheckMenuItem.new({
-                      text: k.name,
-                      checked: feeds.every((s) => s.kind === k.kind),
+                      text: titled(SOURCE_KINDS[kind].name),
+                      checked: feeds.every((s) => s.kind === kind),
                       action: async () => {
-                        for (const s of feeds) await setKind(s.id, s.title, k.kind);
+                        for (const s of feeds) await setKind(s.id, s.title, kind);
                       },
                     }),
                   ),
@@ -527,7 +526,7 @@
   async function setKind(id: string, title: string, kind: api.SourceKind) {
     try {
       await api.updateSubscription(id, { kind });
-      list.say(`${title}: ${SOURCE_KINDS.find((k) => k.kind === kind)?.name}`);
+      list.say(`${title}: ${SOURCE_KINDS[kind].name}`);
       list.version++;
       await load(true);
     } catch (e) {

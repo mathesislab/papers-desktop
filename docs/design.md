@@ -777,7 +777,9 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 
 **The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
 `FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
-`filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`; the
+`filters.ts`, `items.ts`, `review.ts`, `actions.ts` and `kinds.ts` (the kinds
+of items and subscriptions, each named once), tested by
+`scripts/feeds.test.ts` and `scripts/actions.test.ts`; the
 list and the details, shared with the Search tab, in `src/lib/list/`:
 `ItemList` the rows, the selection, the item read or shown, the keys that
 move, open and add, `ItemPane` the table, `Reader`, the details and the

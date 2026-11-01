@@ -10,7 +10,8 @@
   import type { Snippet } from "svelte";
   import { modClick } from "$lib/keys";
   import type { FeedCounts, ItemKind } from "./api";
-  import { KINDS, SHELVES, interestColours, shelfCounts, type FeedFilters, type Shelf, type SourceGroup } from "./filters";
+  import { ITEM_KINDS, itemKinds } from "./kinds";
+  import { SHELVES, interestColours, shelfCounts, type FeedFilters, type Shelf, type SourceGroup } from "./filters";
 
   let {
     saved,
@@ -48,8 +49,6 @@
     onfold: (group: string, open: boolean) => void;
   } = $props();
 
-  const KIND_MARK: Record<ItemKind, string> = { paper: "▤", preprint: "◐", news: "✦", blog: "✎" };
-
   let shelves = $derived(shelfCounts(counts));
   let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
   let days = $derived(keepDays === null ? null : `${keepDays} ${keepDays === 1 ? "day" : "days"}`);
@@ -79,10 +78,10 @@
     {/each}
 
     <h4>Kinds</h4>
-    {#each KINDS as { kind, name } (kind)}
+    {#each itemKinds as kind (kind)}
       <button class="item" class:selected={filters.kinds.includes(kind)} onclick={(e) => onkind(kind, modClick(e))}>
-        <span class="mark {kind}">{KIND_MARK[kind]}</span>
-        <span class="name">{name}</span>{@render count(counts?.unread.kinds[kind] ?? 0, counts?.total.kinds[kind] ?? 0)}
+        <span class="mark {kind}">{ITEM_KINDS[kind].mark}</span>
+        <span class="name">{ITEM_KINDS[kind].plural}</span>{@render count(counts?.unread.kinds[kind] ?? 0, counts?.total.kinds[kind] ?? 0)}
       </button>
     {/each}
 

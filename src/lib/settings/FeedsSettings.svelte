@@ -9,16 +9,11 @@
   import { onMount } from "svelte";
   import * as feeds from "$lib/feeds/api";
   import type { Feed, FeedSettings, Interest, Rule, SourceKind, Suggested, SubscriptionInfo } from "$lib/feeds/api";
+  import { SOURCE_KINDS, sourceKinds } from "$lib/feeds/kinds";
   import * as search from "$lib/search/api";
 
   let { notify }: { notify: (text: string, error: boolean) => void } = $props();
 
-  const KINDS: { value: SourceKind; name: string }[] = [
-    { value: "journal", name: "Journal" },
-    { value: "preprints", name: "Preprints" },
-    { value: "news", name: "News" },
-    { value: "blog", name: "General" },
-  ];
   type FeedType = "rss" | "crossref" | "openalex";
   const TYPES: { value: FeedType; name: string; placeholder: string }[] = [
     { value: "rss", name: "Feed", placeholder: "https://…/rss" },
@@ -97,7 +92,6 @@
 
   const feedText = (feed: Feed) => ("rss" in feed ? feed.rss : "crossref" in feed ? `ISSN ${feed.crossref}` : `OpenAlex ${feed.openalex}`);
   const feedKey = (feed: Feed) => JSON.stringify(feed);
-  const kindName = (kind: SourceKind) => KINDS.find((k) => k.value === kind)?.name ?? kind;
 
   /** When a subscription was last fetched, or why it failed. */
   function lastText(s: SubscriptionInfo): string {
@@ -308,7 +302,7 @@
         <div class="sub">
           <span class="main">
             <span class="title" title={s.title}>{s.title}</span>
-            <span class="hint" title={feedText(s.feed)}>{kindName(s.kind)} · {feedText(s.feed)}{s.boost ? ` · boost ${s.boost > 0 ? "+" : ""}${s.boost}` : ""}</span>
+            <span class="hint" title={feedText(s.feed)}>{SOURCE_KINDS[s.kind].name} · {feedText(s.feed)}{s.boost ? ` · boost ${s.boost > 0 ? "+" : ""}${s.boost}` : ""}</span>
             <span class="hint" class:error={!!s.last?.error}>{lastText(s)}</span>
           </span>
           <button class="small" onclick={() => (editing === s.id ? (editing = null) : startEdit(s))}>Edit</button>
@@ -319,7 +313,7 @@
             <label>Title <input class="text" type="text" bind:value={edit.title} placeholder="The feed's own" /></label>
             <label>Kind
               <select bind:value={edit.kind}>
-                {#each KINDS as k (k.value)}<option value={k.value}>{k.name}</option>{/each}
+                {#each sourceKinds as kind (kind)}<option value={kind}>{SOURCE_KINDS[kind].name}</option>{/each}
               </select>
             </label>
             <label>Journal <input class="text" type="text" bind:value={edit.journal} placeholder="As the feed says" /></label>
@@ -351,7 +345,7 @@
       onkeydown={(e) => e.key === "Enter" && add()}
     />
     <select bind:value={addKind} title="The kind of its items">
-      {#each KINDS as k (k.value)}<option value={k.value}>{k.name}</option>{/each}
+      {#each sourceKinds as kind (kind)}<option value={kind}>{SOURCE_KINDS[kind].name}</option>{/each}
     </select>
     <button disabled={busy || !addText.trim()} onclick={add}>Add</button>
   </div>
@@ -372,7 +366,7 @@
             {@const has = subscribed.has(feedKey(s.feed))}
             <label class="check" class:muted={has}>
               <input type="checkbox" checked={has || picked.has(feedKey(s.feed))} disabled={has} onchange={() => toggle(s)} />
-              {s.title}{#if s.kind !== "journal"}<span class="hint inline"> · {kindName(s.kind)}</span>{/if}
+              {s.title}{#if s.kind !== "journal"}<span class="hint inline"> · {SOURCE_KINDS[s.kind].name}</span>{/if}
             </label>
           {/each}
         </div>
