@@ -15,6 +15,7 @@ use crate::http::{Access, Http, get_json};
 use crate::links::{Reach, sure};
 use crate::model::{Entry, Item, ItemKind, LOOKUP, Origin};
 use crate::openalex;
+use crate::store::Lookup;
 use crate::{Error, Result};
 
 /// The most requests of Crossref and OpenAlex (by DOI, title or PII) in one fetch.
@@ -94,6 +95,17 @@ impl Budget {
 }
 
 impl Feeds {
+    /// Whether something was looked up (and not pruned since).
+    pub(crate) fn asked(&self, lookup: Lookup) -> bool {
+        self.lookups.contains_key(&lookup.key())
+    }
+
+    /// Something looked up now, found or not.
+    pub(crate) fn ask(&mut self, lookup: Lookup) {
+        let now = (self.now)();
+        self.lookups.insert(lookup.key(), now);
+    }
+
     /// What follows a fetch: the papers of posts, their paper items, the
     /// lookups of papers' DOIs; what it asked for.
     pub(crate) fn complete(&mut self, http: &dyn Http, access: &Access) -> Budget {
@@ -113,8 +125,8 @@ impl Feeds {
                     .sources
                     .iter()
                     .any(|s| pages.contains(s.entry.source.as_str()));
-                let read = self.lookups.contains_key(&format!("page:{}", i.id));
-                match (asks && !read, i.links.is_empty()) {
+                let unread = (i.url.as_deref()).is_some_and(|url| !self.asked(Lookup::Page(url)));
+                match (asks && unread, i.links.is_empty()) {
                     (true, _) => Some((i.id.clone(), Reach::Web)),
                     (false, true) => Some((i.id.clone(), Reach::Feed)),
                     (false, false) => None,
@@ -154,7 +166,7 @@ impl Feeds {
             let source = &post.sources[0].entry.source;
             for link in &post.links {
                 let new = !known.contains(link.doi.as_str())
-                    && !self.lookups.contains_key(&format!("crossref:{}", link.doi))
+                    && !self.asked(Lookup::Crossref(&link.doi))
                     && !wanted.iter().any(|(doi, _)| *doi == link.doi);
                 if new {
                     wanted.push((link.doi.clone(), source.clone()));
@@ -193,11 +205,11 @@ impl Feeds {
     /// without one (or a teaser) and OpenAlex not asked.
     pub fn pending<'a>(&self, item: &'a Item) -> Option<&'a str> {
         let doi = item.doi.as_deref().filter(|_| !item.kind.is_post())?;
-        let asked = |api: &str| self.lookups.contains_key(&format!("{api}:{doi}"));
         let work = (item.sources.iter().map(|s| &s.entry))
             .find(|e| e.doi.as_deref() == Some(doi) && e.origin == Origin::Work);
         let wants = wants_abstract(work.and_then(|e| e.summary.as_deref()));
-        (!asked("crossref") || (wants && !asked("openalex"))).then_some(doi)
+        let asked = |lookup| self.asked(lookup);
+        (!asked(Lookup::Crossref(doi)) || (wants && !asked(Lookup::OpenAlex(doi)))).then_some(doi)
     }
 
     /// Whether an item's abstract is a work's (Crossref's, OpenAlex's), not
@@ -237,14 +249,13 @@ impl Feeds {
         access: &Access,
         budget: &mut Budget,
     ) -> Option<Entry> {
-        let crossref = format!("crossref:{doi}");
-        let mut entry = match self.lookups.contains_key(&crossref) {
+        let mut entry = match self.asked(Lookup::Crossref(doi)) {
             true => self.kept(doi, source),
             false if !budget.lookup() => return None,
             false => {
                 match get_json::<Message<crossref::Work>>(http, &crossref::work_url(doi, access)) {
                     Ok(work) => {
-                        self.lookups.insert(crossref, (self.now)());
+                        self.ask(Lookup::Crossref(doi));
                         work.and_then(|w| w.message.entry(source, ItemKind::Paper))
                     }
                     Err(_) => {
@@ -254,13 +265,12 @@ impl Feeds {
                 }
             }
         };
-        let openalex = format!("openalex:{doi}");
         let more = wants_abstract(entry.as_ref().and_then(|e| e.summary.as_deref()))
-            && !self.lookups.contains_key(&openalex);
+            && !self.asked(Lookup::OpenAlex(doi));
         if more && budget.openalex() {
             match get_json::<openalex::Work>(http, &openalex::work_url(doi, access)) {
                 Ok(work) => {
-                    self.lookups.insert(openalex, (self.now)());
+                    self.ask(Lookup::OpenAlex(doi));
                     let other = work.map(|w| w.entry(source, ItemKind::Paper));
                     entry = match (entry, other) {
                         (Some(mut e), Some(o)) => {

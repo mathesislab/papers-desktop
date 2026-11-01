@@ -24,6 +24,7 @@ use crate::model::{Confidence, Item, ItemKind, Linked, Via};
 use crate::normalize::{
     arxiv_id, canonical_doi, dois_in, is_attachment_doi, is_news_doi, jaccard, title_words,
 };
+use crate::store::Lookup;
 use crate::{Error, Result};
 
 /// The paragraphs of a body read for its papers.
@@ -421,7 +422,9 @@ impl Feeds {
             page: None,
         };
         if reach == Reach::Web && !sure(&found.links) && budget.page() {
-            self.lookups.insert(format!("page:{id}"), (self.now)());
+            if let Some(url) = &url {
+                self.ask(Lookup::Page(url));
+            }
             match url.map(|url| read_page(http, &url)) {
                 Some(Ok(html)) => {
                     let page = cited(&html, true);
@@ -440,13 +443,12 @@ impl Feeds {
                 works.push(work);
             }
         }
-        let now = (self.now)();
         let papers: Vec<_> = works
             .iter()
             .filter_map(|w| w.entry(&source, ItemKind::Paper))
             .collect();
         for doi in papers.iter().filter_map(|e| e.doi.as_ref()) {
-            self.lookups.insert(format!("crossref:{doi}"), now);
+            self.ask(Lookup::Crossref(doi));
         }
         let id = self.resolve(id).to_string();
         if let Some(post) = self.items.items.iter_mut().find(|i| i.id == id) {
@@ -501,13 +503,12 @@ impl Feeds {
         access: &Access,
         budget: &mut Budget,
     ) -> Option<Work> {
-        let key = format!("pii:{pii}");
-        if self.lookups.contains_key(&key) || !budget.lookup() {
+        if self.asked(Lookup::Pii(pii)) || !budget.lookup() {
             return None;
         }
         match get_json::<Message<crossref::List>>(http, &crossref::pii_url(pii, access)) {
             Ok(list) => {
-                self.lookups.insert(key, (self.now)());
+                self.ask(Lookup::Pii(pii));
                 list.and_then(|l| l.message.items.into_iter().next())
             }
             Err(_) => {

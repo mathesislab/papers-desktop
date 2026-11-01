@@ -1,7 +1,7 @@
 //! Where an entry's data came from: a feed's text, or a work of Crossref or
 //! OpenAlex, whatever it was fetched under; the entries of before told apart
-//! when their folder opens; `src:` and the sidebar's sources only the
-//! subscriptions.
+//! when their folder opens (and the pages read, kept by their post's id, kept
+//! by their URL); `src:` and the sidebar's sources only the subscriptions.
 
 use papers_feeds::{
     Entry, FOUND, Feed, Feeds, ItemKind, LOOKUP, Origin, SourceKind, SubscriptionSettings, Version,
@@ -57,7 +57,7 @@ fn a_work_found_by_a_search_is_a_work() {
 }
 
 #[test]
-fn the_entries_of_before_are_told_apart_once() {
+fn a_folder_of_before_is_brought_up_to_date_once() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let rss = Feed::Rss {
@@ -94,7 +94,11 @@ fn the_entries_of_before_are_told_apart_once() {
     let entries = vec![post, paper, openalex, lookup, found, swept];
     feeds.found(entries, false).unwrap();
 
-    // as written before entries had an origin
+    // as written before entries had an origin, and the page read of the post
+    // kept by its id
+    let post = feeds.items().iter().find(|i| i.title == "Paper post");
+    let read = format!(r#"{{"page:{}": "2026-10-30T00:00:00Z"}}"#, post.unwrap().id);
+    std::fs::write(dir.path().join("lookups.json"), read).unwrap();
     let path = dir.path().join("items.json");
     let mut json: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     json.as_object_mut().unwrap().remove("format");
@@ -117,7 +121,11 @@ fn the_entries_of_before_are_told_apart_once() {
         assert_eq!(origin_of(&feeds, work), Origin::Work, "{work}");
     }
     let written: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    assert_eq!(written["format"], 1, "once");
+    assert_eq!(written["format"], 2, "once");
+    let lookups = std::fs::read_to_string(dir.path().join("lookups.json")).unwrap();
+    let lookups: Value = serde_json::from_str(&lookups).unwrap();
+    let keys: Vec<&String> = lookups.as_object().unwrap().keys().collect();
+    assert_eq!(keys, ["page:https://example.org/post"]);
 
     // a sweep's item stays a work once the sweep is unsubscribed
     feeds.unsubscribe(&sweep).unwrap();

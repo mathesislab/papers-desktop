@@ -16,8 +16,8 @@ use crate::model::{
 use crate::normalize::{is_attachment_doi, short_id};
 use crate::parse::kind_of;
 use crate::store::{
-    self, CONFIG, Config, FORMAT, FeedSettings, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State,
-    Validated,
+    self, CONFIG, Config, FORMAT, FeedSettings, HTTP, ITEMS, Items, LOOKUPS, Lookup, Lookups,
+    STATE, State, Validated,
 };
 use crate::{Error, Result};
 
@@ -66,19 +66,35 @@ impl Feeds {
         Ok(feeds)
     }
 
-    /// The items of an older format brought up to [`FORMAT`], written: the
-    /// origin of each entry (1).
+    /// A folder of an older format brought up to [`FORMAT`], written: the
+    /// origin of each entry (1), the pages read by their URL (2).
     fn migrate(&mut self) -> Result<()> {
-        if self.items.format >= FORMAT {
+        let format = self.items.format;
+        if format >= FORMAT {
             return Ok(());
         }
-        let subscriptions = &self.config.subscriptions;
-        for source in self.items.items.iter_mut().flat_map(|i| &mut i.sources) {
-            let subscription = subscriptions.iter().find(|s| s.id == source.entry.source);
-            source.entry.origin = Origin::of_old(&source.entry, subscription);
+        if format < 1 {
+            let subscriptions = &self.config.subscriptions;
+            for source in self.items.items.iter_mut().flat_map(|i| &mut i.sources) {
+                let subscription = subscriptions.iter().find(|s| s.id == source.entry.source);
+                source.entry.origin = Origin::of_old(&source.entry, subscription);
+            }
+        }
+        if format < 2 {
+            // the post's id after `page:`, which merging leaves behind
+            let read: Vec<(String, DateTime<Utc>)> = (self.lookups.iter())
+                .filter_map(|(key, &at)| Some((key.strip_prefix("page:")?.to_string(), at)))
+                .collect();
+            for (id, at) in read {
+                self.lookups.remove(&format!("page:{id}"));
+                if let Some(url) = self.item(&id).and_then(|i| i.url.clone()) {
+                    self.lookups.insert(Lookup::Page(&url).key(), at);
+                }
+            }
         }
         self.items.format = FORMAT;
-        store::write(&self.dir, ITEMS, &self.items)
+        store::write(&self.dir, ITEMS, &self.items)?;
+        store::write(&self.dir, LOOKUPS, &self.lookups)
     }
 
     pub fn subscriptions(&self) -> &[Subscription] {

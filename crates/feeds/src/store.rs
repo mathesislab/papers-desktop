@@ -87,8 +87,9 @@ fn lookback_days() -> u32 {
     LOOKBACK_DAYS
 }
 
-/// The format of `items.json`: since 1, each entry has its origin.
-pub(crate) const FORMAT: u32 = 1;
+/// The format of the folder, in `items.json`: since 1, each entry has its
+/// origin; since 2, the pages read are kept by their URL.
+pub(crate) const FORMAT: u32 = 2;
 
 /// `items.json`: the items, and the ids of merged items to the item they went into.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -137,9 +138,35 @@ pub(crate) struct Since {
 /// `http.json`: what each subscription's next fetch starts from, by its id.
 pub(crate) type Validated = BTreeMap<String, Since>;
 
-/// `lookups.json`: what was looked up, found or not, and when: `crossref:`
-/// and `openalex:` and a DOI, `page:` and an item's id.
+/// `lookups.json`: what was looked up, found or not, and when, by its
+/// [`Lookup::key`].
 pub(crate) type Lookups = BTreeMap<String, DateTime<Utc>>;
+
+/// What is asked for once (again only once its asking is pruned).
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Lookup<'a> {
+    /// the work of a DOI in Crossref
+    Crossref(&'a str),
+    /// the work of a DOI in OpenAlex
+    OpenAlex(&'a str),
+    /// a post's page, by its URL: the same whichever item the post merges into
+    Page(&'a str),
+    /// the work of a ScienceDirect PII in Crossref
+    Pii(&'a str),
+}
+
+impl Lookup<'_> {
+    /// Its key in `lookups.json`: `crossref:`, `openalex:`, `page:` or
+    /// `pii:` and what is looked up.
+    pub fn key(self) -> String {
+        match self {
+            Lookup::Crossref(doi) => format!("crossref:{doi}"),
+            Lookup::OpenAlex(doi) => format!("openalex:{doi}"),
+            Lookup::Page(url) => format!("page:{url}"),
+            Lookup::Pii(pii) => format!("pii:{pii}"),
+        }
+    }
+}
 
 /// A file of the folder, or its default if there is none yet.
 pub(crate) fn read<T: DeserializeOwned + Default>(dir: &Path, name: &str) -> Result<T> {

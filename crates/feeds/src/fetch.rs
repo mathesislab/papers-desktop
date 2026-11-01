@@ -14,7 +14,7 @@ use crate::feeds::Feeds;
 use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::model::{Entry, Feed, Subscription};
 use crate::parse::parse;
-use crate::store::{Since, Validators};
+use crate::store::{Lookup, Since, Validators};
 use crate::sweep;
 
 /// What a fetch did, per subscription, and what followed.
@@ -167,7 +167,7 @@ impl Feeds {
             }) => {
                 if looked_up {
                     for doi in entries.iter().filter_map(|e| e.doi.as_ref()) {
-                        self.lookups.insert(format!("crossref:{doi}"), now);
+                        self.ask(Lookup::Crossref(doi));
                     }
                 }
                 let count = entries.len();
