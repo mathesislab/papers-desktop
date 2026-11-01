@@ -21,7 +21,7 @@ export const FEED_SPECS: Specs<FeedColumn> = {
 };
 
 /** the columns of the Feeds tab at first, in their order: those its menu offers */
-export const FEED_ORDER: FeedColumn[] = ["score", "similar", "title", "authors", "journal", "date", "badges"];
+export const FEED_ORDER: FeedColumn[] = ["date", "journal", "title", "authors", "similar", "score", "badges"];
 
 /** the columns of the Search tab: the citations first, the year, no score; wider titles and journals */
 export const SEARCH_ORDER: FeedColumn[] = ["cited", "similar", "title", "authors", "journal", "year", "badges"];

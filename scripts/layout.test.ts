@@ -43,11 +43,12 @@ test("a layout of an older version: the tab in front, the Feeds and Search tabs'
 });
 
 test("the Feeds tab's columns of an older version still, widths by column: in their first order", () => {
-  const layout = restore({ feedColumns: { score: 90, title: 250 } } as never);
+  const layout = restore({ feedColumns: { score: 90, journal: 120 } } as never);
   assert.deepEqual(layout.feeds.columns.slice(0, 2), [
-    { key: "score", width: 90 },
-    { key: "similar", width: 70 },
+    { key: "date", width: 58 },
+    { key: "journal", width: 120 },
   ]);
+  assert.deepEqual(layout.feeds.columns[5], { key: "score", width: 90 });
 });
 
 test("the library's star column shown once in a layout of before version 2, then hidden if hidden", () => {
