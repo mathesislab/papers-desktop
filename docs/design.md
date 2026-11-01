@@ -826,8 +826,13 @@ splitter, `tab.css` the frame of the two tabs):
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a dismissed item goes, the next
   selected. A ☆ at the start of a row stars it (*Starred*: the shortlist),
-  or unstars it. With several rows selected, a bar above the list marks them
-  read or unread, stars, dismisses or snoozes them; *Mark read ▾* marks the
+  or unstars it. The actions on items are one table (`actions.ts`), which the
+  keys, the row menu, the selection bar, the buttons of the details and
+  *Later ▾* read, each named one way (*Mark read* or *Mark unread*, *Star* or
+  *Unstar*, *Dismiss* or *Restore*: a toggle says which way it goes; marking
+  read above 50 asks first, and says *Marked 12 read*). With several rows
+  selected, a bar above the list marks them read or unread, stars,
+  dismisses or snoozes them; *Mark read ▾* marks the
   list, the items older than 1, 3 or 7 days, or those above. The row menu's
   *Source Is* sets the kind of its subscription (Journal, Preprint Server,
   News & Press, General), which its items take at once.
@@ -851,7 +856,7 @@ splitter, `tab.css` the frame of the two tabs):
 - *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
   passed over faster (j held down) stays new: its title went by, its
   details were not read. `⇧Space` (and the row menu's *Mark All Above as
-  Seen*) marks the new items above it seen, for titles skimmed. Opening an
+  Read*) marks the new items above it seen, for titles skimmed. Opening an
   item marks it seen.
 - *Details*, to read: the buttons (*Open* in the feeds' green), the title,
   authors, journal and date, then a paper's abstract marked by the query and

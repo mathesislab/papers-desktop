@@ -21,8 +21,9 @@
   import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
+  import { SNOOZES, buttonText, feedActions, titled, type Action, type ActionName, type Item } from "./actions";
   import * as api from "./api";
-  import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo, Triage } from "./api";
+  import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo } from "./api";
   import FeedsSidebar from "./FeedsSidebar.svelte";
   import type { FeedColumn } from "./FeedTable.svelte";
   import Review from "./Review.svelte";
@@ -118,13 +119,10 @@
   let now = $state(Date.now());
   /** above this many, Mark read asks first */
   const MARK_ASK = 50;
-  /** the snoozes of Later ▾ and the row menu: till the start of the day */
-  const SNOOZES: [string, number][] = [
-    ["1 Day", 1],
-    ["3 Days", 3],
-    ["1 Week", 7],
-    ["1 Month", 30],
-  ];
+  /** the buttons of the details, a post's and a paper's; those of the selection bar */
+  const POST_BUTTONS: ActionName[] = ["open", "read", "star", "dismiss", "later"];
+  const PAPER_BUTTONS: ActionName[] = ["add", "open", "addBare", "star", "dismiss", "later"];
+  const BAR_BUTTONS: ActionName[] = ["read", "star", "dismiss", "later"];
 
   let request = $derived(requestOf(filters));
   /** the items the filters select; those triaged here stay in place until the filters change */
@@ -148,6 +146,17 @@
   /** how many days the feeds keep an item (the setting): what *All* reaches back */
   let keepDays = $state<number | null>(null);
   let shownSearch = $derived(searches.find((s) => isShown(filters, s))?.name ?? null);
+
+  /** what can be done to the items: the keys, the menus, the buttons */
+  const actions = feedActions({
+    open: (ids) => list.openItems(ids),
+    add: (ids, pdf) => list.addItems(ids, pdf),
+    find: (id) => find(id),
+    triage,
+    keepUnread,
+    later: laterMenu,
+    clearReminder: (ids) => list.setTo(ids, "new"),
+  });
 
   /** An item becomes seen once it has stayed selected a moment (`Dwell`); one passed over stays new. */
   const dwell = new Dwell((id) => {
@@ -286,28 +295,37 @@
     });
   });
 
+  /** The items of some ids that the actions know: the rows, else the details shown. */
+  const itemsOf = (ids: string[]): Item[] =>
+    ids.flatMap((id): Item[] => {
+      const item = list.byId.get(id) ?? (list.detail?.id === id ? list.detail : undefined);
+      return item ? [item] : [];
+    });
+
+  /** An action as an item of a menu. */
+  const menuItem = (action: Action, ids: string[], items: Item[]) =>
+    MenuItem.new({ text: titled(action.label(items)), enabled: action.enabled(items), action: () => action.run(ids) });
+
   /** s, x, m: the triage of the items selected toggled (`toggled`); an item not in the list (a linked paper) is
    *  asked for. */
-  async function triage(action: TriageAction, ids = list.targets()) {
+  async function triage(action: TriageAction, ids: string[]) {
     const found = await Promise.all(ids.map((id) => list.byId.get(id) ?? list.detailOf(id)));
     const items = found.filter((r): r is FeedRow | FeedDetail => !!r);
     const change = toggled(items, action);
-    if (change) list.setTo(change.ids, change.triage);
+    if (change?.triage === "seen") markRead(change.ids);
+    else if (change) list.setTo(change.ids, change.triage);
   }
 
-  /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked seen. */
+  /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked read. */
   function markAbove(from = list.selection.focus) {
-    const ids = newAbove(list.rows, from);
-    if (!ids.length) return;
-    list.setTo(ids, "seen");
-    list.say(`Marked ${ids.length} as seen`);
+    markRead(newAbove(list.rows, from));
   }
 
   /** Mark read ▾: the new items of the list, those older than some days, those above the selection, marked seen
    *  (above 50, after asking). */
   async function markMenu() {
     const item = (text: string, ids: string[]) =>
-      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markSeen(ids) });
+      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markRead(ids) });
     const all = list.rows.filter((r) => r.triage === "new").map((r) => r.id);
     const older = (days: number) => newOlderThan(list.rows, days, Date.now());
     const menu = await Menu.new({
@@ -324,15 +342,17 @@
     await menu.popup();
   }
 
-  async function markSeen(ids: string[]) {
+  /** Items marked read (above 50, after asking), said. */
+  async function markRead(ids: string[]) {
+    if (!ids.length) return;
     const question = `Mark ${ids.length} items as read?`;
     if (ids.length > MARK_ASK && !(await ask(question, { title: "Mark read", okLabel: "Mark read", cancelLabel: "Cancel" }))) return;
     list.setTo(ids, "seen");
-    list.say(`Marked ${ids.length} as read`);
+    list.say(`Marked ${ids.length} read`);
   }
 
   /** U: kept unread (a reminder due now, first in the list); the reminders of items all kept so, cleared. */
-  function keepUnread(ids = list.targets()) {
+  function keepUnread(ids: string[]) {
     const due = ids.every((id) => list.byId.get(id)?.reminder === "due");
     if (due) return list.setTo(ids, "new");
     remindOf(ids, null);
@@ -358,17 +378,16 @@
   }
 
   /** Z, Later ▾: kept unread, snoozed for some days, or the reminder cleared. */
-  async function laterMenu(ids = list.targets()) {
+  async function laterMenu(ids: string[]) {
     if (!ids.length) return;
-    const item = (text: string, action: () => void, enabled = true) => MenuItem.new({ text, action, enabled });
-    const reminded = ids.some((id) => list.byId.get(id)?.reminder);
+    const items = itemsOf(ids);
     const menu = await Menu.new({
       items: [
-        await item("Keep Unread", () => remindOf(ids, null)),
+        await menuItem(actions.keepUnread, ids, items),
         await PredefinedMenuItem.new({ item: "Separator" }),
-        ...(await Promise.all(SNOOZES.map(([text, days]) => item(`Snooze ${text}`, () => remindOf(ids, days))))),
+        ...(await Promise.all(SNOOZES.map((s) => MenuItem.new({ text: titled(`Snooze ${s.text}`), action: () => remindOf(ids, s.days) })))),
         await PredefinedMenuItem.new({ item: "Separator" }),
-        await item("Clear Reminder", () => list.setTo(ids, "new"), reminded),
+        await menuItem(actions.clearReminder, ids, items),
       ],
     });
     await menu.popup();
@@ -396,12 +415,10 @@
   async function rowMenu(id: string) {
     if (!list.selection.selected.has(id)) list.showItem(id);
     const ids = list.targets();
-    const items = ids.map((i) => list.byId.get(i)).filter((r): r is FeedRow => r !== undefined);
+    const items = itemsOf(ids);
     if (!items.length) return;
-    const every = (t: Triage) => items.every((r) => r.triage === t);
-    const item = (text: string, action: () => void, enabled = true) => MenuItem.new({ text, action, enabled });
+    const item = (name: ActionName) => menuItem(actions[name], ids, items);
     const separator = () => PredefinedMenuItem.new({ item: "Separator" });
-    const posts = items.length === 1 && isPost(items[0].kind);
     // one item: the kind of each subscription that lists it, to set right
     const sources = items.length === 1 ? ((await list.detailOf(id))?.sources ?? []) : [];
     const kindOf = async (s: api.FeedDetail["sources"][number]) =>
@@ -415,22 +432,22 @@
       });
     const menu = await Menu.new({
       items: [
-        await item(posts ? "Open Post" : "Open", () => list.openItems(ids)),
-        await item("Add…", () => list.addItems(ids, true)),
-        await item("Add without PDF…", () => list.addItems(ids, false)),
-        ...(posts ? [await item("Find Linked Paper", () => find(id))] : []),
+        await item("open"),
+        await item("add"),
+        await item("addBare"),
+        ...(actions.find.enabled(items) ? [await item("find")] : []),
         await separator(),
-        await item(every("shortlisted") ? "Unstar" : "Star", () => triage("shortlist", ids)),
-        await item(items.some((r) => r.triage === "new") ? "Mark as Seen" : "Mark as New", () => triage("read", ids)),
-        await item(every("dismissed") ? "Restore" : "Dismiss", () => triage("dismiss", ids)),
-        await item("Keep Unread", () => remindOf(ids, null)),
+        await item("star"),
+        await item("read"),
+        await item("dismiss"),
+        await item("keepUnread"),
         await Submenu.new({
           text: "Snooze",
-          items: await Promise.all(SNOOZES.map(([text, days]) => item(text, () => remindOf(ids, days)))),
+          items: await Promise.all(SNOOZES.map((s) => MenuItem.new({ text: titled(s.text), action: () => remindOf(ids, s.days) }))),
         }),
-        await item("Clear Reminder", () => list.setTo(ids, "new"), items.some((r) => r.reminder)),
+        await item("clearReminder"),
         await separator(),
-        await item("Mark All Above as Seen", () => markAbove(id), newAbove(list.rows, id).length > 0),
+        await MenuItem.new({ text: "Mark All Above as Read", action: () => markAbove(id), enabled: newAbove(list.rows, id).length > 0 }),
         ...(sources.length ? [await separator(), ...(await Promise.all(sources.map(kindOf)))] : []),
       ],
     });
@@ -540,8 +557,8 @@
   }
 
   /** A key of the window while the tab is in front (none while a sheet is open): ⌘R brings the list up to date,
-   *  ⇧⌘R fetches, ⌘↩ starts the Review (which then has the keys); the list's keys move and read (`navKey`); s, x,
-   *  m, u (keep unread), z (later), o, a, f act on the selection; ⇧Space marks all above as seen. */
+   *  ⇧⌘R fetches, ⌘↩ starts the Review (which then has the keys); the list's keys move and read (`navKey`); the
+   *  keys of the actions act on the selection (s, x, m, u, z, o, a, f); ⇧Space marks all above as read. */
   export function key(e: KeyboardEvent) {
     if (modalOpen()) return;
     const act = (action: () => unknown) => {
@@ -555,24 +572,8 @@
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === " " && e.shiftKey) return act(() => markAbove());
     if (e.shiftKey) return;
-    switch (e.key) {
-      case "s":
-        return act(() => triage("shortlist"));
-      case "x":
-        return act(() => triage("dismiss"));
-      case "m":
-        return act(() => triage("read"));
-      case "o":
-        return act(() => list.openItems(list.targets()));
-      case "a":
-        return act(() => list.addItems(list.targets(), true));
-      case "f":
-        return act(() => find());
-      case "u":
-        return act(() => keepUnread());
-      case "z":
-        return act(() => laterMenu());
-    }
+    const action = Object.values(actions).find((a) => a.key === e.key);
+    if (action) act(() => action.run(list.targets()));
   }
 
   /** The saved searches changed: kept, then their counts again. */
@@ -716,7 +717,7 @@
           widths: columns,
           onsort: (sort) => (filters.sort = sort),
           onwidths: (widths) => (columns = widths),
-          onstar: (id) => triage("shortlist", [id]),
+          onstar: (id) => actions.star.run([id]),
           onmenu: rowMenu,
         }}
         {colours}
@@ -728,7 +729,7 @@
         actions={itemActions}
         finding={finding !== null && finding === list.detail?.id}
         onaddlink={(link: Linked) => list.add({ id: link.doi, item: link.item }, true)}
-        onshortlistlink={(item) => triage("shortlist", [item])}
+        onshortlistlink={(item) => actions.star.run([item])}
         onfind={find}
         {onentry}
       />
@@ -779,13 +780,14 @@
     </button>
   </div>
   {#if list.selection.selected.size > 1}
+    {@const ids = list.chosen()}
+    {@const items = itemsOf(ids)}
     <div class="selbar">
       <span>{list.selection.selected.size} selected</span>
-      <button onclick={() => markSeen(list.chosen().filter((id) => list.byId.get(id)?.triage === "new"))}>Mark read</button>
-      <button onclick={() => list.setTo(list.chosen().filter((id) => list.byId.get(id)?.triage === "seen"), "new")}>Mark unread</button>
-      <button onclick={() => triage("shortlist", list.chosen())}>★ Star</button>
-      <button onclick={() => triage("dismiss", list.chosen())}>Dismiss</button>
-      <button onclick={() => laterMenu(list.chosen())}>⏰ Later ▾</button>
+      {#each BAR_BUTTONS as name (name)}
+        {@const action = actions[name]}
+        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action.label(items))}</button>
+      {/each}
       <span class="spacer"></span>
       <button class="plain" onclick={() => list.selection.only(list.selection.focus)}>Clear selection</button>
     </div>
@@ -807,22 +809,16 @@
   {/if}
 {/snippet}
 
-<!-- the buttons of the details: a post's, a paper's -->
+<!-- the buttons of the details, a post's or a paper's: on the selection when the item is in it -->
 {#snippet itemActions(d: FeedDetail)}
-  {#if isPost(d.kind)}
-    <button class="open" onclick={() => list.openItems(list.targetsOr(d.id))} disabled={!d.url}>Open post ↗ <kbd>O</kbd></button>
-    <button onclick={() => triage("read", list.targetsOr(d.id))}>{d.triage === "new" ? "Mark read" : "Mark unread"} <kbd>M</kbd></button>
-    <button onclick={() => triage("shortlist", list.targetsOr(d.id))}>{d.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
-    <button onclick={() => triage("dismiss", list.targetsOr(d.id))}>{d.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
-    <button onclick={() => laterMenu(list.targetsOr(d.id))} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
-  {:else}
-    <button class="primary" onclick={() => list.addItems(list.targetsOr(d.id), true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
-    <button class="open" onclick={() => list.openItems(list.targetsOr(d.id))} disabled={!d.url && !d.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
-    <button onclick={() => list.addItems(list.targetsOr(d.id), false)} title="Add to the library without looking for its PDF">Add without PDF</button>
-    <button onclick={() => triage("shortlist", list.targetsOr(d.id))}>{d.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
-    <button onclick={() => triage("dismiss", list.targetsOr(d.id))}>{d.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
-    <button onclick={() => laterMenu(list.targetsOr(d.id))} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
-  {/if}
+  {@const ids = list.targetsOr(d.id)}
+  {@const items = itemsOf(ids)}
+  {#each isPost(d.kind) ? POST_BUTTONS : PAPER_BUTTONS as name (name)}
+    {@const action = actions[name]}
+    <button class:primary={name === "add"} class:open={name === "open"} title={action.hint} disabled={!action.enabled(items)} onclick={() => action.run(ids)}>
+      {buttonText(name, action.label(items))}{#if action.key}{" "}<kbd>{action.key.toUpperCase()}</kbd>{/if}
+    </button>
+  {/each}
 {/snippet}
 
 <style>
