@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use chrono::{DateTime, Utc};
 use papers_feeds::{Access, FeedReport, Feeds, Outcome, Subscription};
@@ -27,16 +27,40 @@ pub enum Phase {
     Done,
 }
 
+/// Who is told where a fetch is: the windows, or a test.
+pub type Tell = Arc<dyn Fn(Phase) + Send + Sync>;
+
+/// The end of a fetch's phase, whatever ends it (an error, a panic, what
+/// follows never looked up): `Done` told, and the fetch of every
+/// subscription in flight no more. Dropped before the work on a copy is let
+/// go of, so a fetch that waits for it is told `Reading` after this `Done`.
+struct Ending {
+    tell: Tell,
+    /// of a fetch of every subscription
+    in_flight: Option<InFlight>,
+}
+
+impl Drop for Ending {
+    fn drop(&mut self) {
+        if let Some(in_flight) = &self.in_flight {
+            *in_flight.lock().unwrap_or_else(PoisonError::into_inner) = None;
+        }
+        (self.tell)(Phase::Done);
+    }
+}
+
+/// The summary of the feeds read of a fetch of every subscription, while it
+/// looks up what they brought.
+type InFlight = Arc<Mutex<Option<FetchSummary>>>;
+
 /// The fetches of the feeds, one at a time, and what is kept of them.
 pub(super) struct Fetching {
     /// `feeds-fetched.json`: the last summary, each subscription's last fetch
     path: PathBuf,
     /// held by a fetch while it reads the feeds: a fetch asked meanwhile waits
     reading: Mutex<()>,
-    /// the summary of the feeds read of a fetch of every subscription, while
-    /// it looks up what they brought: a fetch of every subscription asked
-    /// meanwhile answers it
-    in_flight: Mutex<Option<FetchSummary>>,
+    /// a fetch of every subscription asked meanwhile answers it
+    in_flight: InFlight,
     /// read from its file at the first ask
     fetched: Mutex<Option<Fetched>>,
 }
@@ -62,6 +86,8 @@ pub struct Reading<'a> {
 /// What follows the feeds read of a fetch, to look up, the work on a copy
 /// held till it is done: on a thread of its own.
 pub struct Following {
+    /// before `running`: dropped first
+    _ending: Ending,
     running: Held,
     /// the items before the fetch
     known: BTreeSet<String>,
@@ -200,15 +226,27 @@ impl FeedsState {
 
 impl Reading<'_> {
     /// The feeds read, on a copy: their summary (kept, unless of a single
-    /// subscription), and what follows, to look up.
+    /// subscription), and what follows, to look up; `tell` told where it is.
     pub fn read(
         self,
         http: &dyn papers_feeds::Http,
         access: &Access,
+        tell: Tell,
     ) -> Result<(FetchSummary, Following), String> {
-        let (folder, fetching) = (&self.state.folder, &self.state.fetching);
-        let only = self.only.as_deref();
-        let (report, known) = folder.on_copy(&self.running, |feeds| {
+        let Reading {
+            state,
+            only,
+            _reading,
+            running,
+        } = self;
+        let (folder, fetching) = (&state.folder, &state.fetching);
+        tell(Phase::Reading);
+        let mut ending = Ending {
+            tell: tell.clone(),
+            in_flight: None,
+        };
+        let only = only.as_deref();
+        let (report, known) = folder.on_copy(&running, |feeds| {
             let known = feeds.ids();
             Ok((feeds.read_feeds(only, http, access)?, known))
         })?;
@@ -219,9 +257,12 @@ impl Reading<'_> {
         fetching.keep(whole.then_some(&summary), last, &subscriptions)?;
         if whole {
             *fetching.in_flight.lock().unwrap() = Some(summary.clone());
+            ending.in_flight = Some(fetching.in_flight.clone());
         }
+        tell(Phase::LookingUp);
         let following = Following {
-            running: self.running,
+            _ending: ending,
+            running,
             known,
             subscriptions,
             summary: summary.clone(),
@@ -241,21 +282,20 @@ impl Following {
         access: &Access,
     ) -> Result<FetchSummary, String> {
         let known = &self.known;
-        let followed = state.folder.on_copy(&self.running, |feeds| {
+        let (followed, added) = state.folder.on_copy(&self.running, |feeds| {
             let followed = feeds.follow_up(known, http, access)?;
             Ok((followed, new_items(feeds, known)))
-        });
-        *state.fetching.in_flight.lock().unwrap() = None;
-        let (followed, added) = followed?;
+        })?;
         let summary = FetchSummary {
             lookups: followed.lookups,
             pages: followed.pages,
             added,
-            ..self.summary
+            ..self.summary.clone()
         };
         if self.whole {
             (state.fetching).keep(Some(&summary), Vec::new(), &self.subscriptions)?;
         }
+        // `self` goes on return: `Done` told, then the work on a copy let go of
         Ok(summary)
     }
 }
@@ -266,7 +306,7 @@ impl Fetching {
         Fetching {
             path,
             reading: Mutex::new(()),
-            in_flight: Mutex::new(None),
+            in_flight: Arc::new(Mutex::new(None)),
             fetched: Mutex::new(None),
         }
     }
@@ -320,20 +360,15 @@ pub(super) fn fetch_now(app: &AppHandle, only: Option<String>) -> Result<FetchSu
         Begun::Reading(reading) => reading,
     };
     let requests = state.requests()?;
-    tell(app, Phase::Reading);
-    let (summary, following) = match reading.read(&requests.http, &requests.access) {
-        Ok(read) => read,
-        Err(e) => {
-            tell(app, Phase::Done);
-            return Err(e);
-        }
+    let told: Tell = {
+        let app = app.clone();
+        Arc::new(move |phase| tell(&app, phase))
     };
-    tell(app, Phase::LookingUp);
+    let (summary, following) = reading.read(&requests.http, &requests.access, told)?;
     let app = app.clone();
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
         let followed = following.follow(&state.feeds, &requests.http, &requests.access);
-        tell(&app, Phase::Done);
         if let Err(e) = followed {
             eprintln!("papers-desktop: cannot look up what the feeds brought: {e}");
         }
@@ -387,6 +422,21 @@ mod tests {
         Reply::ok(TC, body)
     }
 
+    /// Nobody told where a fetch is.
+    fn quiet() -> Tell {
+        Arc::new(|_| {})
+    }
+
+    /// The phases a fetch tells, kept.
+    fn recorded() -> (Arc<Mutex<Vec<Phase>>>, Tell) {
+        let phases = Arc::new(Mutex::new(Vec::new()));
+        let kept = phases.clone();
+        (
+            phases,
+            Arc::new(move |phase| kept.lock().unwrap().push(phase)),
+        )
+    }
+
     /// A fetch made whole on this thread: the feeds read, then what follows.
     fn fetch(
         state: &FeedsState,
@@ -397,7 +447,7 @@ mod tests {
             Begun::Joined(summary) => return Ok(summary),
             Begun::Reading(reading) => reading,
         };
-        let (_, following) = reading.read(http, &Access::default())?;
+        let (_, following) = reading.read(http, &Access::default(), quiet())?;
         following.follow(state, http, &Access::default())
     }
 
@@ -416,9 +466,12 @@ mod tests {
         let Begun::Reading(reading) = state.begin(None) else {
             unreachable!()
         };
-        let (read, following) = reading.read(&http, &Access::default()).unwrap();
+        let (phases, told) = recorded();
+        let (read, following) = reading.read(&http, &Access::default(), told).unwrap();
         let summary = following.follow(&state, &http, &Access::default()).unwrap();
         assert_eq!(read, summary, "nothing looked up");
+        let phases = phases.lock().unwrap().clone();
+        assert_eq!(phases, [Phase::Reading, Phase::LookingUp, Phase::Done]);
         assert_eq!(
             (summary.fetched, summary.unchanged, summary.added),
             (1, 0, 2)
@@ -550,7 +603,7 @@ mod tests {
         };
         std::thread::sleep(Duration::from_millis(50));
         assert!(!joining.is_finished(), "waits while the feeds are read");
-        let (read, following) = reading.read(&http, &Access::default()).unwrap();
+        let (read, following) = reading.read(&http, &Access::default(), quiet()).unwrap();
         assert_eq!(
             joining.join().unwrap(),
             Ok(read),
@@ -571,7 +624,7 @@ mod tests {
         let Begun::Reading(reading) = state.begin(Some(&tc)) else {
             unreachable!()
         };
-        let (_, following) = reading.read(&http, &Access::default()).unwrap();
+        let (_, following) = reading.read(&http, &Access::default(), quiet()).unwrap();
         let whole = {
             let state = state.clone();
             std::thread::spawn(move || {
@@ -676,5 +729,55 @@ mod tests {
         let empty = Arc::new(LibraryFacts::default());
         assert!(folder.set_library(folder.next_build(), empty));
         assert_eq!(like("Firn densification"), None);
+    }
+
+    /// A network that panics at the lookups (Crossref).
+    struct Panics(Recorded);
+
+    impl papers_feeds::Http for Panics {
+        fn get(&self, request: &Request) -> Result<Reply, String> {
+            assert!(!request.url.contains("crossref"), "a lookup");
+            self.0.get(request)
+        }
+    }
+
+    /// A fetch whose lookups panic, or whose feeds cannot be read, says it is
+    /// done before it lets go of the work on a copy, and is in flight no more.
+    #[test]
+    fn a_fetch_that_ends_badly_is_done() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = Arc::new(FeedsState::on_clock(dir.path()));
+        state.subscribed(TC);
+        let feed = atom("TC", &[("a", "Ice", Some("10.5194/tc-1"))]);
+        let http = Panics(Recorded::new().reply(TC, feed));
+        let Begun::Reading(reading) = state.begin(None) else {
+            unreachable!()
+        };
+        let (phases, told) = recorded();
+        let (_, following) = reading.read(&http, &Access::default(), told).unwrap();
+        let panicked = std::thread::scope(|scope| {
+            let follow = || following.follow(&state, &http, &Access::default());
+            scope.spawn(follow).join()
+        });
+        assert!(panicked.is_err());
+        let phases = phases.lock().unwrap().clone();
+        assert_eq!(phases, [Phase::Reading, Phase::LookingUp, Phase::Done]);
+        // the gate let go of, nothing in flight: the next fetch reads the feeds
+        let Begun::Reading(reading) = state.begin(None) else {
+            panic!("joined a fetch that panicked")
+        };
+        let (phases, told) = recorded();
+        let gone = Recorded::new().fail(TC, "offline");
+        drop(reading.read(&gone, &Access::default(), told));
+        assert_eq!(
+            phases.lock().unwrap()[..],
+            [Phase::Reading, Phase::LookingUp, Phase::Done]
+        );
+        let Begun::Reading(reading) = state.begin(Some("gone")) else {
+            unreachable!()
+        };
+        let (phases, told) = recorded();
+        assert!(reading.read(&gone, &Access::default(), told).is_err());
+        assert_eq!(phases.lock().unwrap()[..], [Phase::Reading, Phase::Done]);
     }
 }

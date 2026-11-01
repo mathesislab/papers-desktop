@@ -70,6 +70,17 @@ impl Drop for Held {
     }
 }
 
+/// The changes of a folder kept while a copy of it is worked on; none once
+/// dropped.
+struct Journalling<'a>(&'a Folder);
+
+impl Drop for Journalling<'_> {
+    fn drop(&mut self) {
+        let mut live = (self.0.live.lock()).unwrap_or_else(PoisonError::into_inner);
+        live.journal = None;
+    }
+}
+
 /// The feeds the commands see, the changes made while a copy is worked on,
 /// and the facts of the library that the feeds and their copies are given.
 #[derive(Default)]
@@ -188,6 +199,8 @@ impl Folder {
             live.journal = Some(Vec::new());
             copy
         };
+        // whatever ends the work (a panic too), no change is kept for it
+        let _journalling = Journalling(self);
         let done = work(&mut copy);
         let mut live = self.live.lock().unwrap();
         let journal = live.journal.take().unwrap_or_default();
