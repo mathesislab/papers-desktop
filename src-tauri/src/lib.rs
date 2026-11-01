@@ -868,19 +868,22 @@ const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
 const TRAY_ICON: &[u8] = include_bytes!("../icons/tray-light.png");
 
 fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
-    let search = MenuItem::with_id(app, "search", "Search Papers", true, Some(hotkey))?;
-    let updates = MenuItem::with_id(app, "updates", "Check for Updates…", true, None::<&str>)?;
+    // ids of its own: the handlers of the menus are global, and the app's
+    // menu has a Search, a Library and a Settings too
+    let search = MenuItem::with_id(app, "tray-search", "Search Papers", true, Some(hotkey))?;
+    let updates =
+        MenuItem::with_id(app, "tray-updates", "Check for Updates…", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
             &search,
-            &MenuItem::with_id(app, "library", "Open Library", true, None::<&str>)?,
-            &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
-            &MenuItem::with_id(app, "reload", "Reload Library", true, None::<&str>)?,
+            &MenuItem::with_id(app, "tray-library", "Open Library", true, None::<&str>)?,
+            &MenuItem::with_id(app, "tray-settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
+            &MenuItem::with_id(app, "tray-reload", "Reload Library", true, None::<&str>)?,
             &updates,
-            &MenuItem::with_id(app, "feedback", "Send Feedback…", true, None::<&str>)?,
+            &MenuItem::with_id(app, "tray-feedback", "Send Feedback…", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, "quit", "Quit Papers", true, None::<&str>)?,
+            &MenuItem::with_id(app, "tray-quit", "Quit Papers", true, None::<&str>)?,
         ],
     )?;
     *app.state::<AppState>().search_item.lock().unwrap() = Some(search);
@@ -892,17 +895,17 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id().as_ref() {
-            "search" => show(app),
-            "library" => main_window::show(app),
-            "settings" => settings_window(app, None),
-            "updates" => settings_window(app, Some("updates")),
-            "feedback" => {
+            "tray-search" => show(app),
+            "tray-library" => main_window::show(app),
+            "tray-settings" => settings_window(app, None),
+            "tray-updates" => settings_window(app, Some("updates")),
+            "tray-feedback" => {
                 if let Err(e) = feedback(app) {
                     eprintln!("papers-desktop: cannot open the feedback form: {e}");
                 }
             }
-            "reload" => reload(app),
-            "quit" => app.exit(0),
+            "tray-reload" => reload(app),
+            "tray-quit" => app.exit(0),
             _ => {}
         })
         .build(app)?;
