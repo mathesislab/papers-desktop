@@ -3,7 +3,7 @@
   // views, kinds, interests and sources), the list of the items its choices and the search select and the details
   // of the one selected (ItemPane, on an ItemList: beside the list or in place of it, as the window's switch says);
   // the keys of the triage; the Review of the starred items, over the list and the details; the Subscribe sheet.
-  // The window (src/routes/library/+page.svelte) keeps the layout, gives what both its Feeds and Search tabs take
+  // The window (src/routes/main/+page.svelte) keeps the layout, gives what both its Feeds and Search tabs take
   // (`tabContext`), and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is
   // the library's: it opens over this tab, which stays in front after the paper is added.
 

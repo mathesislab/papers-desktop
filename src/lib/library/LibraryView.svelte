@@ -1,6 +1,6 @@
 <script lang="ts">
   // The library tab of the main window: the sidebar, the table of the current set or the paper in front, the
-  // details; and the sheets and questions of the library. The window (src/routes/library/+page.svelte) keeps the
+  // details; and the sheets and questions of the library. The window (src/routes/main/+page.svelte) keeps the
   // layout, and passes on the commands of the menu and the keys that are the library's.
 
   import { invoke } from "@tauri-apps/api/core";

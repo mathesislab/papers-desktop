@@ -91,8 +91,8 @@ struct AppState {
     watches: Mutex<Vec<BibWatch>>,
     /// counts the reloads: one that ends after a newer one started is dropped
     reloads: AtomicU64,
-    /// the menu item that shows the hotkey
-    search_item: Mutex<Option<MenuItem<Wry>>>,
+    /// the tray's item of the panel, which shows the hotkey
+    panel_item: Mutex<Option<MenuItem<Wry>>>,
     /// the menu item that tells about an update
     update_item: Mutex<Option<MenuItem<Wry>>>,
     recent: Recent,
@@ -708,7 +708,7 @@ fn watch(app: &AppHandle, bibs: &[PathBuf]) {
 
 /// The menu item of the panel, with its hotkey.
 pub(crate) fn show_hotkey(app: &AppHandle, hotkey: &str) {
-    if let Some(item) = app.state::<AppState>().search_item.lock().unwrap().as_ref() {
+    if let Some(item) = app.state::<AppState>().panel_item.lock().unwrap().as_ref() {
         let _ = item.set_accelerator(Some(hotkey));
     }
 }
@@ -867,13 +867,13 @@ const TRAY_ICON: &[u8] = include_bytes!("../icons/tray-light.png");
 fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
     // ids of its own: the handlers of the menus are global, and the app's
     // menu has a Search, a Library and a Settings too
-    let search = MenuItem::with_id(app, "tray-search", "Search Papers", true, Some(hotkey))?;
+    let panel = MenuItem::with_id(app, "tray-search", "Search Papers", true, Some(hotkey))?;
     let updates =
         MenuItem::with_id(app, "tray-updates", "Check for Updates…", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
-            &search,
+            &panel,
             &MenuItem::with_id(app, "tray-library", "Open Library", true, None::<&str>)?,
             &MenuItem::with_id(app, "tray-settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
             &MenuItem::with_id(app, "tray-reload", "Reload Library", true, None::<&str>)?,
@@ -883,7 +883,7 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
             &MenuItem::with_id(app, "tray-quit", "Quit Papers", true, None::<&str>)?,
         ],
     )?;
-    *app.state::<AppState>().search_item.lock().unwrap() = Some(search);
+    *app.state::<AppState>().panel_item.lock().unwrap() = Some(panel);
     *app.state::<AppState>().update_item.lock().unwrap() = Some(updates);
     TrayIconBuilder::with_id("tray")
         .icon(Image::from_bytes(TRAY_ICON)?)
@@ -949,7 +949,7 @@ pub fn run() {
                 status: RwLock::new(Status::Loading),
                 watches: Mutex::new(Vec::new()),
                 reloads: AtomicU64::new(0),
-                search_item: Mutex::new(None),
+                panel_item: Mutex::new(None),
                 update_item: Mutex::new(None),
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
                 added: DatesAdded::load(app.path().app_data_dir()?.join("added.json")),

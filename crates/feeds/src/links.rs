@@ -440,7 +440,7 @@ impl Feeds {
                 None => found.page = Some("no page".to_string()),
             }
             if found.links.is_empty()
-                && let Some((link, work)) = self.search(&title, http, access, budget)
+                && let Some((link, work)) = self.by_title(&title, http, access, budget)
             {
                 found.links.push(link);
                 works.push(work);
@@ -522,7 +522,7 @@ impl Feeds {
     }
 
     /// The work of a post's title in Crossref, if its title is the same words.
-    fn search(
+    fn by_title(
         &mut self,
         title: &str,
         http: &dyn Http,
@@ -550,7 +550,7 @@ impl Feeds {
         let link = Linked {
             doi,
             confidence: Confidence::High,
-            via: Via::Search,
+            via: Via::Title,
         };
         Some((link, work))
     }

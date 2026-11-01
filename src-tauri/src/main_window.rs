@@ -39,19 +39,19 @@ pub fn show(app: &AppHandle) {
             let _ = window.show();
             let _ = window.set_focus();
         }
-        None => make(app, "library"),
+        None => make(app, "main"),
     }
 }
 
 /// Show the main window with a paper open in it: told to its page, or in
-/// the URL of a window made for it ("library#ID").
+/// the URL of a window made for it ("main#ID").
 pub fn open_paper(app: &AppHandle, id: &str) {
     if app.get_webview_window(MAIN).is_some() {
         show(app);
         let _ = app.emit_to(MAIN, "open", id);
     } else {
         crate::hide_window(app);
-        make(app, &format!("library#{}", encode(id)));
+        make(app, &format!("main#{}", encode(id)));
     }
 }
 

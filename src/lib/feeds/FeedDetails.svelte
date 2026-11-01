@@ -56,7 +56,7 @@
   let date = $derived(detail.date ? dayText(detail.date) : null);
   let cited = $derived(detail.cited === null ? null : `cited ${detail.cited.toLocaleString("en-US")}×`);
   let where = $derived([detail.journal, date, cited, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
-  const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", search: "found by its title" };
+  const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", title: "found by its title" };
 </script>
 
 <div class="details" class:wide>

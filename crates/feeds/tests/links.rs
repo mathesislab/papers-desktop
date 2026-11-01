@@ -271,7 +271,7 @@ fn a_blog_post_titled_as_its_paper_is_found_by_its_title() {
         [linked(
             "10.5194/tc-20-5813-2026",
             Confidence::High,
-            Via::Search
+            Via::Title
         )]
     );
     assert_eq!(found.page.as_deref(), Some("HTTP 404"));

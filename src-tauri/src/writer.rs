@@ -1184,7 +1184,7 @@ mod tests {
             status: RwLock::new(Status::Loading),
             watches: Mutex::new(Vec::new()),
             reloads: AtomicU64::new(0),
-            search_item: Mutex::new(None),
+            panel_item: Mutex::new(None),
             update_item: Mutex::new(None),
             recent: Recent::load(dir.join("recent.json")),
             added: DatesAdded::load(dir.join("added.json")),

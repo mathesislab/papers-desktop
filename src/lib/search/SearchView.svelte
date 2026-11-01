@@ -6,7 +6,7 @@
   // those saved for later (the star, S) or added. The sidebar: the works found (Results), those saved for later, the
   // recent searches. The list and the details are the Feeds tab's (ItemPane, on an ItemList), with the store
   // "search": the details beside the list or in place of it, as in the Feeds tab. The window
-  // (src/routes/library/+page.svelte) keeps the layout (the fields, the recent searches, the search shown), gives
+  // (src/routes/main/+page.svelte) keeps the layout (the fields, the recent searches, the search shown), gives
   // what both its Feeds and Search tabs take (`tabContext`), and passes on the commands of the menu and the keys
   // while the tab is in front. The Add sheet is the library's.
 

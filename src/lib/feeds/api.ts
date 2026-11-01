@@ -93,7 +93,7 @@ export interface ViewRequest {
 export interface Linked {
   doi: string;
   confidence: "high" | "low";
-  via: "feed" | "page" | "search";
+  via: "feed" | "page" | "title";
   /** the item of that paper, when there is one */
   item: string | null;
   title: string | null;

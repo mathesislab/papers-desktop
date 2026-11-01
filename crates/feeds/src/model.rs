@@ -424,14 +424,15 @@ pub enum Via {
     Feed,
     /// the post's page
     Page,
-    /// the post's title in Crossref
-    Search,
+    /// the post's title in Crossref (`search` before)
+    #[serde(alias = "search")]
+    Title,
 }
 
 words!(Via {
     Feed => "feed",
     Page => "page",
-    Search => "search",
+    Title => "title",
 });
 
 impl Item {
@@ -625,7 +626,7 @@ mod tests {
         same_as_json(&[Reminder::Snoozed, Reminder::Due]);
         same_as_json(&[Stage::Preprint, Stage::Published]);
         same_as_json(&[Confidence::High, Confidence::Low]);
-        same_as_json(&[Via::Feed, Via::Page, Via::Search]);
+        same_as_json(&[Via::Feed, Via::Page, Via::Title]);
         same_as_json(&[Origin::Feed, Origin::Work]);
         let refused = "podcast".parse::<ItemKind>().unwrap_err();
         assert_eq!(
@@ -640,5 +641,12 @@ mod tests {
         assert_eq!(triage, Triage::Starred);
         assert_eq!(serde_json::to_string(&triage).unwrap(), r#""starred""#);
         assert!("shortlisted".parse::<Triage>().is_err(), "its word no more");
+    }
+
+    #[test]
+    fn a_paper_found_by_a_title_of_before_reads_as_by_title() {
+        let via: Via = serde_json::from_str(r#""search""#).unwrap();
+        assert_eq!(via, Via::Title);
+        assert_eq!(serde_json::to_string(&via).unwrap(), r#""title""#);
     }
 }

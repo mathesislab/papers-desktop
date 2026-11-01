@@ -1,4 +1,4 @@
-// What the main window (src/routes/library/+page.svelte) gives its Feeds and Search tabs alike, through the context:
+// What the main window (src/routes/main/+page.svelte) gives its Feeds and Search tabs alike, through the context:
 // the switch of the tabs, the details beside the list or not, the panes' widths and whether they show, the
 // library's Add sheet, a paper shown in the Library tab. The tabs and their ItemList read it as they start.
 
