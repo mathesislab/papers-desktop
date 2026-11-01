@@ -25,7 +25,7 @@ use std::path::PathBuf;
 
 pub use item::{Cite, Item};
 pub use likeness::{Doc, Like, Likeness};
-pub use query::{Query, Schema, Value, Written};
+pub use query::{Query, Schema, Value, Written, year_range};
 pub use record::{Marks, Record};
 pub use redact::redact;
 pub use search::{Found, Hit, Library, YearCount};

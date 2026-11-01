@@ -2,7 +2,8 @@
 //! query of the feeds' language (core's) as OpenAlex's parameters. Its words
 //! and phrases are the full-text `search` (`-` a NOT); its fields filters:
 //! `t:` the title, `abs:` the abstract, `a:` an author's name as written,
-//! `j:` a journal (looked up by its name), `y:` the years, `doi:` DOIs, and
+//! `j:` a journal (looked up by its name), `y:` the years (core's
+//! [`year_range`], the grammar of the library's `year:`), `doi:` DOIs, and
 //! the facets `cites:` (the works that cite a work, by its OpenAlex id or
 //! its DOI) and `citedby:` (the works a work cites). What OpenAlex cannot be asked (a
 //! field it has not, a title that excludes) is refused, said. Sorted by
@@ -14,7 +15,9 @@
 //! for later (shortlisted) or added. A search followed is a sweep of the
 //! feeds: its words searched in the titles and abstracts.
 
-use papers_core::{Query, Schema};
+use std::ops::RangeInclusive;
+
+use papers_core::{Query, Schema, year_range};
 use serde::{Deserialize, Serialize};
 
 use crate::Result;
@@ -115,16 +118,18 @@ pub fn ask(query: &str) -> std::result::Result<Asked, String> {
                 .filters
                 .push(filter("raw_author_name.search", &values, " OR ")),
             Some("year") => {
-                let years: Vec<String> = values
+                let years: Vec<RangeInclusive<i32>> = values
                     .iter()
-                    .map(|v| years(v))
+                    .map(|v| year_range(v))
                     .collect::<Option<_>>()
                     .ok_or_else(|| format!("y:{}: not years", values.join(",")))?;
-                if term.negated && years.iter().any(|y| !y.chars().all(|c| c.is_ascii_digit())) {
+                if term.negated && years.iter().any(|y| y.start() != y.end()) {
                     return refused("OpenAlex cannot leave out a span of years");
                 }
                 let not = if term.negated { "!" } else { "" };
-                let years: Vec<String> = years.iter().map(|y| format!("{not}{y}")).collect();
+                let years: Vec<String> = (years.iter())
+                    .map(|y| format!("{not}{}", publication_years(y)))
+                    .collect();
                 let joint = if term.negated { "+" } else { "|" };
                 asked
                     .filters
@@ -161,19 +166,14 @@ pub fn ask(query: &str) -> std::result::Result<Asked, String> {
     Ok(asked)
 }
 
-/// The years of a value as OpenAlex's `publication_year` takes them:
-/// `2000-2010`, `2000-` (>1999), `-2010` (<2011), `2005`, `201` (the 2010s).
-fn years(value: &str) -> Option<String> {
-    let year = |s: &str| s.parse::<i32>().ok();
-    match value.split_once('-') {
-        Some((from, "")) => Some(format!(">{}", year(from)? - 1)),
-        Some(("", to)) => Some(format!("<{}", year(to)? + 1)),
-        Some((from, to)) => Some(format!("{}-{}", year(from)?, year(to)?)),
-        None if value.len() == 3 => {
-            let decade = year(value)? * 10;
-            Some(format!("{decade}-{}", decade + 9))
-        }
-        None => year(value).map(|y| y.to_string()),
+/// Years of core's [`year_range`] as OpenAlex's `publication_year` takes
+/// them: `2000-2010`, `>1999` (from 2000), `<2011` (to 2010), `2005`.
+fn publication_years(years: &RangeInclusive<i32>) -> String {
+    match (*years.start(), *years.end()) {
+        (i32::MIN, to) => format!("<{}", to + 1),
+        (from, i32::MAX) => format!(">{}", from - 1),
+        (from, to) if from == to => from.to_string(),
+        (from, to) => format!("{from}-{to}"),
     }
 }
 

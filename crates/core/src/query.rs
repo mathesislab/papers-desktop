@@ -16,6 +16,8 @@
 //! value, an empty alternative is none; the words of an alternative are a
 //! phrase. A plain word takes no alternatives.
 
+use std::ops::RangeInclusive;
+
 use crate::tag::branch;
 use crate::text::{fold, words};
 
@@ -141,10 +143,9 @@ pub(crate) enum Pattern {
     Phrase(Vec<String>),
     /// a DOI or part of one, anywhere in the DOI (or in a key made of a DOI)
     Doi(String),
-    /// the years from..=to, open-ended without a bound
-    Years(Option<i32>, Option<i32>),
-    /// the first digits of a year: "201" for the 2010s
-    YearStart(String),
+    /// the years of [`year_range`]; none for a value of no years, which
+    /// matches no year
+    Years(Option<RangeInclusive<i32>>),
     /// a whole tag or facet value, as the pieces between its `*` wildcards:
     /// one piece, no wildcard
     Tag(Vec<String>),
@@ -156,10 +157,7 @@ impl Pattern {
     /// Whether a year pattern takes `year`; the other patterns take none.
     pub fn matches_year(&self, year: i32) -> bool {
         match self {
-            Pattern::Years(from, to) => {
-                from.is_none_or(|f| year >= f) && to.is_none_or(|t| year <= t)
-            }
-            Pattern::YearStart(start) => year.to_string().starts_with(start.as_str()),
+            Pattern::Years(years) => years.as_ref().is_some_and(|y| y.contains(&year)),
             _ => false,
         }
     }
@@ -329,7 +327,7 @@ fn patterns(field: &Field, value: &Value, alternative: bool) -> Vec<Pattern> {
         return Vec::new(); // a filter still being typed
     }
     match field {
-        Field::Year => vec![years(value)],
+        Field::Year => vec![Pattern::Years(year_range(value))],
         Field::Key | Field::Has => vec![Pattern::Word(value.to_string())],
         Field::Doi => vec![Pattern::Doi(doi(value).to_string())],
         Field::Tag | Field::Facet(_) => {
@@ -348,25 +346,30 @@ fn patterns(field: &Field, value: &Value, alternative: bool) -> Vec<Pattern> {
     }
 }
 
-/// `2012`, `2010-2015`, `2020-`, `-1990`, or the start of a year (`201`);
-/// anything else matches no year.
-fn years(value: &str) -> Pattern {
-    let bound = |s: &str| {
-        if s.is_empty() {
-            Ok(None)
-        } else {
-            s.parse().map(Some)
-        }
+/// The years of a value of `year:`, the bounds included: `2012`,
+/// `2010-2015`, `2020-` (to `i32::MAX`), `-1990` (from `i32::MIN`), or the
+/// first digits of a year (`201` the 2010s, `19` the 1900s). None for
+/// anything else: a span backwards, a bound of more than four digits, `-`.
+pub fn year_range(value: &str) -> Option<RangeInclusive<i32>> {
+    let value = value.trim();
+    let digits = |s: &str| (1..=4).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit());
+    let bound = |s: &str, open: i32| match s {
+        "" => Some(open),
+        s if digits(s) => s.parse().ok(),
+        _ => None,
     };
     match value.split_once('-') {
-        Some((from, to)) => match (bound(from), bound(to)) {
-            (Ok(from), Ok(to)) => Pattern::Years(from, to),
-            _ => Pattern::YearStart(value.to_string()),
-        },
-        None => match value.parse() {
-            Ok(year) if value.len() == 4 => Pattern::Years(Some(year), Some(year)),
-            _ => Pattern::YearStart(value.to_string()),
-        },
+        Some(("", "")) => None,
+        Some((from, to)) => {
+            let (from, to) = (bound(from, i32::MIN)?, bound(to, i32::MAX)?);
+            (from <= to).then_some(from..=to)
+        }
+        None if digits(value) => {
+            let span = 10_i32.pow(4 - value.len() as u32);
+            let from = value.parse::<i32>().ok()? * span;
+            Some(from..=from + span - 1)
+        }
+        None => None,
     }
 }
 
@@ -479,14 +482,13 @@ mod tests {
             patterns: vec![pattern],
             negated: false,
         };
-        assert_eq!(parse("y:2012"), [y(Pattern::Years(Some(2012), Some(2012)))]);
-        assert_eq!(
-            parse("year:2010-2015"),
-            [y(Pattern::Years(Some(2010), Some(2015)))]
-        );
-        assert_eq!(parse("year:2020-"), [y(Pattern::Years(Some(2020), None))]);
-        assert_eq!(parse("year:-1990"), [y(Pattern::Years(None, Some(1990)))]);
-        assert_eq!(parse("y:201"), [y(Pattern::YearStart("201".into()))]);
+        let years = |r| y(Pattern::Years(Some(r)));
+        assert_eq!(parse("y:2012"), [years(2012..=2012)]);
+        assert_eq!(parse("year:2010-2015"), [years(2010..=2015)]);
+        assert_eq!(parse("year:2020-"), [years(2020..=i32::MAX)]);
+        assert_eq!(parse("year:-1990"), [years(i32::MIN..=1990)]);
+        assert_eq!(parse("y:201"), [years(2010..=2019)]);
+        assert_eq!(parse("y:2015-2010"), [y(Pattern::Years(None))]);
         let doi = |field, d: &str| Term {
             field,
             patterns: vec![Pattern::Doi(d.into())],
@@ -537,10 +539,10 @@ mod tests {
                     Field::Any,
                     Pattern::Phrase(vec!["ice".into(), "sheet".into()])
                 ),
-                not(Field::Year, Pattern::Years(Some(2012), Some(2012))),
+                not(Field::Year, Pattern::Years(Some(2012..=2012))),
                 Term {
                     field: Field::Year,
-                    patterns: vec![Pattern::Years(None, Some(1990))],
+                    patterns: vec![Pattern::Years(Some(i32::MIN..=1990))],
                     negated: false,
                 },
             ]
@@ -549,10 +551,22 @@ mod tests {
 
     #[test]
     fn years_match() {
-        assert!(Pattern::Years(Some(2010), None).matches_year(2026));
-        assert!(!Pattern::Years(None, Some(2010)).matches_year(2011));
-        assert!(Pattern::YearStart("19".into()).matches_year(1990));
+        assert!(Pattern::Years(year_range("2010-")).matches_year(2026));
+        assert!(!Pattern::Years(year_range("-2010")).matches_year(2011));
+        assert!(Pattern::Years(year_range("19")).matches_year(1990));
+        assert!(!Pattern::Years(None).matches_year(2012));
         assert!(!Pattern::Word("2012".into()).matches_year(2012));
+    }
+
+    #[test]
+    fn one_grammar_of_years() {
+        assert_eq!(year_range(" 2005 "), Some(2005..=2005));
+        assert_eq!(year_range("20"), Some(2000..=2099));
+        assert_eq!(year_range("2"), Some(2000..=2999));
+        assert_eq!(year_range("1990-2000"), Some(1990..=2000));
+        for refused in ["", "-", "2010-2000", "20050", "-20050", "y2k", "2000-x"] {
+            assert_eq!(year_range(refused), None, "{refused:?}");
+        }
     }
 
     #[test]
@@ -682,7 +696,7 @@ mod tests {
         assert!(Pattern::Numbers(Some(2.0), Some(5.0)).matches_number(5.0));
         assert!(!Pattern::Numbers(Some(2.0), Some(5.0)).matches_number(5.5));
         assert!(Pattern::Numbers(None, Some(2.0)).matches_number(-1.0));
-        assert!(!Pattern::Years(Some(2000), None).matches_number(2012.0));
+        assert!(!Pattern::Years(year_range("2000-")).matches_number(2012.0));
     }
 
     #[test]
@@ -750,9 +764,9 @@ mod tests {
             [any(
                 Field::Year,
                 vec![
-                    Pattern::Years(Some(1990), Some(2000)),
-                    Pattern::Years(Some(2015), Some(2015)),
-                    Pattern::YearStart("201".into()),
+                    Pattern::Years(Some(1990..=2000)),
+                    Pattern::Years(Some(2015..=2015)),
+                    Pattern::Years(Some(2010..=2019)),
                 ],
                 false
             )]

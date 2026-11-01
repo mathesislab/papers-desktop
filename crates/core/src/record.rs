@@ -200,7 +200,7 @@ impl Record {
             (Pattern::Doi(doi), _) => {
                 self.doi.contains(doi.as_str()) || self.key.contains(doi.as_str())
             }
-            (Pattern::Years(..) | Pattern::YearStart(_), _) => {
+            (Pattern::Years(_), _) => {
                 let matched = self.year.is_some_and(|y| pattern.matches_year(y));
                 self.mark_year(marks, matched)
             }

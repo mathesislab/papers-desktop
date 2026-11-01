@@ -28,6 +28,7 @@ fn words_phrases_and_fields_as_openalex_asks_them() {
     assert_eq!(filters("y:2000-"), ["publication_year:>1999"]);
     assert_eq!(filters("y:-2010"), ["publication_year:<2011"]);
     assert_eq!(filters("y:201"), ["publication_year:2010-2019"]);
+    assert_eq!(filters("y:20"), ["publication_year:2000-2099"], "the library's grammar");
     assert_eq!(filters("y:2001,2005"), ["publication_year:2001|2005"]);
     assert_eq!(filters("-y:2020"), ["publication_year:!2020"]);
     assert_eq!(filters("abs:firn"), ["abstract.search:firn"]);
@@ -66,6 +67,7 @@ fn what_openalex_cannot_be_asked_is_refused() {
     assert!(ask("-t:melt").unwrap_err().starts_with("-title:"));
     assert!(ask("-y:2000-2010").is_err());
     assert!(ask("y:soon").is_err());
+    assert!(ask("y:2010-2000").is_err(), "a span backwards");
     assert!(ask("doi:nothing").is_err());
 }
 
