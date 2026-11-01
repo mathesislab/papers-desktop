@@ -13,7 +13,7 @@ use crate::merge::{Merger, refresh};
 use crate::model::{
     Entry, Feed, Item, Mark, Origin, Reminder, Subscription, SubscriptionSettings, Triage,
 };
-use crate::normalize::{is_attachment_doi, short_id};
+use crate::normalize::is_attachment_doi;
 use crate::parse::kind_of;
 use crate::store::{
     self, CONFIG, Config, FORMAT, FeedSettings, HTTP, ITEMS, Items, LOOKUPS, Lookup, Lookups,
@@ -137,10 +137,10 @@ impl Feeds {
                 id: known.id.clone(),
             });
         }
+        let kind = settings.kind;
         let subscription = Subscription {
-            id: short_id(&key),
-            feed,
             settings: settings.trimmed(),
+            ..Subscription::new(feed, kind)
         };
         self.config.subscriptions.push(subscription.clone());
         store::write(&self.dir, CONFIG, &self.config)?;

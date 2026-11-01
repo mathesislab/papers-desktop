@@ -5,9 +5,9 @@
 
 use serde::Serialize;
 
-use crate::http::{Access, FEED_ACCEPT, Http, Request};
-use crate::journals::{journal_key, search_journals};
-use crate::model::{Feed, ItemKind, SourceKind, Subscription, SubscriptionSettings};
+use crate::http::{Access, FEED_ACCEPT, Http, get_ok};
+use crate::journals::{best_named, sources};
+use crate::model::{Feed, ItemKind, SourceKind, Subscription};
 use crate::parse::parse;
 
 /// The hosts of preprint servers, and their subdomains.
@@ -52,22 +52,11 @@ pub fn guess_kind(http: &dyn Http, access: &Access, url: &str) -> Result<Guess, 
     {
         return guess(SourceKind::Preprints, "a preprint server");
     }
-    let request = Request {
+    let reply = get_ok(http, url, FEED_ACCEPT)?;
+    let feed = Feed::Rss {
         url: url.to_string(),
-        accept: Some(FEED_ACCEPT.to_string()),
-        ..Request::default()
     };
-    let reply = http.get(&request)?;
-    if !(200..300).contains(&reply.status) {
-        return Err(format!("{url}: HTTP {}", reply.status));
-    }
-    let probe = Subscription {
-        id: "guess".to_string(),
-        feed: Feed::Rss {
-            url: url.to_string(),
-        },
-        settings: SubscriptionSettings::new(SourceKind::Journal),
-    };
+    let probe = Subscription::new(feed, SourceKind::Journal);
     let parsed = parse(&reply.body, Some(&reply.url), &probe).map_err(|e| e.to_string())?;
     let n = parsed.entries.len();
     let count =
@@ -79,9 +68,8 @@ pub fn guess_kind(http: &dyn Http, access: &Access, url: &str) -> Result<Guess, 
         return guess(SourceKind::Journal, "its items have DOIs");
     }
     if let Some(title) = &parsed.title {
-        let key = journal_key(title);
-        let journals = search_journals(http, access, title).unwrap_or_default();
-        if journals.iter().any(|j| journal_key(&j.title) == key) {
+        let journals = sources(http, access, title).unwrap_or_default();
+        if best_named(&journals, title).is_some() {
             return guess(SourceKind::Journal, "a journal in OpenAlex");
         }
     }

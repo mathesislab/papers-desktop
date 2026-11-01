@@ -103,17 +103,23 @@ pub(crate) fn get_json<T: DeserializeOwned>(
     http: &dyn Http,
     url: &str,
 ) -> Result<Option<T>, String> {
-    let request = Request {
-        url: url.to_string(),
-        accept: Some(JSON_ACCEPT.to_string()),
-        ..Request::default()
-    };
+    let request = Request::accepting(url, JSON_ACCEPT);
     let reply = http.get(&request).map_err(|e| redact(&e, url))?;
     match reply.status {
         200..=299 => serde_json::from_slice(&reply.body)
             .map(Some)
             .map_err(|e| redact(&format!("{url}: {e}"), url)),
         404 | 410 => Ok(None),
+        _ => Err(failure(&reply)),
+    }
+}
+
+/// The answer of a GET accepting a type, of a 2xx status; the error of no
+/// answer, or of another status.
+pub(crate) fn get_ok(http: &dyn Http, url: &str, accept: &str) -> Result<Reply, String> {
+    let reply = http.get(&Request::accepting(url, accept))?;
+    match reply.status {
+        200..=299 => Ok(reply),
         _ => Err(failure(&reply)),
     }
 }
@@ -143,6 +149,14 @@ impl Request {
         Request {
             url: url.to_string(),
             ..Request::default()
+        }
+    }
+
+    /// A GET of a URL accepting a type.
+    pub fn accepting(url: &str, accept: &str) -> Request {
+        Request {
+            accept: Some(accept.to_string()),
+            ..Request::get(url)
         }
     }
 }

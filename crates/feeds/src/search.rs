@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use crate::Result;
 use crate::feeds::Feeds;
 use crate::http::{Access, Http, get_json, with_query};
-use crate::journals::{self, journal_key};
+use crate::journals;
 use crate::model::{Entry, ItemKind, Triage};
 use crate::normalize::canonical_doi;
 use crate::openalex::{self, List, Work};
@@ -196,8 +196,8 @@ fn any_of(field: &str, ids: &[String], excluded: bool) -> String {
 }
 
 /// The filters of what a query asks, its journals and works looked up: a
-/// journal by its name (the one whose title is the name, else OpenAlex's
-/// best), a work by its DOI.
+/// journal by its name (the one named so, `journals::best_named`, else
+/// OpenAlex's best), a work by its DOI.
 pub fn filters(
     http: &dyn Http,
     access: &Access,
@@ -208,8 +208,7 @@ pub fn filters(
         let mut ids = Vec::new();
         for name in names {
             let found = journals::sources(http, access, name)?;
-            let key = journal_key(name);
-            let best = (found.iter().find(|s| journal_key(&s.display_name) == key))
+            let best = (journals::best_named(&found, name))
                 .or(found.first())
                 .ok_or_else(|| format!("j:{name}: no such journal in OpenAlex"))?;
             ids.push(work_id(&best.id));

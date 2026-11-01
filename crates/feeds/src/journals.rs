@@ -12,7 +12,7 @@ use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::http::{Access, FEED_ACCEPT, Http, PAGE_ACCEPT, Request, failure, get_json};
+use crate::http::{Access, FEED_ACCEPT, Http, PAGE_ACCEPT, get_json, get_ok};
 use crate::normalize::{canonical_issn, fold};
 use crate::openalex::{self, Source, Sources};
 use crate::parse::plain;
@@ -193,20 +193,26 @@ fn journal_of_issn(
     Ok(source.map(Journal::from))
 }
 
-/// The journal of a name in OpenAlex: of its search, the first whose title
-/// or an alternate title folds to the name's, one with an ISSN before one
-/// without; none if no title is the name.
-fn journal_named(http: &dyn Http, access: &Access, name: &str) -> Result<Option<Journal>, String> {
+/// The journal of a name among OpenAlex's (those of a search, the best
+/// first): the first whose title or an alternate title folds to the name's,
+/// one with an ISSN before one without; none if no title is the name.
+pub(crate) fn best_named<'a>(sources: &'a [Source], name: &str) -> Option<&'a Source> {
     let key = journal_key(name);
-    let named = |s: &Source| {
+    let named = |s: &&Source| {
         let mut titles =
             std::iter::once(&s.display_name).chain(s.alternate_titles.iter().flatten());
         titles.any(|title| journal_key(title) == key)
     };
-    let found = sources(http, access, name)?.into_iter().filter(named);
-    let (with_issn, without): (Vec<Journal>, Vec<Journal>) =
-        found.map(Journal::from).partition(|j| j.issn.is_some());
-    Ok(with_issn.into_iter().chain(without).next())
+    let has_issn =
+        |s: &&Source| s.issn_l.is_some() || s.issn.as_ref().is_some_and(|i| !i.is_empty());
+    let mut named = sources.iter().filter(named);
+    named.clone().find(has_issn).or_else(|| named.next())
+}
+
+/// The journal of a name in OpenAlex ([`best_named`] of its search).
+fn journal_named(http: &dyn Http, access: &Access, name: &str) -> Result<Option<Journal>, String> {
+    let found = sources(http, access, name)?;
+    Ok(best_named(&found, name).cloned().map(Journal::from))
 }
 
 /// What follows a journal of the library.
@@ -362,18 +368,8 @@ fn names(text: Option<&str>, journal: &str) -> bool {
 /// transport the subscription will be fetched with, so that a feed read is one
 /// that answers its fetches.
 pub fn site_feed(page: &dyn Http, feeds: &dyn Http, homepage: &str, journal: &str) -> SiteFeed {
-    let request = Request {
-        url: homepage.to_string(),
-        accept: Some(PAGE_ACCEPT.to_string()),
-        ..Request::default()
-    };
-    let reply = match page.get(&request) {
-        Ok(reply) if (200..=299).contains(&reply.status) => reply,
-        Ok(reply) => {
-            return SiteFeed::Refused {
-                reason: failure(&reply),
-            };
-        }
+    let reply = match get_ok(page, homepage, PAGE_ACCEPT) {
+        Ok(reply) => reply,
         Err(reason) => return SiteFeed::Refused { reason },
     };
     let base = Some(reply.url.as_str()).filter(|url| !url.is_empty());
@@ -413,19 +409,11 @@ pub fn site_feed(page: &dyn Http, feeds: &dyn Http, homepage: &str, journal: &st
 /// The title of a feed (none if it has none), or why it is no feed that can
 /// be read.
 fn read_feed(http: &dyn Http, url: &str) -> Result<Option<String>, SiteFeed> {
-    let request = Request {
-        url: url.to_string(),
-        accept: Some(FEED_ACCEPT.to_string()),
-        ..Request::default()
-    };
     let refused = |reason: String| SiteFeed::FeedRefused {
         url: url.to_string(),
         reason,
     };
-    let reply = http.get(&request).map_err(refused)?;
-    if !(200..=299).contains(&reply.status) {
-        return Err(refused(failure(&reply)));
-    }
+    let reply = get_ok(http, url, FEED_ACCEPT).map_err(refused)?;
     let feed = feed_rs::parser::parse(reply.body.as_slice()).map_err(|_| SiteFeed::NotAFeed {
         url: url.to_string(),
     })?;

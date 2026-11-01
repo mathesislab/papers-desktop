@@ -4,7 +4,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::normalize::{canonical_issn, canonical_url, feed_key};
+use crate::normalize::{canonical_issn, canonical_url, feed_key, short_id};
 use crate::{Error, Result};
 
 /// The words of an enum's values, as its JSON writes them: `as_str`,
@@ -163,6 +163,18 @@ pub struct Subscription {
     pub feed: Feed,
     #[serde(flatten)]
     pub settings: SubscriptionSettings,
+}
+
+impl Subscription {
+    /// A subscription of a feed (canonical), by the feed's key, with the
+    /// settings of a kind alone.
+    pub fn new(feed: Feed, kind: SourceKind) -> Subscription {
+        Subscription {
+            id: short_id(&feed.key()),
+            feed,
+            settings: SubscriptionSettings::new(kind),
+        }
+    }
 }
 
 /// What the user names or sets on a subscription.

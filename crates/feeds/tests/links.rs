@@ -267,10 +267,7 @@ fn a_blog_post_titled_as_its_paper_is_found_by_its_title() {
             Via::Search
         )]
     );
-    assert_eq!(
-        found.page.as_deref(),
-        Some(format!("{page}: HTTP 404").as_str())
-    );
+    assert_eq!(found.page.as_deref(), Some("HTTP 404"));
     assert_eq!(
         http.requests().len(),
         3,

@@ -18,7 +18,7 @@ use scraper::{ElementRef, Html, Node, Selector};
 use crate::crossref::{self, Message, Work};
 use crate::enrich::Budget;
 use crate::feeds::Feeds;
-use crate::http::{Access, Http, PAGE_ACCEPT, Request, failure, get_json};
+use crate::http::{Access, Http, PAGE_ACCEPT, get_json, get_ok};
 use crate::merge::SAME_TITLE;
 use crate::model::{Confidence, Item, ItemKind, Linked, Via};
 use crate::normalize::{
@@ -351,16 +351,8 @@ pub struct Found {
 
 /// The text of a page, or why not.
 fn read_page(http: &dyn Http, url: &str) -> std::result::Result<String, String> {
-    let request = Request {
-        url: url.to_string(),
-        accept: Some(PAGE_ACCEPT.to_string()),
-        ..Request::default()
-    };
-    let reply = http.get(&request)?;
-    match reply.status {
-        200..=299 => Ok(String::from_utf8_lossy(&reply.body).into_owned()),
-        _ => Err(format!("{url}: {}", failure(&reply))),
-    }
+    let reply = get_ok(http, url, PAGE_ACCEPT)?;
+    Ok(String::from_utf8_lossy(&reply.body).into_owned())
 }
 
 impl Feeds {
