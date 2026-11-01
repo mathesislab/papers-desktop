@@ -1,8 +1,8 @@
 <script lang="ts">
   // The Library tab of the settings window: the papers folder, kept once set; the .bib files of the library, each with
-  // what writes it, and how more come in: a .bib used as it is, a papers library opened (library.rs), the entries of a
-  // file imported into one of them; the Downloads panel of the main window and its folder, also set there
-  // (`downloads`).
+  // what writes it, and how more come in: a new one made in the welcome window, a .bib used as it is, a papers library
+  // opened (library.rs), the entries of a file imported into one of them; the Downloads panel of the main window and
+  // its folder, also set there (`downloads`).
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
@@ -171,6 +171,7 @@
     {/each}
   </ul>
   <div class="buttons">
+    <button onclick={() => invoke("open_welcome", { step: "new" })}>New .bib…</button>
     <button onclick={addBibs}>Add .bib Files…</button>
     <button onclick={openLibrary}>Open Papers Library…</button>
     <button onclick={chooseImport}>Import…</button>

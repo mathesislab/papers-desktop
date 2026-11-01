@@ -1,7 +1,7 @@
 <script lang="ts">
   // The Search tab of the settings window: the hotkey of the panel, recorded from the keys pressed (and the one of
   // the selection on Linux; Services on macOS), how the words match; the services of *Search online*.
-  import { mac } from "$lib/keys";
+  import { hotkeyLabel, mac } from "$lib/keys";
   import "./settings.css";
   import type { Preferences } from "./settings.svelte";
 
@@ -45,15 +45,6 @@
     return code.replace(/^Key/, "").replace(/^Digit/, "");
   }
 
-  /** "Alt+Space" as ⌥Space on macOS. */
-  function pretty(hotkey: string): string {
-    if (!mac) return hotkey;
-    const symbols: Record<string, string> = { Ctrl: "⌃", Control: "⌃", Alt: "⌥", Option: "⌥", Shift: "⇧", Cmd: "⌘", Command: "⌘", Super: "⌘" };
-    const parts = hotkey.split("+");
-    const key = parts.pop()!;
-    return parts.map((part) => symbols[part] ?? part).join("") + key;
-  }
-
   /** a service of *Search online* being added */
   let service = $state({ name: "", url: "" });
 
@@ -72,7 +63,7 @@
     class:recording={recording === field}
     onclick={() => (recording = recording === field ? null : field)}
   >
-    {recording === field ? "Press the keys…" : pretty(keys)}
+    {recording === field ? "Press the keys…" : hotkeyLabel(keys)}
   </button>
 {/snippet}
 

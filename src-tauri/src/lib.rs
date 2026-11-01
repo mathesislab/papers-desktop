@@ -53,6 +53,7 @@ use writer::Writers;
 
 pub(crate) const PANEL: &str = "panel";
 const SETTINGS: &str = "settings";
+const WELCOME: &str = "welcome";
 const MAX_RESULTS: usize = 200;
 /// panel size in logical pixels, as in tauri.conf.json; the preview widens it
 const PANEL_WIDTH: f64 = 720.0;
@@ -61,6 +62,9 @@ const PREVIEW_WIDTH: f64 = 500.0;
 /// settings window size in logical pixels, before the zoom of the text size
 const SETTINGS_WIDTH: f64 = 560.0;
 const SETTINGS_HEIGHT: f64 = 760.0;
+/// welcome window size in logical pixels, before the zoom of the text size
+const WELCOME_WIDTH: f64 = 560.0;
+const WELCOME_HEIGHT: f64 = 600.0;
 const REPO: &str = "https://github.com/mathesislab/papers-desktop";
 
 /// The library as the panel sees it, sent with the "status" event.
@@ -494,6 +498,13 @@ async fn open_settings(app: AppHandle, section: Option<String>) {
     settings_window(&app, section.as_deref());
 }
 
+/// The welcome window, from the File menu, the Library tab of the settings and the main window
+/// without a library; at a step if named ("new").
+#[tauri::command]
+async fn open_welcome(app: AppHandle, step: Option<String>) {
+    welcome_window(&app, step.as_deref());
+}
+
 /// The main window, from the panel (⌘O).
 #[tauri::command]
 async fn open_library(app: AppHandle) {
@@ -784,6 +795,48 @@ fn settings_window(app: &AppHandle, section: Option<&str>) {
     }
 }
 
+/// Show the welcome window, at a step: "start", the first start's (also when none is named), or
+/// "new", a new .bib. Made hidden, as the settings window; it stands alone. Open already, it
+/// shows the step named.
+fn welcome_window(app: &AppHandle, step: Option<&str>) {
+    hide_window(app);
+    let step = step.unwrap_or("start");
+    let title = match step {
+        "new" => "New .bib",
+        _ => "Welcome to Papers Desktop",
+    };
+    if let Some(window) = app.get_webview_window(WELCOME) {
+        let _ = window.set_title(title);
+        let _ = window.show();
+        let _ = window.set_focus();
+        let _ = app.emit_to(WELCOME, "step", step);
+        return;
+    }
+    let url = WebviewUrl::App(format!("welcome#{step}").into());
+    let window = WebviewWindowBuilder::new(app, WELCOME, url)
+        .title(title)
+        .inner_size(WELCOME_WIDTH, WELCOME_HEIGHT)
+        .resizable(false)
+        .minimizable(false)
+        .center()
+        .visible(false)
+        .build();
+    match window {
+        Ok(window) => {
+            text_size::prepare(app, &window);
+            let size = text_size::scaled(
+                text_size::monitor(&window),
+                WELCOME_WIDTH,
+                WELCOME_HEIGHT,
+                text_size::factor(app),
+            );
+            let _ = window.set_size(size);
+            let _ = window.center();
+        }
+        Err(e) => eprintln!("papers-desktop: cannot open the welcome window: {e}"),
+    }
+}
+
 /// Open GitHub's form for a new issue, with the version and the system
 /// below the text to write.
 fn feedback(app: &AppHandle) -> Result<(), String> {
@@ -933,7 +986,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_window_state::Builder::new()
-                .with_denylist(&[PANEL, SETTINGS])
+                .with_denylist(&[PANEL, SETTINGS, WELCOME])
                 .with_state_flags(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED)
                 .build(),
         )
@@ -951,7 +1004,10 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let settings_path = app.path().app_config_dir()?.join("settings.json");
-            let settings = Settings::load(&settings_path).unwrap_or_default();
+            let loaded = Settings::load(&settings_path);
+            // no .bib, papers' default library none either: the welcome window, once the app is set up
+            let welcome = loaded.as_ref().is_ok_and(|s| s.bibtex.is_empty());
+            let settings = loaded.unwrap_or_default();
             app.manage(AppState {
                 settings_path,
                 matching: RwLock::new(settings.matching),
@@ -997,6 +1053,9 @@ pub fn run() {
             update::watch(app.handle());
             feeds::watch(app.handle());
             main_window::reopen(app.handle());
+            if welcome {
+                welcome_window(app.handle(), None);
+            }
             // after an update, the settings tell of it: over the main window
             // once it shows, when it opens again
             if app.state::<Updates>().installed().is_some() {
@@ -1094,6 +1153,7 @@ pub fn run() {
             cli_tool::cli_path,
             cli_tool::add_cli_path,
             open_settings,
+            open_welcome,
             open_library,
             open_paper,
             #[cfg(target_os = "macos")]

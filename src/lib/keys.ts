@@ -35,3 +35,12 @@ export function label(s: Shortcut): string {
   if (mac) return (s.mod ? "⌘" : "") + (s.alt ? "⌥" : "") + (s.shift ? "⇧" : "") + key;
   return [s.mod && "Ctrl", s.alt && "Alt", s.shift && "Shift", key].filter(Boolean).join("+");
 }
+
+/** A global hotkey of the settings as the user reads it: "Alt+Space" is ⌥Space on macOS. */
+export function hotkeyLabel(hotkey: string): string {
+  if (!mac) return hotkey;
+  const symbols: Record<string, string> = { Ctrl: "⌃", Control: "⌃", Alt: "⌥", Option: "⌥", Shift: "⇧", Cmd: "⌘", Command: "⌘", Super: "⌘" };
+  const parts = hotkey.split("+");
+  const key = parts.pop()!;
+  return parts.map((part) => symbols[part] ?? part).join("") + key;
+}

@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the search panel, the settings window and the main window",
-  "windows": ["panel", "settings", "main"],
+  "description": "Capability for the search panel, the settings window, the welcome window and the main window",
+  "windows": ["panel", "settings", "welcome", "main"],
   "permissions": [
     "core:default",
     "core:window:allow-close",
