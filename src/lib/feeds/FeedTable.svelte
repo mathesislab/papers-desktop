@@ -3,7 +3,7 @@
   // first; and of the Search tab: the works found, in the order OpenAlex gave them (the caller chooses the columns).
   // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
   // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). The Feeds tab
-  // shows it calm, at first (`look`): no headers, each row taller, its date, then its source, title and authors a
+  // shows it simple, at first (`look`): no headers, each row taller, its date, then its source, title and authors a
   // line each, its badges small at its end. A new item's title is bold; one seen is muted (in the Feeds tab). A
   // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
   // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
@@ -16,7 +16,7 @@
   import Marked from "$lib/Marked.svelte";
   import { STAR, rowHint, type Action } from "./actions";
   import type { FeedRow, Sort } from "./api";
-  import { CALM_ROW, type FeedColumn, type Look } from "./columns";
+  import { SIMPLE_ROW, type FeedColumn, type Look } from "./columns";
   import { ago, badges, citedText, likeText, scoreHint, scoreText, yearOf } from "./items";
   import { ITEM_KINDS, isPost } from "./kinds";
 
@@ -57,7 +57,7 @@
     colours: Map<string, string>;
     /** the .bib of a paper of the library, by its name, when it has several: the badge of an item in it */
     libraryOf: (id: string) => string | null;
-    /** a table, or calm (the Feeds tab's) */
+    /** a table, or simple (the Feeds tab's) */
     look?: Look;
     /** a new item's title bold, one seen muted */
     unread?: boolean;
@@ -87,15 +87,15 @@
   };
 
   let now = $state(Date.now());
-  let calm = $derived(look === "calm");
+  let simple = $derived(look === "simple");
   let template = $derived(gridOf(LEAD, columns, specs));
   let minWidth = $derived(widthOf(LEAD, columns, specs));
-  /** only the rows in view drawn; the one in focus scrolled into view (calm, no headers over the rows) */
+  /** only the rows in view drawn; the one in focus scrolled into view (simple, no headers over the rows) */
   const view = new Rows({
     count: () => rows.length,
     focus: () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
-    row: () => (calm ? CALM_ROW : ROW),
-    head: () => (calm ? 0 : ROW),
+    row: () => (simple ? SIMPLE_ROW : ROW),
+    head: () => (simple ? 0 : ROW),
   });
 
   /** A header: its name, its arrow when the list is sorted by it; on hover, what the column is and the order a
@@ -146,7 +146,7 @@
 
 <div
   class="table"
-  class:calm
+  class:simple
   role="grid"
   aria-rowcount={rows.length}
   bind:this={view.table}
@@ -154,13 +154,13 @@
   bind:clientWidth={view.width}
   onscroll={view.scrolled}
 >
-  {#if !calm}
+  {#if !simple}
     <TableHead lead={LEAD} room={view.width} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
   {/if}
   <div
     class="rows"
     style:height="{rows.length * view.row}px"
-    style:min-width={calm ? null : `${minWidth}px`}
+    style:min-width={simple ? null : `${minWidth}px`}
     style:--end="{view.scrollLeft + view.width}px"
   >
     {#each rows.slice(view.first, view.last) as row, i (row.id)}
@@ -173,7 +173,7 @@
         aria-selected={selected.has(row.id)}
         style:top="{(view.first + i) * view.row}px"
         style:height="{view.row}px"
-        style:grid-template-columns={calm ? null : template}
+        style:grid-template-columns={simple ? null : template}
         onmousedown={(e) => onselect(row.id, e)}
         ondblclick={() => onopen(row.id)}
         oncontextmenu={(e) => {
@@ -194,7 +194,7 @@
           >
         {/if}
         <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
-        {#if calm}
+        {#if simple}
           <span class="muted date">{ago(row.date, now)}</span>
           <span class="lines">
             <span class="muted small" title={row.sources.join(", ")}>{sourceOf(row)}</span>
@@ -252,12 +252,12 @@
     display: grid;
     align-items: center;
   }
-  /* calm: the star, the mark, the date, the three lines taking the room left, the badges */
-  .calm .row {
+  /* simple: the star, the mark, the date, the three lines taking the room left, the badges */
+  .simple .row {
     grid-template-columns: 22px 18px 62px minmax(0, 1fr) auto;
   }
   /* the badges clear of the ✕ */
-  .calm .row:has(.remove) {
+  .simple .row:has(.remove) {
     padding-right: 26px;
   }
   .rows {
@@ -290,15 +290,15 @@
     font-size: 11px;
     line-height: 14px;
   }
-  .calm .date {
+  .simple .date {
     font-size: 12px;
   }
-  /* calm, the badges quiet: smaller, as many as fit */
-  .calm .badges {
+  /* simple, the badges quiet: smaller, as many as fit */
+  .simple .badges {
     max-width: 220px;
     overflow: hidden;
   }
-  .calm .badge {
+  .simple .badge {
     font-size: 10px;
     line-height: 14px;
   }

@@ -66,7 +66,7 @@
     filters: FeedFilters;
     /** the list's columns, in their order, with their widths: the window's layout keeps them */
     columns: Shown<FeedColumn>[];
-    /** the list calm, or a table of those columns: the window's layout keeps it */
+    /** the list simple, or a table of those columns: the window's layout keeps it */
     look: Look;
     /** when the list was last brought up to date: what a fetch in the background brought since waits behind
      *  *N new · Show*; a fetch asked for here (⌘R, Fetch, a subscription) shows it at once. The layout keeps it. */
@@ -104,7 +104,7 @@
   const BAR_BUTTONS: ActionName[] = ["read", "star", "dismiss", "later"];
   /** the looks of the list, as its switch says them */
   const LOOKS: { look: Look; name: string; title: string }[] = [
-    { look: "calm", name: "Calm", title: "Each item in three lines: its source, its title, its authors" },
+    { look: "simple", name: "Simple", title: "Each item in three lines: its source, its title, its authors" },
     { look: "table", name: "Table", title: "The columns, to sort, move and resize by their headers" },
   ];
 
@@ -693,7 +693,7 @@
   </div>
 </main>
 
-<!-- above the list: the choices as chips, Mark read ▾, the count and the sort, the list calm or a table; the
+<!-- above the list: the choices as chips, Mark read ▾, the count and the sort, the list simple or a table; the
      selection bar -->
 {#snippet listBar()}
   <div class="filters">

@@ -11,7 +11,7 @@ import * as api from "$lib/feeds/api";
 import type { FeedDetail, FeedRow, Store, Triage } from "$lib/feeds/api";
 import { titled, type Action, type Item } from "$lib/feeds/actions";
 import { addTarget, pageOf, toggled, type TriageAction } from "$lib/feeds/items";
-import { CALM_ROW, type Look } from "$lib/feeds/columns";
+import { SIMPLE_ROW, type Look } from "$lib/feeds/columns";
 import { isPost } from "$lib/feeds/kinds";
 import { mac, matches, type Shortcut } from "$lib/keys";
 import { OPEN_ASK } from "$lib/library/selection";
@@ -109,7 +109,7 @@ export class ItemList {
     return this.#tab.beside;
   }
 
-  /** how the list shows: calm, or a table */
+  /** how the list shows: simple, or a table */
   get look(): Look {
     return this.#options.look?.() ?? "table";
   }
@@ -266,7 +266,7 @@ export class ItemList {
     const go = (to: number | "first" | "last", extend = e.shiftKey) => act(() => this.selection.move(this.ids, to, extend));
     if (e.key === "ArrowDown") return go(mod ? "last" : 1);
     if (e.key === "ArrowUp") return go(mod ? "first" : -1);
-    const page = pageRows(this.look === "calm" ? CALM_ROW : ROW);
+    const page = pageRows(this.look === "simple" ? SIMPLE_ROW : ROW);
     if (e.key === "PageDown") return go(page);
     if (e.key === "PageUp") return go(-page);
     if (typing(e)) return e.key === "Escape" && act(() => (e.target as HTMLElement).blur());

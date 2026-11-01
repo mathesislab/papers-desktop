@@ -1,7 +1,7 @@
 // The rows of a long list, only those in view drawn (and a few around, for a smooth scroll): the library's Table
-// and FeedTable, as a table or as the Feeds tab's calm list, its rows taller. The list scrolls as one, down and across:
-// a table's headers (TableHead, as high as a row of it) stay at its top, over the rows. The row in focus is scrolled
-// into view, below the headers, when the keys move to it.
+// and FeedTable, as a table or as the Feeds tab's simple list, its rows taller. The list scrolls as one, down and
+// across: a table's headers (TableHead, as high as a row of it) stay at its top, over the rows. The row in focus is
+// scrolled into view, below the headers, when the keys move to it.
 
 import { untrack } from "svelte";
 
