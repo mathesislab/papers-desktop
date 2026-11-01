@@ -50,7 +50,19 @@ test("the Feeds tab's columns of an older version still, widths by column: in th
     { key: "date", width: 58 },
     { key: "journal", width: 120 },
   ]);
-  assert.deepEqual(layout.feeds.columns[5], { key: "score", width: 90 });
+  assert.deepEqual(layout.feeds.columns[4], { key: "score", width: 90 });
+});
+
+test("a column no longer of the tables (the Similar column of before, now a part of the score) is left out", () => {
+  const saved = [
+    { key: "title", width: 300 },
+    { key: "similar", width: 70 },
+    { key: "score", width: 60 },
+  ];
+  const layout = restore({ feeds: { filters: {}, columns: saved }, search: { columns: saved } } as never);
+  const keys = (columns: { key: string }[]) => columns.map((c) => c.key);
+  assert.deepEqual(keys(layout.feeds.columns), ["title", "score"]);
+  assert.deepEqual(keys(layout.search.columns), ["title", "score"]);
 });
 
 test("the library's star column shown once in a layout of before version 2, then hidden if hidden", () => {

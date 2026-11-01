@@ -8,7 +8,9 @@ import type { Span } from "$lib/types";
 export type ItemKind = "paper" | "preprint" | "news" | "blog";
 export type SourceKind = "journal" | "preprints" | "news" | "blog";
 export type Triage = "new" | "seen" | "starred" | "removed" | "added";
-export type Sort = "score" | "newest" | "like";
+export type Sort = "score" | "newest";
+/** How the keywords and the library make an item's score: the higher of both, or one alone */
+export type ScoreMode = "higher" | "keywords" | "library";
 
 /** What a subscription follows: a feed by its URL, or a sweep of Crossref (by an ISSN) or OpenAlex (by a filter). */
 export type Feed = { url: string } | { issn: string } | { openalex: string };
@@ -17,14 +19,29 @@ export type Feed = { url: string } | { issn: string } | { openalex: string };
 export interface Scored {
   interest: string;
   score: number;
+  /** the score on 0–100: the interest's `min_score` is 50, twice that 100 */
+  scaled: number;
   /** the labels of the terms that matched */
   terms: string[];
+  /** the exclude that matched (its term or pattern): the score is 0 */
+  excluded: string | null;
   /** the interest's `min_score` or more, not vetoed */
   reached: boolean;
 }
 
+/** The score of an item, 0–100 (crates/feeds `Rating`): its parts, each 0–100, as the settings take them. */
+export interface Rated {
+  score: number;
+  /** the best of its interests' scaled scores; null without interests */
+  keywords: number | null;
+  /** how like the library it is, scaled (as like as its typical paper: 100); null before the library is indexed */
+  library: number | null;
+  /** the exclude that vetoed it (its term or pattern): the score and its parts are 0 */
+  excluded: string | null;
+}
+
 /** A row of the list. */
-export interface FeedRow {
+export interface FeedRow extends Rated {
   id: string;
   kind: ItemKind;
   title: Span[];
@@ -34,11 +51,8 @@ export interface FeedRow {
   /** the titles of the subscriptions that listed it */
   sources: string[];
   date: string | null;
-  /** the best score of its interests, 0 without */
-  score: number;
+  /** the interests it matched a term of, the best first */
   interests: Scored[];
-  /** how like the library's papers it is, 0–100; null before the library is indexed */
-  like: number | null;
   triage: Triage;
   /** snoozed (out of Unread till `remind`), or due (new again, first in the list, not seen by being shown) */
   reminder: Reminder | null;
@@ -100,7 +114,7 @@ export interface Linked {
 }
 
 /** An item, for the details pane. */
-export interface FeedDetail {
+export interface FeedDetail extends Rated {
   id: string;
   kind: ItemKind;
   title: Span[];
@@ -128,8 +142,6 @@ export interface FeedDetail {
   inLibrary: string[];
   /** library entries of another version of it (its preprint, say) */
   versionInLibrary: string[];
-  /** how like the library's papers it is, 0–100; null before the library is indexed */
-  like: number | null;
   /** the library's papers most like it, the nearest first (3 at most) */
   nearest: Nearest[];
   /** the works that cite it, as OpenAlex counted them when it was found */
@@ -213,6 +225,7 @@ export interface Rule {
 export interface FeedSettings {
   interests: Interest[];
   titleBoost: number;
+  score: ScoreMode;
   rules: Rule[];
   keepDays: number;
   lookbackDays: number;

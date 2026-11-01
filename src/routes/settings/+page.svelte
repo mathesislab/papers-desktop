@@ -1,6 +1,7 @@
 <script lang="ts">
-  // The settings window: a bar of tabs (⌘1…⌘5, Ctrl elsewhere), the tab shown, which scrolls, and the line at its
-  // foot. The tabs stay made while the window is open: each keeps what is typed in it, and where it was scrolled.
+  // The settings window: a bar of tabs (⌘1…⌘6, Ctrl elsewhere), the tab shown, which scrolls, and the line at its
+  // foot. The tabs stay made while the window is open: each keeps what is typed in it, and where it was scrolled. The
+  // feeds' settings are read once for the Feeds and Score tabs, which set them (`FeedPrefs`).
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -9,8 +10,10 @@
   import { label, matches, zoomStep } from "$lib/keys";
   import AdvancedSettings from "$lib/settings/AdvancedSettings.svelte";
   import FeedsSettings from "$lib/settings/FeedsSettings.svelte";
+  import { FeedPrefs } from "$lib/settings/feeds.svelte";
   import GeneralSettings from "$lib/settings/GeneralSettings.svelte";
   import LibrarySettings from "$lib/settings/LibrarySettings.svelte";
+  import ScoreSettings from "$lib/settings/ScoreSettings.svelte";
   import SearchSettings from "$lib/settings/SearchSettings.svelte";
   import { Preferences } from "$lib/settings/settings.svelte";
   import { Updates } from "$lib/settings/updates.svelte";
@@ -19,6 +22,7 @@
   const TABS = [
     { id: "library", name: "Library" },
     { id: "feeds", name: "Feeds" },
+    { id: "score", name: "Score" },
     { id: "search", name: "Search" },
     { id: "general", name: "General" },
     { id: "advanced", name: "Advanced" },
@@ -26,6 +30,7 @@
   type Tab = (typeof TABS)[number]["id"];
 
   const prefs = new Preferences();
+  const feedPrefs = new FeedPrefs();
   const updates = new Updates();
   /** the tab shown: the last one while the window is open; Library at first */
   let tab = $state<Tab>("library");
@@ -39,7 +44,7 @@
   /** Fill the window, then show it: it is made hidden, not to flash empty.
    *  Its URL may name a section to show ("settings#updates"). */
   async function load() {
-    await Promise.allSettled([prefs.load(), updates.load()]);
+    await Promise.allSettled([prefs.load(), updates.load(), feedPrefs.load().catch((err) => prefs.show(String(err), true))]);
     await tick();
     const window = getCurrentWindow();
     await window.show();
@@ -64,7 +69,7 @@
   /** the key of the tab at `i`: its digit, whatever the layout types there */
   const shortcut = (i: number) => ({ key: String(i + 1), code: `Digit${i + 1}`, mod: true });
 
-  /** ⌘W closes the window, ⌘+ and ⌘- change the text size, ⌘1…⌘5 show a tab. A hotkey being recorded takes the
+  /** ⌘W closes the window, ⌘+ and ⌘- change the text size, ⌘1…⌘6 show a tab. A hotkey being recorded takes the
    *  keys before (SearchSettings). */
   function onkeydown(e: KeyboardEvent) {
     if (matches(e, { key: "w", mod: true })) getCurrentWindow().close();
@@ -103,7 +108,9 @@
         {#if t.id === "library"}
           <LibrarySettings {prefs} />
         {:else if t.id === "feeds"}
-          <FeedsSettings notify={prefs.show} />
+          <FeedsSettings {feedPrefs} notify={prefs.show} />
+        {:else if t.id === "score"}
+          <ScoreSettings {prefs} {feedPrefs} />
         {:else if t.id === "search"}
           <SearchSettings {prefs} shown={tab === "search"} />
         {:else if t.id === "general"}

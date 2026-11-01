@@ -163,7 +163,12 @@
         <button
           class="remove"
           title="Remove from the library"
-          onclick={() => prefs.save({ bibtex: settings.bibtex.filter((f) => f !== file) })}>✕</button
+          onclick={() =>
+            prefs.save({
+              bibtex: settings.bibtex.filter((f) => f !== file),
+              // added again later, it counts in the score's likeness, as any .bib added
+              similar_skip: settings.similar_skip.filter((f) => f !== file),
+            })}>✕</button
         >
       </li>
     {:else}

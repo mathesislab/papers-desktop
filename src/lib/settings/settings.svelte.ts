@@ -13,6 +13,9 @@ export type Settings = {
   /** the folder of the main papers library (~ for the home folder): where a new .bib goes by default; kept once
    *  set. None: papers has no default library, and none was made or chosen */
   papers_folder: string | null;
+  /** the .bib files whose papers the library part of the score leaves out: those unticked under *Similar to* (the
+   *  Score tab), as `bibtex` names them; a .bib added later counts */
+  similar_skip: string[];
   hotkey: string;
   /** on Linux only */
   selection_hotkey?: string;

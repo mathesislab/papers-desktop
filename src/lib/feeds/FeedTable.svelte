@@ -1,6 +1,7 @@
 <script lang="ts">
-  // The list of the Feeds tab: the items the filters select, best score, most similar to the library or newest
-  // first; and of the Search tab: the works found, in the order OpenAlex gave them (the caller chooses the columns).
+  // The list of the Feeds tab: the items the filters select, best score or newest first; and of the Search tab: the
+  // works found, in the order OpenAlex gave them (the caller chooses the columns). The score is two bars, its
+  // keywords over its library (ScoreBars), in its column and, small, before the badges of a simple row.
   // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
   // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). Simple
   // (`look`, the Feeds tab's at first; SimpleRow): no headers, each row taller, its date (an age; in the Search tab,
@@ -19,8 +20,9 @@
   import { STAR, rowHint, type Action } from "./actions";
   import type { FeedRow, Sort } from "./api";
   import type { FeedColumn } from "./columns";
-  import { ago, badges, citedText, likeText, scoreHint, scoreText, yearOf } from "./items";
+  import { ago, badges, citedText, yearOf } from "./items";
   import { ITEM_KINDS, isPost } from "./kinds";
+  import ScoreBars from "./ScoreBars.svelte";
 
   let {
     rows,
@@ -56,7 +58,7 @@
     menu: FeedColumn[];
     /** the order of the list, its header marked; none: the headers do not sort */
     sort?: Sort;
-    /** the interests of the settings, each with its colour; none: no interests yet */
+    /** the interests of the settings, each with its colour */
     colours: Map<string, string>;
     /** the .bib of a paper of the library, by its name, when it has several: the badge of an item in it */
     libraryOf: (id: string) => string | null;
@@ -89,7 +91,6 @@
   /** the columns that sort the list, by what, and what their headers say on hover */
   const SORTS: Partial<Record<FeedColumn, { sort: Sort; title: string }>> = {
     score: { sort: "score", title: "Best score first" },
-    similar: { sort: "like", title: "Most similar to the papers of your library first" },
     date: { sort: "newest", title: "Newest first" },
   };
 
@@ -203,16 +204,14 @@
           <SimpleRow date={date === "age" ? ago(row.date, now) : yearOf(row.date)} source={sourceOf(row)} sources={row.sources.join(", ")}>
             {#snippet title()}<span class="title"><Marked spans={row.title} /></span>{/snippet}
             {#snippet authors()}{@render names(row)}{/snippet}
-            {#snippet end()}{@render badgeList(row)}{/snippet}
+            {#snippet end()}<span class="ends"><ScoreBars {row} small />{@render badgeList(row)}</span>{/snippet}
           </SimpleRow>
         {:else}
           {#each columns as { key: column } (column)}
             {#if column === "score"}
-              <span class="score" title={scoreHint(row.score, colours.size > 0)}>{scoreText(row.score)}</span>
+              <span class="score"><ScoreBars {row} /></span>
             {:else if column === "cited"}
               <span class="cited muted" title="The works that cite it, as OpenAlex counts them">{citedText(row.cited)}</span>
-            {:else if column === "similar"}
-              <span class="like muted" title={specs.similar.hint}>{likeText(row.like)}</span>
             {:else if column === "title"}
               <span class="title"><Marked spans={row.title} /></span>
             {:else if column === "authors"}
@@ -299,12 +298,19 @@
   .row.selected .muted {
     color: inherit;
   }
-  .score,
   .cited,
-  .like,
   .date {
     font-variant-numeric: tabular-nums;
     text-align: right;
+  }
+  .rows .row > .score {
+    align-self: stretch;
+  }
+  /* simple: the score, then the badges */
+  .ends {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .rows .row > .mark,
   .rows .row > .star {

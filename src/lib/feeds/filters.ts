@@ -49,7 +49,6 @@ const text = (v: unknown): v is string => typeof v === "string";
 /** The orders of the list, in the order the count above it goes through them. */
 export const SORTS: { sort: Sort; text: string }[] = [
   { sort: "score", text: "best score first" },
-  { sort: "like", text: "most similar to the library first" },
   { sort: "newest", text: "newest first" },
 ];
 
@@ -66,7 +65,8 @@ function values<T extends string>(many: unknown, one: unknown, valid: (v: unknow
 const SHELVES_BEFORE: Record<string, Shelf> = { shortlist: "starred" };
 
 /** Filters as saved, any part missing or of a wrong type made the default; a single choice of an older version
- *  becomes the only one of its group, a view of an older name the view of now. */
+ *  becomes the only one of its group, a view of an older name the view of now (the sort by likeness of before,
+ *  `like`, now a part of the score, the default). */
 export function restoredFeeds(
   saved: (Partial<FeedFilters> & { kind?: unknown; interest?: unknown; source?: unknown }) | null | undefined,
 ): FeedFilters {

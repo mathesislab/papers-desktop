@@ -2,7 +2,7 @@
 // shown counts as seen, what an item adds to the library, how old things are said to be. Pure, tested by
 // scripts/feeds.test.ts (npm test).
 
-import type { FeedDetail, FeedRow, FetchSummary, Linked, Reminder, Triage } from "./api.ts";
+import type { FeedDetail, FeedRow, FetchSummary, Linked, Rated, Reminder, Scored, Triage } from "./api.ts";
 import { isPost } from "./kinds.ts";
 
 /** the keys that change the triage of the items selected */
@@ -198,19 +198,23 @@ export function badges(
   return list;
 }
 
-/** A likeness as the list shows it: a whole number, none before the library is indexed. */
-export const likeText = (like: number | null) => (like === null ? "–" : Math.round(like).toString());
+/** Why a score has no keywords: no interest to score in. */
+export const NO_INTERESTS = "No interests yet: add them in Settings → Score";
 
-/** A score as the list shows it: one decimal, none without. */
-export const scoreText = (score: number) => (score > 0 ? score.toFixed(1) : "–");
+/** What the score of a row says on hover: "Score 72 · keywords 72 (ice sheet, AMOC) · library 41", the terms its
+ *  interests matched, the best interest's first; vetoed, the exclude that did ("Excluded: Georgia"); without
+ *  interests, why the keywords are missing, on a line of its own. A library not indexed yet says no library. */
+export function scoreHint(row: Rated & { interests: Scored[] }): string {
+  if (row.excluded !== null) return `Excluded: ${row.excluded}`;
+  const terms = [...new Set(row.interests.flatMap((s) => s.terms))];
+  const parts = [`Score ${Math.round(row.score)}`];
+  if (row.keywords !== null) parts.push(`keywords ${Math.round(row.keywords)}` + (terms.length ? ` (${terms.join(", ")})` : ""));
+  if (row.library !== null) parts.push(`library ${Math.round(row.library)}`);
+  return [parts.join(" · "), ...(row.keywords === null ? [NO_INTERESTS] : [])].join("\n");
+}
 
-/** Why there is no score, with no interest to score in. */
-export const NO_INTERESTS = "No interests yet: add them in Settings → Feeds";
-
-/** What a score of the list says on hover: why there is none, no interest matched or none to match (`interests`
- *  off); a score says nothing. */
-export const scoreHint = (score: number, interests: boolean) =>
-  score > 0 ? undefined : interests ? "No interest matched" : NO_INTERESTS;
+/** How much of its track a part of the score fills, in percent: a part missing none. */
+export const barOf = (part: number | null) => Math.max(0, Math.min(100, part ?? 0));
 
 /** A count of citations as the list shows it: "1,234"; none when OpenAlex did not count them. */
 export const citedText = (cited: number | null) => (cited === null ? "–" : cited.toLocaleString("en-US"));

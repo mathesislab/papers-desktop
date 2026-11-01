@@ -1,21 +1,23 @@
 <script lang="ts">
   // The Feeds tab of the settings window: the subscriptions (added by
   // address, ISSN or OpenAlex filter, or from the suggested list; edited;
-  // OPML in and out), the interests and the rules, the days kept, the
-  // background polling; the switches of the main window (whether the Feeds and Search tabs show, the details beside
-  // the list). The commands are those of $lib/feeds/api.ts and, for the switches, $lib/toggles.ts.
+  // OPML in and out), the rules, the days kept, the background polling; the switches of the main window (whether
+  // the Feeds and Search tabs show, the details beside the list). The interests are the Score tab's
+  // (ScoreSettings); both save over the feeds' settings as saved (`FeedPrefs`). The commands are those of
+  // $lib/feeds/api.ts and, for the switches, $lib/toggles.ts.
   import { open, save as saveFile } from "@tauri-apps/plugin-dialog";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import * as feeds from "$lib/feeds/api";
-  import type { Feed, FeedSettings, Interest, Rule, SourceKind, Suggested, SubscriptionInfo } from "$lib/feeds/api";
+  import type { Feed, FeedSettings, Rule, SourceKind, Suggested, SubscriptionInfo } from "$lib/feeds/api";
   import { since } from "$lib/feeds/items";
   import { SOURCE_KINDS, sourceKinds } from "$lib/feeds/kinds";
   import { feedOf, feedText, sameFeed, subscriptionOf, type FeedType } from "$lib/feeds/subscriptions";
   import { onToggle, setToggle, toggles, type Toggle, type Toggles } from "$lib/toggles";
+  import type { FeedPrefs } from "./feeds.svelte";
   import "./settings.css";
 
-  let { notify }: { notify: (text: string, error: boolean) => void } = $props();
+  let { feedPrefs, notify }: { feedPrefs: FeedPrefs; notify: (text: string, error: boolean) => void } = $props();
 
   const TYPES: { value: FeedType; name: string; placeholder: string }[] = [
     { value: "url", name: "Feed", placeholder: "https://…/rss" },
@@ -24,8 +26,8 @@
   ];
 
   let subscriptions = $state<SubscriptionInfo[]>([]);
-  /** the settings as saved, and the interests and rules being edited */
-  let saved = $state<FeedSettings | null>(null);
+  /** the settings as saved */
+  let saved = $derived(feedPrefs.saved);
   /** the switches of the main window, also set by the Window menu */
   let switches = $state<Toggles>({ "feeds-tab": true, "search-tab": true, "feeds-beside": false });
   const SWITCHES: { toggle: Toggle; label: string; hint: string }[] = [
@@ -41,7 +43,8 @@
       hint: "Otherwise an item opens in place of the list, to read (Esc goes back), in the Feeds and Search tabs; also Window → Feeds Details Beside the List",
     },
   ];
-  let draft = $state<Draft | null>(null);
+  /** the rules being edited */
+  let draft = $state<Rule[] | null>(null);
   let draftError = $state("");
   let suggestions = $state<Suggested[]>([]);
   let showSuggested = $state(false);
@@ -58,10 +61,10 @@
   let editing = $state<string | null>(null);
   let edit = $state({ title: "", kind: "journal" as SourceKind, journal: "", fetchPages: false, boost: 0 as number | null });
 
-  /** an include or exclude as the editor shows it */
-  type Line = { pattern: boolean; text: string; weight: number; label: string };
-  type DraftInterest = { name: string; min_score: number; include: Line[]; exclude: Line[]; open: boolean };
-  type Draft = { interests: DraftInterest[]; titleBoost: number; rules: Rule[] };
+  // the rules to edit, once the settings are loaded (by the page)
+  $effect(() => {
+    if (saved && !draft) draft = toDraft(saved);
+  });
 
   onMount(() => {
     load();
@@ -75,11 +78,7 @@
 
   async function load() {
     try {
-      await Promise.all([
-        loadSubscriptions(),
-        loadSettings(),
-        toggles().then((on) => (switches = on)),
-      ]);
+      await Promise.all([loadSubscriptions(), toggles().then((on) => (switches = on))]);
       suggestions = await feeds.suggested();
     } catch (err) {
       notify(String(err), true);
@@ -90,9 +89,9 @@
     subscriptions = await feeds.subscriptions();
   }
 
-  async function loadSettings() {
-    saved = await feeds.settings();
-    draft = toDraft(saved);
+  /** The rules as saved, those edited dropped. */
+  function revert() {
+    if (saved) draft = toDraft(saved);
     draftError = "";
   }
 
@@ -190,52 +189,21 @@
     if (file) await act(() => feeds.exportOpml(file), "Exported");
   }
 
-  // the interests and rules: edited as a draft, saved together
+  // the rules: edited as a draft, saved together
 
-  function toLine(m: { term?: string; pattern?: string; weight?: number; label?: string }): Line {
-    return { pattern: m.pattern !== undefined, text: m.pattern ?? m.term ?? "", weight: m.weight ?? 1, label: m.label ?? "" };
-  }
+  const toDraft = (s: FeedSettings): Rule[] => s.rules.map((r) => ({ ...r }));
 
-  function toDraft(s: FeedSettings): Draft {
-    return {
-      interests: s.interests.map((i) => ({
-        name: i.name,
-        min_score: i.min_score,
-        include: i.include.map(toLine),
-        exclude: i.exclude.map(toLine),
-        open: false,
-      })),
-      titleBoost: s.titleBoost,
-      rules: s.rules.map((r) => ({ ...r })),
-    };
-  }
+  /** The rules edited, as saved: a rule with no query would match every item, left out. */
+  const fromDraft = (rules: Rule[]): Rule[] => rules.filter((r) => r.when.trim()).map((r) => ({ when: r.when.trim(), then: r.then }));
 
-  function fromDraft(d: Draft): Pick<FeedSettings, "interests" | "titleBoost" | "rules"> {
-    const matcher = (l: Line) => (l.pattern ? { pattern: l.text.trim() } : { term: l.text.trim() });
-    const interests: Interest[] = d.interests.map((i) => ({
-      name: i.name.trim(),
-      include: i.include
-        .filter((l) => l.text.trim())
-        .map((l) => ({ ...matcher(l), weight: Number(l.weight), ...(l.label.trim() ? { label: l.label.trim() } : {}) })),
-      exclude: i.exclude.filter((l) => l.text.trim()).map(matcher),
-      min_score: Number(i.min_score),
-    }));
-    // a rule with no query would match every item: left out
-    const rules = d.rules.filter((r) => r.when.trim()).map((r) => ({ when: r.when.trim(), then: r.then }));
-    return { interests, titleBoost: Number(d.titleBoost), rules };
-  }
-
-  let dirty = $derived(!!saved && !!draft && JSON.stringify(fromDraft(draft)) !== JSON.stringify({ interests: saved.interests, titleBoost: saved.titleBoost, rules: saved.rules }));
+  let dirty = $derived(!!saved && !!draft && JSON.stringify(fromDraft(draft)) !== JSON.stringify(saved.rules));
 
   async function saveDraft() {
-    if (!saved || !draft) return;
-    const next = { ...saved, ...fromDraft(draft) };
+    if (!draft) return;
     busy = true;
     try {
-      await feeds.setSettings(next);
-      const open = draft.interests.map((i) => i.open);
-      await loadSettings();
-      draft!.interests.forEach((i, n) => (i.open = open[n] ?? false));
+      await feedPrefs.save({ rules: fromDraft(draft) });
+      revert();
       notify("Saved", false);
     } catch (err) {
       draftError = String(err);
@@ -245,18 +213,10 @@
     }
   }
 
-  /** A setting that saves at once: with the interests and rules as saved. */
-  function setNow(change: Partial<FeedSettings>) {
-    if (!saved) return;
-    const next = { ...saved, ...change };
-    act(async () => {
-      await feeds.setSettings(next);
-      saved = next;
-    }, "Saved");
-  }
+  /** A setting that saves at once: with the rules as saved. */
+  const setNow = (change: Partial<FeedSettings>) => act(() => feedPrefs.save(change), "Saved");
 
   const number = (e: Event) => Number((e.currentTarget as HTMLInputElement).value);
-  const blankLine = (): Line => ({ pattern: false, text: "", weight: 1, label: "" });
 </script>
 
 <section>
@@ -354,54 +314,9 @@
   {/if}
 
   {#if draft && saved}
-    <h3>Interests</h3>
-    <p class="hint">Named profiles of weighted terms: an item's score is the weights of the terms it has (twice in the title, by default); it is of the interest from the minimum score on. An exclude vetoes. A pattern is a regular expression.</p>
-    {#each draft.interests as interest, i (i)}
-      <div class="interest">
-        <div class="head">
-          <button class="disclosure" onclick={() => (interest.open = !interest.open)}>{interest.open ? "▾" : "▸"}</button>
-          <input class="text grow" type="text" placeholder="Name" bind:value={interest.name} />
-          <label class="inline-label">Min score <input class="num" type="number" step="0.5" bind:value={interest.min_score} /></label>
-          <button class="remove" title="Remove the interest" onclick={() => draft!.interests.splice(i, 1)}>✕</button>
-        </div>
-        {#if interest.open}
-          <div class="lines">
-            <span class="hint">Terms</span>
-            {#each interest.include as line, n (n)}
-              <div class="line">
-                <select bind:value={line.pattern}><option value={false}>Term</option><option value={true}>Pattern</option></select>
-                <input class="text grow" type="text" spellcheck="false" bind:value={line.text} />
-                <input class="num" type="number" step="0.5" title="Weight" bind:value={line.weight} />
-                <input class="text label-in" type="text" placeholder="Label" bind:value={line.label} />
-                <button class="remove" onclick={() => interest.include.splice(n, 1)}>✕</button>
-              </div>
-            {/each}
-            <button class="small" onclick={() => interest.include.push(blankLine())}>Add Term</button>
-            <span class="hint">Excludes</span>
-            {#each interest.exclude as line, n (n)}
-              <div class="line">
-                <select bind:value={line.pattern}><option value={false}>Term</option><option value={true}>Pattern</option></select>
-                <input class="text grow" type="text" spellcheck="false" bind:value={line.text} />
-                <button class="remove" onclick={() => interest.exclude.splice(n, 1)}>✕</button>
-              </div>
-            {/each}
-            <button class="small" onclick={() => interest.exclude.push(blankLine())}>Add Exclude</button>
-          </div>
-        {/if}
-      </div>
-    {/each}
-    <div class="actions">
-      <button
-        class="small"
-        onclick={() => draft!.interests.push({ name: "", min_score: 3, include: [blankLine()], exclude: [], open: true })}
-        >Add Interest</button
-      >
-      <label class="inline-label">Title counts <input class="num" type="number" step="0.5" min="1" bind:value={draft.titleBoost} /> ×</label>
-    </div>
-
     <h3>Rules</h3>
-    <p class="hint">Applied to the new items of a fetch, the first that matches deciding: a query of the feeds (<code>prof:amoc score:6-</code>, <code>t:editorial</code>) and what to do.</p>
-    {#each draft.rules as rule, i (i)}
+    <p class="hint">Applied to the new items of a fetch, the first that matches deciding: a query of the feeds (<code>prof:amoc score:80-</code>, the score 0–100 of Settings → Score; <code>t:editorial</code>) and what to do.</p>
+    {#each draft as rule, i (i)}
       <div class="line">
         <input class="text grow" type="text" spellcheck="false" placeholder="Query" bind:value={rule.when} />
         <select bind:value={rule.then}>
@@ -409,18 +324,18 @@
           <option value="seen">Mark seen</option>
           <option value="remove">Remove</option>
         </select>
-        <button class="remove" onclick={() => draft!.rules.splice(i, 1)}>✕</button>
+        <button class="remove" onclick={() => draft!.splice(i, 1)}>✕</button>
       </div>
     {/each}
     <div class="actions">
-      <button class="small" onclick={() => draft!.rules.push({ when: "", then: "star" })}>Add Rule</button>
+      <button class="small" onclick={() => draft!.push({ when: "", then: "star" })}>Add Rule</button>
     </div>
 
     {#if dirty || draftError}
       <div class="save">
-        <span class="hint" class:error={!!draftError}>{draftError || "Interests and rules changed"}</span>
+        <span class="hint" class:error={!!draftError}>{draftError || "Rules changed"}</span>
         <span class="buttons">
-          <button class="small" onclick={loadSettings}>Revert</button>
+          <button class="small" onclick={revert}>Revert</button>
           <button class="small primary" disabled={busy || !dirty} onclick={saveDraft}>Save</button>
         </span>
       </div>
@@ -512,7 +427,6 @@
 
   .add,
   .line,
-  .head,
   .actions,
   .save {
     display: flex;
@@ -532,21 +446,6 @@
   }
   .line {
     margin: 4px 0;
-  }
-  .lines {
-    margin: 4px 0 8px 22px;
-  }
-  .interest {
-    padding: 4px 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .inline-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--muted);
-    font-size: 11.5px;
-    white-space: nowrap;
   }
 
   .suggested {
@@ -592,9 +491,6 @@
     flex: 1;
     width: auto;
   }
-  input.label-in {
-    width: 80px;
-  }
   input.num {
     width: 56px;
   }
@@ -607,13 +503,5 @@
   button.small {
     padding: 2px 8px;
     font-size: 12px;
-  }
-  /* the ▸ of an interest, drawn as the ✕ of settings.css */
-  .disclosure {
-    flex: none;
-    padding: 0 6px;
-    border: none;
-    background: none;
-    color: var(--muted);
   }
 </style>

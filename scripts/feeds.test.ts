@@ -35,8 +35,8 @@ import {
   Dwell,
   ago,
   badges,
+  barOf,
   fetchLine,
-  likeText,
   mergeRows,
   NO_INTERESTS,
   newAbove,
@@ -113,20 +113,27 @@ test("restored: what is missing or wrong takes the default; a single choice of b
     kinds: ["blog"],
     sources: ["A"],
   });
-  assert.equal(restoredFeeds({ sort: "like" }).sort, "like");
+  assert.equal(restoredFeeds({ sort: "like" as never }).sort, "score", "the sort by likeness of before: the score");
   assert.equal(restoredFeeds({ sort: "oldest" as never }).sort, "score");
 });
 
-test("the sorts in turn, and a likeness as the list shows it", () => {
-  assert.deepEqual([nextSort("score"), nextSort("like"), nextSort("newest")], ["like", "newest", "score"]);
-  assert.deepEqual(requestOf(f({ sort: "like" })).sort, "like");
-  assert.deepEqual([likeText(null), likeText(0), likeText(34.6)], ["–", "0", "35"]);
+test("the sorts in turn", () => {
+  assert.deepEqual([nextSort("score"), nextSort("newest")], ["newest", "score"]);
+  assert.deepEqual(requestOf(f({ sort: "newest" })).sort, "newest");
 });
 
-test("a score missing says why: no interest matched, or none yet", () => {
-  assert.equal(scoreHint(2.5, true), undefined);
-  assert.equal(scoreHint(0, true), "No interest matched");
-  assert.equal(scoreHint(0, false), NO_INTERESTS);
+test("a score says its parts on hover, the exclude that vetoed it, or why it has no keywords", () => {
+  const scored = (interest: string, terms: string[]) => ({ interest, score: 6, scaled: 100, terms, excluded: null, reached: true });
+  const rated = { score: 72.4, keywords: 72.4, library: 41.2, excluded: null };
+  const interests = [scored("Ice", ["ice sheet", "GIA"]), scored("AMOC", ["AMOC", "GIA"])];
+  assert.equal(scoreHint({ ...rated, interests }), "Score 72 · keywords 72 (ice sheet, GIA, AMOC) · library 41");
+  assert.equal(scoreHint({ ...rated, keywords: 0, interests: [] }), "Score 72 · keywords 0 · library 41");
+  assert.equal(scoreHint({ ...rated, keywords: null, library: null, interests: [] }), `Score 72\n${NO_INTERESTS}`);
+  assert.equal(scoreHint({ score: 0, keywords: 0, library: 0, excluded: "Georgia", interests }), "Excluded: Georgia");
+});
+
+test("a part of the score fills its bar from 0 to 100", () => {
+  assert.deepEqual([barOf(null), barOf(0), barOf(41.2), barOf(100), barOf(-3), barOf(140)], [0, 0, 41.2, 100, 0, 100]);
 });
 
 test("the counts of the views, and the sources in their groups", () => {
@@ -278,8 +285,10 @@ const row = (id: string, triage: Triage = "new"): FeedRow => ({
   sources: [],
   date: null,
   score: 0,
+  keywords: null,
+  library: null,
+  excluded: null,
   interests: [],
-  like: null,
   triage,
   reminder: null,
   remind: null,
@@ -344,8 +353,8 @@ test("badges", () => {
     hasVersions: true,
     coveredBy: 2,
     interests: [
-      { interest: "AMOC", score: 4, terms: [], reached: true },
-      { interest: "Ice", score: 1, terms: [], reached: false },
+      { interest: "AMOC", score: 4, scaled: 66.7, terms: [], excluded: null, reached: true },
+      { interest: "Ice", score: 1, scaled: 16.7, terms: [], excluded: null, reached: false },
     ],
   };
   const one = () => null;

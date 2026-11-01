@@ -3,12 +3,14 @@
 </script>
 
 <script lang="ts">
-  // What tells whether a paper of the feeds is worth adding, in the details: why it is here (the interests and the
-  // terms that matched), its free PDF (looked up a moment after it is shown, once per item), its versions, the posts
+  // What tells whether a paper of the feeds is worth adding, in the details: why it is here (its score and its two
+  // parts: its keywords, with the interests and the terms that matched, and its library; or the exclude that vetoed
+  // it), its free PDF (looked up a moment after it is shown, once per item), its versions, the posts
   // that cover it, where it was seen, and last, set apart and quieter than what is read, the papers of the library
   // similar to it (each shown in the Library tab on a click).
 
   import { pdfOf, type FeedDetail, type PdfStatus, type Store } from "./api";
+  import { NO_INTERESTS } from "./items";
 
   let {
     detail,
@@ -33,7 +35,8 @@
 
   let paper = $derived(detail.kind === "paper" || detail.kind === "preprint");
   let pdf = $state<PdfStatus | "looking" | { error: string } | null>(null);
-  let scored = $derived([...detail.interests].filter((s) => s.score > 0).sort((a, b) => b.score - a.score));
+  /** a part of the score as said: a whole number, a dash when missing */
+  const part = (n: number | null) => (n === null ? "–" : Math.round(n).toString());
 
   $effect(() => {
     const { id } = detail;
@@ -70,17 +73,21 @@
   {/each}
 {/snippet}
 
-{#if scored.length}
-  <section>
-    <h5>Why it is here</h5>
-    {#each scored as s (s.interest)}
-      <p class:muted={!s.reached}>
-        <span class="dot" style:background={colours.get(s.interest) ?? "var(--border)"}></span>
-        {s.interest} {s.score.toFixed(1)}{#if s.terms.length}: {s.terms.join(", ")}{/if}{#if !s.reached} (below its minimum){/if}
-      </p>
-    {/each}
-  </section>
-{/if}
+<!-- the interests in the order of their scaled scores, the best first (the keywords part is the best's) -->
+<section>
+  <h5>Why it is here · score {part(detail.score)}</h5>
+  {#if detail.excluded !== null}
+    <p>Excluded: {detail.excluded}</p>
+  {/if}
+  <p>Keywords {part(detail.keywords)}{#if detail.keywords === null}<span class="muted">{` · ${NO_INTERESTS}`}</span>{/if}</p>
+  {#each detail.interests as s (s.interest)}
+    <p class="interest" class:muted={!s.reached}>
+      <span class="dot" style:background={colours.get(s.interest) ?? "var(--border)"}></span>
+      {s.interest} {Math.round(s.scaled)}{#if s.terms.length}: {s.terms.join(", ")}{/if}{#if !s.reached} (below its minimum){/if}
+    </p>
+  {/each}
+  <p>Library {part(detail.library)}{#if detail.library !== null}<span class="muted">{" · how close it is to your library's papers"}</span>{/if}</p>
+</section>
 
 {#if paper && detail.doi}
   <section>
@@ -138,7 +145,7 @@
 
 {#if detail.nearest.length}
   <section class="similar">
-    <h5>Similar in your library{detail.like !== null ? ` · ${Math.round(detail.like)}` : ""}</h5>
+    <h5>Similar in your library</h5>
     {#each detail.nearest as near (near.id)}
       <p>
         <button class="link plain" title="Show it in the library ({near.key})" onclick={() => onentry(near.id)}>{near.title}</button>
@@ -178,6 +185,9 @@
   }
   .similar button.link.plain {
     color: var(--muted);
+  }
+  .interest {
+    padding-left: 12px;
   }
   .dot {
     display: inline-block;

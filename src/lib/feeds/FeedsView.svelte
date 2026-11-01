@@ -45,7 +45,6 @@
   } from "./filters";
   import {
     Dwell,
-    NO_INTERESTS,
     fetchLine,
     mergeRows,
     newAbove,
@@ -548,12 +547,6 @@
     filters = withoutChip(filters, chip);
   }
 
-  /** What the sort says on hover; by score with no interests yet, why no item has one, and the order then (the
-   *  newest first: crates/feeds, `Sort::Score`). */
-  let sortHint = $derived(
-    "Sort by score, by likeness to the library or by date" +
-      (filters.sort === "score" && !tab.colours.size ? `\n${NO_INTERESTS} (until then, newest first)` : ""),
-  );
 
   let summary = $derived(
     `${list.rows.length} of ${counts?.all ?? 0}` + (list.selection.selected.size > 1 ? ` · ${list.selection.selected.size} selected` : ""),
@@ -703,7 +696,11 @@
     <button class="sort" title="Mark the new items of the list as read: all, the older ones, those above" onclick={markMenu}>
       Mark read ▾
     </button>
-    <button class="sort" title={sortHint} onclick={() => (filters.sort = nextSort(filters.sort))}>
+    <button
+      class="sort"
+      title="Sort by score (its keywords and its library, as Settings → Score takes them; the newest first of the same) or by date"
+      onclick={() => (filters.sort = nextSort(filters.sort))}
+    >
       {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}
     </button>
     <LookSwitch bind:look />
