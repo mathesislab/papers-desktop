@@ -705,7 +705,7 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   data folder) is the folder; not the app's while it runs, nothing locks it.
   `--library <file.bib>` (repeated) indexes a library for `like:`, `--sort
   like` and the nearest papers of `show`.
-- The app (`src-tauri/src/feeds.rs`, `src/lib/feeds/`): the tab, *In
+- The app (`src-tauri/src/feeds/`, `src/lib/feeds/`): the tab, *In
   library* (core's `Identity`), the Add sheet, the settings.
 
 **The query language** of the library works on feed items too: the parser
@@ -1072,8 +1072,9 @@ journal of an ISSN by `issn:` and the ISSN) in the feeds folder's
 `journals.json`, so a journal is asked for once; a request without an
 answer is not kept.
 
-**The app's commands** (`src-tauri/src/feeds.rs`, the contract
-`src/lib/feeds/api.ts`): `feeds_fetch`, `feeds_last_fetch`, `feeds_view`,
+**The app's commands** (`src-tauri/src/feeds/`: the commands in `mod.rs`,
+a `Folder` of feeds, the fetches, the rows and details, the Add sheet's
+discovery; the contract `src/lib/feeds/api.ts`): `feeds_fetch`, `feeds_last_fetch`, `feeds_view`,
 `feeds_item`, `feeds_triage`, `feeds_find_papers`, `feeds_pdf`,
 `feeds_subscriptions`, `feeds_unsubscribe`,
 `feeds_update_subscription`, `feeds_suggested`,
