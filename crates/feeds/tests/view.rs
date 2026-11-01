@@ -5,11 +5,11 @@
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
-use papers_core::{Doc, Likeness, Matching, Span};
+use papers_core::{Doc, Identities, Identity, Likeness, Matching, Span};
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Action, Feed, Feeds, Interest, ItemKind, Matcher, Reminder, Reply, Rule, Sort,
-    SourceKind, Triage, View, ViewRequest, Weighted,
+    Access, Action, Feed, Feeds, Interest, ItemKind, LibraryFacts, Matcher, Reminder, Reply, Rule,
+    Sort, SourceKind, Triage, View, ViewRequest, Weighted,
 };
 
 const TC: &str = "https://example.org/tc.atom";
@@ -228,18 +228,12 @@ fn facets_numbers_and_fields() {
     assert_eq!(titles(&feeds, "is:new").len(), 3);
     assert_eq!(titles(&feeds, "-is:dismissed").len(), 4);
 
-    // the caller's facets
-    let j1_id = id_of(&feeds, j1);
-    let in_library = |item: &papers_feeds::Item| match item.id == j1_id {
-        true => vec!["inlibrary".to_string()],
-        false => Vec::new(),
-    };
-    let request = ViewRequest {
-        query: "is:inlibrary",
-        is: Some(&in_library),
-        ..ViewRequest::default()
-    };
-    assert_eq!(titles_of(&feeds.view(&request)), [j1]);
+    // the library's papers
+    assert!(titles(&feeds, "is:inlibrary").is_empty(), "no library");
+    feeds.set_library(in_library(None));
+    assert_eq!(titles(&feeds, "is:inlibrary"), [j1]);
+    let j1 = feeds.item(&id_of(&feeds, j1)).unwrap();
+    assert_eq!(feeds.in_library(j1), ["moreau2026"]);
 }
 
 #[test]
@@ -326,15 +320,10 @@ fn counts_are_of_live_items_whatever_the_query() {
     feeds
         .set_triage(&id_of(&feeds, P1.1), Triage::Shortlisted)
         .unwrap();
-    let j1 = id_of(&feeds, J1.1);
-    let in_library = |item: &papers_feeds::Item| match item.id == j1 {
-        true => vec!["inlibrary".to_string()],
-        false => Vec::new(),
-    };
+    feeds.set_library(in_library(None));
     let request = ViewRequest {
         query: "kind:preprint",
         kinds: &[ItemKind::Preprint],
-        is: Some(&in_library),
         ..ViewRequest::default()
     };
     let view = feeds.view(&request);
@@ -427,20 +416,31 @@ fn rules_triage_the_new_items_only() {
 
 /// An index of a library of a paper on Greenland's hysteresis, one on firn
 /// and one on songbirds.
-fn library() -> Arc<Likeness> {
+/// The facts of a library of one paper, J1 by its DOI, with an index of
+/// the texts of its papers or none.
+fn in_library(likeness: Option<Likeness>) -> Arc<LibraryFacts> {
+    let j1 = Identity::of(J1.5, "", None);
+    Arc::new(LibraryFacts {
+        likeness,
+        identities: Arc::new(Identities::new([("moreau2026".to_string(), j1)])),
+    })
+}
+
+/// The index of the texts of a library's papers.
+fn likeness() -> Likeness {
     let doc = |id: &str, title: &str| Doc {
         id: id.to_string(),
         title: title.to_string(),
         ..Doc::default()
     };
-    Arc::new(Likeness::build([
+    Likeness::build([
         doc(
             "hysteresis",
             "Hysteresis and overshoot of the Greenland ice sheet",
         ),
         doc("firn", "Firn densification in a warmer climate"),
         doc("songbirds", "Songbird migration in autumn"),
-    ]))
+    ])
 }
 
 #[test]
@@ -461,7 +461,7 @@ fn like_needs_the_index_of_the_library() {
     );
     assert_eq!(feeds.like(&feeds.items()[0]), None);
 
-    feeds.set_likeness(Some(library()));
+    feeds.set_library(in_library(Some(likeness())));
     let j1 = feeds.item(&id_of(&feeds, J1.1)).unwrap();
     let like = feeds.like(j1).unwrap();
     assert_eq!(like.nearest[0].0, "hysteresis");
@@ -481,7 +481,7 @@ fn like_needs_the_index_of_the_library() {
     let likes: Vec<f64> = view.rows.iter().map(|r| r.like.unwrap()).collect();
     assert!(likes.is_sorted_by(|a, b| a >= b));
 
-    feeds.set_likeness(None);
+    feeds.set_library(in_library(None));
     assert!(titles(&feeds, "like:0-").is_empty());
 }
 
@@ -490,7 +490,7 @@ fn rules_at_fetch_use_the_likeness() {
     let dir = tempfile::tempdir().unwrap();
     let clock = Clock::new();
     let mut feeds = clock.open(dir.path());
-    feeds.set_likeness(Some(library()));
+    feeds.set_library(in_library(Some(likeness())));
     feeds
         .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
         .unwrap();
@@ -505,6 +505,26 @@ fn rules_at_fetch_use_the_likeness() {
     assert_eq!(triage(J1), Triage::Shortlisted);
     assert_eq!(triage(J2), Triage::New);
     assert_eq!(triage(J3), Triage::New);
+}
+
+#[test]
+fn rules_at_fetch_see_the_library() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Clock::new().open(dir.path());
+    feeds.set_library(in_library(None));
+    feeds
+        .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
+        .unwrap();
+    let rule = Rule {
+        when: "is:inlibrary".to_string(),
+        then: Action::Dismiss,
+    };
+    feeds.set_rules(vec![rule]).unwrap();
+    let http = Recorded::new().reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2])));
+    feeds.fetch(&http, &Access::default()).unwrap();
+    let triage = |e: E| feeds.triage(&id_of(&feeds, e.1));
+    assert_eq!(triage(J1), Triage::Dismissed, "a paper of the library");
+    assert_eq!(triage(J2), Triage::New);
 }
 
 #[test]

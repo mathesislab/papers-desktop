@@ -43,15 +43,11 @@ pub struct ViewRequest<'a> {
     pub sort: Sort,
     /// the kinds shown; none: every kind
     pub kinds: &'a [ItemKind],
-    pub is: Option<IsValues<'a>>,
     /// when the list was last brought up to date: the items first fetched
     /// since are held back (neither listed nor counted, `View::held`); none:
     /// every item
     pub shown: Option<DateTime<Utc>>,
 }
-
-/// The caller's `is:` values of an item, such as `inlibrary`.
-pub type IsValues<'a> = &'a dyn Fn(&Item) -> Vec<String>;
 
 /// The rows a request shows, and the counts of the sidebar.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -80,6 +76,9 @@ pub struct Row {
     pub r#abstract: Vec<Span>,
     /// snoozed, or due: first in the list
     pub reminder: Option<Reminder>,
+    /// the library's entries of the same paper (its DOI, or its title and
+    /// year), newest first; none without the library's facts
+    pub in_library: Vec<String>,
 }
 
 /// The live items (not dismissed) of each group of the sidebar; a value no
@@ -87,7 +86,7 @@ pub struct Row {
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Counts {
     pub all: usize,
-    /// by `is:` value: triage, `editorial`, the caller's (`unread` is `new`)
+    /// by `is:` value: triage, `editorial`, `inlibrary` (`unread` is `new`)
     pub is: BTreeMap<String, usize>,
     pub total: Groups,
     /// those new (`is:new`: not snoozed)
@@ -144,8 +143,7 @@ impl Feeds {
         let mut rows = Vec::new();
         let mut held = 0;
         for item in self.items() {
-            let extra = request.is.map_or_else(Vec::new, |is| is(item));
-            let seen = self.seen(item, extra);
+            let seen = self.seen(item);
             if request.shown.is_some_and(|shown| item.first_seen() > shown) {
                 held += usize::from(seen.triage != Triage::Dismissed);
                 continue;
@@ -183,7 +181,7 @@ impl Feeds {
     /// query matched (if it does) and its interests' terms; by its id or an alias.
     pub fn row_of(&self, id: &str, query: &str, matching: Matching) -> Option<Row> {
         let item = self.item(id)?;
-        let seen = self.seen(item, Vec::new());
+        let seen = self.seen(item);
         let marks = seen
             .record
             .check(&parse(query), matching)
@@ -223,6 +221,7 @@ impl Feeds {
             authors,
             r#abstract,
             reminder: self.reminder(&item.id),
+            in_library: seen.in_library,
         }
     }
 }

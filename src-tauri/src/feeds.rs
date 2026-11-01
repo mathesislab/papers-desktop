@@ -29,10 +29,11 @@
 //! page read with the page user agent of the Add sheet, `fetch::page_agent`;
 //! the feed as it will be fetched), else, if the user chooses, by its ISSN.
 //!
-//! *Like in your library*: the index of the library's papers (core's
-//! `Likeness`) is built on a thread of its own whenever the library is read
-//! (at the start, after a change of its files or a write), then given to the
-//! feeds and to every copy a fetch opens; the page is told (`feeds-changed`).
+//! *Like in your library*, *in library*: the facts of the library (the index
+//! of its papers, core's `Likeness`, and their identities) are gathered on a
+//! thread of their own whenever the library is read (at the start, after a
+//! change of its files or a write), then given to the feeds and to every
+//! copy a fetch opens; the page is told (`feeds-changed`).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -40,13 +41,13 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
-use chrono::{DateTime, Datelike, TimeDelta, Utc};
-use papers_core::{Identity, Library, Likeness, Matching, Span};
+use chrono::{DateTime, TimeDelta, Utc};
+use papers_core::{Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Entry, Feed, Feeds, FetchReport, Groups, Interest, Item, ItemKind, Journal,
-    Journals, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort, SourceKind,
-    Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
+    Journals, LibraryFacts, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort,
+    SourceKind, Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -128,19 +129,19 @@ pub struct FeedsState {
     /// the journals looked up in OpenAlex, opened at the first ask
     journals: Mutex<Option<Journals>>,
     open: Opener,
-    /// counts the builds of the index of the library: one that ends after a
+    /// counts the builds of the facts of the library: one that ends after a
     /// newer one is dropped
     builds: AtomicU64,
 }
 
 /// The feeds the commands see, the changes made while a copy is worked on,
-/// and the index of the library that the feeds and their copies are given.
+/// and the facts of the library that the feeds and their copies are given.
 #[derive(Default)]
 struct Live {
     feeds: Option<Feeds>,
     journal: Option<Vec<Change>>,
-    likeness: Option<Arc<Likeness>>,
-    /// the build of `likeness`
+    library: Option<Arc<LibraryFacts>>,
+    /// the build of `library`
     build: u64,
 }
 
@@ -347,10 +348,12 @@ impl FeedsState {
         }
     }
 
-    /// The feeds of the folder, opened, with the index of the library.
+    /// The feeds of the folder, opened, with the facts of the library.
     fn opened(&self, live: &Live) -> Result<Feeds, String> {
         let mut feeds = (self.open)(&self.dir).map_err(|e| e.to_string())?;
-        feeds.set_likeness(live.likeness.clone());
+        if let Some(library) = &live.library {
+            feeds.set_library(library.clone());
+        }
         Ok(feeds)
     }
 
@@ -363,23 +366,23 @@ impl FeedsState {
         Ok(live)
     }
 
-    /// The number of a new build of the index of the library.
+    /// The number of a new build of the facts of the library.
     pub fn next_build(&self) -> u64 {
         self.builds.fetch_add(1, Ordering::SeqCst) + 1
     }
 
-    /// The index of the library of build `build`, for the feeds and the
+    /// The facts of the library of build `build`, for the feeds and the
     /// copies opened from now on, unless a newer build was given already:
-    /// whether it was taken.
-    pub fn set_likeness(&self, build: u64, likeness: Option<Arc<Likeness>>) -> bool {
+    /// whether they were taken.
+    pub fn set_library(&self, build: u64, library: Arc<LibraryFacts>) -> bool {
         let mut live = self.live.lock().unwrap();
         if build < live.build {
             return false;
         }
         live.build = build;
-        live.likeness = likeness.clone();
+        live.library = Some(library.clone());
         if let Some(feeds) = &mut live.feeds {
-            feeds.set_likeness(likeness);
+            feeds.set_library(library);
         }
         true
     }
@@ -431,8 +434,10 @@ impl FeedsState {
             // what no longer applies (an item gone, a feed subscribed twice) is passed over
             let _ = change.apply(&mut copy);
         }
-        // the index built meanwhile
-        copy.set_likeness(live.likeness.clone());
+        // the facts gathered meanwhile
+        if let Some(library) = &live.library {
+            copy.set_library(library.clone());
+        }
         live.feeds = Some(copy);
         Ok(done)
     }
@@ -594,61 +599,6 @@ impl FeedsState {
             self.pdfs.lock().unwrap().insert(doi, pdf.clone());
         }
         Ok(pdf)
-    }
-}
-
-/// The library's papers by DOI and by title and year, to find a feed's item in it.
-#[derive(Debug, Default)]
-pub struct InLibrary {
-    doi: HashMap<String, Vec<String>>,
-    title: HashMap<String, Vec<String>>,
-}
-
-impl InLibrary {
-    pub fn of(library: &Library) -> InLibrary {
-        let mut index = InLibrary::default();
-        for item in library.items() {
-            let Identity { doi, title } = item.identity();
-            for (map, key) in [(&mut index.doi, doi), (&mut index.title, title)] {
-                if let Some(key) = key {
-                    map.entry(key).or_default().push(item.id.clone());
-                }
-            }
-        }
-        index
-    }
-
-    /// The ids of the entries of the same paper: its DOI, or its title and year.
-    pub fn same(&self, item: &Item) -> Vec<String> {
-        let year = item.date.map(|d| d.year());
-        let Identity { doi, title } = Identity::of(item.doi.as_deref(), &item.title, year);
-        let by_doi = doi.and_then(|d| self.doi.get(&d));
-        let by_title = title.and_then(|t| self.title.get(&t));
-        let mut ids: Vec<String> = Vec::new();
-        for id in by_doi.into_iter().chain(by_title).flatten() {
-            if !ids.contains(id) {
-                ids.push(id.clone());
-            }
-        }
-        ids
-    }
-
-    /// The ids of the entries of another version of it (by DOI), not of itself.
-    pub fn versions(&self, item: &Item, same: &[String]) -> Vec<String> {
-        let own = item.doi.as_deref().map(str::to_lowercase);
-        let mut ids: Vec<String> = Vec::new();
-        for version in &item.versions {
-            let doi = version.doi.to_lowercase();
-            if Some(&doi) == own.as_ref() {
-                continue;
-            }
-            for id in self.doi.get(&doi).into_iter().flatten() {
-                if !same.contains(id) && !ids.contains(id) {
-                    ids.push(id.clone());
-                }
-            }
-        }
-        ids
     }
 }
 
@@ -1008,26 +958,15 @@ fn linked(feeds: &Feeds, link: &papers_feeds::Linked) -> Linked {
 }
 
 /// The view of a request: the rows, each in the library or not, and the counts.
-pub fn view(
-    feeds: &Feeds,
-    library: &Library,
-    matching: Matching,
-    request: &ViewRequest,
-) -> FeedView {
-    let index = InLibrary::of(library);
-    let inlibrary = |item: &Item| match index.same(item).is_empty() {
-        true => Vec::new(),
-        false => vec!["inlibrary".to_string()],
-    };
+pub fn view(feeds: &Feeds, matching: Matching, request: &ViewRequest) -> FeedView {
     let view = feeds.view(&CrateRequest {
         query: &request.query,
         matching,
         sort: request.sort,
-        is: Some(&inlibrary),
         shown: request.shown,
         ..CrateRequest::default()
     });
-    let rows = Rows::new(feeds, index);
+    let rows = Rows::new(feeds);
     FeedView {
         held: view.held,
         counts: FeedCounts {
@@ -1042,17 +981,16 @@ pub fn view(
 }
 
 /// What the rows of the list show besides the crate's rows: the titles of the
-/// subscriptions, the library's papers, the posts that cover a paper.
+/// subscriptions, the posts that cover a paper.
 pub struct Rows<'a> {
     feeds: &'a Feeds,
-    index: InLibrary,
     titles: HashMap<&'a str, String>,
     /// the posts that link each DOI
     posts: HashMap<&'a str, HashSet<&'a str>>,
 }
 
 impl<'a> Rows<'a> {
-    pub fn new(feeds: &'a Feeds, index: InLibrary) -> Rows<'a> {
+    pub fn new(feeds: &'a Feeds) -> Rows<'a> {
         let titles = (feeds.subscriptions().iter())
             .map(|s| (s.id.as_str(), title_of(s)))
             .collect();
@@ -1064,7 +1002,6 @@ impl<'a> Rows<'a> {
         }
         Rows {
             feeds,
-            index,
             titles,
             posts,
         }
@@ -1091,7 +1028,7 @@ impl<'a> Rows<'a> {
             triage: feeds.triage(&item.id),
             reminder: row.reminder,
             remind: feeds.mark(&item.id).and_then(|m| m.remind),
-            in_library: self.index.same(item),
+            in_library: row.in_library,
             has_versions: item.kind == ItemKind::Preprint
                 || item.versions.iter().any(|v| v.stage == Stage::Preprint),
             covered_by: covering.len(),
@@ -1123,8 +1060,7 @@ pub fn detail(
         let first = feeds.subscriptions_of(item).into_iter().next();
         first.map(title_of).unwrap_or_default()
     };
-    let index = InLibrary::of(library);
-    let in_library = index.same(item);
+    let in_library = row.in_library;
     let like = feeds.like(item);
     let nearest = (like.iter().flat_map(|l| &l.nearest))
         .filter_map(|(id, cosine)| {
@@ -1181,7 +1117,7 @@ pub fn detail(
             .collect(),
         interests: row.interests,
         triage: feeds.triage(&item.id),
-        version_in_library: index.versions(item, &in_library),
+        version_in_library: feeds.versions_in_library(item, &in_library),
         in_library,
         like: like.map(|l| l.score),
         nearest,
@@ -1268,20 +1204,24 @@ pub fn subscription_of(app: &AppHandle, applied: Applied) -> Result<Subscription
     }
 }
 
-/// Indexes the library's papers on a thread of its own, the library as it is
-/// now, and gives the index to the feeds and to the works found (none for an
-/// empty library); the page is told. After every read of the library.
+/// Gathers the facts of the library on a thread of its own, the library as
+/// it is now (the index of its papers, none for an empty library; their
+/// identities), and gives them to the feeds and to the works found; the page
+/// is told. After every read of the library.
 pub fn index_library(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
         let builds = [Store::Feeds, Store::Search].map(|s| (s, s.of(&state).next_build()));
-        let likeness = {
+        let facts = {
             let library = state.library.read().unwrap();
-            (!library.is_empty()).then(|| Arc::new(Likeness::of(&library)))
+            Arc::new(LibraryFacts {
+                likeness: (!library.is_empty()).then(|| Likeness::of(&library)),
+                identities: library.identities(),
+            })
         };
         for (store, build) in builds {
-            if store.of(&state).set_likeness(build, likeness.clone()) {
+            if store.of(&state).set_library(build, facts.clone()) {
                 let _ = app.emit(store.changed(), ());
             }
         }
@@ -1326,10 +1266,7 @@ pub async fn feeds_view(app: AppHandle, request: ViewRequest) -> Result<FeedView
     blocking(move || {
         let state = app.state::<AppState>();
         let matching = *state.matching.read().unwrap();
-        state.feeds.read(|feeds| {
-            let library = state.library.read().unwrap();
-            view(feeds, &library, matching, &request)
-        })
+        state.feeds.read(|feeds| view(feeds, matching, &request))
     })
     .await
 }
@@ -1678,7 +1615,7 @@ mod tests {
 
     use chrono::TimeZone;
     use papers_feeds::http::Recorded;
-    use papers_feeds::{Reply, Request, Version};
+    use papers_feeds::{Reply, Request};
 
     use super::*;
 
@@ -1903,7 +1840,7 @@ mod tests {
     }
 
     #[test]
-    fn the_index_of_the_library_goes_to_the_feeds_and_their_copies() {
+    fn the_facts_of_the_library_go_to_the_feeds_and_their_copies() {
         let dir = tempfile::tempdir().unwrap();
         let state = opened(dir.path());
         subscribe(&state, TC);
@@ -1926,12 +1863,15 @@ mod tests {
                 title: title.into(),
                 ..Default::default()
             };
-            Some(Arc::new(Likeness::build([doc])))
+            Arc::new(LibraryFacts {
+                likeness: Some(Likeness::build([doc])),
+                ..LibraryFacts::default()
+            })
         };
         let (old, new) = (state.next_build(), state.next_build());
-        assert!(state.set_likeness(new, index("Firn densification")));
+        assert!(state.set_library(new, index("Firn densification")));
         assert!(
-            !state.set_likeness(old, index("Ice")),
+            !state.set_library(old, index("Ice")),
             "an older build is dropped"
         );
         let http = Recorded::new().reply(
@@ -1964,7 +1904,8 @@ mod tests {
                 .unwrap()
         };
         assert!(like("Firn densification").is_some_and(|l| l > 99.9));
-        assert!(state.set_likeness(state.next_build(), None));
+        let empty = Arc::new(LibraryFacts::default());
+        assert!(state.set_library(state.next_build(), empty));
         assert_eq!(like("Firn densification"), None);
     }
 
@@ -2065,74 +2006,6 @@ mod tests {
             serde_json::json!({"site": "nofeed"})
         );
         assert_eq!(site(None)["feed"], serde_json::Value::Null);
-    }
-
-    #[test]
-    fn items_in_the_library_by_doi_or_title_and_year() {
-        let dir = tempfile::tempdir().unwrap();
-        let bib = dir.path().join("refs.bib");
-        std::fs::write(
-            &bib,
-            "@article{doi2026, title = {Anything}, year = {2026}, doi = {10.5194/TC-20-1-2026}}\n\
-             @article{title2026, title = {Hysteresis of the {Greenland} ice sheet}, year = {2026}}\n\
-             @article{title2019, title = {Hysteresis of the Greenland ice sheet}, year = {2019}}\n\
-             @article{preprint, title = {Old title}, year = {2025}, doi = {10.5194/egusphere-2025-1}}\n",
-        )
-        .unwrap();
-        let library = Library::load(&[bib]).unwrap();
-        let index = InLibrary::of(&library);
-        let id = |key: &str| {
-            library
-                .items()
-                .iter()
-                .find(|i| i.key == key)
-                .unwrap()
-                .id
-                .clone()
-        };
-        let date = Utc.with_ymd_and_hms(2026, 3, 1, 0, 0, 0).single();
-        let item = |doi: Option<&str>, title: &str| Item {
-            id: "x".into(),
-            kind: ItemKind::Paper,
-            title: title.into(),
-            authors: Vec::new(),
-            journal: None,
-            date,
-            doi: doi.map(String::from),
-            arxiv: None,
-            url: None,
-            summary: None,
-            content: None,
-            editorial: false,
-            sources: Vec::new(),
-            versions: Vec::new(),
-            links: Vec::new(),
-            cited: None,
-        };
-        let by_doi = item(Some("10.5194/tc-20-1-2026"), "Another title");
-        assert_eq!(index.same(&by_doi), [id("doi2026")]);
-        let by_title = item(None, "Hysteresis of the Greenland Ice-Sheet");
-        assert_eq!(
-            index.same(&by_title),
-            [id("title2026")],
-            "the same year only"
-        );
-        assert!(index.same(&item(None, "Unrelated")).is_empty());
-
-        let mut paper = item(Some("10.5194/tc-20-1-2026"), "Anything");
-        paper.versions = vec![
-            Version {
-                doi: "10.5194/tc-20-1-2026".into(),
-                stage: Stage::Published,
-            },
-            Version {
-                doi: "10.5194/egusphere-2025-1".into(),
-                stage: Stage::Preprint,
-            },
-        ];
-        let same = index.same(&paper);
-        assert_eq!(same, [id("doi2026")], "its DOI and its title: one entry");
-        assert_eq!(index.versions(&paper, &same), [id("preprint")]);
     }
 
     #[test]

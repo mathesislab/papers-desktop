@@ -3,6 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
@@ -160,37 +161,28 @@ impl Library {
             line: text[..at.min(text.len())].matches('\n').count() + 1,
             message,
         })?;
-        let mut doi: HashMap<String, Vec<&Item>> = HashMap::new();
-        let mut title: HashMap<String, Vec<&Item>> = HashMap::new();
-        for item in self.ordered() {
-            let Identity { doi: d, title: t } = item.identity();
-            if let Some(d) = d {
-                doi.entry(d).or_default().push(item);
-            }
-            if let Some(t) = t {
-                title.entry(t).or_default().push(item);
-            }
-        }
+        let identities = self.identities();
         Ok(entries
             .iter()
             .map(|e| {
                 let new = Item::from_entry(e, String::new());
-                let identity = new.identity();
-                let by_doi = identity.doi.and_then(|d| doi.get(&d)).into_iter();
-                let by_title = identity.title.and_then(|t| title.get(&t));
-                let mut same: Vec<String> = Vec::new();
-                for item in by_doi.chain(by_title).flatten() {
-                    if !same.contains(&item.id) {
-                        same.push(item.id.clone());
-                    }
-                }
                 Incoming {
                     key: new.key.clone(),
-                    same,
+                    same: identities.same(&new.identity()),
                     item: new,
                 }
             })
             .collect())
+    }
+
+    /// The identities of its items, newest first: built at the first ask,
+    /// then kept with the library.
+    pub fn identities(&self) -> Arc<Identities> {
+        let identities = self.identities.get_or_init(|| {
+            let items = self.ordered().map(|i| (i.id.clone(), i.identity()));
+            Arc::new(Identities::new(items))
+        });
+        identities.clone()
     }
 }
 
@@ -213,6 +205,49 @@ pub struct Identity {
     /// the words of the title (case, accents, punctuation and white space are gone), and the year:
     /// `ice sheet stability (2019)`; none without a title
     pub title: Option<String>,
+}
+
+/// Papers by their identities: the ids of those of each DOI and of each
+/// title and year, in the order given. What finds a paper in the library, as
+/// the papers to add and the feeds' items are found.
+#[derive(Debug, Clone, Default)]
+pub struct Identities {
+    doi: HashMap<String, Vec<String>>,
+    title: HashMap<String, Vec<String>>,
+}
+
+impl Identities {
+    /// The identities of papers, by their ids.
+    pub fn new(papers: impl IntoIterator<Item = (String, Identity)>) -> Identities {
+        let mut identities = Identities::default();
+        for (id, Identity { doi, title }) in papers {
+            for (map, key) in [(&mut identities.doi, doi), (&mut identities.title, title)] {
+                if let Some(key) = key {
+                    map.entry(key).or_default().push(id.clone());
+                }
+            }
+        }
+        identities
+    }
+
+    /// The ids of the same paper: of its DOI, then of its title and year;
+    /// each once.
+    pub fn same(&self, identity: &Identity) -> Vec<String> {
+        let by_doi = identity.doi.as_ref().and_then(|d| self.doi.get(d));
+        let by_title = identity.title.as_ref().and_then(|t| self.title.get(t));
+        let mut ids: Vec<String> = Vec::new();
+        for id in by_doi.into_iter().chain(by_title).flatten() {
+            if !ids.contains(id) {
+                ids.push(id.clone());
+            }
+        }
+        ids
+    }
+
+    /// The ids of the papers of a DOI, in lower case.
+    pub fn of_doi(&self, doi: &str) -> &[String] {
+        self.doi.get(doi).map_or(&[], Vec::as_slice)
+    }
 }
 
 impl Item {

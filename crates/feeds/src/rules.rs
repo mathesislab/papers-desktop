@@ -68,7 +68,7 @@ impl Feeds {
         let decided: Vec<(String, Action)> = new
             .filter(|item| self.mark(&item.id).is_none())
             .filter_map(|item| {
-                let seen = self.seen(item, Vec::new());
+                let seen = self.seen(item);
                 let matches = |q| seen.record.check(q, Matching::WordStart).is_some();
                 let rule = rules.iter().find(|(query, _)| matches(query));
                 rule.map(|&(_, action)| (item.id.clone(), action))

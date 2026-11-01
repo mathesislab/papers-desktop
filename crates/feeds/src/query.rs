@@ -1,7 +1,7 @@
 //! The query language over items: the library's (core's), with the facets
 //! `kind:` (paper, preprint, news, blog), `is:` (new or unread, seen,
 //! shortlisted, dismissed, added, editorial, snoozed (not new till its day),
-//! reminder (new again, due), and the caller's), `src:` (a
+//! reminder (new again, due), inlibrary (with the library's facts)), `src:` (a
 //! subscription's title or id), `prof:` (an interest the item reaches the
 //! min_score of), and the numbers `score:` (its best score in an interest)
 //! and `like:` (how like the library it is, 0–100: none without the index of
@@ -82,13 +82,15 @@ pub(crate) struct Seen {
     pub like: Option<Like>,
     /// its `is:` values, `unread` left out
     pub is: Vec<String>,
+    /// the library's entries of the same paper
+    pub in_library: Vec<String>,
     /// the ids of its subscriptions (not a lookup's or a search's source)
     pub sources: Vec<String>,
 }
 
 impl Feeds {
-    /// An item as a query sees it, with the caller's `is:` values.
-    pub(crate) fn seen(&self, item: &Item, extra: Vec<String>) -> Seen {
+    /// An item as a query sees it.
+    pub(crate) fn seen(&self, item: &Item) -> Seen {
         let scores = self.scores(item);
         let triage = self.triage(&item.id);
         let reminder = self.reminder(&item.id);
@@ -102,7 +104,10 @@ impl Feeds {
         if item.editorial {
             is.push("editorial".to_string());
         }
-        is.extend(extra);
+        let in_library = self.in_library(item);
+        if !in_library.is_empty() {
+            is.push("inlibrary".to_string());
+        }
         let subscriptions = self.subscriptions_of(item);
         let sources: Vec<String> = subscriptions.iter().map(|s| s.id.clone()).collect();
         let titles = subscriptions.iter().filter_map(|s| s.title.as_deref());
@@ -137,6 +142,7 @@ impl Feeds {
             scores,
             like,
             is,
+            in_library,
             sources,
         }
     }

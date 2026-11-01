@@ -13,8 +13,8 @@
 //! [`Feeds`] keeps them in a folder of JSON files with their [`Triage`].
 //! [`Interest`]s score the items, as paper-feeder does; [`Rule`]s triage new
 //! items by a [`query`] (core's language over a `Record` of an item); the
-//! index of the library's papers, given to [`Feeds::set_likeness`], tells
-//! how like them an item is (`like:`);
+//! facts of the library, given to [`Feeds::set_library`], tell how like its
+//! papers an item is (`like:`) and whether it is one (`is:inlibrary`);
 //! [`Feeds::view`] gives the items a query shows and the counts of the
 //! sidebar, those of the saved [`Search`]es too. The subscriptions go out and come in as OPML; [`suggested`]
 //! lists some to start with, [`library_journals`] the journals of the
@@ -31,6 +31,7 @@ mod html;
 pub mod http;
 mod interest;
 mod journals;
+mod library;
 mod links;
 mod merge;
 mod model;
@@ -60,6 +61,7 @@ pub use journals::{
     Follow, Journal, Journals, LEAST_PAPERS, LibraryJournal, MOST_JOURNALS, SiteFeed, journal_key,
     library_journals, search_journals, site_feed,
 };
+pub use library::LibraryFacts;
 pub use links::Found;
 pub use model::{
     Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Origin, Reminder, Source,
@@ -77,7 +79,7 @@ pub use searches::Search;
 pub use store::LOOKBACK_DAYS;
 pub use suggested::{Suggested, suggested};
 pub use sweep::SWEEP_PAGES;
-pub use view::{Counts, Groups, IsValues, Row, Sort, View, ViewRequest};
+pub use view::{Counts, Groups, Row, Sort, View, ViewRequest};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

@@ -5,6 +5,7 @@
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 
 use serde::Serialize;
 
@@ -13,6 +14,7 @@ use crate::fields::field;
 use crate::query::{self, Field, Query, Schema, Term};
 use crate::record::{Marks, Record, mark};
 use crate::reference::Reference;
+use crate::table::Identities;
 use crate::text::{Matching, Span, fold};
 use crate::{Item, Result};
 
@@ -37,6 +39,8 @@ pub struct Library {
     bibs: Vec<PathBuf>,
     /// each .bib file as read, for a write to check it is still the same
     snapshots: HashMap<PathBuf, Snapshot>,
+    /// the identities of the items, at the first ask
+    pub(crate) identities: OnceLock<Arc<Identities>>,
 }
 
 /// The matches of a search, the first `limit` of them with their marks.
@@ -125,6 +129,7 @@ impl Library {
             entries,
             bibs,
             snapshots,
+            identities: OnceLock::new(),
         }
     }
 

@@ -981,8 +981,10 @@ weights). `like(title, abstract) -> Like { score, nearest }`: the cosine of
 the item with each paper that shares a word with it (the words no paper has
 count in its length), `score` the mean of the best 5 (fewer in a smaller
 library) × 100, 0–100, `nearest` the best 3 ids and cosines. The feeds crate
-knows no .bib: the index is given to the handle, `Feeds::set_likeness(Option
-<Arc<Likeness>>)`, and computed when asked as the scores are: the number
+knows no .bib: the facts of the library are given to the handle,
+`Feeds::set_library(Arc<LibraryFacts { likeness, identities }>)` (the index,
+none for an empty library, and core's `Identities` of its papers, kept with
+the library), and computed when asked as the scores are: the number
 `like:` of the query (none without an index: `like:` then matches nothing),
 `Row.like`, `Sort::Like` (the most like first, then the newest),
 `Feeds::like(item)` for the nearest, and the rules at a fetch (`like:40-` →
@@ -991,8 +993,8 @@ shortlist). A library of 2,353 papers (titles; one abstract) is indexed in
 5,000 items in about 80 ms.
 
 **The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
-`is:` (new or unread, seen, shortlisted, dismissed, added, editorial, and
-the app's, such as `inlibrary`), `src:` (a subscription's title or id),
+`is:` (new or unread, seen, shortlisted, dismissed, added, editorial,
+`inlibrary` with the library's facts), `src:` (a subscription's title or id),
 `prof:` (the interests whose `min_score` the item reaches), and the numbers
 `score:` (its best score) and `like:` (its likeness, with an index); an item's record is its title, the family names
 of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
@@ -1091,15 +1093,16 @@ given twice; a change of the journal, as the others); the events
 `feeds-changed` (a fetch, a change, papers found) and `feeds-fetching`
 (true, false). The feeds of `app_data_dir/feeds` are opened at the first
 command. *In library*: a row's and the details' library entries of the same
-paper (core's `Identity`: the DOI, or the title and year; the library
-indexed once per call), `versionInLibrary` those of another version's DOI;
-`is:inlibrary` in the query and the counts. *Similar in your library*: the
-index of the library's papers (`Likeness::of`, every .bib file of the
-library) is built on a thread of its own after every read of the library
-(`load`: at the start, when a .bib file changes, after a write), given to
-the feeds (`FeedsState::set_likeness`, numbered: a build that ends after a
-newer one is dropped; none for an empty library) and to each copy a fetch
-opens, so that the rules use it, then `feeds-changed`; rows have `like`,
+paper (core's `Identity`: the DOI, or the title and year), `versionInLibrary`
+those of another version's DOI; `is:inlibrary` in the query, the counts and
+the rules. *Similar in your library*: the index of the library's papers
+(`Likeness::of`, every .bib file of the library) is built on a thread of its
+own after every read of the library (`load`: at the start, when a .bib file
+changes, after a write), with their identities (`Library::identities`, built
+once per library), given to the feeds (`FeedsState::set_library`, numbered:
+a build that ends after a newer one is dropped; no index for an empty
+library) and to each copy a fetch opens, so that the rules use them, then
+`feeds-changed`; rows have `like`,
 the details `like` and `nearest` (`{id, key, title, subtitle, cosine}`).
 A fetch runs on a copy of the
 feeds opened from the folder, so the tab reads and triages meanwhile: the

@@ -1,7 +1,7 @@
 //! The `feeds` program: the commands of the feeds crate on a folder, as paper-feeder's job
 //! and more (subscribe, fetch, list, show, mark, the interests, rules and saved searches, the
 //! import of a paper-feeder setup, the RSS digest). With `--library`, the .bib files of a library
-//! tell how like its papers an item is (`like:`).
+//! tell how like its papers an item is (`like:`), and whether it is one (`is:inlibrary`).
 //!
 //! [`run`] is the whole program, on a [`Host`] (the environment, the clock, where requests
 //! go) and two writers, so that the tests run it with recorded replies.
@@ -23,7 +23,7 @@ use chrono::{DateTime, Utc};
 use clap::Parser;
 use papers_core::{Library, Likeness};
 use papers_feeds::http::{Paced, Pacing};
-use papers_feeds::{Access, Feeds, Http, Network};
+use papers_feeds::{Access, Feeds, Http, LibraryFacts, Network};
 
 use crate::cli::{AccessArgs, Cli, Command};
 
@@ -79,18 +79,20 @@ pub(crate) fn fail<T>(message: impl Into<String>) -> Result<T> {
 pub(crate) struct Ctx<'a> {
     pub host: &'a Host<'a>,
     pub dir: PathBuf,
-    /// the library of `--library`, and the index of its papers
-    pub library: Option<(Library, Arc<Likeness>)>,
+    /// the library of `--library`, and its facts
+    pub library: Option<(Library, Arc<LibraryFacts>)>,
     pub out: &'a mut dyn Write,
     pub err: &'a mut dyn Write,
 }
 
 impl Ctx<'_> {
-    /// The feeds of the folder, on the host's clock, with the index of the library if given.
+    /// The feeds of the folder, on the host's clock, with the facts of the library if given.
     pub fn open(&self) -> Result<Feeds> {
         let now = self.host.now.clone();
         let mut feeds = Feeds::open_with(&self.dir, Box::new(move || now()))?;
-        feeds.set_likeness(self.library.as_ref().map(|(_, index)| index.clone()));
+        if let Some((_, facts)) = &self.library {
+            feeds.set_library(facts.clone());
+        }
         Ok(feeds)
     }
 
@@ -134,14 +136,17 @@ fn folder(host: &Host, option: Option<PathBuf>) -> Result<PathBuf> {
         .map_or_else(|| fail("no data folder on this system: use --dir"), Ok)
 }
 
-/// The library of these .bib files and the index of its papers; none without a file.
-fn library(bibs: &[PathBuf]) -> Result<Option<(Library, Arc<Likeness>)>> {
+/// The library of these .bib files and its facts; none without a file.
+fn library(bibs: &[PathBuf]) -> Result<Option<(Library, Arc<LibraryFacts>)>> {
     if bibs.is_empty() {
         return Ok(None);
     }
     let library = Library::load(bibs)?;
-    let index = Arc::new(Likeness::of(&library));
-    Ok(Some((library, index)))
+    let facts = LibraryFacts {
+        likeness: Some(Likeness::of(&library)),
+        identities: library.identities(),
+    };
+    Ok(Some((library, Arc::new(facts))))
 }
 
 /// Runs the program on its arguments (the first is its name); the exit status. What a

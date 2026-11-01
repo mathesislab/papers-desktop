@@ -8,10 +8,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use chrono::{DateTime, TimeDelta, Utc};
-use papers_core::{Like, Likeness};
 
 use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::interest::{self, Lexicon};
+use crate::library::LibraryFacts;
 use crate::merge::{Merger, refresh};
 use crate::model::{Entry, Feed, Item, Mark, Origin, Reminder, SourceKind, Subscription, Triage};
 use crate::normalize::{is_attachment_doi, short_id};
@@ -74,8 +74,8 @@ pub struct Feeds {
     pub(crate) http: Validated,
     pub(crate) lookups: Lookups,
     pub(crate) now: Now,
-    /// the library's papers, to tell how like them an item is (`like:`)
-    pub(crate) likeness: Option<Arc<Likeness>>,
+    /// what is known of the library (`like:`, `is:inlibrary`)
+    pub(crate) library: Option<Arc<LibraryFacts>>,
 }
 
 impl Feeds {
@@ -98,7 +98,7 @@ impl Feeds {
             lookups: store::read(&dir, LOOKUPS)?,
             dir,
             now,
-            likeness: None,
+            library: None,
         };
         feeds.migrate()?;
         feeds.prune()?;
@@ -403,23 +403,6 @@ impl Feeds {
 
     pub fn items(&self) -> &[Item] {
         &self.items.items
-    }
-
-    /// Sets the index of the library's papers that `like:`, the sort by
-    /// likeness and [`Feeds::like`] use; none: `like:` matches nothing.
-    pub fn set_likeness(&mut self, likeness: Option<Arc<Likeness>>) {
-        self.likeness = likeness;
-    }
-
-    pub fn likeness(&self) -> Option<&Arc<Likeness>> {
-        self.likeness.as_ref()
-    }
-
-    /// How like the library's papers an item is, by its title and summary;
-    /// none without an index.
-    pub fn like(&self, item: &Item) -> Option<Like> {
-        let summary = item.summary.as_deref().unwrap_or("");
-        (self.likeness.as_ref()).map(|index| index.like(&item.title, summary))
     }
 
     /// The id an item has now: its own, or that of the item it was merged into.

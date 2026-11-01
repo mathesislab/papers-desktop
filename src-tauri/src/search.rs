@@ -12,8 +12,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::AppState;
 use crate::feeds::{
-    Applied, Change, FeedRow, InLibrary, Rows, Store, SubscriptionInfo, change_in, network,
-    subscription_of,
+    Applied, Change, FeedRow, Rows, Store, SubscriptionInfo, change_in, network, subscription_of,
 };
 use crate::fetch::blocking;
 use crate::settings::Settings;
@@ -37,8 +36,7 @@ fn rows_of(app: &AppHandle, ids: &[String], query: &str) -> Result<Vec<FeedRow>,
     let state = app.state::<AppState>();
     let matching = *state.matching.read().unwrap();
     state.search.read(|feeds| {
-        let library = state.library.read().unwrap();
-        let rows = Rows::new(feeds, InLibrary::of(&library));
+        let rows = Rows::new(feeds);
         (ids.iter())
             .filter_map(|id| feeds.row_of(id, query, matching))
             .map(|row| rows.row(row))

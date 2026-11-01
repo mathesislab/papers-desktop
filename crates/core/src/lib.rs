@@ -29,7 +29,7 @@ pub use query::{Query, Schema, Value, Written, year_range};
 pub use record::{Marks, Record};
 pub use redact::redact;
 pub use search::{Found, Hit, Library, YearCount};
-pub use table::{FileState, Identity, Incoming, Row, TagCount};
+pub use table::{FileState, Identities, Identity, Incoming, Row, TagCount};
 pub use tag::{same_tag, under};
 pub use text::{Matching, Span};
 pub use watch::BibWatch;
