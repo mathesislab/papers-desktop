@@ -18,7 +18,7 @@ cp crates/core/tests/fixtures/library.bib "$work/library.bib"
 
 # a temporary home keeps the settings of the runner (and of a developer) out
 home=$work/home
-config=$home/.config/io.github.alex-robinson.papers-desktop
+config=$home/.config/io.github.mathesislab.papers-desktop
 mkdir -p "$config"
 printf '{"bibtex": ["%s"], "hotkey": "Ctrl+Alt+Space"}\n' "$work/library.bib" > "$config/settings.json"
 

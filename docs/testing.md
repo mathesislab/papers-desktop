@@ -15,7 +15,7 @@ target/release/bundle/macos/Papers\ Desktop.app/Contents/MacOS/papers-desktop &
 The app is single instance: a second launch of the binary shows the panel
 of the one running (`open` of a second copy does the same), so the
 installed app must be quit first. It shares the data folder of the installed
-app (`~/Library/Application Support/io.github.alex-robinson.papers-desktop`:
+app (`~/Library/Application Support/io.github.mathesislab.papers-desktop`:
 `window.json`, `recent.json`, the note `main-window-open`,
 `.window-state.json`): copy them aside before a test that changes them, and
 put them back after, with the installed app started again.

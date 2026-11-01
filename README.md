@@ -141,7 +141,7 @@ inside words, the citation style, Start at Login and updates.
 Changes apply at once.
 
 They are kept in `settings.json` in the app config directory
-(`~/Library/Application Support/io.github.alex-robinson.papers-desktop/` on
+(`~/Library/Application Support/io.github.mathesislab.papers-desktop/` on
 macOS, [the Linux path is below](#linux)), which can also be edited:
 
 ```json
@@ -251,7 +251,7 @@ GNOME desktops install the "AppIndicator and KStatusNotifierItem Support"
 extension. Without the icon the hotkey and the settings file still work.
 
 The settings file is
-`~/.config/io.github.alex-robinson.papers-desktop/settings.json`.
+`~/.config/io.github.mathesislab.papers-desktop/settings.json`.
 
 To build from source:
 
