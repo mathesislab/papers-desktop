@@ -9,12 +9,13 @@
   import { onMount } from "svelte";
   import * as feeds from "$lib/feeds/api";
   import type { Feed, FeedSettings, Interest, Rule, SourceKind, Suggested, SubscriptionInfo } from "$lib/feeds/api";
+  import { since } from "$lib/feeds/items";
   import { SOURCE_KINDS, sourceKinds } from "$lib/feeds/kinds";
+  import { feedOf, feedText, sameFeed, subscriptionOf, type FeedType } from "$lib/feeds/subscriptions";
   import * as search from "$lib/search/api";
 
   let { notify }: { notify: (text: string, error: boolean) => void } = $props();
 
-  type FeedType = "rss" | "crossref" | "openalex";
   const TYPES: { value: FeedType; name: string; placeholder: string }[] = [
     { value: "rss", name: "Feed", placeholder: "https://…/rss" },
     { value: "crossref", name: "ISSN", placeholder: "0022-1430" },
@@ -34,7 +35,8 @@
   let draftError = $state("");
   let suggestions = $state<Suggested[]>([]);
   let showSuggested = $state(false);
-  let picked = $state<Set<string>>(new Set());
+  /** the suggested subscriptions ticked, by their feeds */
+  let picked = $state<Feed[]>([]);
   let busy = $state(false);
 
   // a new subscription
@@ -90,22 +92,11 @@
     draftError = "";
   }
 
-  const feedText = (feed: Feed) => ("rss" in feed ? feed.rss : "crossref" in feed ? `ISSN ${feed.crossref}` : `OpenAlex ${feed.openalex}`);
-  const feedKey = (feed: Feed) => JSON.stringify(feed);
-
   /** When a subscription was last fetched, or why it failed. */
   function lastText(s: SubscriptionInfo): string {
     if (!s.last) return "Not fetched yet";
     if (s.last.error) return `Failed: ${s.last.error}`;
-    return `Fetched ${ago(s.last.at)}`;
-  }
-
-  function ago(at: string): string {
-    const minutes = Math.round((Date.now() - Date.parse(at)) / 60000);
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes} min ago`;
-    const hours = Math.round(minutes / 60);
-    return hours < 48 ? `${hours} h ago` : `${Math.round(hours / 24)} days ago`;
+    return `Fetched ${since(s.last.at)}`;
   }
 
   async function act(work: () => Promise<unknown>, done?: string) {
@@ -120,10 +111,11 @@
     }
   }
 
+  /** A subscription typed, as the Subscribe sheet makes one: none for what is followed already. */
   function add() {
-    const text = addText.trim();
-    if (!text) return;
-    const feed = { [addType]: text } as Feed;
+    const feed = feedOf(addType, addText);
+    if (!feed) return;
+    if (subscriptionOf(feed, subscriptions)) return notify("Subscribed already", false);
     act(async () => {
       await feeds.subscribe(feed, addKind);
       addText = "";
@@ -157,7 +149,7 @@
     }, "Saved");
   }
 
-  let subscribed = $derived(new Set(subscriptions.map((s) => feedKey(s.feed))));
+  const isPicked = (feed: Feed) => picked.some((f) => sameFeed(f, feed));
   let groups = $derived.by(() => {
     const by = new Map<string, Suggested[]>();
     for (const s of suggestions) by.set(s.group, [...(by.get(s.group) ?? []), s]);
@@ -165,21 +157,15 @@
   });
 
   function toggle(s: Suggested) {
-    const key = feedKey(s.feed);
-    const next = new Set(picked);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    picked = next;
+    picked = isPicked(s.feed) ? picked.filter((f) => !sameFeed(f, s.feed)) : [...picked, s.feed];
   }
 
+  /** The suggested subscriptions ticked, each with its title, as the Subscribe sheet makes them. */
   function subscribeSuggested() {
-    const chosen = suggestions.filter((s) => picked.has(feedKey(s.feed)) && !subscribed.has(feedKey(s.feed)));
+    const chosen = suggestions.filter((s) => isPicked(s.feed) && !subscriptionOf(s.feed, subscriptions));
     act(async () => {
-      for (const s of chosen) {
-        const made = await feeds.subscribe(s.feed, s.kind);
-        await feeds.updateSubscription(made.id, { title: s.title });
-      }
-      picked = new Set();
+      for (const s of chosen) await feeds.subscribe(s.feed, s.kind, s.title);
+      picked = [];
       showSuggested = false;
       await loadSubscriptions();
     }, `Subscribed to ${chosen.length}`);
@@ -362,17 +348,17 @@
       {#each groups as [group, list] (group)}
         <div class="group">
           <span class="label">{group}</span>
-          {#each list as s (feedKey(s.feed))}
-            {@const has = subscribed.has(feedKey(s.feed))}
+          {#each list as s (feedText(s.feed))}
+            {@const has = !!subscriptionOf(s.feed, subscriptions)}
             <label class="check" class:muted={has}>
-              <input type="checkbox" checked={has || picked.has(feedKey(s.feed))} disabled={has} onchange={() => toggle(s)} />
+              <input type="checkbox" checked={has || isPicked(s.feed)} disabled={has} onchange={() => toggle(s)} />
               {s.title}{#if s.kind !== "journal"}<span class="hint inline"> · {SOURCE_KINDS[s.kind].name}</span>{/if}
             </label>
           {/each}
         </div>
       {/each}
-      <button class="primary" disabled={busy || !picked.size} onclick={subscribeSuggested}>
-        Subscribe to {picked.size || ""} Selected
+      <button class="primary" disabled={busy || !picked.length} onclick={subscribeSuggested}>
+        Subscribe to {picked.length || ""} Selected
       </button>
     </div>
   {/if}

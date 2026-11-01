@@ -11,7 +11,8 @@
   import { modClick } from "$lib/keys";
   import type { FeedCounts, ItemKind } from "./api";
   import { ITEM_KINDS, itemKinds } from "./kinds";
-  import { SHELVES, interestColours, shelfCounts, type FeedFilters, type Shelf, type SourceGroup } from "./filters";
+  import { SHELVES, interestColours, shelfCounts, type FeedFilters, type Shelf } from "./filters";
+  import type { SourceGroup } from "./subscriptions";
 
   let {
     saved,

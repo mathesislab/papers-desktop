@@ -6,32 +6,35 @@ import { mock, test } from "node:test";
 import type { FeedCounts, FeedRow, Journal, SubscriptionInfo, Triage } from "../src/lib/feeds/api.ts";
 import {
   NO_FEED_FILTERS,
-  SOURCE_GROUPS,
   chooseInterest,
   chooseKind,
   chooseSource,
   feedChips,
-  choiceFeed,
-  feedOf,
-  journalChoice,
-  journalFacts,
-  journalSubscription,
   nextSort,
   live,
   queryOf,
   requestOf,
   restoredFeeds,
-  sameFeed,
   searchOf,
   shelfCounts,
-  sourceGroups,
   withoutChip,
-  wordsFilter,
   type FeedFilters,
 } from "../src/lib/feeds/filters.ts";
 import {
-  addField,
+  SOURCE_GROUPS,
+  choiceFeed,
+  feedOf,
+  feedText,
+  journalChoice,
+  journalFacts,
+  journalSubscription,
+  sameFeed,
+  sourceGroups,
+  wordsFilter,
+} from "../src/lib/feeds/subscriptions.ts";
+import {
   addTarget,
+  Dwell,
   ago,
   badges,
   fetchLine,
@@ -39,12 +42,13 @@ import {
   mergeRows,
   newAbove,
   newOlderThan,
+  since,
   snoozeUntil,
   stale,
   toggled,
 } from "../src/lib/feeds/items.ts";
 import { ITEM_KINDS, SOURCE_KINDS, isItemKind, isPost, itemKinds, sourceKinds } from "../src/lib/feeds/kinds.ts";
-import { Dwell, decide, progressOf, reviewed, startReview, stepReview, summaryOf } from "../src/lib/feeds/review.ts";
+import { decide, progressOf, reviewed, startReview, stepReview, summaryOf } from "../src/lib/feeds/review.ts";
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
 
@@ -177,6 +181,8 @@ test("the feed of the Subscribe sheet, and the same feed", () => {
   assert.ok(sameFeed({ rss: "https://x.org/feed/" }, { rss: "http://X.org/feed" }));
   assert.ok(sameFeed({ crossref: "1994-0424" }, { crossref: "19940424" }));
   assert.ok(!sameFeed({ rss: "x" }, { crossref: "x" }));
+  assert.equal(feedText({ crossref: "1994-0424" }), "Crossref ISSN 1994-0424");
+  assert.equal(feedText({ rss: "https://x.org/feed" }), "https://x.org/feed");
 });
 
 const glaciology: Journal = {
@@ -301,8 +307,6 @@ test("what an item adds", () => {
   ];
   assert.deepEqual(addTarget({ ...d, kind: "news", links }), { id: "10.1/high", item: "p" });
   assert.equal(addTarget({ ...d, kind: "blog" }), null);
-  assert.equal(addField("2410.01234v2"), "10.48550/arXiv.2410.01234");
-  assert.equal(addField(" 10.1/x "), "10.1/x");
 });
 
 test("ages, staleness and the status line", () => {
@@ -313,6 +317,9 @@ test("ages, staleness and the status line", () => {
   assert.equal(ago(at(150), now), "2 h");
   assert.equal(ago(at(3 * 24 * 60), now), "3 d");
   assert.equal(ago(null, now), "");
+  assert.equal(since(at(0), now), "just now");
+  assert.equal(since(at(150), now), "2 h ago");
+  assert.match(since(at(30 * 24 * 60), now), /^on /);
   const summary = (minutes: number) => ({ at: at(minutes), fetched: 5, unchanged: 3, failed: [], added: 12, lookups: 0, pages: 0 });
   assert.equal(stale(null, now), true);
   assert.equal(stale(summary(10), now), false);

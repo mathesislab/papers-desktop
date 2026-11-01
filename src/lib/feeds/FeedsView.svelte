@@ -40,12 +40,12 @@
     isShown,
     queryOf,
     requestOf,
-    sourceGroups,
     withoutChip,
     type FeedChip,
     type FeedFilters,
   } from "./filters";
   import {
+    Dwell,
     fetchLine,
     mergeRows,
     newAbove,
@@ -56,7 +56,7 @@
     type TriageAction,
   } from "./items";
   import { SOURCE_KINDS, isPost, sourceKinds } from "./kinds";
-  import { Dwell } from "./review";
+  import { sourceGroups } from "./subscriptions";
 
   let {
     tabs,

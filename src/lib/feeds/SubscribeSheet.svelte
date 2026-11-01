@@ -28,9 +28,10 @@
     journalSubscription,
     sameFeed,
     subscriptionOf,
+    feedText,
     type FeedType,
     type JournalChoice,
-  } from "./filters";
+  } from "./subscriptions";
 
   let {
     subscriptions,
@@ -101,8 +102,6 @@
       (g) => g.list.length,
     );
   });
-
-  const feedText = (feed: api.Feed) => ("rss" in feed ? feed.rss : "crossref" in feed ? `Crossref ISSN ${feed.crossref}` : `OpenAlex ${feed.openalex}`);
 
   onMount(holdModal);
 

@@ -1,7 +1,7 @@
-// The items of the Feeds tab: their triage by the keys, the list kept in place while they are triaged, what an item
-// adds to the library, how old things are said to be. Pure functions, tested by scripts/feeds.test.ts (npm test).
+// The items of the Feeds tab: their triage by the keys, the list kept in place while they are triaged, when an item
+// shown counts as seen, what an item adds to the library, how old things are said to be. Pure, tested by
+// scripts/feeds.test.ts (npm test).
 
-import { arxivDoi } from "../arxiv.ts";
 import type { FeedDetail, FeedRow, FetchSummary, Linked, Reminder, Triage } from "./api.ts";
 import { isPost } from "./kinds.ts";
 
@@ -29,6 +29,40 @@ export function toggled(items: { id: string; triage: Triage }[], action: TriageA
       return items.some((i) => i.triage === "new")
         ? change((t) => t === "new", "seen")
         : change((t) => t === "seen", "new");
+  }
+}
+
+/** How long an item must stay selected to count as seen, ms. */
+export const DWELL_MS = 800;
+
+/**
+ * Seen on dwell: a new item selected becomes seen once it has stayed selected `ms`. One passed over faster (j held
+ * down, the arrows run through the list) stays new: its title went by, its details were not read. *Mark all above
+ * as read* (⇧Space) is for the titles skimmed.
+ */
+export class Dwell {
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly onseen: (id: string) => void;
+  private readonly ms: number;
+
+  constructor(onseen: (id: string) => void, ms = DWELL_MS) {
+    this.onseen = onseen;
+    this.ms = ms;
+  }
+
+  /** The item selected now (none: no item), and whether it is new: the one before, if not seen yet, was passed. */
+  show(id: string | null, isNew: boolean) {
+    this.stop();
+    if (id === null || !isNew) return;
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      this.onseen(id);
+    }, this.ms);
+  }
+
+  stop() {
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.timer = null;
   }
 }
 
@@ -74,9 +108,6 @@ export function mergeRows(old: FeedRow[], fresh: FeedRow[], sticky: Set<string>)
   return out;
 }
 
-/** What the field of the Add sheet starts with, for a DOI or an arXiv id: the arXiv id as its DOI. */
-export const addField = (id: string) => arxivDoi(id) ?? id.trim();
-
 /** The link of a post most likely its paper: the first of high confidence, else the first. */
 export const bestLink = (links: Linked[]): Linked | null => links.find((l) => l.confidence === "high") ?? links[0] ?? null;
 
@@ -111,6 +142,12 @@ export function ago(date: string | null, now = Date.now()): string {
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", ...year });
 }
 
+/** How long ago, in words: "just now", "8 min ago", "3 d ago", "on 3 Oct" (`ago`). */
+export function since(date: string, now = Date.now()): string {
+  const when = ago(date, now);
+  return when === "now" ? "just now" : /^\d+ (min|h|d)$/.test(when) ? `${when} ago` : `on ${when}`;
+}
+
 /** The minutes after which opening the tab fetches again. */
 export const STALE_MINUTES = 15;
 
@@ -124,8 +161,7 @@ export function stale(last: FetchSummary | null, now = Date.now(), minutes = STA
 /** The status line of the last fetch: "fetched 8 min ago · 12 new · 3 not modified · 1 failed". */
 export function fetchLine(last: FetchSummary | null, now = Date.now()): string {
   if (!last) return "not fetched yet";
-  const when = ago(last.at, now);
-  const parts = [when === "now" ? "fetched just now" : /^\d+ (min|h|d)$/.test(when) ? `fetched ${when} ago` : `fetched on ${when}`];
+  const parts = [`fetched ${since(last.at, now)}`];
   if (last.added) parts.push(`${last.added} new`);
   if (last.unchanged) parts.push(`${last.unchanged} not modified`);
   if (last.failed.length) parts.push(`${last.failed.length} failed`);
