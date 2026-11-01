@@ -18,7 +18,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::AppState;
-use crate::feeds::{FeedRow, Rows, SubscriptionInfo, network};
+use crate::feeds::{FeedRow, Rows, SubscriptionInfo};
 use crate::fetch::blocking;
 use crate::settings::Settings;
 
@@ -82,9 +82,17 @@ pub async fn search_run(
 ) -> Result<SearchPage, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let (network, access) = network(&state)?;
-        let resolved = state.resolved.of(&query, &network, &access)?;
-        let found = search_works(&network, &access, &resolved, order, cursor.as_deref())?;
+        let requests = state.requests()?;
+        let resolved = state
+            .resolved
+            .of(&query, &requests.http, &requests.access)?;
+        let found = search_works(
+            &requests.http,
+            &requests.access,
+            &resolved,
+            order,
+            cursor.as_deref(),
+        )?;
         let fresh = cursor.is_none();
         let entries = found.entries;
         let ids = (state.search).change(&app, move |feeds| feeds.found(entries.clone(), fresh))?;
@@ -113,8 +121,12 @@ pub async fn search_rows(
 pub async fn search_follow(app: AppHandle, query: String) -> Result<SubscriptionInfo, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let (network, access) = network(&state)?;
-        let filter = follow_filter(&state.resolved.of(&query, &network, &access)?)?;
+        let requests = state.requests()?;
+        let filter = follow_filter(&state.resolved.of(
+            &query,
+            &requests.http,
+            &requests.access,
+        )?)?;
         let feed = Feed::OpenAlex { filter };
         let settings = SubscriptionSettings {
             title: Some(query),

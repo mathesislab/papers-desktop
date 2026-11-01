@@ -24,7 +24,7 @@ mod writer;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use added::{Dated, DatesAdded};
 use main_window::{Layout, MAIN};
@@ -116,6 +116,8 @@ struct AppState {
     search: feeds::Folder,
     /// the Search tab's last query, its journals and works looked up
     resolved: search::LastResolved,
+    /// the requests of the feeds and the Search tab, made at the first ask
+    requests: Mutex<Option<Arc<feeds::Requests>>>,
 }
 
 impl AppState {
@@ -412,6 +414,7 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
     };
     hotkey::apply(&app, &old, &settings)?;
     settings.save(&state.settings_path)?;
+    state.saved_settings(&old, &settings);
     if settings.text_size != old.text_size {
         text_size::apply(&app, settings.text_size);
     }
@@ -972,6 +975,7 @@ pub fn run() {
                     search::CHANGED,
                 ),
                 resolved: search::LastResolved::default(),
+                requests: Mutex::new(None),
             });
             app.state::<AppState>()
                 .downloads

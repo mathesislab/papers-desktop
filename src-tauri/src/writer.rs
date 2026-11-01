@@ -1198,6 +1198,7 @@ mod tests {
             feeds: crate::feeds::FeedsState::new(dir.join("feeds"), dir.join("feeds-fetched.json")),
             search: crate::feeds::Folder::new(dir.join("search"), crate::search::CHANGED),
             resolved: Default::default(),
+            requests: Default::default(),
         }
     }
 

@@ -15,10 +15,11 @@
 //! fetches does not fetch twice); any other waits for the whole fetch. Finding
 //! the papers of a post works on a copy too, after a running fetch.
 //!
-//! The requests go through the crate's network (a browser's user agent,
-//! which every publisher answers), paced per host; Crossref and OpenAlex
-//! are asked with the e-mail address and the OpenAlex key of the settings,
-//! each sent only when set. The last fetch's summary, and how each
+//! The requests go through one network of the crate's (a browser's user
+//! agent, which every publisher answers), paced per host for every command;
+//! Crossref and OpenAlex are asked with the e-mail address and the OpenAlex
+//! key of the settings, each sent only when set (made again when they
+//! change). The last fetch's summary, and how each
 //! subscription's last fetch ended, are kept in `feeds-fetched.json`.
 //!
 //! *From your library*: the journals of the library's papers, each followed
@@ -1208,11 +1209,33 @@ fn access(settings: &Settings) -> Access {
     }
 }
 
-/// The network, paced per host, and the access, from the settings.
-pub fn network(state: &AppState) -> Result<(Paced<Network>, Access), String> {
-    let access = access(&Settings::load(&state.settings_path)?);
-    let network = Paced::new(Network::new()?, Pacing::polite(&access));
-    Ok((network, access))
+/// The requests of the feeds and of the Search tab: one network, paced per
+/// host for them all, and what the APIs are asked with.
+pub struct Requests {
+    pub http: Paced<Network>,
+    pub access: Access,
+}
+
+impl AppState {
+    /// The requests, made at the first ask after the start, or after a
+    /// change of the address or the key.
+    pub fn requests(&self) -> Result<Arc<Requests>, String> {
+        let mut requests = self.requests.lock().unwrap();
+        if requests.is_none() {
+            let access = access(&Settings::load(&self.settings_path)?);
+            let http = Paced::new(Network::new()?, Pacing::polite(&access));
+            *requests = Some(Arc::new(Requests { http, access }));
+        }
+        Ok(requests.clone().expect("made"))
+    }
+
+    /// The requests made again at the next ask, if the settings saved change
+    /// what the APIs are asked with.
+    pub fn saved_settings(&self, old: &Settings, new: &Settings) {
+        if access(old) != access(new) {
+            *self.requests.lock().unwrap() = None;
+        }
+    }
 }
 
 /// Fetches every subscription, or the one of id `only`: the summary once
@@ -1224,9 +1247,9 @@ fn fetch_now(app: &AppHandle, only: Option<String>) -> Result<FetchSummary, Stri
         Begun::Joined(summary) => return Ok(summary),
         Begun::Reading(reading) => reading,
     };
-    let (network, access) = network(&state)?;
+    let requests = state.requests()?;
     tell(app, Phase::Reading);
-    let (summary, following) = match reading.read(&network, &access) {
+    let (summary, following) = match reading.read(&requests.http, &requests.access) {
         Ok(read) => read,
         Err(e) => {
             tell(app, Phase::Done);
@@ -1237,7 +1260,7 @@ fn fetch_now(app: &AppHandle, only: Option<String>) -> Result<FetchSummary, Stri
     let app = app.clone();
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
-        let followed = following.follow(&state.feeds, &network, &access);
+        let followed = following.follow(&state.feeds, &requests.http, &requests.access);
         tell(&app, Phase::Done);
         if let Err(e) = followed {
             eprintln!("papers-desktop: cannot look up what the feeds brought: {e}");
@@ -1378,8 +1401,11 @@ pub async fn feeds_remind(
 pub async fn feeds_find_papers(app: AppHandle, id: String) -> Result<Vec<Linked>, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let (network, access) = network(&state)?;
-        let found = state.feeds.folder.find_papers(&id, &network, &access);
+        let requests = state.requests()?;
+        let found = state
+            .feeds
+            .folder
+            .find_papers(&id, &requests.http, &requests.access);
         state.feeds.folder.tell(&app);
         found
     })
@@ -1390,9 +1416,9 @@ pub async fn feeds_find_papers(app: AppHandle, id: String) -> Result<Vec<Linked>
 pub async fn feeds_look_up(app: AppHandle, store: Store, id: String) -> Result<bool, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let (network, access) = network(&state)?;
+        let requests = state.requests()?;
         let folder = store.of(&state);
-        let asked = folder.look_up(&id, &network, &access)?;
+        let asked = folder.look_up(&id, &requests.http, &requests.access)?;
         if asked {
             folder.tell(&app);
         }
@@ -1405,8 +1431,8 @@ pub async fn feeds_look_up(app: AppHandle, store: Store, id: String) -> Result<b
 pub async fn feeds_pdf(app: AppHandle, store: Store, id: String) -> Result<Pdf, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let (network, access) = network(&state)?;
-        store.of(&state).pdf(&id, &network, &access)
+        let requests = state.requests()?;
+        store.of(&state).pdf(&id, &requests.http, &requests.access)
     })
     .await
 }
@@ -1504,8 +1530,8 @@ pub async fn feeds_library_suggested(app: AppHandle) -> Result<Vec<LibraryJourna
 #[tauri::command]
 pub async fn feeds_guess_kind(app: AppHandle, url: String) -> Result<papers_feeds::Guess, String> {
     blocking(move || {
-        let (network, access) = network(&app.state::<AppState>())?;
-        papers_feeds::guess_kind(&network, &access, url.trim())
+        let requests = app.state::<AppState>().requests()?;
+        papers_feeds::guess_kind(&requests.http, &requests.access, url.trim())
     })
     .await
 }
@@ -1513,8 +1539,8 @@ pub async fn feeds_guess_kind(app: AppHandle, url: String) -> Result<papers_feed
 #[tauri::command]
 pub async fn feeds_search_journals(app: AppHandle, text: String) -> Result<Vec<Journal>, String> {
     blocking(move || {
-        let (network, access) = network(&app.state::<AppState>())?;
-        papers_feeds::search_journals(&network, &access, text.trim())
+        let requests = app.state::<AppState>().requests()?;
+        papers_feeds::search_journals(&requests.http, &requests.access, text.trim())
     })
     .await
 }
@@ -1526,15 +1552,14 @@ pub async fn feeds_search_journals(app: AppHandle, text: String) -> Result<Vec<J
 pub async fn feeds_journal_feed(app: AppHandle, journal: Journal) -> Result<JournalSite, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let (network, access) = network(&state)?;
-        let journal = state
-            .feeds
-            .journals(|journals| journals.with_homepage(journal, &network, &access))??;
-        let page = Network::with_user_agent(&page_agent(access.mailto.as_deref()))?;
-        let feed = journal
-            .homepage
-            .as_deref()
-            .map(|homepage| papers_feeds::site_feed(&page, &network, homepage, &journal.title));
+        let requests = state.requests()?;
+        let journal = state.feeds.journals(|journals| {
+            journals.with_homepage(journal, &requests.http, &requests.access)
+        })??;
+        let page = Network::with_user_agent(&page_agent(requests.access.mailto.as_deref()))?;
+        let feed = (journal.homepage.as_deref()).map(|homepage| {
+            papers_feeds::site_feed(&page, &requests.http, homepage, &journal.title)
+        });
         Ok(JournalSite {
             homepage: journal.homepage,
             feed,
@@ -1549,10 +1574,10 @@ pub async fn feeds_journal_feed(app: AppHandle, journal: Journal) -> Result<Jour
 pub async fn feeds_lookup_journal(app: AppHandle, title: String) -> Result<Follow, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let (network, access) = network(&state)?;
+        let requests = state.requests()?;
         let follow = state
             .feeds
-            .journals(|journals| journals.look_up(&title, &network, &access))??;
+            .journals(|journals| journals.look_up(&title, &requests.http, &requests.access))??;
         Ok(follow.into())
     })
     .await

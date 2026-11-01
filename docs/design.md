@@ -1113,10 +1113,11 @@ holding the work on a copy. One fetch at a time: a second fetch of every
 subscription (the tab opening while polling fetches) waits for the running
 one's feeds read and answers that summary, any other fetch waits for the
 whole of the running one; finding the papers of a post works on a copy too,
-after a running fetch. The requests: the crate's `Network` (a
-browser's user agent) paced per host (`Pacing::polite`), Crossref and
-OpenAlex asked with the settings' address and OpenAlex key, each only when
-set. The last summary and each subscription's last fetch (when, its error)
+after a running fetch. The requests: one `Network` of the crate's (a
+browser's user agent) paced per host (`Pacing::polite`) for every command,
+made at the first ask and again once the settings change the address or the
+key; Crossref and OpenAlex asked with the settings' address and OpenAlex
+key, each only when set. The last summary and each subscription's last fetch (when, its error)
 are kept in `app_data_dir/feeds-fetched.json`. `feeds_pdf`: OpenAlex's
 `works/doi:` locations (the published or accepted version's PDF, else its
 page: open; only a preprint's: preprint; licence and host), arXiv's PDF as
