@@ -9,41 +9,9 @@
   import { mac, matches, zoomStep } from "$lib/keys";
   import { writers as listWriters } from "$lib/library/writes";
   import FeedsSettings from "$lib/settings/FeedsSettings.svelte";
+  import { Preferences, type Settings, type View } from "$lib/settings/settings.svelte";
   import type { Writer } from "$lib/types";
 
-  // Mirrors src-tauri/src/settings.rs and the SettingsView of lib.rs
-  type Settings = {
-    bibtex: string[];
-    hotkey: string;
-    /** on Linux only */
-    selection_hotkey?: string;
-    matching: "word-start" | "inside-words";
-    citation_style: string;
-    check_updates: boolean;
-    after_close: "library" | "next";
-    /** the zoom of the windows: the text size */
-    text_size: "smallest" | "smaller" | "default" | "larger" | "largest";
-    /** what writes the papers libraries: papers-rs, built in, or a papers command */
-    writer: "built-in" | "command";
-    /** the papers command, for the writer "command"; empty: the one the login shell finds */
-    papers: string;
-    /** sent to doi.org and OpenAlex, which answer faster to programs that give one; empty: nothing is sent */
-    email: string;
-    /** a free key of OpenAlex, for more searches a day; empty: none. Sent to OpenAlex only */
-    openalex_key: string;
-    /** the tags pinned to the keys 1–9, set from the sidebar of the main window: kept as they are */
-    pinned_tags: (string | null)[];
-    /** the Downloads panel under the sidebar of the main window: the PDFs of a folder outside the library */
-    downloads_panel: boolean;
-    /** its folder (~ for the home folder) */
-    downloads_folder: string;
-    /** the user's services of the Search tab's *Search online*, after Google Scholar and Google: a name and an address
-     *  with {query} or {scholar} in it (checked when saved) */
-    search_services: { name: string; url: string }[];
-    /** the background polling of the feeds: set in their section (feeds_set_settings), kept as they are here */
-    feeds_poll: boolean;
-    feeds_poll_minutes: number;
-  };
   /** mirrors cli_tool::Status */
   type Cli = {
     available: boolean;
@@ -60,24 +28,21 @@
   type Update = { version: string };
   /** mirrors update::Installed */
   type Installed = { version: string; from: string };
-  type View = { settings: Settings; styles: string[]; start_at_login: boolean; home: string | null };
 
   /** the option of the style menu that asks for a .csl file */
   const OTHER = "\u0000other";
 
-  let settings = $state<Settings | null>(null);
-  let styles = $state<string[]>([]);
-  let startAtLogin = $state(false);
-  let home = $state<string | null>(null);
-  let notice = $state<{ text: string; error: boolean } | null>(null);
+  const prefs = new Preferences();
+  const { save, show } = prefs;
+  let settings = $derived(prefs.settings);
+  let home = $derived(prefs.home);
   /** the hotkey whose keys are being recorded */
   type HotkeyField = "hotkey" | "selection_hotkey";
   let recording = $state<HotkeyField | null>(null);
-  let timer: ReturnType<typeof setTimeout>;
 
   // a style that is not bundled: a .csl file
   let custom = $derived(
-    settings && !styles.includes(settings.citation_style) ? settings.citation_style : null,
+    settings && !prefs.styles.includes(settings.citation_style) ? settings.citation_style : null,
   );
 
   // updates: the version found, and where its install is; the one installed
@@ -169,11 +134,7 @@
   }
 
   async function refresh() {
-    const view = await invoke<View>("get_settings");
-    settings = view.settings;
-    styles = view.styles;
-    startAtLogin = view.start_at_login;
-    home = view.home;
+    await prefs.load();
     writers = await listWriters();
     cli = await invoke<Cli>("cli_status");
     // starts the shell of the user: not waited for
@@ -241,28 +202,6 @@
   function writtenBy(file: string): Writer | undefined {
     const path = home && file.startsWith("~/") ? home + file.slice(1) : file;
     return writers.find((w) => w.bib === path);
-  }
-
-  /** Save a change, which applies at once; on failure, show the settings as they are. Whether it was saved. */
-  async function save(change: Partial<Settings>): Promise<boolean> {
-    if (!settings) return false;
-    const changed = { ...settings, ...change };
-    try {
-      await invoke("save_settings", { settings: changed });
-      settings = changed;
-      show("Saved", false);
-      return true;
-    } catch (err) {
-      show(String(err), true);
-      await refresh();
-      return false;
-    }
-  }
-
-  function show(text: string, error: boolean) {
-    notice = { text, error };
-    clearTimeout(timer);
-    if (!error) timer = setTimeout(() => (notice = null), 1500);
   }
 
   async function addBibs() {
@@ -339,7 +278,7 @@
 
   async function toggleStartAtLogin() {
     try {
-      startAtLogin = await invoke<boolean>("set_start_at_login", { on: !startAtLogin });
+      prefs.startAtLogin = await invoke<boolean>("set_start_at_login", { on: !prefs.startAtLogin });
     } catch (err) {
       show(String(err), true);
     }
@@ -511,7 +450,7 @@
           <span class="hint">Of the citation in the preview</span>
         </span>
         <select value={settings.citation_style} onchange={chooseStyle}>
-          {#each styles as name (name)}<option value={name}>{styleName(name)}</option>{/each}
+          {#each prefs.styles as name (name)}<option value={name}>{styleName(name)}</option>{/each}
           {#if custom}<option value={custom}>{fileName(custom)}</option>{/if}
           <option value={OTHER}>Other .csl File…</option>
         </select>
@@ -605,7 +544,7 @@
       <h2>General</h2>
       <label class="row">
         <span class="label">Start at login</span>
-        <input type="checkbox" class="switch" checked={startAtLogin} onchange={toggleStartAtLogin} />
+        <input type="checkbox" class="switch" checked={prefs.startAtLogin} onchange={toggleStartAtLogin} />
       </label>
       <label class="row">
         <span>
@@ -757,7 +696,7 @@
       </div>
     </section>
 
-    <footer class:error={notice?.error}>{notice?.text ?? "Changes apply at once."}</footer>
+    <footer class:error={prefs.notice?.error}>{prefs.notice?.text ?? "Changes apply at once."}</footer>
   </main>
 {/if}
 
