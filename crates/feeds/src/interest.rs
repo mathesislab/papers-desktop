@@ -263,13 +263,15 @@ pub(crate) fn compile(interests: &[Interest], title_boost: f64) -> Result<Vec<Le
 }
 
 impl Feeds {
+    /// The interests that score the items: of the settings, or of the
+    /// scoring given (`Feeds::set_scoring`).
     pub fn interests(&self) -> &[Interest] {
-        &self.config.settings.interests
+        self.scoring.interests()
     }
 
-    /// The factor of a term's weight in a title.
+    /// The factor of a term's weight in a title, as `interests`.
     pub fn title_boost(&self) -> f64 {
-        self.config.settings.title_boost
+        self.scoring.title_boost()
     }
 
     /// The score of an item in each interest, in their order: by its title
@@ -277,13 +279,12 @@ impl Feeds {
     pub fn scores(&self, item: &Item) -> Vec<Score> {
         let r#abstract = item.summary.as_deref().unwrap_or("");
         let boost = self.boost(item);
-        self.lexicons
-            .iter()
+        (self.lexicons().iter())
             .map(|l| l.score(&item.title, r#abstract, boost))
             .collect()
     }
 
-    /// The score of an item and its parts, as the settings make them.
+    /// The score of an item and its parts, as its scoring makes them.
     pub fn rating(&self, item: &Item) -> Rating {
         self.rating_of(item, &self.scores(item))
     }
@@ -291,7 +292,7 @@ impl Feeds {
     /// [`Feeds::rating`], the item's scores in the interests given.
     pub(crate) fn rating_of(&self, item: &Item, scores: &[Score]) -> Rating {
         let like = self.like(item);
-        Rating::of(scores, like.as_ref(), self.config.settings.score)
+        Rating::of(scores, like.as_ref(), self.scoring.mode())
     }
 
     /// The boost of an item: the strongest of the subscriptions that list it
@@ -305,7 +306,7 @@ impl Feeds {
 
     /// The interests compiled, in their order.
     pub(crate) fn lexicons(&self) -> &[Lexicon] {
-        &self.lexicons
+        self.scoring.lexicons()
     }
 }
 

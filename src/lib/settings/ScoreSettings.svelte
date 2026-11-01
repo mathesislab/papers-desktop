@@ -118,7 +118,8 @@
 <section>
   <h2>Score</h2>
   <p class="hint">
-    The score of an item, 0–100, sorts the Feeds tab and is <code>score:</code> in a search or a rule. It has two
+    The score of an item of the Feeds and Search tabs, 0–100, sorts the Feeds tab and is <code>score:</code> in a
+    search or a rule. It has two
     parts, each 0–100, shown as two bars: its keywords, on top, the best of your interests; its library, under, how
     close it is to the papers of your library.
   </p>

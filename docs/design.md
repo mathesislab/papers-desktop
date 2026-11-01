@@ -1063,7 +1063,8 @@ nearest, and the rules at a fetch (`like:90-` → star). A library of 2,353 pape
 5 ms (release); an item with an abstract is scored in about 16 µs, a view of
 5,000 items in about 80 ms.
 
-**Score** (`rating.rs`, `Rating`): one score of an item, 0–100, wherever a
+**Score** (`rating.rs`, `Rating`; a folder's `Scoring`, of its settings
+or given by another folder): one score of an item, 0–100, wherever a
 score is used: the rows (`ScoreBars`) of the Feeds and Search tabs, the sort
 by score (then the newest), `score:` in the query and the rules, the
 digest. Two parts, each 0–100:
@@ -1288,10 +1289,13 @@ your library* are the Feeds tab's (the item commands take the store). A new
 search drops the works found before but those *saved for later* (☆, `s`:
 starred in that folder, apart from the Feeds tab's Starred: works kept from a
 search, not yet sure to add; `search_starred`) and those added. Each keeps the
-citations OpenAlex counted (`cited`, the *Cited* column). Its score is its
-folder's: that folder has no interests (its `config.json` is its own) and the
-mode of its own, the default, so a work's score is its library part alone and
-its keywords bar empty. The tab keeps the
+citations OpenAlex counted (`cited`, the *Cited* column). Its works are
+scored as the feeds are: the feeds' `Scoring` (`Feeds::scoring`: the
+interests compiled, the title boost, the mode) is given to its folder
+(`Folder::set_scoring`, as the facts of the library: to the feeds and each
+copy opened; `Feeds::set_scoring`, not written), at the start on a thread of
+its own and after every `feeds_set_settings`, its rows then read again
+(`search-changed`). Its own `config.json` keeps no interests. The tab keeps the
 search shown (its ids, total, cursor), the 20 last searches and the columns
 in the window's layout (`search`); the sidebar: Results, *Saved for later
 (N)*, Recent searches.

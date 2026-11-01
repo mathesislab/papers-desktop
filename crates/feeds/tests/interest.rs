@@ -2,7 +2,8 @@
 //! score as paper-feeder does: the crate's unit tests).
 
 use papers_feeds::{
-    Entry, Error, FOUND, FeedSettings, Feeds, Interest, ItemKind, Matcher, Origin, Weighted,
+    Entry, Error, FOUND, FeedSettings, Feeds, Interest, ItemKind, Matcher, Origin, ScoreMode,
+    Weighted,
 };
 
 fn term(t: &str, weight: f64) -> Weighted {
@@ -112,4 +113,48 @@ fn interests_are_kept_and_count_at_once() {
             .is_err()
     );
     assert_eq!(feeds.interests(), [ice()], "unchanged");
+}
+
+#[test]
+fn a_folder_scores_with_the_scoring_another_gives_it() {
+    let (dir, other) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            interests: vec![ice()],
+            score: ScoreMode::Keywords,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
+    // the works found of a search: a folder of its own, without interests
+    let mut found = Feeds::open(other.path()).unwrap();
+    let entry = Entry::new(
+        FOUND,
+        Origin::Work,
+        "a".into(),
+        "ice sheet".into(),
+        ItemKind::Paper,
+    );
+    let ids = found.found(vec![entry], false).unwrap();
+    let rating = |f: &Feeds| f.rating(f.item(&ids[0]).unwrap());
+    assert_eq!(rating(&found).keywords, None);
+
+    found.set_scoring(feeds.scoring());
+    assert_eq!(found.interests(), [ice()]);
+    assert_eq!(found.settings().interests, [], "its own settings stay");
+    let scored = rating(&found);
+    assert_eq!(
+        (scored.score, scored.keywords),
+        (100.0, Some(100.0)),
+        "6 of 3"
+    );
+    assert_eq!(found.scores(found.item(&ids[0]).unwrap())[0].score, 6.0);
+    assert!(
+        Feeds::open(other.path()).unwrap().interests().is_empty(),
+        "not written"
+    );
+
+    // its own settings set: its own scoring again
+    found.set_settings(found.settings().clone()).unwrap();
+    assert_eq!(rating(&found).keywords, None);
 }

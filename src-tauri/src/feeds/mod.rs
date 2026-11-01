@@ -30,6 +30,12 @@
 //! page read with the page user agent of the Add sheet, `fetch::page_agent`;
 //! the feed as it will be fetched), else, if the user chooses, by its ISSN.
 //!
+//! *Score*: the works found of the Search tab are scored as the feeds are,
+//! by the feeds' interests, title boost and score's mode (Settings → Score):
+//! the feeds' scoring is given to the Search tab's folder (`share_scoring`)
+//! at the start, on a thread of its own, and whenever the feeds' settings are
+//! set; its rows are then read again (`search-changed`).
+//!
 //! *Like in your library*, *in library*: the facts of the library (the index
 //! of its papers, core's `Likeness`, those of the .bib files ticked under
 //! *Similar to* in the settings, and their identities) are gathered on a
@@ -320,6 +326,28 @@ pub fn index_library(app: &AppHandle, skipped: Vec<PathBuf>) {
     });
 }
 
+/// Gives the works found of the Search tab the scoring of the feeds (their
+/// interests, title boost and score's mode), the feeds opened if they are not
+/// yet; the Search tab is told.
+fn share_scoring(app: &AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let scoring = state.feeds.folder.read(Feeds::scoring)?;
+    state.search.set_scoring(scoring);
+    state.search.tell(app);
+    Ok(())
+}
+
+/// [`share_scoring`] at the start, on a thread of its own: opening the feeds
+/// takes a moment.
+pub fn share_scoring_at_start(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        if let Err(error) = share_scoring(&app) {
+            eprintln!("papers-desktop: the feeds' scoring: {error}");
+        }
+    });
+}
+
 /// Fetch in the background, every so many minutes, while the settings say so.
 pub fn watch(app: &AppHandle) {
     let app = app.clone();
@@ -573,7 +601,8 @@ pub async fn feeds_set_saved_views(app: AppHandle, views: Vec<SavedView>) -> Res
 }
 
 /// Sets the settings of the feeds; refused, nothing changed, with the
-/// message of the first interest that does not compile.
+/// message of the first interest that does not compile. The Search tab scores
+/// by them too.
 #[tauri::command]
 pub async fn feeds_set_settings(app: AppHandle, settings: FeedSettings) -> Result<(), String> {
     blocking(move || {
@@ -587,6 +616,7 @@ pub async fn feeds_set_settings(app: AppHandle, settings: FeedSettings) -> Resul
         };
         let state = app.state::<AppState>();
         (state.feeds.folder).change(&app, move |feeds| feeds.set_settings(kept.clone()))?;
+        share_scoring(&app)?;
         let mut kept = Settings::load(&state.settings_path)?;
         kept.elsewhere.feeds_poll = settings.poll;
         kept.elsewhere.feeds_poll_minutes = settings.poll_minutes.max(LEAST_MINUTES);

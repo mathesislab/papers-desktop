@@ -6,12 +6,19 @@
 //! say how the parts make the score ([`ScoreMode`]): the higher of both, or
 //! one alone. An exclude of any interest vetoes the item: its score and its
 //! parts are 0.
+//!
+//! The interests, the title boost and the mode are a folder's [`Scoring`]:
+//! its own, of its settings, or another folder's given to it
+//! (`Feeds::set_scoring`), so that two folders score as one: the works found
+//! of the app's Search tab as its feeds.
 
 use papers_core::Like;
 use serde::{Deserialize, Serialize};
 
-use crate::interest::Score;
+use crate::Result;
+use crate::interest::{self, Interest, Lexicon, Score};
 use crate::model::words;
+use crate::store::FeedSettings;
 
 /// How the parts of an item make its score.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -30,6 +37,47 @@ words!(ScoreMode {
     Keywords => "keywords",
     Library => "library",
 });
+
+/// How the items are scored: the interests compiled with the title boost, and
+/// how the parts make the score.
+#[derive(Debug)]
+pub struct Scoring {
+    interests: Vec<Interest>,
+    title_boost: f64,
+    /// the interests compiled, in their order
+    lexicons: Vec<Lexicon>,
+    mode: ScoreMode,
+}
+
+impl Scoring {
+    /// The scoring of these settings, if every interest compiles (and their
+    /// names are distinct).
+    pub fn new(settings: &FeedSettings) -> Result<Scoring> {
+        Ok(Scoring {
+            lexicons: interest::compile(&settings.interests, settings.title_boost)?,
+            interests: settings.interests.clone(),
+            title_boost: settings.title_boost,
+            mode: settings.score,
+        })
+    }
+
+    pub fn interests(&self) -> &[Interest] {
+        &self.interests
+    }
+
+    /// The factor of a term's weight in a title.
+    pub fn title_boost(&self) -> f64 {
+        self.title_boost
+    }
+
+    pub fn mode(&self) -> ScoreMode {
+        self.mode
+    }
+
+    pub(crate) fn lexicons(&self) -> &[Lexicon] {
+        &self.lexicons
+    }
+}
 
 /// The score of an item and its parts.
 #[derive(Debug, Clone, PartialEq, Serialize)]

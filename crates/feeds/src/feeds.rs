@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-use crate::interest::{self, Lexicon};
 use crate::library::LibraryFacts;
 use crate::merge::{Merger, refresh};
 use crate::model::{
@@ -15,6 +14,7 @@ use crate::model::{
 };
 use crate::normalize::is_attachment_doi;
 use crate::parse::kind_of;
+use crate::rating::Scoring;
 use crate::store::{
     self, CONFIG, Config, FORMAT, FeedSettings, HTTP, ITEMS, Items, LOOKUPS, Lookup, Lookups,
     STATE, State, Validated,
@@ -28,8 +28,8 @@ pub type Now = Box<dyn Fn() -> DateTime<Utc> + Send + Sync>;
 pub struct Feeds {
     pub(crate) dir: PathBuf,
     pub(crate) config: Config,
-    /// the interests of `config`, compiled
-    pub(crate) lexicons: Vec<Lexicon>,
+    /// how its items are scored: of `config`, or another folder's given
+    pub(crate) scoring: Arc<Scoring>,
     pub(crate) items: Items,
     pub(crate) state: State,
     pub(crate) http: Validated,
@@ -51,7 +51,7 @@ impl Feeds {
         let dir = store::folder(dir)?;
         let config: Config = store::read(&dir, CONFIG)?;
         let mut feeds = Feeds {
-            lexicons: interest::compile(&config.settings.interests, config.settings.title_boost)?,
+            scoring: Arc::new(Scoring::new(&config.settings)?),
             config,
             items: store::read(&dir, ITEMS)?,
             state: store::read(&dir, STATE)?,
@@ -238,17 +238,31 @@ impl Feeds {
         self.config.settings.lookback_days
     }
 
-    /// The settings of the feeds.
+    /// The settings of the feeds: of the folder, whatever scoring it is
+    /// given.
     pub fn settings(&self) -> &FeedSettings {
         &self.config.settings
     }
 
     /// Sets the settings of the feeds, if every interest compiles; else
-    /// nothing changes.
+    /// nothing changes. The items are scored by them again, a scoring given
+    /// before let go.
     pub fn set_settings(&mut self, settings: FeedSettings) -> Result<()> {
-        self.lexicons = interest::compile(&settings.interests, settings.title_boost)?;
+        self.scoring = Arc::new(Scoring::new(&settings)?);
         self.config.settings = settings;
         store::write(&self.dir, CONFIG, &self.config)
+    }
+
+    /// How the items are scored, to give another folder.
+    pub fn scoring(&self) -> Arc<Scoring> {
+        self.scoring.clone()
+    }
+
+    /// Scores the items as another folder does (its interests, title boost
+    /// and mode), not by the settings of this one, until they are set; not
+    /// written.
+    pub fn set_scoring(&mut self, scoring: Arc<Scoring>) {
+        self.scoring = scoring;
     }
 
     /// Every file of the folder.

@@ -1065,6 +1065,7 @@ pub fn run() {
             reload(app.handle());
             update::watch(app.handle());
             feeds::watch(app.handle());
+            feeds::share_scoring_at_start(app.handle());
             main_window::reopen(app.handle());
             if welcome {
                 welcome_window(app.handle(), None);

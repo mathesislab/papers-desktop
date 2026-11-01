@@ -1,13 +1,15 @@
 //! A folder of feeds, the Feeds tab's or the Search tab's: the feeds the
 //! commands see, and a copy worked on meanwhile, the changes made while it
-//! runs made again on it before it takes their place.
+//! runs made again on it before it takes their place. What it is given (the
+//! facts of the library; the Search tab's, the scoring of the feeds) goes to
+//! the feeds and to each copy.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 
-use papers_feeds::{Access, Feeds, LibraryFacts, Pdf};
+use papers_feeds::{Access, Feeds, LibraryFacts, Pdf, Scoring};
 use tauri::{AppHandle, Emitter};
 
 use super::rows::{Linked, linked};
@@ -82,7 +84,8 @@ impl Drop for Journalling<'_> {
 }
 
 /// The feeds the commands see, the changes made while a copy is worked on,
-/// and the facts of the library that the feeds and their copies are given.
+/// and what the feeds and their copies are given: the facts of the library,
+/// another folder's scoring.
 #[derive(Default)]
 struct Live {
     feeds: Option<Feeds>,
@@ -90,6 +93,20 @@ struct Live {
     library: Option<Arc<LibraryFacts>>,
     /// the build of `library`
     build: u64,
+    /// how another folder scores its items; none: the folder's own settings
+    scoring: Option<Arc<Scoring>>,
+}
+
+impl Live {
+    /// What the feeds are given, to feeds opened or worked on.
+    fn give(&self, feeds: &mut Feeds) {
+        if let Some(library) = &self.library {
+            feeds.set_library(library.clone());
+        }
+        if let Some(scoring) = &self.scoring {
+            feeds.set_scoring(scoring.clone());
+        }
+    }
 }
 
 impl Folder {
@@ -111,12 +128,10 @@ impl Folder {
         }
     }
 
-    /// The feeds of the folder, opened, with the facts of the library.
+    /// The feeds of the folder, opened, with what they are given.
     fn opened(&self, live: &Live) -> Result<Feeds, String> {
         let mut feeds = (self.open)(&self.dir).map_err(|e| e.to_string())?;
-        if let Some(library) = &live.library {
-            feeds.set_library(library.clone());
-        }
+        live.give(&mut feeds);
         Ok(feeds)
     }
 
@@ -158,6 +173,16 @@ impl Folder {
             feeds.set_library(library);
         }
         true
+    }
+
+    /// Another folder's scoring, for the feeds and the copies opened from
+    /// now on: their items scored as that folder's are.
+    pub fn set_scoring(&self, scoring: Arc<Scoring>) {
+        let mut live = self.live.lock().unwrap();
+        if let Some(feeds) = &mut live.feeds {
+            feeds.set_scoring(scoring.clone());
+        }
+        live.scoring = Some(scoring);
     }
 
     /// Something read of the feeds.
@@ -213,10 +238,8 @@ impl Folder {
         for change in &journal {
             change(&mut copy);
         }
-        // the facts gathered meanwhile
-        if let Some(library) = &live.library {
-            copy.set_library(library.clone());
-        }
+        // the facts gathered meanwhile, a scoring given meanwhile
+        live.give(&mut copy);
         live.feeds = Some(copy);
         Ok(done)
     }
@@ -266,5 +289,70 @@ impl Folder {
             self.pdfs.lock().unwrap().insert(doi, pdf.clone());
         }
         Ok(pdf)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use papers_feeds::{Entry, FOUND, FeedSettings, ItemKind, Origin};
+
+    use super::*;
+
+    /// The feeds' folder, with an interest in ice sheets.
+    fn scored(dir: &Path) -> Folder {
+        let feeds = Folder::new(dir.join("feeds"), "feeds-changed");
+        let ice = r#"{"name": "Ice", "include": [{"term": "ice sheet", "weight": 3}]}"#;
+        let ice: papers_feeds::Interest = serde_json::from_str(ice).unwrap();
+        (feeds.apply(move |f| {
+            f.set_settings(FeedSettings {
+                interests: vec![ice.clone()],
+                ..f.settings().clone()
+            })
+        }))
+        .unwrap();
+        feeds
+    }
+
+    /// The keywords part of the score of the works found, by their ids.
+    fn keywords(folder: &Folder, ids: &[String]) -> Vec<Option<f64>> {
+        let rating = |f: &Feeds, id: &String| f.rating(f.item(id).unwrap()).keywords;
+        folder
+            .read(|f| ids.iter().map(|id| rating(f, id)).collect())
+            .unwrap()
+    }
+
+    #[test]
+    fn the_works_found_are_scored_as_the_feeds_given_and_their_copies_too() {
+        let dir = tempfile::tempdir().unwrap();
+        let feeds = scored(dir.path());
+        let search = Folder::new(dir.path().join("search"), "search-changed");
+        let found = |title: &str| {
+            let entry = Entry::new(
+                FOUND,
+                Origin::Work,
+                title.into(),
+                title.into(),
+                ItemKind::Paper,
+            );
+            move |f: &mut Feeds| f.found(vec![entry.clone()], false)
+        };
+        let ids = search.apply(found("ice sheet")).unwrap();
+        assert_eq!(
+            keywords(&search, &ids),
+            [None],
+            "a folder without interests"
+        );
+
+        search.set_scoring(feeds.read(Feeds::scoring).unwrap());
+        assert_eq!(keywords(&search, &ids), [Some(100.0)]);
+        // a copy worked on, and the feeds opened again: given it too
+        let running = search.running.hold();
+        let more = search.on_copy(&running, found("the ice sheet")).unwrap();
+        drop(running);
+        let all: Vec<String> = ids.iter().chain(&more).cloned().collect();
+        assert_eq!(keywords(&search, &all), [Some(100.0), Some(100.0)]);
+        let again = Folder::new(dir.path().join("search"), "search-changed");
+        again.set_scoring(feeds.read(Feeds::scoring).unwrap());
+        assert_eq!(keywords(&again, &all), [Some(100.0), Some(100.0)]);
     }
 }

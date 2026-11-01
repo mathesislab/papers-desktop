@@ -78,7 +78,7 @@ pub use online::{OwnService, Service, check_services, online_url};
 pub use opml::Outline;
 pub use parse::{Parsed, parse};
 pub use pdf::{OpenAccess, Pdf, pdf};
-pub use rating::{Rating, ScoreMode};
+pub use rating::{Rating, ScoreMode, Scoring};
 pub use rules::{Action, Rule};
 pub use search::{
     Asked, FOUND, Order, PER_SEARCH, Page, Resolved, SEARCH_FACETS, ask, resolve, search_url,
