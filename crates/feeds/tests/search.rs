@@ -244,7 +244,7 @@ fn works_found_are_items_and_a_new_search_keeps_those_saved_for_later() {
 #[test]
 fn the_works_citing_a_paper_by_its_doi_and_a_search_followed() {
     let access = Access::default();
-    let doi = "https://api.openalex.org/works/doi:10.5194/tc-1?select=id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type";
+    let doi = "https://api.openalex.org/works/doi:10.5194/tc-1?select=id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type,cited_by_count";
     let citing = search_url(&[], &["cites:W1".to_string()], Order::Cited, None, &access).unwrap();
     let http = Recorded::new()
         .reply(doi, Reply::ok(doi, work("W1", "10.5194/tc-1", "Melt", 3)))

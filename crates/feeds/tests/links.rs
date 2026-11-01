@@ -57,7 +57,7 @@ fn futurity_posts_link_their_papers_from_the_feed() {
     let openalex = |doi: &str| {
         format!(
             "https://api.openalex.org/works/doi:{doi}?select=id,doi,title,publication_date,\
-             authorships,primary_location,abstract_inverted_index,type"
+             authorships,primary_location,abstract_inverted_index,type,cited_by_count"
         )
     };
     let (plants_openalex, superbug_openalex) = (

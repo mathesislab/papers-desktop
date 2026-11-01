@@ -177,10 +177,10 @@ fn teasers_first_and_openalex_for_what_crossref_lacks() {
     };
     let zenodo = format!("{WORKS}10.5281/zenodo.17740654");
     let openalex = "https://api.openalex.org/works/doi:10.5281/zenodo.17740654?select=id,doi,title,\
-        publication_date,authorships,primary_location,abstract_inverted_index,type&api_key=KEY";
+        publication_date,authorships,primary_location,abstract_inverted_index,type,cited_by_count&api_key=KEY";
     let whole_doi = format!("{WORKS}10.1000/whole");
     let whole_openalex = "https://api.openalex.org/works/doi:10.1000/whole?select=id,doi,title,\
-        publication_date,authorships,primary_location,abstract_inverted_index,type&api_key=KEY";
+        publication_date,authorships,primary_location,abstract_inverted_index,type,cited_by_count&api_key=KEY";
     let http = Recorded::new()
         .reply(journal, Reply::ok(journal, items))
         .reply(&zenodo, Reply::status(&zenodo, 404))
@@ -230,7 +230,7 @@ fn openalex_without_a_key() {
     )]);
     let zenodo = format!("{WORKS}10.5281/zenodo.17740654?mailto=papers-desktop@example.org");
     let openalex = "https://api.openalex.org/works/doi:10.5281/zenodo.17740654?select=id,doi,title,\
-        publication_date,authorships,primary_location,abstract_inverted_index,type\
+        publication_date,authorships,primary_location,abstract_inverted_index,type,cited_by_count\
         &mailto=papers-desktop@example.org";
     let http = Recorded::new()
         .reply(journal, Reply::ok(journal, items))
@@ -286,7 +286,7 @@ fn openalex_refusing_leaves_crossref_asked() {
     let openalex = |doi: &str| {
         format!(
             "https://api.openalex.org/works/doi:{doi}?select=id,doi,title,publication_date,\
-             authorships,primary_location,abstract_inverted_index,type"
+             authorships,primary_location,abstract_inverted_index,type,cited_by_count"
         )
     };
     let (one, two) = (format!("{WORKS}10.1000/one"), format!("{WORKS}10.1000/two"));

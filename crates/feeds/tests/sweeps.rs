@@ -168,7 +168,7 @@ fn a_failed_sweep_is_asked_again_from_the_same_day() {
 
 const OPENALEX: &str = "https://api.openalex.org/works?filter=primary_topic.id:T10644,\
     from_publication_date:2026-10-03,type:article\
-    &select=id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type\
+    &select=id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type,cited_by_count\
     &per-page=100";
 
 #[test]
@@ -182,43 +182,30 @@ fn openalex_sweep_without_a_key_back_the_lookback_each_time() {
     feeds
         .subscribe(filter, SubscriptionSettings::new(SourceKind::Journal))
         .unwrap();
-    let pages = |published: &str| {
+    let page = |published: &str| {
         let list = OPENALEX.replace("2026-10-03", published);
-        let tail = "&mailto=papers-desktop@example.org";
-        let cursor = "IlsxNzkzMDAwMDAwMDAwLCAnaHR0cHM6Ly9vcGVuYWxleC5vcmcvVzQ0MTAwMDAwMDInXSI%3D";
-        [
-            format!("{list}&cursor=*{tail}"),
-            format!("{list}&cursor={cursor}{tail}"),
-        ]
+        format!("{list}&cursor=*&mailto=papers-desktop@example.org")
     };
     // the first time, published since the lookback before the lookback's
-    // first day; then since the lookback before the last sweep, a day ago
-    let [first1, first2] = pages("2026-10-03");
-    let [next1, next2] = pages("2026-10-17");
+    // first day; then since the lookback before the last sweep, a day ago;
+    // a page short of 100 is the last
+    let (first, next) = (page("2026-10-03"), page("2026-10-17"));
     let http = Recorded::new()
-        .reply(
-            &first1,
-            Reply::ok(&first1, fixture("openalex-works-1.json")),
-        )
-        .reply(
-            &first2,
-            Reply::ok(&first2, fixture("openalex-works-2.json")),
-        )
-        .reply(&next1, Reply::ok(&next1, fixture("openalex-works-1.json")))
-        .reply(&next2, Reply::ok(&next2, fixture("openalex-works-2.json")));
+        .reply(&first, Reply::ok(&first, fixture("openalex-works-1.json")))
+        .reply(&next, Reply::ok(&next, fixture("openalex-works-1.json")));
     let report = feeds.fetch(&http, &polite()).unwrap();
     assert_eq!(
         report.feeds[0].outcome,
-        Outcome::Fetched { entries: 3, new: 3 }
+        Outcome::Fetched { entries: 2, new: 2 }
     );
     *clock.0.lock().unwrap() += chrono::TimeDelta::days(1);
     let report = feeds.fetch(&http, &polite()).unwrap();
     assert_eq!(
         report.feeds[0].outcome,
-        Outcome::Fetched { entries: 3, new: 0 },
+        Outcome::Fetched { entries: 2, new: 0 },
         "the works listed again are the items they were"
     );
-    assert_eq!(feeds.items().len(), 3);
+    assert_eq!(feeds.items().len(), 2);
 }
 
 #[test]
@@ -240,12 +227,15 @@ fn openalex_sweep_page_by_page() {
     let cursor = "IlsxNzkzMDAwMDAwMDAwLCAnaHR0cHM6Ly9vcGVuYWxleC5vcmcvVzQ0MTAwMDAwMDInXSI%3D";
     let page2 = format!("{OPENALEX}&cursor={cursor}{tail}");
     let http = Recorded::new()
-        .reply(&page1, Reply::ok(&page1, fixture("openalex-works-1.json")))
+        .reply(&page1, Reply::ok(&page1, full("openalex-works-1.json")))
         .reply(&page2, Reply::ok(&page2, fixture("openalex-works-2.json")));
     let report = feeds.fetch(&http, &access).unwrap();
     assert_eq!(
         report.feeds[0].outcome,
-        Outcome::Fetched { entries: 3, new: 3 }
+        Outcome::Fetched {
+            entries: 101,
+            new: 101
+        }
     );
     let urls: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
     assert_eq!(urls[..2], [page1, page2]);
@@ -272,8 +262,21 @@ fn openalex_sweep_page_by_page() {
         Some("Warm water reaches the grounding line the more often.")
     );
     assert_eq!(items[1].doi, None);
-    assert_eq!(items[2].kind, ItemKind::Preprint);
-    assert_eq!(items[2].arxiv.as_deref(), Some("2610.38522"));
+    let last = items.last().unwrap();
+    assert_eq!(last.kind, ItemKind::Preprint, "of the second page");
+    assert_eq!(last.arxiv.as_deref(), Some("2610.38522"));
+}
+
+/// A page of OpenAlex's works, made full (the 100 asked) by works of no DOI
+/// after those of a fixture.
+fn full(name: &str) -> Vec<u8> {
+    let mut page: serde_json::Value = serde_json::from_slice(&fixture(name)).unwrap();
+    let works = page["results"].as_array_mut().unwrap();
+    for n in works.len()..100 {
+        let id = format!("https://openalex.org/W9{n:03}");
+        works.push(serde_json::json!({"id": id, "title": format!("Filler {n}")}));
+    }
+    serde_json::to_vec(&page).unwrap()
 }
 
 /// A sweep that fails says why without the key and the address: they are in

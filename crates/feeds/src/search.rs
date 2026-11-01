@@ -22,11 +22,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::Result;
 use crate::feeds::Feeds;
-use crate::http::{Access, Http, get_json, with_query};
+use crate::http::{Access, Http, get_json, next_page};
 use crate::journals;
 use crate::model::{Entry, ItemKind, Triage};
 use crate::normalize::canonical_doi;
-use crate::openalex::{self, List, Work};
+use crate::openalex::{self, List, Work, WorksQuery};
 
 /// The source of the entries of the works found.
 pub const FOUND: &str = "search";
@@ -249,26 +249,14 @@ pub fn search_url(
         Order::Relevance | Order::Cited => "cited_by_count:desc",
         Order::Newest => "publication_date:desc",
     };
-    let filter = filters.join(",");
-    let per_page = PER_SEARCH.to_string();
-    let select = format!("{},cited_by_count", openalex::SELECT);
-    let mut pairs = vec![];
-    if !search.is_empty() {
-        pairs.push(("search", search.as_str()));
-    }
-    if !filter.is_empty() {
-        pairs.push(("filter", filter.as_str()));
-    }
-    pairs.extend([
-        ("sort", sort),
-        ("select", select.as_str()),
-        ("per-page", per_page.as_str()),
-        ("cursor", cursor.unwrap_or("*")),
-    ]);
-    Ok(with_query(
-        openalex::WORKS,
-        &openalex::access_pairs(pairs, access),
-    ))
+    let query = WorksQuery {
+        search: &search,
+        filters,
+        sort: Some(sort),
+        per_page: PER_SEARCH,
+        cursor: cursor.unwrap_or("*"),
+    };
+    Ok(openalex::works_url(&query, access))
 }
 
 /// A page of the works of a query, in an order: from the first, or from a
@@ -292,10 +280,7 @@ pub fn search_works(
     Ok(Page {
         entries,
         total: list.meta.count,
-        next: list
-            .meta
-            .next_cursor
-            .filter(|_| list.results.len() == PER_SEARCH),
+        next: next_page(list.meta.next_cursor, list.results.len(), PER_SEARCH),
     })
 }
 

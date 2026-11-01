@@ -124,6 +124,12 @@ pub(crate) fn get_ok(http: &dyn Http, url: &str, accept: &str) -> Result<Reply, 
     }
 }
 
+/// The cursor of a list's next page: the one given after a full page (a
+/// shorter one is the last).
+pub(crate) fn next_page(cursor: Option<String>, got: usize, per_page: usize) -> Option<String> {
+    cursor.filter(|_| got == per_page)
+}
+
 /// The message of an error status, with its `Retry-After`.
 pub(crate) fn failure(reply: &Reply) -> String {
     let retry = reply

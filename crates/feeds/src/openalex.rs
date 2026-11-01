@@ -13,12 +13,12 @@ use crate::model::{Entry, ItemKind, Origin};
 use crate::normalize::{arxiv_id, canonical_doi, is_preprint_doi};
 use crate::parse::plain;
 
-pub(crate) const WORKS: &str = "https://api.openalex.org/works";
+const WORKS: &str = "https://api.openalex.org/works";
 const SOURCES: &str = "https://api.openalex.org/sources";
 
 /// The fields of a work asked for.
-pub(crate) const SELECT: &str =
-    "id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type";
+const SELECT: &str = "id,doi,title,publication_date,authorships,primary_location,\
+    abstract_inverted_index,type,cited_by_count";
 
 /// The fields of a source asked for.
 const SOURCE_SELECT: &str =
@@ -64,7 +64,7 @@ pub(crate) struct Work {
     /// `article`, `preprint`, `dataset`, …
     #[serde(rename = "type")]
     pub kind: Option<String>,
-    /// the works that cite it, when asked
+    /// the works that cite it
     pub cited_by_count: Option<u64>,
 }
 
@@ -114,7 +114,7 @@ pub(crate) struct Source {
 }
 
 /// The parameters of every request: the key, and the address, if set.
-pub(crate) fn access_pairs<'a>(
+fn access_pairs<'a>(
     mut pairs: Vec<(&'a str, &'a str)>,
     access: &'a Access,
 ) -> Vec<(&'a str, &'a str)> {
@@ -127,24 +127,61 @@ pub(crate) fn access_pairs<'a>(
     pairs
 }
 
+/// What a page of a list of works asks of OpenAlex.
+pub(crate) struct WorksQuery<'a> {
+    /// the full-text search; none if empty
+    pub search: &'a str,
+    /// every one to hold
+    pub filters: &'a [String],
+    /// none: OpenAlex's order
+    pub sort: Option<&'a str>,
+    pub per_page: usize,
+    /// `*` for the first page
+    pub cursor: &'a str,
+}
+
+/// The request of a page of a list of works: a sweep's, a search's.
+pub(crate) fn works_url(query: &WorksQuery, access: &Access) -> String {
+    let filter = query.filters.join(",");
+    let per_page = query.per_page.to_string();
+    let mut pairs = Vec::new();
+    if !query.search.is_empty() {
+        pairs.push(("search", query.search));
+    }
+    if !filter.is_empty() {
+        pairs.push(("filter", filter.as_str()));
+    }
+    pairs.extend(query.sort.map(|sort| ("sort", sort)));
+    pairs.extend([
+        ("select", SELECT),
+        ("per-page", per_page.as_str()),
+        ("cursor", query.cursor),
+    ]);
+    with_query(WORKS, &access_pairs(pairs, access))
+}
+
 /// A page of the articles of a filter published since a day, from a cursor
 /// (`*` the first). Not created since a day: OpenAlex's `from_created_date`
 /// needs a paid plan.
-pub(crate) fn list_url(
+pub(crate) fn sweep_url(
     filter: &str,
     published: NaiveDate,
     cursor: &str,
     access: &Access,
 ) -> String {
-    let filter = format!("{filter},from_publication_date:{published},type:article");
-    let per_page = PER_PAGE.to_string();
-    let pairs = vec![
-        ("filter", filter.as_str()),
-        ("select", SELECT),
-        ("per-page", &per_page),
-        ("cursor", cursor),
+    let filters = [
+        filter.to_string(),
+        format!("from_publication_date:{published}"),
+        "type:article".to_string(),
     ];
-    with_query(WORKS, &access_pairs(pairs, access))
+    let query = WorksQuery {
+        search: "",
+        filters: &filters,
+        sort: None,
+        per_page: PER_PAGE,
+        cursor,
+    };
+    works_url(&query, access)
 }
 
 /// The work of a DOI.

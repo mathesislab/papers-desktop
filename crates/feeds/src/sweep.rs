@@ -7,7 +7,7 @@
 use chrono::{NaiveDate, TimeDelta};
 
 use crate::fetch::Got;
-use crate::http::{Access, Http, get_json, redact};
+use crate::http::{Access, Http, get_json, next_page, redact};
 use crate::model::Subscription;
 use crate::store::Validators;
 use crate::{crossref, openalex};
@@ -36,11 +36,10 @@ pub(crate) fn crossref(
         if title.is_none() {
             title = (page.items.iter()).find_map(|w| w.container_title.first().cloned());
         }
-        let full = page.items.len() == crossref::ROWS;
         entries.extend((page.items.iter()).filter_map(|w| w.entry(&subscription.id, kind)));
-        match page.next_cursor {
-            Some(next) if full => cursor = next,
-            _ => break,
+        match next_page(page.next_cursor, page.items.len(), crossref::ROWS) {
+            Some(next) => cursor = next,
+            None => break,
         }
     }
     Ok(Got::Entries {
@@ -64,13 +63,17 @@ pub(crate) fn openalex(
     let mut entries = Vec::new();
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {
-        let url = openalex::list_url(filter, published, &cursor, access);
+        let url = openalex::sweep_url(filter, published, &cursor, access);
         let page: openalex::List =
             get_json(http, &url)?.ok_or_else(|| redact(&format!("{url}: not found"), &url))?;
         entries.extend(page.results.iter().map(|w| w.entry(&subscription.id, kind)));
-        match page.meta.next_cursor {
-            Some(next) if !page.results.is_empty() => cursor = next,
-            _ => break,
+        match next_page(
+            page.meta.next_cursor,
+            page.results.len(),
+            openalex::PER_PAGE,
+        ) {
+            Some(next) => cursor = next,
+            None => break,
         }
     }
     Ok(Got::Entries {
