@@ -6,7 +6,7 @@ import { NO_FEED_FILTERS, restoredFeeds, type FeedFilters } from "$lib/feeds/fil
 import { NO_FILTERS, restored, type Filters } from "$lib/library/filters";
 import { COLUMNS, DEFAULT_COLUMNS, DEFAULT_ORDER, type Column, type Sort } from "$lib/library/Table.svelte";
 import { columnsOf, restoredColumns, type Shown } from "$lib/list/columns";
-import { NO_SEARCH, restoredSearch, type SearchState } from "$lib/search/query";
+import { NO_SEARCH, restoredSearch, type SearchState } from "$lib/search/state";
 
 /** What the window keeps between sessions: the tab in front (Library,
  *  Feeds or Search), the widths of the side panes, whether the details show,

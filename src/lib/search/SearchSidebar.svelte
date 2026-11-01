@@ -3,7 +3,7 @@
   // searches (a click runs one again; Clear forgets them).
 
   import { invoke } from "@tauri-apps/api/core";
-  import { recentText, totalText, type Asked } from "./query";
+  import { recentText, totalText, type Typed } from "./state";
 
   let {
     view,
@@ -21,10 +21,10 @@
     /** the works saved for later */
     saved: number;
     /** the recent searches, the latest first */
-    recent: Asked[];
+    recent: Typed[];
     onview: (view: "results" | "saved") => void;
     /** a recent search clicked: run again */
-    onrecent: (search: Asked) => void;
+    onrecent: (search: Typed) => void;
     /** the recent searches forgotten */
     onclear: () => void;
   } = $props();

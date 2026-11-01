@@ -1165,9 +1165,13 @@ years (`2000-2010`, `2000-`, `-2010`, `2005`, `201` the 2010s); `j:` a
 journal, looked up by its name (the one whose title is the name, else
 OpenAlex's best); `doi:`; `cites:` and `citedby:`, the works around a work,
 by its OpenAlex id or its DOI (looked up). What OpenAlex cannot be asked
-(another field, a title or author that excludes) is refused, said. Sorted by
+(another field, a title or author that excludes, years that are none) is
+refused, said where the works would be: the page checks none of it
+(`search/state.ts`, the tab's state, pure and tested). Sorted by
 relevance (without words, the most cited), the most cited or the newest; 25
-a page, *Show 25 more* from the cursor.
+a page, *Show 25 more* from the cursor. An answer that comes after the list
+it was asked for was replaced (another search, page or list: another
+`results`) is dropped.
 
 **The works found** are items of a folder of feeds of their own
 (`app_data_dir/search`, `Store::Search`), so the rows, the details, the

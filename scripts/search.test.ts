@@ -1,4 +1,4 @@
-// The Search tab: the query of the fields, the years, the recent searches, the layout kept, the works around a work.
+// The Search tab: the query of the fields, the recent searches, the layout kept, the works around a work.
 // node --test scripts/ (npm test)
 
 import assert from "node:assert/strict";
@@ -15,40 +15,20 @@ import {
   restoredSearch,
   totalText,
   withRecent,
-  yearError,
-  yearValue,
-  type Asked,
-} from "../src/lib/search/query.ts";
+  type Typed,
+} from "../src/lib/search/state.ts";
 
-const a = (query: string, year = "", order: Asked["order"] = "relevance"): Asked => ({ query, year, order });
+const a = (query: string, year = "", order: Typed["order"] = "relevance"): Typed => ({ query, year, order });
 
-test("the Year field: a year, a span, open at either end, spaces left out", () => {
-  assert.equal(yearValue(""), "");
-  assert.equal(yearValue("  "), "");
-  assert.equal(yearValue("2005"), "2005");
-  assert.equal(yearValue("2000-2010"), "2000-2010");
-  assert.equal(yearValue(" 2000 - 2010 "), "2000-2010");
-  assert.equal(yearValue("2000-"), "2000-");
-  assert.equal(yearValue("-2010"), "-2010");
-  assert.equal(yearValue("2010-2010"), "2010-2010");
-});
-
-test("the Year field: what is not years", () => {
-  for (const wrong of ["-", "20", "200", "20055", "2010-2000", "2000-10", "abc", "2000–2010", "2000,2010", "y:2000"]) {
-    assert.equal(yearValue(wrong), null, wrong);
-    assert.match(yearError(wrong) ?? "", /not 2005, 2000-2010, 2000- or -2010/, wrong);
-  }
-  assert.equal(yearError(""), null);
-  assert.equal(yearError("2000-2010"), null);
-});
-
-test("the query asked: the field's text, then the years as y:", () => {
+test("the query asked: the field's text, then the years as y:, spaces left out", () => {
   assert.equal(composed("greenland ice sheet", "2000-2010"), "greenland ice sheet y:2000-2010");
   assert.equal(composed("  greenland  ", ""), "greenland");
   assert.equal(composed("", "2005"), "y:2005");
   assert.equal(composed('t:"surface mass balance"', " -2010 "), 't:"surface mass balance" y:-2010');
   assert.equal(composed("", ""), "");
-  assert.equal(composed("firn", "20-30"), null);
+  assert.equal(composed("firn", " 2000 - 2010 "), "firn y:2000-2010");
+  // what is not years is Rust's to refuse
+  assert.equal(composed("firn", "20-30"), "firn y:20-30");
 });
 
 test("the recent searches: the latest first, the same search once, blank ones not kept", () => {
@@ -67,7 +47,7 @@ test("the recent searches: the latest first, the same search once, blank ones no
 });
 
 test("the recent searches: at most 20", () => {
-  let list: Asked[] = [];
+  let list: Typed[] = [];
   for (let i = 0; i < 30; i++) list = withRecent(list, a(`q${i}`));
   assert.equal(list.length, RECENT_MAX);
   assert.equal(list[0].query, "q29");
@@ -110,7 +90,8 @@ test("the layout restored: the defaults for what is missing or wrong", () => {
 
 test("the works around a work: by its OpenAlex id, else its DOI; none without either", () => {
   assert.equal(aroundQuery({ openalex: "W2741809807", doi: "10.5194/tc-1-2" }, "cites"), "cites:W2741809807");
-  assert.equal(aroundQuery({ openalex: null, doi: "10.5194/tc-1-2" }, "citedby"), "citedby:10.5194/tc-1-2");
+  // a DOI quoted, as any value of a filter with a slash
+  assert.equal(aroundQuery({ openalex: null, doi: "10.5194/tc-1-2" }, "citedby"), 'citedby:"10.5194/tc-1-2"');
   assert.equal(aroundQuery({ openalex: null, doi: "10.1000/a,b" }, "cites"), 'cites:"10.1000/a,b"');
   assert.equal(aroundQuery({ openalex: null, doi: null }, "cites"), null);
 });

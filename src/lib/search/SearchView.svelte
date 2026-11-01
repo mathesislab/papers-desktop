@@ -32,10 +32,9 @@
     moreText,
     totalText,
     withRecent,
-    yearError,
-    type Asked,
     type SearchState,
-  } from "./query";
+    type Typed,
+  } from "./state";
   import SearchSidebar from "./SearchSidebar.svelte";
 
   let {
@@ -84,8 +83,6 @@
   let yearInput = $state<HTMLInputElement>();
   /** the searches asked: an answer to one before the last is dropped */
   let asked = 0;
-  /** bumped when the list is replaced (a search, a page, another list): a refresh asked before it is dropped */
-  let generation = 0;
 
   /** the works of the search shown, or those saved for later; those unsaved in *Saved for later* stay in place
    *  until another list is shown */
@@ -97,7 +94,6 @@
   let results = $derived(search.results);
   /** the query whose words the rows and the details mark */
   let marked = $derived(view === "results" ? (results?.query ?? "") : "");
-  let yearWrong = $derived(yearError(search.year));
   let orderText = $derived(ORDERS.find((o) => o.order === search.order)?.text ?? "");
   let summary = $derived(
     (view === "saved"
@@ -128,16 +124,16 @@
   });
 
   /** The list again as the works are now: those of the search shown, found again, or those saved for later (those
-   *  unsaved here kept in place); and how many are saved. */
+   *  unsaved here kept in place); and how many are saved. An answer for a list no longer shown (another list, another
+   *  search or page of it: another `results`) is dropped. */
   async function refresh() {
-    const g = generation;
     const shown = view;
     const r = results;
     try {
       const saved = await api.saved();
       const fresh = shown === "saved" ? saved : r ? await api.rowsOf(r.ids, r.query) : [];
       savedCount = saved.length;
-      if (g !== generation) return;
+      if (view !== shown || results !== r) return;
       list.rows = shown === "saved" ? mergeRows(list.rows, fresh, list.sticky) : fresh;
     } catch (e) {
       list.say(String(e));
@@ -146,33 +142,30 @@
     list.selection.prune(list.ids, true);
   }
 
-  /** Another list, from the sidebar: nothing selected, the list as it is now. */
-  function showList(to: "results" | "saved") {
-    generation++;
-    view = to;
+  /** Another list in place of the one shown: nothing selected, nothing kept in place, the list again. */
+  function resetList() {
     list.sticky.clear();
     list.selection.only(null);
     list.reading = false;
+  }
+
+  /** Another list, from the sidebar, as it is now. */
+  function showList(to: "results" | "saved") {
+    view = to;
+    resetList();
     refresh();
   }
 
   /** Enter, Search: the first page of the query of the fields, in place of the works found before (but for those
-   *  saved for later or added); kept in the recent searches. A year that is not one, or a query OpenAlex cannot be
-   *  asked, is said where the works would be. */
+   *  saved for later or added); kept in the recent searches. A query OpenAlex cannot be asked (years that are none,
+   *  a field it has not) is said where the works would be. */
   async function run() {
     const query = composed(search.query, search.year);
-    if (query === null) {
-      view = "results";
-      failure = yearWrong;
-      return;
-    }
     if (!query) return list.focusSearch();
-    const typed: Asked = { query: search.query, year: search.year, order: search.order };
+    const typed: Typed = { query: search.query, year: search.year, order: search.order };
     const n = ++asked;
-    generation++;
     view = "results";
-    list.sticky.clear();
-    list.reading = false;
+    resetList();
     searching = true;
     failure = null;
     try {
@@ -181,20 +174,15 @@
       search.results = { query, order: typed.order, ids: page.rows.map((r) => r.id), total: page.total, next: page.next };
       search.recent = withRecent(search.recent, typed);
       list.rows = page.rows;
-      list.selection.only(null);
     } catch (e) {
       if (n === asked) failure = String(e);
     } finally {
-      if (n === asked) {
-        searching = false;
-        // a refresh asked while the works were replaced would bring the old ones back
-        generation++;
-      }
+      if (n === asked) searching = false;
     }
     refresh();
   }
 
-  /** Show 25 more: the next page of the search shown, after the works shown. */
+  /** Show 25 more: the next page of the search shown, after the works shown; the search shown, a new one with it. */
   async function loadMore() {
     const r = results;
     if (!r?.next || more || searching) return;
@@ -202,20 +190,18 @@
     try {
       const page = await api.run(r.query, r.order, r.next);
       if (results !== r) return;
-      r.ids = [...new Set([...r.ids, ...page.rows.map((w) => w.id)])];
-      r.total = page.total;
-      r.next = page.next;
+      const ids = [...new Set([...r.ids, ...page.rows.map((w) => w.id)])];
+      search.results = { ...r, ids, total: page.total, next: page.next };
       if (view === "results") list.rows = appended(list.rows, page.rows);
     } catch (e) {
       list.say(String(e));
     } finally {
       more = false;
-      generation++;
     }
   }
 
   /** A recent search, or the works around a work, in the fields, run. */
-  function runAgain(again: Asked) {
+  function runAgain(again: Typed) {
     search.query = again.query;
     search.year = again.year;
     search.order = again.order;
@@ -230,7 +216,7 @@
 
   /** The order of the works found, from its menu: the search of the fields again in it. */
   async function orderMenu() {
-    const choose = (order: Asked["order"]) => {
+    const choose = (order: Typed["order"]) => {
       search.order = order;
       if (composed(search.query, search.year) !== "") run();
     };
@@ -244,14 +230,12 @@
 
   /** The chip's ×: no search shown, the fields blank (the works found stay until the next search). */
   function clearSearch() {
-    generation++;
     search.query = "";
     search.year = "";
     search.results = null;
     list.rows = [];
     failure = null;
-    list.selection.only(null);
-    list.reading = false;
+    resetList();
     list.focusSearch();
   }
 
@@ -381,9 +365,8 @@
         bind:this={yearInput}
         bind:value={search.year}
         class="year"
-        class:wrong={yearWrong !== null}
         placeholder="Year"
-        title={yearWrong ?? "The years of the works: 2005, 2000-2010, 2000- or -2010 (y: in the query)"}
+        title="The years of the works: 2005, 2000-2010, 2000- or -2010 (y: in the query)"
         spellcheck="false"
         autocomplete="off"
       />
@@ -541,9 +524,6 @@
     width: 92px;
     padding: 0 8px;
     font-variant-numeric: tabular-nums;
-  }
-  input.year.wrong {
-    border-color: var(--error);
   }
   /* Search: in the tab's violet */
   .tool.primary {
