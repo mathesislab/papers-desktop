@@ -1,6 +1,5 @@
-// What can be done with the papers selected in the library table: which items of the context menu apply, the
-// row to select after some are removed, and what is said of what was done. Pure functions on rows, tested by
-// scripts/selection.test.ts (npm test).
+// What can be done with the papers selected in the library table: which items of the context menu apply, and what
+// is said of what was done. Pure functions on rows, tested by scripts/selection.test.ts (npm test).
 
 import type { Opened, Row, TagCount, Transferred } from "../types.ts";
 import { sameTag } from "../tags.ts";
@@ -38,15 +37,6 @@ export function available(rows: Row[]): Available {
 export function targetsOf(rows: Row[], bibs: string[]): string[] {
   if (bibs.length < 2) return [];
   return bibs.filter((bib) => !rows.every((r) => r.bib === bib));
-}
-
-/** The row to select once the papers `removed` are gone from the list `shown`: the first one after the first
- *  removed that stays, else the last one before; none when no row stays. */
-export function nextAfter(shown: Row[], removed: Set<string>): string | null {
-  const first = shown.findIndex((r) => removed.has(r.id));
-  if (first < 0) return null;
-  const stays = (r: Row) => !removed.has(r.id);
-  return (shown.slice(first).find(stays) ?? shown.slice(0, first).reverse().find(stays))?.id ?? null;
 }
 
 /** What is said after papers are copied or moved to a .bib file. */

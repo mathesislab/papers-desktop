@@ -55,18 +55,6 @@ export function snoozeUntil(days: number, now: Date): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
 }
 
-/** The items from one to another, in the order of the list (one alone if either is not in it). */
-export function rangeOf(ids: string[], from: string, to: string): string[] {
-  const [a, b] = [ids.indexOf(from), ids.indexOf(to)].sort((x, y) => x - y);
-  return a < 0 ? [to] : ids.slice(a, b + 1);
-}
-
-/** The item to show after some go from the list: the first after them that stays, else the last before. */
-export function nextAfter(ids: string[], gone: Set<string>): string | null {
-  const last = ids.reduce((at, id, i) => (gone.has(id) ? i : at), -1);
-  return ids.slice(last + 1).find((id) => !gone.has(id)) ?? ids.slice(0, last).reverse().find((id) => !gone.has(id)) ?? null;
-}
-
 /**
  * The list again, as the backend answers it (`fresh`), with the items triaged here since the filters last changed
  * (`sticky`) kept in their place when the answer lost them: an item marked seen in *Unread* stays under the cursor

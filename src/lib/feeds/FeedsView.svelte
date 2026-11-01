@@ -18,6 +18,7 @@
   import { modalOpen } from "$lib/library/modal.svelte";
   import { OPEN_ASK } from "$lib/library/selection";
   import Splitter from "$lib/library/Splitter.svelte";
+  import { Selection } from "$lib/list/selection.svelte";
   import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
@@ -55,10 +56,8 @@
     mergeRows,
     newAbove,
     newOlderThan,
-    nextAfter,
     snoozeUntil,
     pageOf,
-    rangeOf,
     stale,
     toggled,
     type TriageAction,
@@ -109,11 +108,7 @@
   /** the first answer came */
   let loaded = $state(false);
   let failure = $state<string | null>(null);
-  let selected = $state(new Set<string>());
-  /** the item the details show, and that the keys move from */
-  let focus = $state<string | null>(null);
-  /** where shift extends the selection from */
-  let anchor: string | null = null;
+  const selection = new Selection();
   let detail = $state<FeedDetail | null>(null);
   /** the details beside the list (the setting), else in place of it */
   let beside = $state(false);
@@ -160,7 +155,7 @@
 
   let byId = $derived(new Map(rows.map((r) => [r.id, r])));
   /** the row of the item in focus, pinned over the item read */
-  let focusRow = $derived(focus ? byId.get(focus) : undefined);
+  let focusRow = $derived(selection.focus ? byId.get(selection.focus) : undefined);
   let request = $derived(requestOf(filters));
   let chips = $derived(feedChips(filters));
   let groups = $derived(sourceGroups(subscriptions, counts));
@@ -289,9 +284,7 @@
       failure = String(e);
     }
     loaded = true;
-    const ids = new Set(rows.map((r) => r.id));
-    if ([...selected].some((id) => !ids.has(id))) selected = new Set([...selected].filter((id) => ids.has(id)));
-    if (!keep && focus && !ids.has(focus)) focus = null;
+    selection.prune(listed(), keep);
   }
 
   // the filters changed: the list again, the items triaged before let go
@@ -305,7 +298,7 @@
 
   // the details of the item in focus, marked by the query; again when items change
   $effect(() => {
-    const id = focus;
+    const id = selection.focus;
     const query = request.query;
     version;
     if (!id) {
@@ -335,7 +328,7 @@
 
   // the item in focus, if new, is seen once it stays
   $effect(() => {
-    const id = focus;
+    const id = selection.focus;
     // a reminder stays new until marked read
     untrack(() => {
       const row = id === null ? undefined : byId.get(id);
@@ -370,11 +363,11 @@
     noticeTimer = setTimeout(() => (notice = null), 4000);
   }
 
-  /** The items the keys and the menu act on: the selection when the focus is in it, else the item in focus. */
-  function targets(): string[] {
-    if (focus && selected.has(focus)) return rows.filter((r) => selected.has(r.id)).map((r) => r.id);
-    return focus ? [focus] : [];
-  }
+  /** the ids of the list, in order */
+  const listed = () => rows.map((r) => r.id);
+
+  /** The items the keys and the menu act on (`Selection.targets`). */
+  const targets = () => selection.targets(listed());
 
   /** The items the buttons of the details act on: the keys', else the item shown. */
   const targetsOr = (id: string) => (targets().length ? targets() : [id]);
@@ -385,15 +378,9 @@
     if (!ids.length) return;
     const set = new Set(ids);
     if (triage === "dismissed") {
-      const next = focus && set.has(focus) ? nextAfter(rows.map((r) => r.id), set) : focus;
+      selection.nextAfter(listed(), set);
       for (const id of ids) sticky.delete(id);
       rows = rows.filter((r) => !set.has(r.id));
-      if (next !== focus) {
-        selected = new Set(next ? [next] : []);
-        anchor = focus = next;
-      } else {
-        selected = new Set([...selected].filter((id) => !set.has(id)));
-      }
     } else {
       for (const id of ids) sticky.add(id);
       rows = rows.map((r) => (set.has(r.id) ? { ...r, triage } : r));
@@ -417,7 +404,7 @@
   }
 
   /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked seen. */
-  function markAbove(from = focus) {
+  function markAbove(from = selection.focus) {
     const ids = newAbove(rows, from);
     if (!ids.length) return;
     setTo(ids, "seen");
@@ -439,7 +426,7 @@
         await item("Older than 3 Days", older(3)),
         await item("Older than 1 Week", older(7)),
         await PredefinedMenuItem.new({ item: "Separator" }),
-        await item("All Above the Selection", newAbove(rows, focus)),
+        await item("All Above the Selection", newAbove(rows, selection.focus)),
       ],
     });
     await menu.popup();
@@ -496,7 +483,7 @@
   }
 
   /** The selection bar: the rows selected, in the order of the list. */
-  const chosen = () => rows.filter((r) => selected.has(r.id));
+  const chosen = () => rows.filter((r) => selection.selected.has(r.id));
 
   /** o, a double-click: the page of each item in the browser (above 5, after asking); a new one is seen. */
   async function openItems(ids: string[]) {
@@ -540,7 +527,7 @@
   }
 
   /** f: the papers behind a post looked for again (its page, then Crossref by its title). */
-  async function find(id = focus) {
+  async function find(id = selection.focus) {
     if (!id || finding) return;
     const d = await detailOf(id);
     if (!d || !isPost(d.kind)) return say("F finds the paper behind a post");
@@ -559,48 +546,18 @@
 
   /** An item to show, from the details (a post that covers it, a linked paper): selected, in the list or not. */
   function showItem(id: string) {
-    selected = new Set([id]);
-    anchor = focus = id;
+    selection.only(id);
   }
 
+  /** A click on a row: selected (`Selection.click`); alone, read in place of the list. */
   function select(id: string, e: MouseEvent) {
     if (e.button !== 0) return;
-    if (e.shiftKey && anchor) {
-      selected = new Set(rangeOf(rows.map((r) => r.id), anchor, id));
-    } else if (mac ? e.metaKey : e.ctrlKey) {
-      const s = new Set(selected);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
-      selected = s;
-      anchor = id;
-    } else {
-      selected = new Set([id]);
-      anchor = id;
-      if (!beside) reading = true;
-    }
-    focus = id;
-  }
-
-  /** Move the focus by some rows, or to the first or last; extending the selection, or not. */
-  function move(to: number | "first" | "last", extend: boolean) {
-    const ids = rows.map((r) => r.id);
-    if (!ids.length) return;
-    const at = focus ? ids.indexOf(focus) : -1;
-    const index =
-      to === "first" ? 0 : to === "last" ? ids.length - 1 : at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + to));
-    const next = ids[index];
-    if (extend && anchor) {
-      selected = new Set(rangeOf(ids, anchor, next));
-    } else {
-      selected = new Set([next]);
-      anchor = next;
-    }
-    focus = next;
+    if (selection.click(id, e, listed()) && !beside) reading = true;
   }
 
   /** Right-click on a row: the items selected when it is one of them, else that item alone. */
   async function rowMenu(id: string) {
-    if (!selected.has(id)) showItem(id);
+    if (!selection.selected.has(id)) showItem(id);
     const ids = targets();
     const items = ids.map((i) => byId.get(i)).filter((r): r is FeedRow => r !== undefined);
     if (!items.length) return;
@@ -758,7 +715,7 @@
     const mod = mac ? e.metaKey : e.ctrlKey;
     const go = (to: number | "first" | "last", extend = e.shiftKey) => {
       e.preventDefault();
-      move(to, extend);
+      selection.move(listed(), to, extend);
     };
     const act = (action: () => unknown) => {
       e.preventDefault();
@@ -776,7 +733,7 @@
       if (e.key === "Escape") act(() => input?.blur());
       return;
     }
-    if (matches(e, ALL)) return act(() => (selected = new Set(rows.map((r) => r.id))));
+    if (matches(e, ALL)) return act(() => (selection.selected = new Set(listed())));
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === " " && e.shiftKey) return act(() => markAbove());
     if (e.shiftKey) return;
@@ -784,7 +741,7 @@
       case "/":
         return act(focusSearch);
       case "Enter":
-        return beside || !focus ? undefined : act(() => (reading = !reading));
+        return beside || !selection.focus ? undefined : act(() => (reading = !reading));
       case "Escape":
         return reading ? act(() => (reading = false)) : undefined;
       case "Home":
@@ -845,7 +802,7 @@
   }
 
   let summary = $derived(
-    `${rows.length} of ${counts?.all ?? 0}` + (selected.size > 1 ? ` · ${selected.size} selected` : ""),
+    `${rows.length} of ${counts?.all ?? 0}` + (selection.selected.size > 1 ? ` · ${selection.selected.size} selected` : ""),
   );
 </script>
 
@@ -969,16 +926,16 @@
               {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}
             </button>
           </div>
-          {#if selected.size > 1}
+          {#if selection.selected.size > 1}
             <div class="selbar">
-              <span>{selected.size} selected</span>
+              <span>{selection.selected.size} selected</span>
               <button onclick={() => markSeen(chosen().filter((r) => r.triage === "new").map((r) => r.id))}>Mark read</button>
               <button onclick={() => setTo(chosen().filter((r) => r.triage === "seen").map((r) => r.id), "new")}>Mark unread</button>
               <button onclick={() => triage("shortlist", chosen().map((r) => r.id))}>★ Star</button>
               <button onclick={() => triage("dismiss", chosen().map((r) => r.id))}>Dismiss</button>
               <button onclick={() => laterMenu(chosen().map((r) => r.id))}>⏰ Later ▾</button>
               <span class="spacer"></span>
-              <button class="plain" onclick={() => (selected = new Set(focus ? [focus] : []))}>Clear selection</button>
+              <button class="plain" onclick={() => selection.only(selection.focus)}>Clear selection</button>
             </div>
           {/if}
           {#if !loaded}
@@ -995,8 +952,8 @@
             <div class="rows">
             <FeedTable
               {rows}
-              {selected}
-              {focus}
+              selected={selection.selected}
+              focus={selection.focus}
               sort={filters.sort}
               widths={columns}
               {colours}
@@ -1004,7 +961,7 @@
               onwidths={(widths) => (columns = widths)}
               onstar={(id) => triage("shortlist", [id])}
               onselect={select}
-              onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
+              onopen={(id) => openItems(selection.selected.has(id) ? targets() : [id])}
               onmenu={rowMenu}
             />
             {#if reading && !beside && focusRow}
@@ -1059,7 +1016,7 @@
   <FeedDetails
     detail={d}
     {wide}
-    count={focus && selected.has(focus) ? selected.size : 1}
+    count={selection.focus && selection.selected.has(selection.focus) ? selection.selected.size : 1}
     {byId}
     {colours}
     {pdfOf}

@@ -139,7 +139,10 @@ keeps them when it saves). A paper shown after it was added or merged takes the 
 they would hide it.
 
 **Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
-`selection.ts`, pure and tested by `scripts/selection.test.ts`):
+`selection.ts`, pure and tested by `scripts/selection.test.ts`; the selection
+itself is `list/selection.svelte.ts`, the three tabs', on `list/order.ts`:
+⇧ ranges, the keys' steps, and after a delete, a move or a dismissal the row
+after the last one gone):
 
 - *Open*: Enter, a double-click, or *Open* in the context menu opens every
   paper selected as a tab (`openPapers`, the first in front); a double-click on

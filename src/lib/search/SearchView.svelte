@@ -19,12 +19,13 @@
   import FeedDetails from "$lib/feeds/FeedDetails.svelte";
   import FeedTable, { SEARCH_ORDER, type FeedColumn } from "$lib/feeds/FeedTable.svelte";
   import { interestColours } from "$lib/feeds/filters";
-  import { addTarget, mergeRows, pageOf, rangeOf, toggled } from "$lib/feeds/items";
+  import { addTarget, mergeRows, pageOf, toggled } from "$lib/feeds/items";
   import Reader from "$lib/feeds/Reader.svelte";
   import { mac, matches, type Shortcut } from "$lib/keys";
   import { modalOpen } from "$lib/library/modal.svelte";
   import { OPEN_ASK } from "$lib/library/selection";
   import Splitter from "$lib/library/Splitter.svelte";
+  import { Selection } from "$lib/list/selection.svelte";
   import * as api from "./api";
   import {
     ORDERS,
@@ -86,11 +87,7 @@
   /** what the search answered instead of works: the query refused, OpenAlex not reached */
   let failure = $state<string | null>(null);
   let following = $state(false);
-  let selected = $state(new Set<string>());
-  /** the item the details show, and that the keys move from */
-  let focus = $state<string | null>(null);
-  /** where shift extends the selection from */
-  let anchor: string | null = null;
+  const selection = new Selection();
   let detail = $state<FeedDetail | null>(null);
   /** the details beside the list (the setting), else in place of it */
   let beside = $state(false);
@@ -118,7 +115,7 @@
 
   let byId = $derived(new Map(rows.map((r) => [r.id, r])));
   /** the row of the item in focus, pinned over the item read */
-  let focusRow = $derived(focus ? byId.get(focus) : undefined);
+  let focusRow = $derived(selection.focus ? byId.get(selection.focus) : undefined);
   let results = $derived(search.results);
   /** the query whose words the rows and the details mark */
   let marked = $derived(view === "results" ? (results?.query ?? "") : "");
@@ -129,7 +126,7 @@
       ? `${rows.length} saved`
       : results
         ? totalText(results.total) + (results.ids.length < results.total ? ` · ${results.ids.length} shown` : "")
-        : "") + (selected.size > 1 ? ` · ${selected.size} selected` : ""),
+        : "") + (selection.selected.size > 1 ? ` · ${selection.selected.size} selected` : ""),
   );
 
   onMount(() => {
@@ -152,7 +149,7 @@
 
   // the details of the item in focus, marked by the query; again when the works change
   $effect(() => {
-    const id = focus;
+    const id = selection.focus;
     const query = marked;
     version;
     if (!id) {
@@ -202,8 +199,7 @@
       say(String(e));
     }
     loaded = true;
-    const ids = new Set(rows.map((r) => r.id));
-    if ([...selected].some((id) => !ids.has(id))) selected = new Set([...selected].filter((id) => ids.has(id)));
+    selection.prune(listed(), true);
   }
 
   /** Another list, from the sidebar: nothing selected, the list as it is now. */
@@ -211,8 +207,7 @@
     generation++;
     view = to;
     sticky.clear();
-    selected = new Set();
-    anchor = focus = null;
+    selection.only(null);
     reading = false;
     refresh();
   }
@@ -242,8 +237,7 @@
       search.results = { query, order: typed.order, ids: page.rows.map((r) => r.id), total: page.total, next: page.next };
       search.recent = withRecent(search.recent, typed);
       rows = page.rows;
-      selected = new Set();
-      anchor = focus = null;
+      selection.only(null);
     } catch (e) {
       if (n === asked) failure = String(e);
     } finally {
@@ -312,8 +306,7 @@
     search.results = null;
     rows = [];
     failure = null;
-    selected = new Set();
-    anchor = focus = null;
+    selection.only(null);
     reading = false;
     focusSearch();
   }
@@ -355,11 +348,11 @@
     return found;
   }
 
-  /** The items the keys and the menu act on: the selection when the focus is in it, else the item in focus. */
-  function targets(): string[] {
-    if (focus && selected.has(focus)) return rows.filter((r) => selected.has(r.id)).map((r) => r.id);
-    return focus ? [focus] : [];
-  }
+  /** the ids of the list, in order */
+  const listed = () => rows.map((r) => r.id);
+
+  /** The items the keys and the menu act on (`Selection.targets`). */
+  const targets = () => selection.targets(listed());
 
   /** The items the buttons of the details act on: the keys', else the item shown. */
   const targetsOr = (id: string) => (targets().length ? targets() : [id]);
@@ -425,48 +418,18 @@
 
   /** An item to show, from the details (another version): selected, in the list or not. */
   function showItem(id: string) {
-    selected = new Set([id]);
-    anchor = focus = id;
+    selection.only(id);
   }
 
+  /** A click on a row: selected (`Selection.click`); alone, read in place of the list. */
   function select(id: string, e: MouseEvent) {
     if (e.button !== 0) return;
-    if (e.shiftKey && anchor) {
-      selected = new Set(rangeOf(rows.map((r) => r.id), anchor, id));
-    } else if (mac ? e.metaKey : e.ctrlKey) {
-      const s = new Set(selected);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
-      selected = s;
-      anchor = id;
-    } else {
-      selected = new Set([id]);
-      anchor = id;
-      if (!beside) reading = true;
-    }
-    focus = id;
-  }
-
-  /** Move the focus by some rows, or to the first or last; extending the selection, or not. */
-  function move(to: number | "first" | "last", extend: boolean) {
-    const ids = rows.map((r) => r.id);
-    if (!ids.length) return;
-    const at = focus ? ids.indexOf(focus) : -1;
-    const index =
-      to === "first" ? 0 : to === "last" ? ids.length - 1 : at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + to));
-    const next = ids[index];
-    if (extend && anchor) {
-      selected = new Set(rangeOf(ids, anchor, next));
-    } else {
-      selected = new Set([next]);
-      anchor = next;
-    }
-    focus = next;
+    if (selection.click(id, e, listed()) && !beside) reading = true;
   }
 
   /** Right-click on a row: the works selected when it is one of them, else that work alone. */
   async function rowMenu(id: string) {
-    if (!selected.has(id)) showItem(id);
+    if (!selection.selected.has(id)) showItem(id);
     const ids = targets();
     const items = ids.map((i) => byId.get(i)).filter((r): r is FeedRow => r !== undefined);
     if (!items.length) return;
@@ -511,7 +474,7 @@
     const mod = mac ? e.metaKey : e.ctrlKey;
     const go = (to: number | "first" | "last", extend = e.shiftKey) => {
       e.preventDefault();
-      move(to, extend);
+      selection.move(listed(), to, extend);
     };
     const act = (action: () => unknown) => {
       e.preventDefault();
@@ -527,14 +490,14 @@
       else if (e.key === "Escape") act(() => (e.target as HTMLElement).blur());
       return;
     }
-    if (matches(e, ALL)) return act(() => (selected = new Set(rows.map((r) => r.id))));
+    if (matches(e, ALL)) return act(() => (selection.selected = new Set(listed())));
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     // a / typed with ⇧ on some keyboards
     if (e.key === "/") return act(focusSearch);
     if (e.shiftKey) return;
     switch (e.key) {
       case "Enter":
-        return beside || !focus ? undefined : act(() => (reading = !reading));
+        return beside || !selection.focus ? undefined : act(() => (reading = !reading));
       case "Escape":
         return reading ? act(() => (reading = false)) : undefined;
       case "Home":
@@ -555,7 +518,7 @@
   }
 
   /** The selection bar: the rows selected, in the order of the list. */
-  const chosen = () => rows.filter((r) => selected.has(r.id)).map((r) => r.id);
+  const chosen = () => rows.filter((r) => selection.selected.has(r.id)).map((r) => r.id);
 
   /** An example of the help, in the search field. */
   function example(text: string) {
@@ -641,14 +604,14 @@
             </button>
           {/if}
         </div>
-        {#if selected.size > 1}
+        {#if selection.selected.size > 1}
           <div class="selbar">
-            <span>{selected.size} selected</span>
+            <span>{selection.selected.size} selected</span>
             <button onclick={() => addItems(chosen(), true)}>Add…</button>
             <button onclick={() => save(chosen())}>☆ Save for later</button>
             <button onclick={() => openItems(chosen())}>Open ↗</button>
             <span class="spacer"></span>
-            <button class="plain" onclick={() => (selected = new Set(focus ? [focus] : []))}>Clear selection</button>
+            <button class="plain" onclick={() => selection.only(selection.focus)}>Clear selection</button>
           </div>
         {/if}
         {#if view === "results" && searching}
@@ -669,8 +632,8 @@
           <div class="rows">
             <FeedTable
               {rows}
-              {selected}
-              {focus}
+              selected={selection.selected}
+              focus={selection.focus}
               columns={SEARCH_ORDER}
               names={{ journal: "Journal" }}
               widths={columns}
@@ -681,7 +644,7 @@
               onwidths={(widths) => (columns = widths)}
               onstar={(id) => save([id])}
               onselect={select}
-              onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
+              onopen={(id) => openItems(selection.selected.has(id) ? targets() : [id])}
               onmenu={rowMenu}
             />
             {#if reading && !beside && focusRow}
@@ -724,7 +687,7 @@
   <FeedDetails
     detail={d}
     {wide}
-    count={focus && selected.has(focus) ? selected.size : 1}
+    count={selection.focus && selection.selected.has(selection.focus) ? selection.selected.size : 1}
     {byId}
     {colours}
     {pdfOf}

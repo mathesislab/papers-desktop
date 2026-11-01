@@ -38,9 +38,7 @@ import {
   mergeRows,
   newAbove,
   newOlderThan,
-  nextAfter,
   snoozeUntil,
-  rangeOf,
   stale,
   toggled,
 } from "../src/lib/feeds/items.ts";
@@ -256,11 +254,6 @@ test("mark all above, ranges, the next after some go", () => {
   ];
   assert.deepEqual(newOlderThan(dated, 3, Date.parse("2026-10-31T00:00:00Z")), ["b"], "a snoozed item is not unread");
   assert.deepEqual(snoozeUntil(3, new Date(2026, 9, 31, 15, 30)), new Date(2026, 10, 3), "the start of the day");
-  assert.deepEqual(rangeOf(["a", "b", "c", "d"], "c", "a"), ["a", "b", "c"]);
-  assert.deepEqual(rangeOf(["a", "b"], "z", "b"), ["b"]);
-  assert.equal(nextAfter(["a", "b", "c", "d"], new Set(["b", "c"])), "d");
-  assert.equal(nextAfter(["a", "b", "c"], new Set(["c"])), "b");
-  assert.equal(nextAfter(["a"], new Set(["a"])), null);
 });
 
 const row = (id: string, triage: Triage = "new"): FeedRow => ({
