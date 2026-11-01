@@ -150,7 +150,9 @@ pub(crate) enum Lookup<'a> {
     Crossref(&'a str),
     /// the work of a DOI in OpenAlex
     OpenAlex(&'a str),
-    /// a post's page, by its URL: the same whichever item the post merges into
+    /// a post's page read, by the URL of an entry of it (else by an entry's
+    /// guid: a post of no link, whose title alone is searched): the same
+    /// whichever item the post merges into
     Page(&'a str),
     /// the work of a ScienceDirect PII in Crossref
     Pii(&'a str),

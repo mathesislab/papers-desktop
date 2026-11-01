@@ -294,3 +294,30 @@ fn a_blog_post_titled_as_its_paper_is_found_by_its_title() {
     let reopened = Feeds::open(dir.path()).unwrap();
     assert_eq!(reopened.items(), feeds.items());
 }
+
+/// A post of no link, of a subscription whose pages are read: its title
+/// searched in Crossref once, as its page would be read once.
+#[test]
+fn a_post_of_no_link_is_searched_by_its_title_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    let blog = "https://example.org/blog.rss";
+    let settings = SubscriptionSettings {
+        fetch_pages: true,
+        ..SubscriptionSettings::new(SourceKind::Blog)
+    };
+    feeds.subscribe(rss(blog), settings).unwrap();
+    let body = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Blog</title>\
+        <item><title>Snow creep</title><guid isPermaLink=\"false\">post-1</guid>\
+        <description>Our new paper is out.</description></item></channel></rss>";
+    let search = format!("{WORKS}?query.bibliographic=Snow%20creep&rows=5&{SELECT}");
+    let empty = r#"{"status":"ok","message":{"items":[]}}"#;
+    let http = Recorded::new()
+        .reply(blog, Reply::ok(blog, body))
+        .reply(&search, Reply::ok(&search, empty))
+        .reply(blog, Reply::ok(blog, body));
+    feeds.fetch(&http, &Access::default()).unwrap();
+    feeds.fetch(&http, &Access::default()).unwrap();
+    let searched = (http.requests().iter()).filter(|r| r.url == search).count();
+    assert_eq!(searched, 1);
+}

@@ -331,6 +331,16 @@ pub(crate) fn sure(links: &[Linked]) -> bool {
     links.iter().any(|l| l.confidence == Confidence::High)
 }
 
+/// What tells that a post's page was read: the URLs of its entries, else
+/// their guids (a post of no link).
+pub(crate) fn pages(post: &Item) -> impl Iterator<Item = &str> {
+    let entries = || post.sources.iter().map(|s| &s.entry);
+    let urls = entries().filter_map(|e| e.url.as_deref());
+    let guids = entries().map(|e| e.guid.as_str());
+    let linked = entries().any(|e| e.url.is_some());
+    urls.chain(guids.filter(move |_| !linked))
+}
+
 /// How far to look for the papers of a post.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Reach {
@@ -406,6 +416,7 @@ impl Feeds {
         };
         let text = item.content.clone().or_else(|| item.summary.clone());
         let (url, title) = (item.url.clone(), item.title.clone());
+        let read: Vec<String> = pages(item).map(String::from).collect();
         let source = item.sources[0].entry.source.clone();
         let mut works = Vec::new();
         let feed = text.map_or_else(Vec::new, |t| cited(&t, false));
@@ -414,8 +425,8 @@ impl Feeds {
             page: None,
         };
         if reach == Reach::Web && !sure(&found.links) && budget.page() {
-            if let Some(url) = &url {
-                self.ask(Lookup::Page(url));
+            for page in &read {
+                self.ask(Lookup::Page(page));
             }
             match url.map(|url| read_page(http, &url)) {
                 Some(Ok(html)) => {

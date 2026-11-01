@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use crate::crossref::{self, Message};
 use crate::feeds::Feeds;
 use crate::http::{Access, Http, get_json};
-use crate::links::{Reach, sure};
+use crate::links::{Reach, pages, sure};
 use crate::model::{Entry, Item, ItemKind, LOOKUP, Origin};
 use crate::openalex;
 use crate::store::Lookup;
@@ -110,7 +110,7 @@ impl Feeds {
     /// lookups of papers' DOIs; what it asked for.
     pub(crate) fn complete(&mut self, http: &dyn Http, access: &Access) -> Budget {
         let mut budget = Budget::new(LOOKUPS_PER_FETCH, PAGES_PER_FETCH);
-        let pages: HashSet<&str> = self
+        let reading: HashSet<&str> = self
             .subscriptions()
             .iter()
             .filter(|s| s.settings.fetch_pages)
@@ -124,8 +124,8 @@ impl Feeds {
                 let asks = i
                     .sources
                     .iter()
-                    .any(|s| pages.contains(s.entry.source.as_str()));
-                let unread = (i.url.as_deref()).is_some_and(|url| !self.asked(Lookup::Page(url)));
+                    .any(|s| reading.contains(s.entry.source.as_str()));
+                let unread = !pages(i).any(|page| self.asked(Lookup::Page(page)));
                 match (asks && unread, i.links.is_empty()) {
                     (true, _) => Some((i.id.clone(), Reach::Web)),
                     (false, true) => Some((i.id.clone(), Reach::Feed)),
