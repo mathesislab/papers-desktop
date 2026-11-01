@@ -69,9 +69,10 @@ Three panes, each resized by dragging, the right one hidden on demand:
   at first are in `library/columns.ts` and `feeds/columns.ts`. The layout
   keeps each table's columns as a list of `{key, width}`; that of an older
   version is read (the library's `{column, width}`, the Feeds and Search tabs'
-  widths by column, in their first order). A line above it shows the filters
-  that are on as chips, each with an ×: `papers.bib › No PDF › amoc › "ice"`;
-  with no filter, there is no line.
+  widths by column, in their first order; one before `version` 2 shows the
+  star column once, where the first order has it). A line above it shows the
+  filters that are on as chips, each with an ×: `papers.bib › No PDF › amoc ›
+  "ice"`; with no filter, there is no line.
 - **Details** of the selected paper: title, authors, tags, file (open,
   reveal), fields, citation, BibTeX (folded).
 

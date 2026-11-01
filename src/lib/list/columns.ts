@@ -97,6 +97,17 @@ export function toggled<K extends string>(shown: Shown<K>[], specs: Specs<K>, ke
   return shown.length > 1 ? shown.filter((c) => c.key !== key) : shown;
 }
 
+/** A column new to a table shown, at its width at first, where `order` (the columns at first) has it: before the
+ *  first column shown that comes after it there, else at the end; the same when it is shown already. */
+export function withColumn<K extends string>(shown: Shown<K>[], specs: Specs<K>, order: K[], key: K): Shown<K>[] {
+  if (shown.some((c) => c.key === key)) return shown;
+  const after = order.slice(order.indexOf(key) + 1);
+  const at = shown.findIndex((c) => after.includes(c.key));
+  const out = [...shown];
+  out.splice(at < 0 ? shown.length : at, 0, { key, width: specs[key].width });
+  return out;
+}
+
 /** The columns shown at first: `keys`, at their widths at first. */
 export const columnsOf = <K extends string>(keys: K[], specs: Specs<K>): Shown<K>[] =>
   keys.map((key) => ({ key, width: specs[key].width }));

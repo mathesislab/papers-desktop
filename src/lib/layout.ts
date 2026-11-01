@@ -6,7 +6,7 @@ import { FEED_ORDER, FEED_SPECS, SEARCH_ORDER, SEARCH_SPECS, type FeedColumn } f
 import { NO_FEED_FILTERS, restoredFeeds, type FeedFilters } from "./feeds/filters.ts";
 import { COLUMNS, DEFAULT_COLUMNS, DEFAULT_ORDER, type Column, type Sort } from "./library/columns.ts";
 import { NO_FILTERS, restored, type Filters } from "./library/filters.ts";
-import { columnsOf, restoredColumns, type Shown } from "./list/columns.ts";
+import { columnsOf, restoredColumns, withColumn, type Shown } from "./list/columns.ts";
 import { NO_SEARCH, restoredSearch, type SearchState } from "./search/state.ts";
 
 /** A tab of the window: the library (with the papers open), the feeds, or the search of OpenAlex. */
@@ -23,6 +23,8 @@ export type SearchLayout = SearchState & { columns: Shown<FeedColumn>[] };
  *  show, the columns and order of the library's table, the library tab (its library, view, tags and search), the
  *  papers open and the page of each, the parent tags unfolded in the sidebar, the Feeds and the Search tab's own. */
 export type Layout = {
+  /** what the layout knows: `LAYOUT_VERSION` once read */
+  version: number;
   tab: Tab;
   sidebar: number;
   details: number;
@@ -54,7 +56,11 @@ type Before = {
 
 const TABS: Tab[] = ["library", "feeds", "search"];
 
+/** The version of the layout: 2 since the library's star column, which a layout of before shows once (none: 1). */
+export const LAYOUT_VERSION = 2;
+
 const DEFAULTS: Layout = {
+  version: LAYOUT_VERSION,
   tab: "library",
   sidebar: 230,
   details: 340,
@@ -71,7 +77,8 @@ const DEFAULTS: Layout = {
   search: { ...NO_SEARCH, columns: columnsOf(SEARCH_ORDER, SEARCH_SPECS) },
 };
 
-/** The layout saved (none: the defaults): what a file of an older version does not have takes its default, and
+/** The layout saved (none: the defaults): what a file of an older version does not have takes its default (one of
+ *  before version 2 shows the library's star column), and
  *  what it kept apart (`Before`) comes in its place; the filters of the library tab and of the Feeds tab, and the
  *  Search tab's, are checked (`restored`, `restoredFeeds`, `restoredSearch`), as are the columns of the three tables
  *  (`restoredColumns`: those of the Feeds and Search tabs, once widths by column, become a list in their first
@@ -83,11 +90,15 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
   const feeds: Partial<Record<keyof FeedsLayout, unknown>> =
     kept.feeds && "filters" in kept.feeds ? kept.feeds : { filters: kept.feeds, columns: feedColumns, shown: feedsShown };
   const search = kept.search;
+  const columns = restoredColumns(kept.columns, COLUMNS, DEFAULT_ORDER);
+  // the star column, new in version 2: shown in a layout of before, where it was in no menu; hidden since, it stays so
+  const before = typeof kept.version !== "number" || kept.version < 2;
   return {
     ...DEFAULTS,
     ...kept,
+    version: LAYOUT_VERSION,
     tab,
-    columns: restoredColumns(kept.columns, COLUMNS, DEFAULT_ORDER),
+    columns: before ? withColumn(columns, COLUMNS, DEFAULT_ORDER, "star") : columns,
     library: restored(kept.library),
     feeds: {
       filters: restoredFeeds(feeds.filters as Partial<FeedFilters> | undefined),

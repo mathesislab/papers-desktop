@@ -3,7 +3,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { restore } from "../src/lib/layout.ts";
+import { LAYOUT_VERSION, restore } from "../src/lib/layout.ts";
+import { COLUMNS } from "../src/lib/library/columns.ts";
 
 test("no layout: the defaults, the Library tab in front", () => {
   const layout = restore(null);
@@ -45,6 +46,23 @@ test("the Feeds tab's columns of an older version still, widths by column: in th
     { key: "score", width: 90 },
     { key: "similar", width: 70 },
   ]);
+});
+
+test("the library's star column shown once in a layout of before version 2, then hidden if hidden", () => {
+  const before = { columns: [{ key: "authors", width: 90 }, { key: "title", width: 300 }] };
+  const shown = restore(before as never);
+  assert.equal(shown.version, LAYOUT_VERSION);
+  assert.deepEqual(shown.columns, [{ key: "star", width: COLUMNS.star.width }, ...before.columns]);
+  // at its place in the order at first: before the first column shown that comes after it there
+  assert.deepEqual(
+    restore({ columns: [{ key: "doi", width: 190 }, { key: "year", width: 56 }] } as never).columns.map((c) => c.key),
+    ["doi", "star", "year"],
+  );
+  // shown already, or a layout of version 2: as saved
+  const moved = [{ key: "title", width: 300 }, { key: "star", width: 40 }];
+  assert.deepEqual(restore({ columns: moved } as never).columns, moved);
+  const hidden = { ...JSON.parse(JSON.stringify(shown)), columns: before.columns };
+  assert.deepEqual(restore(hidden).columns, before.columns);
 });
 
 test("the Starred view of the Feeds tab by its name of before", () => {
