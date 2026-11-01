@@ -49,7 +49,16 @@ Three panes, each resized by dragging, the right one hidden on demand:
   within the libraries chosen.
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
-  missing file), multi-select. Only the rows on screen are drawn. A line
+  missing file), multi-select. Only the rows on screen are drawn
+  (`list/virtual.svelte.ts`). The headers are the three tables' (`TableHead`,
+  `list/columns.ts`, the library's, the Feeds and the Search tab's): a click
+  sorts, a header dragged moves its column, a right-click shows or hides
+  columns, an edge resizes, following the pointer (the title, else the last
+  column, takes the room left; after it, an edge resizes the column after it,
+  the title giving or taking the room; each column has a least width). The
+  layout keeps each table's columns as a list of `{key, width}`; that of an
+  older version is read (the library's `{column, width}`, the Feeds and
+  Search tabs' widths by column, in their first order). A line
   above it shows the filters that are on as chips, each with an ×:
   `papers.bib › No PDF › amoc › "ice"`; with no filter, there is no line.
 - **Details** of the selected paper: title, authors, tags, file (open,
@@ -874,10 +883,9 @@ splitter, `tab.css` the frame of the two tabs):
   the Library tab on a click). A post's HTML (`safe_html`, ammonia: its
   text, links and images, an image's title under it), then its linked papers as
   cards (Add by the DOI, Shortlist, Show paper), *Find linked paper*
-  (`findPapers`). The list's columns are resized by their headers' edges,
-  the edge following the pointer (the title gives or takes the room; each
-  header has a least width that fits its name and sort arrow; the window's
-  layout keeps the widths).
+  (`findPapers`). The list's columns are moved, shown or hidden and resized
+  as the library's (above; each header has a least width that fits its name
+  and sort arrow).
 - *Add*: the library's Add sheet, opened over the Feeds tab with the item's
   DOI (an arXiv id as its DataCite DOI, `10.48550/arXiv.…`) fetched at once
   (`initial`), its free PDF looked for unless added without one. After

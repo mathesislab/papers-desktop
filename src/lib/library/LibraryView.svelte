@@ -80,7 +80,8 @@
   import Sidebar from "$lib/library/Sidebar.svelte";
   import { DROP_NEW, pdfDrag } from "$lib/library/drag.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import Table, { COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
+  import Table, { COLUMNS, value, type Column, type Sort } from "$lib/library/Table.svelte";
+  import type { Shown } from "$lib/list/columns";
   import type {
     AddOptions,
     Added,
@@ -214,14 +215,14 @@
 
   /** the columns of the table: in *Recently added*, the date added too (last, unless shown already) */
   let columns = $derived(
-    layout.library.view === "added" && !layout.columns.some((c) => c.column === "added")
-      ? [...layout.columns, { column: "added" as const, width: COLUMNS.added.width }]
+    layout.library.view === "added" && !layout.columns.some((c) => c.key === "added")
+      ? [...layout.columns, { key: "added" as const, width: COLUMNS.added.width }]
       : layout.columns,
   );
 
   /** The columns changed in the table: the date added, shown by *Recently added* only, is not kept. */
-  function setColumns(next: Shown[]) {
-    layout.columns = columns === layout.columns ? next : next.filter((c) => c.column !== "added");
+  function setColumns(next: Shown<Column>[]) {
+    layout.columns = columns === layout.columns ? next : next.filter((c) => c.key !== "added");
   }
 
   /** the filters on, as chips above the table */

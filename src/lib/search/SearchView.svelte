@@ -14,7 +14,8 @@
   import { onMount, type Snippet } from "svelte";
   import * as feedsApi from "$lib/feeds/api";
   import type { FeedDetail, FeedRow } from "$lib/feeds/api";
-  import { SEARCH_ORDER, type FeedColumn } from "$lib/feeds/FeedTable.svelte";
+  import { SEARCH_ORDER, SEARCH_SPECS, type FeedColumn } from "$lib/feeds/FeedTable.svelte";
+  import type { Shown } from "$lib/list/columns";
   import { interestColours } from "$lib/feeds/filters";
   import { mergeRows, toggled } from "$lib/feeds/items";
   import { modalOpen } from "$lib/library/modal.svelte";
@@ -52,8 +53,8 @@
     tabs: Snippet;
     /** the fields, the recent searches and the search shown: the window's layout keeps them */
     search: SearchState;
-    /** the widths of the list's columns: the window's layout keeps them */
-    columns: Record<FeedColumn, number>;
+    /** the list's columns, in their order, with their widths: the window's layout keeps them */
+    columns: Shown<FeedColumn>[];
     /** the widths of the side panes and whether they show: the window's, as in the library */
     sidebar: number;
     details: number;
@@ -405,13 +406,13 @@
     <ItemPane
       {list}
       table={{
-        columns: SEARCH_ORDER,
-        names: { journal: "Journal" },
-        widths: columns,
+        columns,
+        specs: SEARCH_SPECS,
+        menu: SEARCH_ORDER,
         unread: false,
         star: { on: "Saved for later: unsave", off: "Save for later" },
         after: view === "results" && results?.next ? showMore : undefined,
-        onwidths: (widths) => (columns = widths),
+        oncolumns: (shown) => (columns = shown),
         onstar: (id) => save([id]),
         onmenu: rowMenu,
       }}

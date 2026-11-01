@@ -25,7 +25,8 @@
   import * as api from "./api";
   import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo } from "./api";
   import FeedsSidebar from "./FeedsSidebar.svelte";
-  import type { FeedColumn } from "./FeedTable.svelte";
+  import { FEED_ORDER, FEED_SPECS, type FeedColumn } from "./FeedTable.svelte";
+  import type { Shown } from "$lib/list/columns";
   import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
@@ -71,8 +72,8 @@
     tabs: Snippet;
     /** the choices of the tab, its search and sort: the window's layout keeps them */
     filters: FeedFilters;
-    /** the widths of the list's columns: the window's layout keeps them */
-    columns: Record<FeedColumn, number>;
+    /** the list's columns, in their order, with their widths: the window's layout keeps them */
+    columns: Shown<FeedColumn>[];
     /** when the list was last brought up to date: what a fetch in the background brought since waits behind
      *  *N new · Show*; a fetch asked for here (⌘R, Fetch, a subscription) shows it at once. The layout keeps it. */
     shown: string | null;
@@ -681,10 +682,12 @@
       <ItemPane
         {list}
         table={{
+          columns,
+          specs: FEED_SPECS,
+          menu: FEED_ORDER,
           sort: filters.sort,
-          widths: columns,
           onsort: (sort) => (filters.sort = sort),
-          onwidths: (widths) => (columns = widths),
+          oncolumns: (shown) => (columns = shown),
           onstar: (id) => actions.star.run([id]),
           onmenu: rowMenu,
         }}
