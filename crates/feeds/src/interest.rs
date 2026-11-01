@@ -17,7 +17,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::feeds::Feeds;
 use crate::model::Item;
-use crate::store::{self, CONFIG};
 use crate::{Error, Result};
 
 /// A named profile of weighted terms: what it is about, and what it is not.
@@ -251,20 +250,12 @@ pub(crate) fn compile(interests: &[Interest], title_boost: f64) -> Result<Vec<Le
 
 impl Feeds {
     pub fn interests(&self) -> &[Interest] {
-        &self.config.interests
+        &self.config.settings.interests
     }
 
     /// The factor of a term's weight in a title.
     pub fn title_boost(&self) -> f64 {
-        self.config.title_boost
-    }
-
-    /// Sets the interests and the title boost, if every interest compiles.
-    pub fn set_interests(&mut self, interests: Vec<Interest>, title_boost: f64) -> Result<()> {
-        self.lexicons = compile(&interests, title_boost)?;
-        self.config.interests = interests;
-        self.config.title_boost = title_boost;
-        store::write(&self.dir, CONFIG, &self.config)
+        self.config.settings.title_boost
     }
 
     /// The score of an item in each interest, in their order: by its title
@@ -282,7 +273,7 @@ impl Feeds {
     /// (an entry of a lookup, or of a subscription since ended, has none).
     fn boost(&self, item: &Item) -> f64 {
         (self.subscriptions_of(item).into_iter())
-            .map(|s| s.boost)
+            .map(|s| s.settings.boost)
             .reduce(f64::max)
             .unwrap_or(0.0)
     }

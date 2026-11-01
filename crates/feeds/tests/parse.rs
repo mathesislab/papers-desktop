@@ -1,6 +1,6 @@
 //! The recorded feeds (October 2026, trimmed to a few items) as entries.
 
-use papers_feeds::{Entry, Feed, ItemKind, SourceKind, Subscription, parse};
+use papers_feeds::{Entry, Feed, ItemKind, SourceKind, Subscription, SubscriptionSettings, parse};
 
 fn subscription(kind: SourceKind) -> Subscription {
     Subscription {
@@ -8,11 +8,7 @@ fn subscription(kind: SourceKind) -> Subscription {
         feed: Feed::Rss {
             url: "https://example.org/feed".to_string(),
         },
-        title: None,
-        kind,
-        journal: None,
-        fetch_pages: false,
-        boost: 0.0,
+        settings: SubscriptionSettings::new(kind),
     }
 }
 
@@ -154,7 +150,10 @@ fn physorg_teasers() {
             .contains("Earth's rocky places")
     );
     let content = e.content.as_deref().unwrap();
-    assert!(content.contains("rocky places"), "the description, its HTML: {content}");
+    assert!(
+        content.contains("rocky places"),
+        "the description, its HTML: {content}"
+    );
 }
 
 #[test]
@@ -196,7 +195,7 @@ const SMALL: &str = r#"<?xml version="1.0"?>
 #[test]
 fn doi_from_the_guid_editorials_and_preprints() {
     let mut sub = subscription(SourceKind::Journal);
-    sub.journal = Some("The Cryosphere".to_string());
+    sub.settings.journal = Some("The Cryosphere".to_string());
     let entries = parse(SMALL.as_bytes(), None, &sub).unwrap().entries;
     assert_eq!(entries[0].doi.as_deref(), Some("10.5194/tc-18-1-2024"));
     assert_eq!(

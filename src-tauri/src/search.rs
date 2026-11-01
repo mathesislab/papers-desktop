@@ -6,7 +6,7 @@
 //! The rows are the Feeds tab's (`FeedRow`); the details, the triage, the
 //! abstracts and the PDFs are the Feeds tab's commands, with the store.
 
-use papers_feeds::{Feed, Order, SourceKind, follow_filter, search_works};
+use papers_feeds::{Feed, Order, SourceKind, SubscriptionSettings, follow_filter, search_works};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -87,12 +87,11 @@ pub async fn search_follow(app: AppHandle, query: String) -> Result<Subscription
         let (network, access) = network(&app.state::<AppState>())?;
         let filter = follow_filter(&network, &access, &query)?;
         let feed = Feed::OpenAlex { filter };
-        let title = Some(query.trim().to_string());
-        let applied = change_in(
-            &app,
-            Store::Feeds,
-            Change::Subscribe(feed, SourceKind::Journal, title),
-        )?;
+        let settings = SubscriptionSettings {
+            title: Some(query),
+            ..SubscriptionSettings::new(SourceKind::Journal)
+        };
+        let applied = change_in(&app, Store::Feeds, Change::Subscribe(feed, settings))?;
         subscription_of(&app, applied)
     })
     .await

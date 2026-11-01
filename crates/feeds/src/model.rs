@@ -108,12 +108,19 @@ impl std::fmt::Display for Feed {
     }
 }
 
-/// A feed followed.
+/// A feed followed: what it is, and what the user sets on it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Subscription {
     pub id: String,
     #[serde(flatten)]
     pub feed: Feed,
+    #[serde(flatten)]
+    pub settings: SubscriptionSettings,
+}
+
+/// What the user names or sets on a subscription.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SubscriptionSettings {
     /// the feed's own title, until the user names it
     pub title: Option<String>,
     pub kind: SourceKind,
@@ -132,6 +139,32 @@ pub struct Subscription {
 
 fn is_zero(x: &f64) -> bool {
     *x == 0.0
+}
+
+impl SubscriptionSettings {
+    /// The settings of a kind alone: the feed's own title, its journal, no
+    /// pages fetched, no boost.
+    pub fn new(kind: SourceKind) -> SubscriptionSettings {
+        SubscriptionSettings {
+            title: None,
+            kind,
+            journal: None,
+            fetch_pages: false,
+            boost: 0.0,
+        }
+    }
+
+    /// With the title and the journal trimmed, a blank one none: the feed's
+    /// own again (a title at the next fetch).
+    pub(crate) fn trimmed(self) -> SubscriptionSettings {
+        let trim =
+            |text: Option<String>| text.map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
+        SubscriptionSettings {
+            title: trim(self.title),
+            journal: trim(self.journal),
+            ..self
+        }
+    }
 }
 
 /// Where an entry's data came from: a feed's text, or a work of Crossref or

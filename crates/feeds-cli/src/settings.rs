@@ -1,6 +1,6 @@
 //! The interests, the rules, and the folder's settings.
 
-use papers_feeds::Matcher;
+use papers_feeds::{FeedSettings, Matcher};
 
 use crate::cli::{AccessArgs, ConfigArgs, ConfigSet, JsonArg};
 use crate::{Ctx, Result};
@@ -73,9 +73,16 @@ pub fn rules(ctx: &mut Ctx, a: JsonArg) -> Result<()> {
 /// are asked with.
 pub fn config(ctx: &mut Ctx, a: ConfigArgs) -> Result<()> {
     let mut feeds = ctx.open()?;
+    let settings = feeds.settings().clone();
     match a.set {
-        Some(ConfigSet::KeepDays { days }) => feeds.set_keep_days(days)?,
-        Some(ConfigSet::LookbackDays { days }) => feeds.set_lookback_days(days)?,
+        Some(ConfigSet::KeepDays { days }) => feeds.set_settings(FeedSettings {
+            keep_days: days,
+            ..settings
+        })?,
+        Some(ConfigSet::LookbackDays { days }) => feeds.set_settings(FeedSettings {
+            lookback_days: days,
+            ..settings
+        })?,
         None => {}
     }
     let access = ctx.access(&AccessArgs {

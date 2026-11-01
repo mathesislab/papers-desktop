@@ -8,11 +8,9 @@ use std::collections::BTreeSet;
 use papers_core::Matching;
 use serde::{Deserialize, Serialize};
 
-use crate::Result;
 use crate::feeds::Feeds;
 use crate::model::{Mark, Triage};
 use crate::query::parse;
-use crate::store::{self, CONFIG};
 
 /// What to do with a new item that matches a query.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,14 +40,9 @@ impl Action {
 }
 
 impl Feeds {
+    /// The rules, in the order they are tried.
     pub fn rules(&self) -> &[Rule] {
-        &self.config.rules
-    }
-
-    /// Sets the rules, in the order they are tried.
-    pub fn set_rules(&mut self, rules: Vec<Rule>) -> Result<()> {
-        self.config.rules = rules;
-        store::write(&self.dir, CONFIG, &self.config)
+        &self.config.settings.rules
     }
 
     /// Triage of the items not `known` before a fetch: the first rule that

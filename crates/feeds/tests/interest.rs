@@ -1,7 +1,7 @@
 //! Interests score as paper-feeder does (its tests/test_score.py), are kept
 //! in config.json, and count at once when edited.
 
-use papers_feeds::{Error, Feeds, Interest, Lexicon, Matcher, Weighted};
+use papers_feeds::{Error, FeedSettings, Feeds, Interest, Lexicon, Matcher, Weighted};
 
 fn term(t: &str, weight: f64) -> Weighted {
     Weighted {
@@ -126,7 +126,13 @@ fn interests_are_kept_and_count_at_once() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     assert_eq!(feeds.title_boost(), 2.0);
-    feeds.set_interests(vec![ice()], 3.0).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            interests: vec![ice()],
+            title_boost: 3.0,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     assert_eq!(feeds.lexicons()[0].name(), "Ice sheets");
     assert_eq!(feeds.lexicons()[0].score("ice sheet", "").score, 9.0);
     let reopened = Feeds::open(dir.path()).unwrap();
@@ -139,17 +145,35 @@ fn interests_are_kept_and_count_at_once() {
         weight: 1.0,
         label: None,
     });
-    let err = feeds.set_interests(vec![broken], 2.0).unwrap_err();
+    let err = feeds
+        .set_settings(FeedSettings {
+            interests: vec![broken],
+            title_boost: 2.0,
+            ..feeds.settings().clone()
+        })
+        .unwrap_err();
     assert!(
         matches!(&err, Error::Interest { name, .. } if name == "Ice sheets"),
         "{err}"
     );
     assert!(matches!(
-        feeds.set_interests(vec![ice(), ice()], 2.0),
+        feeds.set_settings(FeedSettings {
+            interests: vec![ice(), ice()],
+            title_boost: 2.0,
+            ..feeds.settings().clone()
+        }),
         Err(Error::Interest { .. })
     ));
     let mut empty = ice();
     empty.exclude.push(Matcher::Term(" ".to_string()));
-    assert!(feeds.set_interests(vec![empty], 2.0).is_err());
+    assert!(
+        feeds
+            .set_settings(FeedSettings {
+                interests: vec![empty],
+                title_boost: 2.0,
+                ..feeds.settings().clone()
+            })
+            .is_err()
+    );
     assert_eq!(feeds.interests(), [ice()], "unchanged");
 }

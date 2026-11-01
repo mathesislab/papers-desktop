@@ -110,7 +110,9 @@ impl Feeds {
         }
         let subscriptions = self.subscriptions_of(item);
         let sources: Vec<String> = subscriptions.iter().map(|s| s.id.clone()).collect();
-        let titles = subscriptions.iter().filter_map(|s| s.title.as_deref());
+        let titles = subscriptions
+            .iter()
+            .filter_map(|s| s.settings.title.as_deref());
         let src: Vec<&str> = sources.iter().map(String::as_str).chain(titles).collect();
         let prof = scores.iter().filter(|s| s.reached).map(|s| &s.interest);
         let summary = item.summary.as_deref().unwrap_or("");

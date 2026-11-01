@@ -141,7 +141,7 @@ impl Feeds {
         let id = subscription.id.clone();
         let last = self.http.get(&id).cloned().unwrap_or_default();
         let now = (self.now)();
-        let lookback = TimeDelta::days(self.config.lookback_days.into());
+        let lookback = TimeDelta::days(self.config.settings.lookback_days.into());
         let since = last.swept.unwrap_or(now - lookback).date_naive();
         let got = match &subscription.feed {
             Feed::Rss { url } => read_feed(http, url, subscription, &last.validators),
@@ -173,8 +173,8 @@ impl Feeds {
                 let count = entries.len();
                 let new = self.merge(&id, entries);
                 let subscription = &mut self.config.subscriptions[i];
-                if subscription.title.is_none() {
-                    subscription.title = title;
+                if subscription.settings.title.is_none() {
+                    subscription.settings.title = title;
                 }
                 self.http.insert(id, Since { validators, swept });
                 Outcome::Fetched {

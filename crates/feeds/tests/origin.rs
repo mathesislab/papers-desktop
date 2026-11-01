@@ -4,7 +4,8 @@
 //! subscriptions.
 
 use papers_feeds::{
-    Entry, FOUND, Feed, Feeds, ItemKind, LOOKUP, Origin, SourceKind, Version, ViewRequest,
+    Entry, FOUND, Feed, Feeds, ItemKind, LOOKUP, Origin, SourceKind, SubscriptionSettings, Version,
+    ViewRequest,
 };
 use serde_json::Value;
 
@@ -62,11 +63,17 @@ fn the_entries_of_before_are_told_apart_once() {
     let rss = Feed::Rss {
         url: "https://example.org/news.rss".to_string(),
     };
-    let news = feeds.subscribe(rss, SourceKind::News).unwrap().id;
+    let news = feeds
+        .subscribe(rss, SubscriptionSettings::new(SourceKind::News))
+        .unwrap()
+        .id;
     let issn = Feed::Crossref {
         issn: "1994-0424".to_string(),
     };
-    let sweep = feeds.subscribe(issn, SourceKind::Journal).unwrap().id;
+    let sweep = feeds
+        .subscribe(issn, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap()
+        .id;
     let mut post = entry(&news, "post", None, Origin::Feed);
     post.kind = ItemKind::News;
     // the paper of the post, from Crossref: its own DOI among its versions
@@ -127,7 +134,10 @@ fn src_and_the_sources_are_the_subscriptions() {
     let rss = Feed::Rss {
         url: "https://example.org/tc.rss".to_string(),
     };
-    let tc = feeds.subscribe(rss, SourceKind::Journal).unwrap().id;
+    let tc = feeds
+        .subscribe(rss, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap()
+        .id;
     let listed = entry(&tc, "a", Some("10.1/a"), Origin::Feed);
     let looked_up = entry(LOOKUP, "10.1/a", Some("10.1/a"), Origin::Work);
     feeds.found(vec![listed, looked_up], false).unwrap();

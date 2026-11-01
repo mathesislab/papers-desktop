@@ -3,7 +3,8 @@
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Feed, Feeds, Interest, Matcher, Reply, SourceKind, Subscription, Weighted,
+    Access, Feed, FeedSettings, Feeds, Interest, Matcher, Reply, SourceKind, Subscription,
+    SubscriptionSettings, Weighted,
 };
 
 const A: &str = "https://example.org/a.atom";
@@ -51,16 +52,21 @@ fn firn() -> Interest {
 fn fetched(dir: &std::path::Path, a: f64, b: f64) -> Feeds {
     let mut feeds = Feeds::open(dir).unwrap();
     let mut boosted = |url: &str, boost: f64| {
-        let made = feeds
-            .subscribe(Feed::Rss { url: url.into() }, SourceKind::Journal)
-            .unwrap();
+        let settings = SubscriptionSettings {
+            boost,
+            ..SubscriptionSettings::new(SourceKind::Journal)
+        };
         feeds
-            .edit_subscription(&made.id, |s| s.boost = boost)
+            .subscribe(Feed::Rss { url: url.into() }, settings)
             .unwrap();
     };
     boosted(A, a);
     boosted(B, b);
-    feeds.set_interests(vec![firn()], 2.0).unwrap();
+    let settings = FeedSettings {
+        interests: vec![firn()],
+        ..feeds.settings().clone()
+    };
+    feeds.set_settings(settings).unwrap();
     let both = Some("10.5194/tc-1-1");
     let http = Recorded::new()
         .reply(
@@ -155,12 +161,14 @@ fn the_boost_is_in_the_queries_and_in_config_json() {
     let text = std::fs::read_to_string(dir.path().join("config.json")).unwrap();
     assert_eq!(text.matches("\"boost\"").count(), 1, "{text}");
     let reopened = Feeds::open(dir.path()).unwrap();
-    let boosts: Vec<f64> = reopened.subscriptions().iter().map(|s| s.boost).collect();
+    let boosts: Vec<f64> = (reopened.subscriptions().iter())
+        .map(|s| s.settings.boost)
+        .collect();
     assert_eq!(boosts, [2.0, 0.0]);
     // a subscription as written before the boost
     let old: Subscription = serde_json::from_str(
         r#"{"id":"x","url":"https://example.org/x","title":null,"kind":"blog"}"#,
     )
     .unwrap();
-    assert_eq!(old.boost, 0.0);
+    assert_eq!(old.settings.boost, 0.0);
 }

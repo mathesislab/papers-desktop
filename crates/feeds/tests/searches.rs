@@ -4,7 +4,8 @@
 use papers_feeds::http::Recorded;
 use papers_feeds::query::live;
 use papers_feeds::{
-    Access, Error, Feed, Feeds, Reply, Search, Sort, SourceKind, Triage, ViewRequest,
+    Access, Error, Feed, Feeds, Reply, Search, Sort, SourceKind, SubscriptionSettings, Triage,
+    ViewRequest,
 };
 
 const TC: &str = "https://example.org/tc.atom";
@@ -38,7 +39,10 @@ fn search(name: &str, query: &str, sort: Sort) -> Search {
 fn feeds(dir: &std::path::Path) -> Feeds {
     let mut feeds = Feeds::open(dir).unwrap();
     feeds
-        .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
+        .subscribe(
+            Feed::Rss { url: TC.into() },
+            SubscriptionSettings::new(SourceKind::Journal),
+        )
         .unwrap();
     let papers = [("a", "Ice sheet melt"), ("b", "Sea ice"), ("c", "Firn")];
     let http = Recorded::new().reply(TC, Reply::ok(TC, atom(&papers)));

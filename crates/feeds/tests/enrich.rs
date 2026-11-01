@@ -5,7 +5,9 @@
 //! opens.
 
 use papers_feeds::http::Recorded;
-use papers_feeds::{Access, Feed, Feeds, ItemKind, LOOKUP, Reply, SourceKind, Stage, Triage};
+use papers_feeds::{
+    Access, Feed, Feeds, ItemKind, LOOKUP, Reply, SourceKind, Stage, SubscriptionSettings, Triage,
+};
 
 const TC: &str = "https://tc.copernicus.org/xml/rss2_0.xml";
 const EGUSPHERE: &str = "https://egusphere.copernicus.org/xml/rss2_0.xml";
@@ -51,9 +53,14 @@ fn a_preprint_and_its_paper_become_one_item() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     feeds
-        .subscribe(rss(EGUSPHERE), SourceKind::Preprints)
+        .subscribe(
+            rss(EGUSPHERE),
+            SubscriptionSettings::new(SourceKind::Preprints),
+        )
         .unwrap();
-    feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(TC), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let egu_feed = feed(&[
         (
             "Propagating Meteorological Uncertainty",
@@ -152,7 +159,9 @@ fn teasers_first_and_openalex_for_what_crossref_lacks() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let journal = "https://example.org/journal.rss";
-    feeds.subscribe(rss(journal), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(journal), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let whole = "An abstract long enough to be whole. ".repeat(10);
     let items = feed(&[
         ("A paper with its abstract", "10.1000/whole", &whole),
@@ -211,7 +220,9 @@ fn openalex_without_a_key() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let journal = "https://example.org/journal.rss";
-    feeds.subscribe(rss(journal), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(journal), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let items = feed(&[(
         "Snow model ensembles",
         "10.5281/zenodo.17740654",
@@ -244,7 +255,9 @@ fn openalex_without_a_key() {
 fn the_abstract_over_the_feeds_text() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
-    feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(TC), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let plain = "A plain-language summary, long enough to pass for an abstract. ".repeat(6);
     let tc = format!("{WORKS}{TC_DOI}");
     let http = Recorded::new()
@@ -266,7 +279,9 @@ fn openalex_refusing_leaves_crossref_asked() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let journal = "https://example.org/journal.rss";
-    feeds.subscribe(rss(journal), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(journal), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let items = feed(&[("One", "10.1000/one", "A."), ("Two", "10.1000/two", "B.")]);
     let openalex = |doi: &str| {
         format!(
@@ -291,7 +306,9 @@ fn openalex_refusing_leaves_crossref_asked() {
 fn the_reader_looks_up_the_item_it_opens() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
-    feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(TC), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let tc = format!("{WORKS}{TC_DOI}");
     let offline = Recorded::new()
         .reply(TC, Reply::ok(TC, feed(&[(TITLE, TC_DOI, "A teaser.")])))

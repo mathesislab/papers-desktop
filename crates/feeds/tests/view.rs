@@ -8,8 +8,8 @@ use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use papers_core::{Doc, Identities, Identity, Likeness, Matching, Span};
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Action, Feed, Feeds, Interest, ItemKind, LibraryFacts, Matcher, Reminder, Reply, Rule,
-    Sort, SourceKind, Triage, View, ViewRequest, Weighted,
+    Access, Action, Feed, FeedSettings, Feeds, Interest, ItemKind, LibraryFacts, Matcher, Reminder,
+    Reply, Rule, Sort, SourceKind, SubscriptionSettings, Triage, View, ViewRequest, Weighted,
 };
 
 const TC: &str = "https://example.org/tc.atom";
@@ -150,16 +150,36 @@ impl Clock {
 fn feeds(dir: &std::path::Path, clock: &Clock, rules: Vec<Rule>) -> Feeds {
     let mut feeds = clock.open(dir);
     feeds
-        .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
+        .subscribe(
+            Feed::Rss { url: TC.into() },
+            SubscriptionSettings::new(SourceKind::Journal),
+        )
         .unwrap();
     feeds
-        .subscribe(Feed::Rss { url: EGU.into() }, SourceKind::Preprints)
+        .subscribe(
+            Feed::Rss { url: EGU.into() },
+            SubscriptionSettings::new(SourceKind::Preprints),
+        )
         .unwrap();
     feeds
-        .subscribe(Feed::Rss { url: NEWS.into() }, SourceKind::News)
+        .subscribe(
+            Feed::Rss { url: NEWS.into() },
+            SubscriptionSettings::new(SourceKind::News),
+        )
         .unwrap();
-    feeds.set_interests(interests(), 2.0).unwrap();
-    feeds.set_rules(rules).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            interests: interests(),
+            title_boost: 2.0,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            rules,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     let http = Recorded::new()
         .reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2, J3])))
         .reply(EGU, Reply::ok(EGU, atom("EGUsphere", &[P1])))
@@ -395,7 +415,12 @@ fn rules_triage_the_new_items_only() {
     let mut rules = rules;
     rules.push(rule("prof:\"ice sheets\"", Action::Shortlist));
     rules.push(rule("", Action::Dismiss));
-    feeds.set_rules(rules.clone()).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            rules: rules.clone(),
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     let http = Recorded::new()
         .reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2, J3])))
         .reply(EGU, Reply::ok(EGU, atom("EGUsphere", &[P1, P2])))
@@ -492,13 +517,21 @@ fn rules_at_fetch_use_the_likeness() {
     let mut feeds = clock.open(dir.path());
     feeds.set_library(in_library(Some(likeness())));
     feeds
-        .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
+        .subscribe(
+            Feed::Rss { url: TC.into() },
+            SubscriptionSettings::new(SourceKind::Journal),
+        )
         .unwrap();
     let rule = Rule {
         when: "like:20-".to_string(),
         then: Action::Shortlist,
     };
-    feeds.set_rules(vec![rule]).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            rules: vec![rule],
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     let http = Recorded::new().reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2, J3])));
     feeds.fetch(&http, &Access::default()).unwrap();
     let triage = |e: E| feeds.triage(&id_of(&feeds, e.1));
@@ -513,13 +546,21 @@ fn rules_at_fetch_see_the_library() {
     let mut feeds = Clock::new().open(dir.path());
     feeds.set_library(in_library(None));
     feeds
-        .subscribe(Feed::Rss { url: TC.into() }, SourceKind::Journal)
+        .subscribe(
+            Feed::Rss { url: TC.into() },
+            SubscriptionSettings::new(SourceKind::Journal),
+        )
         .unwrap();
     let rule = Rule {
         when: "is:inlibrary".to_string(),
         then: Action::Dismiss,
     };
-    feeds.set_rules(vec![rule]).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            rules: vec![rule],
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     let http = Recorded::new().reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2])));
     feeds.fetch(&http, &Access::default()).unwrap();
     let triage = |e: E| feeds.triage(&id_of(&feeds, e.1));
@@ -580,7 +621,12 @@ fn old_items_go_on_opening_and_fetching() {
     clock.advance(11);
     feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(feeds.items().len(), 5, "kept 90 days");
-    feeds.set_keep_days(10).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            keep_days: 10,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     let mut feeds = clock.open(dir.path());
     let left =
         |feeds: &Feeds| -> Vec<String> { feeds.items().iter().map(|i| i.title.clone()).collect() };

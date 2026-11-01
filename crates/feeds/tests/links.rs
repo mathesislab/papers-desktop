@@ -4,7 +4,8 @@
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Confidence, Error, Feed, Feeds, ItemKind, Linked, Reply, SourceKind, Via,
+    Access, Confidence, Error, Feed, Feeds, ItemKind, Linked, Reply, SourceKind,
+    SubscriptionSettings, Via,
 };
 
 const FUTURITY: &str = "https://www.futurity.org/feed/";
@@ -48,7 +49,9 @@ fn linked(doi: &str, confidence: Confidence, via: Via) -> Linked {
 fn futurity_posts_link_their_papers_from_the_feed() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
-    let futurity = feeds.subscribe(rss(FUTURITY), SourceKind::News).unwrap();
+    let futurity = feeds
+        .subscribe(rss(FUTURITY), SubscriptionSettings::new(SourceKind::News))
+        .unwrap();
     let plants = format!("{WORKS}/10.1126/sciadv.aei1213");
     let superbug = format!("{WORKS}/10.1126/sciadv.aeh8222");
     let openalex = |doi: &str| {
@@ -191,7 +194,9 @@ fn eos_page_with_its_own_doi_then_a_search_that_does_not_match() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let eos = "https://eos.org/feed";
-    feeds.subscribe(rss(eos), SourceKind::News).unwrap();
+    feeds
+        .subscribe(rss(eos), SubscriptionSettings::new(SourceKind::News))
+        .unwrap();
     let page = "https://eos.org/articles/u-s-river-sediment-transport-is-becoming-burstier";
     let title = "U.S. River Sediment Transport Is Becoming “Burstier”";
     let search = format!(
@@ -232,7 +237,9 @@ fn a_blog_post_titled_as_its_paper_is_found_by_its_title() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let blog = "https://example.org/blog.rss";
-    let sub = feeds.subscribe(rss(blog), SourceKind::Blog).unwrap();
+    let sub = feeds
+        .subscribe(rss(blog), SubscriptionSettings::new(SourceKind::Blog))
+        .unwrap();
     let page = "https://example.org/blog/snow-creep";
     let title = "Temperature sensitivity of snow viscoplasticity: evidence from controlled creep experiments";
     let search = format!(

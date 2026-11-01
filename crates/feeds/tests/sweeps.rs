@@ -6,7 +6,10 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, TimeZone, Utc};
 use papers_feeds::http::{CROSSREF, Pacing, Recorded};
-use papers_feeds::{Access, Error, Feed, Feeds, ItemKind, Outcome, Reply, SourceKind, Stage};
+use papers_feeds::{
+    Access, Error, Feed, FeedSettings, Feeds, ItemKind, Outcome, Reply, SourceKind, Stage,
+    SubscriptionSettings,
+};
 
 fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(format!(
@@ -62,7 +65,9 @@ fn crossref_sweep_of_an_issn_since_the_last() {
     let issn = Feed::Crossref {
         issn: "1994 0424".to_string(),
     };
-    let tc = feeds.subscribe(issn, SourceKind::Journal).unwrap();
+    let tc = feeds
+        .subscribe(issn, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     assert_eq!(
         tc.feed,
         Feed::Crossref {
@@ -85,7 +90,7 @@ fn crossref_sweep_of_an_issn_since_the_last() {
     assert_eq!(report.follow_up.lookups, 0, "Crossref's works are whole");
     assert_eq!(http.requests().len(), 1);
     assert_eq!(
-        feeds.subscriptions()[0].title.as_deref(),
+        feeds.subscriptions()[0].settings.title.as_deref(),
         Some("The Cryosphere")
     );
 
@@ -135,8 +140,15 @@ fn a_failed_sweep_is_asked_again_from_the_same_day() {
     let issn = Feed::Crossref {
         issn: "1994-0424".to_string(),
     };
-    feeds.subscribe(issn, SourceKind::Journal).unwrap();
-    feeds.set_lookback_days(7).unwrap();
+    feeds
+        .subscribe(issn, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            lookback_days: 7,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     let first = crossref_list("2026-10-24", "2026-10-17", false);
     let http = Recorded::new()
         .reply(&first, Reply::status(&first, 503))
@@ -167,7 +179,9 @@ fn openalex_sweep_without_a_key_back_the_lookback_each_time() {
     let filter = Feed::OpenAlex {
         filter: " primary_topic.id:T10644 ".to_string(),
     };
-    feeds.subscribe(filter, SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(filter, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let pages = |published: &str| {
         let list = OPENALEX.replace("2026-10-03", published);
         let tail = "&mailto=papers-desktop@example.org";
@@ -214,7 +228,9 @@ fn openalex_sweep_page_by_page() {
     let filter = Feed::OpenAlex {
         filter: "primary_topic.id:T10644".to_string(),
     };
-    feeds.subscribe(filter, SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(filter, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let access = Access {
         mailto: Some("papers-desktop@example.org".to_string()),
         openalex_key: Some("KEY".to_string()),
@@ -269,7 +285,9 @@ fn a_failed_sweep_does_not_say_the_key_or_the_address() {
     let filter = Feed::OpenAlex {
         filter: "primary_topic.id:T10644".to_string(),
     };
-    feeds.subscribe(filter, SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(filter, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let access = Access {
         mailto: Some("me+feeds@example.org".to_string()),
         openalex_key: Some("s3cret".to_string()),
@@ -297,7 +315,9 @@ fn openalex_sweep_of_words_in_titles_and_abstracts() {
         filter: "title_and_abstract.search:ice sheet AND (tipping OR \"tipping point\")"
             .to_string(),
     };
-    feeds.subscribe(words, SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(words, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let access = Access {
         mailto: None,
         openalex_key: Some("KEY".to_string()),
@@ -329,31 +349,43 @@ fn subscriptions_of_three_kinds_in_config_json() {
         url: "http://tc.copernicus.org/xml/rss2_0.xml".to_string(),
     };
     assert!(matches!(
-        feeds.subscribe(tc, SourceKind::Journal),
+        feeds.subscribe(tc, SubscriptionSettings::new(SourceKind::Journal)),
         Err(Error::Subscribed { id, .. }) if id == "abc"
     ));
     let issn = |issn: &str| Feed::Crossref {
         issn: issn.to_string(),
     };
     feeds
-        .subscribe(issn("1994-0424"), SourceKind::Journal)
+        .subscribe(
+            issn("1994-0424"),
+            SubscriptionSettings::new(SourceKind::Journal),
+        )
         .unwrap();
     assert!(matches!(
-        feeds.subscribe(issn("19940424"), SourceKind::Journal),
+        feeds.subscribe(
+            issn("19940424"),
+            SubscriptionSettings::new(SourceKind::Journal)
+        ),
         Err(Error::Subscribed { .. })
     ));
     assert!(matches!(
-        feeds.subscribe(issn("1994-0425"), SourceKind::Journal),
+        feeds.subscribe(
+            issn("1994-0425"),
+            SubscriptionSettings::new(SourceKind::Journal)
+        ),
         Err(Error::Issn { .. })
     ));
     let filter = |filter: &str| Feed::OpenAlex {
         filter: filter.to_string(),
     };
     feeds
-        .subscribe(filter("cites:W1|W2"), SourceKind::Journal)
+        .subscribe(
+            filter("cites:W1|W2"),
+            SubscriptionSettings::new(SourceKind::Journal),
+        )
         .unwrap();
     assert!(matches!(
-        feeds.subscribe(filter("  "), SourceKind::Journal),
+        feeds.subscribe(filter("  "), SubscriptionSettings::new(SourceKind::Journal)),
         Err(Error::Filter { .. })
     ));
 

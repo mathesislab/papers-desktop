@@ -101,7 +101,7 @@ impl Feeds {
         let pages: HashSet<&str> = self
             .subscriptions()
             .iter()
-            .filter(|s| s.fetch_pages)
+            .filter(|s| s.settings.fetch_pages)
             .map(|s| s.id.as_str())
             .collect();
         let posts: Vec<(String, Reach)> = self

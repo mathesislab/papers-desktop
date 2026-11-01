@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use papers_feeds::{Error, Feed, Feeds, SourceKind, suggested};
+use papers_feeds::{Error, Feed, Feeds, SourceKind, SubscriptionSettings, suggested};
 
 fn rss(url: &str) -> Feed {
     Feed::Rss {
@@ -15,21 +15,25 @@ fn rss(url: &str) -> Feed {
 fn opml_out_and_back_in() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
-    let eos = feeds
-        .subscribe(rss("https://eos.org/feed?a=1&b=2"), SourceKind::News)
-        .unwrap();
-    let title = Some("Eos & \"friends\"".to_string());
+    let eos = SubscriptionSettings {
+        title: Some("Eos & \"friends\"".to_string()),
+        ..SubscriptionSettings::new(SourceKind::News)
+    };
     feeds
-        .edit_subscription(&eos.id, |s| s.title = title)
+        .subscribe(rss("https://eos.org/feed?a=1&b=2"), eos)
         .unwrap();
     let issn = Feed::Crossref {
         issn: "0022-1430".into(),
     };
-    feeds.subscribe(issn, SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(issn, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let filter = Feed::OpenAlex {
         filter: "primary_topic.id:T10644".into(),
     };
-    feeds.subscribe(filter, SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(filter, SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let opml = feeds.opml();
     assert!(
         opml.contains("xmlUrl=\"https://eos.org/feed?a=1&amp;b=2\""),
@@ -42,15 +46,17 @@ fn opml_out_and_back_in() {
     assert_eq!(imported.import_opml(&opml).unwrap(), 3);
     let of = |feeds: &Feeds| -> Vec<(Feed, SourceKind)> {
         let subscriptions = feeds.subscriptions().iter();
-        subscriptions.map(|s| (s.feed.clone(), s.kind)).collect()
+        subscriptions
+            .map(|s| (s.feed.clone(), s.settings.kind))
+            .collect()
     };
     assert_eq!(of(&imported), of(&feeds));
     assert_eq!(
-        imported.subscriptions()[0].title.as_deref(),
+        imported.subscriptions()[0].settings.title.as_deref(),
         Some("Eos & \"friends\"")
     );
     // an untitled one is named as it shows
-    let title = imported.subscriptions()[1].title.as_deref();
+    let title = imported.subscriptions()[1].settings.title.as_deref();
     assert_eq!(title, Some("Crossref ISSN 0022-1430"));
     assert_eq!(
         imported.import_opml(&opml).unwrap(),
@@ -83,7 +89,7 @@ fn opml_of_another_reader() {
     let got: Vec<(Option<&str>, SourceKind)> = feeds
         .subscriptions()
         .iter()
-        .map(|s| (s.title.as_deref(), s.kind))
+        .map(|s| (s.settings.title.as_deref(), s.settings.kind))
         .collect();
     assert_eq!(
         got,
@@ -119,7 +125,8 @@ fn the_suggested_subscriptions_are_valid_and_distinct() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     for s in &list {
-        feeds.subscribe(s.feed.clone(), s.kind).unwrap();
+        let settings = SubscriptionSettings::new(s.kind);
+        feeds.subscribe(s.feed.clone(), settings).unwrap();
     }
 }
 
@@ -131,7 +138,9 @@ fn another_kind_moves_the_items_and_reads_the_feed_whole_again() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let url = "https://xkcd.com/rss.xml";
-    let comic = feeds.subscribe(rss(url), SourceKind::Journal).unwrap();
+    let comic = feeds
+        .subscribe(rss(url), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let body = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>xkcd.com</title>\
         <item><title>Earth Sized Planets</title><link>https://xkcd.com/3000/</link>\
         <description>&lt;img src=\"https://imgs.xkcd.com/comics/planets.png\" /&gt;</description>\
@@ -149,9 +158,8 @@ fn another_kind_moves_the_items_and_reads_the_feed_whole_again() {
     assert_eq!(feeds.items()[0].kind, ItemKind::Paper);
     assert_eq!(feeds.items()[0].content, None, "a paper keeps no HTML");
 
-    feeds
-        .edit_subscription(&comic.id, |s| s.kind = SourceKind::Blog)
-        .unwrap();
+    let blog = SubscriptionSettings::new(SourceKind::Blog);
+    feeds.edit_subscription(&comic.id, blog).unwrap();
     assert_eq!(feeds.items()[0].kind, ItemKind::Blog, "at once");
     feeds.fetch(&http, &Access::default()).unwrap();
     let asked = &http.requests()[1];

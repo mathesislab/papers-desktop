@@ -32,10 +32,20 @@ pub(crate) const JOURNALS: &str = "journals.json";
 pub const LOOKBACK_DAYS: u32 = 14;
 
 /// `config.json`: what the user set.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Config {
     #[serde(default)]
     pub subscriptions: Vec<Subscription>,
+    #[serde(flatten)]
+    pub settings: FeedSettings,
+    /// the saved searches, in the order of the sidebar
+    #[serde(default)]
+    pub searches: Vec<Search>,
+}
+
+/// The settings of the feeds, set together (`Feeds::set_settings`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FeedSettings {
     #[serde(default)]
     pub interests: Vec<Interest>,
     /// the factor of a term's weight in a title, for every interest
@@ -50,21 +60,16 @@ pub(crate) struct Config {
     /// the days a sweep looks back the first time
     #[serde(default = "lookback_days")]
     pub lookback_days: u32,
-    /// the saved searches, in the order of the sidebar
-    #[serde(default)]
-    pub searches: Vec<Search>,
 }
 
-impl Default for Config {
-    fn default() -> Config {
-        Config {
-            subscriptions: Vec::new(),
+impl Default for FeedSettings {
+    fn default() -> FeedSettings {
+        FeedSettings {
             interests: Vec::new(),
             title_boost: title_boost(),
             rules: Vec::new(),
             keep_days: keep_days(),
             lookback_days: LOOKBACK_DAYS,
-            searches: Vec::new(),
         }
     }
 }

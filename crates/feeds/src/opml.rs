@@ -11,7 +11,7 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, XmlVersion};
 
 use crate::feeds::Feeds;
-use crate::model::{Feed, SourceKind, Subscription};
+use crate::model::{Feed, SourceKind, Subscription, SubscriptionSettings};
 use crate::{Error, Result};
 
 /// A subscription read from OPML: what it follows, its title, its kind.
@@ -56,7 +56,11 @@ pub fn write(subscriptions: &[Subscription]) -> String {
          <title>Papers Desktop feeds</title>\n  </head>\n  <body>\n",
     );
     for s in subscriptions {
-        let title = s.title.clone().unwrap_or_else(|| s.feed.to_string());
+        let title = s
+            .settings
+            .title
+            .clone()
+            .unwrap_or_else(|| s.feed.to_string());
         let (kind, address) = match &s.feed {
             Feed::Rss { url } => ("rss", format!("xmlUrl=\"{}\"", escape(url))),
             Feed::Crossref { issn } => ("crossref", format!("issn=\"{}\"", escape(issn))),
@@ -64,7 +68,7 @@ pub fn write(subscriptions: &[Subscription]) -> String {
         };
         out.push_str(&format!(
             "    <outline type=\"{kind}\" text=\"{title}\" title=\"{title}\" category=\"{}\" {address}/>\n",
-            kind_name(s.kind),
+            kind_name(s.settings.kind),
             title = escape(&title),
         ));
     }
@@ -162,8 +166,12 @@ impl Feeds {
         let outlines = read(text).map_err(|message| Error::Opml { message })?;
         let mut added = 0;
         for outline in outlines {
-            let subscription = match self.subscribe(outline.feed, outline.kind) {
-                Ok(subscription) => subscription,
+            let settings = SubscriptionSettings {
+                title: outline.title,
+                ..SubscriptionSettings::new(outline.kind)
+            };
+            match self.subscribe(outline.feed, settings) {
+                Ok(_) => added += 1,
                 Err(
                     Error::Subscribed { .. }
                     | Error::Url { .. }
@@ -171,11 +179,7 @@ impl Feeds {
                     | Error::Filter { .. },
                 ) => continue,
                 Err(e) => return Err(e),
-            };
-            if let Some(title) = outline.title {
-                self.edit_subscription(&subscription.id, |s| s.title = Some(title))?;
             }
-            added += 1;
         }
         Ok(added)
     }

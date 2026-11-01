@@ -25,7 +25,7 @@ pub(crate) fn crossref(
     since: NaiveDate,
     lookback: TimeDelta,
 ) -> Result<Got, String> {
-    let kind = subscription.kind.item_kind();
+    let kind = subscription.settings.kind.item_kind();
     let (mut entries, mut title) = (Vec::new(), None);
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {
@@ -60,7 +60,7 @@ pub(crate) fn openalex(
     filter: &str,
     published: NaiveDate,
 ) -> Result<Got, String> {
-    let kind = subscription.kind.item_kind();
+    let kind = subscription.settings.kind.item_kind();
     let mut entries = Vec::new();
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {

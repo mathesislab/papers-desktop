@@ -71,10 +71,8 @@ pub fn authors(names: &[String], limit: usize) -> String {
 
 /// What a subscription is called: its title, else its feed.
 pub fn label(subscription: &Subscription) -> String {
-    let named = subscription
-        .title
-        .clone()
-        .or_else(|| subscription.journal.clone());
+    let settings = &subscription.settings;
+    let named = settings.title.clone().or_else(|| settings.journal.clone());
     named.unwrap_or_else(|| subscription.feed.to_string())
 }
 

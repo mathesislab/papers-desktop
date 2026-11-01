@@ -6,7 +6,10 @@ use std::sync::{Arc, Mutex};
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use papers_feeds::http::Recorded;
 use papers_feeds::normalize::short_id;
-use papers_feeds::{Access, Error, Feed, Feeds, Outcome, Reply, SourceKind, Triage};
+use papers_feeds::{
+    Access, Error, Feed, FeedSettings, Feeds, Outcome, Reply, SourceKind, SubscriptionSettings,
+    Triage,
+};
 
 const TC: &str = "https://tc.copernicus.org/xml/rss2_0.xml";
 const NGEO: &str = "https://www.nature.com/ngeo.rss";
@@ -72,19 +75,24 @@ fn atom(entries: &[(&str, &str, &str, Option<&str>)]) -> Vec<u8> {
 fn a_feed_is_subscribed_once() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
-    let tc = feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
+    let tc = feeds
+        .subscribe(rss(TC), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     assert_eq!(tc.feed, rss(TC));
     for again in [
         "http://tc.copernicus.org/xml/rss2_0.xml",
         "https://TC.Copernicus.ORG/xml/rss2_0.xml#latest",
     ] {
-        match feeds.subscribe(rss(again), SourceKind::Journal) {
+        match feeds.subscribe(rss(again), SubscriptionSettings::new(SourceKind::Journal)) {
             Err(Error::Subscribed { id, .. }) => assert_eq!(id, tc.id),
             other => panic!("{again}: {other:?}"),
         }
     }
     assert!(matches!(
-        feeds.subscribe(rss("tc.copernicus.org"), SourceKind::Journal),
+        feeds.subscribe(
+            rss("tc.copernicus.org"),
+            SubscriptionSettings::new(SourceKind::Journal)
+        ),
         Err(Error::Url { .. })
     ));
     assert_eq!(feeds.subscriptions().len(), 1);
@@ -93,7 +101,11 @@ fn a_feed_is_subscribed_once() {
         feeds.unsubscribe(&tc.id),
         Err(Error::NoSubscription { .. })
     ));
-    assert!(feeds.subscribe(rss(TC), SourceKind::Journal).is_ok());
+    assert!(
+        feeds
+            .subscribe(rss(TC), SubscriptionSettings::new(SourceKind::Journal))
+            .is_ok()
+    );
 }
 
 #[test]
@@ -101,10 +113,18 @@ fn fetch_merge_triage_and_reopen() {
     let dir = tempfile::tempdir().unwrap();
     let clock = Clock::new();
     let mut feeds = clock.open(dir.path());
-    let tc = feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
-    feeds.subscribe(rss(NGEO), SourceKind::Journal).unwrap();
-    feeds.subscribe(rss(ARXIV), SourceKind::Preprints).unwrap();
-    feeds.subscribe(rss(FUTURITY), SourceKind::News).unwrap();
+    let tc = feeds
+        .subscribe(rss(TC), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
+    feeds
+        .subscribe(rss(NGEO), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
+    feeds
+        .subscribe(rss(ARXIV), SubscriptionSettings::new(SourceKind::Preprints))
+        .unwrap();
+    feeds
+        .subscribe(rss(FUTURITY), SubscriptionSettings::new(SourceKind::News))
+        .unwrap();
     let http = Recorded::new()
         .reply(TC, Reply::ok(TC, fixture("copernicus-tc.xml")))
         .reply(NGEO, Reply::ok(NGEO, fixture("nature-ngeo.rss")))
@@ -123,7 +143,7 @@ fn fetch_merge_triage_and_reopen() {
     );
     assert_eq!(feeds.items().len(), 12);
     assert_eq!(
-        feeds.subscriptions()[0].title.as_deref(),
+        feeds.subscriptions()[0].settings.title.as_deref(),
         Some("TC - recent papers")
     );
     let paper = feeds.items()[0].clone();
@@ -165,7 +185,9 @@ fn fetch_merge_triage_and_reopen() {
 fn an_unchanged_feed_is_not_fetched_again() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = Feeds::open(dir.path()).unwrap();
-    feeds.subscribe(rss(TC), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(TC), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let modified = "Fri, 30 Oct 2026 21:05:25 GMT";
     let http = Recorded::new()
         .reply(
@@ -207,7 +229,9 @@ fn a_failing_feed_does_not_stop_the_others() {
     let blocked = "https://agupubs.onlinelibrary.wiley.com/feed/19448007/most-recent";
     let challenge = "https://example.org/challenge.xml";
     for url in [broken, blocked, challenge, TC] {
-        feeds.subscribe(rss(url), SourceKind::Journal).unwrap();
+        feeds
+            .subscribe(rss(url), SubscriptionSettings::new(SourceKind::Journal))
+            .unwrap();
     }
     let mut throttled = Reply::status(blocked, 429);
     throttled.retry_after = Some("120".to_string());
@@ -253,9 +277,14 @@ fn triage_follows_merged_items() {
     let preprints = "https://example.org/preprints.atom";
     let journal = "https://example.org/journal.atom";
     feeds
-        .subscribe(rss(preprints), SourceKind::Preprints)
+        .subscribe(
+            rss(preprints),
+            SubscriptionSettings::new(SourceKind::Preprints),
+        )
         .unwrap();
-    feeds.subscribe(rss(journal), SourceKind::Journal).unwrap();
+    feeds
+        .subscribe(rss(journal), SubscriptionSettings::new(SourceKind::Journal))
+        .unwrap();
     let preprint = [(
         "oai:arXiv.org:2610.00001v1",
         "Ice sheet tipping, a preprint",
@@ -315,7 +344,9 @@ fn prune_drops_old_items_no_feed_lists() {
     let clock = Clock::new();
     let mut feeds = clock.open(dir.path());
     let blog = "https://example.org/blog.atom";
-    feeds.subscribe(rss(blog), SourceKind::Blog).unwrap();
+    feeds
+        .subscribe(rss(blog), SubscriptionSettings::new(SourceKind::Blog))
+        .unwrap();
     let all = [
         ("post-1", "First post", "Group", None),
         ("post-2", "Second post", "Group", None),
@@ -334,9 +365,19 @@ fn prune_drops_old_items_no_feed_lists() {
     // the feed now lists the fourth post only
     feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(feeds.keep_days(), 90);
-    feeds.set_keep_days(30).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            keep_days: 30,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     assert_eq!(feeds.prune().unwrap(), 0, "not old enough");
-    feeds.set_keep_days(7).unwrap();
+    feeds
+        .set_settings(FeedSettings {
+            keep_days: 7,
+            ..feeds.settings().clone()
+        })
+        .unwrap();
     assert_eq!(feeds.prune().unwrap(), 2);
     let left: Vec<&str> = feeds.items().iter().map(|i| i.title.as_str()).collect();
     assert_eq!(
@@ -355,8 +396,14 @@ fn an_article_of_two_feeds_is_one_item_and_its_duplicates_collapse() {
     let mut feeds = Feeds::open(dir.path()).unwrap();
     let earth = "https://www.sciencedaily.com/rss/earth_climate.xml";
     let climate = "https://www.sciencedaily.com/rss/earth_climate/climate.xml";
-    let earth_id = feeds.subscribe(rss(earth), SourceKind::News).unwrap().id;
-    let climate_id = feeds.subscribe(rss(climate), SourceKind::News).unwrap().id;
+    let earth_id = feeds
+        .subscribe(rss(earth), SubscriptionSettings::new(SourceKind::News))
+        .unwrap()
+        .id;
+    let climate_id = feeds
+        .subscribe(rss(climate), SubscriptionSettings::new(SourceKind::News))
+        .unwrap()
+        .id;
     let page = "https://www.sciencedaily.com/releases/2026/09/260919031037.htm";
     let body = format!(
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>ScienceDaily</title>\

@@ -131,11 +131,12 @@ fn entry(e: model::Entry, x: &Extra, sub: &Subscription, feed_title: Option<&str
         .chain(categories)
         .any(|t| EDITORIAL.is_match(t));
     let journal = sub
+        .settings
         .journal
         .clone()
         .or_else(|| x.publication.clone())
         .or_else(|| feed_title.map(String::from));
-    let kind = kind_of(sub.kind, doi.as_deref(), arxiv.is_some());
+    let kind = kind_of(sub.settings.kind, doi.as_deref(), arxiv.is_some());
     let post = kind.is_post();
     // a post's HTML, shown as it is (its images): the content, else the description
     let content = content.or_else(|| description.map(String::from));

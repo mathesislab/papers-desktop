@@ -1,6 +1,6 @@
 //! Subscribing, unsubscribing, the table of subscriptions, and the fetch.
 
-use papers_feeds::{Feed, Outcome, SourceKind};
+use papers_feeds::{Feed, Outcome, SourceKind, SubscriptionSettings};
 
 use crate::cli::{AccessArgs, EditArgs, IdArg, JsonArg, OpmlArgs, OpmlCommand, SubscribeArgs};
 use crate::text::{label, table};
@@ -28,21 +28,19 @@ pub fn subscribe(ctx: &mut Ctx, a: SubscribeArgs) -> Result<()> {
         _ => return fail("give one of a URL, --issn or --openalex"),
     };
     let mut feeds = ctx.open()?;
-    let kind = a.kind.map_or_else(|| guess_kind(&feed), SourceKind::from);
-    let mut subscription = feeds.subscribe(feed, kind)?;
-    if a.title.is_some() || a.journal.is_some() || a.fetch_pages || a.boost.is_some() {
-        subscription = feeds.edit_subscription(&subscription.id, |s| {
-            s.title = a.title.or(s.title.take());
-            s.journal = a.journal.or(s.journal.take());
-            s.fetch_pages |= a.fetch_pages;
-            s.boost = a.boost.unwrap_or(s.boost);
-        })?;
-    }
+    let settings = SubscriptionSettings {
+        title: a.title,
+        kind: a.kind.map_or_else(|| guess_kind(&feed), SourceKind::from),
+        journal: a.journal,
+        fetch_pages: a.fetch_pages,
+        boost: a.boost.unwrap_or(0.0),
+    };
+    let subscription = feeds.subscribe(feed, settings)?;
     let (id, feed) = (&subscription.id, &subscription.feed);
     writeln!(
         ctx.out,
         "subscribed {id} ({}) {feed}",
-        kind_name(subscription.kind)
+        kind_name(subscription.settings.kind)
     )?;
     Ok(())
 }
@@ -50,8 +48,13 @@ pub fn subscribe(ctx: &mut Ctx, a: SubscribeArgs) -> Result<()> {
 /// `feeds edit`: sets what the options say.
 pub fn edit(ctx: &mut Ctx, a: EditArgs) -> Result<()> {
     let mut feeds = ctx.open()?;
-    let s = feeds.edit_subscription(&a.id, |s| s.boost = a.boost)?;
-    writeln!(ctx.out, "edited {} {}: boost {}", s.id, s.feed, s.boost)?;
+    let settings = SubscriptionSettings {
+        boost: a.boost,
+        ..feeds.subscription(&a.id)?.settings.clone()
+    };
+    let s = feeds.edit_subscription(&a.id, settings)?;
+    let boost = s.settings.boost;
+    writeln!(ctx.out, "edited {} {}: boost {boost}", s.id, s.feed)?;
     Ok(())
 }
 
@@ -89,16 +92,15 @@ pub fn subscriptions(ctx: &mut Ctx, a: JsonArg) -> Result<()> {
         return Ok(());
     }
     // the column of boosts, if any subscription has one
-    let boosted = feeds.subscriptions().iter().any(|s| s.boost != 0.0);
+    let boosted = (feeds.subscriptions().iter()).any(|s| s.settings.boost != 0.0);
     let row = |s: &papers_feeds::Subscription| {
-        let name = s
-            .title
-            .clone()
-            .or_else(|| s.journal.clone())
+        let settings = &s.settings;
+        let name = (settings.title.clone())
+            .or_else(|| settings.journal.clone())
             .unwrap_or_default();
-        let mut row = vec![s.id.clone(), kind_name(s.kind).to_string(), name];
+        let mut row = vec![s.id.clone(), kind_name(settings.kind).to_string(), name];
         if boosted {
-            row.push(match s.boost {
+            row.push(match settings.boost {
                 0.0 => String::new(),
                 boost => format!("boost {boost:+}"),
             });

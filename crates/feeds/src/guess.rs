@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use crate::http::{Access, FEED_ACCEPT, Http, Request};
 use crate::journals::{journal_key, search_journals};
-use crate::model::{Feed, ItemKind, SourceKind, Subscription};
+use crate::model::{Feed, ItemKind, SourceKind, Subscription, SubscriptionSettings};
 use crate::parse::parse;
 
 /// The hosts of preprint servers, and their subdomains.
@@ -66,11 +66,7 @@ pub fn guess_kind(http: &dyn Http, access: &Access, url: &str) -> Result<Guess, 
         feed: Feed::Rss {
             url: url.to_string(),
         },
-        title: None,
-        kind: SourceKind::Journal,
-        journal: None,
-        fetch_pages: false,
-        boost: 0.0,
+        settings: SubscriptionSettings::new(SourceKind::Journal),
     };
     let parsed = parse(&reply.body, Some(&reply.url), &probe).map_err(|e| e.to_string())?;
     let n = parsed.entries.len();

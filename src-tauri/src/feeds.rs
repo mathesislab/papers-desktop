@@ -47,7 +47,8 @@ use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Confidence, Entry, Feed, FeedReport, Feeds, Groups, Interest, Item, ItemKind, Journal,
     Journals, LibraryFacts, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort,
-    SourceKind, Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
+    SourceKind, Stage, Subscription, SubscriptionSettings, Triage, Via,
+    ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -151,11 +152,10 @@ pub enum Change {
     Triage(Vec<String>, Triage),
     /// new, to be reminded of then (snoozed till then)
     Remind(Vec<String>, DateTime<Utc>),
-    /// a feed, the kind of its items, the title it is given (else the feed's own)
-    Subscribe(Feed, SourceKind, Option<String>),
+    Subscribe(Feed, SubscriptionSettings),
     Unsubscribe(String),
     Update(String, SubscriptionPatch),
-    Settings(Box<Configured>),
+    Settings(Box<papers_feeds::FeedSettings>),
     /// an OPML text
     Import(String),
     /// the saved searches, all of them
@@ -173,16 +173,6 @@ pub enum Applied {
     Ids(Vec<String>),
 }
 
-/// The settings of the feeds kept in their folder.
-#[derive(Debug, Clone)]
-pub struct Configured {
-    interests: Vec<Interest>,
-    title_boost: f64,
-    rules: Vec<Rule>,
-    keep_days: u32,
-    lookback_days: u32,
-}
-
 impl Change {
     fn apply(&self, feeds: &mut Feeds) -> papers_feeds::Result<Applied> {
         Ok(match self {
@@ -198,28 +188,20 @@ impl Change {
                 }
                 Applied::Done
             }
-            Change::Subscribe(feed, kind, title) => {
-                let subscription = feeds.subscribe(feed.clone(), *kind)?;
-                Applied::Subscription(match title {
-                    Some(title) => feeds
-                        .edit_subscription(&subscription.id, |s| s.title = Some(title.clone()))?,
-                    None => subscription,
-                })
+            Change::Subscribe(feed, settings) => {
+                Applied::Subscription(feeds.subscribe(feed.clone(), settings.clone())?)
             }
             Change::Unsubscribe(id) => {
                 feeds.unsubscribe(id)?;
                 Applied::Done
             }
             Change::Update(id, patch) => {
-                let patch = patch.clone();
-                Applied::Subscription(feeds.edit_subscription(id, |s| patch.apply(s))?)
+                let mut settings = feeds.subscription(id)?.settings.clone();
+                patch.clone().apply(&mut settings);
+                Applied::Subscription(feeds.edit_subscription(id, settings)?)
             }
-            Change::Settings(c) => {
-                // the interests first: they may not compile, and then nothing changes
-                feeds.set_interests(c.interests.clone(), c.title_boost)?;
-                feeds.set_rules(c.rules.clone())?;
-                feeds.set_keep_days(c.keep_days)?;
-                feeds.set_lookback_days(c.lookback_days)?;
+            Change::Settings(settings) => {
+                feeds.set_settings(settings.as_ref().clone())?;
                 Applied::Done
             }
             Change::Import(text) => Applied::Count(feeds.import_opml(text)?),
@@ -281,7 +263,7 @@ fn new_items(feeds: &Feeds, known: &BTreeSet<String>) -> usize {
 
 /// A subscription's title: its own, else what it follows.
 fn title_of(subscription: &Subscription) -> String {
-    (subscription.title.clone()).unwrap_or_else(|| subscription.feed.to_string())
+    (subscription.settings.title.clone()).unwrap_or_else(|| subscription.feed.to_string())
 }
 
 /// The summary of the feeds read (nothing looked up yet), and each
@@ -826,24 +808,23 @@ pub struct SubscriptionPatch {
 }
 
 impl SubscriptionPatch {
-    /// Sets what it has; a blank title or journal is none: the feed's own
-    /// again (a title at the next fetch).
-    fn apply(self, subscription: &mut Subscription) {
-        let blank = |text: String| Some(text.trim().to_string()).filter(|t| !t.is_empty());
+    /// Sets what it has (a blank title or journal is none once edited: the
+    /// feed's own again).
+    fn apply(self, settings: &mut SubscriptionSettings) {
         if let Some(title) = self.title {
-            subscription.title = blank(title);
+            settings.title = Some(title);
         }
         if let Some(kind) = self.kind {
-            subscription.kind = kind;
+            settings.kind = kind;
         }
         if let Some(journal) = self.journal {
-            subscription.journal = journal.and_then(blank);
+            settings.journal = journal;
         }
         if let Some(fetch_pages) = self.fetch_pages {
-            subscription.fetch_pages = fetch_pages;
+            settings.fetch_pages = fetch_pages;
         }
         if let Some(boost) = self.boost {
-            subscription.boost = boost;
+            settings.boost = boost;
         }
     }
 }
@@ -1098,7 +1079,7 @@ pub fn detail(
             .map(|s| SourceOf {
                 id: s.id.clone(),
                 title: title_of(s),
-                kind: s.kind,
+                kind: s.settings.kind,
             })
             .collect(),
         versions: (item.versions.iter())
@@ -1132,10 +1113,10 @@ fn info(subscription: Subscription, lasts: &BTreeMap<String, Last>) -> Subscript
         last: lasts.get(&subscription.id).cloned(),
         feed: FeedOf::from(&subscription.feed),
         id: subscription.id,
-        kind: subscription.kind,
-        journal: subscription.journal,
-        fetch_pages: subscription.fetch_pages,
-        boost: subscription.boost,
+        kind: subscription.settings.kind,
+        journal: subscription.settings.journal,
+        fetch_pages: subscription.settings.fetch_pages,
+        boost: subscription.settings.boost,
     }
 }
 
@@ -1366,11 +1347,12 @@ pub async fn feeds_subscribe(
     kind: SourceKind,
     title: Option<String>,
 ) -> Result<SubscriptionInfo, String> {
-    let title = title
-        .map(|t| t.trim().to_string())
-        .filter(|t| !t.is_empty());
+    let settings = SubscriptionSettings {
+        title,
+        ..SubscriptionSettings::new(kind)
+    };
     blocking(move || {
-        let applied = change(&app, Change::Subscribe(feed.into(), kind, title))?;
+        let applied = change(&app, Change::Subscribe(feed.into(), settings))?;
         subscription_of(&app, applied)
     })
     .await
@@ -1510,14 +1492,17 @@ pub async fn feeds_settings(app: AppHandle) -> Result<FeedSettings, String> {
     blocking(move || {
         let state = app.state::<AppState>();
         let settings = Settings::load(&state.settings_path)?;
-        state.feeds.read(|feeds| FeedSettings {
-            interests: feeds.interests().to_vec(),
-            title_boost: feeds.title_boost(),
-            rules: feeds.rules().to_vec(),
-            keep_days: feeds.keep_days(),
-            lookback_days: feeds.lookback_days(),
-            poll: settings.feeds_poll,
-            poll_minutes: settings.feeds_poll_minutes,
+        state.feeds.read(|feeds| {
+            let kept = feeds.settings().clone();
+            FeedSettings {
+                interests: kept.interests,
+                title_boost: kept.title_boost,
+                rules: kept.rules,
+                keep_days: kept.keep_days,
+                lookback_days: kept.lookback_days,
+                poll: settings.feeds_poll,
+                poll_minutes: settings.feeds_poll_minutes,
+            }
         })
     })
     .await
@@ -1545,14 +1530,14 @@ pub async fn feeds_set_searches(app: AppHandle, searches: Vec<Search>) -> Result
 #[tauri::command]
 pub async fn feeds_set_settings(app: AppHandle, settings: FeedSettings) -> Result<(), String> {
     blocking(move || {
-        let configured = Configured {
+        let kept = papers_feeds::FeedSettings {
             interests: settings.interests,
             title_boost: settings.title_boost,
             rules: settings.rules,
             keep_days: settings.keep_days,
             lookback_days: settings.lookback_days,
         };
-        change(&app, Change::Settings(Box::new(configured)))?;
+        change(&app, Change::Settings(Box::new(kept)))?;
         let state = app.state::<AppState>();
         let mut kept = Settings::load(&state.settings_path)?;
         kept.feeds_poll = settings.poll;
@@ -1652,7 +1637,10 @@ mod tests {
     fn subscribe(state: &FeedsState, url: &str) -> String {
         let feed = Feed::Rss { url: url.into() };
         match state
-            .change(Change::Subscribe(feed, SourceKind::Journal, None))
+            .change(Change::Subscribe(
+                feed,
+                SubscriptionSettings::new(SourceKind::Journal),
+            ))
             .unwrap()
         {
             Applied::Subscription(s) => s.id,
@@ -1845,19 +1833,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let state = opened(dir.path());
         subscribe(&state, TC);
-        let configured = Configured {
-            interests: Vec::new(),
-            title_boost: 2.0,
+        let kept = papers_feeds::FeedSettings {
             rules: vec![Rule {
                 when: "like:30-".into(),
                 then: papers_feeds::Action::Shortlist,
             }],
-            keep_days: 90,
-            lookback_days: 14,
+            ..papers_feeds::FeedSettings::default()
         };
-        state
-            .change(Change::Settings(Box::new(configured)))
-            .unwrap();
+        state.change(Change::Settings(Box::new(kept))).unwrap();
         let index = |title: &str| {
             let doc = papers_core::Doc {
                 id: "lib".into(),
@@ -1969,15 +1952,19 @@ mod tests {
             issn: "0022-1430".into(),
         };
         let title = Some("Journal of Glaciology".to_string());
-        let Applied::Subscription(s) = state
-            .change(Change::Subscribe(feed, SourceKind::Journal, title.clone()))
-            .unwrap()
+        let settings = SubscriptionSettings {
+            title: title.clone(),
+            ..SubscriptionSettings::new(SourceKind::Journal)
+        };
+        let Applied::Subscription(s) = state.change(Change::Subscribe(feed, settings)).unwrap()
         else {
             unreachable!()
         };
-        assert_eq!(s.title, title);
+        assert_eq!(s.settings.title, title);
         assert_eq!(
-            state.read(|f| f.subscriptions()[0].title.clone()).unwrap(),
+            state
+                .read(|f| f.subscriptions()[0].settings.title.clone())
+                .unwrap(),
             title
         );
 
@@ -2035,28 +2022,24 @@ mod tests {
         let patch: SubscriptionPatch = serde_json::from_str(r#"{"fetchPages": true}"#).unwrap();
         assert_eq!(patch.fetch_pages, Some(true));
         // applied: what it has, a blank title or journal as none
-        let mut eos = Subscription {
-            id: "e".into(),
-            feed: Feed::Rss {
-                url: "https://eos.org/feed".into(),
-            },
-            title: Some("Eos".into()),
-            kind: SourceKind::Journal,
-            journal: Some("Eos".into()),
-            fetch_pages: false,
-            boost: 0.0,
+        let dir = tempfile::tempdir().unwrap();
+        let state = opened(dir.path());
+        let id = subscribe(&state, "https://eos.org/feed");
+        let update = |patch: &str| {
+            let patch: SubscriptionPatch = serde_json::from_str(patch).unwrap();
+            match state.change(Change::Update(id.clone(), patch)).unwrap() {
+                Applied::Subscription(s) => s.settings,
+                _ => unreachable!(),
+            }
         };
-        let patch: SubscriptionPatch =
-            serde_json::from_str(r#"{"title": " ", "kind": "news", "journal": null}"#).unwrap();
-        patch.apply(&mut eos);
+        update(r#"{"title": "Eos", "journal": "Eos"}"#);
+        let eos = update(r#"{"title": " ", "kind": "news", "journal": null}"#);
         assert_eq!(
             (eos.title.clone(), eos.kind, eos.journal.clone()),
             (None, SourceKind::News, None)
         );
         assert!(!eos.fetch_pages);
         assert_eq!(eos.boost, 0.0, "left out stays");
-        let patch: SubscriptionPatch = serde_json::from_str(r#"{"boost": 2.5}"#).unwrap();
-        patch.apply(&mut eos);
-        assert_eq!(eos.boost, 2.5);
+        assert_eq!(update(r#"{"boost": 2.5}"#).boost, 2.5);
     }
 }

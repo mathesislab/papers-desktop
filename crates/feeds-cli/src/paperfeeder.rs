@@ -7,7 +7,7 @@ use std::path::Path;
 
 use papers_feeds::{
     Action, Error as FeedsError, Feed, Feeds, Interest, Lexicon, Matcher, Rule, SourceKind,
-    Subscription, Weighted,
+    Subscription, SubscriptionSettings, Weighted,
 };
 use serde::Deserialize;
 
@@ -149,7 +149,7 @@ struct Subscribed {
 /// The query of the items of a subscription: `src:"title"`, by its id if it has no title (the
 /// language has no way to quote a quote).
 fn items_of(subscription: &Subscription) -> String {
-    let name = subscription.title.as_ref().unwrap_or(&subscription.id);
+    let name = (subscription.settings.title.as_ref()).unwrap_or(&subscription.id);
     format!("src:\"{}\"", name.replace('"', ""))
 }
 
@@ -164,14 +164,15 @@ impl Subscribed {
         source: Source,
     ) -> Result<()> {
         let shown = feed.to_string();
-        match feeds.subscribe(feed, kind) {
+        let settings = SubscriptionSettings {
+            title: source.title,
+            journal: source.journal,
+            boost: source.score_boost,
+            ..SubscriptionSettings::new(kind)
+        };
+        match feeds.subscribe(feed, settings) {
             Ok(subscription) => {
                 self.added += 1;
-                let subscription = feeds.edit_subscription(&subscription.id, |s| {
-                    s.title = source.title;
-                    s.journal = source.journal;
-                    s.boost = source.score_boost;
-                })?;
                 if source.score_boost != 0.0 {
                     let boost = source.score_boost;
                     self.boosted.push(format!("{} ({boost})", source.name));
@@ -340,8 +341,9 @@ pub fn import(ctx: &mut Ctx, a: ImportArgs) -> Result<()> {
     let mut feeds = ctx.open()?;
     let mut lookbacks = Vec::new();
     let done = subscribe_all(&mut feeds, &sources, a.issn_via, &mut lookbacks)?;
+    let mut settings = feeds.settings().clone();
     if let Some(days) = sources.lookback_days {
-        feeds.set_lookback_days(days)?;
+        settings.lookback_days = days;
     }
     let mut rules = feeds.rules().to_vec();
     let new_rules: Vec<Rule> = done
@@ -351,7 +353,7 @@ pub fn import(ctx: &mut Ctx, a: ImportArgs) -> Result<()> {
         .cloned()
         .collect();
     rules.extend(new_rules.iter().cloned());
-    feeds.set_rules(rules)?;
+    settings.rules = rules;
     let mut bad = Vec::new();
     let interest = lexicon(&scoring, &a.interest, &mut bad);
     let mut interests = feeds.interests().to_vec();
@@ -364,7 +366,9 @@ pub fn import(ctx: &mut Ctx, a: ImportArgs) -> Result<()> {
     );
     interests.push(interest);
     let boost = scoring.title_boost.unwrap_or_else(|| feeds.title_boost());
-    feeds.set_interests(interests, boost)?;
+    settings.title_boost = boost;
+    settings.interests = interests;
+    feeds.set_settings(settings)?;
 
     let (added, already, failed) = (done.added, done.already, done.failed.len());
     writeln!(

@@ -67,7 +67,7 @@ pub use library::LibraryFacts;
 pub use links::Found;
 pub use model::{
     Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Origin, Reminder, Source,
-    SourceKind, Stage, Subscription, Triage, Version, Via,
+    SourceKind, Stage, Subscription, SubscriptionSettings, Triage, Version, Via,
 };
 pub use opml::Outline;
 pub use parse::{Parsed, parse};
@@ -78,7 +78,7 @@ pub use search::{
     search_works,
 };
 pub use searches::Search;
-pub use store::LOOKBACK_DAYS;
+pub use store::{FeedSettings, LOOKBACK_DAYS};
 pub use suggested::{Suggested, suggested};
 pub use sweep::SWEEP_PAGES;
 pub use view::{Counts, Groups, Row, Sort, View, ViewRequest};

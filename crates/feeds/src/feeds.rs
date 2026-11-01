@@ -10,11 +10,14 @@ use chrono::{DateTime, TimeDelta, Utc};
 use crate::interest::{self, Lexicon};
 use crate::library::LibraryFacts;
 use crate::merge::{Merger, refresh};
-use crate::model::{Entry, Feed, Item, Mark, Origin, Reminder, SourceKind, Subscription, Triage};
+use crate::model::{
+    Entry, Feed, Item, Mark, Origin, Reminder, Subscription, SubscriptionSettings, Triage,
+};
 use crate::normalize::{is_attachment_doi, short_id};
 use crate::parse::kind_of;
 use crate::store::{
-    self, CONFIG, Config, FORMAT, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State, Validated,
+    self, CONFIG, Config, FORMAT, FeedSettings, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State,
+    Validated,
 };
 use crate::{Error, Result};
 
@@ -48,7 +51,7 @@ impl Feeds {
         let dir = store::folder(dir)?;
         let config: Config = store::read(&dir, CONFIG)?;
         let mut feeds = Feeds {
-            lexicons: interest::compile(&config.interests, config.title_boost)?,
+            lexicons: interest::compile(&config.settings.interests, config.settings.title_boost)?,
             config,
             items: store::read(&dir, ITEMS)?,
             state: store::read(&dir, STATE)?,
@@ -103,9 +106,13 @@ impl Feeds {
         subscriptions
     }
 
-    /// A new subscription of a feed (its address canonical) or a sweep,
-    /// unless it is one already (http and https are one).
-    pub fn subscribe(&mut self, feed: Feed, kind: SourceKind) -> Result<Subscription> {
+    /// A new subscription of a feed (its address canonical) or a sweep, with
+    /// its settings, unless it is one already (http and https are one).
+    pub fn subscribe(
+        &mut self,
+        feed: Feed,
+        settings: SubscriptionSettings,
+    ) -> Result<Subscription> {
         let feed = feed.canonical()?;
         let key = feed.key();
         if let Some(known) = self.subscriptions().iter().find(|s| s.feed.key() == key) {
@@ -117,11 +124,7 @@ impl Feeds {
         let subscription = Subscription {
             id: short_id(&key),
             feed,
-            title: None,
-            kind,
-            journal: None,
-            fetch_pages: false,
-            boost: 0.0,
+            settings: settings.trimmed(),
         };
         self.config.subscriptions.push(subscription.clone());
         store::write(&self.dir, CONFIG, &self.config)?;
@@ -142,28 +145,30 @@ impl Feeds {
         Ok(subscription)
     }
 
-    /// Changes what the user names or sets on a subscription (its title,
-    /// journal, kind, `fetch_pages`, `boost`); its id and feed stay as they are.
-    /// Another kind is its items' at once, and the next fetch reads its feed
-    /// whole again (a post keeps its HTML, a paper does not).
+    /// The subscription of an id.
+    pub fn subscription(&self, id: &str) -> Result<&Subscription> {
+        (self.subscriptions().iter())
+            .find(|s| s.id == id)
+            .ok_or_else(|| Error::NoSubscription { id: id.to_string() })
+    }
+
+    /// Sets what the user names or sets on a subscription (its title,
+    /// journal, kind, `fetch_pages`, `boost`). Another kind is its items' at
+    /// once, and the next fetch reads its feed whole again (a post keeps its
+    /// HTML, a paper does not).
     pub fn edit_subscription(
         &mut self,
         id: &str,
-        edit: impl FnOnce(&mut Subscription),
+        settings: SubscriptionSettings,
     ) -> Result<Subscription> {
-        let subscription = self
-            .config
-            .subscriptions
-            .iter_mut()
+        let kind = self.subscription(id)?.settings.kind;
+        let subscription = (self.config.subscriptions.iter_mut())
             .find(|s| s.id == id)
-            .ok_or_else(|| Error::NoSubscription { id: id.to_string() })?;
-        let (feed, kind) = (subscription.feed.clone(), subscription.kind);
-        edit(subscription);
-        subscription.id = id.to_string();
-        subscription.feed = feed;
+            .expect("a subscription");
+        subscription.settings = settings.trimmed();
         let edited = subscription.clone();
         store::write(&self.dir, CONFIG, &self.config)?;
-        if edited.kind != kind {
+        if edited.settings.kind != kind {
             self.rekind(&edited);
             self.http.remove(id);
             store::write(&self.dir, HTTP, &self.http)?;
@@ -182,7 +187,11 @@ impl Feeds {
                 .filter(|s| s.entry.source == subscription.id)
             {
                 let e = &mut source.entry;
-                e.kind = kind_of(subscription.kind, e.doi.as_deref(), e.arxiv.is_some());
+                e.kind = kind_of(
+                    subscription.settings.kind,
+                    e.doi.as_deref(),
+                    e.arxiv.is_some(),
+                );
                 if !e.kind.is_post() {
                     e.content = None;
                 }
@@ -196,12 +205,19 @@ impl Feeds {
 
     /// The days a sweep looks back the first time.
     pub fn lookback_days(&self) -> u32 {
-        self.config.lookback_days
+        self.config.settings.lookback_days
     }
 
-    /// Sets the days a sweep looks back the first time.
-    pub fn set_lookback_days(&mut self, days: u32) -> Result<()> {
-        self.config.lookback_days = days;
+    /// The settings of the feeds.
+    pub fn settings(&self) -> &FeedSettings {
+        &self.config.settings
+    }
+
+    /// Sets the settings of the feeds, if every interest compiles; else
+    /// nothing changes.
+    pub fn set_settings(&mut self, settings: FeedSettings) -> Result<()> {
+        self.lexicons = interest::compile(&settings.interests, settings.title_boost)?;
+        self.config.settings = settings;
         store::write(&self.dir, CONFIG, &self.config)
     }
 
@@ -295,12 +311,7 @@ impl Feeds {
     /// The days an item no feed lists is kept, unless shortlisted, added or to
     /// be reminded of.
     pub fn keep_days(&self) -> u32 {
-        self.config.keep_days
-    }
-
-    pub fn set_keep_days(&mut self, days: u32) -> Result<()> {
-        self.config.keep_days = days;
-        store::write(&self.dir, CONFIG, &self.config)
+        self.config.settings.keep_days
     }
 
     /// Drops the items first seen more than `keep_days` ago that no feed
@@ -319,7 +330,7 @@ impl Feeds {
 
     /// [`Feeds::prune`], not written.
     pub(crate) fn drop_old(&mut self) -> usize {
-        let before = (self.now)() - TimeDelta::days(self.config.keep_days.into());
+        let before = (self.now)() - TimeDelta::days(self.config.settings.keep_days.into());
         self.lookups.retain(|_, &mut at| at >= before);
         let state = &self.state;
         let old = |item: &Item| {
