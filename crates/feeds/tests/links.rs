@@ -116,6 +116,13 @@ fn futurity_posts_link_their_papers_from_the_feed() {
         .collect();
     assert_eq!(covered, [post.id.as_str()]);
     assert!(feeds.covered_by(&post.id).is_empty());
+    // its row counts them, as the item alone
+    let rows = feeds.view(&papers_feeds::ViewRequest::default()).rows;
+    let row = rows.iter().find(|r| r.id == paper.id).unwrap();
+    assert_eq!(row.covered_by, 1);
+    let alone = feeds.row_of(&paper.id, "", papers_core::Matching::WordStart);
+    assert_eq!(alone.unwrap().covered_by, 1);
+    assert!(!paper.has_versions() && paper.openalex_id().is_none());
     assert!(matches!(
         feeds.find_papers(&paper.id, &http, &Access::default()),
         Err(Error::NotAPost { .. })

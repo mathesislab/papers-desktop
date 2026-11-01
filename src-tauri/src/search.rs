@@ -165,12 +165,8 @@ pub fn search_set_tab(app: AppHandle, show: bool) -> Result<(), String> {
 pub async fn search_saved(app: AppHandle) -> Result<Vec<FeedRow>, String> {
     blocking(move || {
         let ids = app.state::<AppState>().search.read(|feeds| {
-            let mut saved: Vec<_> = (feeds.items().iter())
-                .filter(|i| feeds.triage(&i.id) == papers_feeds::Triage::Shortlisted)
-                .map(|i| (i.first_seen(), i.id.clone()))
-                .collect();
-            saved.sort_by_key(|a| std::cmp::Reverse(a.0));
-            saved.into_iter().map(|(_, id)| id).collect::<Vec<_>>()
+            let saved = feeds.shortlisted().into_iter();
+            saved.map(|i| i.id.clone()).collect::<Vec<_>>()
         })?;
         rows_of(&app, &ids, "")
     })

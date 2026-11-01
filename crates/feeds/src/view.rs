@@ -8,7 +8,7 @@
 //! The rows, as a saved search's, leave the dismissed items out unless the
 //! query names them (`is:dismissed`).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ops::Range;
 
 use chrono::{DateTime, Utc};
@@ -85,6 +85,8 @@ pub struct Row {
     /// the library's entries of the same paper (its DOI, or its title and
     /// year), newest first; none without the library's facts
     pub in_library: Vec<String>,
+    /// the posts about it (linking a DOI of its versions)
+    pub covered_by: usize,
 }
 
 /// The live items (not dismissed) of each group of the sidebar; a value no
@@ -150,6 +152,7 @@ impl Feeds {
         let mut counts = Counts::default();
         let mut rows = Vec::new();
         let mut held = 0;
+        let covering = self.covering();
         for item in self.items() {
             let seen = self.seen(item);
             let live = seen.triage() != Triage::Dismissed;
@@ -169,7 +172,8 @@ impl Feeds {
                 continue;
             }
             if let Some(marks) = seen.record.check(&query, request.matching) {
-                rows.push((newest(item), self.row(item, seen, &marks)));
+                let covered_by = covered_by(&covering, item);
+                rows.push((newest(item), self.row(item, seen, &marks, covered_by)));
             }
         }
         match request.sort {
@@ -195,11 +199,32 @@ impl Feeds {
             .record
             .check(&parse(query), matching)
             .unwrap_or_default();
-        Some(self.row(item, seen, &marks))
+        let covered_by = covered_by(&self.covering(), item);
+        Some(self.row(item, seen, &marks, covered_by))
+    }
+
+    /// The items shortlisted, the latest first seen first.
+    pub fn shortlisted(&self) -> Vec<&Item> {
+        let mut shortlisted: Vec<&Item> = (self.items().iter())
+            .filter(|i| self.triage(&i.id) == Triage::Shortlisted)
+            .collect();
+        shortlisted.sort_by_key(|i| std::cmp::Reverse(i.first_seen()));
+        shortlisted
+    }
+
+    /// The posts that link each DOI, by their ids.
+    fn covering(&self) -> HashMap<&str, HashSet<&str>> {
+        let mut posts: HashMap<&str, HashSet<&str>> = HashMap::new();
+        for post in self.items().iter().filter(|i| !i.links.is_empty()) {
+            for link in &post.links {
+                posts.entry(&link.doi).or_default().insert(&post.id);
+            }
+        }
+        posts
     }
 
     /// An item shown: the query's marks, its interests' terms marked too.
-    fn row(&self, item: &Item, seen: Seen, marks: &Marks) -> Row {
+    fn row(&self, item: &Item, seen: Seen, marks: &Marks, covered_by: usize) -> Row {
         let summary = item.summary.as_deref().unwrap_or("");
         let matched = || {
             let lexicons = self.lexicons().iter().zip(&seen.scores);
@@ -231,8 +256,18 @@ impl Feeds {
             r#abstract,
             reminder: seen.reminder,
             in_library: seen.in_library,
+            covered_by,
         }
     }
+}
+
+/// The number of posts about an item, of those that link each DOI: of any of
+/// its versions, the item itself left out.
+fn covered_by(covering: &HashMap<&str, HashSet<&str>>, item: &Item) -> usize {
+    let dois = item.doi.iter().chain(item.versions.iter().map(|v| &v.doi));
+    let posts = dois.filter_map(|d| covering.get(d.as_str())).flatten();
+    let posts: HashSet<&&str> = posts.filter(|&&id| id != item.id).collect();
+    posts.len()
 }
 
 /// When an item is of: its date, else when it was first fetched.

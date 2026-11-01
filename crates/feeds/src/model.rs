@@ -448,6 +448,18 @@ impl Item {
     pub fn listed(&self) -> bool {
         self.sources.iter().any(|s| s.listed)
     }
+
+    /// Whether it is a preprint, or has one among its versions.
+    pub fn has_versions(&self) -> bool {
+        self.kind == ItemKind::Preprint || self.versions.iter().any(|v| v.stage == Stage::Preprint)
+    }
+
+    /// Its OpenAlex id (`W…`), if an entry is OpenAlex's work.
+    pub fn openalex_id(&self) -> Option<&str> {
+        (self.sources.iter())
+            .find_map(|s| s.entry.guid.strip_prefix("https://openalex.org/"))
+            .filter(|id| id.starts_with('W'))
+    }
 }
 
 /// Where the user is with an item.

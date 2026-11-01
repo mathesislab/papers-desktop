@@ -36,7 +36,7 @@
 //! change of its files or a write), then given to the feeds and to every
 //! copy a fetch opens; the page is told (`feeds-changed`).
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
@@ -1044,12 +1044,10 @@ pub fn view(feeds: &Feeds, matching: Matching, request: &ViewRequest) -> FeedVie
 }
 
 /// What the rows of the list show besides the crate's rows: the titles of the
-/// subscriptions, the posts that cover a paper.
+/// subscriptions.
 pub struct Rows<'a> {
     feeds: &'a Feeds,
     titles: HashMap<&'a str, String>,
-    /// the posts that link each DOI
-    posts: HashMap<&'a str, HashSet<&'a str>>,
 }
 
 impl<'a> Rows<'a> {
@@ -1057,30 +1055,13 @@ impl<'a> Rows<'a> {
         let titles = (feeds.subscriptions().iter())
             .map(|s| (s.id.as_str(), title_of(s)))
             .collect();
-        let mut posts: HashMap<&str, HashSet<&str>> = HashMap::new();
-        for post in feeds.items().iter().filter(|i| !i.links.is_empty()) {
-            for link in &post.links {
-                posts.entry(&link.doi).or_default().insert(&post.id);
-            }
-        }
-        Rows {
-            feeds,
-            titles,
-            posts,
-        }
+        Rows { feeds, titles }
     }
 
     /// The row of the list of a crate's row.
     pub fn row(&self, row: papers_feeds::Row) -> FeedRow {
         let feeds = self.feeds;
         let item = feeds.item(&row.id).expect("a row's item");
-        let dois = item.doi.iter().chain(item.versions.iter().map(|v| &v.doi));
-        let covering: HashSet<&str> = dois
-            .filter_map(|d| self.posts.get(d.as_str()))
-            .flatten()
-            .filter(|&&id| id != item.id)
-            .copied()
-            .collect();
         FeedRow {
             kind: item.kind,
             journal: item.journal.clone(),
@@ -1092,9 +1073,8 @@ impl<'a> Rows<'a> {
             reminder: row.reminder,
             remind: feeds.mark(&item.id).and_then(|m| m.remind),
             in_library: row.in_library,
-            has_versions: item.kind == ItemKind::Preprint
-                || item.versions.iter().any(|v| v.stage == Stage::Preprint),
-            covered_by: covering.len(),
+            has_versions: item.has_versions(),
+            covered_by: row.covered_by,
             links: item.links.len(),
             cited: item.cited,
             id: row.id,
@@ -1147,10 +1127,7 @@ pub fn detail(
         arxiv: item.arxiv.clone(),
         url: item.url.clone(),
         cited: item.cited,
-        openalex: (item.sources.iter())
-            .find_map(|s| s.entry.guid.strip_prefix("https://openalex.org/"))
-            .filter(|id| id.starts_with('W'))
-            .map(String::from),
+        openalex: item.openalex_id().map(String::from),
         r#abstract: row.r#abstract,
         abstract_from_feed: item.summary.is_some() && !feeds.abstract_from_work(item),
         abstract_pending: feeds.pending(item).is_some(),

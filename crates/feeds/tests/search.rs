@@ -208,7 +208,10 @@ fn works_found_are_items_and_a_new_search_keeps_those_saved_for_later() {
         .collect();
     assert_eq!(titles, ["B", "A"], "in the order found");
     assert_eq!(feeds.item(&ids[1]).unwrap().cited, Some(120));
+    assert_eq!(feeds.item(&ids[1]).unwrap().openalex_id(), Some("W1"));
     feeds.set_triage(&ids[1], Triage::Shortlisted).unwrap();
+    let shortlisted: Vec<&str> = feeds.shortlisted().iter().map(|i| i.id.as_str()).collect();
+    assert_eq!(shortlisted, [ids[1].as_str()]);
 
     let found = search_works(&http, &access, &plain("firn"), Order::Relevance, None).unwrap();
     let more = feeds.found(found.entries, true).unwrap();
