@@ -58,9 +58,16 @@ selection, or the papers shown, to a `.bib` file.
 | `⌘=` `⌘-` `⌘0` | zoom in, out, fit the width |
 
 The Feeds tab lists the new papers and posts of the journals, preprint
-servers, news sites and blogs followed (+ Subscribe…), scored by interests;
-the sidebar's views, kinds, interests and sources filter it. An item
-selected for a moment counts as seen.
+servers, news sites and blogs followed (+ Subscribe…), each with a score of
+0–100 of two parts, shown as two bars: its keywords (the best of your
+interests: an interest's minimum score is 50, twice it 100) over its
+library (how close it is to the papers of your library: as close as their
+typical paper is to the others, 100). The score is the higher of both, or
+one alone (Settings → Score, with the interests and the .bib files it
+compares with); it sorts the list and is `score:50-` in a search or a rule
+(0–100: rules written for the scores of before need new thresholds). The
+sidebar's views, kinds, interests and sources filter it. An item selected
+for a moment counts as seen.
 
 | Key (Feeds tab) | Action |
 |---|---|
@@ -135,7 +142,7 @@ filters.
 ## Settings
 
 The settings window (menu-bar icon → Settings…, or `⌘,` in the panel), in
-tabs (`⌘1`…`⌘5`), sets the `.bib` files of the library, the hotkey (click it and press the new
+tabs (`⌘1`…`⌘6`), sets the `.bib` files of the library, the hotkey (click it and press the new
 keys) and, on Linux, the hotkey that searches the selection, matching
 inside words, the citation style, Start at Login and updates.
 Changes apply at once.
@@ -171,8 +178,12 @@ macOS, [the Linux path is below](#linux)), which can also be edited:
   (e.g. from the [Zotero style repository](https://www.zotero.org/styles)).
 - `feeds_poll`: fetch the feeds in the background (default `false`: nothing
   is sent unless asked); `feeds_poll_minutes`: every so many minutes (60, 5
-  at least). Set in the Feeds section, with the subscriptions, interests and
-  rules, which are kept in the app data folder (`feeds/config.json`).
+  at least). Set in the Feeds section, with the subscriptions and rules,
+  which are kept in the app data folder (`feeds/config.json`), as are the
+  interests and the score's mode of the Score section.
+- `similar_skip`: the `.bib` files whose papers the library part of the
+  score leaves out (those unticked under *Similar to* in the Score section);
+  empty by default: every `.bib`, also one added later, counts.
 
 Reload Library re-reads the file and the library.
 

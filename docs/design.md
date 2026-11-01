@@ -273,8 +273,8 @@ details shown or not are kept in the data folder of the app (`window.json`), as
 the recent papers are (`recent.json`) and the dates added (`added.json`); the window opens again at start if it was open at the end.
 
 A gear button at the bottom of the sidebar opens the settings window, as the
-app menu's Settings… does. Its tabs, Library, Feeds, Search, General and Advanced
-(`⌘1`…`⌘5`), are the sections `open_settings` names; `updates` is the Updates of
+app menu's Settings… does. Its tabs, Library, Feeds, Score, Search, General and Advanced
+(`⌘1`…`⌘6`), are the sections `open_settings` names; `updates` is the Updates of
 General, looked for at once. The tab shown stays while the window is open; Library at first.
 
 **Text size** (setting, five levels: Smallest 0.9, Smaller 1.0, Default 1.1,
@@ -737,8 +737,8 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
   with `--mailto` and `--openalex-key`, else papers-rs's `PAPERS_MAILTO` and
   `OPENALEX_API_KEY`. `--dir` (else `FEEDS_DIR`, else `papers-feeds/` in the
   data folder) is the folder; not the app's while it runs, nothing locks it.
-  `--library <file.bib>` (repeated) indexes a library for `like:`, `--sort
-  like` and the nearest papers of `show`.
+  `--library <file.bib>` (repeated) indexes a library for the library part
+  of the score, `like:` and the nearest papers of `show`.
 - The app (`src-tauri/src/feeds/`, `src/lib/feeds/`): the tab, *In
   library* (core's `Identity`), the Add sheet, the settings.
 
@@ -746,7 +746,7 @@ behind them: `docs/drafts/feeds-proposals.md`; mockup:
 and the matcher take a `Record` (the searchable texts of anything: title,
 authors, year, journal, abstract, keywords, DOI, the `has:` names, and named
 facets such as `kind:`, `src:`, `is:`, `prof:` and number ranges such as
-`score:3-`), which a library entry and a feed item each make. A module of
+`score:50-`), which a library entry and a feed item each make. A module of
 core with no .bib types: `Record::new(title)` and its builder methods
 (`.authors`, `.abstract`, `.facet(name, values)`, `.number(name, x)`, ...),
 `Query::parse(text, Schema { facets, numbers })` (an undeclared name is a
@@ -867,12 +867,19 @@ Library tab):
   same query) and shows it with its sort; the one shown is selected
   (`sameQuery` and the sort).
 - *List*: virtualised as the library's table: a mark (★ starred, ✓
-  added, the kind of a post or preprint), the score, the likeness to the
-  library (*Similar*, 0–100; – before the library is indexed), the title (bold
+  added, the kind of a post or preprint), the score (`ScoreBars`: two thin
+  bars one over the other, each filling the cell's width from 0 to 100 over
+  a faint track, the keywords on top in the accent, the library under in the
+  library's green; a part missing an empty track, both tinted red when
+  vetoed; on hover *Score 72 · keywords 72 (ice sheet, AMOC) · library 41*,
+  *Excluded: Georgia*, or on a line of its own *No interests yet: add them
+  in Settings → Score*), the title (bold
   while new, muted once seen), authors, journal or source, age, badges (*in
   library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
-  reached). Sorted by score, likeness or newest (the headers, or the count
-  above the list, which goes through them). Click, ⇧-click and ⌘-click select as in the library; the keys act
+  reached). A simple row has the bars too, smaller, before its badges.
+  Sorted by score or newest (the headers, or the count above the list,
+  which goes through them). The *Similar* column of before is gone: a
+  layout that saved it drops it, a sort `like` saved is the score. Click, ⇧-click and ⌘-click select as in the library; the keys act
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a removed item goes, the next
@@ -916,10 +923,11 @@ Library tab):
   authors, journal and date, then a paper's abstract marked by the query and
   the interests (*Summary from the feed* until Crossref or OpenAlex gives
   one; looked up 300 ms after it is shown, once per item), *Why it is here*
-  (each interest's score and terms), its free PDF (`pdfOf`, asked 300 ms
+  (the score; the exclude that vetoed it; the keywords part, then each
+  interest's scaled score and terms; the library part), its free PDF (`pdfOf`, asked 300 ms
   after it is shown, once per item), versions (*preprint in library → Add
   would replace it*), *Covered by*, *Seen in*, and last, set apart and
-  quieter, *Similar in your library* (the likeness and the 3 nearest papers
+  quieter, *Similar in your library* (the 3 nearest papers
   of the library, each with its authors, year, journal and cosine, shown in
   the Library tab on a click). A post's HTML (`safe_html`, ammonia: its
   text, links and images, an image's title under it), then its linked papers as
@@ -999,7 +1007,7 @@ to each interest's score of the items the subscription lists, a veto
 excepted (the score stays 0); it counts with no term matching too. An item
 that several subscriptions list takes the strongest boost, not the sum. It
 is part of the score wherever the score is used (`score:`, `prof:` through
-`reached`, the sort, the rules, the digest's `score:3-`). Set in the
+`reached`, the sort, the rules, the digest's `score:50-`). Set in the
 settings (a field of the subscription's editor), by `feeds subscribe
 --boost N` or `feeds edit <id> --boost N`; `feeds subscriptions` shows it.
 (paper-feeder's `score_boost: N` is `boost: N`; its `always_include` a rule
@@ -1014,47 +1022,78 @@ case: `Error::View`). The query is the whole of the tab's choices (below);
 removed items are left out unless it has an `is:` term on them, as the
 app's and the CLI's lists. `Feeds::view` counts the items each one shows
 (`counts.views`, by name), whatever the request. CLI: `feeds views [--json]`
-(`searches` also), `views add NAME QUERY... [--sort score|newest|like]` (in
-place of the view of that name), `views remove NAME`, and `--saved NAME` on
-`list` (its sort unless `--sort`) and `digest` (no default `score:3-` then),
+(`searches` also), `views add NAME QUERY... [--sort score|newest]` (in
+place of the view of that name; a view's sort `like` of before is read as
+`score`), `views remove NAME`, and `--saved NAME` on
+`list` (its sort unless `--sort`) and `digest` (no default `score:50-` then),
 with the query typed too.
 
 **Rules**: `{when, then}`, a query of the feeds and `star` (`shortlist`
 before, still read), `remove` (`dismiss` before, still read) or `seen`
-(`prof:amoc score:6-` → star, `t:editorial` → remove). They act on the items a fetch brings, the first that matches
+(`prof:amoc score:80-` → star, `t:editorial` → remove). They act on the items a fetch brings, the first that matches
 deciding, never on an item with a triage.
 
 **Likeness** (*Similar in your library*): how close an item is to the
 library. Core's `Likeness::build(docs)` indexes the papers (`Doc { id,
-title, abstract, keywords }`; `Likeness::of(&Library)`): the folded words
+title, abstract, keywords }`; `Likeness::of(&Library, skip)`, the papers
+of the .bib files of `skip` left out): the folded words
 of the search, without stopwords, numbers and words of fewer than three
 letters, a plural's `s` dropped; a word weighs `(1 + ln tf) · idf` (idf
 smoothed, `ln((1+N)/(1+df)) + 1`), a word of the title or a keyword counting
 twice; the vectors of length 1, in an inverted index (each word's papers and
-weights). `like(title, abstract) -> Like { score, nearest }`: the cosine of
-the item with each paper that shares a word with it (the words no paper has
-count in its length), `score` the mean of the best 5 (fewer in a smaller
-library) × 100, 0–100, `nearest` the best 3 ids and cosines. The feeds crate
+weights). `like(title, abstract) -> Like { score, scaled, nearest }`: the
+cosine of the item with each paper that shares a word with it (the words no
+paper has count in its length), `score` the mean of the best 5 (fewer in a
+smaller library) × 100, 0–100 (rarely above 40 in practice), `nearest` the
+best 3 ids and cosines, `scaled` the score over the index's reference × 100,
+at most 100. The reference (`Likeness::reference`), computed once per build,
+is the median score of the library's papers, each by its title and abstract
+(as an item is scored) against the others, itself left out of its best
+cosines; at most 500 papers count (`SAMPLE`, evenly spaced from the first),
+so that a large library is indexed quickly. An item as close to the library
+as its typical paper is to the rest scales to 100; with a reference of 0
+(a paper alone) any likeness is 100. The feeds crate
 knows no .bib: the facts of the library are given to the handle,
 `Feeds::set_library(Arc<LibraryFacts { likeness, identities }>)` (the index,
 none for an empty library, and core's `Identities` of its papers, kept with
-the library), and computed when asked as the scores are: the number
-`like:` of the query (none without an index: `like:` then matches nothing),
-`Row.like`, `Sort::Like` (the most like first, then the newest),
-`Feeds::like(item)` for the nearest, and the rules at a fetch (`like:40-` →
-star). A library of 2,353 papers (titles; one abstract) is indexed in
+the library), and computed when asked as the scores are: the library part
+of the score (below), the number `like:` of the query (that part; none
+without an index: `like:` then matches nothing), `Feeds::like(item)` for the
+nearest, and the rules at a fetch (`like:90-` → star). A library of 2,353 papers (titles; one abstract) is indexed in
 5 ms (release); an item with an abstract is scored in about 16 µs, a view of
 5,000 items in about 80 ms.
+
+**Score** (`rating.rs`, `Rating`): one score of an item, 0–100, wherever a
+score is used: the rows (`ScoreBars`) of the Feeds and Search tabs, the sort
+by score (then the newest), `score:` in the query and the rules, the
+digest. Two parts, each 0–100:
+
+- *keywords*: the best interest, scaled: `min(100, 50 · score / min_score)`
+  (`Score::scaled`; its `min_score` is 50, twice it or more 100, linear from
+  0; a `min_score` of 0 makes every item 100). None without interests.
+- *library*: the likeness scaled by the library's reference,
+  `min(100, 100 · like / reference)` (core's `Like::scaled`, above). None
+  without an index.
+
+The mode (`ScoreMode`, `score` in `config.json`, set in Settings → Score)
+takes them: `higher` (the default: the higher of the parts there are, so
+the library alone without interests), `keywords` or `library` (0 without
+that part). An exclude of any interest vetoes the item: the score and both
+parts are 0 (`excluded` names its term or pattern; an interest's own score
+in another interest is untouched, and `prof:` is as before). `like:` is the
+library part, vetoed or not as shown. The thresholds of `score:` were the
+raw best score before (`score:3-`, an interest's `min_score`), and are now
+0–100 (`score:50-`); rules written before are not converted.
 
 **The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
 `is:` (new or unread, seen, starred, removed, added, editorial,
 `inlibrary` with the library's facts; `is:shortlisted` of before is a value
 no item has), `src:` (a subscription's title or id),
 `prof:` (the interests whose `min_score` the item reaches), and the numbers
-`score:` (its best score) and `like:` (its likeness, with an index); an item's record is its title, the family names
+`score:` (its score, 0–100) and `like:` (the library part of it, with an index); an item's record is its title, the family names
 of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
 `has:doi`. `Feeds::view` gives the rows a query passes, sorted
-newest, by score or by likeness, each with its scores and likeness, the terms that matched and its
+newest or by score (`Sort::Score`, `like` of before read as it), each with its score and its parts (`Row.rating`), its scores in the interests, the terms that matched and its
 title, authors and abstract marked (the query's words and the interests'
 terms), and the counts of the sidebar: as the library's, over every live
 item (not removed) whatever the query, by `is:`, kind, interest and
@@ -1083,13 +1122,22 @@ kind, feed and last outcome; added by a feed's URL, an ISSN or an OpenAlex
 filter, or from the suggested list, by group; edited: title, kind, journal,
 fetch pages, boost; removed), OPML import and export (sweeps as outlines of their
 own type, `crossref`/`issn` and `openalex`/`filter`, the kind in
-`category`), the interests and rules (edited, then saved together:
-`feeds_set_settings` refuses an interest that does not compile, with its
-message), the days kept, the lookback, background polling (the command line does
+`category`), the rules (edited, then saved together), the days kept, the lookback, background polling (the command line does
 the OPML, the days kept and the lookback too: `feeds opml import|export`,
 `feeds config keep-days|lookback-days`). Polling is in
 `settings.json` (`feeds_poll`, false; `feeds_poll_minutes`, 60, 5 at least),
-the rest in `feeds/config.json`.
+the rest in `feeds/config.json`. The *Score* tab
+(`ScoreSettings.svelte`, between Feeds and Search): the score's mode
+(radios: *Higher of both*, *Keywords only*, *Library only*; `score` of
+`feeds/config.json`, saved at once), *Similar to* (the library's .bib files
+with checkboxes, all ticked at first: `similar_skip` of `settings.json`, the
+unticked ones as `bibtex` names them, so that a .bib added later is ticked;
+a .bib removed from the library leaves it too; saving it reloads the
+library and builds the index again), then the interests and the title boost
+(edited, then saved together: `feeds_set_settings` refuses an interest that
+does not compile, with its message). The two tabs share the feeds' settings
+as saved (`FeedPrefs`, `settings/feeds.svelte.ts`): each saves its part over
+them, not over a stale copy of the other's.
 
 **The switches** of the main window (`Toggle`, `src-tauri/src/toggle.rs`,
 `src/lib/toggles.ts`): `feeds-tab`, `search-tab` and `feeds-beside`, in the
@@ -1167,15 +1215,17 @@ command. *In library*: a row's and the details' library entries of the same
 paper (core's `Identity`: the DOI, or the title and year), `versionInLibrary`
 those of another version's DOI; `is:inlibrary` in the query, the counts and
 the rules. *Similar in your library*: the index of the library's papers
-(`Likeness::of`, every .bib file of the library) is built on a thread of its
-own after every read of the library (`load`: at the start, when a .bib file
-changes, after a write), with their identities (`Library::identities`, built
+(`Likeness::of`, the .bib files ticked under *Similar to*: `similar_skip`
+left out) is built on a thread of its own after every read of the library
+(`load`: at the start, when a .bib file changes, after a write or a save of
+the settings), with their identities (`Library::identities`, built
 once per library, given at once, with the index of before till the new one
 is built), given to the feeds (`Folder::set_library`, numbered:
-a build that ends after a newer one is dropped; no index for an empty
-library) and to each copy a fetch opens, so that the rules use them, then
-`feeds-changed`; rows have `like`,
-the details `like` and `nearest` (`{id, key, title, subtitle, cosine}`).
+a build that ends after a newer one is dropped; no index without a paper to
+index: an empty library, or every .bib unticked) and to each copy a fetch
+opens, so that the rules use them, then `feeds-changed`; rows and the
+details have the score and its parts (`score`, `keywords`, `library`,
+`excluded`), the details `nearest` (`{id, key, title, subtitle, cosine}`).
 A fetch runs on a copy of the
 feeds opened from the folder, so the tab reads and triages meanwhile: the
 changes made while it runs are applied at once, kept, and applied again to
@@ -1238,7 +1288,10 @@ your library* are the Feeds tab's (the item commands take the store). A new
 search drops the works found before but those *saved for later* (☆, `s`:
 starred in that folder, apart from the Feeds tab's Starred: works kept from a
 search, not yet sure to add; `search_starred`) and those added. Each keeps the
-citations OpenAlex counted (`cited`, the *Cited* column). The tab keeps the
+citations OpenAlex counted (`cited`, the *Cited* column). Its score is its
+folder's: that folder has no interests (its `config.json` is its own) and the
+mode of its own, the default, so a work's score is its library part alone and
+its keywords bar empty. The tab keeps the
 search shown (its ids, total, cursor), the 20 last searches and the columns
 in the window's layout (`search`); the sidebar: Results, *Saved for later
 (N)*, Recent searches.
