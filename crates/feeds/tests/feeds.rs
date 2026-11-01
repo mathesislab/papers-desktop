@@ -451,3 +451,12 @@ fn an_article_of_two_feeds_is_one_item_and_its_duplicates_collapse() {
     assert_eq!(feeds.resolve(&duplicate_id), kept);
     assert_eq!(feeds.triage(&kept), Triage::Shortlisted);
 }
+
+#[test]
+fn opening_writes_nothing_that_did_not_change() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Feeds::open(dir.path()).unwrap();
+    assert_eq!(feeds.prune().unwrap(), 0);
+    let written: Vec<_> = std::fs::read_dir(dir.path()).unwrap().collect();
+    assert!(written.is_empty(), "{written:?}");
+}

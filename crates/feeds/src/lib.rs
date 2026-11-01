@@ -58,7 +58,7 @@ pub use html::safe_html;
 pub use feeds::{Feeds, Now};
 pub use fetch::{FeedReport, FetchReport, FollowUp, Outcome};
 pub use http::{Access, Http, Network, Reply, Request};
-pub use interest::{Interest, Lexicon, Matcher, Score, Weighted};
+pub use interest::{Interest, Matcher, Score, Weighted};
 pub use journals::{
     Follow, Journal, Journals, LEAST_PAPERS, LibraryJournal, MOST_JOURNALS, SiteFeed, journal_key,
     library_journals, search_journals, site_feed,

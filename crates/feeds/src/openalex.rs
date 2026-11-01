@@ -186,8 +186,13 @@ pub(crate) fn sweep_url(
 
 /// The work of a DOI.
 pub(crate) fn work_url(doi: &str, access: &Access) -> String {
+    fields_url(doi, SELECT, access)
+}
+
+/// Some fields of the work of a DOI.
+pub(crate) fn fields_url(doi: &str, select: &str, access: &Access) -> String {
     let base = format!("{WORKS}/doi:{}", doi_path(doi));
-    with_query(&base, &access_pairs(vec![("select", SELECT)], access))
+    with_query(&base, &access_pairs(vec![("select", select)], access))
 }
 
 /// The journal of an ISSN.

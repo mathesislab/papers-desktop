@@ -6,10 +6,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::http::{Access, Http, doi_path, get_json, with_query};
+use crate::http::{Access, Http, get_json};
 use crate::model::{Item, ItemKind};
-
-const WORKS: &str = "https://api.openalex.org/works";
+use crate::openalex::fields_url;
 
 /// The fields asked for.
 const SELECT: &str = "id,best_oa_location,locations";
@@ -84,18 +83,6 @@ struct Location {
     license: Option<String>,
 }
 
-/// The URL of a work's locations.
-fn work_url(doi: &str, access: &Access) -> String {
-    let mut pairs = vec![("select", SELECT)];
-    if let Some(key) = &access.openalex_key {
-        pairs.push(("api_key", key));
-    }
-    if let Some(mailto) = &access.mailto {
-        pairs.push(("mailto", mailto));
-    }
-    with_query(&format!("{WORKS}/doi:{}", doi_path(doi)), &pairs)
-}
-
 /// The free copy among a work's locations, the best first: a PDF of this
 /// version, else its page, else a preprint's (for a preprint, its own).
 fn best(work: Work, preprint: bool) -> Pdf {
@@ -145,7 +132,7 @@ pub fn pdf(item: &Item, http: &dyn Http, access: &Access) -> Result<Pdf, String>
     let Some(doi) = &item.doi else {
         return Ok(arxiv.unwrap_or(Pdf::without(OpenAccess::Unknown)));
     };
-    let found = match get_json::<Work>(http, &work_url(doi, access))? {
+    let found = match get_json::<Work>(http, &fields_url(doi, SELECT, access))? {
         Some(work) => best(work, preprint),
         None => Pdf::without(OpenAccess::Unknown),
     };

@@ -1,7 +1,9 @@
-//! Interests score as paper-feeder does (its tests/test_score.py), are kept
-//! in config.json, and count at once when edited.
+//! Interests are kept in config.json, and count at once when edited (they
+//! score as paper-feeder does: the crate's unit tests).
 
-use papers_feeds::{Error, FeedSettings, Feeds, Interest, Lexicon, Matcher, Weighted};
+use papers_feeds::{
+    Entry, Error, FOUND, FeedSettings, Feeds, Interest, ItemKind, Matcher, Origin, Weighted,
+};
 
 fn term(t: &str, weight: f64) -> Weighted {
     Weighted {
@@ -33,78 +35,6 @@ fn ice() -> Interest {
     }
 }
 
-fn lexicon() -> Lexicon {
-    Lexicon::new(&ice(), 2.0).unwrap()
-}
-
-#[test]
-fn title_abstract_and_once_per_field() {
-    let l = lexicon();
-    let s = l.score("", "This studies the ice sheet.");
-    assert_eq!((s.score, s.terms), (3.0, vec!["ice sheet".to_string()]));
-    assert_eq!(l.score("The ice sheet", "").score, 6.0, "3 × title boost");
-    assert_eq!(l.score("ice sheet", "ice sheet again").score, 9.0);
-    assert_eq!(
-        l.score("", "the ice sheet and the ice sheet").score,
-        3.0,
-        "presence, not frequency"
-    );
-    let both = l.score("GIA and the ice sheet", "glacial isostatic adjustment");
-    assert_eq!(both.score, 4.0 * 2.0 + 3.0 * 2.0 + 5.0);
-    assert_eq!(
-        both.terms,
-        ["ice sheet", "glacial isostatic adjustment", "GIA"],
-        "in the interest's order, a pattern by its label"
-    );
-    assert!(both.reached && !both.excluded);
-    assert!(!l.score("", "nothing relevant").reached);
-}
-
-#[test]
-fn spaces_match_hyphens_and_words_are_whole() {
-    let l = lexicon();
-    for text in ["the ice-sheet model", "the ice  sheet model", "ICE\nSheet"] {
-        assert_eq!(l.score("", text).score, 3.0, "{text}");
-    }
-    assert_eq!(l.score("", "ice sheets").score, 0.0, "a whole word");
-    assert_eq!(l.score("", "the sea-level  rise").score, 2.0);
-    assert_eq!(
-        l.score("", "sea level rise").score,
-        0.0,
-        "a hyphen of the term is a hyphen"
-    );
-}
-
-#[test]
-fn a_pattern_is_a_regex_in_any_case() {
-    let l = lexicon();
-    assert_eq!(l.score("", "we model GIA effects").score, 4.0);
-    assert_eq!(l.score("", "we model gia effects").score, 4.0);
-    assert_eq!(l.score("", "the GIANT").score, 0.0);
-}
-
-#[test]
-fn an_exclude_vetoes() {
-    let l = lexicon();
-    let s = l.score("ice sheet", "in Georgia");
-    assert_eq!((s.score, s.excluded, s.reached), (0.0, true, false));
-    assert!(s.terms.is_empty());
-    assert!(l.score("Gene therapy", "").excluded, "in any case");
-    assert!(
-        !l.score("", "genes and ice sheets").excluded,
-        "a whole word"
-    );
-}
-
-#[test]
-fn where_terms_match() {
-    let l = lexicon();
-    let text = "GIA under the ice-sheet: ice sheet GIA";
-    let ranges = l.ranges(text);
-    let found: Vec<&str> = ranges.iter().map(|r| &text[r.clone()]).collect();
-    assert_eq!(found, ["GIA", "ice-sheet", "ice sheet", "GIA"]);
-}
-
 #[test]
 fn the_config_shape() {
     let json = r#"{"name": "AMOC", "include": [
@@ -133,8 +63,14 @@ fn interests_are_kept_and_count_at_once() {
             ..feeds.settings().clone()
         })
         .unwrap();
-    assert_eq!(feeds.lexicons()[0].name(), "Ice sheets");
-    assert_eq!(feeds.lexicons()[0].score("ice sheet", "").score, 9.0);
+    let (guid, title) = ("a".to_string(), "ice sheet".to_string());
+    let entry = Entry::new(FOUND, Origin::Work, guid, title, ItemKind::Paper);
+    let ids = feeds.found(vec![entry], false).unwrap();
+    let scores = feeds.scores(feeds.item(&ids[0]).unwrap());
+    assert_eq!(
+        (scores[0].interest.as_str(), scores[0].score),
+        ("Ice sheets", 9.0)
+    );
     let reopened = Feeds::open(dir.path()).unwrap();
     assert_eq!(reopened.interests(), [ice()]);
     assert_eq!(reopened.title_boost(), 3.0);

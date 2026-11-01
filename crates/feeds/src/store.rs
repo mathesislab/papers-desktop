@@ -88,8 +88,9 @@ fn lookback_days() -> u32 {
 }
 
 /// The format of the folder, in `items.json`: since 1, each entry has its
-/// origin; since 2, the pages read are kept by their URL.
-pub(crate) const FORMAT: u32 = 2;
+/// origin; since 2, the pages read are kept by their URL; since 3, the
+/// items of one page are one.
+pub(crate) const FORMAT: u32 = 3;
 
 /// `items.json`: the items, and the ids of merged items to the item they went into.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

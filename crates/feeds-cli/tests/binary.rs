@@ -35,7 +35,7 @@ fn the_folder_is_the_option_else_feeds_dir_else_the_data_folder() {
         &["--dir", by_option.to_str().unwrap(), "subscriptions"],
         &[("FEEDS_DIR", &by_env)],
     );
-    assert!(by_option.join("lookups.json").is_file());
+    assert!(by_option.is_dir(), "the folder made");
     assert_eq!(
         text(
             &feeds(

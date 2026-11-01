@@ -26,8 +26,8 @@ pub(crate) struct Merger<'a> {
     by_arxiv: HashMap<String, usize>,
     by_source: HashMap<(String, String), usize>,
     by_family: HashMap<String, Vec<usize>>,
-    /// every item of a page, that the items of one page (merged before pages
-    /// were compared) collapse at once
+    /// the items of each page: one, or those of entries a subscription lists
+    /// under the page with two guids
     by_page: HashMap<String, Vec<usize>>,
     /// (absorbed, kept) ids, in order
     merged: Vec<(String, String)>,
@@ -176,19 +176,25 @@ impl<'a> Merger<'a> {
             .map(|(_, i)| i)
     }
 
-    /// The items of an entry's page, none if a subscription lists the page
+    /// The item of an entry's page, none if a subscription lists the page
     /// under two guids: a feed that links its entries to one page (a section,
     /// a podcast's) says it is not an article's.
     fn same_page(&self, entry: &Entry) -> Vec<usize> {
-        let Some(page) = page_of(entry) else {
-            return Vec::new();
-        };
-        let items = self.by_page.get(&page).into_iter().flatten();
+        match page_of(entry) {
+            Some(page) => self.of_page(&page, Some(entry)),
+            None => Vec::new(),
+        }
+    }
+
+    /// The items of a page, none if a subscription lists it under two guids,
+    /// an entry to come counted.
+    fn of_page(&self, page: &str, entry: Option<&Entry>) -> Vec<usize> {
+        let items = self.by_page.get(page).into_iter().flatten();
         let items: Vec<usize> = items.copied().filter(|&i| !self.gone[i]).collect();
         let entries = items.iter().flat_map(|&i| &self.items[i].sources);
-        let mut guids = HashMap::from([(&entry.source, &entry.guid)]);
-        for e in entries.map(|s| &s.entry) {
-            if page_of(e).as_ref() != Some(&page) {
+        let mut guids: HashMap<&String, &String> = HashMap::new();
+        for e in entry.into_iter().chain(entries.map(|s| &s.entry)) {
+            if page_of(e).as_deref() != Some(page) {
                 continue;
             }
             if guids
@@ -199,6 +205,26 @@ impl<'a> Merger<'a> {
             }
         }
         items
+    }
+
+    /// The items of one page merged into the oldest: those of a folder made
+    /// before pages were compared, once, when it opens.
+    pub fn collapse_pages(&mut self) {
+        let mut pages: Vec<String> = (self.by_page.iter())
+            .filter(|(_, items)| items.len() > 1)
+            .map(|(page, _)| page.clone())
+            .collect();
+        pages.sort();
+        for page in pages {
+            let items = self.of_page(&page, None);
+            if let Some((&target, others)) = items.split_first() {
+                for &other in others {
+                    self.absorb(target, other);
+                }
+                refresh(&mut self.items[target]);
+                self.index(target);
+            }
+        }
     }
 
     /// The (absorbed, kept) ids of the items merged, the absorbed removed.
@@ -607,18 +633,26 @@ mod tests {
     }
 
     #[test]
-    fn duplicates_of_an_article_collapse_when_it_comes_again() {
-        // two items of one article, as merged before pages were compared
+    fn duplicates_of_an_article_collapse_once() {
+        // two items of one article, as merged before pages were compared,
+        // and two episodes of a podcast, which stay two
         let earth = article("earth-climate", PAGE, "Glaciers retreat");
         let mut items = merge(vec![earth]).items;
         let climate = article("climate", PAGE, "Glaciers retreat faster");
         items.extend(merge(vec![climate.clone()]).items);
+        let section = "https://example.org/podcast";
+        let mut first = article("podcast", section, "Glaciers retreat");
+        first.guid = "episode-1".to_string();
+        let mut second = article("podcast", section, "Sea ice thins");
+        second.guid = "episode-2".to_string();
+        items.extend(merge(vec![first, second]).items);
         let (kept, absorbed) = (items[0].id.clone(), items[1].id.clone());
         let mut aliases = BTreeMap::new();
         let mut merger = Merger::new(&mut items, &mut aliases);
-        assert!(!merger.add(climate, at(2), true));
+        merger.collapse_pages();
+        assert!(!merger.add(climate, at(2), true), "its item now");
         let merged = merger.finish();
-        assert_eq!(items.len(), 1);
+        assert_eq!(items.len(), 3, "the episodes stay two");
         assert_eq!(items[0].id, kept);
         let sources: Vec<&str> = items[0]
             .sources

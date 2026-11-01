@@ -67,7 +67,8 @@ impl Feeds {
     }
 
     /// A folder of an older format brought up to [`FORMAT`], written: the
-    /// origin of each entry (1), the pages read by their URL (2).
+    /// origin of each entry (1), the pages read by their URL (2), the items
+    /// of one page one (3).
     fn migrate(&mut self) -> Result<()> {
         let format = self.items.format;
         if format >= FORMAT {
@@ -92,8 +93,15 @@ impl Feeds {
                 }
             }
         }
+        if format < 3 {
+            let mut merger = Merger::new(&mut self.items.items, &mut self.items.aliases);
+            merger.collapse_pages();
+            let merged = merger.finish();
+            self.keep_marks(merged);
+        }
         self.items.format = FORMAT;
         store::write(&self.dir, ITEMS, &self.items)?;
+        store::write(&self.dir, STATE, &self.state)?;
         store::write(&self.dir, LOOKUPS, &self.lookups)
     }
 
@@ -258,7 +266,15 @@ impl Feeds {
             .map(|e| merger.add(e, now, listed))
             .filter(|&new| new)
             .count();
-        for (absorbed, kept) in merger.finish() {
+        let merged = merger.finish();
+        self.keep_marks(merged);
+        new
+    }
+
+    /// The marks of the items merged (absorbed, kept), on the item each went
+    /// into: the stronger.
+    fn keep_marks(&mut self, merged: Vec<(String, String)>) {
+        for (absorbed, kept) in merged {
             if let Some(mark) = self.state.remove(&absorbed) {
                 let merged = match self.state.get(&kept) {
                     Some(&other) => mark.stronger(other),
@@ -267,7 +283,6 @@ impl Feeds {
                 self.state.insert(kept, merged);
             }
         }
-        new
     }
 
     pub fn items(&self) -> &[Item] {
@@ -333,14 +348,17 @@ impl Feeds {
     /// Drops the items first seen more than `keep_days` ago that no feed
     /// lists any more, unless shortlisted or added, and the lookups older
     /// (which may then be made again); the number of items dropped. On
-    /// opening and after a fetch too.
+    /// opening and after a fetch too; written if anything went.
     pub fn prune(&mut self) -> Result<usize> {
+        let lookups = self.lookups.len();
         let dropped = self.drop_old();
         if dropped > 0 {
             store::write(&self.dir, ITEMS, &self.items)?;
             store::write(&self.dir, STATE, &self.state)?;
         }
-        store::write(&self.dir, LOOKUPS, &self.lookups)?;
+        if self.lookups.len() < lookups {
+            store::write(&self.dir, LOOKUPS, &self.lookups)?;
+        }
         Ok(dropped)
     }
 

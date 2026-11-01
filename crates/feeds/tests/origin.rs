@@ -121,7 +121,7 @@ fn a_folder_of_before_is_brought_up_to_date_once() {
         assert_eq!(origin_of(&feeds, work), Origin::Work, "{work}");
     }
     let written: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    assert_eq!(written["format"], 2, "once");
+    assert_eq!(written["format"], 3, "once");
     let lookups = std::fs::read_to_string(dir.path().join("lookups.json")).unwrap();
     let lookups: Value = serde_json::from_str(&lookups).unwrap();
     let keys: Vec<&String> = lookups.as_object().unwrap().keys().collect();

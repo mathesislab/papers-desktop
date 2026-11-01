@@ -768,8 +768,11 @@ then shows *Covered by*. Each entry keeps where its data came from
 (`origin`: `feed`, the text of a feed, or `work`, Crossref's or OpenAlex's
 work of a sweep, a lookup, a post's paper or a search), whatever it was
 fetched under (`source`: a subscription, `lookup`, `search`); `src:` and the
-sidebar's sources are the subscriptions alone. `items.json` has a `format`:
-the entries of before are given their origin once, when the folder opens. phys.org answers a program with a Cloudflare
+sidebar's sources are the subscriptions alone. `items.json` has a `format`
+(3), and a folder of before is brought up to it once, when it opens: its
+entries given their origin, its pages read kept by their URL (`page:`, not
+the post's id, which merging leaves behind), the items of one article's page
+(merged before pages were compared) made one. phys.org answers a program with a Cloudflare
 challenge (403), so its pages give nothing.
 
 **Triage**: new → seen → shortlisted, dismissed or added. Keys: `j`/`k`,

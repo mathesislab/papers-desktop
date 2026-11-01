@@ -115,7 +115,7 @@ struct Term {
 
 /// An interest compiled, to score texts.
 #[derive(Debug, Clone)]
-pub struct Lexicon {
+pub(crate) struct Lexicon {
     name: String,
     /// the regexes of `terms`, in their order
     include: RegexSet,
@@ -127,7 +127,7 @@ pub struct Lexicon {
 
 impl Lexicon {
     /// An interest compiled; an error names the term or pattern that is no regex.
-    pub fn new(interest: &Interest, title_boost: f64) -> Result<Lexicon> {
+    pub(crate) fn new(interest: &Interest, title_boost: f64) -> Result<Lexicon> {
         let failed = |message: String| Error::Interest {
             name: interest.name.clone(),
             message,
@@ -163,18 +163,10 @@ impl Lexicon {
         })
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// The score of a title and an abstract (paper-feeder's `score_record`).
-    pub fn score(&self, title: &str, r#abstract: &str) -> Score {
-        self.score_boosted(title, r#abstract, 0.0)
-    }
-
-    /// [`Lexicon::score`] with `boost` added unless an exclude vetoes (paper-feeder's
+    /// The score of a title and an abstract (paper-feeder's `score_record`),
+    /// with `boost` added unless an exclude vetoes (paper-feeder's
     /// `score_boost`: it counts with no term matching too).
-    pub fn score_boosted(&self, title: &str, r#abstract: &str, boost: f64) -> Score {
+    pub(crate) fn score(&self, title: &str, r#abstract: &str, boost: f64) -> Score {
         let excluded = self.exclude.is_match(title) || self.exclude.is_match(r#abstract);
         let mut score = 0.0;
         let mut terms = Vec::new();
@@ -207,7 +199,7 @@ impl Lexicon {
     }
 
     /// Where the includes match in a text, in order, overlapping ones joined.
-    pub fn ranges(&self, text: &str) -> Vec<Range<usize>> {
+    pub(crate) fn ranges(&self, text: &str) -> Vec<Range<usize>> {
         let matched = self.include.matches(text);
         let found = matched
             .iter()
@@ -265,7 +257,7 @@ impl Feeds {
         let boost = self.boost(item);
         self.lexicons
             .iter()
-            .map(|l| l.score_boosted(&item.title, r#abstract, boost))
+            .map(|l| l.score(&item.title, r#abstract, boost))
             .collect()
     }
 
@@ -279,7 +271,127 @@ impl Feeds {
     }
 
     /// The interests compiled, in their order.
-    pub fn lexicons(&self) -> &[Lexicon] {
+    pub(crate) fn lexicons(&self) -> &[Lexicon] {
         &self.lexicons
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! The scores of paper-feeder's tests (its tests/test_score.py).
+
+    use super::*;
+
+    fn term(t: &str, weight: f64) -> Weighted {
+        Weighted {
+            matcher: Matcher::Term(t.to_string()),
+            weight,
+            label: None,
+        }
+    }
+
+    /// paper-feeder's test lexicon.
+    fn ice() -> Interest {
+        Interest {
+            name: "Ice sheets".to_string(),
+            include: vec![
+                term("ice sheet", 3.0),
+                term("glacial isostatic adjustment", 5.0),
+                Weighted {
+                    matcher: Matcher::Pattern(r"\bGIA\b".to_string()),
+                    weight: 4.0,
+                    label: Some("GIA".to_string()),
+                },
+                term("sea-level rise", 2.0),
+            ],
+            exclude: vec![
+                Matcher::Term("Georgia".to_string()),
+                Matcher::Term("gene".to_string()),
+            ],
+            min_score: 3.0,
+        }
+    }
+
+    fn lexicon() -> Lexicon {
+        Lexicon::new(&ice(), 2.0).unwrap()
+    }
+
+    /// The score of a title and an abstract, no boost.
+    impl Lexicon {
+        fn unboosted(&self, title: &str, r#abstract: &str) -> Score {
+            self.score(title, r#abstract, 0.0)
+        }
+    }
+
+    #[test]
+    fn title_abstract_and_once_per_field() {
+        let l = lexicon();
+        let s = l.unboosted("", "This studies the ice sheet.");
+        assert_eq!((s.score, s.terms), (3.0, vec!["ice sheet".to_string()]));
+        assert_eq!(
+            l.unboosted("The ice sheet", "").score,
+            6.0,
+            "3 × title boost"
+        );
+        assert_eq!(l.unboosted("ice sheet", "ice sheet again").score, 9.0);
+        assert_eq!(
+            l.unboosted("", "the ice sheet and the ice sheet").score,
+            3.0,
+            "presence, not frequency"
+        );
+        let both = l.unboosted("GIA and the ice sheet", "glacial isostatic adjustment");
+        assert_eq!(both.score, 4.0 * 2.0 + 3.0 * 2.0 + 5.0);
+        assert_eq!(
+            both.terms,
+            ["ice sheet", "glacial isostatic adjustment", "GIA"],
+            "in the interest's order, a pattern by its label"
+        );
+        assert!(both.reached && !both.excluded);
+        assert!(!l.unboosted("", "nothing relevant").reached);
+    }
+
+    #[test]
+    fn spaces_match_hyphens_and_words_are_whole() {
+        let l = lexicon();
+        for text in ["the ice-sheet model", "the ice  sheet model", "ICE\nSheet"] {
+            assert_eq!(l.unboosted("", text).score, 3.0, "{text}");
+        }
+        assert_eq!(l.unboosted("", "ice sheets").score, 0.0, "a whole word");
+        assert_eq!(l.unboosted("", "the sea-level  rise").score, 2.0);
+        assert_eq!(
+            l.unboosted("", "sea level rise").score,
+            0.0,
+            "a hyphen of the term is a hyphen"
+        );
+    }
+
+    #[test]
+    fn a_pattern_is_a_regex_in_any_case() {
+        let l = lexicon();
+        assert_eq!(l.unboosted("", "we model GIA effects").score, 4.0);
+        assert_eq!(l.unboosted("", "we model gia effects").score, 4.0);
+        assert_eq!(l.unboosted("", "the GIANT").score, 0.0);
+    }
+
+    #[test]
+    fn an_exclude_vetoes() {
+        let l = lexicon();
+        let s = l.unboosted("ice sheet", "in Georgia");
+        assert_eq!((s.score, s.excluded, s.reached), (0.0, true, false));
+        assert!(s.terms.is_empty());
+        assert!(l.unboosted("Gene therapy", "").excluded, "in any case");
+        assert!(
+            !l.unboosted("", "genes and ice sheets").excluded,
+            "a whole word"
+        );
+    }
+
+    #[test]
+    fn where_terms_match() {
+        let l = lexicon();
+        let text = "GIA under the ice-sheet: ice sheet GIA";
+        let ranges = l.ranges(text);
+        let found: Vec<&str> = ranges.iter().map(|r| &text[r.clone()]).collect();
+        assert_eq!(found, ["GIA", "ice-sheet", "ice sheet", "GIA"]);
     }
 }
