@@ -31,10 +31,11 @@
 //! the feed as it will be fetched), else, if the user chooses, by its ISSN.
 //!
 //! *Like in your library*, *in library*: the facts of the library (the index
-//! of its papers, core's `Likeness`, and their identities) are gathered on a
+//! of its papers, core's `Likeness`, those of the .bib files ticked under
+//! *Similar to* in the settings, and their identities) are gathered on a
 //! thread of their own whenever the library is read (at the start, after a
-//! change of its files or a write), then given to the feeds and to every
-//! copy a fetch opens; the page is told (`feeds-changed`).
+//! change of its files, its settings or a write), then given to the feeds and
+//! to every copy a fetch opens; the page is told (`feeds-changed`).
 
 pub mod discover;
 mod fetching;
@@ -285,10 +286,11 @@ impl AppState {
 }
 
 /// Gathers the facts of the library on a thread of its own, the library as
-/// it is now (the index of its papers, none for an empty library; their
-/// identities), and gives them to the feeds and to the works found; the page
-/// is told. After every read of the library.
-pub fn index_library(app: &AppHandle) {
+/// it is now (the index of its papers, those of the .bib files `skipped` left
+/// out, none without a paper to index; their identities), and gives them to the
+/// feeds and to the works found; the page is told. After every read of the
+/// library.
+pub fn index_library(app: &AppHandle, skipped: Vec<PathBuf>) {
     let app = app.clone();
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
@@ -308,7 +310,8 @@ pub fn index_library(app: &AppHandle) {
             likeness: old.and_then(|f| f.likeness.clone()),
             identities: identities.clone(),
         });
-        let likeness = (!library.is_empty()).then(|| Arc::new(Likeness::of(&library, &[])));
+        let likeness = Likeness::of(&library, &skipped);
+        let likeness = (!likeness.is_empty()).then(|| Arc::new(likeness));
         drop(library);
         give(&|_| LibraryFacts {
             likeness: likeness.clone(),

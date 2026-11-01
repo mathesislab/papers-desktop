@@ -23,6 +23,10 @@ pub struct Settings {
     /// goes by default, later the root of sync. Unset, the folder of the default library of
     /// papers if there is one
     pub papers_folder: Option<PathBuf>,
+    /// the .bib files of the library whose papers the likeness of the score leaves out (~ for
+    /// the home directory): those not ticked under *Similar to* (Settings → Score). A .bib added
+    /// to the library later counts until it is unticked
+    pub similar_skip: Vec<PathBuf>,
     /// global shortcut that shows the panel: Alt+Space by default on macOS,
     /// Ctrl+Alt+Space elsewhere, where Alt+Space opens the window menu (set
     /// in the settings window, it applies at once; in the file, at the next start)
@@ -251,6 +255,7 @@ impl Default for Settings {
         Settings {
             bibtex: Vec::new(),
             papers_folder: None,
+            similar_skip: Vec::new(),
             hotkey: if cfg!(target_os = "macos") {
                 "Alt+Space"
             } else {
@@ -326,6 +331,13 @@ impl Settings {
     pub fn bibs(&self) -> Vec<PathBuf> {
         self.bibtex
             .iter()
+            .map(|p| expand(&p.to_string_lossy()))
+            .collect()
+    }
+
+    /// The .bib files whose papers the likeness leaves out, ~ expanded.
+    pub fn similar_skipped(&self) -> Vec<PathBuf> {
+        (self.similar_skip.iter())
             .map(|p| expand(&p.to_string_lossy()))
             .collect()
     }
@@ -482,7 +494,7 @@ mod tests {
     #[test]
     fn the_file_keeps_its_keys_with_the_settings_set_elsewhere_nested() {
         let json = r#"{"bibtex": ["~/papers.bib"], "papers_folder": "~/Papers",
-            "hotkey": "Alt+Space", "matching": "word-start",
+            "similar_skip": ["~/group.bib"], "hotkey": "Alt+Space", "matching": "word-start",
             "citation_style": "apa", "check_updates": false, "after_close": "library",
             "text_size": "larger", "writer": "command", "papers": "/bin/papers",
             "email": "me@example.org", "openalex_key": "KEY", "pinned_tags": ["ice", null],
@@ -553,6 +565,18 @@ mod tests {
         fs::write(&path, r#"{"bibtex": ["/x/refs.bib"]}"#).unwrap();
         let settings = Settings::load_with(&path, Some(&MachineConfig::empty())).unwrap();
         assert_eq!(settings.papers_folder, None);
+    }
+
+    #[test]
+    fn every_bib_file_counts_in_the_likeness_unless_skipped() {
+        let settings: Settings = serde_json::from_str(r#"{"bibtex": ["~/a.bib"]}"#).unwrap();
+        assert!(
+            settings.similar_skipped().is_empty(),
+            "a file from before the setting"
+        );
+        let json = r#"{"bibtex": ["~/a.bib", "/x/b.bib"], "similar_skip": ["~/a.bib"]}"#;
+        let settings: Settings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.similar_skipped(), [expand("~/a.bib")]);
     }
 
     #[test]

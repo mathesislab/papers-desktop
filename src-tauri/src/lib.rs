@@ -672,13 +672,13 @@ fn load(app: &AppHandle) {
         } else {
             Library::load(&bibs).map_err(|e| e.to_string())?
         };
-        Ok((bibs, library))
+        Ok((bibs, library, settings.similar_skipped()))
     });
     if state.reloads.load(Ordering::SeqCst) != reload {
         return;
     }
     let status = match loaded {
-        Ok((bibs, library)) => {
+        Ok((bibs, library, skipped)) => {
             let count = library.len();
             eprintln!(
                 "papers-desktop: loaded {count} entries from {} .bib files",
@@ -687,7 +687,7 @@ fn load(app: &AppHandle) {
             *state.library.write().unwrap() = library;
             watch(app, &bibs);
             date_added(app);
-            feeds::index_library(app);
+            feeds::index_library(app, skipped);
             if bibs.is_empty() {
                 Status::NoLibrary
             } else {
