@@ -281,24 +281,21 @@ fn rows_are_sorted_scored_and_marked() {
         "the family name as written"
     );
 
-    let by = |sort, kinds: &[ItemKind]| {
+    let by = |sort, query| {
         let request = ViewRequest {
+            query,
             sort,
-            kinds,
             ..ViewRequest::default()
         };
         titles_of(&feeds.view(&request))
     };
     let (j1, j2, j3, p1, n1) = (J1.1, J2.1, J3.1, P1.1, N1.1);
     assert_eq!(
-        by(Sort::Score, &[]),
+        by(Sort::Score, ""),
         [j1, p1, n1, j2, j3],
         "the best score, then the newest"
     );
-    assert_eq!(
-        by(Sort::Newest, &[ItemKind::Paper, ItemKind::Preprint]),
-        [j1, p1, j2, j3]
-    );
+    assert_eq!(by(Sort::Newest, "kind:paper,preprint"), [j1, p1, j2, j3]);
     let view = feeds.view(&ViewRequest {
         query: "firn",
         ..ViewRequest::default()
@@ -343,7 +340,6 @@ fn counts_are_of_live_items_whatever_the_query() {
     feeds.set_library(in_library(None));
     let request = ViewRequest {
         query: "kind:preprint",
-        kinds: &[ItemKind::Preprint],
         ..ViewRequest::default()
     };
     let view = feeds.view(&request);
@@ -697,5 +693,9 @@ fn what_was_fetched_since_the_list_was_shown_is_held_back() {
         ..ViewRequest::default()
     };
     let view = feeds.view(&after);
-    assert_eq!((view.rows.len(), view.held), (5, 0));
+    assert_eq!(
+        (view.rows.len(), view.held),
+        (4, 0),
+        "the dismissed one left out"
+    );
 }

@@ -48,6 +48,15 @@ impl Query {
         self.terms.is_empty()
     }
 
+    /// Whether a term of a facet names a value, to include or to exclude:
+    /// `is:dismissed` and `-is:seen,dismissed` name `dismissed`.
+    pub fn names(&self, facet: &str, value: &str) -> bool {
+        let facet = Field::Facet(facet.to_ascii_lowercase());
+        (self.terms.iter().filter(|t| t.field == facet))
+            .flat_map(|t| &t.patterns)
+            .any(|p| p.matches_whole(&fold(value)))
+    }
+
     /// The terms of a query as written, for another engine to ask (OpenAlex):
     /// a filter's field by its full name, its alternatives as typed.
     pub fn written(query: &str, schema: Schema) -> Vec<Written> {
@@ -566,6 +575,25 @@ mod tests {
         assert_eq!(year_range("1990-2000"), Some(1990..=2000));
         for refused in ["", "-", "2010-2000", "20050", "-20050", "y2k", "2000-x"] {
             assert_eq!(year_range(refused), None, "{refused:?}");
+        }
+    }
+
+    #[test]
+    fn a_facet_names_a_value() {
+        let schema = Schema {
+            facets: &["is"],
+            numbers: &[],
+        };
+        let names = |query: &str| Query::parse(query, schema).names("is", "dismissed");
+        for query in [
+            "is:dismissed",
+            "x -IS:seen,dismissed",
+            "is:new,\"dismissed\"",
+        ] {
+            assert!(names(query), "{query}");
+        }
+        for query in ["", "dismissed is:new", "kind:dismissed"] {
+            assert!(!names(query), "{query}");
         }
     }
 

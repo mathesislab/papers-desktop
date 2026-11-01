@@ -1,12 +1,12 @@
-//! The view of the items, for the app and the CLI: those that a query and
-//! the kinds pass, sorted, each with its scores, its likeness to the library
-//! and its texts marked (the query's words and its interests' terms), and the
-//! counts of the sidebar.
+//! The view of the items, for the app and the CLI: those that a query
+//! passes, sorted, each with its scores, its likeness to the library and its
+//! texts marked (the query's words and its interests' terms), and the counts
+//! of the sidebar.
 //!
 //! The counts are those of the library's sidebar: over every live item (not
-//! dismissed), whatever the query and the kinds shown; a saved search's are
-//! the items it shows. The rows are what the query passes, dismissed items
-//! too: the app asks `-is:dismissed`.
+//! dismissed), whatever the query; a saved search's are the items it shows.
+//! The rows, as a saved search's, leave the dismissed items out unless the
+//! query names them (`is:dismissed`).
 
 use std::collections::BTreeMap;
 use std::ops::Range;
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::feeds::Feeds;
 use crate::interest::{Score, joined};
 use crate::model::{Item, ItemKind, Reminder, Triage, words};
-use crate::query::{Seen, best, live, parse};
+use crate::query::{Seen, best, names_dismissed, parse};
 
 /// The order of the rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -47,8 +47,8 @@ pub struct ViewRequest<'a> {
     pub query: &'a str,
     pub matching: Matching,
     pub sort: Sort,
-    /// the kinds shown; none: every kind
-    pub kinds: &'a [ItemKind],
+    /// the dismissed items too, whatever the query
+    pub dismissed: bool,
     /// when the list was last brought up to date: the items first fetched
     /// since are held back (neither listed nor counted, `View::held`); none:
     /// every item
@@ -121,7 +121,7 @@ impl Counts {
         self.all += 1;
         seen.is.iter().for_each(|v| count(&mut self.is, v));
         self.total.add(item, seen);
-        if seen.triage == Triage::New && !seen.is.iter().any(|v| v == "snoozed") {
+        if seen.unread() {
             self.unread.add(item, seen);
         }
     }
@@ -142,27 +142,30 @@ impl Feeds {
     /// The items a request shows, and the counts of the sidebar.
     pub fn view(&self, request: &ViewRequest) -> View {
         let query = parse(request.query);
+        let dismissed = request.dismissed || names_dismissed(&query);
         let searches: Vec<_> = (self.searches().iter())
-            .map(|s| (&s.name, parse(&live(&s.query))))
+            .map(|s| (&s.name, parse(&s.query)))
+            .map(|(name, query)| (name, names_dismissed(&query), query))
             .collect();
         let mut counts = Counts::default();
         let mut rows = Vec::new();
         let mut held = 0;
         for item in self.items() {
             let seen = self.seen(item);
+            let live = seen.triage() != Triage::Dismissed;
             if request.shown.is_some_and(|shown| item.first_seen() > shown) {
-                held += usize::from(seen.triage != Triage::Dismissed);
+                held += usize::from(live);
                 continue;
             }
-            if seen.triage != Triage::Dismissed {
+            if live {
                 counts.add(item, &seen);
             }
-            for (name, search) in &searches {
-                if seen.record.check(search, request.matching).is_some() {
+            for (name, dismissed, search) in &searches {
+                if (live || *dismissed) && seen.record.check(search, request.matching).is_some() {
                     *counts.searches.entry(name.to_string()).or_default() += 1;
                 }
             }
-            if !request.kinds.is_empty() && !request.kinds.contains(&item.kind) {
+            if !live && !dismissed {
                 continue;
             }
             if let Some(marks) = seen.record.check(&query, request.matching) {
@@ -226,7 +229,7 @@ impl Feeds {
             title,
             authors,
             r#abstract,
-            reminder: self.reminder(&item.id),
+            reminder: seen.reminder,
             in_library: seen.in_library,
         }
     }

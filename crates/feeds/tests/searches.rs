@@ -1,8 +1,7 @@
 //! Saved searches: kept in `config.json`, their names checked, their counts
-//! in the view; and a query made live.
+//! in the view; and the dismissed items, which a query shows when it names them.
 
 use papers_feeds::http::Recorded;
-use papers_feeds::query::live;
 use papers_feeds::{
     Access, Error, Feed, Feeds, Reply, Search, Sort, SourceKind, SubscriptionSettings, Triage,
     ViewRequest,
@@ -116,10 +115,9 @@ fn the_counts_of_the_saved_searches_are_what_they_show() {
             search("None", "glacier", Sort::Newest),
         ])
         .unwrap();
-    // whatever the query and the kinds of the request
+    // whatever the query of the request
     let request = ViewRequest {
-        query: "firn",
-        kinds: &[papers_feeds::ItemKind::News],
+        query: "kind:news firn",
         ..ViewRequest::default()
     };
     let counts = feeds.view(&request).counts.searches;
@@ -131,11 +129,21 @@ fn the_counts_of_the_saved_searches_are_what_they_show() {
 }
 
 #[test]
-fn a_live_query_leaves_dismissed_items_out_unless_it_asks() {
-    assert_eq!(live(""), "-is:dismissed");
-    assert_eq!(live("ice"), "ice -is:dismissed");
-    assert_eq!(live("is:dismissed"), "is:dismissed");
-    assert_eq!(live("x -IS:seen,dismissed"), "x -IS:seen,dismissed");
-    assert_eq!(live("is:new,\"dismissed\""), "is:new,\"dismissed\"");
-    assert_eq!(live("dismissed is:new"), "dismissed is:new -is:dismissed");
+fn a_query_shows_the_dismissed_items_when_it_names_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let feeds = feeds(dir.path());
+    let rows = |query: &str, dismissed: bool| {
+        let request = ViewRequest {
+            query,
+            dismissed,
+            ..ViewRequest::default()
+        };
+        feeds.view(&request).rows.len()
+    };
+    assert_eq!(rows("", false), 2);
+    assert_eq!(rows("ice", false), 1);
+    assert_eq!(rows("is:dismissed", false), 1);
+    assert_eq!(rows("ice -IS:seen,dismissed", false), 1);
+    assert_eq!(rows("is:new,\"dismissed\"", false), 3);
+    assert_eq!(rows("ice", true), 2, "asked for whatever the query");
 }

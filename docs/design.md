@@ -998,13 +998,14 @@ shortlist). A library of 2,353 papers (titles; one abstract) is indexed in
 `prof:` (the interests whose `min_score` the item reaches), and the numbers
 `score:` (its best score) and `like:` (its likeness, with an index); an item's record is its title, the family names
 of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
-`has:doi`. `Feeds::view` gives the rows a query and the kinds pass, sorted
+`has:doi`. `Feeds::view` gives the rows a query passes, sorted
 newest, by score or by likeness, each with its scores and likeness, the terms that matched and its
 title, authors and abstract marked (the query's words and the interests'
 terms), and the counts of the sidebar: as the library's, over every live
 item (not dismissed) whatever the query, by `is:`, kind, interest and
-subscription. Dismissed items are rows only if asked (`-is:dismissed` by
-the app).
+subscription. Dismissed items are rows only if the query names them
+(`is:dismissed`, `-is:seen,dismissed`: core's `Query::names`), decided once
+by the view for its rows and for each saved search.
 
 **When**: on opening the Feeds tab (the tab calls `feeds_fetch` when shown
 and the last fetch, `feeds_last_fetch`, is older than 15 minutes) and on

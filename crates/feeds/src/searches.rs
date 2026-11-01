@@ -2,7 +2,7 @@
 //! items, as the Feeds tab's sidebar and the CLI's `--saved` use them. The
 //! query is the whole of what the tab chose (`is:new kind:paper,preprint
 //! prof:AMOC`, and the text typed); dismissed items are left out unless it
-//! asks for them ([`live`](crate::query::live)).
+//! names them, as every query of the view.
 
 use serde::{Deserialize, Serialize};
 

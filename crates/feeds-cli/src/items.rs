@@ -1,7 +1,6 @@
 //! The items: the list, one in full, the papers behind a post, the triage, the prune.
 
-use papers_feeds::query::live;
-use papers_feeds::{Confidence, Feeds, Item, Row, Sort, Triage, Via, ViewRequest};
+use papers_feeds::{Confidence, Feeds, Item, ItemKind, Row, Sort, Triage, Via, ViewRequest};
 use serde_json::{Value, json};
 
 use crate::cli::{FindArgs, ListArgs, MarkArgs, ShowArgs};
@@ -53,10 +52,10 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
         .map(|name| saved(&feeds, name))
         .transpose()?;
     let mut query = with_saved(search, &a.query.join(" "));
-    if !a.dismissed {
-        query = live(&query);
+    if !a.kind.is_empty() {
+        let kinds: Vec<&str> = a.kind.iter().map(|&k| ItemKind::from(k).as_str()).collect();
+        query = format!("{query} kind:{}", kinds.join(","));
     }
-    let kinds: Vec<_> = a.kind.iter().map(|&k| k.into()).collect();
     let sort = a
         .sort
         .map_or(search.map_or(Sort::Newest, |s| s.sort), Sort::from);
@@ -66,7 +65,7 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
     let request = ViewRequest {
         query: &query,
         sort,
-        kinds: &kinds,
+        dismissed: a.dismissed,
         ..ViewRequest::default()
     };
     let view = feeds.view(&request);

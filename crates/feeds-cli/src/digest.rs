@@ -229,12 +229,16 @@ fn write_file(path: &Path, text: &str) -> Result<()> {
 pub fn digest(ctx: &mut Ctx, a: DigestArgs) -> Result<()> {
     let feeds = ctx.open()?;
     let now = (ctx.host.now)();
-    let search = a.saved.as_deref().map(|name| saved(&feeds, name)).transpose()?;
+    let search = a
+        .saved
+        .as_deref()
+        .map(|name| saved(&feeds, name))
+        .transpose()?;
     let typed = a.query.as_deref().unwrap_or(match search {
         Some(_) => "",
         None => "score:3-",
     });
-    let query = papers_feeds::query::live(&with_saved(search, typed));
+    let query = with_saved(search, typed);
     let view = feeds.view(&ViewRequest {
         query: &query,
         sort: Sort::Score,
