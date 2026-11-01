@@ -17,7 +17,7 @@
   import { STAR, rowHint, type Action } from "./actions";
   import type { FeedRow, Sort } from "./api";
   import { CALM_ROW, type FeedColumn, type Look } from "./columns";
-  import { ago, badges, citedText, likeText, scoreText, yearOf } from "./items";
+  import { ago, badges, citedText, likeText, scoreHint, scoreText, yearOf } from "./items";
   import { ITEM_KINDS, isPost } from "./kinds";
 
   let {
@@ -52,7 +52,7 @@
     menu: FeedColumn[];
     /** the order of the list, its header marked; none: the headers do not sort */
     sort?: Sort;
-    /** the colours of the interests */
+    /** the interests of the settings, each with its colour; none: no interests yet */
     colours: Map<string, string>;
     /** a table, or calm (the Feeds tab's) */
     look?: Look;
@@ -95,12 +95,14 @@
     head: () => (calm ? 0 : ROW),
   });
 
-  /** A header: its name, its arrow when the list is sorted by it. */
+  /** A header: its name, its arrow when the list is sorted by it; on hover, what the column is and the order a
+   *  click gives. */
   function heading(column: FeedColumn) {
     const by = SORTS[column];
     const sorted = !!by && sort === by.sort;
+    const title = [specs[column].hint, onsort ? by?.title : undefined].filter(Boolean).join("\n");
     // the badges speak for themselves: no name over them
-    return { name: column === "badges" ? "" : undefined, arrow: sorted ? "▾" : undefined, title: onsort ? by?.title : undefined, sorted };
+    return { name: column === "badges" ? "" : undefined, arrow: sorted ? "▾" : undefined, title: title || undefined, sorted };
   }
 
   /** A header clicked: the list sorted by it, if it sorts. */
@@ -200,11 +202,11 @@
         {:else}
           {#each columns as { key: column } (column)}
             {#if column === "score"}
-              <span class="score">{scoreText(row.score)}</span>
+              <span class="score" title={scoreHint(row.score, colours.size > 0)}>{scoreText(row.score)}</span>
             {:else if column === "cited"}
               <span class="cited muted" title="The works that cite it, as OpenAlex counts them">{citedText(row.cited)}</span>
             {:else if column === "similar"}
-              <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
+              <span class="like muted" title={specs.similar.hint}>{likeText(row.like)}</span>
             {:else if column === "title"}
               <span class="title"><Marked spans={row.title} /></span>
             {:else if column === "authors"}

@@ -7,9 +7,12 @@
 /** A column shown, and its width in pixels (the flexible column's: its least). */
 export type Shown<K extends string = string> = { key: K; width: number };
 
-/** A column a table can show: its name in the header and the menu, its width at first, its least. */
+/** A column a table can show: its name in the header and the menu, what its header says on hover, its width at
+ *  first, its least. */
 export interface Spec {
   name: string;
+  /** what the column is, when its name does not say it */
+  hint?: string;
   width: number;
   /** none: `LEAST` */
   least?: number;

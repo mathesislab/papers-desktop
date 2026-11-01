@@ -9,9 +9,9 @@ export type FeedColumn = "score" | "cited" | "similar" | "title" | "authors" | "
 /** the columns of the Feeds tab: their names, their widths at first (the title's is its least: it takes the room
  *  left), the least widths that fit a sorted header and its arrow and keep a title readable */
 export const FEED_SPECS: Specs<FeedColumn> = {
-  score: { name: "Score", width: 60, least: 60 },
+  score: { name: "Score", hint: "How well it matches your interests (Settings → Feeds)", width: 60, least: 60 },
   cited: { name: "Cited", width: 64, least: 56 },
-  similar: { name: "Similar", width: 70, least: 70 },
+  similar: { name: "Similar", hint: "How close it is to the papers of your library, 0–100", width: 70, least: 70 },
   title: { name: "Title", width: 240, least: 100 },
   authors: { name: "Authors", width: 150 },
   journal: { name: "Journal / source", width: 150 },

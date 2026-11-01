@@ -38,8 +38,10 @@ import {
   fetchLine,
   likeText,
   mergeRows,
+  NO_INTERESTS,
   newAbove,
   newOlderThan,
+  scoreHint,
   since,
   snoozeUntil,
   stale,
@@ -119,6 +121,12 @@ test("the sorts in turn, and a likeness as the list shows it", () => {
   assert.deepEqual([nextSort("score"), nextSort("like"), nextSort("newest")], ["like", "newest", "score"]);
   assert.deepEqual(requestOf(f({ sort: "like" })).sort, "like");
   assert.deepEqual([likeText(null), likeText(0), likeText(34.6)], ["–", "0", "35"]);
+});
+
+test("a score missing says why: no interest matched, or none yet", () => {
+  assert.equal(scoreHint(2.5, true), undefined);
+  assert.equal(scoreHint(0, true), "No interest matched");
+  assert.equal(scoreHint(0, false), NO_INTERESTS);
 });
 
 test("the counts of the views, and the sources in their groups", () => {
