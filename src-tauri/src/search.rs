@@ -44,16 +44,16 @@ pub struct SearchPage {
 pub struct LastResolved(Mutex<Option<(String, Resolved)>>);
 
 impl LastResolved {
-    /// What a query asks of OpenAlex: the last one's, else resolved and kept.
+    /// What a query asks of OpenAlex: the last one's, else resolved (the
+    /// lock not held meanwhile) and kept.
     fn of(&self, query: &str, http: &dyn Http, access: &Access) -> Result<Resolved, String> {
-        let mut last = self.0.lock().unwrap();
-        if let Some((asked, resolved)) = last.as_ref()
+        if let Some((asked, resolved)) = self.0.lock().unwrap().as_ref()
             && asked == query
         {
             return Ok(resolved.clone());
         }
         let resolved = resolve(http, access, &ask(query)?)?;
-        *last = Some((query.to_string(), resolved.clone()));
+        *self.0.lock().unwrap() = Some((query.to_string(), resolved.clone()));
         Ok(resolved)
     }
 }
