@@ -4,7 +4,7 @@
 //! become search [`Item`]s, and keep their BibTeX and their CSL-JSON (for a
 //! citation processor). The app's own writer changes the entries of a file
 //! and leaves the rest of it as it is. [`Likeness`] tells how like the
-//! library's papers a text is.
+//! library's papers a text is; [`redact`] keeps secrets out of a message.
 
 mod bib;
 mod fields;
@@ -12,6 +12,7 @@ mod item;
 mod likeness;
 mod query;
 mod record;
+mod redact;
 mod reference;
 mod search;
 mod table;
@@ -26,6 +27,7 @@ pub use item::{Cite, Item};
 pub use likeness::{Doc, Like, Likeness};
 pub use query::{Query, Schema, Value, Written};
 pub use record::{Marks, Record};
+pub use redact::redact;
 pub use search::{Found, Hit, Library, YearCount};
 pub use table::{FileState, Identity, Incoming, Row, TagCount};
 pub use tag::{same_tag, under};

@@ -7,7 +7,7 @@
 use chrono::{NaiveDate, TimeDelta};
 
 use crate::feeds::{Feeds, Outcome};
-use crate::http::{Access, Http, get_json};
+use crate::http::{Access, Http, get_json, redact};
 use crate::model::{Entry, Feed, Subscription};
 use crate::{crossref, openalex};
 
@@ -90,7 +90,7 @@ fn crossref(
     for _ in 0..SWEEP_PAGES {
         let url = crossref::list_url(issn, since, since - lookback, &cursor, access);
         let page: crossref::Message<crossref::List> =
-            get_json(http, &url)?.ok_or_else(|| format!("{url}: not found"))?;
+            get_json(http, &url)?.ok_or_else(|| redact(&format!("{url}: not found"), &url))?;
         let page = page.message;
         if swept.title.is_none() {
             swept.title = page
@@ -131,7 +131,7 @@ fn openalex(
     for _ in 0..SWEEP_PAGES {
         let url = openalex::list_url(filter, published, &cursor, access);
         let page: openalex::List =
-            get_json(http, &url)?.ok_or_else(|| format!("{url}: not found"))?;
+            get_json(http, &url)?.ok_or_else(|| redact(&format!("{url}: not found"), &url))?;
         let entries = page.results.iter().map(|w| w.entry(&subscription.id, kind));
         swept.entries.extend(entries);
         match page.meta.next_cursor {

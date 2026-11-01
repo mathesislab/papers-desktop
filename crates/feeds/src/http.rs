@@ -6,7 +6,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
+use percent_encoding::{AsciiSet, CONTROLS, percent_decode_str, utf8_percent_encode};
 use reqwest::header::{self, HeaderMap, HeaderName};
 use serde::de::DeserializeOwned;
 
@@ -73,8 +73,32 @@ pub(crate) fn doi_path(doi: &str) -> String {
     utf8_percent_encode(doi, QUERY).to_string()
 }
 
+/// The parameters of a request that are secrets: the key and the address of the APIs.
+const SECRETS: &[&str] = &["api_key", "mailto"];
+
+/// A message about a request without its secrets: the values of the
+/// `api_key` and `mailto` of its URL, as written there and decoded.
+pub(crate) fn redact(message: &str, url: &str) -> String {
+    let query = url.split_once('?').map_or("", |(_, query)| query);
+    let mut secrets: Vec<String> = Vec::new();
+    for (name, value) in query.split('&').filter_map(|pair| pair.split_once('=')) {
+        if SECRETS.contains(&name) {
+            secrets.push(value.to_string());
+            secrets.extend(
+                percent_decode_str(value)
+                    .decode_utf8()
+                    .ok()
+                    .map(String::from),
+            );
+        }
+    }
+    let secrets: Vec<&str> = secrets.iter().map(String::as_str).collect();
+    papers_core::redact(message, &secrets)
+}
+
 /// The JSON of a GET: None if not found (404 or 410), an error for no answer,
-/// another error status or a body that does not parse.
+/// another error status or a body that does not parse; the errors without
+/// the secrets of the URL.
 pub(crate) fn get_json<T: DeserializeOwned>(
     http: &dyn Http,
     url: &str,
@@ -84,11 +108,11 @@ pub(crate) fn get_json<T: DeserializeOwned>(
         accept: Some(JSON_ACCEPT.to_string()),
         ..Request::default()
     };
-    let reply = http.get(&request)?;
+    let reply = http.get(&request).map_err(|e| redact(&e, url))?;
     match reply.status {
         200..=299 => serde_json::from_slice(&reply.body)
             .map(Some)
-            .map_err(|e| format!("{url}: {e}")),
+            .map_err(|e| redact(&format!("{url}: {e}"), url)),
         404 | 410 => Ok(None),
         _ => Err(failure(&reply)),
     }

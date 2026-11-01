@@ -260,6 +260,35 @@ fn openalex_sweep_page_by_page() {
     assert_eq!(items[2].arxiv.as_deref(), Some("2610.38522"));
 }
 
+/// A sweep that fails says why without the key and the address: they are in
+/// its URL.
+#[test]
+fn a_failed_sweep_does_not_say_the_key_or_the_address() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = Clock::new().open(dir.path());
+    let filter = Feed::OpenAlex {
+        filter: "primary_topic.id:T10644".to_string(),
+    };
+    feeds.subscribe(filter, SourceKind::Journal).unwrap();
+    let access = Access {
+        mailto: Some("me+feeds@example.org".to_string()),
+        openalex_key: Some("s3cret".to_string()),
+    };
+    let page = format!(
+        "{OPENALEX}&cursor=*&api_key=s3cret&mailto={}",
+        "me%2Bfeeds@example.org"
+    );
+    let unread = Recorded::new().reply(&page, Reply::ok(&page, "not JSON"));
+    for http in [Recorded::new(), unread] {
+        let report = feeds.fetch(&http, &access).unwrap();
+        let Outcome::Failed(message) = &report.feeds[0].outcome else {
+            panic!("{:?}", report.feeds[0].outcome)
+        };
+        assert!(message.contains("api_key=***&mailto=***"), "{message}");
+        assert!(!message.contains("s3cret") && !message.contains("feeds@"));
+    }
+}
+
 #[test]
 fn openalex_sweep_of_words_in_titles_and_abstracts() {
     let dir = tempfile::tempdir().unwrap();
