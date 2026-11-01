@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buttonText, feedActions, itemActions, titled, type Item } from "../src/lib/feeds/actions.ts";
+import { buttonText, feedActions, itemActions, rowHint, titled, type Item } from "../src/lib/feeds/actions.ts";
 import { SAVED_FOR_LATER } from "../src/lib/search/state.ts";
 
 const done: [string, unknown[]][] = [];
@@ -79,6 +79,12 @@ test("the menus in title case, the buttons with their marks", () => {
   assert.equal(buttonText("later", actions.later, [item("a")]), "⏰ Later ▾");
   assert.equal(buttonText("open", actions.open, [item("a", "new", { kind: "news" })]), "Open post ↗");
   assert.equal(buttonText("read", actions.read, [item("a")]), "Mark read");
+});
+
+test("the ✕ of a row says what it does, its key and its hint", () => {
+  assert.equal(rowHint(actions.dismiss, [item("a")]), "Dismiss (X): hide it from the feed");
+  assert.equal(rowHint(actions.dismiss, [item("a", "dismissed")]), "Restore (X)");
+  assert.equal(rowHint(actions.addBare, [item("a")]), "Add without PDF…: add to the library without looking for its PDF");
 });
 
 test("the Search tab's actions: those of both tabs, the star in its words", () => {

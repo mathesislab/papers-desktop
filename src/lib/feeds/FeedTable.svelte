@@ -6,14 +6,15 @@
   // shows it calm, at first (`look`): no headers, each row taller, its date, then its source, title and authors a
   // line each, its badges small at its end. A new item's title is bold; one seen is muted (in the Feeds tab). A
   // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
-  // its start stars the item, or unstars it (✓: added).
+  // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
+  // selected, dismisses it (or restores it, dismissed).
 
   import type { Snippet } from "svelte";
   import { gridOf, widthOf, type Shown, type Specs } from "$lib/list/columns";
   import TableHead from "$lib/list/TableHead.svelte";
   import { ROW, Rows } from "$lib/list/virtual.svelte";
   import Marked from "$lib/Marked.svelte";
-  import { STAR } from "./actions";
+  import { STAR, rowHint, type Action } from "./actions";
   import type { FeedRow, Sort } from "./api";
   import { CALM_ROW, type FeedColumn, type Look } from "./columns";
   import { ago, badges, citedText, likeText, scoreText, yearOf } from "./items";
@@ -31,6 +32,7 @@
     look = "table",
     unread = true,
     star = STAR.row,
+    dismiss,
     after,
     onsort,
     oncolumns,
@@ -58,6 +60,8 @@
     unread?: boolean;
     /** what the star of a row says, on and off (the tab's `StarWords`) */
     star?: { on: string; off: string };
+    /** the ✕ of a row: what it does to the item (the Feeds tab's dismiss); none: no ✕ */
+    dismiss?: Action;
     /** after the last row, in the scroll of the list: *Show 25 more* */
     after?: Snippet;
     onsort?: (sort: Sort) => void;
@@ -148,7 +152,12 @@
   {#if !calm}
     <TableHead lead={LEAD} room={view.width} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
   {/if}
-  <div class="rows" style:height="{rows.length * view.row}px" style:min-width={calm ? null : `${minWidth}px`}>
+  <div
+    class="rows"
+    style:height="{rows.length * view.row}px"
+    style:min-width={calm ? null : `${minWidth}px`}
+    style:--end="{view.scrollLeft + view.width}px"
+  >
     {#each rows.slice(view.first, view.last) as row, i (row.id)}
       <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
       <div
@@ -211,6 +220,16 @@
             {/if}
           {/each}
         {/if}
+        {#if dismiss}
+          <button
+            class="remove"
+            title={rowHint(dismiss, [row])}
+            aria-label={dismiss.label([row])}
+            onmousedown={(e) => e.stopPropagation()}
+            ondblclick={(e) => e.stopPropagation()}
+            onclick={() => dismiss.run([row.id])}>✕</button
+          >
+        {/if}
       </div>
     {/each}
   </div>
@@ -231,6 +250,10 @@
   /* calm: the star, the mark, the date, the three lines taking the room left, the badges */
   .calm .row {
     grid-template-columns: 22px 18px 62px minmax(0, 1fr) auto;
+  }
+  /* the badges clear of the ✕ */
+  .calm .row:has(.remove) {
+    padding-right: 26px;
   }
   .rows {
     position: relative;
@@ -330,6 +353,39 @@
   }
   .row.selected .star {
     color: inherit;
+  }
+  /* the ✕, over the end of the row in view (`--end`: the table may scroll across), on hover and on the row selected */
+  .remove {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--end) - 26px);
+    display: none;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    line-height: 20px;
+    text-align: center;
+    transform: translateY(-50%);
+    cursor: pointer;
+  }
+  .row:hover .remove,
+  .row.selected .remove {
+    display: block;
+  }
+  .row.selected .remove {
+    background: var(--selection);
+    color: inherit;
+  }
+  .remove:hover,
+  .row.selected .remove:hover {
+    background: var(--line);
+    color: var(--fg);
   }
   .mark.preprint {
     color: #a16207;

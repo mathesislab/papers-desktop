@@ -1,6 +1,6 @@
 // The actions on the items of the Feeds and Search tabs, each once: the keys, the row menu, the selection bar, the
-// buttons of the details and Later ▾ read them from here, so that each says its name one way (the menus in title
-// case, `titled`). Those of both (`itemActions`: open, add, star, the star in the tab's words, `StarWords`) and the
+// buttons of the details, the ✕ of a row and Later ▾ read them from here, so that each says its name one way (the
+// menus in title case, `titled`). Those of both (`itemActions`: open, add, star, the star in the tab's words, `StarWords`) and the
 // Feeds tab's own (`feedActions`). What they run is the tab's (`Doers`); their names and when they apply are pure, tested by
 // scripts/actions.test.ts (npm test).
 
@@ -24,8 +24,8 @@ export interface Action {
   button?: (items: Item[]) => string;
   /** whether it can act on them */
   enabled: (items: Item[]) => boolean;
-  /** what a button of it says on hover */
-  hint?: string;
+  /** what a button of it says on hover, for the items it acts on; none: nothing */
+  hint?: (items: Item[]) => string | undefined;
   /** done to the items of those ids */
   run: (ids: string[]) => unknown;
 }
@@ -89,21 +89,21 @@ export function itemActions(d: ItemDoers, words: StarWords = STAR): Record<ItemA
       label: (items) => (items.length === 1 && isPost(items[0].kind) ? "Open post" : "Open"),
       // a post by its link, a paper by its link or its DOI; a row does not say them: they are looked for when opened
       enabled: (items) => items.some((i) => i.url === undefined || !!i.url || (!isPost(i.kind) && !!i.doi)),
-      hint: "Open its page in the browser",
+      hint: () => "Open its page in the browser",
       run: d.open,
     },
     add: {
       key: "a",
       label: () => "Add…",
       enabled: always,
-      hint: "Add to the library, with the free PDF if there is one",
+      hint: () => "Add to the library, with the free PDF if there is one",
       run: (ids) => d.add(ids, true),
     },
     addBare: {
       key: null,
       label: () => "Add without PDF…",
       enabled: always,
-      hint: "Add to the library without looking for its PDF",
+      hint: () => "Add to the library without looking for its PDF",
       run: (ids) => d.add(ids, false),
     },
     star: {
@@ -111,7 +111,7 @@ export function itemActions(d: ItemDoers, words: StarWords = STAR): Record<ItemA
       label: (items) => (starred(items) ? words.unstar : words.star),
       button: (items) => (starred(items) ? words.starred : words.star),
       enabled: (items) => toggled(items, "star") !== null,
-      hint: words.hint,
+      hint: () => words.hint,
       run: (ids) => d.triage("star", ids),
     },
   };
@@ -141,6 +141,7 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
       key: "x",
       label: (items) => (all(items, "dismissed") ? "Restore" : "Dismiss"),
       enabled: (items) => toggled(items, "dismiss") !== null,
+      hint: (items) => (all(items, "dismissed") ? undefined : "Hide it from the feed"),
       run: (ids) => d.triage("dismiss", ids),
     },
     keepUnread: {
@@ -153,7 +154,7 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
       key: "z",
       label: () => "Later",
       enabled: always,
-      hint: "Keep it unread (U), or snooze it",
+      hint: () => "Keep it unread (U), or snooze it",
       run: d.later,
     },
     clearReminder: {
@@ -171,6 +172,14 @@ const SMALL = new Set(["a", "an", "the", "and", "or", "as", "at", "by", "for", "
 /** A label in title case, as a menu says it (`Mark all above as read` → `Mark All Above as Read`). */
 export const titled = (label: string) =>
   label.replace(/\S+/g, (word, at: number) => (at > 0 && SMALL.has(word) ? word : word[0].toUpperCase() + word.slice(1)));
+
+/** What the button of an action on a row says on hover: its label, its key, its hint (`Dismiss (X): hide it from
+ *  the feed`). */
+export function rowHint(action: Action, items: Item[]): string {
+  const key = action.key ? ` (${action.key.toUpperCase()})` : "";
+  const hint = action.hint?.(items);
+  return action.label(items) + key + (hint ? `: ${hint[0].toLowerCase()}${hint.slice(1)}` : "");
+}
 
 /** An action as a button says it, on items: the star (★ when they are starred) and the clock before it, ↗ after what
  *  opens a page, ▾ after a menu. */

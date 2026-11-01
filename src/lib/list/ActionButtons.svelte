@@ -21,7 +21,7 @@
 
 {#each names as name (name)}
   {@const action = actions[name]}
-  <button class:primary={name === "add"} class:open={name === "open"} title={action.hint} disabled={!action.enabled(items)} onclick={() => action.run(ids)}>
+  <button class:primary={name === "add"} class:open={name === "open"} title={action.hint?.(items)} disabled={!action.enabled(items)} onclick={() => action.run(ids)}>
     {buttonText(name, action, items)}{#if action.key}{" "}<kbd>{action.key.toUpperCase()}</kbd>{/if}
   </button>
 {/each}

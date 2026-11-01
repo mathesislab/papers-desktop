@@ -25,6 +25,8 @@ export class Rows {
   /** the list, scrolled: its headers, then its rows */
   table = $state<HTMLDivElement>();
   scrollTop = $state(0);
+  /** how far across it is scrolled: what is at the right of the list in view is that far, and its width, in */
+  scrollLeft = $state(0);
   /** the height of the list in view, its headers' with it */
   height = $state(0);
   /** the width of the list in view: the room of its columns */
@@ -70,9 +72,9 @@ export class Rows {
     return Math.min(this.#count(), Math.ceil((this.scrollTop + this.height) / this.row) + EXTRA);
   }
 
-  /** The list scrolled: where to. */
+  /** The list scrolled: where to, down. */
   scrolled = () => {
-    if (this.table) this.scrollTop = this.table.scrollTop;
+    if (this.table) [this.scrollTop, this.scrollLeft] = [this.table.scrollTop, this.table.scrollLeft];
     return this.scrollTop;
   };
 }

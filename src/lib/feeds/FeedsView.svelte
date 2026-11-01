@@ -645,6 +645,7 @@
         onsort: (sort) => (filters.sort = sort),
         oncolumns: (shown) => (columns = shown),
         onstar: (id) => actions.star.run([id]),
+        dismiss: actions.dismiss,
         onmenu: rowMenu,
       }}
       none="No item selected"
