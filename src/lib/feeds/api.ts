@@ -221,17 +221,6 @@ export interface FeedSettings {
   pollMinutes: number;
 }
 
-/** Whether the main window shows the Feeds tab (the setting `feeds_tab`). */
-export const tabShown = () => invoke<boolean>("feeds_tab");
-/** Shows or hides the Feeds tab: the windows are told (`EVENTS.tab`), and the menu follows. */
-export const setTab = (show: boolean) => invoke<void>("feeds_set_tab", { show });
-
-/** Whether the Feeds tab shows an item's details beside the list (the setting `feeds_beside`), rather than in place
- *  of it, to read. */
-export const besideShown = () => invoke<boolean>("feeds_beside");
-/** The details beside the list, or in place of it: the windows are told (`EVENTS.beside`), and the menu follows. */
-export const setBeside = (beside: boolean) => invoke<void>("feeds_set_beside", { beside });
-
 /** A saved search of the sidebar: the whole query of the tab's choices (filters.ts, `queryOf`) and the order. */
 export interface SavedSearch {
   name: string;
@@ -375,8 +364,4 @@ export const EVENTS = {
   changed: "feeds-changed",
   /** where a fetch is (`FetchPhase`) */
   fetching: "feeds-fetching",
-  /** the Feeds tab shown (true) or hidden (false) */
-  tab: "feeds-tab",
-  /** the details beside the list (true) or in place of it (false) */
-  beside: "feeds-beside",
 } as const;

@@ -5,13 +5,14 @@
   // a time (*Show 25 more* at the end of the list). A new search takes the place of the works found before, but for
   // those saved for later (the star, S) or added. The sidebar: the works found (Results), those saved for later, the
   // recent searches. The list and the details are the Feeds tab's (ItemPane, on an ItemList), with the store
-  // "search": the details beside the list or in place of it (the setting `feeds_beside`), as in the Feeds tab. The
-  // window (src/routes/library/+page.svelte) keeps the layout (the fields, the recent searches, the search shown),
-  // and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is the library's.
+  // "search": the details beside the list or in place of it, as in the Feeds tab. The window
+  // (src/routes/library/+page.svelte) keeps the layout (the fields, the recent searches, the search shown), gives
+  // what both its Feeds and Search tabs take (`tabContext`), and passes on the commands of the menu and the keys
+  // while the tab is in front. The Add sheet is the library's.
 
   import { listen } from "@tauri-apps/api/event";
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
-  import { onMount, type Snippet } from "svelte";
+  import { onMount } from "svelte";
   import * as feedsApi from "$lib/feeds/api";
   import type { FeedDetail, FeedRow } from "$lib/feeds/api";
   import { SEARCH_ORDER, SEARCH_SPECS, type FeedColumn } from "$lib/feeds/FeedTable.svelte";
@@ -23,6 +24,7 @@
   import { ItemList, typing } from "$lib/list/ItemList.svelte";
   import ItemPane from "$lib/list/ItemPane.svelte";
   import "$lib/list/tab.css";
+  import { tabContext } from "$lib/list/tab";
   import * as api from "./api";
   import {
     ORDERS,
@@ -38,33 +40,16 @@
   import SearchSidebar from "./SearchSidebar.svelte";
 
   let {
-    tabs,
     search = $bindable(),
     columns = $bindable(),
-    sidebar = $bindable(),
-    details = $bindable(),
-    showSidebar,
-    showDetails,
-    onadd,
-    onentry,
   }: {
-    /** the switch of the tabs of the window, at the start of the toolbar */
-    tabs: Snippet;
     /** the fields, the recent searches and the search shown: the window's layout keeps them */
     search: SearchState;
     /** the list's columns, in their order, with their widths: the window's layout keeps them */
     columns: Shown<FeedColumn>[];
-    /** the widths of the side panes and whether they show: the window's, as in the library */
-    sidebar: number;
-    details: number;
-    showSidebar: boolean;
-    showDetails: boolean;
-    /** the library's Add sheet, over this tab: a DOI (or arXiv id) to fetch, its free PDF looked for or not. The
-     *  answer is what was added, said; none when the sheet was closed */
-    onadd: (initial: { id: string; pdf: boolean }) => Promise<string | null>;
-    /** a paper of the library shown, in the Library tab */
-    onentry: (id: string) => void;
   } = $props();
+
+  const tab = tabContext();
 
   /** the list shown: the works of the search, or those saved for later */
   let view = $state<"results" | "saved">("results");
@@ -89,7 +74,6 @@
   const list = new ItemList({
     store: "search",
     query: () => marked,
-    onadd: (initial) => onadd(initial),
     reload: () => refresh(),
   });
   let results = $derived(search.results);
@@ -332,8 +316,8 @@
 </script>
 
 <main class="tab" style:--tint="var(--search)">
-  {#if showSidebar}
-    <aside class="sidebar" style:width="{sidebar}px">
+  {#if tab.showSidebar}
+    <aside class="sidebar" style:width="{tab.sidebar}px">
       <SearchSidebar
         {view}
         total={results?.total ?? null}
@@ -344,11 +328,11 @@
         onclear={() => (search.recent = [])}
       />
     </aside>
-    <Splitter bind:width={sidebar} side="left" min={160} max={420} />
+    <Splitter bind:width={tab.sidebar} side="left" min={160} max={420} />
   {/if}
   <div class="right">
     <header>
-      {@render tabs()}
+      {@render tab.tabs()}
       <div class="search">
         <input
           bind:this={list.input}
@@ -403,12 +387,9 @@
       {colours}
       tint="var(--search)"
       none="No work selected"
-      bind:details
-      {showDetails}
       bar={listBar}
       empty={blank ? noRows : undefined}
       actions={itemActions}
-      {onentry}
     />
     <footer class="status">
       <span>{searching ? "Searching OpenAlex…" : "OpenAlex's works"}</span>

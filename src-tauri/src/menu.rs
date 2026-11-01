@@ -14,7 +14,7 @@ use tauri::{AppHandle, Emitter, Manager, Webview, Wry};
 
 use crate::PANEL;
 use crate::main_window::MAIN;
-use crate::settings::Settings;
+use crate::settings::{Settings, Toggle, Toggles};
 
 /// the commands that lead to the fields and lists of the page, which take
 /// the keys back from the PDF view
@@ -31,59 +31,33 @@ const TO_PAGE: &[&str] = &[
     "show-previous-tab",
 ];
 
-/// Window → Feeds, there only while the Feeds tab is shown, and Window → Show Feeds Tab, ticked
-/// then: they follow the setting (`feeds_tab`). Window → Feeds Details Beside the List follows
-/// `feeds_beside`, there while the tab is shown.
-struct FeedsItems {
+/// The items of the Window menu that follow the switches (`Toggle`): Window → Feeds and Search, there
+/// only while their tab is shown; Show Feeds Tab, Show Search Tab and Feeds Details Beside the List,
+/// ticked as their switch is (the last there while the Feeds tab is shown). The id of a ticked item
+/// is its switch's name.
+struct ToggleItems {
     feeds: MenuItem<Wry>,
-    show: CheckMenuItem<Wry>,
-    beside: CheckMenuItem<Wry>,
-}
-
-/// Window → Search, there only while the Search tab is shown, and Window → Show Search Tab, ticked
-/// then: they follow the setting (`search_tab`).
-struct SearchItems {
     search: MenuItem<Wry>,
-    show: CheckMenuItem<Wry>,
+    feeds_tab: CheckMenuItem<Wry>,
+    search_tab: CheckMenuItem<Wry>,
+    feeds_beside: CheckMenuItem<Wry>,
 }
 
 pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
-    let feeds_tab = settings.feeds_tab;
     let separator = || PredefinedMenuItem::separator(app);
     // a command of the main window: its id is the name the page knows
     let item = |id: &str, text: &str, keys: &str| -> tauri::Result<MenuItem<Wry>> {
         MenuItem::with_id(app, id, text, true, Some(keys))
     };
-    let feeds = FeedsItems {
-        feeds: MenuItem::with_id(app, "feeds", "Feeds", feeds_tab, Some("CmdOrCtrl+2"))?,
-        show: CheckMenuItem::with_id(
-            app,
-            "show-feeds-tab",
-            "Show Feeds Tab",
-            true,
-            feeds_tab,
-            None::<&str>,
-        )?,
-        beside: CheckMenuItem::with_id(
-            app,
-            "feeds-beside",
-            "Feeds Details Beside the List",
-            feeds_tab,
-            settings.feeds_beside,
-            None::<&str>,
-        )?,
+    let check = |toggle: Toggle, text: &str| {
+        CheckMenuItem::with_id(app, toggle.as_str(), text, true, false, None::<&str>)
     };
-    let search_tab = settings.search_tab;
-    let search = SearchItems {
-        search: MenuItem::with_id(app, "search", "Search", search_tab, Some("CmdOrCtrl+3"))?,
-        show: CheckMenuItem::with_id(
-            app,
-            "show-search-tab",
-            "Show Search Tab",
-            true,
-            search_tab,
-            None::<&str>,
-        )?,
+    let toggles = ToggleItems {
+        feeds: item("feeds", "Feeds", "CmdOrCtrl+2")?,
+        search: item("search", "Search", "CmdOrCtrl+3")?,
+        feeds_tab: check(Toggle::FeedsTab, "Show Feeds Tab")?,
+        search_tab: check(Toggle::SearchTab, "Show Search Tab")?,
+        feeds_beside: check(Toggle::FeedsBeside, "Feeds Details Beside the List")?,
     };
     let menu = Menu::with_items(
         app,
@@ -161,8 +135,8 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &PredefinedMenuItem::maximize(app, None)?,
                     &separator()?,
                     &item("library", "Library", "CmdOrCtrl+1")?,
-                    &feeds.feeds,
-                    &search.search,
+                    &toggles.feeds,
+                    &toggles.search,
                     &item("next-tab", "Next Tab", "Ctrl+Tab")?,
                     &item("previous-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
                     &separator()?,
@@ -173,77 +147,49 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                         "CmdOrCtrl+Shift+[",
                     )?,
                     &separator()?,
-                    &feeds.show,
-                    &feeds.beside,
-                    &search.show,
+                    &toggles.feeds_tab,
+                    &toggles.feeds_beside,
+                    &toggles.search_tab,
                 ],
             )?,
         ],
     )?;
     app.set_menu(menu)?;
-    app.manage(feeds);
-    app.manage(search);
+    app.manage(toggles);
+    sync(app, &settings.elsewhere.toggles);
     show_plus(app);
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
-        "show-feeds-tab" => toggle_feeds_tab(app),
-        "feeds-beside" => toggle_feeds_beside(app),
-        "show-search-tab" => toggle_search_tab(app),
         "settings" => crate::settings_window(app, None),
         "install-cli" => crate::cli_tool::install_from_menu(app),
-        id => command(app, id),
+        id => match id.parse::<Toggle>() {
+            Ok(toggle) => flip(app, toggle),
+            Err(()) => command(app, id),
+        },
     });
     Ok(())
 }
 
-/// Window → Show Feeds Tab: the setting the other way.
-fn toggle_feeds_tab(app: &AppHandle) {
-    let shown = crate::feeds::feeds_tab(app.clone()).unwrap_or(true);
-    if crate::feeds::feeds_set_tab(app.clone(), !shown).is_err() {
-        // not written: the tick back as the setting is
-        feeds_tab(app, shown);
+/// A ticked item of the Window menu: its switch the other way.
+fn flip(app: &AppHandle, toggle: Toggle) {
+    let Ok(toggles) = crate::toggle::toggles(app) else {
+        return;
+    };
+    if crate::toggle::set_toggle(app.clone(), toggle, !toggles.get(toggle)).is_err() {
+        // not written: the tick back as the switch is
+        sync(app, &toggles);
     }
 }
 
-/// The items of the Feeds tab as the setting is.
-pub fn feeds_tab(app: &AppHandle, shown: bool) {
-    if let Some(items) = app.try_state::<FeedsItems>() {
-        let _ = items.feeds.set_enabled(shown);
-        let _ = items.show.set_checked(shown);
-        let _ = items.beside.set_enabled(shown);
-    }
-}
-
-/// Window → Show Search Tab: the setting the other way.
-fn toggle_search_tab(app: &AppHandle) {
-    let shown = crate::search::search_tab(app.clone()).unwrap_or(true);
-    if crate::search::search_set_tab(app.clone(), !shown).is_err() {
-        // not written: the tick back as the setting is
-        search_tab(app, shown);
-    }
-}
-
-/// The items of the Search tab as the setting is.
-pub fn search_tab(app: &AppHandle, shown: bool) {
-    if let Some(items) = app.try_state::<SearchItems>() {
-        let _ = items.search.set_enabled(shown);
-        let _ = items.show.set_checked(shown);
-    }
-}
-
-/// Window → Feeds Details Beside the List: the setting the other way.
-fn toggle_feeds_beside(app: &AppHandle) {
-    let beside = crate::feeds::feeds_beside(app.clone()).unwrap_or(false);
-    if crate::feeds::feeds_set_beside(app.clone(), !beside).is_err() {
-        // not written: the tick back as the setting is
-        feeds_beside(app, beside);
-    }
-}
-
-/// Window → Feeds Details Beside the List ticked as the setting is.
-pub fn feeds_beside(app: &AppHandle, beside: bool) {
-    if let Some(items) = app.try_state::<FeedsItems>() {
-        let _ = items.beside.set_checked(beside);
+/// The items of the switches as they are.
+pub fn sync(app: &AppHandle, toggles: &Toggles) {
+    if let Some(items) = app.try_state::<ToggleItems>() {
+        let _ = items.feeds.set_enabled(toggles.feeds_tab);
+        let _ = items.search.set_enabled(toggles.search_tab);
+        let _ = items.feeds_tab.set_checked(toggles.feeds_tab);
+        let _ = items.search_tab.set_checked(toggles.search_tab);
+        let _ = items.feeds_beside.set_enabled(toggles.feeds_tab);
+        let _ = items.feeds_beside.set_checked(toggles.feeds_beside);
     }
 }
 

@@ -1,23 +1,24 @@
 <script lang="ts">
   // The Feeds tab of the main window (docs/design.md, Feeds; the mockup docs/mockups/feeds.html): the sidebar (the
   // views, kinds, interests and sources), the list of the items its choices and the search select and the details
-  // of the one selected (ItemPane, on an ItemList: beside the list or in place of it, the setting `feeds_beside`);
+  // of the one selected (ItemPane, on an ItemList: beside the list or in place of it, as the window's switch says);
   // the keys of the triage; the Review of the starred items, over the list and the details; the Subscribe sheet.
-  // The window (src/routes/library/+page.svelte) keeps the
-  // layout, and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is the
-  // library's: it opens over this tab, which stays in front after the paper is added.
+  // The window (src/routes/library/+page.svelte) keeps the layout, gives what both its Feeds and Search tabs take
+  // (`tabContext`), and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is
+  // the library's: it opens over this tab, which stays in front after the paper is added.
 
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
   import { ask } from "@tauri-apps/plugin-dialog";
-  import { onDestroy, onMount, untrack, type Snippet } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { label, matches, type Shortcut } from "$lib/keys";
   import { modalOpen } from "$lib/library/modal.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import { ItemList, typing } from "$lib/list/ItemList.svelte";
   import ItemPane from "$lib/list/ItemPane.svelte";
   import "$lib/list/tab.css";
+  import { tabContext } from "$lib/list/tab";
   import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
@@ -57,19 +58,10 @@
   import { sourceGroups } from "./subscriptions";
 
   let {
-    tabs,
     filters = $bindable(),
     columns = $bindable(),
     shown = $bindable(),
-    sidebar = $bindable(),
-    details = $bindable(),
-    showSidebar,
-    showDetails,
-    onadd,
-    onentry,
   }: {
-    /** the switch of the tabs of the window, at the start of the toolbar */
-    tabs: Snippet;
     /** the choices of the tab, its search and sort: the window's layout keeps them */
     filters: FeedFilters;
     /** the list's columns, in their order, with their widths: the window's layout keeps them */
@@ -77,17 +69,9 @@
     /** when the list was last brought up to date: what a fetch in the background brought since waits behind
      *  *N new · Show*; a fetch asked for here (⌘R, Fetch, a subscription) shows it at once. The layout keeps it. */
     shown: string | null;
-    /** the widths of the side panes and whether they show: the window's, as in the library */
-    sidebar: number;
-    details: number;
-    showSidebar: boolean;
-    showDetails: boolean;
-    /** the library's Add sheet, over this tab: a DOI (or arXiv id) to fetch, its free PDF looked for or not. The
-     *  answer is what was added, said; none when the sheet was closed */
-    onadd: (initial: { id: string; pdf: boolean }) => Promise<string | null>;
-    /** a paper of the library shown, in the Library tab */
-    onentry: (id: string) => void;
   } = $props();
+
+  const tab = tabContext();
 
 
   const REFRESH: Shortcut = { key: "r", mod: true };
@@ -126,7 +110,6 @@
   const list = new ItemList({
     store: "feeds",
     query: () => request.query,
-    onadd: (initial) => onadd(initial),
     reload: () => load(true),
     // an item opened is seen
     opened: (ids) => {
@@ -602,8 +585,8 @@
 {/if}
 
 <main class="tab" style:--tint="var(--feeds)">
-  {#if showSidebar}
-    <aside class="sidebar" style:width="{sidebar}px">
+  {#if tab.showSidebar}
+    <aside class="sidebar" style:width="{tab.sidebar}px">
       <FeedsSidebar
         bind:filters
         {counts}
@@ -626,11 +609,11 @@
         {/snippet}
       </FeedsSidebar>
     </aside>
-    <Splitter bind:width={sidebar} side="left" min={160} max={420} />
+    <Splitter bind:width={tab.sidebar} side="left" min={160} max={420} />
   {/if}
   <div class="right">
     <header>
-      {@render tabs()}
+      {@render tab.tabs()}
       <div class="search">
         <input
           bind:this={list.input}
@@ -679,7 +662,7 @@
           toggleReview();
           list.showItem(id);
         }}
-        {onentry}
+        onentry={tab.onentry}
         onclose={toggleReview}
       />
     {:else}
@@ -697,8 +680,6 @@
         }}
         {colours}
         none="No item selected"
-        bind:details
-        {showDetails}
         bar={listBar}
         empty={loaded && list.rows.length ? undefined : noRows}
         actions={itemActions}
@@ -706,7 +687,6 @@
         onaddlink={(link: Linked) => list.add({ id: link.doi, item: link.item }, true)}
         onshortlistlink={(item) => actions.star.run([item])}
         onfind={find}
-        {onentry}
       />
     {/if}
     <footer class="status">

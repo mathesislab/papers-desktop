@@ -29,15 +29,8 @@ export const saved = () => invoke<FeedRow[]>("search_saved");
 /** A query followed in the Feeds tab, as a sweep of OpenAlex: the subscription made, to fetch. */
 export const follow = (query: string) => invoke<SubscriptionInfo>("search_follow", { query });
 
-/** Whether the main window shows the Search tab (the setting `search_tab`). */
-export const tabShown = () => invoke<boolean>("search_tab");
-/** Shows or hides the Search tab: the windows are told (`EVENTS.tab`), and the menu follows. */
-export const setTab = (show: boolean) => invoke<void>("search_set_tab", { show });
-
 /** The events the page listens to. */
 export const EVENTS = {
   /** the works found changed: a triage, an abstract looked up, the library indexed again */
   changed: "search-changed",
-  /** the Search tab shown (true) or hidden (false) */
-  tab: "search-tab",
 } as const;

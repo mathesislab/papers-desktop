@@ -15,18 +15,14 @@ use papers_feeds::{
     resolve, search_works,
 };
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::AppState;
 use crate::feeds::{FeedRow, Rows, SubscriptionInfo};
 use crate::fetch::blocking;
-use crate::settings::Settings;
 
 /// The items' event of the Search tab: the works found changed.
 pub const CHANGED: &str = "search-changed";
-
-/// The Search tab shown or hidden, to every window: whether it is shown.
-pub const TAB_EVENT: &str = "search-tab";
 
 /// A page of a search, as the list shows it.
 #[derive(Debug, Serialize)]
@@ -138,26 +134,6 @@ pub async fn search_follow(app: AppHandle, query: String) -> Result<Subscription
         state.feeds.info(subscription)
     })
     .await
-}
-
-/// Whether the main window shows the Search tab (the setting `search_tab`).
-#[tauri::command]
-pub fn search_tab(app: AppHandle) -> Result<bool, String> {
-    Ok(Settings::load(&app.state::<AppState>().settings_path)?.search_tab)
-}
-
-/// Shows or hides the Search tab of the main window: from the settings and Window → Show Search
-/// Tab. The windows are told at once ([`TAB_EVENT`]), and the menu follows.
-#[tauri::command]
-pub fn search_set_tab(app: AppHandle, show: bool) -> Result<(), String> {
-    let state = app.state::<AppState>();
-    let mut settings = Settings::load(&state.settings_path)?;
-    settings.search_tab = show;
-    settings.save(&state.settings_path)?;
-    #[cfg(target_os = "macos")]
-    crate::menu::search_tab(&app, show);
-    let _ = app.emit(TAB_EVENT, show);
-    Ok(())
 }
 
 /// The works saved for later, the latest found first.

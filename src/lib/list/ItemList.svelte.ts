@@ -1,9 +1,9 @@
 // The list of the Feeds tab or the Search tab, and its item in focus (ItemPane draws them): the rows, the selection,
-// the item read in place of the list or its details beside it (the setting `feeds_beside`), its abstract looked up
-// and its free PDF asked, the triage shown at once, what opens and adds items, the keys that move through the list,
-// what was just done said for a moment. A tab makes one as it starts: its effects are the tab's.
+// the item read in place of the list or its details beside it (the window's switch, `Tab.beside`), its abstract
+// looked up and its free PDF asked, the triage shown at once, what opens and adds items, the keys that move through
+// the list, what was just done said for a moment. A tab makes one as it starts: its effects are the tab's, and the
+// window's context (`tabContext`) its own.
 
-import { listen } from "@tauri-apps/api/event";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import * as api from "$lib/feeds/api";
@@ -13,6 +13,7 @@ import { isPost } from "$lib/feeds/kinds";
 import { mac, matches, type Shortcut } from "$lib/keys";
 import { OPEN_ASK } from "$lib/library/selection";
 import { Selection } from "./selection.svelte";
+import { tabContext, type Tab } from "./tab";
 
 const ALL: Shortcut = { key: "a", mod: true };
 /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
@@ -27,9 +28,6 @@ export interface ListOptions {
   store: Store;
   /** the query whose words the details mark */
   query: () => string;
-  /** the library's Add sheet, over the tab: a DOI (or arXiv id) to fetch, its free PDF looked for or not. The
-   *  answer is what was added, said; none when the sheet was closed */
-  onadd: (initial: { id: string; pdf: boolean }) => Promise<string | null>;
   /** the list again, after a change refused: the backend tells of those made (`feeds-changed`), which ask for it */
   reload: () => unknown;
   /** the pages of items opened in the browser */
@@ -39,8 +37,6 @@ export interface ListOptions {
 export class ItemList {
   rows = $state<FeedRow[]>([]);
   readonly selection = new Selection();
-  /** the details beside the list (the setting), else in place of it */
-  beside = $state(false);
   /** the item in focus read in place of the list */
   reading = $state(false);
   detail = $state<FeedDetail | null>(null);
@@ -58,24 +54,14 @@ export class ItemList {
   focusRow = $derived(this.selection.focus === null ? undefined : this.byId.get(this.selection.focus));
 
   readonly #options: ListOptions;
+  readonly #tab: Tab;
   #noticeTimer: ReturnType<typeof setTimeout> | undefined;
   /** the items whose abstract was looked up here, once each */
   readonly #lookedUp = new Set<string>();
 
   constructor(options: ListOptions) {
     this.#options = options;
-
-    // the details beside the list or in place of it, as the setting says
-    $effect(() => {
-      const unlisten = listen<boolean>(api.EVENTS.beside, (e) => (this.beside = e.payload));
-      api.besideShown().then(
-        (b) => (this.beside = b),
-        (e) => this.say(String(e)),
-      );
-      return () => {
-        unlisten.then((f) => f());
-      };
-    });
+    this.#tab = tabContext();
 
     // the details of the item in focus, marked by the query; again when the items change
     $effect(() => {
@@ -106,6 +92,11 @@ export class ItemList {
       }, LOOKUP_DELAY);
       return () => clearTimeout(timer);
     });
+  }
+
+  /** the details beside the list, else in place of it */
+  get beside(): boolean {
+    return this.#tab.beside;
   }
 
   /** the folder of feeds the items are of */
@@ -221,7 +212,7 @@ export class ItemList {
   /** A paper added by its DOI (or arXiv id), the tab staying in front; its item, if it is one, becomes added.
    *  Whether it was added. */
   add = async (target: { id: string; item: string | null }, pdf: boolean): Promise<boolean> => {
-    const said = await this.#options.onadd({ id: target.id, pdf });
+    const said = await this.#tab.onadd({ id: target.id, pdf });
     if (said === null) return false;
     this.say(said);
     if (target.item) await this.setTo([target.item], "added");

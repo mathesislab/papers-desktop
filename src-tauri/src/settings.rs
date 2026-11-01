@@ -4,6 +4,7 @@
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use papers_core::Matching;
 use papers_rs::fetch::openalex::OpenAlex;
@@ -46,32 +47,120 @@ pub struct Settings {
     /// a key of OpenAlex (free), for more searches a day than without; empty
     /// (the default): none. Sent to OpenAlex only
     pub openalex_key: String,
-    /// the tags pinned to the keys 1–9 of the main window (index = key − 1);
-    /// set from the sidebar, not in the settings window
-    pub pinned_tags: Vec<Option<String>>,
-    /// the saved searches of the library tab, in the order of its sidebar;
-    /// set from the sidebar, not in the settings window
-    pub saved_searches: Vec<SavedSearch>,
     /// the Downloads panel at the bottom of the sidebar of the main window: the PDFs of a folder
     /// outside the library, to drag into it (shown also for settings files from before it existed)
     pub downloads_panel: bool,
     /// the folder of the panel (~ for the home directory)
     pub downloads_folder: PathBuf,
+    /// the settings set elsewhere than in the settings window's fields, in the same file
+    #[serde(flatten)]
+    pub elsewhere: Elsewhere,
+}
+
+/// The settings set elsewhere than in the fields of the settings window: by the sidebar of the
+/// main window, the Feeds section's own commands and the Window menu. Each is saved where it is set;
+/// the settings window's Save keeps them as they are (`save_settings`), what it loaded may be stale.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Elsewhere {
+    /// the tags pinned to the keys 1–9 of the main window (index = key − 1)
+    pub pinned_tags: Vec<Option<String>>,
+    /// the saved searches of the library tab, in the order of its sidebar
+    pub saved_searches: Vec<SavedSearch>,
     /// fetch the feeds in the background, every `feeds_poll_minutes`; off by
     /// default: nothing is sent unless asked. Set in the Feeds section
     pub feeds_poll: bool,
     /// the minutes between two fetches of the polling (5 at least)
     pub feeds_poll_minutes: u32,
-    /// the Feeds tab of the main window; on by default. Set in the Feeds section and by Window →
-    /// Show Feeds Tab
+    #[serde(flatten)]
+    pub toggles: Toggles,
+}
+
+/// The switches of the main window, each set in the settings window and by the Window menu
+/// (`toggle.rs`).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Toggles {
+    /// the Feeds tab; on by default
     pub feeds_tab: bool,
-    /// the details of an item of the Feeds tab beside the list; off by default: an item opens in
-    /// place of the list, to read. Set in the Feeds section and by Window → Feeds Details Beside
-    /// the List
+    /// the details of an item of the Feeds and Search tabs beside the list; off by default: an
+    /// item opens in place of the list, to read
     pub feeds_beside: bool,
-    /// the Search tab of the main window; on by default. Set in the settings and by Window →
-    /// Show Search Tab
+    /// the Search tab; on by default
     pub search_tab: bool,
+}
+
+/// A switch of the main window, as the page names it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Toggle {
+    FeedsTab,
+    SearchTab,
+    FeedsBeside,
+}
+
+impl Toggle {
+    const ALL: [Toggle; 3] = [Toggle::FeedsTab, Toggle::SearchTab, Toggle::FeedsBeside];
+
+    /// The name the page knows it by, also the id of its item of the Window menu.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Toggle::FeedsTab => "feeds-tab",
+            Toggle::SearchTab => "search-tab",
+            Toggle::FeedsBeside => "feeds-beside",
+        }
+    }
+}
+
+impl FromStr for Toggle {
+    type Err = ();
+
+    fn from_str(name: &str) -> Result<Toggle, ()> {
+        Toggle::ALL
+            .into_iter()
+            .find(|t| t.as_str() == name)
+            .ok_or(())
+    }
+}
+
+impl Toggles {
+    pub fn get(&self, toggle: Toggle) -> bool {
+        match toggle {
+            Toggle::FeedsTab => self.feeds_tab,
+            Toggle::SearchTab => self.search_tab,
+            Toggle::FeedsBeside => self.feeds_beside,
+        }
+    }
+
+    pub fn set(&mut self, toggle: Toggle, on: bool) {
+        *match toggle {
+            Toggle::FeedsTab => &mut self.feeds_tab,
+            Toggle::SearchTab => &mut self.search_tab,
+            Toggle::FeedsBeside => &mut self.feeds_beside,
+        } = on;
+    }
+}
+
+impl Default for Toggles {
+    fn default() -> Toggles {
+        Toggles {
+            feeds_tab: true,
+            feeds_beside: false,
+            search_tab: true,
+        }
+    }
+}
+
+impl Default for Elsewhere {
+    fn default() -> Elsewhere {
+        Elsewhere {
+            pinned_tags: Vec::new(),
+            saved_searches: Vec::new(),
+            feeds_poll: false,
+            feeds_poll_minutes: 60,
+            toggles: Toggles::default(),
+        }
+    }
 }
 
 /// A saved search of the library tab: a name for its filters and the sort of
@@ -168,15 +257,9 @@ impl Default for Settings {
             papers: PathBuf::new(),
             email: String::new(),
             openalex_key: String::new(),
-            pinned_tags: Vec::new(),
-            saved_searches: Vec::new(),
             downloads_panel: true,
             downloads_folder: PathBuf::from("~/Downloads"),
-            feeds_poll: false,
-            feeds_poll_minutes: 60,
-            feeds_tab: true,
-            feeds_beside: false,
-            search_tab: true,
+            elsewhere: Elsewhere::default(),
         }
     }
 }
@@ -330,50 +413,89 @@ mod tests {
     #[test]
     fn no_polling_of_the_feeds_by_default_also_for_older_files() {
         let settings: Settings = serde_json::from_str("{}").unwrap();
-        assert!(!settings.feeds_poll);
-        assert_eq!(settings.feeds_poll_minutes, 60);
+        assert!(!settings.elsewhere.feeds_poll);
+        assert_eq!(settings.elsewhere.feeds_poll_minutes, 60);
         let set: Settings =
             serde_json::from_str(r#"{"feeds_poll": true, "feeds_poll_minutes": 30}"#).unwrap();
-        assert_eq!((set.feeds_poll, set.feeds_poll_minutes), (true, 30));
+        let elsewhere = &set.elsewhere;
+        assert_eq!(
+            (elsewhere.feeds_poll, elsewhere.feeds_poll_minutes),
+            (true, 30)
+        );
     }
 
     #[test]
-    fn the_feeds_tab_shown_by_default_also_for_older_files() {
+    fn the_tabs_shown_and_the_details_in_place_by_default_also_for_older_files() {
         let settings: Settings = serde_json::from_str("{}").unwrap();
-        assert!(settings.feeds_tab);
-        let set: Settings = serde_json::from_str(r#"{"feeds_tab": false}"#).unwrap();
-        assert!(!set.feeds_tab);
+        let toggles = settings.elsewhere.toggles;
+        assert!(toggles.get(Toggle::FeedsTab) && toggles.get(Toggle::SearchTab));
+        assert!(!toggles.get(Toggle::FeedsBeside));
+        let json = r#"{"feeds_tab": false, "feeds_beside": true, "search_tab": false}"#;
+        let mut set: Settings = serde_json::from_str(json).unwrap();
+        let toggles = &mut set.elsewhere.toggles;
+        assert!(!toggles.get(Toggle::FeedsTab) && !toggles.get(Toggle::SearchTab));
+        assert!(toggles.get(Toggle::FeedsBeside));
+        toggles.set(Toggle::SearchTab, true);
+        assert!(set.elsewhere.toggles.search_tab);
     }
 
     #[test]
-    fn the_search_tab_shown_by_default_also_for_older_files() {
-        let settings: Settings = serde_json::from_str("{}").unwrap();
-        assert!(settings.search_tab);
-        let set: Settings = serde_json::from_str(r#"{"search_tab": false}"#).unwrap();
-        assert!(!set.search_tab);
+    fn toggles_named_as_the_page_names_them() {
+        for toggle in Toggle::ALL {
+            let json = serde_json::to_string(&toggle).unwrap();
+            assert_eq!(json, format!("\"{}\"", toggle.as_str()));
+            assert_eq!(toggle.as_str().parse(), Ok(toggle));
+        }
+        assert_eq!("feeds".parse::<Toggle>(), Err(()));
     }
 
     #[test]
-    fn the_feeds_details_in_place_of_the_list_by_default() {
-        let settings: Settings = serde_json::from_str("{}").unwrap();
-        assert!(!settings.feeds_beside);
-        let set: Settings = serde_json::from_str(r#"{"feeds_beside": true}"#).unwrap();
-        assert!(set.feeds_beside);
+    fn the_file_keeps_its_keys_with_the_settings_set_elsewhere_nested() {
+        let json = r#"{"bibtex": ["~/papers.bib"], "hotkey": "Alt+Space", "matching": "word-start",
+            "citation_style": "apa", "check_updates": false, "after_close": "library",
+            "text_size": "larger", "writer": "command", "papers": "/bin/papers",
+            "email": "me@example.org", "openalex_key": "KEY", "pinned_tags": ["ice", null],
+            "saved_searches": [{"name": "AMOC", "filters": {}, "sort": null}],
+            "downloads_panel": false, "downloads_folder": "/tmp/in", "feeds_poll": true,
+            "feeds_poll_minutes": 30, "feeds_tab": false, "feeds_beside": true,
+            "search_tab": false}"#;
+        let old: Value = serde_json::from_str(json).unwrap();
+        let settings: Settings = serde_json::from_value(old.clone()).unwrap();
+        assert_eq!(settings.elsewhere.pinned_tags, [Some("ice".into()), None]);
+        assert_eq!(settings.elsewhere.saved_searches[0].name, "AMOC");
+        // the settings of every system (on Linux, also its selection_hotkey)
+        let common = |settings: &Settings| -> Value {
+            let mut value = serde_json::to_value(settings).unwrap();
+            value.as_object_mut().unwrap().remove("selection_hotkey");
+            value
+        };
+        let again = common(&settings);
+        assert_eq!(again, old, "the same keys, the same values");
+        // the defaults too: no "elsewhere", no "toggles"
+        let keys = |value: &Value| {
+            value
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(keys(&common(&Settings::default())), keys(&old));
     }
 
     #[test]
     fn saved_searches_kept_as_the_page_writes_them() {
         let settings: Settings = serde_json::from_str("{}").unwrap();
-        assert!(settings.saved_searches.is_empty());
+        assert!(settings.elsewhere.saved_searches.is_empty());
         let json = r#"{"saved_searches": [{"name": "AMOC", "filters": {"bibs": [], "view": "all",
             "tags": [["amoc", "ice"]], "query": "y:2020-"}}]}"#;
         let set: Settings = serde_json::from_str(json).unwrap();
-        let saved = &set.saved_searches[0];
+        let saved = &set.elsewhere.saved_searches[0];
         assert_eq!(saved.name, "AMOC");
         assert_eq!(saved.filters["tags"][0][1], "ice");
         assert!(saved.sort.is_null(), "no sort: the order of the library");
         let again: Settings = serde_json::from_value(serde_json::to_value(&set).unwrap()).unwrap();
-        assert_eq!(again.saved_searches, set.saved_searches);
+        assert_eq!(again.elsewhere.saved_searches, set.elsewhere.saved_searches);
     }
 
     #[test]

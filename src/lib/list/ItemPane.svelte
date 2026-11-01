@@ -1,7 +1,7 @@
 <script lang="ts">
   // The list of the Feeds tab or the Search tab and its item in focus (an `ItemList`): the table, the item read in
-  // place of it, its row pinned at the top (Reader), or its details beside the list (the setting `feeds_beside`),
-  // a splitter between. The tab gives what is above the list (`bar`: its filters, the selection bar), what shows in
+  // place of it, its row pinned at the top (Reader), or its details beside the list (the window's switch), a splitter
+  // between, at the window's width. The tab gives what is above the list (`bar`: its filters, the selection bar), what shows in
   // place of the table (`empty`: the list loading, failed or empty), the buttons of the details (`actions`) and the
   // table's columns.
 
@@ -12,6 +12,7 @@
   import Reader from "$lib/feeds/Reader.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import type { ItemList } from "./ItemList.svelte";
+  import { tabContext } from "./tab";
 
   let {
     list,
@@ -19,8 +20,6 @@
     colours,
     tint,
     none,
-    details = $bindable(),
-    showDetails,
     bar,
     empty,
     actions,
@@ -28,7 +27,6 @@
     onaddlink,
     onshortlistlink,
     onfind,
-    onentry,
   }: {
     list: ItemList;
     /** the table's own: its columns, their names and widths, the order, the star, what follows the last row */
@@ -39,9 +37,6 @@
     tint?: string;
     /** the details beside the list, with no item in focus */
     none: string;
-    /** the width of the details beside the list, and whether they show: the window's */
-    details: number;
-    showDetails: boolean;
     /** above the list */
     bar: Snippet;
     /** in place of the table; none: the table */
@@ -53,9 +48,9 @@
     onaddlink?: (link: Linked) => void;
     onshortlistlink?: (item: string) => void;
     onfind?: (id: string) => void;
-    /** a paper of the library shown, in the Library tab */
-    onentry: (id: string) => void;
   } = $props();
+
+  const tab = tabContext();
 
   let selection = $derived(list.selection);
 </script>
@@ -84,9 +79,9 @@
       </div>
     {/if}
   </section>
-  {#if list.beside && showDetails}
-    <Splitter bind:width={details} side="right" min={260} max={600} />
-    <aside class="details" style:width="{details}px">
+  {#if list.beside && tab.showDetails}
+    <Splitter bind:width={tab.details} side="right" min={260} max={600} />
+    <aside class="details" style:width="{tab.details}px">
       {#if list.detail}
         {@render itemDetails(list.detail, false)}
       {:else}
@@ -110,7 +105,7 @@
     {onshortlistlink}
     onfind={onfind && (() => onfind(d.id))}
     onitem={list.showItem}
-    {onentry}
+    onentry={tab.onentry}
     onback={wide ? () => (list.reading = false) : undefined}
   />
 {/snippet}

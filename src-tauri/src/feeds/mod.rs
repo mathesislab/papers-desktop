@@ -54,7 +54,7 @@ use papers_feeds::{
     Subscription, SubscriptionSettings, Triage,
 };
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use discover::FeedOf;
 pub use fetching::FetchSummary;
@@ -324,9 +324,9 @@ pub fn watch(app: &AppHandle) {
         loop {
             let state = app.state::<AppState>();
             if let Ok(settings) = Settings::load(&state.settings_path)
-                && settings.feeds_poll
+                && settings.elsewhere.feeds_poll
             {
-                let minutes = settings.feeds_poll_minutes.max(LEAST_MINUTES);
+                let minutes = settings.elsewhere.feeds_poll_minutes.max(LEAST_MINUTES);
                 let every = TimeDelta::minutes(minutes.into());
                 let last = state.feeds.last_fetch().ok().flatten();
                 if last.is_none_or(|l| Utc::now() - l.at >= every) {
@@ -539,8 +539,8 @@ pub async fn feeds_settings(app: AppHandle) -> Result<FeedSettings, String> {
                 rules: kept.rules,
                 keep_days: kept.keep_days,
                 lookback_days: kept.lookback_days,
-                poll: settings.feeds_poll,
-                poll_minutes: settings.feeds_poll_minutes,
+                poll: settings.elsewhere.feeds_poll,
+                poll_minutes: settings.elsewhere.feeds_poll_minutes,
             }
         })
     })
@@ -583,60 +583,12 @@ pub async fn feeds_set_settings(app: AppHandle, settings: FeedSettings) -> Resul
         let state = app.state::<AppState>();
         (state.feeds.folder).change(&app, move |feeds| feeds.set_settings(kept.clone()))?;
         let mut kept = Settings::load(&state.settings_path)?;
-        kept.feeds_poll = settings.poll;
-        kept.feeds_poll_minutes = settings.poll_minutes.max(LEAST_MINUTES);
+        kept.elsewhere.feeds_poll = settings.poll;
+        kept.elsewhere.feeds_poll_minutes = settings.poll_minutes.max(LEAST_MINUTES);
         kept.save(&state.settings_path)
     })
     .await
 }
-
-/// Whether the main window shows the Feeds tab (the setting `feeds_tab`).
-#[tauri::command]
-pub fn feeds_tab(app: AppHandle) -> Result<bool, String> {
-    Ok(Settings::load(&app.state::<AppState>().settings_path)?.feeds_tab)
-}
-
-/// Shows or hides the Feeds tab of the main window: from the Feeds section of the settings and
-/// Window → Show Feeds Tab. The windows are told at once ([`TAB_EVENT`]), and the menu follows.
-#[tauri::command]
-pub fn feeds_set_tab(app: AppHandle, show: bool) -> Result<(), String> {
-    let state = app.state::<AppState>();
-    let mut settings = Settings::load(&state.settings_path)?;
-    settings.feeds_tab = show;
-    settings.save(&state.settings_path)?;
-    #[cfg(target_os = "macos")]
-    crate::menu::feeds_tab(&app, show);
-    let _ = app.emit(TAB_EVENT, show);
-    Ok(())
-}
-
-/// The Feeds tab shown or hidden, to every window: whether it is shown.
-pub const TAB_EVENT: &str = "feeds-tab";
-
-/// Whether the Feeds tab shows an item's details beside the list (the setting `feeds_beside`),
-/// rather than in place of it, to read.
-#[tauri::command]
-pub fn feeds_beside(app: AppHandle) -> Result<bool, String> {
-    Ok(Settings::load(&app.state::<AppState>().settings_path)?.feeds_beside)
-}
-
-/// The details beside the list, or in place of it: from the Feeds section of the settings and
-/// Window → Feeds Details Beside the List. The windows are told at once ([`BESIDE_EVENT`]), and
-/// the menu follows.
-#[tauri::command]
-pub fn feeds_set_beside(app: AppHandle, beside: bool) -> Result<(), String> {
-    let state = app.state::<AppState>();
-    let mut settings = Settings::load(&state.settings_path)?;
-    settings.feeds_beside = beside;
-    settings.save(&state.settings_path)?;
-    #[cfg(target_os = "macos")]
-    crate::menu::feeds_beside(&app, beside);
-    let _ = app.emit(BESIDE_EVENT, beside);
-    Ok(())
-}
-
-/// The details beside the list or in place of it, to every window: whether beside.
-pub const BESIDE_EVENT: &str = "feeds-beside";
 
 #[cfg(test)]
 impl FeedsState {

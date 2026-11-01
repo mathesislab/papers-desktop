@@ -19,6 +19,7 @@ mod selection;
 mod settings;
 mod styles;
 mod text_size;
+mod toggle;
 mod update;
 mod writer;
 
@@ -400,16 +401,9 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
 #[tauri::command]
 fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
     let old = Settings::load(&state.settings_path)?;
-    // pinned and saved in the sidebar, the polling and the tab of the feeds set in their section
-    // and the Search tab (and the menu), not here: what the window loaded may be stale
+    // what is set elsewhere stays as it is: what the window loaded may be stale
     let settings = Settings {
-        pinned_tags: old.pinned_tags.clone(),
-        saved_searches: old.saved_searches.clone(),
-        feeds_poll: old.feeds_poll,
-        feeds_poll_minutes: old.feeds_poll_minutes,
-        feeds_tab: old.feeds_tab,
-        feeds_beside: old.feeds_beside,
-        search_tab: old.search_tab,
+        elsewhere: old.elsewhere.clone(),
         ..settings
     };
     hotkey::apply(&app, &old, &settings)?;
@@ -431,7 +425,7 @@ fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> 
 #[tauri::command]
 fn set_pinned_tags(state: State<AppState>, tags: Vec<Option<String>>) -> Result<(), String> {
     let mut settings = Settings::load(&state.settings_path)?;
-    settings.pinned_tags = tags;
+    settings.elsewhere.pinned_tags = tags;
     settings.save(&state.settings_path)
 }
 
@@ -440,7 +434,7 @@ fn set_pinned_tags(state: State<AppState>, tags: Vec<Option<String>>) -> Result<
 #[tauri::command]
 fn set_saved_searches(state: State<AppState>, searches: Vec<SavedSearch>) -> Result<(), String> {
     let mut settings = Settings::load(&state.settings_path)?;
-    settings.saved_searches = searches;
+    settings.elsewhere.saved_searches = searches;
     settings.save(&state.settings_path)
 }
 
@@ -1148,18 +1142,14 @@ pub fn run() {
             feeds::feeds_export_opml,
             feeds::feeds_settings,
             feeds::feeds_set_settings,
-            feeds::feeds_tab,
-            feeds::feeds_beside,
-            feeds::feeds_set_beside,
-            feeds::feeds_set_tab,
             feeds::feeds_searches,
             feeds::feeds_set_searches,
             search::search_run,
             search::search_rows,
             search::search_saved,
             search::search_follow,
-            search::search_tab,
-            search::search_set_tab
+            toggle::toggle,
+            toggle::set_toggle
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

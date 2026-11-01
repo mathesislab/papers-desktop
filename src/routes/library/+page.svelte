@@ -9,19 +9,28 @@
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { commands } from "$lib/commands";
-  import * as feedsApi from "$lib/feeds/api";
   import FeedsView from "$lib/feeds/FeedsView.svelte";
   import { label, mac, matches, zoomStep } from "$lib/keys";
   import { restore, type Layout } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
-  import * as searchApi from "$lib/search/api";
+  import { setTabContext } from "$lib/list/tab";
   import SearchView from "$lib/search/SearchView.svelte";
+  import { onToggle, toggles, type Toggle } from "$lib/toggles";
+
+  type TabName = Layout["view"];
+
+  /** the tabs of the window, in their order: the switch that shows each, but the library's, always there */
+  const TABS: { tab: TabName; name: string; title: string; toggle: Toggle | null }[] = [
+    { tab: "library", name: "Library", title: "Library", toggle: null },
+    { tab: "feeds", name: "Feeds", title: "Feeds", toggle: "feeds-tab" },
+    { tab: "search", name: "Search", title: "Search OpenAlex's works", toggle: "search-tab" },
+  ];
 
   let layout = $state<Layout>(restore(null));
-  /** the Feeds tab, shown: the setting (Settings → Feeds, Window → Show Feeds Tab) */
-  let feedsTab = $state(true);
-  /** the Search tab, shown: the setting (Settings → Feeds, Window → Show Search Tab) */
-  let searchTab = $state(true);
+  /** the tabs shown: their switches (Settings → Feeds, Window → Show Feeds Tab, Show Search Tab) */
+  let shownTabs = $state<Record<TabName, boolean>>({ library: true, feeds: true, search: true });
+  /** the details of the Feeds and Search tabs beside the list: the switch `feeds-beside` */
+  let beside = $state(false);
   let loaded = false;
   let timer: ReturnType<typeof setTimeout>;
 
@@ -29,29 +38,50 @@
   let feeds = $state<ReturnType<typeof FeedsView>>();
   let search = $state<ReturnType<typeof SearchView>>();
 
+  setTabContext({
+    tabs,
+    get beside() {
+      return beside;
+    },
+    get sidebar() {
+      return layout.sidebar;
+    },
+    set sidebar(width) {
+      layout.sidebar = width;
+    },
+    get details() {
+      return layout.details;
+    },
+    set details(width) {
+      layout.details = width;
+    },
+    get showSidebar() {
+      return layout.showSidebar;
+    },
+    get showDetails() {
+      return layout.showDetails;
+    },
+    // the Add sheet is the library's, over the tab: after the paper is added, the tab stays in front
+    onadd: (initial) => library?.addFrom(initial) ?? Promise.resolve(null),
+    onentry: (id) => library?.showEntry(id),
+  });
+
   /** The window is made hidden, not to flash empty: shown once drawn. */
   onMount(() => {
     // from the menu of the app
     const unlisten = listen<string>("command", (e) => command(e.payload));
-    const unlistenTab = listen<boolean>(feedsApi.EVENTS.tab, (e) => showFeeds(e.payload));
-    const unlistenSearch = listen<boolean>(searchApi.EVENTS.tab, (e) => showSearch(e.payload));
+    const unlistenToggle = onToggle(setToggle);
     load();
     return () => {
       unlisten.then((f) => f());
-      unlistenTab.then((f) => f());
-      unlistenSearch.then((f) => f());
+      unlistenToggle();
     };
   });
 
   async function load() {
-    const [saved, shown, searchShown] = await Promise.all([
-      invoke<Partial<Layout> | null>("layout"),
-      feedsApi.tabShown(),
-      searchApi.tabShown(),
-    ]);
+    const [saved, on] = await Promise.all([invoke<Partial<Layout> | null>("layout"), toggles()]);
     layout = restore(saved);
-    showFeeds(shown);
-    showSearch(searchShown);
+    for (const [name, value] of Object.entries(on)) setToggle(name as Toggle, value);
     loaded = true;
     await library?.load();
     await tick();
@@ -63,23 +93,22 @@
 
   /** A tab of the window to the front. The focus does not stay in the one that goes; the library's search field
    *  takes it, unless a paper is in front (its PDF has the keys). */
-  function showView(view: Layout["view"]) {
+  function showView(view: TabName) {
     if (layout.view === view) return;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     layout.view = view;
     if (view === "library") tick().then(() => library?.focusSearch());
   }
 
-  /** The Feeds tab shown or hidden; hidden in front, the Library tab comes. */
-  function showFeeds(show: boolean) {
-    feedsTab = show;
-    if (!show && layout.view === "feeds") showView("library");
-  }
-
-  /** The Search tab shown or hidden; hidden in front, the Library tab comes. */
-  function showSearch(show: boolean) {
-    searchTab = show;
-    if (!show && layout.view === "search") showView("library");
+  /** A switch set: a tab shown or hidden (hidden in front, the Library tab comes), the details beside or not. */
+  function setToggle(toggle: Toggle, on: boolean) {
+    if (toggle === "feeds-beside") {
+      beside = on;
+      return;
+    }
+    const tab = TABS.find((t) => t.toggle === toggle)!.tab;
+    shownTabs[tab] = on;
+    if (!on && layout.view === tab) showView("library");
   }
 
   // saved a moment after a change: a pane dragged changes it many times
@@ -97,9 +126,8 @@
       case "library":
         return layout.view === "library" ? library?.command(name) : showView("library");
       case "feeds":
-        return feedsTab ? showView("feeds") : undefined;
       case "search":
-        return searchTab ? showView("search") : undefined;
+        return shownTabs[name] ? showView(name) : undefined;
       // the PDF in front has the keys; else they set the text size
       case "zoom-in":
         return zoom(1);
@@ -196,35 +224,19 @@
 
 <!-- no switch with the Feeds and Search tabs hidden: the Library tab alone -->
 {#snippet tabs()}
-  {#if feedsTab || searchTab}
+  {@const shown = TABS.filter((t) => shownTabs[t.tab])}
+  {#if shown.length > 1}
     <div class="tabs" role="tablist">
-      <button
-        role="tab"
-        aria-selected={layout.view === "library"}
-        class:on={layout.view === "library"}
-        title="Library ({label(commands.library)})"
-        onclick={() => showView("library")}>Library</button
-      >
-      {#if feedsTab}
+      {#each shown as t (t.tab)}
         <button
           role="tab"
-          aria-selected={layout.view === "feeds"}
-          class="feeds"
-          class:on={layout.view === "feeds"}
-          title="Feeds ({label(commands.feeds)})"
-          onclick={() => showView("feeds")}>Feeds</button
+          aria-selected={layout.view === t.tab}
+          class={t.tab}
+          class:on={layout.view === t.tab}
+          title="{t.title} ({label(commands[t.tab])})"
+          onclick={() => showView(t.tab)}>{t.name}</button
         >
-      {/if}
-      {#if searchTab}
-        <button
-          role="tab"
-          aria-selected={layout.view === "search"}
-          class="search"
-          class:on={layout.view === "search"}
-          title="Search OpenAlex's works ({label(commands.search)})"
-          onclick={() => showView("search")}>Search</button
-        >
-      {/if}
+      {/each}
     </div>
   {/if}
 {/snippet}
@@ -237,36 +249,10 @@
   {tabs}
   onfront={() => showView("library")}
 />
-{#if feedsTab && layout.view === "feeds"}
-  <!-- the Add sheet is the library's, over this tab: after the paper is added, the Feeds tab stays in front -->
-  <FeedsView
-    bind:this={feeds}
-    {tabs}
-    bind:filters={layout.feeds}
-    bind:columns={layout.feedColumns}
-    bind:shown={layout.feedsShown}
-    bind:sidebar={layout.sidebar}
-    bind:details={layout.details}
-    showSidebar={layout.showSidebar}
-    showDetails={layout.showDetails}
-    onadd={(initial) => library?.addFrom(initial) ?? Promise.resolve(null)}
-    onentry={(id) => library?.showEntry(id)}
-  />
-{/if}
-{#if searchTab && layout.view === "search"}
-  <!-- as the Feeds tab: the Add sheet is the library's, over this tab -->
-  <SearchView
-    bind:this={search}
-    {tabs}
-    bind:search={layout.search}
-    bind:columns={layout.searchColumns}
-    bind:sidebar={layout.sidebar}
-    bind:details={layout.details}
-    showSidebar={layout.showSidebar}
-    showDetails={layout.showDetails}
-    onadd={(initial) => library?.addFrom(initial) ?? Promise.resolve(null)}
-    onentry={(id) => library?.showEntry(id)}
-  />
+{#if shownTabs.feeds && layout.view === "feeds"}
+  <FeedsView bind:this={feeds} bind:filters={layout.feeds} bind:columns={layout.feedColumns} bind:shown={layout.feedsShown} />
+{:else if shownTabs.search && layout.view === "search"}
+  <SearchView bind:this={search} bind:search={layout.search} bind:columns={layout.searchColumns} />
 {/if}
 
 <style>
