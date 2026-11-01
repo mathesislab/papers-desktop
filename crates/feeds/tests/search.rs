@@ -4,8 +4,8 @@
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, FOUND, Feeds, Order, Reply, Resolved, Triage, ask, follow_filter, resolve, search_url,
-    search_works,
+    Access, FOUND, Feeds, Order, Reply, Resolved, Triage, ask, resolve, search_url, search_works,
+    subscription_filter,
 };
 
 const SELECT: &str = "select=id,display_name,alternate_titles,issn_l,issn,host_organization_name,homepage_url,works_count";
@@ -230,7 +230,7 @@ fn works_found_are_items_and_a_new_search_keeps_those_saved_for_later() {
 }
 
 #[test]
-fn the_works_citing_a_paper_by_its_doi_and_a_search_followed() {
+fn the_works_citing_a_paper_by_its_doi_and_a_search_subscribed_to() {
     let access = Access::default();
     let doi = "https://api.openalex.org/works/doi:10.5194/tc-1?select=id,doi,title,publication_date,authorships,primary_location,abstract_inverted_index,type,cited_by_count";
     let w1 = Resolved {
@@ -253,11 +253,14 @@ fn the_works_citing_a_paper_by_its_doi_and_a_search_followed() {
     let asked: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
     assert_eq!(asked, [doi, &citing, &more], "the DOI looked up once");
 
-    let followed =
-        follow_filter(&plain(r#"greenland, "ice sheet" -model y:2000- cites:W7"#)).unwrap();
+    let subscribed =
+        subscription_filter(&plain(r#"greenland, "ice sheet" -model y:2000- cites:W7"#)).unwrap();
     assert_eq!(
-        followed,
+        subscribed,
         "title_and_abstract.search:greenland \"ice sheet\" NOT model,publication_year:>1999,cites:W7"
     );
-    assert_eq!(follow_filter(&plain("")).unwrap_err(), "Nothing to follow");
+    assert_eq!(
+        subscription_filter(&plain("")).unwrap_err(),
+        "Nothing to subscribe to"
+    );
 }

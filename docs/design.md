@@ -1241,9 +1241,10 @@ in the window's layout (`search`); the sidebar: Results, *Saved for later
 (N)*, Recent searches.
 
 **Around a paper**: *Cited by* (`cites:`) and *References* (`citedby:`)
-search again, the most cited first. **Follow this search** subscribes the
-query in the Feeds tab as a sweep of OpenAlex (`follow_filter`: its words in
-the titles and abstracts, then its filters), fetched at once.
+search again, the most cited first. **Subscribe to this search**
+(`search_subscribe`) subscribes the query in the Feeds tab as a sweep of
+OpenAlex (`subscription_filter`: its words in the titles and abstracts, then
+its filters), fetched at once (*Subscribed to "…" in Feeds*).
 
 The list and the details are the Feeds tab's (`ItemList`, `ItemPane`: the
 columns and the buttons given by the tab; `Reader`, the item read in place of

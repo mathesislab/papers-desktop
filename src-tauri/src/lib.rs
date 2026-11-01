@@ -1147,7 +1147,7 @@ pub fn run() {
             search::search_run,
             search::search_rows,
             search::search_starred,
-            search::search_follow,
+            search::search_subscribe,
             toggle::toggle,
             toggle::set_toggle
         ])

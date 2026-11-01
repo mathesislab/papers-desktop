@@ -12,7 +12,7 @@
 //!
 //! The works found go into a folder of feeds of their own (the app's
 //! `search`), an item each: the searches before go, but for the items
-//! starred or added. A search followed is a sweep of the
+//! starred or added. A search subscribed to is a sweep of the
 //! feeds: its words searched in the titles and abstracts.
 
 use std::ops::RangeInclusive;
@@ -67,7 +67,7 @@ pub struct Asked {
 
 /// What a query asks of OpenAlex once its journals and works are looked up:
 /// its full-text search and its filters. The pages of a search and a search
-/// followed are of it, the lookups made once.
+/// subscribed to are of it, the lookups made once.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolved {
     /// the words and phrases, `NOT` before those left out
@@ -280,10 +280,10 @@ pub fn search_works(
     })
 }
 
-/// The OpenAlex filter of a query followed as a sweep of the feeds: its
+/// The OpenAlex filter of a query subscribed to as a sweep of the feeds: its
 /// words searched in the titles and abstracts (their commas, which would end
 /// the filter, dropped), then its filters.
-pub fn follow_filter(resolved: &Resolved) -> std::result::Result<String, String> {
+pub fn subscription_filter(resolved: &Resolved) -> std::result::Result<String, String> {
     let mut all = Vec::new();
     let words = resolved.search.join(" ").replace(',', " ");
     let words = words.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -292,7 +292,7 @@ pub fn follow_filter(resolved: &Resolved) -> std::result::Result<String, String>
     }
     all.extend(resolved.filters.iter().cloned());
     if all.is_empty() {
-        return Err("Nothing to follow".to_string());
+        return Err("Nothing to subscribe to".to_string());
     }
     Ok(all.join(","))
 }

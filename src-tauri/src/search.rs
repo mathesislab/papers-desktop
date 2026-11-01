@@ -4,15 +4,15 @@
 //! search's first page takes the place of the works found before, but for
 //! those starred or added; the next page adds to it.
 //! The last query's journals and works looked up are kept for its next pages
-//! and its following. The rows are the Feeds tab's (`FeedRow`); the details,
+//! and its subscription. The rows are the Feeds tab's (`FeedRow`); the details,
 //! the triage, the abstracts and the PDFs are the Feeds tab's commands, with
 //! the store.
 
 use std::sync::Mutex;
 
 use papers_feeds::{
-    Access, Feed, Http, Order, Resolved, SourceKind, SubscriptionSettings, ask, follow_filter,
-    resolve, search_works,
+    Access, Feed, Http, Order, Resolved, SourceKind, SubscriptionSettings, ask, resolve,
+    search_works, subscription_filter,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
@@ -111,14 +111,15 @@ pub async fn search_rows(
     blocking(move || rows_of(&app, &ids, &query)).await
 }
 
-/// A search followed in the Feeds tab: a sweep of OpenAlex of its filter (its words searched in
-/// the titles and abstracts), titled as the query, its works papers. Fetched by the caller.
+/// A search subscribed to in the Feeds tab: a sweep of OpenAlex of its filter (its words
+/// searched in the titles and abstracts), titled as the query, its works papers. Fetched by the
+/// caller.
 #[tauri::command]
-pub async fn search_follow(app: AppHandle, query: String) -> Result<SubscriptionInfo, String> {
+pub async fn search_subscribe(app: AppHandle, query: String) -> Result<SubscriptionInfo, String> {
     blocking(move || {
         let state = app.state::<AppState>();
         let requests = state.requests()?;
-        let filter = follow_filter(&state.resolved.of(
+        let filter = subscription_filter(&state.resolved.of(
             &query,
             &requests.http,
             &requests.access,

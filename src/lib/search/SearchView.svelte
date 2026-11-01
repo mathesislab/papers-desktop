@@ -61,7 +61,7 @@
   let more = $state(false);
   /** what the search answered instead of works: the query refused, OpenAlex not reached */
   let failure = $state<string | null>(null);
-  let following = $state(false);
+  let subscribing = $state(false);
   let yearInput = $state<HTMLInputElement>();
   /** the searches asked: an answer to one before the last is dropped */
   let asked = 0;
@@ -217,19 +217,19 @@
     list.focusSearch();
   }
 
-  /** Follow this search: a sweep of OpenAlex in the Feeds tab, fetched at once. */
-  async function follow() {
+  /** Subscribe to this search: a sweep of OpenAlex in the Feeds tab, fetched at once. */
+  async function subscribe() {
     const query = results?.query;
-    if (!query || following) return;
-    following = true;
+    if (!query || subscribing) return;
+    subscribing = true;
     try {
-      const info = await api.follow(query);
-      list.say(`Following "${info.title}" in Feeds`);
+      const info = await api.subscribe(query);
+      list.say(`Subscribed to "${info.title}" in Feeds`);
       feedsApi.fetchFeeds(info.id).catch((e) => list.say(String(e)));
     } catch (e) {
       list.say(String(e));
     } finally {
-      following = false;
+      subscribing = false;
     }
   }
 
@@ -358,13 +358,13 @@
       <span class="spacer"></span>
       <button
         class="tool"
-        disabled={!results || following}
+        disabled={!results || subscribing}
         title={results
-          ? `Follow “${results.query}” in the Feeds tab: its new works come with the feeds (a sweep of OpenAlex)`
-          : "Search first, then follow the search in the Feeds tab"}
-        onclick={follow}
+          ? `Subscribe to “${results.query}” in the Feeds tab: its new works come with the feeds (a sweep of OpenAlex)`
+          : "Search first, then subscribe to the search in the Feeds tab"}
+        onclick={subscribe}
       >
-        {following ? "Following…" : "Follow this search"}
+        {subscribing ? "Subscribing…" : "Subscribe to this search"}
       </button>
     </header>
     <ItemPane
@@ -486,7 +486,7 @@
     </p>
     <p>
       ☆ (S) saves a work for later: a new search replaces the works found, but for those saved for later or added.
-      <b>Follow this search</b> brings its new works into the Feeds tab.
+      <b>Subscribe to this search</b> brings its new works into the Feeds tab.
     </p>
   </div>
 {/snippet}
