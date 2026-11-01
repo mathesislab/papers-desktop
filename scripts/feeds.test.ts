@@ -10,27 +10,31 @@ import {
   chooseKind,
   chooseSource,
   feedChips,
-  choiceFeed,
-  feedOf,
-  journalChoice,
-  journalFacts,
-  journalSubscription,
   nextSort,
   live,
   queryOf,
   requestOf,
   restoredFeeds,
-  sameFeed,
   searchOf,
   shelfCounts,
-  sourceGroups,
   withoutChip,
-  wordsFilter,
   type FeedFilters,
 } from "../src/lib/feeds/filters.ts";
 import {
-  addField,
+  SOURCE_GROUPS,
+  choiceFeed,
+  feedOf,
+  feedText,
+  journalChoice,
+  journalFacts,
+  journalSubscription,
+  sameFeed,
+  sourceGroups,
+  wordsFilter,
+} from "../src/lib/feeds/subscriptions.ts";
+import {
   addTarget,
+  Dwell,
   ago,
   badges,
   fetchLine,
@@ -38,13 +42,13 @@ import {
   mergeRows,
   newAbove,
   newOlderThan,
-  nextAfter,
+  since,
   snoozeUntil,
-  rangeOf,
   stale,
   toggled,
 } from "../src/lib/feeds/items.ts";
-import { Dwell, decide, progressOf, reviewed, startReview, stepReview, summaryOf } from "../src/lib/feeds/review.ts";
+import { ITEM_KINDS, SOURCE_KINDS, isItemKind, isPost, itemKinds, sourceKinds } from "../src/lib/feeds/kinds.ts";
+import { decide, progressOf, reviewed, startReview, stepReview, summaryOf } from "../src/lib/feeds/review.ts";
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
 
@@ -177,6 +181,8 @@ test("the feed of the Subscribe sheet, and the same feed", () => {
   assert.ok(sameFeed({ rss: "https://x.org/feed/" }, { rss: "http://X.org/feed" }));
   assert.ok(sameFeed({ crossref: "1994-0424" }, { crossref: "19940424" }));
   assert.ok(!sameFeed({ rss: "x" }, { crossref: "x" }));
+  assert.equal(feedText({ crossref: "1994-0424" }), "Crossref ISSN 1994-0424");
+  assert.equal(feedText({ rss: "https://x.org/feed" }), "https://x.org/feed");
 });
 
 const glaciology: Journal = {
@@ -256,11 +262,6 @@ test("mark all above, ranges, the next after some go", () => {
   ];
   assert.deepEqual(newOlderThan(dated, 3, Date.parse("2026-10-31T00:00:00Z")), ["b"], "a snoozed item is not unread");
   assert.deepEqual(snoozeUntil(3, new Date(2026, 9, 31, 15, 30)), new Date(2026, 10, 3), "the start of the day");
-  assert.deepEqual(rangeOf(["a", "b", "c", "d"], "c", "a"), ["a", "b", "c"]);
-  assert.deepEqual(rangeOf(["a", "b"], "z", "b"), ["b"]);
-  assert.equal(nextAfter(["a", "b", "c", "d"], new Set(["b", "c"])), "d");
-  assert.equal(nextAfter(["a", "b", "c"], new Set(["c"])), "b");
-  assert.equal(nextAfter(["a"], new Set(["a"])), null);
 });
 
 const row = (id: string, triage: Triage = "new"): FeedRow => ({
@@ -306,8 +307,6 @@ test("what an item adds", () => {
   ];
   assert.deepEqual(addTarget({ ...d, kind: "news", links }), { id: "10.1/high", item: "p" });
   assert.equal(addTarget({ ...d, kind: "blog" }), null);
-  assert.equal(addField("2410.01234v2"), "10.48550/arXiv.2410.01234");
-  assert.equal(addField(" 10.1/x "), "10.1/x");
 });
 
 test("ages, staleness and the status line", () => {
@@ -318,6 +317,9 @@ test("ages, staleness and the status line", () => {
   assert.equal(ago(at(150), now), "2 h");
   assert.equal(ago(at(3 * 24 * 60), now), "3 d");
   assert.equal(ago(null, now), "");
+  assert.equal(since(at(0), now), "just now");
+  assert.equal(since(at(150), now), "2 h ago");
+  assert.match(since(at(30 * 24 * 60), now), /^on /);
   const summary = (minutes: number) => ({ at: at(minutes), fetched: 5, unchanged: 3, failed: [], added: 12, lookups: 0, pages: 0 });
   assert.equal(stale(null, now), true);
   assert.equal(stale(summary(10), now), false);
@@ -389,4 +391,21 @@ test("the review steps through the shortlist", () => {
   assert.equal(summaryOf(r), "1 added, 1 dismissed, 1 for later");
   assert.equal(summaryOf(stepReview(startReview(["a", "b"]), 9)), "0 added, 0 dismissed, 0 for later, 2 passed");
   assert.equal(progressOf(startReview([])).text, "nothing starred");
+});
+
+test("the kinds, named once", () => {
+  assert.deepEqual(itemKinds, ["paper", "preprint", "news", "blog"]);
+  assert.deepEqual(sourceKinds, ["journal", "preprints", "news", "blog"]);
+  assert.equal(isItemKind("preprint"), true);
+  assert.equal(isItemKind("preprints"), false);
+  assert.equal(isItemKind("constructor"), false);
+  assert.equal(isPost("news") && isPost("blog") && !isPost("paper") && !isPost("preprint"), true);
+  // the sidebar's groups of sources take the kinds' plurals
+  assert.deepEqual(
+    SOURCE_GROUPS.map((g) => g.name),
+    ["Journals", "Preprint servers", "Sweeps (Crossref, OpenAlex)", "News & press", "General"],
+  );
+  assert.equal(feedChips(f({ kinds: ["paper", "news"] }))[1].text, "Kind: Papers, News & press");
+  assert.equal(ITEM_KINDS.blog.name, "general");
+  assert.equal(SOURCE_KINDS.preprints.name, "Preprint server");
 });

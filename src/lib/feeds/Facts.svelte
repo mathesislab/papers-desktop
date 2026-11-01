@@ -1,23 +1,27 @@
+<script lang="ts" module>
+  export { inLibrary };
+</script>
+
 <script lang="ts">
   // What tells whether a paper of the feeds is worth adding, in the details and in the Review: why it is here (the
   // interests and the terms that matched), its free PDF (looked up a moment after it is shown, once per item), its
   // versions, the posts that cover it, where it was seen, and last, set apart and quieter than what is read, the
   // papers of the library similar to it (each shown in the Library tab on a click).
 
-  import type { FeedDetail, PdfStatus } from "./api";
+  import { pdfOf, type FeedDetail, type PdfStatus, type Store } from "./api";
 
   let {
     detail,
     colours,
-    pdfOf,
+    store = "feeds",
     onitem,
     onentry,
   }: {
     detail: FeedDetail;
     /** the colours of the interests */
     colours: Map<string, string>;
-    /** the free PDF of an item, as OpenAlex knows it */
-    pdfOf: (id: string) => Promise<PdfStatus>;
+    /** the folder of feeds of the item: its free PDF is asked there */
+    store?: Store;
     /** an item of the feeds to show: a post that covers it, another version */
     onitem: (id: string) => void;
     /** a paper of the library to show */
@@ -38,7 +42,7 @@
     if (!ask) return;
     let live = true;
     const timer = setTimeout(() => {
-      pdfOf(id)
+      pdfOf(id, store)
         .then((p) => live && (pdf = p))
         .catch((e) => live && (pdf = { error: String(e) }));
     }, PDF_DELAY);
@@ -55,6 +59,12 @@
     unknown: { text: "Not known", tone: "closed" },
   };
 </script>
+
+<!-- the library's papers of the same item (its DOI, or its title and year), each to show: the details' and the Review's -->
+{#snippet inLibrary(ids: string[], onentry: (id: string) => void)}
+  <span class="badge lib">in library</span>
+  {#each ids as id (id)}<button class="link" onclick={() => onentry(id)}>show</button>{/each}
+{/snippet}
 
 {#if scored.length}
   <section>

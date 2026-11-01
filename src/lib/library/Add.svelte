@@ -15,7 +15,6 @@
   import { onDestroy, onMount, untrack } from "svelte";
   import { holdModal } from "./modal.svelte";
   import { arxivDoi } from "$lib/arxiv";
-  import { addField } from "$lib/feeds/items";
   import { label } from "$lib/keys";
   import { sheetPdf, type SheetPdf } from "$lib/library/freepdf";
   import { defaultFiles, writers } from "$lib/library/writes";
@@ -129,9 +128,9 @@
   let attach = $state(true);
   /** the latest thing the user started: what an older one finds out is dropped */
   let seq = 0;
-  /** the DOI of the item of the Feeds tab; whether the free PDF of the article is looked for (Add without PDF does
+  /** the DOI of the item of the Feeds tab (an arXiv id as its DOI); whether the free PDF of the article is looked for (Add without PDF does
    *  not) */
-  const feedDoi = untrack(() => (initial ? addField(initial.id) : null));
+  const feedDoi = untrack(() => (initial ? (arxivDoi(initial.id) ?? initial.id.trim()) : null));
   const freePdf = untrack(() => initial?.pdf ?? true);
 
   let entries = $derived(checked && "entries" in checked ? checked.entries : []);

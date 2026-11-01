@@ -321,7 +321,22 @@ export const remind = (ids: string[], until: string | null) => invoke<void>("fee
 
 /** The abstract of an item looked up now; whether it asked (the feeds then change). */
 export const lookUp = (id: string, store: Store = "feeds") => invoke<boolean>("feeds_look_up", { store, id });
-export const pdfStatus = (id: string, store: Store = "feeds") => invoke<PdfStatus>("feeds_pdf", { store, id });
+const pdfStatus = (id: string, store: Store) => invoke<PdfStatus>("feeds_pdf", { store, id });
+
+/** the free PDFs asked for, by store and item */
+const pdfs = new Map<string, Promise<PdfStatus>>();
+
+/** The free PDF of an item, asked once a session (again after a failure). */
+export function pdfOf(id: string, store: Store = "feeds"): Promise<PdfStatus> {
+  const key = `${store} ${id}`;
+  let found = pdfs.get(key);
+  if (!found) {
+    found = pdfStatus(id, store);
+    found.catch(() => pdfs.delete(key));
+    pdfs.set(key, found);
+  }
+  return found;
+}
 
 export const subscriptions = () => invoke<SubscriptionInfo[]>("feeds_subscriptions");
 /** With a title (else the feed's own, at the next fetch). */

@@ -1,55 +1,68 @@
 <script lang="ts" module>
-  /** a column of the list after its mark, which an edge of its header resizes */
+  import type { Specs } from "$lib/list/columns";
+
+  /** a column of the list after its star and its mark */
   export type FeedColumn = "score" | "cited" | "similar" | "title" | "authors" | "journal" | "date" | "year" | "badges";
 
-  /** the widths of the columns at first, in pixels; the title's is its least (it takes the room left) */
-  export const FEED_COLUMNS: Record<FeedColumn, number> = {
-    score: 60,
-    cited: 64,
-    similar: 70,
-    title: 240,
-    authors: 150,
-    journal: 150,
-    date: 58,
-    year: 50,
-    badges: 190,
+  /** the columns of the Feeds tab: their names, their widths at first (the title's is its least: it takes the room
+   *  left), the least widths that fit a sorted header and its arrow and keep a title readable */
+  export const FEED_SPECS: Specs<FeedColumn> = {
+    score: { name: "Score", width: 60, least: 60 },
+    cited: { name: "Cited", width: 64, least: 56 },
+    similar: { name: "Similar", width: 70, least: 70 },
+    title: { name: "Title", width: 240, least: 100 },
+    authors: { name: "Authors", width: 150 },
+    journal: { name: "Journal / source", width: 150 },
+    date: { name: "Date", width: 58, least: 58 },
+    year: { name: "Year", width: 50, least: 48 },
+    badges: { name: "Badges", width: 190 },
   };
 
-  /** the columns of the Feeds tab, in their order */
+  /** the columns of the Feeds tab at first, in their order: those its menu offers */
   export const FEED_ORDER: FeedColumn[] = ["score", "similar", "title", "authors", "journal", "date", "badges"];
 
-  /** the columns of the Search tab: the citations first, the year, no score; and their widths at first */
+  /** the columns of the Search tab: the citations first, the year, no score; wider titles and journals */
   export const SEARCH_ORDER: FeedColumn[] = ["cited", "similar", "title", "authors", "journal", "year", "badges"];
-  export const SEARCH_COLUMNS: Record<FeedColumn, number> = { ...FEED_COLUMNS, title: 280, journal: 170, badges: 110 };
+  export const SEARCH_SPECS: Specs<FeedColumn> = {
+    ...FEED_SPECS,
+    title: { ...FEED_SPECS.title, width: 280 },
+    journal: { name: "Journal", width: 170 },
+    badges: { ...FEED_SPECS.badges, width: 110 },
+  };
 </script>
 
 <script lang="ts">
   // The list of the Feeds tab: the items the filters select, best score, most similar to the library or newest
   // first; and of the Search tab: the works found, in the order OpenAlex gave them (the caller chooses the columns).
-  // Only the rows in view are drawn, as in the library's table, and an edge of a header resizes a column, the
-  // title taking the room left (the window's layout keeps the widths). A new item's title is bold; one seen is
+  // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
+  // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). A new item's
+  // title is bold; one seen is
   // muted (in the Feeds tab). A click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a
   // right-click its menu; the star at its start stars the item, or unstars it (✓: added).
 
   import type { Snippet } from "svelte";
+  import { gridOf, widthOf, type Shown } from "$lib/list/columns";
+  import TableHead from "$lib/list/TableHead.svelte";
+  import { ROW, Rows } from "$lib/list/virtual.svelte";
   import Marked from "$lib/Marked.svelte";
-  import type { FeedRow, ItemKind, Sort } from "./api";
+  import type { FeedRow, Sort } from "./api";
   import { ago, badges, citedText, likeText, scoreText, yearOf } from "./items";
+  import { ITEM_KINDS, isPost } from "./kinds";
 
   let {
     rows,
     selected,
     focus,
-    columns = FEED_ORDER,
-    names = {},
+    columns,
+    specs,
+    menu,
     sort,
-    widths,
     colours,
     unread = true,
     star = { on: "Starred: unstar", off: "Star" },
     after,
     onsort,
-    onwidths,
+    oncolumns,
     onstar,
     onselect,
     onopen,
@@ -59,13 +72,13 @@
     selected: Set<string>;
     /** the row the details show, and that the keys move from */
     focus: string | null;
-    /** the columns shown after the star and the mark, in their order */
-    columns?: FeedColumn[];
-    /** the names of headers other than the Feeds tab's */
-    names?: Partial<Record<FeedColumn, string>>;
+    /** the columns shown after the star and the mark, in their order, with their widths */
+    columns: Shown<FeedColumn>[];
+    /** the tab's columns: their names, widths at first, least widths; those the menu of the headers offers */
+    specs: Specs<FeedColumn>;
+    menu: FeedColumn[];
     /** the order of the list, its header marked; none: the headers do not sort */
     sort?: Sort;
-    widths: Record<FeedColumn, number>;
     /** the colours of the interests */
     colours: Map<string, string>;
     /** a new item's title bold, one seen muted */
@@ -75,7 +88,7 @@
     /** after the last row, in the scroll of the list: *Show 25 more* */
     after?: Snippet;
     onsort?: (sort: Sort) => void;
-    onwidths: (widths: Record<FeedColumn, number>) => void;
+    oncolumns: (columns: Shown<FeedColumn>[]) => void;
     /** the star of a row clicked: the item starred, or no longer */
     onstar: (id: string) => void;
     onselect: (id: string, e: MouseEvent) => void;
@@ -84,51 +97,37 @@
     onmenu: (id: string) => void;
   } = $props();
 
-  const ROW = 26;
-  /** rows drawn above and below the ones in view, for a smooth scroll */
-  const EXTRA = 12;
-  const KIND_MARK: Record<ItemKind, string> = { paper: "", preprint: "◐", news: "✦", blog: "✎" };
-  const STAR = 22;
-  const MARK = 18;
-  const MIN_WIDTH = 30;
-  /** the least widths above MIN_WIDTH: a sorted header and its arrow fit, a title stays readable */
-  const LEAST: Partial<Record<FeedColumn, number>> = { score: 60, cited: 56, similar: 70, date: 58, year: 48, title: 100 };
-  const least = (column: FeedColumn) => LEAST[column] ?? MIN_WIDTH;
-  /** the headers, and the order each sorts by (none: it does not sort) */
-  const HEADERS: Record<FeedColumn, { name: string; sort?: Sort; title?: string }> = {
-    score: { name: "Score", sort: "score", title: "Best score first" },
-    cited: { name: "Cited" },
-    similar: { name: "Similar", sort: "like", title: "Most similar to the papers of your library first" },
-    title: { name: "Title" },
-    authors: { name: "Authors" },
-    journal: { name: "Journal / source" },
-    date: { name: "Date", sort: "newest", title: "Newest first" },
-    year: { name: "Year" },
-    badges: { name: "" },
+  /** the star and the mark, before the columns */
+  const LEAD = [22, 18];
+  /** the columns that sort the list, by what, and what their headers say on hover */
+  const SORTS: Partial<Record<FeedColumn, { sort: Sort; title: string }>> = {
+    score: { sort: "score", title: "Best score first" },
+    similar: { sort: "like", title: "Most similar to the papers of your library first" },
+    date: { sort: "newest", title: "Newest first" },
   };
-  let titleAt = $derived(columns.indexOf("title"));
-  let lastAt = $derived(columns.length - 1);
 
-  let body = $state<HTMLDivElement>();
-  let scrollTop = $state(0);
-  let height = $state(0);
-  /** the width of the table in view */
-  let room = $state(0);
   let now = $state(Date.now());
-
-  /** the widths kept, none under its least */
-  let sized = $derived(
-    Object.fromEntries(columns.map((c) => [c, Math.max(least(c), widths[c])])) as Record<FeedColumn, number>,
+  let template = $derived(gridOf(LEAD, columns, specs));
+  let minWidth = $derived(widthOf(LEAD, columns, specs));
+  /** only the rows in view drawn; the one in focus scrolled into view */
+  const view = new Rows(
+    () => rows.length,
+    () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
   );
-  let template = $derived(
-    [`${STAR}px`, `${MARK}px`, ...columns.map((c) => (c === "title" ? `minmax(${sized.title}px, 1fr)` : `${sized[c]}px`))].join(" "),
-  );
-  let minWidth = $derived(STAR + MARK + columns.reduce((sum, c) => sum + sized[c], 0));
-  /** the title wider than its least: it fills the room, the columns after it keep to the right */
-  let fills = $derived(room > minWidth);
 
-  let first = $derived(Math.max(0, Math.floor(scrollTop / ROW) - EXTRA));
-  let last = $derived(Math.min(rows.length, Math.ceil((scrollTop + height) / ROW) + EXTRA));
+  /** A header: its name, its arrow when the list is sorted by it. */
+  function heading(column: FeedColumn) {
+    const by = SORTS[column];
+    const sorted = !!by && sort === by.sort;
+    // the badges speak for themselves: no name over them
+    return { name: column === "badges" ? "" : undefined, arrow: sorted ? "▾" : undefined, title: onsort ? by?.title : undefined, sorted };
+  }
+
+  /** A header clicked: the list sorted by it, if it sorts. */
+  function sortBy(column: FeedColumn) {
+    const by = SORTS[column];
+    if (by && onsort) onsort(by.sort);
+  }
 
   // the ages ("5 min") move on
   $effect(() => {
@@ -136,88 +135,21 @@
     return () => clearInterval(timer);
   });
 
-  // the focused row is scrolled into view (moved to with the keys)
-  $effect(() => {
-    const index = focus ? rows.findIndex((r) => r.id === focus) : -1;
-    if (index < 0 || !body) return;
-    const top = index * ROW;
-    if (top < body.scrollTop) body.scrollTop = top;
-    else if (top + ROW > body.scrollTop + body.clientHeight) body.scrollTop = top + ROW - body.clientHeight;
-  });
-
-  /** the edge after a column dragged: where it was pressed, the widths drawn then, the title's least then, whether
-   *  the title filled the room */
-  let resizing: { index: number; x: number; drawn: number[]; titleLeast: number; filled: boolean } | null = null;
-
-  function edgeDown(e: PointerEvent, index: number) {
-    if (e.button !== 0) return;
-    e.stopPropagation();
-    const title = fills ? room - minWidth + sized.title : sized.title;
-    const drawn = columns.map((c) => (c === "title" ? title : sized[c]));
-    resizing = { index, x: e.clientX, drawn, titleLeast: sized.title, filled: fills };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-
-  /** The edge follows the pointer; the other columns keep their widths, the title takes the room left. Before the
-   *  title, or with the title at its least, an edge resizes the column before it; after the title, which fills the
-   *  room, the column after it, the title giving the room or taking it (its least going down with it). */
-  function edgeMove(e: PointerEvent) {
-    if (!resizing) return;
-    const { index, x, drawn, titleLeast, filled } = resizing;
-    const moved = Math.round(e.clientX - x);
-    if (index < titleAt || index === lastAt || !filled) {
-      const column = columns[index];
-      onwidths({ ...widths, [column]: Math.max(least(column), drawn[index] + moved) });
-      return;
-    }
-    const column = columns[index + 1];
-    // as far as the column after the edge and the title allow
-    const change = Math.min(drawn[index + 1] - least(column), Math.max(least("title") - drawn[titleAt], moved));
-    onwidths({ ...widths, [column]: drawn[index + 1] - change, title: Math.min(titleLeast, drawn[titleAt] + change) });
-  }
-
   /** The family names of a row: three, then "et al." */
   const authorsOf = (row: FeedRow) => row.authors.slice(0, 3);
 </script>
 
-<div class="table" role="grid" aria-rowcount={rows.length} bind:clientWidth={room}>
-  <div class="head row" role="row" style:grid-template-columns={template} style:min-width="{minWidth}px">
-    <span></span>
-    <span></span>
-    {#each columns as column, i (column)}
-      {@const header = HEADERS[column]}
-      {@const by = header.sort}
-      <div class="head-cell" role="columnheader">
-        {#if by && onsort}
-          <button class="cell sort" class:sorted={sort === by} onclick={() => onsort(by)} title={header.title}>
-            <span class="name">{names[column] ?? header.name}</span>{#if sort === by}<span class="arrow">▾</span>{/if}
-          </button>
-        {:else}
-          <span class="cell"><span class="name">{names[column] ?? header.name}</span></span>
-        {/if}
-        <!-- the end of the table, while the title fills the room, does not move -->
-        {#if i < lastAt || !fills}
-          <span
-            class="edge"
-            role="separator"
-            aria-orientation="vertical"
-            onpointerdown={(e) => edgeDown(e, i)}
-            onpointermove={edgeMove}
-            onpointerup={() => (resizing = null)}
-          ></span>
-        {/if}
-      </div>
-    {/each}
-  </div>
+<div class="table" role="grid" aria-rowcount={rows.length}>
+  <TableHead lead={LEAD} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
   <div
     class="body"
-    bind:this={body}
-    bind:clientHeight={height}
+    bind:this={view.body}
+    bind:clientHeight={view.height}
     style:min-width="{minWidth}px"
-    onscroll={() => (scrollTop = body!.scrollTop)}
+    onscroll={view.scrolled}
   >
     <div style:height="{rows.length * ROW}px" style:position="relative">
-      {#each rows.slice(first, last) as row, i (row.id)}
+      {#each rows.slice(view.first, view.last) as row, i (row.id)}
         <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
         <div
           class="row {unread ? row.triage : ''}"
@@ -225,7 +157,7 @@
           role="row"
           tabindex="-1"
           aria-selected={selected.has(row.id)}
-          style:top="{(first + i) * ROW}px"
+          style:top="{(view.first + i) * ROW}px"
           style:grid-template-columns={template}
           onmousedown={(e) => onselect(row.id, e)}
           ondblclick={() => onopen(row.id)}
@@ -246,8 +178,8 @@
               onclick={() => onstar(row.id)}>{row.triage === "shortlisted" ? "★" : "☆"}</button
             >
           {/if}
-          <span class="mark {row.kind}" title={row.kind}>{KIND_MARK[row.kind]}</span>
-          {#each columns as column (column)}
+          <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
+          {#each columns as { key: column } (column)}
             {#if column === "score"}
               <span class="score">{scoreText(row.score)}</span>
             {:else if column === "cited"}
@@ -260,8 +192,8 @@
               <span class="muted">
                 {#if row.authors.length}
                   {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
-                {:else if row.kind === "news" || row.kind === "blog"}
-                  {row.kind === "news" ? "news" : "general"}
+                {:else if isPost(row.kind)}
+                  {ITEM_KINDS[row.kind].name}
                 {/if}
               </span>
             {:else if column === "journal"}
@@ -297,65 +229,6 @@
     display: grid;
     align-items: center;
     height: 26px;
-  }
-  .head {
-    flex: none;
-    border-bottom: 1px solid var(--line);
-  }
-  .cell {
-    display: flex;
-    align-items: center;
-    height: 100%;
-    min-width: 0;
-    padding: 0 8px;
-    border: none;
-    background: none;
-    color: var(--muted);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .head-cell {
-    position: relative;
-    height: 100%;
-    min-width: 0;
-  }
-  /* a header keeps to its column: its name cut short first, then its arrow */
-  .head-cell > .cell {
-    width: 100%;
-    overflow: hidden;
-  }
-  .cell .name {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .edge {
-    position: absolute;
-    top: 4px;
-    right: -3px;
-    bottom: 4px;
-    z-index: 1;
-    width: 6px;
-    cursor: col-resize;
-  }
-  .edge::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 2px;
-    width: 1px;
-    background: var(--line);
-  }
-  .cell.sorted {
-    color: var(--fg);
-  }
-  .arrow {
-    flex: none;
-    margin-left: 4px;
-    font-size: 10px;
   }
   .body {
     flex: 1;

@@ -49,7 +49,16 @@ Three panes, each resized by dragging, the right one hidden on demand:
   within the libraries chosen.
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
-  missing file), multi-select. Only the rows on screen are drawn. A line
+  missing file), multi-select. Only the rows on screen are drawn
+  (`list/virtual.svelte.ts`). The headers are the three tables' (`TableHead`,
+  `list/columns.ts`, the library's, the Feeds and the Search tab's): a click
+  sorts, a header dragged moves its column, a right-click shows or hides
+  columns, an edge resizes, following the pointer (the title, else the last
+  column, takes the room left; after it, an edge resizes the column after it,
+  the title giving or taking the room; each column has a least width). The
+  layout keeps each table's columns as a list of `{key, width}`; that of an
+  older version is read (the library's `{column, width}`, the Feeds and
+  Search tabs' widths by column, in their first order). A line
   above it shows the filters that are on as chips, each with an ×:
   `papers.bib › No PDF › amoc › "ice"`; with no filter, there is no line.
 - **Details** of the selected paper: title, authors, tags, file (open,
@@ -139,7 +148,10 @@ keeps them when it saves). A paper shown after it was added or merged takes the 
 they would hide it.
 
 **Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
-`selection.ts`, pure and tested by `scripts/selection.test.ts`):
+`selection.ts`, pure and tested by `scripts/selection.test.ts`; the selection
+itself is `list/selection.svelte.ts`, the three tabs', on `list/order.ts`:
+⇧ ranges, the keys' steps, and after a delete, a move or a dismissal the row
+after the last one gone):
 
 - *Open*: Enter, a double-click, or *Open* in the context menu opens every
   paper selected as a tab (`openPapers`, the first in front); a double-click on
@@ -783,7 +795,15 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 
 **The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
 `FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
-`filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`):
+`filters.ts`, `items.ts`, `review.ts`, `actions.ts`, `kinds.ts` (the kinds
+of items and subscriptions, each named once) and `subscriptions.ts` (their
+groups, a feed in a line, whether one is followed already: the Subscribe
+sheet and the settings subscribe alike, with the title), tested by
+`scripts/feeds.test.ts` and `scripts/actions.test.ts`; the
+list and the details, shared with the Search tab, in `src/lib/list/`:
+`ItemList` the rows, the selection, the item read or shown, the keys that
+move, open and add, `ItemPane` the table, `Reader`, the details and the
+splitter, `tab.css` the frame of the two tabs):
 
 - *Sidebar*: Views (Unread `is:new`, Starred, Snoozed, Added, All · *N days*:
   the keep-days of the settings), Kinds,
@@ -828,8 +848,13 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a dismissed item goes, the next
   selected. A ☆ at the start of a row stars it (*Starred*: the shortlist),
-  or unstars it. With several rows selected, a bar above the list marks them
-  read or unread, stars, dismisses or snoozes them; *Mark read ▾* marks the
+  or unstars it. The actions on items are one table (`actions.ts`), which the
+  keys, the row menu, the selection bar, the buttons of the details and
+  *Later ▾* read, each named one way (*Mark read* or *Mark unread*, *Star* or
+  *Unstar*, *Dismiss* or *Restore*: a toggle says which way it goes; marking
+  read above 50 asks first, and says *Marked 12 read*). With several rows
+  selected, a bar above the list marks them read or unread, stars,
+  dismisses or snoozes them; *Mark read ▾* marks the
   list, the items older than 1, 3 or 7 days, or those above. The row menu's
   *Source Is* sets the kind of its subscription (Journal, Preprint Server,
   News & Press, General), which its items take at once.
@@ -853,13 +878,13 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 - *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
   passed over faster (j held down) stays new: its title went by, its
   details were not read. `⇧Space` (and the row menu's *Mark All Above as
-  Seen*) marks the new items above it seen, for titles skimmed. Opening an
+  Read*) marks the new items above it seen, for titles skimmed. Opening an
   item marks it seen.
 - *Details*, to read: the buttons (*Open* in the feeds' green), the title,
   authors, journal and date, then a paper's abstract marked by the query and
   the interests (*Summary from the feed* until Crossref or OpenAlex gives
   one; looked up 300 ms after it is shown, once per item), *Why it is here*
-  (each interest's score and terms), its free PDF (`pdfStatus`, asked 300 ms
+  (each interest's score and terms), its free PDF (`pdfOf`, asked 300 ms
   after it is shown, once per item), versions (*preprint in library → Add
   would replace it*), *Covered by*, *Seen in*, and last, set apart and
   quieter, *Similar in your library* (the likeness and the 3 nearest papers
@@ -867,10 +892,9 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   the Library tab on a click). A post's HTML (`safe_html`, ammonia: its
   text, links and images, an image's title under it), then its linked papers as
   cards (Add by the DOI, Shortlist, Show paper), *Find linked paper*
-  (`findPapers`). The list's columns are resized by their headers' edges,
-  the edge following the pointer (the title gives or takes the room; each
-  header has a least width that fits its name and sort arrow; the window's
-  layout keeps the widths).
+  (`findPapers`). The list's columns are moved, shown or hidden and resized
+  as the library's (above; each header has a least width that fits its name
+  and sort arrow).
 - *Add*: the library's Add sheet, opened over the Feeds tab with the item's
   DOI (an arXiv id as its DataCite DOI, `10.48550/arXiv.…`) fetched at once
   (`initial`), its free PDF looked for unless added without one. After
@@ -884,7 +908,11 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
   event says the phase (`reading`, `looking-up`, `done`), the
   status line the last fetch (*fetched 8 min ago · 12 new · 3 not modified ·
   1 failed*, the failures listed on hover and click); `feeds-changed` reads
-  the list again.
+  the list again. That event alone does after a change, here or elsewhere
+  (a triage, a fetch, papers found, a subscription): the tab asks for the
+  list itself only when its filters change or it is brought up to date
+  (⌘R, *N new · Show*, a fetch asked for: `bringUpToDate`), and the phase
+  event alone says whether a fetch is under way.
 - *Review* (`⌘↩`, the button): the shortlist as it is when the review
   begins, by score, one item at a time over the list and the details, with
   a progress bar (*2 of 5*); `a` add (the sheet, then the next), `b`
@@ -1150,11 +1178,15 @@ years (`2000-2010`, `2000-`, `-2010`, `2005`, `201` the 2010s); `j:` a
 journal, looked up by its name (the one whose title is the name, else
 OpenAlex's best); `doi:`; `cites:` and `citedby:`, the works around a work,
 by its OpenAlex id or its DOI (looked up). What OpenAlex cannot be asked
-(another field, a title or author that excludes) is refused, said. A query is
-asked (`ask`) then resolved once (`resolve`: its journals and DOIs looked up;
-the app keeps the last query's `Resolved` for its next pages and its
-following). Sorted by relevance (without words, the most cited), the most
-cited or the newest; 25 a page, *Show 25 more* from the cursor.
+(another field, a title or author that excludes, years that are none) is
+refused, said where the works would be: the page checks none of it
+(`search/state.ts`, the tab's state, pure and tested). A query is asked
+(`ask`) then resolved once (`resolve`: its journals and DOIs looked up; the
+app keeps the last query's `Resolved` for its next pages and its following).
+Sorted by relevance (without words, the most cited), the most cited or the
+newest; 25 a page, *Show 25 more* from the cursor. An answer that comes after
+the list it was asked for was replaced (another search, page or list: another
+`results`) is dropped.
 
 **The works found** are items of a folder of feeds of their own
 (`app_data_dir/search`, `Store::Search`), so the rows, the details, the
@@ -1173,9 +1205,10 @@ search again, the most cited first. **Follow this search** subscribes the
 query in the Feeds tab as a sweep of OpenAlex (`follow_filter`: its words in
 the titles and abstracts, then its filters), fetched at once.
 
-The table and the details are the Feeds tab's components (the columns, the
-buttons given by the tab; `Reader`, the item read in place of the list, by
-the setting `feeds_beside`), in the tab's violet (`--search`).
+The list and the details are the Feeds tab's (`ItemList`, `ItemPane`: the
+columns and the buttons given by the tab; `Reader`, the item read in place of
+the list, by the setting `feeds_beside`; the same keys to move, `/` with or
+without ⇧), in the tab's violet (`--search`).
 
 ## Later, optional: Spotlight add-on
 

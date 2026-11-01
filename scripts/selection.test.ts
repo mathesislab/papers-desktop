@@ -7,7 +7,6 @@ import {
   count,
   deletedMessage,
   menuTags,
-  nextAfter,
   openedMessage,
   targetsOf,
   transferMessage,
@@ -34,19 +33,6 @@ test("where papers can be copied or moved to", () => {
   assert.deepEqual(targetsOf([row("a"), row("b", "/x/b.bib")], bibs), bibs);
   // one .bib file: nowhere to go
   assert.deepEqual(targetsOf([row("a")], ["/x/a.bib"]), []);
-});
-
-test("the row selected after papers are removed", () => {
-  const shown = ["a", "b", "c", "d", "e"].map((id) => row(id));
-  assert.equal(nextAfter(shown, new Set(["b"])), "c");
-  assert.equal(nextAfter(shown, new Set(["b", "c"])), "d");
-  // the first removed counts: the next one that stays after it
-  assert.equal(nextAfter(shown, new Set(["b", "d"])), "c");
-  // at the end: the one before
-  assert.equal(nextAfter(shown, new Set(["e"])), "d");
-  assert.equal(nextAfter(shown, new Set(["d", "e"])), "c");
-  assert.equal(nextAfter(shown, new Set(["a", "b", "c", "d", "e"])), null);
-  assert.equal(nextAfter(shown, new Set(["z"])), null);
 });
 
 test("what is said", () => {

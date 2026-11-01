@@ -1,0 +1,222 @@
+/* The frame of the Feeds and Search tabs (FeedsView, SearchView, `<main class="tab">`; ItemPane is the list and the
+   details in it): the sidebar, the toolbar and its search field, the line above the list and the selection bar, the
+   line said instead of the list, the status line. Each tab's colour is its `--tint`. The child combinators keep the
+   rules to the tab's own elements, not those of the components in it; `:where` leaves each rule the weight of its
+   last class, which the tab's own styles add to. */
+
+main.tab {
+  display: flex;
+  height: 100vh;
+}
+
+:where(.tab) > .sidebar {
+  flex: none;
+  overflow-y: auto;
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+}
+
+:where(.tab) > .right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+:where(.tab > .right) > header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* the search keeps its width: what is next to it stays in place */
+:where(.tab > .right > header) > .search {
+  position: relative;
+  flex: 0 1 50%;
+  min-width: 200px;
+  max-width: 560px;
+  display: flex;
+}
+:where(.tab > .right > header > .search) > input,
+:where(.tab > .right > header) > input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 24px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  outline: none;
+}
+:where(.tab > .right > header > .search) > input:focus,
+:where(.tab > .right > header) > input:focus {
+  border-color: var(--accent);
+}
+:where(.tab > .right > header > .search) > input::-webkit-search-cancel-button {
+  display: none;
+}
+:where(.tab > .right > header > .search) > .clear {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 20px;
+}
+:where(.tab > .right > header > .search) > .clear:hover {
+  background: var(--line);
+  color: var(--fg);
+}
+:where(.tab > .right > header) > .notice {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:where(.tab > .right > header) > .spacer,
+:where(.tab > .right > .status) > .spacer,
+:where(.tab .list > .filters) > .spacer,
+:where(.tab .list > .selbar) > .spacer {
+  flex: 1;
+}
+:where(.tab > .right > header) > .tool {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+:where(.tab > .right > header) > .tool:disabled {
+  opacity: 0.6;
+}
+
+/* above the list: its filters as chips, the count, the order */
+:where(.tab .list) > .filters {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+:where(.tab .list > .filters) > .chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--tint) 40%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tint) 14%, transparent);
+  color: var(--fg);
+}
+:where(.tab .list > .filters) > .chip:has(button) {
+  padding-right: 2px;
+}
+:where(.tab .list > .filters > .chip) > .text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:where(.tab .list > .filters > .chip) > button {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 16px;
+}
+:where(.tab .list > .filters > .chip) > button:hover {
+  background: var(--line);
+  color: var(--fg);
+}
+:where(.tab .list > .filters) > .sort {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+:where(.tab .list > .filters) > .sort:hover {
+  color: var(--fg);
+}
+
+/* two or more rows selected: what acts on them all */
+:where(.tab .list) > .selbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-size: 12px;
+}
+:where(.tab .list > .selbar) > button {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+:where(.tab .list > .selbar) > button.plain {
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+
+/* said in place of the list: loading, nothing found, what failed */
+:where(.tab .list) > .empty {
+  margin: auto;
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+}
+:where(.tab .list) > .empty.error {
+  max-width: 560px;
+  color: var(--error);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* what the tab holds, and where its items come from */
+:where(.tab > .right) > .status {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 26px;
+  padding: 0 12px;
+  border-top: 1px solid var(--line);
+  background: var(--sidebar);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}

@@ -41,12 +41,13 @@
     count,
     deletedMessage,
     menuTags,
-    nextAfter,
     openedMessage,
     transferMessage,
   } from "$lib/library/selection";
   import { closed, initial, seen, type Seen } from "$lib/library/history";
   import { modalOpen } from "$lib/library/modal.svelte";
+  import { nextAfter, stepped } from "$lib/list/order";
+  import { Selection } from "$lib/list/selection.svelte";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -79,7 +80,8 @@
   import Sidebar from "$lib/library/Sidebar.svelte";
   import { DROP_NEW, pdfDrag } from "$lib/library/drag.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import Table, { COLUMNS, value, type Shown, type Sort } from "$lib/library/Table.svelte";
+  import Table, { COLUMNS, value, type Column, type Sort } from "$lib/library/Table.svelte";
+  import type { Shown } from "$lib/list/columns";
   import type {
     AddOptions,
     Added,
@@ -136,11 +138,8 @@
   let matched = $state<Set<string> | null>(null);
   /** where the table of the library tab is scrolled to, kept while a paper is in front (not state: nothing draws it) */
   const table = { scroll: 0 };
-  let selected = $state(new Set<string>());
-  /** the paper the details show, and that the arrow keys move from */
-  let focus = $state<string | null>(null);
-  /** where shift extends the selection from */
-  let anchor: string | null = null;
+  /** the papers selected, the one in focus: a press on one of several selected keeps them, for a drag */
+  const selection = new Selection(true);
   let item = $state<Item | null>(null);
   let input = $state<HTMLInputElement>();
   /** the menu of the export, open */
@@ -168,9 +167,6 @@
   let deleting = $state<{ papers: { id: string; key: string; files: string[] }[]; note: string } | null>(null);
   /** the .bib file last written by a delete, copy or move, which Undo takes back until another paper is chosen */
   let lastWrite: string | null = null;
-  /** a click on one of several selected papers leaves them selected, for a drag or a double-click; this one gets
-   *  the selection when the click is no more than that */
-  let collapse: string | null = null;
   /** the BibTeX of the paper in the details, being edited */
   const editor = new Editor();
   /** after the paper in front is closed: the view seen before it ("next"), or the library (a setting) */
@@ -196,7 +192,7 @@
   /** The papers the tags in the details change: the one in front, else the
    *  selection when the focus is in it, else the paper shown. */
   let targets = $derived.by(() => {
-    const ids = layout.active ? [layout.active] : focus && selected.has(focus) ? [...selected] : item ? [item.id] : [];
+    const ids = layout.active ? [layout.active] : selection.focus && selection.selected.has(selection.focus) ? [...selection.selected] : item ? [item.id] : [];
     return ids.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined);
   });
 
@@ -219,14 +215,14 @@
 
   /** the columns of the table: in *Recently added*, the date added too (last, unless shown already) */
   let columns = $derived(
-    layout.library.view === "added" && !layout.columns.some((c) => c.column === "added")
-      ? [...layout.columns, { column: "added" as const, width: COLUMNS.added.width }]
+    layout.library.view === "added" && !layout.columns.some((c) => c.key === "added")
+      ? [...layout.columns, { key: "added" as const, width: COLUMNS.added.width }]
       : layout.columns,
   );
 
   /** The columns changed in the table: the date added, shown by *Recently added* only, is not kept. */
-  function setColumns(next: Shown[]) {
-    layout.columns = columns === layout.columns ? next : next.filter((c) => c.column !== "added");
+  function setColumns(next: Shown<Column>[]) {
+    layout.columns = columns === layout.columns ? next : next.filter((c) => c.key !== "added");
   }
 
   /** the filters on, as chips above the table */
@@ -249,7 +245,7 @@
   /** what the search found, next to it */
   let summary = $derived(
     `${shown.length} ${shown.length === 1 ? "paper" : "papers"}` +
-      (selected.size ? ` · ${selected.size} selected` : ""),
+      (selection.selected.size ? ` · ${selection.selected.size} selected` : ""),
   );
 
   let libraries = $derived(libraryCounts(rows));
@@ -401,7 +397,7 @@
    *  when they all have it. */
   async function togglePinned(slot: number) {
     const tag = pinned[slot];
-    const ids = selected.size ? [...selected] : focus ? [focus] : [];
+    const ids = selection.selected.size ? [...selection.selected] : selection.focus ? [selection.focus] : [];
     if (!tag || !ids.length) return;
     await setTagOn(tag, ids, !ids.every((id) => byId.get(id)?.tags.some((t) => sameTag(t, tag))));
   }
@@ -428,8 +424,7 @@
     // the library tab keeps the .bib files still there; the selection and the tabs, the papers
     if (rows.length && layout.library.bibs.some((b) => !rows.some((r) => r.bib === b)))
       layout.library.bibs = layout.library.bibs.filter((b) => rows.some((r) => r.bib === b));
-    selected = new Set([...selected].filter((id) => byId.has(id)));
-    if (focus && !byId.has(focus)) focus = null;
+    selection.prune(byId.keys());
     const gone = layout.open.filter((id) => !byId.has(id));
     if (gone.length) closePapers(gone);
     if (editor.id && !byId.has(editor.id)) editor.stop();
@@ -451,7 +446,7 @@
   // the details of the paper in front, else of the one in focus; again
   // when the library reloads
   $effect(() => {
-    const id = layout.active ?? focus;
+    const id = layout.active ?? selection.focus;
     rows;
     if (!id) {
       item = null;
@@ -469,31 +464,7 @@
   async function select(id: string, e: MouseEvent) {
     if (e.button !== 0 || !(await leave(id))) return;
     lastWrite = null;
-    collapse = null;
-    if (e.shiftKey && anchor) {
-      selectRange(anchor, id);
-    } else if (mac ? e.metaKey : e.ctrlKey) {
-      const s = new Set(selected);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
-      selected = s;
-      anchor = id;
-    } else if (selected.has(id) && selected.size > 1) {
-      collapse = id;
-    } else {
-      selected = new Set([id]);
-      anchor = id;
-    }
-    focus = id;
-  }
-
-  /** The click that ends a press on one of several selected papers, which no drag followed: it selects that one. */
-  function clickRow(id: string) {
-    if (collapse === id) {
-      selected = new Set([id]);
-      anchor = id;
-    }
-    collapse = null;
+    selection.click(id, e, listed());
   }
 
   /** The papers of `ids` that are in the table, in its order. */
@@ -502,30 +473,17 @@
     return shown.filter((r) => set.has(r.id)).map((r) => r.id);
   }
 
-  function selectRange(from: string, to: string) {
-    const ids = shown.map((r) => r.id);
-    const [a, b] = [ids.indexOf(from), ids.indexOf(to)].sort((x, y) => x - y);
-    selected = new Set(a < 0 ? [to] : ids.slice(a, b + 1));
-  }
+  /** the ids of the table, in its order */
+  const listed = () => shown.map((r) => r.id);
 
   /** Move the focus by some rows, or to the first or last; extending the
-   *  selection, or not. */
+   *  selection, or not. A BibTeX being edited asks first. */
   async function move(to: number | "first" | "last", extend: boolean) {
-    const ids = shown.map((r) => r.id);
-    if (!ids.length) return;
-    const at = focus ? ids.indexOf(focus) : -1;
-    const index =
-      to === "first" ? 0 : to === "last" ? ids.length - 1 : at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + to));
-    const next = ids[index];
-    if (!(await leave(next))) return;
+    const ids = listed();
+    const next = stepped(ids, selection.focus, to);
+    if (next === null || !(await leave(next))) return;
     lastWrite = null;
-    if (extend && anchor) {
-      selectRange(anchor, next);
-    } else {
-      selected = new Set([next]);
-      anchor = next;
-    }
-    focus = next;
+    selection.move(ids, to, extend);
   }
 
   /** Enter, a double-click: the paper in a tab, unless it has no file (its
@@ -623,8 +581,7 @@
   /** One paper alone selected, with the details shown. Whether it was: a BibTeX being edited asks first. */
   async function showOnly(id: string): Promise<boolean> {
     if (!(await leave(id))) return false;
-    selected = new Set([id]);
-    anchor = focus = id;
+    selection.only(id);
     layout.showDetails = true;
     await tick();
     return true;
@@ -638,8 +595,8 @@
   /** Edit tags… of the menu: the papers selected, the field of the tags in the details open. */
   async function editTags(ids: string[]) {
     layout.showDetails = true;
-    selected = new Set(ids);
-    focus = focus && ids.includes(focus) ? focus : ids[0];
+    selection.selected = new Set(ids);
+    if (!selection.focus || !ids.includes(selection.focus)) selection.focus = ids[0];
     await tick();
     document.querySelector<HTMLButtonElement>("button[data-add-tag]")?.click();
   }
@@ -653,11 +610,7 @@
     const moved = move ? ids.filter((id) => added.includes(byId.get(id)?.key ?? "")) : [];
     const sources = new Set(moved.map((id) => byId.get(id)?.bib));
     lastWrite = move ? (sources.size === 1 ? ([...sources][0] ?? null) : null) : bib;
-    if (moved.length) {
-      const next = nextAfter(shown, new Set(moved));
-      selected = new Set(next ? [next] : []);
-      anchor = focus = next;
-    }
+    if (moved.length) selection.only(nextAfter(listed(), new Set(moved)));
   }
 
   /** Delete… of the menu, ⌘⌫: the question first, which of their files to delete too. */
@@ -683,24 +636,22 @@
     if (!deleting) return;
     const ids = deleting.papers.map((p) => p.id);
     deleting = null;
-    const next = nextAfter(shown, new Set(ids));
+    const next = nextAfter(listed(), new Set(ids));
     const bibs = new Set(ids.map((id) => byId.get(id)?.bib));
     if (!(await write(() => removeEntries(ids, files)))) return;
     say(deletedMessage(ids.length, files.length));
     lastWrite = bibs.size === 1 ? ([...bibs][0] ?? null) : null;
-    selected = new Set(next ? [next] : []);
-    anchor = focus = next;
+    selection.only(next);
   }
 
   /** Right-click on a row: the papers selected when it is one of them, else that paper alone. */
   async function rowMenu(id: string, _e: MouseEvent) {
-    if (!selected.has(id)) {
+    if (!selection.selected.has(id)) {
       if (!(await leave(id))) return;
-      selected = new Set([id]);
-      anchor = focus = id;
+      selection.only(id);
       lastWrite = null;
     }
-    const picked = ordered(selected)
+    const picked = ordered(selection.selected)
       .map((i) => byId.get(i))
       .filter((r): r is Row => r !== undefined);
     if (!picked.length) return;
@@ -731,7 +682,7 @@
   /** ⌘Z, ⌘⇧Z out of a field: the last change of the .bib of the paper shown (of the one the app wrote last, after a
    *  delete, copy or move), else of the library tab's when it shows one, else the only one. */
   export async function stepLibrary(back: boolean) {
-    const bib = lastWrite ?? byId.get(layout.active ?? focus ?? "")?.bib ?? onlyLibrary ?? (libraries.length === 1 ? libraries[0].bib : null);
+    const bib = lastWrite ?? byId.get(layout.active ?? selection.focus ?? "")?.bib ?? onlyLibrary ?? (libraries.length === 1 ? libraries[0].bib : null);
     if (!bib) return say("Choose a paper or a library to " + (back ? "undo" : "redo") + " in");
     if (await write(() => (back ? undo(bib) : redo(bib)))) say(`${back ? "Undid" : "Redid"} the last change of ${fileName(bib)}`);
   }
@@ -787,8 +738,7 @@
   async function show(id: string) {
     await loadLibrary();
     if (!shown.some((r) => r.id === id)) layout.library = restored(null);
-    selected = new Set([id]);
-    anchor = focus = id;
+    selection.only(id);
     layout.showDetails = true;
     showLibrary();
   }
@@ -927,7 +877,7 @@
   async function closePaper(id: string) {
     const next = frontAfter([id]);
     // the edit of the paper goes with its tab
-    if (!(await leave(editor.id === id ? null : (next ?? focus)))) return;
+    if (!(await leave(editor.id === id ? null : (next ?? selection.focus)))) return;
     closePapers([id]);
   }
 
@@ -943,7 +893,7 @@
   }
 
   async function showLibrary() {
-    if (!(await leave(focus))) return;
+    if (!(await leave(selection.focus))) return;
     toFront(null);
     onfront();
     tick().then(() => input?.focus());
@@ -1049,13 +999,13 @@
       go("first");
     } else if (e.key === "End" && !typing) {
       go("last");
-    } else if (e.key === "Enter" && focus) {
+    } else if (e.key === "Enter" && selection.focus) {
       e.preventDefault();
-      openMany(selected.has(focus) ? ordered(selected) : [focus]);
+      openMany(selection.targets(listed()));
     } else if (e.key === "Backspace" && mod && !e.shiftKey && !e.altKey && (e.target === input || !typing)) {
       e.preventDefault();
       // in the search field it clears the search; elsewhere it deletes the papers selected, if there are any
-      const picked = ordered(selected);
+      const picked = ordered(selection.selected);
       if (e.target !== input && picked.length) askDelete(picked);
       else layout.library.query = "";
     } else if (e.key === "Escape" && typing) {
@@ -1066,7 +1016,7 @@
       togglePinned(Number(e.key) - 1);
     } else if (matches(e, allShortcut) && !typing) {
       e.preventDefault();
-      selected = new Set(shown.map((r) => r.id));
+      selection.selected = new Set(listed());
     }
   }
 
@@ -1107,7 +1057,7 @@
 {#if adding}
   <Add
     bind:this={sheet}
-    bib={(focus ? byId.get(focus)?.bib : null) ?? layout.library.bibs[0] ?? null}
+    bib={(selection.focus ? byId.get(selection.focus)?.bib : null) ?? layout.library.bibs[0] ?? null}
     rows={byId}
     forId={adding.id}
     pdf={adding.pdf}
@@ -1219,8 +1169,8 @@
           {#if exporting}
             <button class="backdrop" aria-label="Close" onclick={() => (exporting = false)}></button>
             <div class="menu" role="menu">
-              <button role="menuitem" disabled={!selected.size} onclick={() => exportBib([...selected])}>
-                The {selected.size} selected
+              <button role="menuitem" disabled={!selection.selected.size} onclick={() => exportBib([...selection.selected])}>
+                The {selection.selected.size} selected
               </button>
               <button role="menuitem" onclick={() => exportBib(shown.map((r) => r.id))}>The {shown.length} shown</button>
             </div>
@@ -1267,15 +1217,15 @@
           <Table
             rows={shown}
             {columns}
-            {selected}
-            {focus}
+            selected={selection.selected}
+            focus={selection.focus}
             sort={layout.sort}
             scroll={table.scroll}
             onscrolled={(top) => (table.scroll = top)}
             oncolumns={setColumns}
             onsort={(sort) => (layout.sort = sort)}
             onselect={select}
-            onclickrow={clickRow}
+            onclickrow={(id) => selection.release(id)}
             onopen={openMany}
             onmenu={rowMenu}
             ondrop={openMany}

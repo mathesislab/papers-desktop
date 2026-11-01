@@ -9,49 +9,45 @@
   import { invoke } from "@tauri-apps/api/core";
   import type { Snippet } from "svelte";
   import { modClick } from "$lib/keys";
-  import type { FeedCounts, ItemKind } from "./api";
-  import { KINDS, SHELVES, interestColours, shelfCounts, type FeedFilters, type Shelf, type SourceGroup } from "./filters";
+  import type { FeedCounts } from "./api";
+  import { ITEM_KINDS, itemKinds } from "./kinds";
+  import { SHELVES, chooseInterest, chooseKind, chooseSource, shelfCounts, type FeedFilters } from "./filters";
+  import type { SourceGroup } from "./subscriptions";
 
   let {
     saved,
-    filters,
+    filters = $bindable(),
     counts,
+    colours,
     groups,
     keepDays,
-    onview,
-    onkind,
-    oninterest,
-    onsource,
     onsourcemenu,
     onsubscribe,
-    onfold,
   }: {
     /** the Saved section, at the top */
     saved?: Snippet;
-    /** the choices made */
+    /** the choices made: the sidebar makes them */
     filters: FeedFilters;
     counts: FeedCounts | null;
+    /** the colours of the interests */
+    colours: Map<string, string>;
     /** the subscriptions, in their groups */
     groups: SourceGroup[];
     /** how many days the feeds keep an item: what *All* reaches back; none until read */
     keepDays: number | null;
-    onview: (view: Shelf) => void;
-    /** a kind, interest or subscription clicked; with ⌘, to add it to the choices or take it out (`toggle`) */
-    onkind: (kind: ItemKind, toggle: boolean) => void;
-    oninterest: (name: string, toggle: boolean) => void;
-    onsource: (title: string, toggle: boolean) => void;
     /** a source right-clicked, by its title */
     onsourcemenu: (title: string) => void;
     /** the Sources header clicked: the Subscribe sheet */
     onsubscribe: () => void;
-    /** a group of the sources unfolded or folded */
-    onfold: (group: string, open: boolean) => void;
   } = $props();
 
-  const KIND_MARK: Record<ItemKind, string> = { paper: "▤", preprint: "◐", news: "✦", blog: "✎" };
+  /** A group of the sources unfolded, or folded. */
+  function fold(group: string, open: boolean) {
+    const rest = filters.open.filter((g) => g !== group);
+    filters.open = open ? [...rest, group] : rest;
+  }
 
   let shelves = $derived(shelfCounts(counts));
-  let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
   let days = $derived(keepDays === null ? null : `${keepDays} ${keepDays === 1 ? "day" : "days"}`);
 </script>
 
@@ -69,7 +65,7 @@
         class="item"
         class:selected={filters.view === shelf.view}
         title={shelf.view === "all" && days ? `Items of the last ${days}: older ones go once no feed lists them, unless starred or added` : null}
-        onclick={() => onview(shelf.view)}
+        onclick={() => (filters.view = shelf.view)}
       >
         {#if shelf.view === "shortlist"}<span class="star">★</span>{/if}
         <span class="name"
@@ -79,17 +75,17 @@
     {/each}
 
     <h4>Kinds</h4>
-    {#each KINDS as { kind, name } (kind)}
-      <button class="item" class:selected={filters.kinds.includes(kind)} onclick={(e) => onkind(kind, modClick(e))}>
-        <span class="mark {kind}">{KIND_MARK[kind]}</span>
-        <span class="name">{name}</span>{@render count(counts?.unread.kinds[kind] ?? 0, counts?.total.kinds[kind] ?? 0)}
+    {#each itemKinds as kind (kind)}
+      <button class="item" class:selected={filters.kinds.includes(kind)} onclick={(e) => (filters = chooseKind(filters, kind, modClick(e)))}>
+        <span class="mark {kind}">{ITEM_KINDS[kind].mark}</span>
+        <span class="name">{ITEM_KINDS[kind].plural}</span>{@render count(counts?.unread.kinds[kind] ?? 0, counts?.total.kinds[kind] ?? 0)}
       </button>
     {/each}
 
     {#if colours.size}
       <h4>Interests</h4>
       {#each colours as [name, colour] (name)}
-        <button class="item" class:selected={filters.interests.includes(name)} onclick={(e) => oninterest(name, modClick(e))}>
+        <button class="item" class:selected={filters.interests.includes(name)} onclick={(e) => (filters = chooseInterest(filters, name, modClick(e)))}>
           <span class="dot" style:background={colour}></span>
           <span class="name">{name}</span>{@render count(counts?.unread.interests[name] ?? 0, counts?.total.interests[name] ?? 0)}
         </button>
@@ -102,7 +98,7 @@
     {#if groups.length}
       {#each groups as g (g.group)}
         {@const open = filters.open.includes(g.group) || g.sources.some((s) => filters.sources.includes(s.title))}
-        <button class="item group" aria-expanded={open} onclick={() => onfold(g.group, !open)}>
+        <button class="item group" aria-expanded={open} onclick={() => fold(g.group, !open)}>
           <svg class="twisty" class:open viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
             <path d="M2 1l4 3-4 3z" fill="currentColor" />
           </svg>
@@ -114,7 +110,7 @@
               class="item sub"
               class:selected={filters.sources.includes(source.title)}
               title={source.title}
-              onclick={(e) => onsource(source.title, modClick(e))}
+              onclick={(e) => (filters = chooseSource(filters, source.title, modClick(e)))}
               oncontextmenu={(e) => {
                 e.preventDefault();
                 onsourcemenu(source.title);

@@ -1,9 +1,8 @@
 <script lang="ts">
   // The Feeds tab of the main window (docs/design.md, Feeds; the mockup docs/mockups/feeds.html): the sidebar (the
-  // views, kinds, interests and sources), the list of the items its choices and the search select, the details of
-  // the one selected, beside the list or in place of it (the setting `feeds_beside`: a click or Enter opens
-  // the item over the list, its row pinned at the top; Esc or the row goes back to the list, where it was); the keys
-  // of the triage; the Review of the starred items, over the list and the details; the Subscribe sheet.
+  // views, kinds, interests and sources), the list of the items its choices and the search select and the details
+  // of the one selected (ItemPane, on an ItemList: beside the list or in place of it, the setting `feeds_beside`);
+  // the keys of the triage; the Review of the starred items, over the list and the details; the Subscribe sheet.
   // The window (src/routes/library/+page.svelte) keeps the
   // layout, and passes on the commands of the menu and the keys while the tab is in front. The Add sheet is the
   // library's: it opens over this tab, which stays in front after the paper is added.
@@ -12,58 +11,50 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
   import { ask } from "@tauri-apps/plugin-dialog";
-  import { openUrl } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount, untrack, type Snippet } from "svelte";
-  import { label, mac, matches, type Shortcut } from "$lib/keys";
+  import { label, matches, type Shortcut } from "$lib/keys";
   import { modalOpen } from "$lib/library/modal.svelte";
-  import { OPEN_ASK } from "$lib/library/selection";
   import Splitter from "$lib/library/Splitter.svelte";
+  import { ItemList, typing } from "$lib/list/ItemList.svelte";
+  import ItemPane from "$lib/list/ItemPane.svelte";
+  import "$lib/list/tab.css";
   import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
+  import { SNOOZES, buttonText, feedActions, titled, type Action, type ActionName, type Item } from "./actions";
   import * as api from "./api";
-  import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo, Triage } from "./api";
-  import FeedDetails from "./FeedDetails.svelte";
+  import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo } from "./api";
   import FeedsSidebar from "./FeedsSidebar.svelte";
-  import FeedTable, { type FeedColumn } from "./FeedTable.svelte";
-  import Reader from "./Reader.svelte";
+  import { FEED_ORDER, FEED_SPECS, type FeedColumn } from "./FeedTable.svelte";
+  import type { Shown } from "$lib/list/columns";
   import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";
   import {
-    SOURCE_KINDS,
     SORTS,
     applied,
-    chooseInterest,
-    chooseKind,
-    chooseSource,
     feedChips,
     interestColours,
-    isPost,
     nextSort,
     isShown,
     queryOf,
     requestOf,
-    searchOf,
-    sourceGroups,
     withoutChip,
     type FeedChip,
     type FeedFilters,
   } from "./filters";
   import {
-    addTarget,
+    Dwell,
     fetchLine,
     mergeRows,
     newAbove,
     newOlderThan,
-    nextAfter,
     snoozeUntil,
-    pageOf,
-    rangeOf,
     stale,
     toggled,
     type TriageAction,
   } from "./items";
-  import { Dwell } from "./review";
+  import { SOURCE_KINDS, isPost, sourceKinds } from "./kinds";
+  import { sourceGroups } from "./subscriptions";
 
   let {
     tabs,
@@ -81,8 +72,8 @@
     tabs: Snippet;
     /** the choices of the tab, its search and sort: the window's layout keeps them */
     filters: FeedFilters;
-    /** the widths of the list's columns: the window's layout keeps them */
-    columns: Record<FeedColumn, number>;
+    /** the list's columns, in their order, with their widths: the window's layout keeps them */
+    columns: Shown<FeedColumn>[];
     /** when the list was last brought up to date: what a fetch in the background brought since waits behind
      *  *N new · Show*; a fetch asked for here (⌘R, Fetch, a subscription) shows it at once. The layout keeps it. */
     shown: string | null;
@@ -98,29 +89,16 @@
     onentry: (id: string) => void;
   } = $props();
 
+
   const REFRESH: Shortcut = { key: "r", mod: true };
   const FETCH: Shortcut = { key: "r", mod: true, shift: true };
-  const ALL: Shortcut = { key: "a", mod: true };
   const REVIEW: Shortcut = { key: "Enter", mod: true };
 
-  let rows = $state<FeedRow[]>([]);
   let counts = $state<FeedCounts | null>(null);
   let subscriptions = $state<SubscriptionInfo[]>([]);
   /** the first answer came */
   let loaded = $state(false);
   let failure = $state<string | null>(null);
-  let selected = $state(new Set<string>());
-  /** the item the details show, and that the keys move from */
-  let focus = $state<string | null>(null);
-  /** where shift extends the selection from */
-  let anchor: string | null = null;
-  let detail = $state<FeedDetail | null>(null);
-  /** the details beside the list (the setting), else in place of it */
-  let beside = $state(false);
-  /** the item in focus read in place of the list */
-  let reading = $state(false);
-  /** the details are asked again: papers found for a post, items changed */
-  let version = $state(0);
   /** the post whose papers are being looked for */
   let finding = $state<string | null>(null);
   let last = $state<FetchSummary | null>(null);
@@ -129,39 +107,33 @@
   let lookingUp = $state(false);
   /** the failures of the last fetch, listed */
   let failures = $state(false);
-  let input = $state<HTMLInputElement>();
   /** the Review of the shortlist, over the list and the details */
   let reviewing = $state(false);
   let reviewer = $state<ReturnType<typeof Review>>();
   /** the Subscribe sheet, open; whether a subscription was made in it (fetched when it closes) */
   let subscribing = $state(false);
   let subscribed = false;
-  /** what was just done, said for a moment */
-  let notice = $state<string | null>(null);
-  let noticeTimer: ReturnType<typeof setTimeout>;
   let now = $state(Date.now());
-  /** the items triaged here since the filters last changed: the list keeps them in place (`mergeRows`) */
-  const sticky = new Set<string>();
-  /** the free PDFs asked for, by item */
-  const pdfs = new Map<string, Promise<api.PdfStatus>>();
   /** above this many, Mark read asks first */
   const MARK_ASK = 50;
-  /** the snoozes of Later ▾ and the row menu: till the start of the day */
-  const SNOOZES: [string, number][] = [
-    ["1 Day", 1],
-    ["3 Days", 3],
-    ["1 Week", 7],
-    ["1 Month", 30],
-  ];
-  /** the items whose abstract was looked up here, once each */
-  const lookedUp = new Set<string>();
-  /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
-  const LOOKUP_DELAY = 300;
+  /** the buttons of the details, a post's and a paper's; those of the selection bar */
+  const POST_BUTTONS: ActionName[] = ["open", "read", "star", "dismiss", "later"];
+  const PAPER_BUTTONS: ActionName[] = ["add", "open", "addBare", "star", "dismiss", "later"];
+  const BAR_BUTTONS: ActionName[] = ["read", "star", "dismiss", "later"];
 
-  let byId = $derived(new Map(rows.map((r) => [r.id, r])));
-  /** the row of the item in focus, pinned over the item read */
-  let focusRow = $derived(focus ? byId.get(focus) : undefined);
   let request = $derived(requestOf(filters));
+  /** the items the filters select; those triaged here stay in place until the filters change */
+  const list = new ItemList({
+    store: "feeds",
+    query: () => request.query,
+    onadd: (initial) => onadd(initial),
+    reload: () => load(true),
+    // an item opened is seen
+    opened: (ids) => {
+      const fresh = ids.filter((id) => list.byId.get(id)?.triage === "new");
+      if (fresh.length) list.setTo(fresh, "seen");
+    },
+  });
   let chips = $derived(feedChips(filters));
   let groups = $derived(sourceGroups(subscriptions, counts));
   let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
@@ -172,31 +144,43 @@
   let keepDays = $state<number | null>(null);
   let shownSearch = $derived(searches.find((s) => isShown(filters, s))?.name ?? null);
 
+  /** what can be done to the items: the keys, the menus, the buttons */
+  const actions = feedActions({
+    open: (ids) => list.openItems(ids),
+    add: (ids, pdf) => list.addItems(ids, pdf),
+    find: (id) => find(id),
+    focus: () => list.selection.focus,
+    triage,
+    keepUnread,
+    later: laterMenu,
+    clearReminder: (ids) => list.setTo(ids, "new"),
+  });
+
   /** An item becomes seen once it has stayed selected a moment (`Dwell`); one passed over stays new. */
   const dwell = new Dwell((id) => {
-    if (byId.get(id)?.triage === "new") setTo([id], "seen");
+    if (list.byId.get(id)?.triage === "new") list.setTo([id], "seen");
   });
 
   onMount(() => {
     const unlisten = [
-      // a fetch in the background (polling) or from here
+      // where a fetch is, in the background (polling) or from here; the feeds read, the summary and the
+      // subscriptions again
       listen<api.FetchPhase>(api.EVENTS.fetching, (e) => {
         fetching = e.payload === "reading";
         lookingUp = e.payload === "looking-up";
-        if (!fetching) refresh();
+        if (!fetching) readFetch();
       }),
-      // a fetch, a triage from elsewhere, papers found
+      // what changed the items, here or elsewhere (a triage, a fetch, papers found, a subscription): the list again,
+      // which nothing else asks for after a change
       listen(api.EVENTS.changed, () => {
-        version++;
+        list.version++;
         load(true);
       }),
-      listen<boolean>(api.EVENTS.beside, (e) => (beside = e.payload)),
       // back from the settings: the days kept again
       getCurrentWindow().onFocusChanged(({ payload: focused }) => {
         if (focused) readKeepDays();
       }),
     ];
-    api.besideShown().then((b) => (beside = b), (e) => say(String(e)));
     const clock = setInterval(() => (now = Date.now()), 30000);
     start();
     readKeepDays();
@@ -226,47 +210,37 @@
     }
   }
 
-  /** ⇧⌘R, ↻: every subscription fetched, or the one of id `only`; the list again once the feeds are read (the
-   *  lookups that follow go on, the list again when they end). */
+  /** ⇧⌘R, ↻: every subscription fetched, or the one of id `only` (the phases of the fetch say where it is; one
+   *  asked while another reads the feeds waits for it, and a full one then answers its summary); what it brought
+   *  shown at once, unless `show` is off (the fetch of a tab opening). */
   async function fetchNow(show = true, only?: string) {
-    if (fetching) return;
-    fetching = true;
     failures = false;
     try {
       const summary = await api.fetchFeeds(only);
       const failed = summary.failed.length;
-      if (failed) say(`${failed} ${failed === 1 ? "subscription" : "subscriptions"} failed`);
+      if (failed) list.say(`${failed} ${failed === 1 ? "subscription" : "subscriptions"} failed`);
     } catch (e) {
-      say(String(e));
-    } finally {
-      fetching = false;
+      list.say(String(e));
     }
-    if (show) shown = new Date().toISOString();
-    await refresh();
+    if (show) bringUpToDate(true);
   }
 
-  /** N new · Show: what was fetched since the list was shown, into it. */
-  function showHeld() {
+  /** The list brought up to date: what was fetched since it was shown, held back, into it. ⌘R (`keep` off) also
+   *  lets go the items triaged here, which leave where they no longer belong, and sorts it again; *N new · Show*
+   *  and a fetch asked for here keep them in place. */
+  function bringUpToDate(keep: boolean) {
+    if (!keep) list.sticky.clear();
     shown = new Date().toISOString();
-    load(true);
+    load(keep);
   }
 
-  /** ⌘R: the list brought up to date, nothing fetched: what was held back in, the items triaged here gone from
-   *  where they no longer belong, sorted again. */
-  function refreshList() {
-    sticky.clear();
-    shown = new Date().toISOString();
-    load(false);
-  }
-
-  /** After a fetch: the subscriptions, the summary of the fetch, the list. */
-  async function refresh() {
+  /** A fetch read the feeds, or ended: its summary and the subscriptions again. */
+  async function readFetch() {
     try {
       [last, subscriptions] = await Promise.all([api.lastFetch(), api.subscriptions()]);
     } catch {
       // the list says what is wrong
     }
-    await load(true);
   }
 
   let asked = 0;
@@ -280,7 +254,7 @@
       shown ??= new Date().toISOString();
       const answer = await api.view({ ...request, shown });
       if (n !== asked) return;
-      rows = keep ? mergeRows(rows, answer.rows, sticky) : answer.rows;
+      list.rows = keep ? mergeRows(list.rows, answer.rows, list.sticky) : answer.rows;
       counts = answer.counts;
       held = answer.held;
       failure = null;
@@ -289,148 +263,61 @@
       failure = String(e);
     }
     loaded = true;
-    const ids = new Set(rows.map((r) => r.id));
-    if ([...selected].some((id) => !ids.has(id))) selected = new Set([...selected].filter((id) => ids.has(id)));
-    if (!keep && focus && !ids.has(focus)) focus = null;
+    list.selection.prune(list.ids, keep);
   }
 
   // the filters changed: the list again, the items triaged before let go
   $effect(() => {
     request;
     untrack(() => {
-      sticky.clear();
+      list.sticky.clear();
       load(false);
     });
   });
 
-  // the details of the item in focus, marked by the query; again when items change
-  $effect(() => {
-    const id = focus;
-    const query = request.query;
-    version;
-    if (!id) {
-      detail = null;
-      return;
-    }
-    let live = true;
-    api
-      .detail(id, query)
-      .then((d) => live && (detail = d))
-      .catch(() => live && (detail = null));
-    return () => {
-      live = false;
-    };
-  });
-
-  // the abstract of the item shown, looked up if its lookups may still find it (the feeds then change)
-  $effect(() => {
-    const id = detail?.abstractPending ? detail.id : null;
-    if (!id || lookedUp.has(id)) return;
-    const timer = setTimeout(() => {
-      lookedUp.add(id);
-      api.lookUp(id).catch((e) => say(String(e)));
-    }, LOOKUP_DELAY);
-    return () => clearTimeout(timer);
-  });
-
   // the item in focus, if new, is seen once it stays
   $effect(() => {
-    const id = focus;
+    const id = list.selection.focus;
     // a reminder stays new until marked read
     untrack(() => {
-      const row = id === null ? undefined : byId.get(id);
+      const row = id === null ? undefined : list.byId.get(id);
       dwell.show(id, row?.triage === "new" && !row.reminder);
     });
   });
 
-  /** The details of an item: those shown, else asked. */
-  async function detailOf(id: string): Promise<FeedDetail | null> {
-    if (detail?.id === id) return detail;
-    try {
-      return await api.detail(id, "");
-    } catch {
-      return null;
-    }
-  }
+  /** The items of some ids that the actions know: the details shown (they say its link), else the rows. */
+  const itemsOf = (ids: string[]): Item[] =>
+    ids.flatMap((id): Item[] => {
+      const item = list.detail?.id === id ? list.detail : list.byId.get(id);
+      return item ? [item] : [];
+    });
 
-  /** The free PDF of an item, asked once. */
-  function pdfOf(id: string): Promise<api.PdfStatus> {
-    let found = pdfs.get(id);
-    if (!found) {
-      found = api.pdfStatus(id);
-      found.catch(() => pdfs.delete(id));
-      pdfs.set(id, found);
-    }
-    return found;
-  }
-
-  function say(text: string) {
-    notice = text;
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => (notice = null), 4000);
-  }
-
-  /** The items the keys and the menu act on: the selection when the focus is in it, else the item in focus. */
-  function targets(): string[] {
-    if (focus && selected.has(focus)) return rows.filter((r) => selected.has(r.id)).map((r) => r.id);
-    return focus ? [focus] : [];
-  }
-
-  /** The items the buttons of the details act on: the keys', else the item shown. */
-  const targetsOr = (id: string) => (targets().length ? targets() : [id]);
-
-  /** A triage given to items. Shown at once; the list keeps them in place until the filters change, except
-   *  dismissed items, which go, the next selected. Then the counts, and the list, again. */
-  async function setTo(ids: string[], triage: Triage) {
-    if (!ids.length) return;
-    const set = new Set(ids);
-    if (triage === "dismissed") {
-      const next = focus && set.has(focus) ? nextAfter(rows.map((r) => r.id), set) : focus;
-      for (const id of ids) sticky.delete(id);
-      rows = rows.filter((r) => !set.has(r.id));
-      if (next !== focus) {
-        selected = new Set(next ? [next] : []);
-        anchor = focus = next;
-      } else {
-        selected = new Set([...selected].filter((id) => !set.has(id)));
-      }
-    } else {
-      for (const id of ids) sticky.add(id);
-      rows = rows.map((r) => (set.has(r.id) ? { ...r, triage } : r));
-    }
-    if (detail && set.has(detail.id)) detail = { ...detail, triage };
-    try {
-      await api.setTriage(ids, triage);
-    } catch (e) {
-      say(String(e));
-    }
-    await load(true);
-  }
+  /** An action as an item of a menu. */
+  const menuItem = (action: Action, ids: string[], items: Item[]) =>
+    MenuItem.new({ text: titled(action.label(items)), enabled: action.enabled(items), action: () => action.run(ids) });
 
   /** s, x, m: the triage of the items selected toggled (`toggled`); an item not in the list (a linked paper) is
    *  asked for. */
-  async function triage(action: TriageAction, ids = targets()) {
-    const found = await Promise.all(ids.map((id) => byId.get(id) ?? detailOf(id)));
+  async function triage(action: TriageAction, ids: string[]) {
+    const found = await Promise.all(ids.map((id) => list.byId.get(id) ?? list.detailOf(id)));
     const items = found.filter((r): r is FeedRow | FeedDetail => !!r);
     const change = toggled(items, action);
-    if (change) setTo(change.ids, change.triage);
+    if (change?.triage === "seen") markRead(change.ids);
+    else if (change) list.setTo(change.ids, change.triage);
   }
 
-  /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked seen. */
-  function markAbove(from = focus) {
-    const ids = newAbove(rows, from);
-    if (!ids.length) return;
-    setTo(ids, "seen");
-    say(`Marked ${ids.length} as seen`);
+  /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked read. */
+  function markAbove(from = list.selection.focus) {
+    markRead(newAbove(list.rows, from));
   }
 
   /** Mark read ▾: the new items of the list, those older than some days, those above the selection, marked seen
    *  (above 50, after asking). */
   async function markMenu() {
     const item = (text: string, ids: string[]) =>
-      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markSeen(ids) });
-    const all = rows.filter((r) => r.triage === "new").map((r) => r.id);
-    const older = (days: number) => newOlderThan(rows, days, Date.now());
+      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markRead(ids) });
+    const all = list.rows.filter((r) => r.triage === "new").map((r) => r.id);
+    const older = (days: number) => newOlderThan(list.rows, days, Date.now());
     const menu = await Menu.new({
       items: [
         await item("All in This List", all),
@@ -439,204 +326,117 @@
         await item("Older than 3 Days", older(3)),
         await item("Older than 1 Week", older(7)),
         await PredefinedMenuItem.new({ item: "Separator" }),
-        await item("All Above the Selection", newAbove(rows, focus)),
+        await item("All Above the Selection", newAbove(list.rows, list.selection.focus)),
       ],
     });
     await menu.popup();
   }
 
-  async function markSeen(ids: string[]) {
+  /** Items marked read (above 50, after asking), said. */
+  async function markRead(ids: string[]) {
+    if (!ids.length) return;
     const question = `Mark ${ids.length} items as read?`;
     if (ids.length > MARK_ASK && !(await ask(question, { title: "Mark read", okLabel: "Mark read", cancelLabel: "Cancel" }))) return;
-    setTo(ids, "seen");
-    say(`Marked ${ids.length} as read`);
+    list.setTo(ids, "seen");
+    list.say(`Marked ${ids.length} read`);
   }
 
   /** U: kept unread (a reminder due now, first in the list); the reminders of items all kept so, cleared. */
-  function keepUnread(ids = targets()) {
-    const due = ids.every((id) => byId.get(id)?.reminder === "due");
-    if (due) return setTo(ids, "new");
+  function keepUnread(ids: string[]) {
+    const due = ids.every((id) => list.byId.get(id)?.reminder === "due");
+    if (due) return list.setTo(ids, "new");
     remindOf(ids, null);
   }
 
-  /** Items new again, to be reminded of in some days (snoozed till then), else now (kept unread). */
+  /** Items new again, to be reminded of in some days (snoozed till then), else now (kept unread); shown at once,
+   *  the list again if refused. */
   async function remindOf(ids: string[], days: number | null) {
     if (!ids.length) return;
     const until = days === null ? null : snoozeUntil(days, new Date());
     const set = new Set(ids);
-    for (const id of ids) sticky.add(id);
-    rows = rows.map((r) =>
+    for (const id of ids) list.sticky.add(id);
+    list.rows = list.rows.map((r) =>
       set.has(r.id) ? { ...r, triage: "new", reminder: until ? "snoozed" : "due", remind: until?.toISOString() ?? null } : r,
     );
     try {
       await api.remind(ids, until?.toISOString() ?? null);
       const n = ids.length === 1 ? "" : ` ${ids.length}`;
-      say(until ? `Snoozed${n} until ${until.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}` : `Kept${n} unread`);
+      list.say(until ? `Snoozed${n} until ${until.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}` : `Kept${n} unread`);
     } catch (e) {
-      say(String(e));
+      list.say(String(e));
+      load(true);
     }
-    await load(true);
   }
 
   /** Z, Later ▾: kept unread, snoozed for some days, or the reminder cleared. */
-  async function laterMenu(ids = targets()) {
+  async function laterMenu(ids: string[]) {
     if (!ids.length) return;
-    const item = (text: string, action: () => void, enabled = true) => MenuItem.new({ text, action, enabled });
-    const reminded = ids.some((id) => byId.get(id)?.reminder);
+    const items = itemsOf(ids);
     const menu = await Menu.new({
       items: [
-        await item("Keep Unread", () => remindOf(ids, null)),
+        await menuItem(actions.keepUnread, ids, items),
         await PredefinedMenuItem.new({ item: "Separator" }),
-        ...(await Promise.all(SNOOZES.map(([text, days]) => item(`Snooze ${text}`, () => remindOf(ids, days))))),
+        ...(await Promise.all(SNOOZES.map((s) => MenuItem.new({ text: titled(`Snooze ${s.text}`), action: () => remindOf(ids, s.days) })))),
         await PredefinedMenuItem.new({ item: "Separator" }),
-        await item("Clear Reminder", () => setTo(ids, "new"), reminded),
+        await menuItem(actions.clearReminder, ids, items),
       ],
     });
     await menu.popup();
   }
 
-  /** The selection bar: the rows selected, in the order of the list. */
-  const chosen = () => rows.filter((r) => selected.has(r.id));
-
-  /** o, a double-click: the page of each item in the browser (above 5, after asking); a new one is seen. */
-  async function openItems(ids: string[]) {
-    if (!ids.length) return;
-    const question = `Open ${ids.length} pages in the browser?`;
-    if (ids.length > OPEN_ASK && !(await ask(question, { title: "Open", okLabel: "Open", cancelLabel: "Cancel" }))) return;
-    let none = 0;
-    for (const id of ids) {
-      const d = await detailOf(id);
-      const url = d && pageOf(d);
-      if (url) await openUrl(url).catch((e) => say(String(e)));
-      else none++;
-    }
-    const fresh = ids.filter((id) => byId.get(id)?.triage === "new");
-    if (fresh.length) setTo(fresh, "seen");
-    if (none) say(`${none} without a link`);
-  }
-
-  /** a, the menu: each item added in turn, by the Add sheet over the tab; a sheet closed stops the rest. */
-  async function addItems(ids: string[], pdf: boolean) {
-    for (const id of ids) {
-      const d = await detailOf(id);
-      const target = d && addTarget(d);
-      if (!target) {
-        say(d && isPost(d.kind) ? "No paper linked to the post yet: F looks for it" : "No DOI or arXiv id to add it by");
-        if (ids.length === 1) return;
-        continue;
-      }
-      if (!(await add(target, pdf))) return;
-    }
-  }
-
-  /** A paper added by its DOI (or arXiv id), the tab staying in front; its item, if it is one, becomes added.
-   *  Whether it was added. */
-  async function add(target: { id: string; item: string | null }, pdf: boolean): Promise<boolean> {
-    const said = await onadd({ id: target.id, pdf });
-    if (said === null) return false;
-    say(said);
-    if (target.item) await setTo([target.item], "added");
-    return true;
-  }
-
   /** f: the papers behind a post looked for again (its page, then Crossref by its title). */
-  async function find(id = focus) {
+  async function find(id = list.selection.focus) {
     if (!id || finding) return;
-    const d = await detailOf(id);
-    if (!d || !isPost(d.kind)) return say("F finds the paper behind a post");
+    const d = await list.detailOf(id);
+    if (!d || !isPost(d.kind)) return list.say("F finds the paper behind a post");
     finding = id;
     try {
       const found = await api.findPapers(id);
-      say(found.length ? `Found ${found.length} ${found.length === 1 ? "paper" : "papers"}` : "No paper found");
-      version++;
-      await load(true);
+      list.say(found.length ? `Found ${found.length} ${found.length === 1 ? "paper" : "papers"}` : "No paper found");
     } catch (e) {
-      say(String(e));
+      list.say(String(e));
     } finally {
       finding = null;
     }
   }
 
-  /** An item to show, from the details (a post that covers it, a linked paper): selected, in the list or not. */
-  function showItem(id: string) {
-    selected = new Set([id]);
-    anchor = focus = id;
-  }
-
-  function select(id: string, e: MouseEvent) {
-    if (e.button !== 0) return;
-    if (e.shiftKey && anchor) {
-      selected = new Set(rangeOf(rows.map((r) => r.id), anchor, id));
-    } else if (mac ? e.metaKey : e.ctrlKey) {
-      const s = new Set(selected);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
-      selected = s;
-      anchor = id;
-    } else {
-      selected = new Set([id]);
-      anchor = id;
-      if (!beside) reading = true;
-    }
-    focus = id;
-  }
-
-  /** Move the focus by some rows, or to the first or last; extending the selection, or not. */
-  function move(to: number | "first" | "last", extend: boolean) {
-    const ids = rows.map((r) => r.id);
-    if (!ids.length) return;
-    const at = focus ? ids.indexOf(focus) : -1;
-    const index =
-      to === "first" ? 0 : to === "last" ? ids.length - 1 : at < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, at + to));
-    const next = ids[index];
-    if (extend && anchor) {
-      selected = new Set(rangeOf(ids, anchor, next));
-    } else {
-      selected = new Set([next]);
-      anchor = next;
-    }
-    focus = next;
-  }
-
   /** Right-click on a row: the items selected when it is one of them, else that item alone. */
   async function rowMenu(id: string) {
-    if (!selected.has(id)) showItem(id);
-    const ids = targets();
-    const items = ids.map((i) => byId.get(i)).filter((r): r is FeedRow => r !== undefined);
+    if (!list.selection.selected.has(id)) list.showItem(id);
+    const ids = list.targets();
+    const items = itemsOf(ids);
     if (!items.length) return;
-    const every = (t: Triage) => items.every((r) => r.triage === t);
-    const item = (text: string, action: () => void, enabled = true) => MenuItem.new({ text, action, enabled });
+    const item = (name: ActionName) => menuItem(actions[name], ids, items);
     const separator = () => PredefinedMenuItem.new({ item: "Separator" });
-    const posts = items.length === 1 && isPost(items[0].kind);
     // one item: the kind of each subscription that lists it, to set right
-    const sources = items.length === 1 ? ((await detailOf(id))?.sources ?? []) : [];
+    const sources = items.length === 1 ? ((await list.detailOf(id))?.sources ?? []) : [];
     const kindOf = async (s: api.FeedDetail["sources"][number]) =>
       Submenu.new({
         text: sources.length === 1 ? "Source Is" : `${s.title} Is`,
         items: await Promise.all(
-          SOURCE_KINDS.map((k) =>
-            CheckMenuItem.new({ text: k.name, checked: s.kind === k.kind, action: () => setKind(s.id, s.title, k.kind) }),
+          sourceKinds.map((kind) =>
+            CheckMenuItem.new({ text: titled(SOURCE_KINDS[kind].name), checked: s.kind === kind, action: () => setKind(s.id, s.title, kind) }),
           ),
         ),
       });
     const menu = await Menu.new({
       items: [
-        await item(posts ? "Open Post" : "Open", () => openItems(ids)),
-        await item("Add…", () => addItems(ids, true)),
-        await item("Add without PDF…", () => addItems(ids, false)),
-        ...(posts ? [await item("Find Linked Paper", () => find(id))] : []),
+        await item("open"),
+        await item("add"),
+        await item("addBare"),
+        ...(actions.find.enabled(items) ? [await item("find")] : []),
         await separator(),
-        await item(every("shortlisted") ? "Unstar" : "Star", () => triage("shortlist", ids)),
-        await item(items.some((r) => r.triage === "new") ? "Mark as Seen" : "Mark as New", () => triage("read", ids)),
-        await item(every("dismissed") ? "Restore" : "Dismiss", () => triage("dismiss", ids)),
-        await item("Keep Unread", () => remindOf(ids, null)),
+        await item("star"),
+        await item("read"),
+        await item("dismiss"),
+        await item("keepUnread"),
         await Submenu.new({
           text: "Snooze",
-          items: await Promise.all(SNOOZES.map(([text, days]) => item(text, () => remindOf(ids, days)))),
+          items: await Promise.all(SNOOZES.map((s) => MenuItem.new({ text: titled(s.text), action: () => remindOf(ids, s.days) }))),
         }),
-        await item("Clear Reminder", () => setTo(ids, "new"), items.some((r) => r.reminder)),
+        await item("clearReminder"),
         await separator(),
-        await item("Mark All Above as Seen", () => markAbove(id), newAbove(rows, id).length > 0),
+        await MenuItem.new({ text: "Mark All Above as Read", action: () => markAbove(id), enabled: newAbove(list.rows, id).length > 0 }),
         ...(sources.length ? [await separator(), ...(await Promise.all(sources.map(kindOf)))] : []),
       ],
     });
@@ -656,12 +456,12 @@
               await Submenu.new({
                 text: "Source Is",
                 items: await Promise.all(
-                  SOURCE_KINDS.map((k) =>
+                  sourceKinds.map((kind) =>
                     CheckMenuItem.new({
-                      text: k.name,
-                      checked: feeds.every((s) => s.kind === k.kind),
+                      text: titled(SOURCE_KINDS[kind].name),
+                      checked: feeds.every((s) => s.kind === kind),
                       action: async () => {
-                        for (const s of feeds) await setKind(s.id, s.title, k.kind);
+                        for (const s of feeds) await setKind(s.id, s.title, kind);
                       },
                     }),
                   ),
@@ -696,11 +496,10 @@
         await api.unsubscribe(s.id);
         unsubscribed(s.id);
       }
-      say(`Unsubscribed from ${title}`);
+      list.say(`Unsubscribed from ${title}`);
     } catch (e) {
-      say(String(e));
+      list.say(String(e));
     }
-    load(true);
   }
 
   /** A subscription ended, here or in the Subscribe sheet. */
@@ -712,15 +511,14 @@
     }
   }
 
-  /** A subscription set to another kind, from the row menu: its items move at once. */
+  /** A subscription set to another kind, from the menus: its items move at once, it to the sources of that kind. */
   async function setKind(id: string, title: string, kind: api.SourceKind) {
     try {
-      await api.updateSubscription(id, { kind });
-      say(`${title}: ${SOURCE_KINDS.find((k) => k.kind === kind)?.name}`);
-      version++;
-      await load(true);
+      const info = await api.updateSubscription(id, { kind });
+      subscriptions = subscriptions.map((s) => (s.id === id ? info : s));
+      list.say(`${title}: ${SOURCE_KINDS[kind].name}`);
     } catch (e) {
-      say(String(e));
+      list.say(String(e));
     }
   }
 
@@ -728,7 +526,6 @@
   function closeSubscribe() {
     subscribing = false;
     if (subscribed) fetchNow();
-    else load(true);
     subscribed = false;
   }
 
@@ -736,92 +533,41 @@
   function toggleReview() {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     reviewing = !reviewing;
-    if (!reviewing) load(true);
   }
+
 
   /** ⌘F, /: the search field. */
   export function focusSearch() {
-    input?.select();
+    list.focusSearch();
   }
 
-  /** the rows a page key moves: about those in view */
-  const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 160) / 26));
-
   /** A key of the window while the tab is in front (none while a sheet is open): ⌘R brings the list up to date,
-   *  ⇧⌘R fetches, ⌘↩ starts the Review
-   *  (which then has the keys); the arrows, j and k, the page keys, Home and End move (⇧ extends the selection with
-   *  the arrows); s, x, m, u (keep unread), z (later), o, a, f act on the selection; ⇧Space marks all above as
-   *  seen; Enter reads the item in place of the list, Esc goes back; / goes to the search, Esc leaves it. */
+   *  ⇧⌘R fetches, ⌘↩ starts the Review (which then has the keys); the list's keys move and read (`navKey`); the
+   *  keys of the actions act on the selection (s, x, m, u, z, o, a, f); ⇧Space marks all above as read. */
   export function key(e: KeyboardEvent) {
     if (modalOpen()) return;
-    const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
-    const mod = mac ? e.metaKey : e.ctrlKey;
-    const go = (to: number | "first" | "last", extend = e.shiftKey) => {
-      e.preventDefault();
-      move(to, extend);
-    };
     const act = (action: () => unknown) => {
       e.preventDefault();
       action();
     };
-    if (matches(e, REFRESH)) return act(refreshList);
+    if (matches(e, REFRESH)) return act(() => bringUpToDate(false));
     if (matches(e, FETCH)) return act(() => fetchNow());
     if (matches(e, REVIEW)) return act(toggleReview);
-    if (reviewing && !typing) return reviewer?.key(e);
-    if (e.key === "ArrowDown") return go(mod ? "last" : 1);
-    if (e.key === "ArrowUp") return go(mod ? "first" : -1);
-    if (e.key === "PageDown") return go(pageRows());
-    if (e.key === "PageUp") return go(-pageRows());
-    if (typing) {
-      if (e.key === "Escape") act(() => input?.blur());
-      return;
-    }
-    if (matches(e, ALL)) return act(() => (selected = new Set(rows.map((r) => r.id))));
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (reviewing && !typing(e)) return reviewer?.key(e);
+    if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === " " && e.shiftKey) return act(() => markAbove());
     if (e.shiftKey) return;
-    switch (e.key) {
-      case "/":
-        return act(focusSearch);
-      case "Enter":
-        return beside || !focus ? undefined : act(() => (reading = !reading));
-      case "Escape":
-        return reading ? act(() => (reading = false)) : undefined;
-      case "Home":
-        return go("first");
-      case "End":
-        return go("last");
-      case "j":
-        return go(1, false);
-      case "k":
-        return go(-1, false);
-      case "s":
-        return act(() => triage("shortlist"));
-      case "x":
-        return act(() => triage("dismiss"));
-      case "m":
-        return act(() => triage("read"));
-      case "o":
-        return act(() => openItems(targets()));
-      case "a":
-        return act(() => addItems(targets(), true));
-      case "f":
-        return act(() => find());
-      case "u":
-        return act(() => keepUnread());
-      case "z":
-        return act(() => laterMenu());
-    }
+    const action = Object.values(actions).find((a) => a.key === e.key);
+    if (action) act(() => action.run(list.targets()));
   }
 
-  /** The saved searches changed: kept, then their counts again. */
-  async function keepSearches(list: api.SavedSearch[]) {
+  /** The saved searches changed: kept (their counts come with the list again). */
+  async function keepSearches(saved: api.SavedSearch[]) {
     try {
-      await api.setSavedSearches(list);
-      searches = list;
-      await load(true);
+      await api.setSavedSearches(saved);
+      searches = saved;
     } catch (e) {
-      say(String(e));
+      list.say(String(e));
     }
   }
 
@@ -838,14 +584,8 @@
     filters = withoutChip(filters, chip);
   }
 
-  /** Unfold a group of the sources in the sidebar, or fold it. */
-  function fold(group: string, open: boolean) {
-    const rest = filters.open.filter((g) => g !== group);
-    filters.open = open ? [...rest, group] : rest;
-  }
-
   let summary = $derived(
-    `${rows.length} of ${counts?.all ?? 0}` + (selected.size > 1 ? ` · ${selected.size} selected` : ""),
+    `${list.rows.length} of ${counts?.all ?? 0}` + (list.selection.selected.size > 1 ? ` · ${list.selection.selected.size} selected` : ""),
   );
 </script>
 
@@ -861,21 +601,17 @@
   />
 {/if}
 
-<main>
+<main class="tab" style:--tint="var(--feeds)">
   {#if showSidebar}
     <aside class="sidebar" style:width="{sidebar}px">
       <FeedsSidebar
-        {filters}
+        bind:filters
         {counts}
+        {colours}
         {groups}
         {keepDays}
-        onview={(view) => (filters.view = view)}
-        onkind={(kind, toggle) => (filters = chooseKind(filters, kind, toggle))}
-        oninterest={(name, toggle) => (filters = chooseInterest(filters, name, toggle))}
-        onsource={(title, toggle) => (filters = chooseSource(filters, title, toggle))}
         onsourcemenu={sourceMenu}
         onsubscribe={() => (subscribing = true)}
-        onfold={fold}
       >
         {#snippet saved()}
           <SavedSearches
@@ -897,7 +633,7 @@
       {@render tabs()}
       <div class="search">
         <input
-          bind:this={input}
+          bind:this={list.input}
           bind:value={filters.query}
           type="search"
           placeholder="Search: words, a:, t:, abs:, j:, src:, kind:, prof:, score:3-, is:"
@@ -905,7 +641,7 @@
           autocomplete="off"
         />
         {#if filters.query}
-          <button class="clear" aria-label="Clear the search" onclick={() => ((filters.query = ""), input?.focus())}>×</button>
+          <button class="clear" aria-label="Clear the search" onclick={() => ((filters.query = ""), list.input?.focus())}>×</button>
         {/if}
       </div>
       <SaveSearch
@@ -914,10 +650,10 @@
         refusal={(name) => refusal(searches, name)}
         onsave={(name) => keepSearches(added(searches, current(name)))}
       />
-      <span class="notice">{notice ?? ""}</span>
+      <span class="notice">{list.notice ?? ""}</span>
       <span class="spacer"></span>
       {#if held}
-        <button class="tool held" title="Show what was fetched since the list was brought up to date ({label(REFRESH)} also sorts it again)" onclick={showHeld}>
+        <button class="tool held" title="Show what was fetched since the list was brought up to date ({label(REFRESH)} also sorts it again)" onclick={() => bringUpToDate(true)}>
           {held} new · Show
         </button>
       {/if}
@@ -932,101 +668,47 @@
         {reviewing ? "Leave review" : `Review starred (${shortlisted})`}
       </button>
     </header>
-    <div class="content">
-      {#if reviewing}
-        <Review
-          bind:this={reviewer}
-          {colours}
-          {pdfOf}
-          onadd={add}
-          ontriage={(id, t) => setTo([id], t)}
-          onopen={(id) => openItems([id])}
-          onitem={(id) => {
-            toggleReview();
-            showItem(id);
-          }}
-          {onentry}
-          onclose={toggleReview}
-        />
-      {:else}
-        <section class="list">
-          <div class="filters">
-            {#each chips as chip (chip.kind)}
-              <span class="chip">
-                <span class="text" title={chip.text}>{chip.text}</span>
-                <button aria-label="Remove the filter {chip.text}" onclick={() => dropChip(chip)}>×</button>
-              </span>
-            {/each}
-            <span class="spacer"></span>
-            <button class="sort" title="Mark the new items of the list as read: all, the older ones, those above" onclick={markMenu}>
-              Mark read ▾
-            </button>
-            <button
-              class="sort"
-              title="Sort by score, by likeness to the library or by date"
-              onclick={() => (filters.sort = nextSort(filters.sort))}
-            >
-              {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}
-            </button>
-          </div>
-          {#if selected.size > 1}
-            <div class="selbar">
-              <span>{selected.size} selected</span>
-              <button onclick={() => markSeen(chosen().filter((r) => r.triage === "new").map((r) => r.id))}>Mark read</button>
-              <button onclick={() => setTo(chosen().filter((r) => r.triage === "seen").map((r) => r.id), "new")}>Mark unread</button>
-              <button onclick={() => triage("shortlist", chosen().map((r) => r.id))}>★ Star</button>
-              <button onclick={() => triage("dismiss", chosen().map((r) => r.id))}>Dismiss</button>
-              <button onclick={() => laterMenu(chosen().map((r) => r.id))}>⏰ Later ▾</button>
-              <span class="spacer"></span>
-              <button class="plain" onclick={() => (selected = new Set(focus ? [focus] : []))}>Clear selection</button>
-            </div>
-          {/if}
-          {#if !loaded}
-            <p class="empty">Loading the feeds…</p>
-          {:else if failure && !rows.length}
-            <p class="empty error">{failure}</p>
-          {:else if !subscriptions.length && !rows.length}
-            <p class="empty">
-              No subscriptions yet. <button class="link" onclick={() => (subscribing = true)}>Subscribe…</button>
-            </p>
-          {:else if !rows.length}
-            <p class="empty">No item matches.</p>
-          {:else}
-            <div class="rows">
-            <FeedTable
-              {rows}
-              {selected}
-              {focus}
-              sort={filters.sort}
-              widths={columns}
-              {colours}
-              onsort={(sort) => (filters.sort = sort)}
-              onwidths={(widths) => (columns = widths)}
-              onstar={(id) => triage("shortlist", [id])}
-              onselect={select}
-              onopen={(id) => openItems(selected.has(id) ? targets() : [id])}
-              onmenu={rowMenu}
-            />
-            {#if reading && !beside && focusRow}
-              <Reader row={focusRow} onback={() => (reading = false)}>
-                {#if detail}{@render itemDetails(detail, true)}{/if}
-              </Reader>
-            {/if}
-            </div>
-          {/if}
-        </section>
-        {#if beside && showDetails}
-          <Splitter bind:width={details} side="right" min={260} max={600} />
-          <aside class="details" style:width="{details}px">
-            {#if detail}
-              {@render itemDetails(detail, false)}
-            {:else}
-              <p class="empty">No item selected</p>
-            {/if}
-          </aside>
-        {/if}
-      {/if}
-    </div>
+    {#if reviewing}
+      <Review
+        bind:this={reviewer}
+        {colours}
+        onadd={list.add}
+        ontriage={(id, t) => list.setTo([id], t)}
+        onopen={(id) => list.openItems([id])}
+        onitem={(id) => {
+          toggleReview();
+          list.showItem(id);
+        }}
+        {onentry}
+        onclose={toggleReview}
+      />
+    {:else}
+      <ItemPane
+        {list}
+        table={{
+          columns,
+          specs: FEED_SPECS,
+          menu: FEED_ORDER,
+          sort: filters.sort,
+          onsort: (sort) => (filters.sort = sort),
+          oncolumns: (shown) => (columns = shown),
+          onstar: (id) => actions.star.run([id]),
+          onmenu: rowMenu,
+        }}
+        {colours}
+        none="No item selected"
+        bind:details
+        {showDetails}
+        bar={listBar}
+        empty={loaded && list.rows.length ? undefined : noRows}
+        actions={itemActions}
+        finding={finding !== null && finding === list.detail?.id}
+        onaddlink={(link: Linked) => list.add({ id: link.doi, item: link.item }, true)}
+        onshortlistlink={(item) => actions.star.run([item])}
+        onfind={find}
+        {onentry}
+      />
+    {/if}
     <footer class="status">
       <span>
         {fetching ? "Fetching…" : lookingUp ? "Looking up in Crossref and OpenAlex…" : fetchLine(last, now)}
@@ -1055,168 +737,66 @@
   </div>
 </main>
 
-{#snippet itemDetails(d: FeedDetail, wide: boolean)}
-  <FeedDetails
-    detail={d}
-    {wide}
-    count={focus && selected.has(focus) ? selected.size : 1}
-    {byId}
-    {colours}
-    {pdfOf}
-    actions={itemActions}
-    finding={finding === d.id}
-    onaddlink={(link: Linked) => add({ id: link.doi, item: link.item }, true)}
-    onshortlistlink={(item) => triage("shortlist", [item])}
-    onfind={() => find(d.id)}
-    onitem={showItem}
-    {onentry}
-    onback={wide ? () => (reading = false) : undefined}
-  />
-{/snippet}
-
-<!-- the buttons of the details: a post's, a paper's -->
-{#snippet itemActions(d: FeedDetail)}
-  {#if isPost(d.kind)}
-    <button class="open" onclick={() => openItems(targetsOr(d.id))} disabled={!d.url}>Open post ↗ <kbd>O</kbd></button>
-    <button onclick={() => triage("read", targetsOr(d.id))}>{d.triage === "new" ? "Mark read" : "Mark unread"} <kbd>M</kbd></button>
-    <button onclick={() => triage("shortlist", targetsOr(d.id))}>{d.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
-    <button onclick={() => triage("dismiss", targetsOr(d.id))}>{d.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
-    <button onclick={() => laterMenu(targetsOr(d.id))} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
-  {:else}
-    <button class="primary" onclick={() => addItems(targetsOr(d.id), true)} title="Add to the library, with the free PDF if there is one">Add <kbd>A</kbd></button>
-    <button class="open" onclick={() => openItems(targetsOr(d.id))} disabled={!d.url && !d.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
-    <button onclick={() => addItems(targetsOr(d.id), false)} title="Add to the library without looking for its PDF">Add without PDF</button>
-    <button onclick={() => triage("shortlist", targetsOr(d.id))}>{d.triage === "shortlisted" ? "★ Starred" : "☆ Star"} <kbd>S</kbd></button>
-    <button onclick={() => triage("dismiss", targetsOr(d.id))}>{d.triage === "dismissed" ? "Dismissed" : "Dismiss"} <kbd>X</kbd></button>
-    <button onclick={() => laterMenu(targetsOr(d.id))} title="Keep it unread (U), or snooze it">⏰ Later <kbd>Z</kbd></button>
+<!-- above the list: the choices as chips, Mark read ▾, the count and the sort; the selection bar -->
+{#snippet listBar()}
+  <div class="filters">
+    {#each chips as chip (chip.kind)}
+      <span class="chip">
+        <span class="text" title={chip.text}>{chip.text}</span>
+        <button aria-label="Remove the filter {chip.text}" onclick={() => dropChip(chip)}>×</button>
+      </span>
+    {/each}
+    <span class="spacer"></span>
+    <button class="sort" title="Mark the new items of the list as read: all, the older ones, those above" onclick={markMenu}>
+      Mark read ▾
+    </button>
+    <button class="sort" title="Sort by score, by likeness to the library or by date" onclick={() => (filters.sort = nextSort(filters.sort))}>
+      {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}
+    </button>
+  </div>
+  {#if list.selection.selected.size > 1}
+    {@const ids = list.chosen()}
+    {@const items = itemsOf(ids)}
+    <div class="selbar">
+      <span>{list.selection.selected.size} selected</span>
+      {#each BAR_BUTTONS as name (name)}
+        {@const action = actions[name]}
+        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action.label(items))}</button>
+      {/each}
+      <span class="spacer"></span>
+      <button class="plain" onclick={() => list.selection.only(list.selection.focus)}>Clear selection</button>
+    </div>
   {/if}
 {/snippet}
 
+<!-- in place of the list: loading, failed, no subscription, nothing matches -->
+{#snippet noRows()}
+  {#if !loaded}
+    <p class="empty">Loading the feeds…</p>
+  {:else if failure}
+    <p class="empty error">{failure}</p>
+  {:else if !subscriptions.length}
+    <p class="empty">
+      No subscriptions yet. <button class="link" onclick={() => (subscribing = true)}>Subscribe…</button>
+    </p>
+  {:else}
+    <p class="empty">No item matches.</p>
+  {/if}
+{/snippet}
+
+<!-- the buttons of the details, a post's or a paper's: on the selection when the item is in it -->
+{#snippet itemActions(d: FeedDetail)}
+  {@const ids = list.targetsOr(d.id)}
+  {@const items = itemsOf(ids)}
+  {#each isPost(d.kind) ? POST_BUTTONS : PAPER_BUTTONS as name (name)}
+    {@const action = actions[name]}
+    <button class:primary={name === "add"} class:open={name === "open"} title={action.hint} disabled={!action.enabled(items)} onclick={() => action.run(ids)}>
+      {buttonText(name, action.label(items))}{#if action.key}{" "}<kbd>{action.key.toUpperCase()}</kbd>{/if}
+    </button>
+  {/each}
+{/snippet}
+
 <style>
-  main {
-    display: flex;
-    height: 100vh;
-  }
-
-  .sidebar {
-    flex: none;
-    overflow-y: auto;
-    background: var(--sidebar);
-    border-right: 1px solid var(--line);
-  }
-
-  .right {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  header {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 46px;
-    padding: 0 12px;
-    border-bottom: 1px solid var(--line);
-  }
-  .content {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-  }
-  .list {
-    flex: 1;
-    min-width: 320px;
-    display: flex;
-    flex-direction: column;
-  }
-  .details {
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    border-left: 1px solid var(--line);
-  }
-  /* the table, and the item read over it: the table stays as it was, scrolled where it was */
-  .rows {
-    position: relative;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  /* the search keeps its width: what is next to it stays in place */
-  .search {
-    position: relative;
-    flex: 0 1 50%;
-    min-width: 200px;
-    max-width: 560px;
-    display: flex;
-  }
-  input {
-    flex: 1;
-    min-width: 0;
-    height: 28px;
-    padding: 0 24px 0 10px;
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    background: transparent;
-    color: var(--fg);
-    font: inherit;
-    outline: none;
-  }
-  input:focus {
-    border-color: var(--accent);
-  }
-  input::-webkit-search-cancel-button {
-    display: none;
-  }
-  .clear {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: none;
-    color: var(--muted);
-    font-size: 15px;
-    line-height: 20px;
-  }
-  .clear:hover {
-    background: var(--line);
-    color: var(--fg);
-  }
-  .notice {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--muted);
-    font-size: 12px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .spacer {
-    flex: 1;
-  }
-  .tool {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: none;
-    color: var(--fg);
-    font: inherit;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-  .tool:disabled {
-    opacity: 0.6;
-  }
   /* what a fetch in the background brought, waiting */
   .tool.held {
     border-color: color-mix(in srgb, var(--feeds) 40%, transparent);
@@ -1245,100 +825,11 @@
       transform: rotate(360deg);
     }
   }
-
-  /* the choices as chips, the count and the sort */
-  .filters {
-    flex: none;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 6px;
-    padding: 6px 12px;
-    border-bottom: 1px solid var(--line);
-    font-size: 12px;
-  }
   .chip {
-    display: inline-flex;
-    align-items: center;
     max-width: 260px;
-    padding: 1px 2px 1px 8px;
-    border: 1px solid color-mix(in srgb, var(--feeds) 40%, transparent);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--feeds) 14%, transparent);
-    color: var(--fg);
-  }
-  .chip .text {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .chip button {
-    flex: none;
-    width: 16px;
-    height: 16px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: none;
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 16px;
-  }
-  .chip button:hover {
-    background: var(--line);
-    color: var(--fg);
-  }
-  .sort {
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--muted);
-    font: inherit;
-    font-variant-numeric: tabular-nums;
-  }
-  .sort:hover {
-    color: var(--fg);
-  }
-  /* two or more rows selected: what acts on them all */
-  .selbar {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
-    font-size: 12px;
-  }
-  .selbar button {
-    padding: 2px 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--fg);
-    font: inherit;
-  }
-  .selbar button.plain {
-    border: none;
-    background: none;
-    color: var(--muted);
   }
 
-  /* the last fetch, and what the feeds hold */
-  .status {
-    position: relative;
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    height: 26px;
-    padding: 0 12px;
-    border-top: 1px solid var(--line);
-    background: var(--sidebar);
-    color: var(--muted);
-    font-size: 12px;
-    white-space: nowrap;
-  }
+  /* the failures of the last fetch */
   .failed {
     margin-left: 4px;
     padding: 0;
@@ -1377,15 +868,6 @@
     overflow-wrap: anywhere;
   }
 
-  .empty {
-    margin: auto;
-    padding: 24px;
-    color: var(--muted);
-    text-align: center;
-  }
-  .empty.error {
-    color: var(--error);
-  }
   button.link {
     padding: 0;
     border: none;
