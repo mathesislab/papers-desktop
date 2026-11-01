@@ -11,11 +11,9 @@ import {
   chooseSource,
   feedChips,
   nextSort,
-  live,
   queryOf,
   requestOf,
   restoredFeeds,
-  searchOf,
   shelfCounts,
   withoutChip,
   type FeedFilters,
@@ -52,19 +50,15 @@ import { decide, progressOf, reviewed, startReview, stepReview, summaryOf } from
 
 const f = (over: Partial<FeedFilters> = {}): FeedFilters => ({ ...NO_FEED_FILTERS, ...over });
 
-test("the query: a term per group of choices, then the text typed; dismissed left out unless asked", () => {
-  assert.equal(searchOf(f()), "is:new -is:dismissed", "every kind");
-  assert.equal(searchOf(f({ view: "all" })), "-is:dismissed");
+test("the query: a term per group of choices, then the text typed", () => {
+  assert.equal(queryOf(f()), "is:new", "every kind");
+  assert.equal(queryOf(f({ view: "all" })), "");
   assert.equal(
-    searchOf(f({ query: " greenland ", view: "starred", kinds: ["preprint"], interests: ["Ice sheets"], sources: ["The Cryosphere", "GRL"] })),
-    'is:starred kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL greenland -is:dismissed',
+    queryOf(f({ query: " greenland ", view: "starred", kinds: ["preprint"], interests: ["Ice sheets"], sources: ["The Cryosphere", "GRL"] })),
+    'is:starred kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL greenland',
   );
   assert.equal(queryOf(f({ kinds: ["news", "blog"], interests: ['say "hi"'] })), 'is:new kind:news,blog prof:"say hi"');
-  assert.equal(searchOf(f({ view: "all", query: "is:dismissed" })), "is:dismissed");
-  assert.equal(searchOf(f({ view: "all", query: "-is:seen,dismissed x" })), "-is:seen,dismissed x");
-  assert.deepEqual(requestOf(f({ kinds: ["news"], sort: "newest" })), { query: "is:new kind:news -is:dismissed", sort: "newest" });
-  assert.equal(live("x"), "x -is:dismissed");
-  assert.equal(live(""), "-is:dismissed");
+  assert.deepEqual(requestOf(f({ kinds: ["news"], sort: "newest" })), { query: "is:new kind:news", sort: "newest" });
 });
 
 test("a click chooses one of a group, ⌘-click several", () => {

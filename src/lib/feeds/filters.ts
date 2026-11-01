@@ -86,10 +86,6 @@ export function restoredFeeds(
 /** The field names of the feeds' queries: the core's, and the facets and numbers of crates/feeds/src/query.rs. */
 const FEED_FIELDS = [...FIELDS, "kind", "is", "src", "prof", "score", "like"];
 
-/** Whether a query has an `is:` term on dismissed items (`is:dismissed`, `-is:seen,dismissed`). */
-const asksDismissed = (query: string) =>
-  queryTerms(query, FEED_FIELDS).some((t) => t.field === "is" && t.values.some((v) => v.trim().toLowerCase() === "dismissed"));
-
 /** The query of the choices: a term per group of the sidebar, then the text typed (`is:new kind:paper,preprint
  *  prof:AMOC melt`). The whole query of the tab: what a saved view keeps (see `decompose`, which takes the choices
  *  back: they come first). */
@@ -105,16 +101,10 @@ export function queryOf(f: FeedFilters): string {
     .join(" ");
 }
 
-/** A query of the feeds as shown: dismissed items left out unless it asks for them. */
-export const live = (query: string) =>
-  asksDismissed(query) ? query : [query, "-is:dismissed"].filter(Boolean).join(" ");
-
-/** The query the backend matches: the query of the choices, live. */
-export const searchOf = (f: FeedFilters): string => live(queryOf(f));
-
-/** What `view` is asked for. */
+/** What `view` is asked for: the query of the choices (the backend leaves the dismissed items out unless it names
+ *  them), the order. */
 export function requestOf(f: FeedFilters): ViewRequest {
-  return { query: searchOf(f), sort: f.sort };
+  return { query: queryOf(f), sort: f.sort };
 }
 
 /** A value of a group clicked: that one alone, or none when it was so already; with ⌘ (`toggle`), added to the
