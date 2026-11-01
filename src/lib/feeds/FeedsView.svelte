@@ -26,7 +26,7 @@
   import * as api from "./api";
   import type { FeedCounts, FeedDetail, FeedRow, FetchSummary, Linked, SubscriptionInfo } from "./api";
   import FeedsSidebar from "./FeedsSidebar.svelte";
-  import { FEED_ORDER, FEED_SPECS, type FeedColumn } from "./FeedTable.svelte";
+  import { FEED_ORDER, FEED_SPECS, type FeedColumn } from "./columns";
   import type { Shown } from "$lib/list/columns";
   import Review from "./Review.svelte";
   import SubscribeSheet from "./SubscribeSheet.svelte";

@@ -80,7 +80,8 @@
   import Sidebar from "$lib/library/Sidebar.svelte";
   import { DROP_NEW, pdfDrag } from "$lib/library/drag.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import Table, { COLUMNS, value, type Column, type Sort } from "$lib/library/Table.svelte";
+  import { COLUMNS, type Column, type Sort } from "$lib/library/columns";
+  import Table, { value } from "$lib/library/Table.svelte";
   import type { Shown } from "$lib/list/columns";
   import type {
     AddOptions,

@@ -15,14 +15,14 @@
   import { onMount } from "svelte";
   import * as feedsApi from "$lib/feeds/api";
   import type { FeedDetail, FeedRow } from "$lib/feeds/api";
-  import { SEARCH_ORDER, SEARCH_SPECS, type FeedColumn } from "$lib/feeds/FeedTable.svelte";
-  import type { Shown } from "$lib/list/columns";
+  import { SEARCH_ORDER, SEARCH_SPECS } from "$lib/feeds/columns";
   import { interestColours } from "$lib/feeds/filters";
   import { mergeRows, toggled } from "$lib/feeds/items";
   import { modalOpen } from "$lib/library/modal.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import { ItemList, typing } from "$lib/list/ItemList.svelte";
   import ItemPane from "$lib/list/ItemPane.svelte";
+  import type { SearchLayout } from "$lib/layout";
   import "$lib/list/tab.css";
   import { tabContext } from "$lib/list/tab";
   import * as api from "./api";
@@ -34,19 +34,15 @@
     moreText,
     totalText,
     withRecent,
-    type SearchState,
     type Typed,
   } from "./state";
   import SearchSidebar from "./SearchSidebar.svelte";
 
   let {
     search = $bindable(),
-    columns = $bindable(),
   }: {
-    /** the fields, the recent searches and the search shown: the window's layout keeps them */
-    search: SearchState;
-    /** the list's columns, in their order, with their widths: the window's layout keeps them */
-    columns: Shown<FeedColumn>[];
+    /** the fields, the recent searches, the search shown and the list's columns: the window's layout keeps them */
+    search: SearchLayout;
   } = $props();
 
   const tab = tabContext();
@@ -374,13 +370,13 @@
     <ItemPane
       {list}
       table={{
-        columns,
+        columns: search.columns,
         specs: SEARCH_SPECS,
         menu: SEARCH_ORDER,
         unread: false,
         star: { on: "Saved for later: unsave", off: "Save for later" },
         after: view === "results" && results?.next ? showMore : undefined,
-        oncolumns: (shown) => (columns = shown),
+        oncolumns: (shown) => (search.columns = shown),
         onstar: (id) => save([id]),
         onmenu: rowMenu,
       }}

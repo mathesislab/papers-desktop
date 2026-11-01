@@ -11,16 +11,14 @@
   import { commands } from "$lib/commands";
   import FeedsView from "$lib/feeds/FeedsView.svelte";
   import { label, mac, matches, zoomStep } from "$lib/keys";
-  import { restore, type Layout } from "$lib/layout";
+  import { restore, type Layout, type Tab } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
   import { setTabContext } from "$lib/list/tab";
   import SearchView from "$lib/search/SearchView.svelte";
   import { onToggle, toggles, type Toggle } from "$lib/toggles";
 
-  type TabName = Layout["view"];
-
   /** the tabs of the window, in their order: the switch that shows each, but the library's, always there */
-  const TABS: { tab: TabName; name: string; title: string; toggle: Toggle | null }[] = [
+  const TABS: { tab: Tab; name: string; title: string; toggle: Toggle | null }[] = [
     { tab: "library", name: "Library", title: "Library", toggle: null },
     { tab: "feeds", name: "Feeds", title: "Feeds", toggle: "feeds-tab" },
     { tab: "search", name: "Search", title: "Search OpenAlex's works", toggle: "search-tab" },
@@ -28,7 +26,7 @@
 
   let layout = $state<Layout>(restore(null));
   /** the tabs shown: their switches (Settings → Feeds, Window → Show Feeds Tab, Show Search Tab) */
-  let shownTabs = $state<Record<TabName, boolean>>({ library: true, feeds: true, search: true });
+  let shownTabs = $state<Record<Tab, boolean>>({ library: true, feeds: true, search: true });
   /** the details of the Feeds and Search tabs beside the list: the switch `feeds-beside` */
   let beside = $state(false);
   let loaded = false;
@@ -88,16 +86,16 @@
     const window = getCurrentWindow();
     await window.show();
     await window.setFocus();
-    if (layout.view === "library") library?.focusSearch();
+    if (layout.tab === "library") library?.focusSearch();
   }
 
   /** A tab of the window to the front. The focus does not stay in the one that goes; the library's search field
    *  takes it, unless a paper is in front (its PDF has the keys). */
-  function showView(view: TabName) {
-    if (layout.view === view) return;
+  function showTab(tab: Tab) {
+    if (layout.tab === tab) return;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    layout.view = view;
-    if (view === "library") tick().then(() => library?.focusSearch());
+    layout.tab = tab;
+    if (tab === "library") tick().then(() => library?.focusSearch());
   }
 
   /** A switch set: a tab shown or hidden (hidden in front, the Library tab comes), the details beside or not. */
@@ -108,7 +106,7 @@
     }
     const tab = TABS.find((t) => t.toggle === toggle)!.tab;
     shownTabs[tab] = on;
-    if (!on && layout.view === tab) showView("library");
+    if (!on && layout.tab === tab) showTab("library");
   }
 
   // saved a moment after a change: a pane dragged changes it many times
@@ -124,10 +122,10 @@
     switch (name) {
       // from the Feeds tab, the Library tab as it was left; in it, the library in front of the papers
       case "library":
-        return layout.view === "library" ? library?.command(name) : showView("library");
+        return layout.tab === "library" ? library?.command(name) : showTab("library");
       case "feeds":
       case "search":
-        return shownTabs[name] ? showView(name) : undefined;
+        return shownTabs[name] ? showTab(name) : undefined;
       // the PDF in front has the keys; else they set the text size
       case "zoom-in":
         return zoom(1);
@@ -149,7 +147,7 @@
       case "redo":
         return undo(false);
       default:
-        return layout.view === "library" ? library?.command(name) : tabCommand(name);
+        return layout.tab === "library" ? library?.command(name) : tabCommand(name);
     }
   }
 
@@ -162,12 +160,12 @@
       case "add":
         return library?.command(name);
       case "find":
-        return (layout.view === "feeds" ? feeds : search)?.focusSearch();
+        return (layout.tab === "feeds" ? feeds : search)?.focusSearch();
     }
   }
 
   function zoom(steps: number) {
-    if (layout.view !== "library" || !library?.zoom(steps)) invoke("text_size_step", { steps });
+    if (layout.tab !== "library" || !library?.zoom(steps)) invoke("text_size_step", { steps });
   }
 
   /** ⌘Z, ⌘⇧Z: in a field, the field's own undo; elsewhere the library's, in the Library tab. */
@@ -177,7 +175,7 @@
       document.execCommand(back ? "undo" : "redo");
       return;
     }
-    if (layout.view === "library") library?.stepLibrary(back);
+    if (layout.tab === "library") library?.stepLibrary(back);
   }
 
   function onkeydown(e: KeyboardEvent) {
@@ -214,8 +212,8 @@
       }
     }
     // the keys of the tab in front only: the other's stay off
-    if (layout.view === "library") library?.key(e);
-    else if (layout.view === "feeds") feeds?.key(e);
+    if (layout.tab === "library") library?.key(e);
+    else if (layout.tab === "feeds") feeds?.key(e);
     else search?.key(e);
   }
 </script>
@@ -230,11 +228,11 @@
       {#each shown as t (t.tab)}
         <button
           role="tab"
-          aria-selected={layout.view === t.tab}
+          aria-selected={layout.tab === t.tab}
           class={t.tab}
-          class:on={layout.view === t.tab}
+          class:on={layout.tab === t.tab}
           title="{t.title} ({label(commands[t.tab])})"
-          onclick={() => showView(t.tab)}>{t.name}</button
+          onclick={() => showTab(t.tab)}>{t.name}</button
         >
       {/each}
     </div>
@@ -245,14 +243,14 @@
 <LibraryView
   bind:this={library}
   bind:layout
-  visible={layout.view === "library"}
+  visible={layout.tab === "library"}
   {tabs}
-  onfront={() => showView("library")}
+  onfront={() => showTab("library")}
 />
-{#if shownTabs.feeds && layout.view === "feeds"}
-  <FeedsView bind:this={feeds} bind:filters={layout.feeds} bind:columns={layout.feedColumns} bind:shown={layout.feedsShown} />
-{:else if shownTabs.search && layout.view === "search"}
-  <SearchView bind:this={search} bind:search={layout.search} bind:columns={layout.searchColumns} />
+{#if shownTabs.feeds && layout.tab === "feeds"}
+  <FeedsView bind:this={feeds} bind:filters={layout.feeds.filters} bind:columns={layout.feeds.columns} bind:shown={layout.feeds.shown} />
+{:else if shownTabs.search && layout.tab === "search"}
+  <SearchView bind:this={search} bind:search={layout.search} />
 {/if}
 
 <style>
