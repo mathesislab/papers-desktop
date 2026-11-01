@@ -9,6 +9,8 @@
   import { onMount, tick } from "svelte";
   import "$lib/theme.css";
   import { commands } from "$lib/commands";
+  import { settings as feedSettings } from "$lib/feeds/api";
+  import { interestColours } from "$lib/feeds/filters";
   import FeedsView from "$lib/feeds/FeedsView.svelte";
   import { label, mac, matches, zoomStep } from "$lib/keys";
   import { restore, type Layout, type Tab } from "$lib/layout";
@@ -29,6 +31,8 @@
   let shownTabs = $state<Record<Tab, boolean>>({ library: true, feeds: true, search: true });
   /** the details of the Feeds and Search tabs beside the list: the switch `feeds-beside` */
   let beside = $state(false);
+  /** the colours of the interests of the feeds' settings, for both tabs */
+  let colours = $state(new Map<string, string>());
   let loaded = false;
   let timer: ReturnType<typeof setTimeout>;
 
@@ -59,6 +63,9 @@
     get showDetails() {
       return layout.showDetails;
     },
+    get colours() {
+      return colours;
+    },
     // the Add sheet is the library's, over the tab: after the paper is added, the tab stays in front
     onadd: (initial) => library?.addFrom(initial) ?? Promise.resolve(null),
     onentry: (id) => library?.showEntry(id),
@@ -69,10 +76,16 @@
     // from the menu of the app
     const unlisten = listen<string>("command", (e) => command(e.payload));
     const unlistenToggle = onToggle(setToggle);
+    // back from the settings: the interests again
+    const unlistenFocus = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (focused) readColours();
+    });
     load();
+    readColours();
     return () => {
       unlisten.then((f) => f());
       unlistenToggle();
+      unlistenFocus.then((f) => f());
     };
   });
 
@@ -87,6 +100,15 @@
     await window.show();
     await window.setFocus();
     if (layout.tab === "library") library?.focusSearch();
+  }
+
+  /** The colours of the interests, as the settings name them. */
+  async function readColours() {
+    try {
+      colours = interestColours((await feedSettings()).interests.map((i) => i.name));
+    } catch {
+      // the interests show without their colours
+    }
   }
 
   /** A tab of the window to the front. The focus does not stay in the one that goes; the library's search field

@@ -29,7 +29,7 @@
     /** the choices made: the sidebar makes them */
     filters: FeedFilters;
     counts: FeedCounts | null;
-    /** the colours of the interests */
+    /** the colours of the interests of the settings, in the order of their names: those with items listed */
     colours: Map<string, string>;
     /** the subscriptions, in their groups */
     groups: SourceGroup[];
@@ -48,6 +48,8 @@
   }
 
   let shelves = $derived(shelfCounts(counts));
+  /** the interests some items reach, with their colours */
+  let interests = $derived([...colours].filter(([name]) => counts?.total.interests[name]));
   let days = $derived(keepDays === null ? null : `${keepDays} ${keepDays === 1 ? "day" : "days"}`);
 </script>
 
@@ -82,9 +84,9 @@
       </button>
     {/each}
 
-    {#if colours.size}
+    {#if interests.length}
       <h4>Interests</h4>
-      {#each colours as [name, colour] (name)}
+      {#each interests as [name, colour] (name)}
         <button class="item" class:selected={filters.interests.includes(name)} onclick={(e) => (filters = chooseInterest(filters, name, modClick(e)))}>
           <span class="dot" style:background={colour}></span>
           <span class="name">{name}</span>{@render count(counts?.unread.interests[name] ?? 0, counts?.total.interests[name] ?? 0)}

@@ -17,7 +17,6 @@
   let {
     list,
     table,
-    colours,
     tint,
     none,
     bar,
@@ -31,8 +30,6 @@
     list: ItemList;
     /** the table's own: its columns, their names and widths, the order, the star, what follows the last row */
     table: Omit<ComponentProps<typeof FeedTable>, "rows" | "selected" | "focus" | "colours" | "onselect" | "onopen">;
-    /** the colours of the interests */
-    colours: Map<string, string>;
     /** the colour of the tab: the row pinned over the item read */
     tint?: string;
     /** the details beside the list, with no item in focus */
@@ -67,7 +64,7 @@
           rows={list.rows}
           selected={selection.selected}
           focus={selection.focus}
-          {colours}
+          colours={tab.colours}
           onselect={list.select}
           onopen={(id) => list.openItems(selection.selected.has(id) ? list.targets() : [id])}
         />
@@ -97,7 +94,7 @@
     {wide}
     count={selection.focus !== null && selection.selected.has(selection.focus) ? selection.selected.size : 1}
     byId={list.byId}
-    {colours}
+    colours={tab.colours}
     store={list.store}
     {actions}
     {finding}

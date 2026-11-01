@@ -16,7 +16,6 @@
   import * as feedsApi from "$lib/feeds/api";
   import type { FeedDetail, FeedRow } from "$lib/feeds/api";
   import { SEARCH_ORDER, SEARCH_SPECS } from "$lib/feeds/columns";
-  import { interestColours } from "$lib/feeds/filters";
   import { mergeRows, toggled } from "$lib/feeds/items";
   import { modalOpen } from "$lib/library/modal.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
@@ -59,8 +58,6 @@
   /** what the search answered instead of works: the query refused, OpenAlex not reached */
   let failure = $state<string | null>(null);
   let following = $state(false);
-  /** the colours of the interests, as in the Feeds tab */
-  let colours = $state(new Map<string, string>());
   let yearInput = $state<HTMLInputElement>();
   /** the searches asked: an answer to one before the last is dropped */
   let asked = 0;
@@ -94,10 +91,6 @@
       list.version++;
       refresh();
     });
-    feedsApi.settings().then(
-      (s) => (colours = interestColours(s.interests.map((i) => i.name))),
-      () => {},
-    );
     refresh();
     return () => {
       unlisten.then((f) => f());
@@ -380,7 +373,6 @@
         onstar: (id) => star([id]),
         onmenu: rowMenu,
       }}
-      {colours}
       tint="var(--search)"
       none="No work selected"
       bar={listBar}

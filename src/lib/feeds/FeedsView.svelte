@@ -34,7 +34,6 @@
     SORTS,
     applied,
     feedChips,
-    interestColours,
     nextSort,
     isShown,
     queryOf,
@@ -119,7 +118,6 @@
   });
   let chips = $derived(feedChips(filters));
   let groups = $derived(sourceGroups(subscriptions, counts));
-  let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
   let starred = $derived(counts?.is.starred ?? 0);
   /** the saved views of the sidebar; the one the tab shows */
   let views = $state<api.SavedView[]>([]);
@@ -593,7 +591,7 @@
       <FeedsSidebar
         bind:filters
         {counts}
-        {colours}
+        colours={tab.colours}
         {groups}
         {keepDays}
         onsourcemenu={sourceMenu}
@@ -660,7 +658,7 @@
     {#if reviewing}
       <Review
         bind:this={reviewer}
-        {colours}
+        colours={tab.colours}
         onadd={list.add}
         ontriage={(id, t) => list.setTo([id], t)}
         onopen={(id) => list.openItems([id])}
@@ -684,7 +682,6 @@
           onstar: (id) => actions.star.run([id]),
           onmenu: rowMenu,
         }}
-        {colours}
         none="No item selected"
         bar={listBar}
         empty={loaded && list.rows.length ? undefined : noRows}

@@ -1,6 +1,6 @@
 // What the main window (src/routes/main/+page.svelte) gives its Feeds and Search tabs alike, through the context:
-// the switch of the tabs, the details beside the list or not, the panes' widths and whether they show, the
-// library's Add sheet, a paper shown in the Library tab. The tabs and their ItemList read it as they start.
+// the switch of the tabs, the details beside the list or not, the panes' widths and whether they show, the colours
+// of the interests, the library's Add sheet, a paper shown in the Library tab. The tabs and their ItemList read it as they start.
 
 import { createContext, type Snippet } from "svelte";
 
@@ -14,6 +14,8 @@ export interface Tab {
   details: number;
   readonly showSidebar: boolean;
   readonly showDetails: boolean;
+  /** the colours of the interests of the settings (`interestColours`): an interest's the same in both tabs */
+  readonly colours: Map<string, string>;
   /** the library's Add sheet, over the tab: a DOI (or arXiv id) to fetch, its free PDF looked for or not. The
    *  answer is what was added, said; none when the sheet was closed */
   onadd(initial: { id: string; pdf: boolean }): Promise<string | null>;
