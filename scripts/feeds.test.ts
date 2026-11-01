@@ -149,10 +149,10 @@ test("the counts of the views, and the sources in their groups", () => {
   });
   const groups = sourceGroups(
     [
-      sub("TC", "journal", { rss: "x" }),
-      sub("GRL", "journal", { rss: "y" }),
+      sub("TC", "journal", { url: "x" }),
+      sub("GRL", "journal", { url: "y" }),
       sub("Ice", "journal", { openalex: "z" }),
-      sub("Eos", "news", { rss: "e" }),
+      sub("Eos", "news", { url: "e" }),
     ],
     {
       total: { kinds: {}, interests: {}, sources: { TC: 3, GRL: 1, Ice: 5 } },
@@ -171,18 +171,18 @@ test("the counts of the views, and the sources in their groups", () => {
 });
 
 test("the feed of the Subscribe sheet, and the same feed", () => {
-  assert.deepEqual(feedOf("rss", " https://x.org/feed "), { rss: "https://x.org/feed" });
-  assert.deepEqual(feedOf("crossref", "1994-0424"), { crossref: "1994-0424" });
+  assert.deepEqual(feedOf("url", " https://x.org/feed "), { url: "https://x.org/feed" });
+  assert.deepEqual(feedOf("issn", "1994-0424"), { issn: "1994-0424" });
   assert.equal(feedOf("openalex", "  "), null);
   assert.deepEqual(feedOf("words", " ice sheet AND (tipping OR collapse) "), {
     openalex: "title_and_abstract.search:ice sheet AND (tipping OR collapse)",
   });
   assert.equal(wordsFilter("AMOC,  collapse,\ttipping"), "title_and_abstract.search:AMOC collapse tipping");
-  assert.ok(sameFeed({ rss: "https://x.org/feed/" }, { rss: "http://X.org/feed" }));
-  assert.ok(sameFeed({ crossref: "1994-0424" }, { crossref: "19940424" }));
-  assert.ok(!sameFeed({ rss: "x" }, { crossref: "x" }));
-  assert.equal(feedText({ crossref: "1994-0424" }), "Crossref ISSN 1994-0424");
-  assert.equal(feedText({ rss: "https://x.org/feed" }), "https://x.org/feed");
+  assert.ok(sameFeed({ url: "https://x.org/feed/" }, { url: "http://X.org/feed" }));
+  assert.ok(sameFeed({ issn: "1994-0424" }, { issn: "19940424" }));
+  assert.ok(!sameFeed({ url: "x" }, { issn: "x" }));
+  assert.equal(feedText({ issn: "1994-0424" }), "Crossref ISSN 1994-0424");
+  assert.equal(feedText({ url: "https://x.org/feed" }), "https://x.org/feed");
 });
 
 const glaciology: Journal = {
@@ -197,8 +197,8 @@ const glaciology: Journal = {
 test("a journal of the Subscribe sheet: its facts, followed or not, what its site gives", () => {
   assert.equal(journalFacts(glaciology), "Cambridge University Press · ISSN 0022-1430 · 6886 works");
   assert.equal(journalFacts({ ...glaciology, publisher: null, works: null }), "ISSN 0022-1430");
-  const sweep = (issn: string) => ({ feed: { crossref: issn } }) as SubscriptionInfo;
-  assert.deepEqual(journalSubscription(glaciology, [sweep("17275652")])?.feed, { crossref: "17275652" }, "by any of its ISSNs");
+  const sweep = (issn: string) => ({ feed: { issn } }) as SubscriptionInfo;
+  assert.deepEqual(journalSubscription(glaciology, [sweep("17275652")])?.feed, { issn: "17275652" }, "by any of its ISSNs");
   assert.equal(journalSubscription(glaciology, [sweep("1994-0424")]), undefined);
   const homepage = glaciology.homepage;
   const url = "https://j.example.org/rss";

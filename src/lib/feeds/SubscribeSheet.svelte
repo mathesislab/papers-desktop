@@ -48,8 +48,8 @@
   } = $props();
 
   const TYPES: { type: FeedType; name: string; placeholder: string }[] = [
-    { type: "rss", name: "Feed URL", placeholder: "https://… the RSS or Atom feed of a journal, a site, a blog" },
-    { type: "crossref", name: "Crossref ISSN", placeholder: "1994-0424: the works of a journal, as Crossref indexes them" },
+    { type: "url", name: "Feed URL", placeholder: "https://… the RSS or Atom feed of a journal, a site, a blog" },
+    { type: "issn", name: "Crossref ISSN", placeholder: "1994-0424: the works of a journal, as Crossref indexes them" },
     { type: "openalex", name: "OpenAlex filter", placeholder: "topics.id:T10017: a filter of OpenAlex works (its key helps)" },
     {
       type: "words",
@@ -59,7 +59,7 @@
     },
   ];
 
-  let type = $state<FeedType>("rss");
+  let type = $state<FeedType>("url");
   let text = $state("");
   /** the kind chosen; "guess": a feed read first, its kind guessed (`guessKind`); a sweep's items are papers */
   let kind = $state<SourceKind | "guess">("guess");
@@ -170,7 +170,7 @@
     chosen[key] = choice;
     busy = false;
     if ("feed" in choice) {
-      await subscribe({ rss: choice.feed }, "journal", title, `by the feed of its site, ${choice.feed}`);
+      await subscribe({ url: choice.feed }, "journal", title, `by the feed of its site, ${choice.feed}`);
     }
   }
 
@@ -223,12 +223,12 @@
     if (!feed || busy) return;
     const title = type === "words" ? text.trim() : undefined;
     if (kind !== "guess") return subscribe(feed, kind, title);
-    if (!("rss" in feed)) return subscribe(feed, "journal", title);
+    if (!("url" in feed)) return subscribe(feed, "journal", title);
     busy = true;
     message = { text: "Reading the feed…" };
     let guess: api.Guess;
     try {
-      guess = await api.guessKind(feed.rss);
+      guess = await api.guessKind(feed.url);
     } catch (e) {
       message = { text: String(e), error: true };
       busy = false;
@@ -276,7 +276,7 @@
 {#snippet journalRow(title: string, facts: string, journal: Journal)}
   {@const state = chosen[journalKey(journal)]}
   {@const shown = choiceFeed(state)}
-  {@const sub = journalSubscription(journal, subscriptions) ?? (shown ? subscriptionOf({ rss: shown }, subscriptions) : undefined)}
+  {@const sub = journalSubscription(journal, subscriptions) ?? (shown ? subscriptionOf({ url: shown }, subscriptions) : undefined)}
   {@const on = !!sub}
   <div class="suggestion">
     <span class="title" title={title}>{title}</span>
@@ -298,7 +298,7 @@
       <span class="spacer"></span>
       {#if state.other}
         {@const other = state.other.url}
-        <button disabled={busy} onclick={() => subscribe({ rss: other }, "journal")}>Subscribe to it</button>
+        <button disabled={busy} onclick={() => subscribe({ url: other }, "journal")}>Subscribe to it</button>
       {/if}
       {#if state.homepage}
         {@const homepage = state.homepage}
@@ -306,7 +306,7 @@
           Open its site
         </button>
       {/if}
-      <button disabled={busy} onclick={() => subscribe({ crossref: issn }, "journal", title)}>
+      <button disabled={busy} onclick={() => subscribe({ issn }, "journal", title)}>
         Follow in Crossref
       </button>
     </div>
@@ -327,7 +327,7 @@
       <label class="kind">
         Its items are
         <select bind:value={kind}>
-          <option value="guess">{type === "rss" ? "Guessed from the feed" : "Papers"}</option>
+          <option value="guess">{type === "url" ? "Guessed from the feed" : "Papers"}</option>
           {#each sourceKinds as kind (kind)}{@const k = SOURCE_KINDS[kind]}<option value={kind}>{k.name}{k.hint ? ` (${k.hint})` : ""}</option>{/each}
         </select>
       </label>
@@ -407,13 +407,13 @@
           {#each fromLibrary as j (j.title)}
             {@const f = j.follow}
             {#if f.by === "journal"}
-              {@render journalRow(j.title, `${j.papers} papers`, f.journal)}
+              {@render journalRow(j.title, `${j.papers} papers`, f)}
             {:else}
               <div class="suggestion">
                 <span class="title" title={j.title}>{j.title}</span>
                 <span class="muted">{j.papers} papers</span>
                 {#if f.by === "suggested"}
-                  {@render follow(f.suggested.feed, f.suggested.kind)}
+                  {@render follow(f.feed, f.kind)}
                 {:else if f.by === "pending"}
                   <span class="muted">looking up…</span>
                 {:else if f.by === "failed"}

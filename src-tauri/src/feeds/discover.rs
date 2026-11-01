@@ -3,61 +3,12 @@
 //! OpenAlex, the feed its site links to, the kind of a feed guessed.
 
 use papers_core::Library;
-use papers_feeds::{Feed, Journal, Network, SiteFeed, SourceKind};
-use serde::{Deserialize, Serialize};
+use papers_feeds::{Follow, Journal, Network, SiteFeed, Suggested};
+use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
 use crate::AppState;
 use crate::fetch::{blocking, page_agent};
-
-/// What a subscription follows, as the page writes it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum FeedOf {
-    Rss(String),
-    Crossref(String),
-    OpenAlex(String),
-}
-
-impl From<&Feed> for FeedOf {
-    fn from(feed: &Feed) -> FeedOf {
-        match feed {
-            Feed::Rss { url } => FeedOf::Rss(url.clone()),
-            Feed::Crossref { issn } => FeedOf::Crossref(issn.clone()),
-            Feed::OpenAlex { filter } => FeedOf::OpenAlex(filter.clone()),
-        }
-    }
-}
-
-impl From<FeedOf> for Feed {
-    fn from(feed: FeedOf) -> Feed {
-        match feed {
-            FeedOf::Rss(url) => Feed::Rss { url },
-            FeedOf::Crossref(issn) => Feed::Crossref { issn },
-            FeedOf::OpenAlex(filter) => Feed::OpenAlex { filter },
-        }
-    }
-}
-
-/// A subscription offered.
-#[derive(Debug, Serialize)]
-pub struct Suggested {
-    title: String,
-    kind: SourceKind,
-    feed: FeedOf,
-    group: String,
-}
-
-impl From<papers_feeds::Suggested> for Suggested {
-    fn from(s: papers_feeds::Suggested) -> Suggested {
-        Suggested {
-            feed: FeedOf::from(&s.feed),
-            title: s.title,
-            kind: s.kind,
-            group: s.group,
-        }
-    }
-}
 
 /// A journal of the library's papers, and what follows it.
 #[derive(Debug, Serialize)]
@@ -65,30 +16,6 @@ pub struct LibraryJournal {
     title: String,
     papers: usize,
     follow: Follow,
-}
-
-/// What follows a journal of the library: a suggested subscription, a sweep
-/// of its ISSN (none if none was found), nothing found, or not looked up yet.
-#[derive(Debug, Serialize)]
-#[serde(tag = "by", rename_all = "lowercase")]
-pub enum Follow {
-    Suggested { suggested: Suggested },
-    Journal { journal: Journal },
-    Unknown,
-    Pending,
-}
-
-impl From<papers_feeds::Follow> for Follow {
-    fn from(follow: papers_feeds::Follow) -> Follow {
-        match follow {
-            papers_feeds::Follow::Suggested(s) => Follow::Suggested {
-                suggested: s.into(),
-            },
-            papers_feeds::Follow::Journal(journal) => Follow::Journal { journal },
-            papers_feeds::Follow::Unknown => Follow::Unknown,
-            papers_feeds::Follow::Pending => Follow::Pending,
-        }
-    }
 }
 
 /// What a journal's site gives: its home page, and what it links to (none
@@ -116,9 +43,6 @@ fn library_journals(library: &Library) -> Vec<papers_feeds::LibraryJournal> {
 #[tauri::command]
 pub async fn feeds_suggested() -> Vec<Suggested> {
     papers_feeds::suggested()
-        .into_iter()
-        .map(Suggested::from)
-        .collect()
 }
 
 /// The journals of the library's papers, each with what follows it as far
@@ -129,11 +53,10 @@ pub async fn feeds_library_suggested(app: AppHandle) -> Result<Vec<LibraryJourna
         let state = app.state::<AppState>();
         let journals = library_journals(&state.library.read().unwrap());
         state.feeds.journals(|known| {
-            let follow = |j: &papers_feeds::LibraryJournal| Follow::from(known.follow(j));
             journals
                 .iter()
                 .map(|j| LibraryJournal {
-                    follow: follow(j),
+                    follow: known.follow(j),
                     title: j.title.clone(),
                     papers: j.papers,
                 })
@@ -193,17 +116,16 @@ pub async fn feeds_lookup_journal(app: AppHandle, title: String) -> Result<Follo
     blocking(move || {
         let state = app.state::<AppState>();
         let requests = state.requests()?;
-        let follow = state
+        state
             .feeds
-            .journals(|journals| journals.look_up(&title, &requests.http, &requests.access))??;
-        Ok(follow.into())
+            .journals(|journals| journals.look_up(&title, &requests.http, &requests.access))?
     })
     .await
 }
 
 #[cfg(test)]
 mod tests {
-    use papers_feeds::SubscriptionSettings;
+    use papers_feeds::{Feed, SourceKind, SubscriptionSettings};
 
     use super::*;
     use crate::feeds::FeedsState;
@@ -243,19 +165,19 @@ mod tests {
         );
 
         let state = FeedsState::on_clock(dir.path());
-        let follow = |j| {
-            state
-                .journals(|known| Follow::from(known.follow(j)))
-                .unwrap()
-        };
+        let follow = |j| state.journals(|known| known.follow(j)).unwrap();
         let json = |j| serde_json::to_value(follow(j)).unwrap();
         assert_eq!(json(&journals[0]), serde_json::json!({"by": "pending"}));
-        assert_eq!(json(&journals[1])["journal"]["issn"], "1873-9652");
+        let polar = json(&journals[1]);
+        assert_eq!(
+            (&polar["by"], &polar["issn"]),
+            (&"journal".into(), &"1873-9652".into())
+        );
         let tc = json(&journals[2]);
         assert_eq!(tc["by"], "suggested");
         assert_eq!(
-            tc["suggested"]["feed"],
-            serde_json::json!({"rss": "https://tc.copernicus.org/xml/rss2_0.xml"})
+            tc["feed"],
+            serde_json::json!({"url": "https://tc.copernicus.org/xml/rss2_0.xml"})
         );
     }
 
@@ -308,25 +230,5 @@ mod tests {
             serde_json::json!({"site": "nofeed"})
         );
         assert_eq!(site(None)["feed"], serde_json::Value::Null);
-    }
-
-    #[test]
-    fn a_feed_as_the_page_writes_it() {
-        let rss: FeedOf = serde_json::from_str(r#"{"rss": "https://eos.org/feed"}"#).unwrap();
-        assert_eq!(
-            Feed::from(rss),
-            Feed::Rss {
-                url: "https://eos.org/feed".into()
-            }
-        );
-        let filter = FeedOf::from(&Feed::OpenAlex {
-            filter: "cites:W1".into(),
-        });
-        assert_eq!(
-            serde_json::to_string(&filter).unwrap(),
-            r#"{"openalex":"cites:W1"}"#
-        );
-        let issn = serde_json::to_string(&FeedOf::Crossref("0022-1430".into())).unwrap();
-        assert_eq!(issn, r#"{"crossref":"0022-1430"}"#);
     }
 }

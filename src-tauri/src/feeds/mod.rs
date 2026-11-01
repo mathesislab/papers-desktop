@@ -56,7 +56,6 @@ use papers_feeds::{
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-use discover::FeedOf;
 pub use fetching::FetchSummary;
 use fetching::{Fetching, Last, fetch_now};
 pub use folder::Folder;
@@ -146,7 +145,7 @@ pub struct SubscriptionInfo {
     id: String,
     title: String,
     kind: SourceKind,
-    feed: FeedOf,
+    feed: Feed,
     journal: Option<String>,
     fetch_pages: bool,
     boost: f64,
@@ -237,7 +236,7 @@ fn info(subscription: Subscription, lasts: &BTreeMap<String, Last>) -> Subscript
     SubscriptionInfo {
         title: title_of(&subscription),
         last: lasts.get(&subscription.id).cloned(),
-        feed: FeedOf::from(&subscription.feed),
+        feed: subscription.feed,
         id: subscription.id,
         kind: subscription.settings.kind,
         journal: subscription.settings.journal,
@@ -463,7 +462,7 @@ pub async fn feeds_subscriptions(app: AppHandle) -> Result<Vec<SubscriptionInfo>
 #[tauri::command]
 pub async fn feeds_subscribe(
     app: AppHandle,
-    feed: FeedOf,
+    feed: Feed,
     kind: SourceKind,
     title: Option<String>,
 ) -> Result<SubscriptionInfo, String> {
@@ -471,7 +470,6 @@ pub async fn feeds_subscribe(
         title,
         ..SubscriptionSettings::new(kind)
     };
-    let feed = Feed::from(feed);
     blocking(move || {
         let state = app.state::<AppState>();
         let subscription = (state.feeds.folder).change(&app, move |feeds| {

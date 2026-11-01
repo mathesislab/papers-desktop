@@ -431,7 +431,7 @@
   async function sourceMenu(title: string) {
     const subs = subscriptions.filter((s) => s.title === title);
     if (!subs.length) return;
-    const feeds = subs.filter((s) => "rss" in s.feed);
+    const feeds = subs.filter((s) => "url" in s.feed);
     const menu = await Menu.new({
       items: [
         ...(feeds.length

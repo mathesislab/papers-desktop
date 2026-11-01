@@ -10,8 +10,8 @@ export type SourceKind = "journal" | "preprints" | "news" | "blog";
 export type Triage = "new" | "seen" | "shortlisted" | "dismissed" | "added";
 export type Sort = "score" | "newest" | "like";
 
-/** What a subscription follows: a feed, or a sweep of Crossref or OpenAlex. */
-export type Feed = { rss: string } | { crossref: string } | { openalex: string };
+/** What a subscription follows: a feed by its URL, or a sweep of Crossref (by an ISSN) or OpenAlex (by a filter). */
+export type Feed = { url: string } | { issn: string } | { openalex: string };
 
 /** An interest an item is scored in. */
 export interface Scored {
@@ -253,8 +253,8 @@ export interface Journal {
 /** What follows a journal of the library: a suggested subscription, a sweep of its ISSN (none if none was found),
  *  nothing found in OpenAlex, or not looked up yet. */
 export type Follow =
-  | { by: "suggested"; suggested: Suggested }
-  | { by: "journal"; journal: Journal }
+  | ({ by: "suggested" } & Suggested)
+  | ({ by: "journal" } & Journal)
   | { by: "unknown" }
   | { by: "pending" };
 

@@ -215,8 +215,10 @@ fn journal_named(http: &dyn Http, access: &Access, name: &str) -> Result<Option<
     Ok(best_named(&found, name).cloned().map(Journal::from))
 }
 
-/// What follows a journal of the library.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// What follows a journal of the library; to the page, `{"by": "suggested", ...the suggestion}`,
+/// `{"by": "journal", ...the journal}`, `{"by": "unknown"}` or `{"by": "pending"}`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "by", rename_all = "lowercase")]
 pub enum Follow {
     /// a subscription of the suggested list: the same title or ISSN
     Suggested(Suggested),

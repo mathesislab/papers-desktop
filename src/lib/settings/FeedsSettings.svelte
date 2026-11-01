@@ -17,8 +17,8 @@
   let { notify }: { notify: (text: string, error: boolean) => void } = $props();
 
   const TYPES: { value: FeedType; name: string; placeholder: string }[] = [
-    { value: "rss", name: "Feed", placeholder: "https://…/rss" },
-    { value: "crossref", name: "ISSN", placeholder: "0022-1430" },
+    { value: "url", name: "Feed", placeholder: "https://…/rss" },
+    { value: "issn", name: "ISSN", placeholder: "0022-1430" },
     { value: "openalex", name: "OpenAlex", placeholder: "primary_topic.id:T10644" },
   ];
 
@@ -49,7 +49,7 @@
   let busy = $state(false);
 
   // a new subscription
-  let addType = $state<FeedType>("rss");
+  let addType = $state<FeedType>("url");
   let addText = $state("");
   let addKind = $state<SourceKind>("journal");
 

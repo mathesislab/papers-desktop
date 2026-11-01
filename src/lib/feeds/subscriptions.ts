@@ -26,7 +26,7 @@ export const SOURCE_GROUPS: { group: SourceGroup["group"]; name: string }[] = [
 const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 
 /** The group of a subscription: its kind, or a sweep. */
-export const groupOf = (s: SubscriptionInfo): SourceGroup["group"] => ("rss" in s.feed ? s.kind : "sweeps");
+export const groupOf = (s: SubscriptionInfo): SourceGroup["group"] => ("url" in s.feed ? s.kind : "sweeps");
 
 /** The subscriptions in their groups, by title, each with the number of its items and of those unread (`counts`);
  *  the groups without any are left out. */
@@ -45,18 +45,18 @@ export function sourceGroups(subscriptions: SubscriptionInfo[], counts: FeedCoun
 }
 
 /** What a subscription follows, as the Subscribe sheet asks it: a feed's URL, a journal's ISSN for Crossref, a
- *  filter of OpenAlex. */
-export type FeedType = "rss" | "crossref" | "openalex" | "words";
+ *  filter of OpenAlex, words of OpenAlex's titles and abstracts. */
+export type FeedType = "url" | "issn" | "openalex" | "words";
 
 /** The feed of what was typed; none for an empty field. Words are an OpenAlex filter (`wordsFilter`). */
 export function feedOf(type: FeedType, text: string): Feed | null {
   const value = text.trim();
   if (!value) return null;
   switch (type) {
-    case "rss":
-      return { rss: value };
-    case "crossref":
-      return { crossref: value };
+    case "url":
+      return { url: value };
+    case "issn":
+      return { issn: value };
     case "openalex":
       return { openalex: value };
     case "words":
@@ -73,16 +73,16 @@ export function wordsFilter(words: string): string {
 
 /** A feed in a line: its URL, the ISSN swept in Crossref, the filter of OpenAlex. */
 export const feedText = (feed: Feed) =>
-  "rss" in feed ? feed.rss : "crossref" in feed ? `Crossref ISSN ${feed.crossref}` : `OpenAlex ${feed.openalex}`;
+  "url" in feed ? feed.url : "issn" in feed ? `Crossref ISSN ${feed.issn}` : `OpenAlex ${feed.openalex}`;
 
 /** Whether two subscriptions follow the same: the URL without its scheme and a last slash, the ISSN without its
  *  hyphen, in any case. */
 export function sameFeed(a: Feed, b: Feed): boolean {
   const key = (f: Feed) =>
-    "rss" in f
-      ? "rss " + f.rss.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "")
-      : "crossref" in f
-        ? "crossref " + f.crossref.trim().toLowerCase().replace(/-/g, "")
+    "url" in f
+      ? "url " + f.url.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "")
+      : "issn" in f
+        ? "issn " + f.issn.trim().toLowerCase().replace(/-/g, "")
         : "openalex " + f.openalex.trim().toLowerCase();
   return key(a) === key(b);
 }
@@ -94,7 +94,7 @@ export const subscriptionOf = (feed: Feed, subscriptions: SubscriptionInfo[]) =>
 /** The subscription that follows a journal by a sweep of one of its ISSNs, if there is one. */
 export function journalSubscription(journal: Journal, subscriptions: SubscriptionInfo[]): SubscriptionInfo | undefined {
   for (const issn of journal.issns) {
-    const found = subscriptionOf({ crossref: issn }, subscriptions);
+    const found = subscriptionOf({ issn }, subscriptions);
     if (found) return found;
   }
 }
