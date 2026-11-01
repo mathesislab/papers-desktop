@@ -1,11 +1,11 @@
 <script lang="ts">
   // The list of the Feeds tab: the items the filters select, best score or newest first; and of the Search tab: the
   // works found, in the order OpenAlex gave them (the caller chooses the columns). The score is two bars, its
-  // keywords over its library (ScoreBars), in its column and, small, before the badges of a simple row.
+  // keywords over its library (ScoreBars), in its column and, small, under the date of a simple row.
   // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
   // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). Simple
   // (`look`, the Feeds tab's at first; SimpleRow): no headers, each row taller, its date (an age; in the Search tab,
-  // its year), then its source, title and authors a line each, its badges small at its end. A new item's title is
+  // its year) over its score, then its source, title and authors a line each, its badges quiet beside its title. A new item's title is
   // bold; one seen is muted (in the Feeds tab). A
   // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
   // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
@@ -201,10 +201,16 @@
         {/if}
         <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
         {#if view.simple}
-          <SimpleRow date={date === "age" ? ago(row.date, now) : yearOf(row.date)} source={sourceOf(row)} sources={row.sources.join(", ")}>
+          <SimpleRow
+            lead={LEAD.length}
+            date={date === "age" ? ago(row.date, now) : yearOf(row.date)}
+            source={sourceOf(row)}
+            sources={row.sources.join(", ")}
+          >
             {#snippet title()}<span class="title"><Marked spans={row.title} /></span>{/snippet}
+            {#snippet beside()}{@render badgeList(row)}{/snippet}
             {#snippet authors()}{@render names(row)}{/snippet}
-            {#snippet end()}<span class="ends"><ScoreBars {row} small />{@render badgeList(row)}</span>{/snippet}
+            {#snippet under()}<ScoreBars {row} small />{/snippet}
           </SimpleRow>
         {:else}
           {#each columns as { key: column } (column)}
@@ -273,10 +279,19 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* simple, the badges quiet: smaller */
+  /* simple, the badges quiet beside the title: smaller, no border, their colour faint */
   .simple .badge {
+    border-color: transparent;
+    background: color-mix(in srgb, currentColor 9%, transparent);
     font-size: 10px;
+    font-weight: normal;
     line-height: 14px;
+  }
+  .simple .badges {
+    flex: none;
+  }
+  .simple .badge:not(.interest) {
+    color: color-mix(in srgb, currentColor 70%, var(--muted));
   }
   .row.new .title {
     font-weight: 600;
@@ -306,11 +321,9 @@
   .rows .row > .score {
     align-self: stretch;
   }
-  /* simple: the score, then the badges */
-  .ends {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  /* simple: the date over the score, under the star and the mark */
+  .simple .row {
+    grid-template-rows: 34px 1fr;
   }
   .rows .row > .mark,
   .rows .row > .star {

@@ -1,8 +1,8 @@
 <script lang="ts">
   // The score of a row as two thin bars, one over the other, each filling its track from 0 to 100: its keywords on
   // top, its library under (crates/feeds' `Rating`); a part missing an empty track, both empty and tinted when an
-  // exclude vetoes it. On hover, its numbers (`scoreHint`). The table's Score cell; small, at the end of a simple row
-  // before its badges.
+  // exclude vetoes it. On hover, its numbers (`scoreHint`). The table's Score cell; small, under the date of a
+  // simple row.
 
   import type { Rated, Scored } from "./api";
   import { barOf, scoreHint } from "./items";
@@ -25,9 +25,7 @@
     height: 100%;
   }
   .bars.small {
-    flex: none;
     gap: 2px;
-    width: 28px;
   }
   .track {
     height: 3px;

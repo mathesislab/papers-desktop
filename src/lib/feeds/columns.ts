@@ -25,10 +25,10 @@ export const FEED_SPECS: Specs<FeedColumn> = {
 };
 
 /** the columns of the Feeds tab at first, in their order: those its menu offers */
-export const FEED_ORDER: FeedColumn[] = ["date", "journal", "title", "authors", "score", "badges"];
+export const FEED_ORDER: FeedColumn[] = ["score", "date", "journal", "title", "authors", "badges"];
 
-/** the columns of the Search tab: the citations first, the score, the year; wider titles and journals */
-export const SEARCH_ORDER: FeedColumn[] = ["cited", "score", "title", "authors", "journal", "year", "badges"];
+/** the columns of the Search tab: the score first, the citations, the year; wider titles and journals */
+export const SEARCH_ORDER: FeedColumn[] = ["score", "cited", "title", "authors", "journal", "year", "badges"];
 export const SEARCH_SPECS: Specs<FeedColumn> = {
   ...FEED_SPECS,
   title: { ...FEED_SPECS.title, width: 280 },

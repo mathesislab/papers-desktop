@@ -253,8 +253,8 @@
         {@render fileMark(row)}
         {#if view.simple}
           {@render starButton(row)}
-          <SimpleRow date={text(row, "year")} source={text(row, "container")}>
-            {#snippet title()}{row.title}{/snippet}
+          <SimpleRow lead={2} date={text(row, "year")} source={text(row, "container")}>
+            {#snippet title()}<span>{row.title}</span>{/snippet}
             {#snippet authors()}{row.authors}{/snippet}
             {#snippet end()}{text(row, "tags")}{/snippet}
           </SimpleRow>
