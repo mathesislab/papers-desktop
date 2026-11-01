@@ -37,7 +37,7 @@ pub const SEARCH_FACETS: &[&str] = &["cites", "citedby"];
 /// The works of a page of a search.
 pub const PER_SEARCH: usize = 25;
 
-const SCHEMA: Schema = Schema {
+pub(crate) const SCHEMA: Schema = Schema {
     facets: SEARCH_FACETS,
     numbers: &[],
 };

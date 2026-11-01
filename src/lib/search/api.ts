@@ -1,7 +1,7 @@
 // The commands of the Search tab (src-tauri/src/search.rs): a search of OpenAlex's works, page by page, the works
-// found again, those starred, a search subscribed to in the Feeds tab. The works found are items of a folder of
-// feeds of their own: their details, triage, abstracts and PDFs are the Feeds tab's commands with the store
-// "search" ($lib/feeds/api.ts).
+// found again, those starred, a search subscribed to in the Feeds tab, a search online (its address). The works
+// found are items of a folder of feeds of their own: their details, triage, abstracts and PDFs are the Feeds tab's
+// commands with the store "search" ($lib/feeds/api.ts).
 
 import { invoke } from "@tauri-apps/api/core";
 import type { FeedRow, SubscriptionInfo } from "$lib/feeds/api";
@@ -28,6 +28,11 @@ export const rowsOf = (ids: string[], query: string) => invoke<FeedRow[]>("searc
 export const starred = () => invoke<FeedRow[]>("search_starred");
 /** A query subscribed to in the Feeds tab, as a sweep of OpenAlex: the subscription made, to fetch. */
 export const subscribe = (query: string) => invoke<SubscriptionInfo>("search_subscribe", { query });
+/** The services of *Search online*, by name: Google Scholar, Google, then the user's of the settings. */
+export const services = () => invoke<string[]>("search_services");
+/** The address of a search of a service online, to open in the browser; refused, said, for what the service cannot
+ *  be asked. */
+export const online = (service: string, query: string) => invoke<string>("search_online", { service, query });
 
 /** The events the page listens to. */
 export const EVENTS = {

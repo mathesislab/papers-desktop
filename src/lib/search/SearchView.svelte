@@ -9,10 +9,13 @@
   // (`itemActions`, the star in the tab's words: `SAVED_FOR_LATER`). The window
   // (src/routes/main/+page.svelte) keeps the layout (the fields, the recent searches, the search shown), gives
   // what both its Feeds and Search tabs take (`tabContext`), and passes on the commands of the menu and the keys
-  // while the tab is in front. The Add sheet is the library's.
+  // while the tab is in front. The Add sheet is the library's. *Search online* opens the query in the browser at a
+  // service without an API (Google Scholar, Google, the user's of the settings).
 
+  import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import { onMount } from "svelte";
   import * as feedsApi from "$lib/feeds/api";
   import { buttonText, itemActions, type ItemActionName } from "$lib/feeds/actions";
@@ -206,6 +209,27 @@
     await menu.popup();
   }
 
+  /** The services of *Search online*, from its menu: the query of the fields opened in the browser at one; *Add a
+   *  service…* the settings, where they are listed. */
+  async function onlineMenu() {
+    const open = async (service: string) => {
+      try {
+        await openUrl(await api.online(service, composed(search.query, search.year)));
+      } catch (e) {
+        list.say(String(e));
+      }
+    };
+    const names = await api.services();
+    const menu = await Menu.new({
+      items: [
+        ...(await Promise.all(names.map((name) => MenuItem.new({ text: name, action: () => open(name) })))),
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        await MenuItem.new({ text: "Add a service…", action: () => invoke("open_settings", { section: "search" }) }),
+      ],
+    });
+    await menu.popup();
+  }
+
   /** The chip's ×: no search shown, the fields blank (the works found stay until the next search). */
   function clearSearch() {
     search.query = "";
@@ -354,6 +378,7 @@
       <button class="tool primary" disabled={searching} title="Search OpenAlex (Enter in the fields)" onclick={run}>
         {searching ? "Searching…" : "Search"}
       </button>
+      <button class="tool" title="Search online" onclick={onlineMenu}>Online ▾</button>
       <span class="notice">{list.notice ?? ""}</span>
       <span class="spacer"></span>
       <button

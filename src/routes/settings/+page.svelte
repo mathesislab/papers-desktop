@@ -37,6 +37,9 @@
     downloads_panel: boolean;
     /** its folder (~ for the home folder) */
     downloads_folder: string;
+    /** the user's services of the Search tab's *Search online*, after Google Scholar and Google: a name and an address
+     *  with {query} or {scholar} in it (checked when saved) */
+    search_services: { name: string; url: string }[];
     /** the background polling of the feeds: set in their section (feeds_set_settings), kept as they are here */
     feeds_poll: boolean;
     feeds_poll_minutes: number;
@@ -240,17 +243,19 @@
     return writers.find((w) => w.bib === path);
   }
 
-  /** Save a change, which applies at once; on failure, show the settings as they are. */
-  async function save(change: Partial<Settings>) {
-    if (!settings) return;
+  /** Save a change, which applies at once; on failure, show the settings as they are. Whether it was saved. */
+  async function save(change: Partial<Settings>): Promise<boolean> {
+    if (!settings) return false;
     const changed = { ...settings, ...change };
     try {
       await invoke("save_settings", { settings: changed });
       settings = changed;
       show("Saved", false);
+      return true;
     } catch (err) {
       show(String(err), true);
       await refresh();
+      return false;
     }
   }
 
@@ -297,6 +302,16 @@
     e.currentTarget.value = settings!.citation_style;
     const file = await open({ title: "A CSL style", filters: [{ name: "CSL style", extensions: ["csl"] }] });
     if (typeof file === "string") await save({ citation_style: file });
+  }
+
+  /** a service of *Search online* being added */
+  let service = $state({ name: "", url: "" });
+
+  /** The service typed, after the others: saved, the fields emptied; refused, said, the fields kept. */
+  async function addService() {
+    if (!settings) return;
+    const typed = { name: service.name.trim(), url: service.url.trim() };
+    if (await save({ search_services: [...settings.search_services, typed] })) service = { name: "", url: "" };
   }
 
   let recentCleared = $state(false);
@@ -489,6 +504,21 @@
     </section>
 
     <section>
+      <h2>Citations</h2>
+      <label class="row">
+        <span>
+          <span class="label">Style</span>
+          <span class="hint">Of the citation in the preview</span>
+        </span>
+        <select value={settings.citation_style} onchange={chooseStyle}>
+          {#each styles as name (name)}<option value={name}>{styleName(name)}</option>{/each}
+          {#if custom}<option value={custom}>{fileName(custom)}</option>{/if}
+          <option value={OTHER}>Other .csl File…</option>
+        </select>
+      </label>
+    </section>
+
+    <section id="search">
       <h2>Search</h2>
       <div class="row">
         <span>
@@ -528,21 +558,45 @@
           onchange={(e) => save({ matching: e.currentTarget.checked ? "inside-words" : "word-start" })}
         />
       </label>
-    </section>
-
-    <section>
-      <h2>Citations</h2>
-      <label class="row">
-        <span>
-          <span class="label">Style</span>
-          <span class="hint">Of the citation in the preview</span>
-        </span>
-        <select value={settings.citation_style} onchange={chooseStyle}>
-          {#each styles as name (name)}<option value={name}>{styleName(name)}</option>{/each}
-          {#if custom}<option value={custom}>{fileName(custom)}</option>{/if}
-          <option value={OTHER}>Other .csl File…</option>
-        </select>
-      </label>
+      <h3>Search online</h3>
+      <p class="hint">
+        The services of the Search tab's <b>Online ▾</b>, after Google Scholar and Google: the query opened in the
+        browser. In the address, <code>{"{query}"}</code> is the query as words, <code>{"{scholar}"}</code> as Google
+        Scholar takes it (<code>author:</code>, <code>intitle:</code>, <code>source:</code>).
+      </p>
+      <ul class="files">
+        {#each settings.search_services as s, i (s.name)}
+          <li>
+            <span class="file" title={s.url}>
+              <span>{s.name}</span>
+              <span class="path">{s.url}</span>
+            </span>
+            <button
+              class="remove"
+              title="Remove the service"
+              onclick={() => save({ search_services: settings!.search_services.filter((_, j) => j !== i) })}>✕</button
+            >
+          </li>
+        {/each}
+      </ul>
+      <form
+        class="service"
+        onsubmit={(e) => {
+          e.preventDefault();
+          addService();
+        }}
+      >
+        <input class="text name" type="text" placeholder="Name" spellcheck="false" bind:value={service.name} />
+        <input
+          class="text"
+          type="text"
+          placeholder={"https://…?q={query}"}
+          spellcheck="false"
+          autocomplete="off"
+          bind:value={service.url}
+        />
+        <button type="submit" disabled={!service.name.trim() || !service.url.trim()}>Add</button>
+      </form>
     </section>
 
     <FeedsSettings notify={show} />
@@ -819,6 +873,29 @@
   }
   .files .none {
     color: var(--muted);
+  }
+  section h3 {
+    margin: 14px 0 2px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  code {
+    font-size: 11px;
+  }
+  /* a service of Search online being added: its name, its address taking the room */
+  .service {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .service input.text {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+  .service input.name {
+    flex: none;
+    width: 110px;
   }
 
   button,

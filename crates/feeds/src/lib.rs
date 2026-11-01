@@ -20,7 +20,9 @@
 //! lists some to start with, [`library_journals`] the journals of the
 //! library's papers, which [`Journals`] looks up in OpenAlex, as
 //! [`search_journals`] finds others; [`site_feed`] the feed a journal's site
-//! links to; [`pdf`] tells the free copy of a paper. Nothing here knows of .bib files.
+//! links to; [`pdf`] tells the free copy of a paper; [`online_url`] the
+//! address of a search of a [`Service`] without an API (Google Scholar,
+//! Google, the user's). Nothing here knows of .bib files.
 
 mod crossref;
 mod enrich;
@@ -37,6 +39,7 @@ mod links;
 mod merge;
 mod model;
 pub mod normalize;
+mod online;
 mod openalex;
 mod opml;
 mod parse;
@@ -69,6 +72,7 @@ pub use model::{
     Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Origin, Reminder, Source,
     SourceKind, Stage, Subscription, SubscriptionSettings, Triage, Version, Via,
 };
+pub use online::{OwnService, Service, check_services, online_url};
 pub use opml::Outline;
 pub use parse::{Parsed, parse};
 pub use pdf::{OpenAccess, Pdf, pdf};

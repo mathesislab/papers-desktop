@@ -6,13 +6,14 @@
 //! The last query's journals and works looked up are kept for its next pages
 //! and its subscription. The rows are the Feeds tab's (`FeedRow`); the details,
 //! the triage, the abstracts and the PDFs are the Feeds tab's commands, with
-//! the store.
+//! the store. A search online is the address of a service without an API
+//! (crates/feeds' `online_url`), which the page opens in the browser.
 
 use std::sync::Mutex;
 
 use papers_feeds::{
-    Access, Feed, Http, Order, Resolved, SourceKind, SubscriptionSettings, ask, resolve,
-    search_works, subscription_filter,
+    Access, Feed, Http, Order, Resolved, Service, SourceKind, SubscriptionSettings, ask,
+    online_url, resolve, search_works, subscription_filter,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
@@ -20,6 +21,7 @@ use tauri::{AppHandle, Manager};
 use crate::AppState;
 use crate::feeds::{FeedRow, Rows, SubscriptionInfo};
 use crate::fetch::blocking;
+use crate::settings::Settings;
 
 /// The items' event of the Search tab: the works found changed.
 pub const CHANGED: &str = "search-changed";
@@ -148,6 +150,28 @@ pub async fn search_starred(app: AppHandle) -> Result<Vec<FeedRow>, String> {
         rows_of(&app, &ids, "")
     })
     .await
+}
+
+/// The services of *Search online*, by name: those built in, then the
+/// user's of the settings.
+#[tauri::command]
+pub fn search_services(app: AppHandle) -> Result<Vec<String>, String> {
+    let settings = Settings::load(&app.state::<AppState>().settings_path)?;
+    let own = settings.search_services.into_iter().map(|s| s.name);
+    Ok(Service::BUILT_IN
+        .map(String::from)
+        .into_iter()
+        .chain(own)
+        .collect())
+}
+
+/// The address of a search of a service online, by its name, for the
+/// page to open; what the service cannot be asked, said.
+#[tauri::command]
+pub fn search_online(app: AppHandle, service: String, query: String) -> Result<String, String> {
+    let settings = Settings::load(&app.state::<AppState>().settings_path)?;
+    let named = Service::named(&service, &settings.search_services);
+    online_url(&named.ok_or(format!("{service}: no such service"))?, &query)
 }
 
 #[cfg(test)]

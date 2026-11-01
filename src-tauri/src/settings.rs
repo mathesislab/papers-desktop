@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use papers_core::Matching;
+use papers_feeds::OwnService;
 use papers_rs::fetch::openalex::OpenAlex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -52,6 +53,10 @@ pub struct Settings {
     pub downloads_panel: bool,
     /// the folder of the panel (~ for the home directory)
     pub downloads_folder: PathBuf,
+    /// the user's services of the Search tab's *Search online* menu, after
+    /// Google Scholar and Google: a name and an address with `{query}` or
+    /// `{scholar}` in it (checked when saved)
+    pub search_services: Vec<OwnService>,
     /// the settings set elsewhere than in the settings window's fields, in the same file
     #[serde(flatten)]
     pub elsewhere: Elsewhere,
@@ -259,6 +264,7 @@ impl Default for Settings {
             openalex_key: String::new(),
             downloads_panel: true,
             downloads_folder: PathBuf::from("~/Downloads"),
+            search_services: Vec::new(),
             elsewhere: Elsewhere::default(),
         }
     }
@@ -456,7 +462,9 @@ mod tests {
             "text_size": "larger", "writer": "command", "papers": "/bin/papers",
             "email": "me@example.org", "openalex_key": "KEY", "pinned_tags": ["ice", null],
             "saved_searches": [{"name": "AMOC", "filters": {}, "sort": null}],
-            "downloads_panel": false, "downloads_folder": "/tmp/in", "feeds_poll": true,
+            "downloads_panel": false, "downloads_folder": "/tmp/in",
+            "search_services": [{"name": "Base", "url": "https://base.example/?q={query}"}],
+            "feeds_poll": true,
             "feeds_poll_minutes": 30, "feeds_tab": false, "feeds_beside": true,
             "search_tab": false}"#;
         let old: Value = serde_json::from_str(json).unwrap();

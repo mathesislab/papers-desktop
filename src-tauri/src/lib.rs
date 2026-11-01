@@ -397,9 +397,11 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
     })
 }
 
-/// Save the settings of the settings window, and apply them at once.
+/// Save the settings of the settings window, and apply them at once; refused,
+/// nothing saved, for a service of the Search tab that cannot be asked.
 #[tauri::command]
 fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
+    papers_feeds::check_services(&settings.search_services)?;
     let old = Settings::load(&state.settings_path)?;
     // what is set elsewhere stays as it is: what the window loaded may be stale
     let settings = Settings {
@@ -483,10 +485,11 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
     update::install(&app).await
 }
 
-/// The settings window, from the panel (⌘,).
+/// The settings window, from the panel (⌘,) and the main window; at a
+/// section (its id) if named.
 #[tauri::command]
-async fn open_settings(app: AppHandle) {
-    settings_window(&app, None);
+async fn open_settings(app: AppHandle, section: Option<String>) {
+    settings_window(&app, section.as_deref());
 }
 
 /// The main window, from the panel (⌘O).
@@ -1148,6 +1151,8 @@ pub fn run() {
             search::search_rows,
             search::search_starred,
             search::search_subscribe,
+            search::search_online,
+            search::search_services,
             toggle::toggle,
             toggle::set_toggle
         ])
