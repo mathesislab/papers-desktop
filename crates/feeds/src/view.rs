@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::feeds::Feeds;
 use crate::interest::{Score, joined};
-use crate::model::{Item, ItemKind, Reminder, Triage};
+use crate::model::{Item, ItemKind, Reminder, Triage, words};
 use crate::query::{Seen, best, live, parse};
 
 /// The order of the rows.
@@ -33,6 +33,12 @@ pub enum Sort {
     /// likeness (no index) last
     Like,
 }
+
+words!(Sort {
+    Newest => "newest",
+    Score => "score",
+    Like => "like",
+});
 
 /// What a view shows.
 #[derive(Clone, Copy, Default)]

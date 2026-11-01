@@ -7,6 +7,39 @@ use serde::{Deserialize, Serialize};
 use crate::normalize::{canonical_issn, canonical_url, feed_key};
 use crate::{Error, Result};
 
+/// The words of an enum's values, as its JSON writes them: `as_str`,
+/// `Display`, and `FromStr` (the error names the words).
+macro_rules! words {
+    ($enum:ident { $($value:ident => $word:literal),+ $(,)? }) => {
+        impl $enum {
+            /// Its word, as its JSON writes it.
+            pub fn as_str(self) -> &'static str {
+                match self {
+                    $($enum::$value => $word),+
+                }
+            }
+        }
+
+        impl std::fmt::Display for $enum {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+
+        impl std::str::FromStr for $enum {
+            type Err = String;
+
+            fn from_str(word: &str) -> std::result::Result<$enum, String> {
+                match word {
+                    $($word => Ok($enum::$value),)+
+                    _ => Err(format!("{word:?}: not one of {}", [$($word),+].join(", "))),
+                }
+            }
+        }
+    };
+}
+pub(crate) use words;
+
 /// What a subscription follows, which gives its items their kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -17,6 +50,13 @@ pub enum SourceKind {
     News,
     Blog,
 }
+
+words!(SourceKind {
+    Journal => "journal",
+    Preprints => "preprints",
+    News => "news",
+    Blog => "blog",
+});
 
 impl SourceKind {
     /// The kind of its items, before an item corrects it.
@@ -39,6 +79,13 @@ pub enum ItemKind {
     News,
     Blog,
 }
+
+words!(ItemKind {
+    Paper => "paper",
+    Preprint => "preprint",
+    News => "news",
+    Blog => "blog",
+});
 
 impl ItemKind {
     /// A post (news or blog), about papers rather than one.
@@ -177,6 +224,11 @@ pub enum Origin {
     Work,
 }
 
+words!(Origin {
+    Feed => "feed",
+    Work => "work",
+});
+
 /// One item of one feed, as the feed gives it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
@@ -253,6 +305,11 @@ pub enum Stage {
     Published,
 }
 
+words!(Stage {
+    Preprint => "preprint",
+    Published => "published",
+});
+
 /// A DOI of an item: its preprint or its published version.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Version {
@@ -307,6 +364,11 @@ pub enum Confidence {
     Low,
 }
 
+words!(Confidence {
+    High => "high",
+    Low => "low",
+});
+
 /// Where a linked paper was found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -318,6 +380,12 @@ pub enum Via {
     /// the post's title in Crossref
     Search,
 }
+
+words!(Via {
+    Feed => "feed",
+    Page => "page",
+    Search => "search",
+});
 
 impl Item {
     /// When it was first fetched, from any source.
@@ -347,6 +415,14 @@ pub enum Triage {
     /// added to the library
     Added,
 }
+
+words!(Triage {
+    New => "new",
+    Seen => "seen",
+    Shortlisted => "shortlisted",
+    Dismissed => "dismissed",
+    Added => "added",
+});
 
 impl Triage {
     /// Which of two states an item keeps when its versions merge: the user's
@@ -388,6 +464,11 @@ pub enum Reminder {
     Due,
 }
 
+words!(Reminder {
+    Snoozed => "snoozed",
+    Due => "due",
+});
+
 impl Mark {
     /// A triage set now, no reminder.
     pub fn new(triage: Triage, at: DateTime<Utc>) -> Mark {
@@ -415,5 +496,48 @@ impl Mark {
             std::cmp::Ordering::Equal if self.at >= other.at => self,
             std::cmp::Ordering::Equal => other,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each word as JSON writes it, and back.
+    fn same_as_json<T>(values: &[T])
+    where
+        T: Copy + PartialEq + std::fmt::Debug + Serialize + std::str::FromStr + std::fmt::Display,
+    {
+        for &value in values {
+            let json = serde_json::to_value(value).unwrap();
+            assert_eq!(json.as_str(), Some(value.to_string().as_str()));
+            assert!(value.to_string().parse::<T>().is_ok_and(|v| v == value));
+        }
+    }
+
+    #[test]
+    fn words_are_those_of_json() {
+        use SourceKind::{Blog, Journal, News, Preprints};
+        same_as_json(&[Journal, Preprints, News, Blog]);
+        let kinds = [ItemKind::Paper, ItemKind::Preprint];
+        same_as_json(&[kinds[0], kinds[1], ItemKind::News, ItemKind::Blog]);
+        let triage = [Triage::New, Triage::Seen, Triage::Shortlisted];
+        same_as_json(&[
+            triage[0],
+            triage[1],
+            triage[2],
+            Triage::Dismissed,
+            Triage::Added,
+        ]);
+        same_as_json(&[Reminder::Snoozed, Reminder::Due]);
+        same_as_json(&[Stage::Preprint, Stage::Published]);
+        same_as_json(&[Confidence::High, Confidence::Low]);
+        same_as_json(&[Via::Feed, Via::Page, Via::Search]);
+        same_as_json(&[Origin::Feed, Origin::Work]);
+        let refused = "podcast".parse::<ItemKind>().unwrap_err();
+        assert_eq!(
+            refused,
+            r#""podcast": not one of paper, preprint, news, blog"#
+        );
     }
 }

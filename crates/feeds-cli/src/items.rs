@@ -1,6 +1,6 @@
 //! The items: the list, one in full, the papers behind a post, the triage, the prune.
 
-use papers_feeds::query::{kind_name, live, triage_name};
+use papers_feeds::query::live;
 use papers_feeds::{Confidence, Feeds, Item, Row, Sort, Triage, Via, ViewRequest};
 use serde_json::{Value, json};
 
@@ -24,7 +24,7 @@ fn marker(triage: Triage) -> &'static str {
 fn item_json(feeds: &Feeds, item: &Item) -> Value {
     let mut json = serde_json::to_value(item).expect("json");
     let object = json.as_object_mut().expect("an item is an object");
-    object.insert("triage".into(), json!(triage_name(feeds.triage(&item.id))));
+    object.insert("triage".into(), json!(feeds.triage(&item.id).as_str()));
     object.insert("scores".into(), json!(feeds.scores(item)));
     object.insert(
         "best_score".into(),
@@ -36,7 +36,7 @@ fn item_json(feeds: &Feeds, item: &Item) -> Value {
 /// A row of the list as JSON: the item without its sources and full text, with its scores.
 fn row_json(feeds: &Feeds, row: &Row, item: &Item) -> Value {
     json!({
-        "id": item.id, "kind": kind_name(item.kind), "triage": triage_name(feeds.triage(&item.id)),
+        "id": item.id, "kind": item.kind.as_str(), "triage": feeds.triage(&item.id).as_str(),
         "score": row.score, "interests": row.interests, "like": row.like, "date": item.date,
         "title": item.title,
         "authors": item.authors, "journal": item.journal, "doi": item.doi, "arxiv": item.arxiv,
@@ -99,7 +99,7 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
             ];
             line.extend(row.like.map(|like| format!("{like:>3.0}")));
             line.extend([
-                kind_name(item.kind).to_string(),
+                item.kind.as_str().to_string(),
                 day(newest(item)),
                 format!("{}{journal}", item.title),
             ]);
@@ -145,7 +145,7 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
             let nearest: Vec<Value> = nearest.iter().map(near).collect();
             json["like"] = json!({"score": like.score, "nearest": nearest});
         }
-        let by = |i: &&Item| json!({"id": i.id, "title": i.title, "kind": kind_name(i.kind)});
+        let by = |i: &&Item| json!({"id": i.id, "title": i.title, "kind": i.kind.as_str()});
         json["covered_by"] = covered.iter().map(by).collect();
         let at = feeds.mark(&item.id).map(|m| m.at);
         json["triage_at"] = json!(at);
@@ -164,10 +164,10 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
         ("authors", item.authors.join(", ")),
         ("journal", item.journal.clone().unwrap_or_default()),
         ("date", item.date.map(day).unwrap_or_default()),
-        ("kind", format!("{}{editorial}", kind_name(item.kind))),
+        ("kind", format!("{}{editorial}", item.kind.as_str())),
         (
             "state",
-            format!("{}{since}", triage_name(feeds.triage(&item.id))),
+            format!("{}{since}", feeds.triage(&item.id).as_str()),
         ),
         ("id", item.id.clone()),
         (
@@ -300,7 +300,7 @@ pub fn mark(ctx: &mut Ctx, a: MarkArgs) -> Result<()> {
     for id in &ids {
         feeds.set_triage(id, triage)?;
         let title = find_item(&feeds, id)?.title.clone();
-        writeln!(ctx.out, "{} {id} {title}", triage_name(triage))?;
+        writeln!(ctx.out, "{} {id} {title}", triage.as_str())?;
     }
     Ok(())
 }

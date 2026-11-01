@@ -22,16 +22,6 @@ pub struct Outline {
     pub kind: SourceKind,
 }
 
-/// The name of a kind in `category`.
-fn kind_name(kind: SourceKind) -> &'static str {
-    match kind {
-        SourceKind::Journal => "journal",
-        SourceKind::Preprints => "preprints",
-        SourceKind::News => "news",
-        SourceKind::Blog => "blog",
-    }
-}
-
 /// The kind a category or a group's name says, if it says one.
 fn kind_of(text: &str) -> Option<SourceKind> {
     let text = text.to_lowercase();
@@ -68,7 +58,7 @@ pub fn write(subscriptions: &[Subscription]) -> String {
         };
         out.push_str(&format!(
             "    <outline type=\"{kind}\" text=\"{title}\" title=\"{title}\" category=\"{}\" {address}/>\n",
-            kind_name(s.settings.kind),
+            s.settings.kind.as_str(),
             title = escape(&title),
         ));
     }

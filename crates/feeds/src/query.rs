@@ -11,7 +11,7 @@ use papers_core::{Like, Query, Record, Schema};
 
 use crate::feeds::Feeds;
 use crate::interest::Score;
-use crate::model::{Item, ItemKind, Reminder, Triage};
+use crate::model::{Item, Reminder, Triage};
 use crate::normalize::family_name;
 
 /// The facets of an item.
@@ -29,27 +29,6 @@ pub const SCHEMA: Schema = Schema {
 /// A query of the feeds.
 pub fn parse(text: &str) -> Query {
     Query::parse(text, SCHEMA)
-}
-
-/// The value of `kind:`.
-pub fn kind_name(kind: ItemKind) -> &'static str {
-    match kind {
-        ItemKind::Paper => "paper",
-        ItemKind::Preprint => "preprint",
-        ItemKind::News => "news",
-        ItemKind::Blog => "blog",
-    }
-}
-
-/// The value of `is:`; new is `is:unread` too.
-pub fn triage_name(triage: Triage) -> &'static str {
-    match triage {
-        Triage::New => "new",
-        Triage::Seen => "seen",
-        Triage::Shortlisted => "shortlisted",
-        Triage::Dismissed => "dismissed",
-        Triage::Added => "added",
-    }
 }
 
 /// A query as the app and the CLI show it: dismissed items left out (`-is:dismissed`
@@ -96,7 +75,7 @@ impl Feeds {
         let reminder = self.reminder(&item.id);
         let mut is = vec![match reminder {
             Some(Reminder::Snoozed) => "snoozed".to_string(),
-            _ => triage_name(triage).to_string(),
+            _ => triage.as_str().to_string(),
         }];
         if reminder == Some(Reminder::Due) {
             is.push("reminder".to_string());
@@ -128,7 +107,7 @@ impl Feeds {
             .r#abstract(summary)
             .doi(item.doi.as_deref().unwrap_or(""))
             .has(has.iter().filter(|(_, x)| *x).map(|(name, _)| name))
-            .facet("kind", [kind_name(item.kind)])
+            .facet("kind", [item.kind.as_str()])
             .facet("is", is.iter().map(String::as_str).chain(unread))
             .facet("src", src)
             .facet("prof", prof)
