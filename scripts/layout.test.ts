@@ -15,6 +15,7 @@ test("no layout: the defaults, the Library tab in front", () => {
   assert.ok(layout.feeds.columns.some((c) => c.key === "score"));
   assert.ok(layout.search.columns.some((c) => c.key === "cited"));
   assert.equal(layout.search.look, "table");
+  assert.equal(layout.look, "table");
 });
 
 /** a window.json of the version before the tabs' keys were nested */
@@ -76,6 +77,11 @@ test("the Feeds tab's list simple unless a table was chosen", () => {
   assert.equal(restore({ feeds: { ...nested, look: "cards" } } as never).feeds.look, "simple");
   // its name of before
   assert.equal(restore({ feeds: { ...nested, look: "calm" } } as never).feeds.look, "simple");
+});
+
+test("the library's list a table unless simple was chosen", () => {
+  assert.equal(restore({ look: "simple" } as never).look, "simple");
+  assert.equal(restore({ look: "cards" } as never).look, "table");
 });
 
 test("the Search tab's list a table unless simple was chosen", () => {

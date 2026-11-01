@@ -33,13 +33,16 @@
 <script lang="ts">
   // The table of the library tab: only the rows in view drawn; the headers sort, move, resize, show and hide the
   // columns (TableHead: the title, else the last column, takes the room left); a row pressed and dragged goes to the
-  // Open section of the sidebar. The star of a row stars the paper, or unstars it (the tag `STARRED`).
+  // Open section of the sidebar. The star of a row stars the paper, or unstars it (the tag `STARRED`). Simple
+  // (`look`; SimpleRow): no headers, each row taller, its file and its star, its year, then its journal, title and
+  // authors a line each, its tags small at its end; the rows are the same rows, pressed, dragged and clicked alike.
 
   import { STAR } from "$lib/feeds/actions";
-  import { gridOf, widthOf, type Shown } from "$lib/list/columns";
+  import { gridOf, simpleGridOf, widthOf, type Look, type Shown } from "$lib/list/columns";
+  import SimpleRow from "$lib/list/SimpleRow.svelte";
   import TableHead from "$lib/list/TableHead.svelte";
-  import { ROW, Rows } from "$lib/list/virtual.svelte";
-  import { COLUMNS, type Sort } from "./columns";
+  import { Rows } from "$lib/list/virtual.svelte";
+  import { COLUMNS, firstDescending, type Sort } from "./columns";
   import { DRAG_DISTANCE, endDrag, overDrop, rowDrag } from "./drag.svelte";
 
   let {
@@ -48,6 +51,7 @@
     selected,
     focus,
     sort,
+    look = "table",
     scroll = 0,
     onscrolled,
     oncolumns,
@@ -67,6 +71,8 @@
     /** the row the details show, and that the keys move from */
     focus: string | null;
     sort: Sort;
+    /** a table of the columns, or simple */
+    look?: Look;
     /** where the rows are scrolled to when the table comes, px: the library tab as it was left */
     scroll?: number;
     /** the table scrolled, to where */
@@ -88,6 +94,8 @@
 
   /** the file marker, before the columns */
   const LEAD = [26];
+  /** simple: the file marker and the star, before the year and the three lines */
+  const SIMPLE_GRID = simpleGridOf([26, 22]);
 
   let template = $derived(gridOf(LEAD, columns, COLUMNS));
   let minWidth = $derived(widthOf(LEAD, columns, COLUMNS));
@@ -96,6 +104,7 @@
     count: () => rows.length,
     focus: () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
     start: () => scroll,
+    look: () => look,
   });
 
   /** the papers selected before the first click of a double-click, which the second opens together */
@@ -166,9 +175,9 @@
   /** A click: ascending, descending, then the order of the library. Years
    *  and dates added start with the newest, the stars with those starred. */
   function sortBy(column: Column) {
-    const firstDescending = column === "year" || column === "added" || column === "star";
-    if (sort?.column !== column) onsort({ column, descending: firstDescending });
-    else if (sort.descending === firstDescending) onsort({ column, descending: !firstDescending });
+    const first = firstDescending(column);
+    if (sort?.column !== column) onsort({ column, descending: first });
+    else if (sort.descending === first) onsort({ column, descending: !first });
     else onsort(null);
   }
 
@@ -181,6 +190,33 @@
   });
 </script>
 
+<!-- the file marker of a row: a file linked, or one missing -->
+{#snippet fileMark(row: Row)}
+  <span class="file" title={row.file === "missing" ? "File not found" : ""}>
+    {#if row.file !== "none"}
+      <svg class:missing={row.file === "missing"} viewBox="0 0 12 14" aria-hidden="true">
+        <path d="M2 1h5l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.2" />
+      </svg>
+    {/if}
+  </span>
+{/snippet}
+
+{#snippet starButton(row: Row)}
+  {@const on = isStarred(row.tags)}
+  <button
+    class="star"
+    class:on
+    title={on ? STAR.row.on : STAR.row.off}
+    onpointerdown={(e) => e.stopPropagation()}
+    onmousedown={(e) => e.stopPropagation()}
+    ondblclick={(e) => e.stopPropagation()}
+    onclick={(e) => {
+      e.stopPropagation();
+      onstar(row.id);
+    }}>{on ? "★" : "☆"}</button
+  >
+{/snippet}
+
 <div
   class="table"
   role="grid"
@@ -190,8 +226,10 @@
   bind:clientWidth={view.width}
   onscroll={() => onscrolled?.(view.scrolled())}
 >
-  <TableHead lead={LEAD} room={view.width} {columns} specs={COLUMNS} menu={Object.keys(COLUMNS) as Column[]} {heading} onclick={sortBy} {oncolumns} />
-  <div class="rows" style:height="{rows.length * ROW}px" style:min-width="{minWidth}px">
+  {#if !view.simple}
+    <TableHead lead={LEAD} room={view.width} {columns} specs={COLUMNS} menu={Object.keys(COLUMNS) as Column[]} {heading} onclick={sortBy} {oncolumns} />
+  {/if}
+  <div class="rows" style:height="{rows.length * view.row}px" style:min-width={view.simple ? null : `${minWidth}px`}>
     {#each rows.slice(view.first, view.last) as row, i (row.id)}
       <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
       <div
@@ -200,8 +238,9 @@
         role="row"
         tabindex="-1"
         aria-selected={selected.has(row.id)}
-        style:top="{(view.first + i) * ROW}px"
-        style:grid-template-columns={template}
+        style:top="{(view.first + i) * view.row}px"
+        style:height="{view.row}px"
+        style:grid-template-columns={view.simple ? SIMPLE_GRID : template}
         onpointerdown={(e) => rowPress(e, row.id)}
         onmousedown={(e) => rowDown(e, row.id)}
         onclick={() => rowClick(row.id)}
@@ -211,32 +250,23 @@
           onmenu(row.id, e);
         }}
       >
-        <span class="file" title={row.file === "missing" ? "File not found" : ""}>
-          {#if row.file !== "none"}
-            <svg class:missing={row.file === "missing"} viewBox="0 0 12 14" aria-hidden="true">
-              <path d="M2 1h5l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.2" />
-            </svg>
-          {/if}
-        </span>
-        {#each columns as { key } (key)}
-          {#if key === "star"}
-            {@const on = isStarred(row.tags)}
-            <button
-              class="star"
-              class:on
-              title={on ? STAR.row.on : STAR.row.off}
-              onpointerdown={(e) => e.stopPropagation()}
-              onmousedown={(e) => e.stopPropagation()}
-              ondblclick={(e) => e.stopPropagation()}
-              onclick={(e) => {
-                e.stopPropagation();
-                onstar(row.id);
-              }}>{on ? "★" : "☆"}</button
-            >
-          {:else}
-            <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added"}>{text(row, key)}</span>
-          {/if}
-        {/each}
+        {@render fileMark(row)}
+        {#if view.simple}
+          {@render starButton(row)}
+          <SimpleRow date={text(row, "year")} source={text(row, "container")}>
+            {#snippet title()}{row.title}{/snippet}
+            {#snippet authors()}{row.authors}{/snippet}
+            {#snippet end()}{text(row, "tags")}{/snippet}
+          </SimpleRow>
+        {:else}
+          {#each columns as { key } (key)}
+            {#if key === "star"}
+              {@render starButton(row)}
+            {:else}
+              <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added"}>{text(row, key)}</span>
+            {/if}
+          {/each}
+        {/if}
       </div>
     {/each}
   </div>
@@ -273,7 +303,6 @@
   .row {
     display: grid;
     align-items: center;
-    height: 26px;
   }
   .rows {
     position: relative;

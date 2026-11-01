@@ -22,7 +22,7 @@ export type FeedsLayout = { filters: FeedFilters; columns: Shown<FeedColumn>[]; 
 export type SearchLayout = SearchState & { columns: Shown<FeedColumn>[]; look: Look };
 
 /** What the window keeps between sessions: the tab in front, the widths of the side panes, whether the details
- *  show, the columns and order of the library's table, the library tab (its library, view, tags and search), the
+ *  show, the columns, order and look of the library's list, the library tab (its library, view, tags and search), the
  *  papers open and the page of each, the parent tags unfolded in the sidebar, the Feeds and the Search tab's own. */
 export type Layout = {
   /** what the layout knows: `LAYOUT_VERSION` once read */
@@ -34,6 +34,8 @@ export type Layout = {
   showDetails: boolean;
   columns: Shown<Column>[];
   sort: Sort;
+  /** the library's list: a table of its columns, or simple */
+  look: Look;
   /** the filters of the library tab: the current set it shows */
   library: Filters;
   open: string[];
@@ -70,6 +72,7 @@ const DEFAULTS: Layout = {
   showDetails: true,
   columns: DEFAULT_COLUMNS,
   sort: null,
+  look: "table",
   library: NO_FILTERS,
   open: [],
   active: null,
@@ -80,11 +83,11 @@ const DEFAULTS: Layout = {
 };
 
 /** The layout saved (none: the defaults): what a file of an older version does not have takes its default (one of
- *  before version 2 shows the library's star column; the Feeds tab's list, simple; the Search tab's, a table), and
- *  what it kept apart (`Before`) comes in its place; the filters of the library tab and of the Feeds tab, and the
- *  Search tab's, are checked (`restored`, `restoredFeeds`, `restoredSearch`), as are the columns of the three tables
- *  (`restoredColumns`: those of the Feeds and Search tabs, once widths by column, become a list in their first
- *  order, at the widths saved). */
+ *  before version 2 shows the library's star column; the Feeds tab's list, simple; the library's and the Search
+ *  tab's, a table), and what it kept apart (`Before`) comes in its place; the filters of the library tab and of the
+ *  Feeds tab, and the Search tab's, are checked (`restored`, `restoredFeeds`, `restoredSearch`), as are the columns
+ *  of the three tables (`restoredColumns`: those of the Feeds and Search tabs, once widths by column, become a list
+ *  in their first order, at the widths saved) and the looks of the three lists (`restoredLook`). */
 export function restore(saved: (Partial<Layout> & Before) | null): Layout {
   const { view, feedColumns, feedsShown, searchColumns, ...kept } = saved ?? {};
   const tab = [kept.tab, view].find((t): t is Tab => TABS.includes(t as Tab)) ?? DEFAULTS.tab;
@@ -101,6 +104,7 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
     version: LAYOUT_VERSION,
     tab,
     columns: before ? withColumn(columns, COLUMNS, DEFAULT_ORDER, "star") : columns,
+    look: restoredLook(kept.look, "table"),
     library: restored(kept.library),
     feeds: {
       filters: restoredFeeds(feeds.filters as Partial<FeedFilters> | undefined),

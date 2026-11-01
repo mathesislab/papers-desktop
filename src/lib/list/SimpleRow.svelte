@@ -33,7 +33,7 @@
   <span>{@render title()}</span>
   <span class="muted small">{@render authors()}</span>
 </span>
-<span class="end">{@render end?.()}</span>
+<span class="muted end">{@render end?.()}</span>
 
 <style>
   .date,
@@ -64,7 +64,7 @@
     font-size: 11px;
     line-height: 14px;
   }
-  /* the end quiet: smaller, as much as fits */
+  /* the end quiet: muted (the badges have their colours), smaller, as much as fits */
   .end {
     max-width: 220px;
     font-size: 11px;

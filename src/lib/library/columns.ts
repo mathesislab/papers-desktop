@@ -1,4 +1,5 @@
-// The columns of the library's table (Table): their names and widths at first, those shown at first, the sort.
+// The columns of the library's table (Table): their names and widths at first, those shown at first, the sort and
+// what it says above the list.
 
 import { columnsOf, type Specs } from "../list/columns.ts";
 
@@ -21,6 +22,14 @@ export const COLUMNS: Specs<Column> = {
   bib: { name: "Library", width: 120 },
   added: { name: "Added", width: 90 },
 };
+
+/** A column sorted by at first: years, dates added and stars descending (the newest, those starred first), the
+ *  others ascending. */
+export const firstDescending = (column: Column) => column === "year" || column === "added" || column === "star";
+
+/** The order, as said above the list: the library's, or a column's name and its direction. */
+export const sortText = (sort: Sort) =>
+  sort ? `${COLUMNS[sort.column].name}, ${sort.descending ? "descending" : "ascending"}` : "Library order";
 
 /** the columns shown at first */
 export const DEFAULT_ORDER: Column[] = ["star", "authors", "year", "title", "container", "tags"];

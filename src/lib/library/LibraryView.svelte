@@ -7,6 +7,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { CheckMenuItem, Menu, PredefinedMenuItem } from "@tauri-apps/api/menu";
   import { ask, save } from "@tauri-apps/plugin-dialog";
   import { onMount, tick, untrack, type Snippet } from "svelte";
   import { commands } from "$lib/commands";
@@ -46,8 +47,10 @@
   } from "$lib/library/selection";
   import { closed, initial, seen, type Seen } from "$lib/library/history";
   import { modalOpen } from "$lib/library/modal.svelte";
+  import LookSwitch from "$lib/list/LookSwitch.svelte";
   import { nextAfter, stepped } from "$lib/list/order";
   import { Selection } from "$lib/list/selection.svelte";
+  import { rowOf } from "$lib/list/virtual.svelte";
   import { NativeReader } from "$lib/library/native.svelte";
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
@@ -80,7 +83,7 @@
   import Sidebar from "$lib/library/Sidebar.svelte";
   import { DROP_NEW, pdfDrag } from "$lib/library/drag.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
-  import { COLUMNS, type Column, type Sort } from "$lib/library/columns";
+  import { COLUMNS, firstDescending, sortText, type Column, type Sort } from "$lib/library/columns";
   import Table, { value } from "$lib/library/Table.svelte";
   import type { Shown } from "$lib/list/columns";
   import type {
@@ -258,6 +261,38 @@
   );
 
   let libraries = $derived(libraryCounts(rows));
+
+  /** The order from its menu above the list (the simple list has no headers): the library's, or a column's, the
+   *  column chosen first as a click on its header sorts it, then ascending or descending. */
+  async function sortMenu() {
+    const sort = layout.sort;
+    const separator = () => PredefinedMenuItem.new({ item: "Separator" });
+    const by = (column: Column) =>
+      (layout.sort = { column, descending: sort?.column === column ? sort.descending : firstDescending(column) });
+    const menu = await Menu.new({
+      items: [
+        await CheckMenuItem.new({ text: "Library order", checked: !sort, action: () => (layout.sort = null) }),
+        await separator(),
+        ...(await Promise.all(
+          (Object.keys(COLUMNS) as Column[]).map((column) =>
+            CheckMenuItem.new({ text: COLUMNS[column].name, checked: sort?.column === column, action: () => by(column) }),
+          ),
+        )),
+        await separator(),
+        ...(await Promise.all(
+          [false, true].map((descending) =>
+            CheckMenuItem.new({
+              text: descending ? "Descending" : "Ascending",
+              enabled: !!sort,
+              checked: sort?.descending === descending,
+              action: () => sort && (layout.sort = { ...sort, descending }),
+            }),
+          ),
+        )),
+      ],
+    });
+    await menu.popup();
+  }
 
   /** The rows in the order of a column; the empty values last. */
   function sorted(list: Row[], sort: NonNullable<Sort>): Row[] {
@@ -1002,8 +1037,8 @@
     if (!layout.active && !(e.target instanceof HTMLTextAreaElement)) libraryKey(e);
   }
 
-  /** the rows a page key moves: about those in view */
-  const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 120) / 26));
+  /** the rows a page key moves: about those in view, as high as the list's look has them */
+  const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 120) / rowOf(layout.look)));
 
   /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
    *  elsewhere (after asking), the arrows, the page keys, Home
@@ -1225,7 +1260,7 @@
     </header>
     <div class="content">
       <section class="library" {...{ [DROP_NEW]: "" }}>
-        {#if !reader && filterChips.length}
+        {#if !reader}
           <div class="chips">
             {#each filterChips as chip, i (chip.kind + chip.text)}
               {#if i}<span class="sep" aria-hidden="true">›</span>{/if}
@@ -1234,6 +1269,11 @@
                 <button aria-label="Remove the filter {chip.text}" onclick={() => dropFilter(chip)}>×</button>
               </span>
             {/each}
+            <span class="spacer"></span>
+            <button class="sort" title="The order of the papers: the library's (the newest first), or by a column" onclick={sortMenu}>
+              {sortText(layout.sort)} ▾
+            </button>
+            <LookSwitch bind:look={layout.look} />
           </div>
         {/if}
         {#if reader}
@@ -1257,6 +1297,7 @@
             selected={selection.selected}
             focus={selection.focus}
             sort={layout.sort}
+            look={layout.look}
             scroll={table.scroll}
             onscrolled={(top) => (table.scroll = top)}
             oncolumns={setColumns}
@@ -1386,7 +1427,7 @@
     background: var(--line);
     color: var(--fg);
   }
-  /* the filters on: library › view › tags › search */
+  /* above the table: the filters on (library › view › tags › search), the order, the look */
   .chips {
     flex: none;
     display: flex;
@@ -1427,6 +1468,16 @@
   }
   .chip button:hover {
     background: var(--line);
+    color: var(--fg);
+  }
+  .sort {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+  }
+  .sort:hover {
     color: var(--fg);
   }
   /* room for "99999 papers · 999 selected": the export stays in place */
