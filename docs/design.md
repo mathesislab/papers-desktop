@@ -777,7 +777,11 @@ library papers; `a` add, `b` add without PDF, `l` later, `x` dismiss.
 
 **The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
 `FeedDetails`, `Facts`, `Review`, `SubscribeSheet`; the pure parts in
-`filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`):
+`filters.ts`, `items.ts`, `review.ts`, tested by `scripts/feeds.test.ts`; the
+list and the details, shared with the Search tab, in `src/lib/list/`:
+`ItemList` the rows, the selection, the item read or shown, the keys that
+move, open and add, `ItemPane` the table, `Reader`, the details and the
+splitter, `tab.css` the frame of the two tabs):
 
 - *Sidebar*: Views (Unread `is:new`, Starred, Snoozed, Added, All · *N days*:
   the keep-days of the settings), Kinds,
@@ -1161,9 +1165,10 @@ search again, the most cited first. **Follow this search** subscribes the
 query in the Feeds tab as a sweep of OpenAlex (`follow_filter`: its words in
 the titles and abstracts, then its filters), fetched at once.
 
-The table and the details are the Feeds tab's components (the columns, the
-buttons given by the tab; `Reader`, the item read in place of the list, by
-the setting `feeds_beside`), in the tab's violet (`--search`).
+The list and the details are the Feeds tab's (`ItemList`, `ItemPane`: the
+columns and the buttons given by the tab; `Reader`, the item read in place of
+the list, by the setting `feeds_beside`; the same keys to move, `/` with or
+without ⇧), in the tab's violet (`--search`).
 
 ## Later, optional: Spotlight add-on
 
