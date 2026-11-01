@@ -3,7 +3,7 @@
   import { CheckMenuItem, Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
   import type { Snippet } from "svelte";
   import { modClick } from "$lib/keys";
-  import { foldTag, lastSegment, parentsOf, sameTag } from "$lib/tags";
+  import { foldTag, lastSegment, parentsOf, sameTag, STARRED } from "$lib/tags";
   import { fileName, type View } from "./filters";
   import type { Row, TagCount } from "$lib/types";
   import { DROP_OPEN, rowDrag } from "./drag.svelte";
@@ -94,9 +94,12 @@
   /** a row of the tree: a tag of the library or a parent of one */
   type Node = TagCount & { depth: number; children: Node[] };
 
+  /** the papers starred (the tag `STARRED`): *Starred*, first of the tags, not in their tree */
+  let starred = $derived(tags.find((t) => sameTag(t.tag, STARRED)) ?? { tag: STARRED, count: 0, under: 0 });
+
   /** The tags as a tree, once per change of `tags`: each tag under its parent, in the order given. */
   let roots = $derived.by(() => {
-    const nodes = tags.map((t): Node => ({ ...t, depth: 0, children: [] }));
+    const nodes = tags.filter((t) => t !== starred).map((t): Node => ({ ...t, depth: 0, children: [] }));
     const byName = new Map(nodes.map((n) => [foldTag(n.tag), n]));
     const top: Node[] = [];
     for (const node of nodes) {
@@ -219,55 +222,56 @@
     </button>
   {/each}
 
-  {#if tags.length}
-    <h4>Tags</h4>
-    {#each shown as { node: { tag, under, depth, children }, expanded, revealed } (tag)}
-      {#if editing === tag}
-        <!-- the full tag, so it can move: the field takes the whole row -->
-        <div class="item">
-          <input
-            bind:this={field}
-            bind:value={draft}
-            aria-label="Rename the tag"
-            spellcheck="false"
-            autocomplete="off"
-            onkeydown={fieldKey}
-            onblur={commit}
-          />
-        </div>
-      {:else}
-        <div
-          class="tag"
-          class:selected={filtered(tag)}
-          style:padding-left="{4 + depth * INDENT}px"
-          role="presentation"
-          oncontextmenu={(e) => tagMenu(e, tag)}
-        >
-          {#if children.length}
-            <button
-              class="twisty"
-              class:open={expanded}
-              disabled={revealed}
-              aria-label={expanded ? `Fold ${tag}` : `Unfold ${tag}`}
-              aria-expanded={expanded}
-              onclick={() => onfold(tag, !expanded)}
-            >
-              <svg viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
-                <path d="M2 1l4 3-4 3z" fill="currentColor" />
-              </svg>
-            </button>
-          {:else}
-            <span class="twisty"></span>
-          {/if}
-          <button class="label" title={tag} onclick={(e) => ontag(tag, modClick(e))}>
-            <span class="name">{lastSegment(tag)}</span>
-            {#if keyOf(tag)}<span class="key">{keyOf(tag)}</span>{/if}
-            <span class="count">{under}</span>
+  <h4>Tags</h4>
+  <button class="item" class:selected={filtered(starred.tag)} onclick={(e) => ontag(starred.tag, modClick(e))}>
+    <span class="name"><span class="star" aria-hidden="true">★</span> Starred</span><span class="count">{starred.count}</span>
+  </button>
+  {#each shown as { node: { tag, under, depth, children }, expanded, revealed } (tag)}
+    {#if editing === tag}
+      <!-- the full tag, so it can move: the field takes the whole row -->
+      <div class="item">
+        <input
+          bind:this={field}
+          bind:value={draft}
+          aria-label="Rename the tag"
+          spellcheck="false"
+          autocomplete="off"
+          onkeydown={fieldKey}
+          onblur={commit}
+        />
+      </div>
+    {:else}
+      <div
+        class="tag"
+        class:selected={filtered(tag)}
+        style:padding-left="{4 + depth * INDENT}px"
+        role="presentation"
+        oncontextmenu={(e) => tagMenu(e, tag)}
+      >
+        {#if children.length}
+          <button
+            class="twisty"
+            class:open={expanded}
+            disabled={revealed}
+            aria-label={expanded ? `Fold ${tag}` : `Unfold ${tag}`}
+            aria-expanded={expanded}
+            onclick={() => onfold(tag, !expanded)}
+          >
+            <svg viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
+              <path d="M2 1l4 3-4 3z" fill="currentColor" />
+            </svg>
           </button>
-        </div>
-      {/if}
-    {/each}
-  {/if}
+        {:else}
+          <span class="twisty"></span>
+        {/if}
+        <button class="label" title={tag} onclick={(e) => ontag(tag, modClick(e))}>
+          <span class="name">{lastSegment(tag)}</span>
+          {#if keyOf(tag)}<span class="key">{keyOf(tag)}</span>{/if}
+          <span class="count">{under}</span>
+        </button>
+      </div>
+    {/if}
+  {/each}
 
   <!-- rows of the table dropped here open as tabs -->
   <div class="open" class:target={rowDrag.ids.length > 0} class:over={rowDrag.over} {...{ [DROP_OPEN]: "" }}>
@@ -437,6 +441,9 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  .star {
+    color: #d9822b;
   }
   .paper {
     display: flex;

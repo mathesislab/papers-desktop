@@ -39,36 +39,39 @@ Two windows with different jobs:
 
 Three panes, each resized by dragging, the right one hidden on demand:
 
-- **Sidebar**: *Libraries* (with several .bib files: *All libraries*, then
-  one row per .bib, as the accounts of Mail; a click shows one, `⌘`-click,
-  Ctrl-click elsewhere, adds one or takes it out); *Views* (all papers, recently
-  opened, recently added, no PDF, broken file links, possible duplicates: the
-  same DOI, or the same title and year); the tags with their counts (a click filters by
-  the tag, a second click takes the filter off; `⌘`-click: below); *Open*: the library tab,
-  then the open papers. The counts of the views and the tags are those
-  within the libraries chosen.
+- **Sidebar**: *Libraries* (with several .bib files: *All libraries*, then one
+  row per .bib, as the accounts of Mail; a click shows one, `⌘`-click,
+  Ctrl-click elsewhere, adds one or takes it out); *Views* (all papers,
+  recently opened, recently added, no PDF, broken file links, possible
+  duplicates: the same DOI, or the same title and year); the tags with their
+  counts (a click filters by the tag, a second click takes the filter off;
+  `⌘`-click: below), *★ Starred* first (the tag `starred`, out of the tree);
+  *Open*: the library tab, then the open papers. The counts of the views and
+  the tags are those within the libraries chosen.
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
-  missing file), multi-select. Only the rows on screen are drawn
-  (`list/virtual.svelte.ts`); the table scrolls as one, down and across, its
-  headers staying at its top. The headers are the three tables' (`TableHead`,
-  `list/columns.ts`, the library's, the Feeds and the Search tab's): a click
-  sorts, a header dragged moves its column, a right-click shows or hides
-  columns. An edge dragged resizes the column to its left, following the
-  pointer: the columns before it do not move, those after it follow, and the
-  last column gives the room or takes it; at its least width, the table grows
-  wider than the window and scrolls across. The last column's own edge
-  resizes it, the table no narrower than the window. The title (else the last
-  column) takes the room the window gives or takes, down to the width kept
-  for it, its least, which a drag leaves as it was unless the table grows
-  wider than the window; it changes width in a drag only by its own edge.
-  Each column has a least width; their names and widths at first are in
-  `library/columns.ts` and `feeds/columns.ts`.
-  The layout keeps each table's columns as a list of `{key, width}`; that of
-  an older version is read (the library's `{column, width}`, the Feeds and
-  Search tabs' widths by column, in their first order). A line
-  above it shows the filters that are on as chips, each with an ×:
-  `papers.bib › No PDF › amoc › "ice"`; with no filter, there is no line.
+  missing file, a ☆ that stars the paper or unstars it: the tag `starred`,
+  `tags.ts` `STARRED`; its header a ★, the starred first), multi-select. `s`
+  stars the selection, or unstars it when all are starred. Only the rows on
+  screen are drawn (`list/virtual.svelte.ts`); the table scrolls as one, down
+  and across, its headers staying at its top. The headers are the three
+  tables' (`TableHead`, `list/columns.ts`, the library's, the Feeds and the
+  Search tab's): a click sorts, a header dragged moves its column, a
+  right-click shows or hides columns. An edge dragged resizes the column to
+  its left, following the pointer: the columns before it do not move, those
+  after it follow, and the last column gives the room or takes it; at its
+  least width, the table grows wider than the window and scrolls across. The
+  last column's own edge resizes it, the table no narrower than the window.
+  The title (else the last column) takes the room the window gives or takes,
+  down to the width kept for it, its least, which a drag leaves as it was
+  unless the table grows wider than the window; it changes width in a drag
+  only by its own edge. Each column has a least width; their names and widths
+  at first are in `library/columns.ts` and `feeds/columns.ts`. The layout
+  keeps each table's columns as a list of `{key, width}`; that of an older
+  version is read (the library's `{column, width}`, the Feeds and Search tabs'
+  widths by column, in their first order). A line above it shows the filters
+  that are on as chips, each with an ×: `papers.bib › No PDF › amoc › "ice"`;
+  with no filter, there is no line.
 - **Details** of the selected paper: title, authors, tags, file (open,
   reveal), fields, citation, BibTeX (folded).
 
@@ -143,10 +146,11 @@ and come back at the next start; a .bib file no longer in the library is
 dropped.
 
 **Saved searches** (`SaveSearch.svelte`, `SavedSearches.svelte`, `saved.ts`,
-shared with the Feeds tab, whose saved views they are): the ☆ next to the search field saves the
-filters shown and the sort of the table under a name, typed in a field that
-opens under it (the filters in a few words offered; a blank name or one
-taken, in any case, refused); ★ when a saved search is what the tab shows.
+shared with the Feeds tab, whose saved views they are): the + next to the
+search field (*Save this search…*) saves the filters shown and the sort of the
+table under a name, typed in a field that opens under it (the filters in a few
+words offered; a blank name or one taken, in any case, refused); a ✓ when a
+saved search is what the tab shows, its name on hover.
 A *Saved* section at the top of the sidebar lists them, each with the
 number of papers it shows (each set made as the library tab makes it: the
 core's `matching` for its search, then `currentSet` with the lists of the
@@ -182,15 +186,16 @@ after the last one gone):
   the system's default app elsewhere). A paper without a PDF is skipped, and
   the notice says how many (*Opened 3 PDFs, 2 papers without a PDF skipped*).
 - *The context menu of a row* (right-click; on the selection if the row is in
-  it, else on that row, which becomes the selection): *Open*, *Open in Preview*,
-  *Reveal in Finder*, *Open DOI page*; *Copy [@key]* (`[@a; @b]` for several),
-  *Copy BibTeX* (one after the other), *Copy citation* (the style of the
-  settings, one per line), *Edit BibTeX* (one paper: the editor of the
-  details); *Tags ▸* (the tags pinned to the keys, then the most used, each a
-  check that puts it on the papers or takes it off; *Edit tags…* opens the field
-  of the details); *Add PDF…* (one paper without a file); *Copy to ▸* and *Move
-  to ▸* (the other .bib files, when there are several); *Export selection…*;
-  *Delete…*. What does not apply is disabled (no PDF, no DOI).
+  it, else on that row, which becomes the selection): *Open*, *Open in
+  Preview*, *Reveal in Finder*, *Open DOI page*; *Copy [@key]* (`[@a; @b]` for
+  several), *Copy BibTeX* (one after the other), *Copy citation* (the style of
+  the settings, one per line), *Edit BibTeX* (one paper: the editor of the
+  details); *Star* / *Unstar* (as the Feeds tab says it); *Tags ▸* (the tags
+  pinned to the keys, then the most used, each a check that puts it on the
+  papers or takes it off; *Edit tags…* opens the field of the details); *Add
+  PDF…* (one paper without a file); *Copy to ▸* and *Move to ▸* (the other
+  .bib files, when there are several); *Export selection…*; *Delete…*. What
+  does not apply is disabled (no PDF, no DOI).
 - *Delete…* (the menu, `⌘⌫` on the selection): *Delete 3 papers?* with a block
   per paper (scrolls): its key, its citation in the style of the settings (as
   the preview shows it), and each file it links on a line of its own with a
@@ -850,7 +855,7 @@ Library tab):
   (`feeds.filters`; a file without it takes the defaults; the single `kind`,
   `interest` and `source` of before become groups of one, the view
   `shortlist` of before `starred`).
-- *Saved views*: as the library's saved searches (above), the ☆ next to the
+- *Saved views*: as the library's saved searches (above), the + next to the
   search and a *Saved views* section at the top of the sidebar, each with its
   count (`counts.views`, from the backend). One keeps `queryOf` and the sort
   (`feeds_set_saved_views`, in the feeds' `config.json`, so the CLI's

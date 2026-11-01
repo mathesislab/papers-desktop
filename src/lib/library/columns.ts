@@ -2,12 +2,14 @@
 
 import { columnsOf, type Specs } from "../list/columns.ts";
 
-export type Column = "authors" | "year" | "title" | "container" | "tags" | "key" | "kind" | "doi" | "bib" | "added";
+export type Column = "star" | "authors" | "year" | "title" | "container" | "tags" | "key" | "kind" | "doi" | "bib" | "added";
 /** a column and its direction; none: the order of the library (newest first) */
 export type Sort = { column: Column; descending: boolean } | null;
 
-/** the columns, in the order of the menu, with their width at first */
+/** the columns, in the order of the menu, with their width at first; the star's (the tag `STARRED`) narrow, its
+ *  header and arrow in it */
 export const COLUMNS: Specs<Column> = {
+  star: { name: "Starred", width: 36, least: 36 },
   authors: { name: "Authors", width: 150 },
   year: { name: "Year", width: 56 },
   title: { name: "Title", width: 320 },
@@ -21,5 +23,5 @@ export const COLUMNS: Specs<Column> = {
 };
 
 /** the columns shown at first */
-export const DEFAULT_ORDER: Column[] = ["authors", "year", "title", "container", "tags"];
+export const DEFAULT_ORDER: Column[] = ["star", "authors", "year", "title", "container", "tags"];
 export const DEFAULT_COLUMNS = columnsOf(DEFAULT_ORDER, COLUMNS);

@@ -1,18 +1,19 @@
 <script lang="ts">
-  // The ★ next to the search field of a tab: the filters shown saved under a name, typed in a field that opens
-  // under it (Enter saves, Esc or a click elsewhere closes). Filled when a saved search is what the tab shows.
+  // The + next to the search field of a tab: the filters shown saved under a name, typed in a field that opens
+  // under it (Enter saves, Esc or a click elsewhere closes). A ✓ when a saved search is what the tab shows, its name
+  // on hover.
 
   import { tick } from "svelte";
 
   let {
-    shown,
+    saved,
     noun = "search",
     suggestion,
     refusal,
     onsave,
   }: {
-    /** a saved search is what the tab shows */
-    shown: boolean;
+    /** the saved search the tab shows, by name; none: the filters are no saved search */
+    saved: string | null;
     /** what the tab calls a search saved */
     noun?: string;
     /** the name offered: the filters in a few words */
@@ -53,12 +54,12 @@
 
 <div class="save">
   <button
-    class="star"
-    class:on={shown}
+    class="save-button"
+    class:on={saved !== null}
     class:open={naming}
-    title={shown ? `A saved ${noun} shows this; save it under another name` : `Save the ${noun}, with the filters chosen`}
-    aria-label="Save the {noun}"
-    onclick={() => (naming ? (naming = false) : open())}>{shown ? "★" : "☆"}</button
+    title={saved !== null ? `The saved ${noun} “${saved}”: save it under another name…` : `Save this ${noun}…`}
+    aria-label="Save this {noun}"
+    onclick={() => (naming ? (naming = false) : open())}>{saved !== null ? "✓" : "+"}</button
   >
   {#if naming}
     <button class="backdrop" aria-label="Close" onclick={() => (naming = false)}></button>
@@ -85,7 +86,7 @@
     position: relative;
     flex: none;
   }
-  .star {
+  .save-button {
     width: 28px;
     height: 28px;
     padding: 0;
@@ -95,11 +96,11 @@
     color: var(--muted);
     font-size: 14px;
   }
-  .star.on {
-    color: #d9822b;
+  .save-button.on {
+    color: var(--tint, var(--accent));
   }
-  .star.open,
-  .star:hover {
+  .save-button.open,
+  .save-button:hover {
     background: var(--line);
   }
   .backdrop {

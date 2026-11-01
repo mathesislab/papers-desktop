@@ -3,7 +3,8 @@
 
 import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { mac } from "$lib/keys";
-import { sameTag } from "$lib/tags";
+import { STAR } from "$lib/feeds/actions";
+import { isStarred, sameTag } from "$lib/tags";
 import type { Row } from "$lib/types";
 import { fileName } from "./filters";
 import { available, targetsOf } from "./selection";
@@ -21,6 +22,8 @@ export type RowActions = {
   edit: (id: string) => void;
   /** the tag on the papers, or off them */
   tag: (tag: string, ids: string[], on: boolean) => void;
+  /** the star on the papers, unless they all have it */
+  star: (ids: string[]) => void;
   /** the tags of the papers, in the details */
   editTags: (ids: string[]) => void;
   addPdf: (id: string) => void;
@@ -63,6 +66,7 @@ export async function showRowMenu(
     await item("Copy citation", () => actions.copyCitation(ids)),
     await item("Edit BibTeX", () => actions.edit(ids[0]), can.one),
     await separator(),
+    await item(rows.every((r) => isStarred(r.tags)) ? STAR.unstar : STAR.star, () => actions.star(ids)),
     tagMenu,
     await item("Add PDF…", () => actions.addPdf(ids[0]), can.addPdf),
   ];

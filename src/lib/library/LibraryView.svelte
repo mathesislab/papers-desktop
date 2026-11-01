@@ -13,7 +13,7 @@
   import { label, mac, matches, type Shortcut } from "$lib/keys";
   import type { Layout } from "$lib/layout";
   import { renameTagFilter } from "$lib/query";
-  import { foldTag, movedTag, sameTag } from "$lib/tags";
+  import { foldTag, isStarred, movedTag, sameTag, STARRED } from "$lib/tags";
   import * as cite from "$lib/cite";
   import { copy as copyText } from "$lib/clipboard";
   import Details from "$lib/library/Details.svelte";
@@ -411,14 +411,23 @@
     await setTagOn(tag, ids, !ids.every((id) => byId.get(id)?.tags.some((t) => sameTag(t, tag))));
   }
 
-  /** A tag on papers, or off them. */
-  async function setTagOn(tag: string, ids: string[], on: boolean) {
+  /** A tag on papers, or off them, said in `words` (what is done to the papers). */
+  async function setTagOn(tag: string, ids: string[], on: boolean, words = { on: `Added ${tag} to`, off: `Removed ${tag} from` }) {
     if (on) {
       const lacking = ids.filter((id) => !byId.get(id)?.tags.some((t) => sameTag(t, tag)));
-      if (lacking.length && (await write(() => setTags(lacking, [tag])))) say(`Added ${tag} to ${count(lacking.length)}`);
+      if (lacking.length && (await write(() => setTags(lacking, [tag])))) say(`${words.on} ${count(lacking.length)}`);
     } else if (await write(() => setTags(ids, [], [tag]))) {
-      say(`Removed ${tag} from ${count(ids.length)}`);
+      say(`${words.off} ${count(ids.length)}`);
     }
+  }
+
+  /** the tag of a paper starred, as the library spells it */
+  let starTag = $derived(tags.find((t) => sameTag(t.tag, STARRED))?.tag ?? STARRED);
+
+  /** The star on papers, unless they all have it: then off them. */
+  function star(ids: string[]) {
+    const on = !ids.every((id) => isStarred(byId.get(id)?.tags ?? []));
+    setTagOn(starTag, ids, on, { on: "Starred", off: "Unstarred" });
   }
 
   /** The library, at start and when its files change. */
@@ -678,6 +687,7 @@
     copyCitation: copyCitations,
     edit: editBibtex,
     tag: setTagOn,
+    star,
     editTags,
     addPdf,
     transfer,
@@ -985,7 +995,7 @@
   /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
    *  elsewhere (after asking), the arrows, the page keys, Home
    *  and End move (shift extends the selection), Enter opens, Esc leaves the
-   *  search, 1–9 toggle the tag pinned to the key. */
+   *  search, 1–9 toggle the tag pinned to the key, s the star. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -1023,6 +1033,9 @@
     } else if (/^[1-9]$/.test(e.key) && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       togglePinned(Number(e.key) - 1);
+    } else if (e.key === "s" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && selection.focus) {
+      e.preventDefault();
+      star(selection.targets(listed()));
     } else if (matches(e, allShortcut) && !typing) {
       e.preventDefault();
       selection.selected = new Set(listed());
@@ -1167,7 +1180,7 @@
           {/if}
         </div>
         <SaveSearch
-          shown={shownSaved !== null}
+          saved={shownSaved}
           suggestion={tabFilters(layout.library) || "All papers"}
           refusal={(name) => refusal(savedSearches, name)}
           onsave={(name) => keepSaved(savedAdded(savedSearches, currentSaved(name)))}
@@ -1238,6 +1251,7 @@
             onopen={openMany}
             onmenu={rowMenu}
             ondrop={openMany}
+            onstar={(id) => star([id])}
           />
         {/if}
       </section>

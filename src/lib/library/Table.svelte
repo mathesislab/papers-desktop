@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import { isStarred } from "$lib/tags";
   import type { Row } from "$lib/types";
 
   import type { Column } from "./columns";
@@ -9,6 +10,8 @@
   /** What a column shows of a row, and sorts by. */
   export function value(row: Row, column: Column): string | number | null {
     switch (column) {
+      case "star":
+        return isStarred(row.tags) ? 1 : 0;
       case "tags":
         return row.tags.join(", ");
       case "bib":
@@ -30,8 +33,9 @@
 <script lang="ts">
   // The table of the library tab: only the rows in view drawn; the headers sort, move, resize, show and hide the
   // columns (TableHead: the title, else the last column, takes the room left); a row pressed and dragged goes to the
-  // Open section of the sidebar.
+  // Open section of the sidebar. The star of a row stars the paper, or unstars it (the tag `STARRED`).
 
+  import { STAR } from "$lib/feeds/actions";
   import { gridOf, widthOf, type Shown } from "$lib/list/columns";
   import TableHead from "$lib/list/TableHead.svelte";
   import { ROW, Rows } from "$lib/list/virtual.svelte";
@@ -53,6 +57,7 @@
     onopen,
     onmenu,
     ondrop,
+    onstar,
   }: {
     /** the rows shown, in order */
     rows: Row[];
@@ -77,6 +82,8 @@
     onmenu: (id: string, e: MouseEvent) => void;
     /** the rows dragged and dropped on the Open section of the sidebar */
     ondrop: (ids: string[]) => void;
+    /** the star of a row clicked: the paper starred, or no longer */
+    onstar: (id: string) => void;
   } = $props();
 
   /** the file marker, before the columns */
@@ -157,16 +164,18 @@
   }
 
   /** A click: ascending, descending, then the order of the library. Years
-   *  and dates added start with the newest. */
+   *  and dates added start with the newest, the stars with those starred. */
   function sortBy(column: Column) {
-    const firstDescending = column === "year" || column === "added";
+    const firstDescending = column === "year" || column === "added" || column === "star";
     if (sort?.column !== column) onsort({ column, descending: firstDescending });
     else if (sort.descending === firstDescending) onsort({ column, descending: !firstDescending });
     else onsort(null);
   }
 
-  /** A header: its arrow when the table is sorted by it. */
+  /** A header: the star's a ★, its arrow when the table is sorted by it. */
   const heading = (column: Column) => ({
+    name: column === "star" ? "★" : undefined,
+    title: column === "star" ? "Starred first" : undefined,
     arrow: sort?.column === column ? (sort.descending ? "▾" : "▴") : undefined,
     sorted: sort?.column === column,
   });
@@ -210,7 +219,23 @@
           {/if}
         </span>
         {#each columns as { key } (key)}
-          <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added"}>{text(row, key)}</span>
+          {#if key === "star"}
+            {@const on = isStarred(row.tags)}
+            <button
+              class="star"
+              class:on
+              title={on ? STAR.row.on : STAR.row.off}
+              onpointerdown={(e) => e.stopPropagation()}
+              onmousedown={(e) => e.stopPropagation()}
+              ondblclick={(e) => e.stopPropagation()}
+              onclick={(e) => {
+                e.stopPropagation();
+                onstar(row.id);
+              }}>{on ? "★" : "☆"}</button
+            >
+          {:else}
+            <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added"}>{text(row, key)}</span>
+          {/if}
         {/each}
       </div>
     {/each}
@@ -285,6 +310,27 @@
     color: var(--accent);
   }
   .row.selected .file svg {
+    color: inherit;
+  }
+  /* the star, as the Feeds tab's: faint until the row is hovered, orange when on */
+  .star {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--border);
+    font: inherit;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .row:hover .star {
+    color: var(--muted);
+  }
+  .star.on,
+  .row:hover .star.on {
+    color: #d9822b;
+  }
+  .row.selected .star {
     color: inherit;
   }
   .file svg.missing {

@@ -30,3 +30,9 @@ export function movedTag(tag: string, old: string, name: string): string {
   if (!isUnder(tag, old)) return tag;
   return `${name}/${tag.split("/").slice(old.split("/").length).join("/")}`;
 }
+
+/** The tag of a paper starred in the library: the ☆ of the table, the key `s`, *Starred* in the sidebar. */
+export const STARRED = "starred";
+
+/** Whether a paper's tags star it. */
+export const isStarred = (tags: string[]) => tags.some((t) => sameTag(t, STARRED));

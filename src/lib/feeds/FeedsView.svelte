@@ -618,7 +618,7 @@
         {/if}
       </div>
       <SaveSearch
-        shown={shownView !== null}
+        saved={shownView}
         noun="view"
         suggestion={chips.map((c) => c.text).join(" · ") || "All items"}
         refusal={viewRefusal}
