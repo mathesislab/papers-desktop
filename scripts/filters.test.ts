@@ -21,7 +21,7 @@ import {
   type Filters,
   type Lists,
 } from "../src/lib/library/filters.ts";
-import { FIELDS, alternatives, anyOf, queryTerms, renameTagFilter, tagTerm } from "../src/lib/query.ts";
+import { FIELDS, anyOf, queryTerms, renameTagFilter } from "../src/lib/query.ts";
 import type { Row } from "../src/lib/types.ts";
 
 const row = (id: string, bib: string, tags: string[] = [], file: Row["file"] = "found"): Row =>
@@ -189,10 +189,8 @@ test("a filter of any of several values, quoted as the core reads them", () => {
   assert.equal(anyOf("src", ["EGUsphere", "Glaciología"]), 'src:EGUsphere,"Glaciología"');
   assert.equal(anyOf("prof", ['say "hi"', "", "  "]), 'prof:"say hi"');
   assert.equal(anyOf("kind", []), "");
-  assert.equal(tagTerm("mass balance"), 'tag:"mass balance"');
-  assert.equal(tagTerm("a,b"), 'tag:"a,b"');
-  assert.deepEqual(alternatives('tc,"Nature, Geosci",'), ["tc", "Nature, Geosci", ""]);
-  assert.deepEqual(alternatives('"mass balance"'), ["mass balance"]);
+  assert.equal(anyOf("tag", ["mass balance"]), 'tag:"mass balance"');
+  assert.equal(anyOf("tag", ["a,b"]), 'tag:"a,b"');
 });
 
 test("a typed tag filter follows a rename, any of its values", () => {
@@ -200,6 +198,8 @@ test("a typed tag filter follows a rename, any of its values", () => {
   assert.equal(renameTagFilter('tag:x,"climate/amoc",ice', "climate", "clim"), 'tag:x,"clim/amoc",ice');
   assert.equal(renameTagFilter("tag:mb,ice", "mb", "mass balance"), 'tag:"mass balance",ice');
   assert.equal(renameTagFilter('tag:"a b",c', "x", "y"), 'tag:"a b",c');
+  // a phrase is no filter; a filter's case is the core's
+  assert.equal(renameTagFilter('"tag:amoc" TAG:amoc', "amoc", "AMOC"), '"tag:amoc" tag:AMOC');
 });
 
 test("the terms of a query, as the core reads them", () => {

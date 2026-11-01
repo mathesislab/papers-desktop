@@ -1,33 +1,41 @@
-// Edit the filters of a query: the years clicked in the panel. The tags of the
-// main window are filters of their own (library/filters.ts); a `tag:` typed in
-// its search is text.
+// The queries of the core as the page reads them (`queryTerms`, its tokens) and edits them: the years clicked in the
+// panel, the tag filters typed in the library's search after a tag is renamed, a filter of any of some values. An
+// edit takes the terms apart and puts them together again, those it leaves as they were typed (a phrase stays one:
+// `"y:2010"` is no year). The tags of the main window are filters of their own (library/filters.ts); a `tag:` typed
+// in its search is text.
 
 import { movedTag } from "./tags.ts";
 
+/** The query of some terms, one space between them. */
+const joined = (terms: string[]) => terms.filter(Boolean).join(" ");
+
+const isYear = (t: QueryTerm) => t.field === "y" || t.field === "year";
 /** a year filter that keeps years (y:2012, year:2010-2015), not one that excludes them */
-const KEPT = /(^|\s)(?:y|year):(\S*)/gi;
-
-const excluded = (year: number) => new RegExp(`(^|\\s)-(?:y|year):${year}(?=\\s|$)`, "gi");
-
-const tidy = (query: string) => query.replace(/\s+/g, " ").trim();
+const kept = (t: QueryTerm) => isYear(t) && !t.negated;
+/** The terms of a query of the core's own fields. */
+const termsOf = (query: string) => queryTerms(query, FIELDS);
 
 /** The years of the kept filter, when it is a single year or range. */
 function keptRange(query: string): [number, number] | null {
-  const filters = [...query.matchAll(KEPT)];
-  const range = filters.length === 1 ? /^(\d{4})(?:-(\d{4}))?$/.exec(filters[0][2]) : null;
+  const filters = termsOf(query).filter(kept);
+  const value = filters.length === 1 && filters[0].values.length === 1 ? filters[0].values[0] : "";
+  const range = /^(\d{4})(?:-(\d{4}))?$/.exec(value);
   return range ? [Number(range[1]), Number(range[2] ?? range[1])] : null;
 }
+
+/** The query without its kept year filters. */
+const withoutKept = (query: string) => termsOf(query).filter((t) => !kept(t)).map((t) => t.text);
 
 /** Keep the years from..to only, in place of the kept year filters. */
 export function onlyYears(query: string, from: number, to = from): string {
   const [a, b] = [Math.min(from, to), Math.max(from, to)];
-  return tidy(`${query.replace(KEPT, " ")} y:${a === b ? a : `${a}-${b}`}`);
+  return joined([...withoutKept(query), `y:${a === b ? a : `${a}-${b}`}`]);
 }
 
 /** Click: that year only, or no year filter when it was so already. */
 export function toggleYear(query: string, year: number): string {
   const range = keptRange(query);
-  if (range && range[0] === year && range[1] === year) return tidy(query.replace(KEPT, " "));
+  if (range && range[0] === year && range[1] === year) return joined(withoutKept(query));
   return onlyYears(query, year);
 }
 
@@ -39,13 +47,15 @@ export function extendYears(query: string, year: number): string {
 
 /** All years again: no year filter, kept or excluded. */
 export function clearYears(query: string): string {
-  return tidy(query.replace(/(^|\s)-?(?:y|year):\S*/gi, " "));
+  return joined(termsOf(query).filter((t) => !isYear(t)).map((t) => t.text));
 }
 
 /** Alt-click: exclude the year, or take it back. */
 export function toggleExcluded(query: string, year: number): string {
-  if (excluded(year).test(query)) return tidy(query.replace(excluded(year), " "));
-  return tidy(`${query} -y:${year}`);
+  const terms = termsOf(query);
+  const excludes = (t: QueryTerm) => isYear(t) && t.negated && t.values.length === 1 && t.values[0] === String(year);
+  if (terms.some(excludes)) return joined(terms.filter((t) => !excludes(t)).map((t) => t.text));
+  return joined([...terms.map((t) => t.text), `-y:${year}`]);
 }
 
 /** A field filter that takes any of the values: `anyOf("src", ["tc", "Nature Geosci"])` is `src:tc,"Nature Geosci"`;
@@ -107,23 +117,13 @@ export function queryTerms(query: string, fields: readonly string[]): QueryTerm[
   return terms;
 }
 
-/** The values of a field filter, its alternatives between commas: `tc,"Nature Geosci"` is tc and Nature Geosci. */
-export const alternatives = (values: string) =>
-  [...values.matchAll(/(?:^|,)(?:"([^"]*)"|([^,]*))/g)].map((m) => m[1] ?? m[2]);
-
-/** The filter of a tag: tag:amoc, or tag:"mass balance". */
-export const tagTerm = (tag: string) => anyOf("tag", [tag]);
-
-/** A filter on tags, negated or not: tag:amoc, -tag:amoc, tag:"mass balance", tag:amoc,ice. */
-const TAG_TERM = /(^|\s)(-?)tag:((?:"[^"]*"|[^\s,]*)(?:,(?:"[^"]*"|[^\s,]*))*)(?=\s|$)/gi;
-
-/** A tag renamed: the filters in the query on it, and on the tags under it, follow. */
+/** A tag renamed: the filters in the query on it, and on the tags under it, follow (excluding or not, any of their
+ *  values). */
 export function renameTagFilter(query: string, old: string, name: string): string {
-  return tidy(
-    query.replace(TAG_TERM, (term, space, minus, values) => {
-      const tags = alternatives(values);
-      const moved = tags.map((tag) => movedTag(tag, old, name));
-      return moved.every((tag, i) => tag === tags[i]) ? term : `${space}${minus}${anyOf("tag", moved)}`;
-    }),
-  );
+  const terms = termsOf(query).map((t) => {
+    if (t.field !== "tag") return t.text;
+    const moved = t.values.map((tag) => movedTag(tag, old, name));
+    return moved.every((tag, i) => tag === t.values[i]) ? t.text : `${t.negated ? "-" : ""}${anyOf("tag", moved)}`;
+  });
+  return joined(terms);
 }
