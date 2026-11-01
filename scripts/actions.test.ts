@@ -21,8 +21,8 @@ const actions = feedActions({
 const item = (id: string, triage: Item["triage"] = "new", over: Partial<Item> = {}): Item => ({ id, kind: "paper", triage, ...over });
 
 test("a toggle says which way it goes", () => {
-  assert.equal(actions.star.label([item("a"), item("b", "shortlisted")]), "Star");
-  assert.equal(actions.star.label([item("a", "shortlisted")]), "Unstar");
+  assert.equal(actions.star.label([item("a"), item("b", "starred")]), "Star");
+  assert.equal(actions.star.label([item("a", "starred")]), "Unstar");
   assert.equal(actions.read.label([item("a", "seen"), item("b")]), "Mark read");
   assert.equal(actions.read.label([item("a", "seen")]), "Mark unread");
   assert.equal(actions.dismiss.label([item("a", "dismissed")]), "Restore");
@@ -32,8 +32,8 @@ test("a toggle says which way it goes", () => {
 });
 
 test("when an action applies", () => {
-  // nothing to mark read or unread: shortlisted items keep their triage
-  assert.equal(actions.read.enabled([item("a", "shortlisted")]), false);
+  // nothing to mark read or unread: starred items keep their triage
+  assert.equal(actions.read.enabled([item("a", "starred")]), false);
   assert.equal(actions.read.enabled([item("a", "seen")]), true);
   assert.equal(actions.find.enabled([item("a", "new", { kind: "blog" })]), true);
   assert.equal(actions.find.enabled([item("a")]), false);
@@ -58,7 +58,7 @@ test("what the actions run, and their keys", () => {
   focus = "z";
   actions.find.run(["c", "d"]);
   assert.deepEqual(done, [
-    ["shortlist", ["a"]],
+    ["star", ["a"]],
     ["add", [["b"], false]],
     ["find", ["c"]],
     ["find", ["d"]],

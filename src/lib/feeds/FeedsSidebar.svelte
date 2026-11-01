@@ -67,7 +67,7 @@
         title={shelf.view === "all" && days ? `Items of the last ${days}: older ones go once no feed lists them, unless starred or added` : null}
         onclick={() => (filters.view = shelf.view)}
       >
-        {#if shelf.view === "shortlist"}<span class="star">★</span>{/if}
+        {#if shelf.view === "starred"}<span class="star">★</span>{/if}
         <span class="name"
           >{shelf.name}{#if shelf.view === "all" && days}<span class="days"> · {days}</span>{/if}</span
         ><span class="count">{shelves[shelf.view]}</span>

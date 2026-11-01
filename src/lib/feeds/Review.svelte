@@ -1,8 +1,8 @@
 <script lang="ts">
-  // Review of the shortlist (the mockup's view 3): over the list and the details, its items one at a time, best
-  // score first, as the shortlist was when the review began; for each, what tells whether to add it (Facts). Keys:
+  // Review of the starred items (the mockup's view 3): over the list and the details, its items one at a time,
+  // best score first, as they were when the review began; for each, what tells whether to add it (Facts). Keys:
   // a adds (the Add sheet, then the next), b adds without its PDF, o opens its page, l leaves it for later (still
-  // shortlisted), x dismisses it, j and k go to the next and the one before, Esc leaves the review.
+  // starred), x dismisses it, j and k go to the next and the one before, Esc leaves the review.
 
   import { onMount } from "svelte";
   import * as api from "./api";

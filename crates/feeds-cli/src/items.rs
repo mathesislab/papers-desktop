@@ -13,7 +13,7 @@ fn marker(triage: Triage) -> &'static str {
     match triage {
         Triage::New => " ",
         Triage::Seen => ".",
-        Triage::Shortlisted => "*",
+        Triage::Starred => "*",
         Triage::Dismissed => "x",
         Triage::Added => "+",
     }
@@ -292,7 +292,7 @@ pub fn prune(ctx: &mut Ctx) -> Result<()> {
     let (items, days) = (feeds.items().len(), feeds.keep_days());
     writeln!(
         ctx.out,
-        "{items} items kept (those no feed lists, first seen over {days} days ago, are dropped; shortlisted and added stay)"
+        "{items} items kept (those no feed lists, first seen over {days} days ago, are dropped; starred and added stay)"
     )?;
     Ok(())
 }

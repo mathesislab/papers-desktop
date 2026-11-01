@@ -91,7 +91,7 @@
   let lookingUp = $state(false);
   /** the failures of the last fetch, listed */
   let failures = $state(false);
-  /** the Review of the shortlist, over the list and the details */
+  /** the Review of the starred items, over the list and the details */
   let reviewing = $state(false);
   let reviewer = $state<ReturnType<typeof Review>>();
   /** the Subscribe sheet, open; whether a subscription was made in it (fetched when it closes) */
@@ -120,7 +120,7 @@
   let chips = $derived(feedChips(filters));
   let groups = $derived(sourceGroups(subscriptions, counts));
   let colours = $derived(interestColours(Object.keys(counts?.total.interests ?? {})));
-  let shortlisted = $derived(counts?.is.shortlisted ?? 0);
+  let starred = $derived(counts?.is.starred ?? 0);
   /** the saved views of the sidebar; the one the tab shows */
   let views = $state<api.SavedView[]>([]);
   /** how many days the feeds keep an item (the setting): what *All* reaches back */
@@ -512,7 +512,7 @@
     subscribed = false;
   }
 
-  /** ⌘↩: the Review of the shortlist; again, or Esc in it, the list. */
+  /** ⌘↩: the Review of the starred items; again, or Esc in it, the list. */
   function toggleReview() {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     reviewing = !reviewing;
@@ -654,7 +654,7 @@
         Subscribe…
       </button>
       <button class="tool primary" class:on={reviewing} title="Review the starred items, one at a time ({label(REVIEW)})" onclick={toggleReview}>
-        {reviewing ? "Leave review" : `Review starred (${shortlisted})`}
+        {reviewing ? "Leave review" : `Review starred (${starred})`}
       </button>
     </header>
     {#if reviewing}
@@ -691,7 +691,7 @@
         actions={itemActions}
         finding={finding !== null && finding === list.detail?.id}
         onaddlink={(link: Linked) => list.add({ id: link.doi, item: link.item }, true)}
-        onshortlistlink={(item) => actions.star.run([item])}
+        onstarlink={(item) => actions.star.run([item])}
         onfind={find}
       />
     {/if}
@@ -708,7 +708,7 @@
       </span>
       <span class="spacer"></span>
       <span>
-        {subscriptions.length} {subscriptions.length === 1 ? "subscription" : "subscriptions"} · Starred {shortlisted} · Added
+        {subscriptions.length} {subscriptions.length === 1 ? "subscription" : "subscriptions"} · Starred {starred} · Added
         {counts?.is.added ?? 0}
       </span>
       {#if failures && last?.failed.length}

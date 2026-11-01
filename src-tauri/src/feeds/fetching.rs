@@ -536,17 +536,17 @@ mod tests {
             change: Mutex::new(Some(Box::new({
                 let id = id.clone();
                 move |folder: &Folder| {
-                    let shortlist = move |f: &mut Feeds| f.set_triage(&id, Triage::Shortlisted);
-                    folder.apply(shortlist).unwrap()
+                    let star = move |f: &mut Feeds| f.set_triage(&id, Triage::Starred);
+                    folder.apply(star).unwrap()
                 }
             }))),
         };
         let summary = fetch(&state, None, &http).unwrap();
         assert_eq!(summary.added, 1);
         let read = |f: &Feeds| (f.triage(&id), f.items().len());
-        assert_eq!(state.folder.read(read).unwrap(), (Triage::Shortlisted, 2));
+        assert_eq!(state.folder.read(read).unwrap(), (Triage::Starred, 2));
         let reopened = Feeds::open(&dir.path().join("feeds")).unwrap();
-        assert_eq!(reopened.triage(&id), Triage::Shortlisted, "written");
+        assert_eq!(reopened.triage(&id), Triage::Starred, "written");
     }
 
     #[test]
@@ -673,7 +673,7 @@ mod tests {
         let kept = papers_feeds::FeedSettings {
             rules: vec![Rule {
                 when: "like:30-".into(),
-                then: papers_feeds::Action::Shortlist,
+                then: papers_feeds::Action::Star,
             }],
             ..papers_feeds::FeedSettings::default()
         };
@@ -714,7 +714,7 @@ mod tests {
         };
         assert_eq!(
             triage("Firn densification"),
-            Triage::Shortlisted,
+            Triage::Starred,
             "the copy fetched had the index"
         );
         assert_eq!(triage("Ice"), Triage::New);

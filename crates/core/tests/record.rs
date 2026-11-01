@@ -17,7 +17,7 @@ fn item() -> Record {
         .doi("10.5194/tc-18-1-2024")
         .has(["abstract"])
         .facet("kind", ["paper"])
-        .facet("is", ["unread", "shortlisted"])
+        .facet("is", ["unread", "starred"])
         .facet("SRC", ["The Cryosphere"])
         .facet("prof", ["ice-sheets"])
         .number("score", 3.5)
@@ -75,7 +75,7 @@ fn abstracts() {
 #[test]
 fn facets() {
     assert!(matches("kind:paper is:unread"));
-    assert!(matches("Kind:PAPER is:short*"));
+    assert!(matches("Kind:PAPER is:star*"));
     assert!(matches(r#"src:"The Cryosphere" src:*sphere src:the*"#));
     assert!(matches("-is:dismissed prof:ice-sheets"));
     assert!(!matches("-is:unread"));

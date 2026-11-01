@@ -1146,7 +1146,7 @@ pub fn run() {
             feeds::feeds_set_saved_views,
             search::search_run,
             search::search_rows,
-            search::search_saved,
+            search::search_starred,
             search::search_follow,
             toggle::toggle,
             toggle::set_toggle

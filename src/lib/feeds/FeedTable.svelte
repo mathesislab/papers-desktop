@@ -139,11 +139,11 @@
           {:else}
             <button
               class="star"
-              class:on={row.triage === "shortlisted"}
-              title={row.triage === "shortlisted" ? star.on : star.off}
+              class:on={row.triage === "starred"}
+              title={row.triage === "starred" ? star.on : star.off}
               onmousedown={(e) => e.stopPropagation()}
               ondblclick={(e) => e.stopPropagation()}
-              onclick={() => onstar(row.id)}>{row.triage === "shortlisted" ? "★" : "☆"}</button
+              onclick={() => onstar(row.id)}>{row.triage === "starred" ? "★" : "☆"}</button
             >
           {/if}
           <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>

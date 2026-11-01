@@ -54,7 +54,7 @@ pub struct FeedSettings {
     /// tried in order on the items a fetch brings
     #[serde(default)]
     pub rules: Vec<Rule>,
-    /// the days an item no feed lists is kept, unless shortlisted or added
+    /// the days an item no feed lists is kept, unless starred or added
     #[serde(default = "keep_days")]
     pub keep_days: u32,
     /// the days a sweep looks back the first time

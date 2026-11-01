@@ -7,7 +7,7 @@ import type { Span } from "$lib/types";
 
 export type ItemKind = "paper" | "preprint" | "news" | "blog";
 export type SourceKind = "journal" | "preprints" | "news" | "blog";
-export type Triage = "new" | "seen" | "shortlisted" | "dismissed" | "added";
+export type Triage = "new" | "seen" | "starred" | "dismissed" | "added";
 export type Sort = "score" | "newest" | "like";
 
 /** What a subscription follows: a feed by its URL, or a sweep of Crossref (by an ISSN) or OpenAlex (by a filter). */
@@ -58,7 +58,7 @@ export interface FeedRow {
 /** The counts of the sidebar: over every item not dismissed. */
 export interface FeedCounts {
   all: number;
-  /** by `is:` value: new, seen, shortlisted, dismissed, added, editorial, inlibrary */
+  /** by `is:` value: new, seen, starred, dismissed, added, editorial, inlibrary */
   is: Record<string, number>;
   total: FeedGroups;
   /** those new */
@@ -207,7 +207,7 @@ export interface Interest {
 
 export interface Rule {
   when: string;
-  then: "shortlist" | "dismiss" | "seen";
+  then: "star" | "dismiss" | "seen";
 }
 
 export interface FeedSettings {

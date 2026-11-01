@@ -47,12 +47,12 @@
 
   const tab = tabContext();
 
-  /** the list shown: the works of the search, or those saved for later */
-  let view = $state<"results" | "saved">("results");
+  /** the list shown: the works of the search, or those starred */
+  let view = $state<"results" | "starred">("results");
   /** the list came, once */
   let loaded = $state(false);
-  /** the works saved for later */
-  let savedCount = $state(0);
+  /** the works starred */
+  let starredCount = $state(0);
   /** a search asked; the next page asked */
   let searching = $state(false);
   let more = $state(false);
@@ -77,7 +77,7 @@
   let marked = $derived(view === "results" ? (results?.query ?? "") : "");
   let orderText = $derived(ORDERS.find((o) => o.order === search.order)?.text ?? "");
   let summary = $derived(
-    (view === "saved"
+    (view === "starred"
       ? `${list.rows.length} saved`
       : results
         ? totalText(results.total) + (results.ids.length < results.total ? ` · ${results.ids.length} shown` : "")
@@ -111,11 +111,11 @@
     const shown = view;
     const r = results;
     try {
-      const saved = await api.saved();
-      const fresh = shown === "saved" ? saved : r ? await api.rowsOf(r.ids, r.query) : [];
-      savedCount = saved.length;
+      const starred = await api.starred();
+      const fresh = shown === "starred" ? starred : r ? await api.rowsOf(r.ids, r.query) : [];
+      starredCount = starred.length;
       if (view !== shown || results !== r) return;
-      list.rows = shown === "saved" ? mergeRows(list.rows, fresh, list.sticky) : fresh;
+      list.rows = shown === "starred" ? mergeRows(list.rows, fresh, list.sticky) : fresh;
     } catch (e) {
       list.say(String(e));
     }
@@ -131,7 +131,7 @@
   }
 
   /** Another list, from the sidebar, as it is now. */
-  function showList(to: "results" | "saved") {
+  function showList(to: "results" | "starred") {
     view = to;
     resetList();
     refresh();
@@ -236,14 +236,14 @@
     }
   }
 
-  /** s, the star: the works saved for later, or no longer when all are (`toggled`); those added keep being added. */
-  async function save(ids = list.targets()) {
+  /** s, the star: the works starred, or no longer when all are (`toggled`); those added keep being added. */
+  async function star(ids = list.targets()) {
     const found = await Promise.all(ids.map((id) => list.byId.get(id) ?? list.detailOf(id)));
     const items = found.filter((r): r is FeedRow | FeedDetail => !!r && r.triage !== "added");
-    const change = toggled(items, "shortlist");
+    const change = toggled(items, "star");
     if (!change) return;
     const n = change.ids.length === 1 ? "" : ` ${change.ids.length}`;
-    list.say(change.triage === "shortlisted" ? `Saved${n} for later` : `No longer saved${n}`);
+    list.say(change.triage === "starred" ? `Saved${n} for later` : `No longer saved${n}`);
     await list.setTo(change.ids, change.triage);
   }
 
@@ -265,8 +265,8 @@
         await item("Add without PDF…", () => list.addItems(ids, false)),
         await separator(),
         await item(
-          savable.length && savable.every((r) => r.triage === "shortlisted") ? "Remove from Saved for Later" : "Save for Later",
-          () => save(ids),
+          savable.length && savable.every((r) => r.triage === "starred") ? "Remove from Saved for Later" : "Save for Later",
+          () => star(ids),
           savable.length > 0,
         ),
         await separator(),
@@ -295,7 +295,7 @@
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
     switch (e.key) {
       case "s":
-        return act(() => save());
+        return act(() => star());
       case "a":
         return act(() => list.addItems(list.targets(), true));
       case "o":
@@ -317,7 +317,7 @@
       <SearchSidebar
         {view}
         total={results?.total ?? null}
-        saved={savedCount}
+        starred={starredCount}
         recent={search.recent}
         onview={showList}
         onrecent={runAgain}
@@ -377,7 +377,7 @@
         star: { on: "Saved for later: unsave", off: "Save for later" },
         after: view === "results" && results?.next ? showMore : undefined,
         oncolumns: (shown) => (search.columns = shown),
-        onstar: (id) => save([id]),
+        onstar: (id) => star([id]),
         onmenu: rowMenu,
       }}
       {colours}
@@ -390,7 +390,7 @@
     <footer class="status">
       <span>{searching ? "Searching OpenAlex…" : "OpenAlex's works"}</span>
       <span class="spacer"></span>
-      <span>Saved for later {savedCount}</span>
+      <span>Saved for later {starredCount}</span>
     </footer>
   </div>
 </main>
@@ -398,7 +398,7 @@
 <!-- above the list: the search shown as a chip, the count and the order; the selection bar -->
 {#snippet listBar()}
   <div class="filters">
-    {#if view === "saved"}
+    {#if view === "starred"}
       <span class="chip"><span class="text">★ Saved for later</span></span>
     {:else if results}
       <span class="chip">
@@ -418,7 +418,7 @@
     <div class="selbar">
       <span>{list.selection.selected.size} selected</span>
       <button onclick={() => list.addItems(list.chosen(), true)}>Add…</button>
-      <button onclick={() => save(list.chosen())}>☆ Save for later</button>
+      <button onclick={() => star(list.chosen())}>☆ Save for later</button>
       <button onclick={() => list.openItems(list.chosen())}>Open ↗</button>
       <span class="spacer"></span>
       <button class="plain" onclick={() => list.selection.only(list.selection.focus)}>Clear selection</button>
@@ -438,7 +438,7 @@
     {@render help()}
   {:else}
     <p class="empty">
-      {view === "saved"
+      {view === "starred"
         ? "Nothing saved for later. ☆ or S keeps a work found, to come back to it without searching again."
         : "No works found."}
     </p>
@@ -462,8 +462,8 @@
   <button class="open" onclick={() => list.openItems(list.targetsOr(d.id))} disabled={!d.url && !d.doi} title="Open its page">Open ↗ <kbd>O</kbd></button>
   <button onclick={() => list.addItems(list.targetsOr(d.id), false)} title="Add to the library without looking for its PDF">Add without PDF</button>
   {#if d.triage !== "added"}
-    <button onclick={() => save(list.targetsOr(d.id))} title="Keep it, to find it again without searching: a new search does not drop it">
-      {d.triage === "shortlisted" ? "★ Saved for later" : "☆ Save for later"} <kbd>S</kbd>
+    <button onclick={() => star(list.targetsOr(d.id))} title="Keep it, to find it again without searching: a new search does not drop it">
+      {d.triage === "starred" ? "★ Saved for later" : "☆ Save for later"} <kbd>S</kbd>
     </button>
   {/if}
   <button onclick={() => around(d, "cites")} disabled={unknown} title="Search the works that cite it, the most cited first">Cited by</button>

@@ -6,12 +6,12 @@ import type { FeedDetail, FeedRow, FetchSummary, Linked, Reminder, Triage } from
 import { isPost } from "./kinds.ts";
 
 /** the keys that change the triage of the items selected */
-export type TriageAction = "shortlist" | "dismiss" | "read";
+export type TriageAction = "star" | "dismiss" | "read";
 
 /**
- * The triage a key gives the items selected, and which of them it changes. Each key toggles: `s` shortlists, or
- * when all are shortlisted takes them back to seen; `x` dismisses, or brings back dismissed ones; `m` marks new
- * items seen, or when none is new marks the seen ones new again (a shortlisted, dismissed or added item keeps its
+ * The triage a key gives the items selected, and which of them it changes. Each key toggles: `s` stars, or when
+ * all are starred takes them back to seen; `x` dismisses, or brings back dismissed ones; `m` marks new items
+ * seen, or when none is new marks the seen ones new again (a starred, dismissed or added item keeps its
  * triage). None: nothing to change.
  */
 export function toggled(items: { id: string; triage: Triage }[], action: TriageAction): { ids: string[]; triage: Triage } | null {
@@ -21,8 +21,8 @@ export function toggled(items: { id: string; triage: Triage }[], action: TriageA
     return ids.length ? { ids, triage } : null;
   };
   switch (action) {
-    case "shortlist":
-      return all("shortlisted") ? change(() => true, "seen") : change(() => true, "shortlisted");
+    case "star":
+      return all("starred") ? change(() => true, "seen") : change(() => true, "starred");
     case "dismiss":
       return all("dismissed") ? change(() => true, "seen") : change(() => true, "dismissed");
     case "read":

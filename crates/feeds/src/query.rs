@@ -1,6 +1,6 @@
 //! The query language over items: the library's (core's), with the facets
 //! `kind:` (paper, preprint, news, blog), `is:` (new or unread, seen,
-//! shortlisted, dismissed, added, editorial, snoozed (not new till its day),
+//! starred, dismissed, added, editorial, snoozed (not new till its day),
 //! reminder (new again, due), inlibrary (with the library's facts)), `src:` (a
 //! subscription's title or id), `prof:` (an interest the item reaches the
 //! min_score of), and the numbers `score:` (its best score in an interest)

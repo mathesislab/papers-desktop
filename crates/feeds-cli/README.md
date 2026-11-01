@@ -17,7 +17,7 @@ feeds --library ~/lit/papers.bib list like:30- --sort like      # like the paper
 feeds views add Ice 'is:new kind:paper,preprint prof:"Ice sheets"' --sort score
 feeds list --saved ice greenland                                  # the saved view, and a query
 feeds show 78dc4b209cfa
-feeds mark shortlisted 78dc4b209cfa
+feeds mark starred 78dc4b209cfa
 feeds digest --rss feed.xml --html index.html --title "New papers" --link https://me.github.io/feed/
 ```
 
@@ -29,7 +29,7 @@ feeds digest --rss feed.xml --html index.html --title "New papers" --link https:
 | `fetch` | `--mailto <address>` (env `PAPERS_MAILTO`), `--openalex-key <key>` (env `OPENALEX_API_KEY`, as papers-rs); one request at a time per host; a feed that fails is reported, the others go on |
 | `list [QUERY]...` | `--saved <name>`, `--sort score\|newest\|like` (default: the saved view's, else newest), `--kind paper,preprint,news,blog`, `--limit N`, `--dismissed`, `--json`; the query is the app's (`kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...), with `--saved` both hold |
 | `show <id> [--json]`, `find <id>` | everything known of an item (with `--library`, its likeness and the 3 nearest papers of the library); the papers behind a post (needs the network) |
-| `mark <state> <id>...` | `new`, `seen`, `shortlisted`, `dismissed`, `added` |
+| `mark <state> <id>...` | `new`, `seen`, `starred`, `dismissed`, `added` |
 | `prune` | the old items no feed lists go (done on opening too) |
 | `opml import <file>`, `opml export [file]` | the subscriptions as OPML, as the app's settings read and write it (to the standard output without a file); import passes over those followed already |
 | `interests`, `rules`, `config` | what is set; `--json` for the first two |

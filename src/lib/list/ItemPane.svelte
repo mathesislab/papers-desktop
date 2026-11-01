@@ -25,7 +25,7 @@
     actions,
     finding = false,
     onaddlink,
-    onshortlistlink,
+    onstarlink,
     onfind,
   }: {
     list: ItemList;
@@ -46,7 +46,7 @@
     /** a post's papers (the Feeds tab's): being looked for; one added, one starred, looked for again */
     finding?: boolean;
     onaddlink?: (link: Linked) => void;
-    onshortlistlink?: (item: string) => void;
+    onstarlink?: (item: string) => void;
     onfind?: (id: string) => void;
   } = $props();
 
@@ -102,7 +102,7 @@
     {actions}
     {finding}
     {onaddlink}
-    {onshortlistlink}
+    {onstarlink}
     onfind={onfind && (() => onfind(d.id))}
     onitem={list.showItem}
     onentry={tab.onentry}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The sidebar of the Search tab: the works of the search shown (Results), those saved for later, the recent
+  // The sidebar of the Search tab: the works of the search shown (Results), those starred, the recent
   // searches (a click runs one again; Clear forgets them).
 
   import { invoke } from "@tauri-apps/api/core";
@@ -8,21 +8,21 @@
   let {
     view,
     total,
-    saved,
+    starred,
     recent,
     onview,
     onrecent,
     onclear,
   }: {
     /** the list shown */
-    view: "results" | "saved";
+    view: "results" | "starred";
     /** the works the search shown found in all; none before a search */
     total: number | null;
-    /** the works saved for later */
-    saved: number;
+    /** the works starred */
+    starred: number;
     /** the recent searches, the latest first */
     recent: Typed[];
-    onview: (view: "results" | "saved") => void;
+    onview: (view: "results" | "starred") => void;
     /** a recent search clicked: run again */
     onrecent: (search: Typed) => void;
     /** the recent searches forgotten */
@@ -39,12 +39,12 @@
     </button>
     <button
       class="item"
-      class:selected={view === "saved"}
+      class:selected={view === "starred"}
       title="The works saved for later: kept when a new search replaces the results"
-      onclick={() => onview("saved")}
+      onclick={() => onview("starred")}
     >
       <span class="mark star">★</span>
-      <span class="name">Saved for later</span><span class="count">{saved}</span>
+      <span class="name">Saved for later</span><span class="count">{starred}</span>
     </button>
 
     <h4>

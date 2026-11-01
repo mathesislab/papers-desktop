@@ -42,8 +42,8 @@ test("the list: a name once in any case, added at the end, renamed, changed, rem
 const termsOf = (q: string) => queryTerms(q, [...FIELDS, "kind", "is", "src", "prof", "score"]).map((t) => t.text).sort();
 
 test("a query of the feeds taken apart into the choices, and put together again", () => {
-  assert.deepEqual(decompose('is:shortlisted greenland kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL'), {
-    view: "shortlist",
+  assert.deepEqual(decompose('is:starred greenland kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL'), {
+    view: "starred",
     kinds: ["preprint"],
     interests: ["Ice sheets"],
     sources: ["The Cryosphere", "GRL"],
@@ -53,14 +53,14 @@ test("a query of the feeds taken apart into the choices, and put together again"
   assert.deepEqual(decompose("melt"), { view: "all", kinds: [], interests: [], sources: [], query: "melt" });
   // what the sidebar does not choose stays text: an excluding term, a second of a group, another `is:`, a facet value no kind
   assert.equal(
-    decompose('-src:Eos is:new is:shortlisted kind:podcast src:a src:b "is:new" score:3-').query,
-    '-src:Eos is:shortlisted kind:podcast src:b "is:new" score:3-',
+    decompose('-src:Eos is:new is:starred kind:podcast src:a src:b "is:new" score:3-').query,
+    '-src:Eos is:starred kind:podcast src:b "is:new" score:3-',
   );
 
   const queries = [
     "",
     "is:new kind:paper,preprint",
-    'greenland is:shortlisted kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL',
+    'greenland is:starred kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL',
     'src:tc,"Nature Geosci" t:"ice sheet" -kind:news a:moreau,ito y:2020-',
     "is:dismissed kind:news,blog prof:AMOC,Firn melt -is:seen",
     "kind:blog,paper score:3- is:added",
@@ -84,9 +84,9 @@ test("a query of the feeds taken apart into the choices, and put together again"
 });
 
 test("a saved search applied, and the one the tab shows", () => {
-  const search = { name: "x", query: "is:shortlisted kind:news,blog prof:AMOC", sort: "newest" as const };
+  const search = { name: "x", query: "is:starred kind:news,blog prof:AMOC", sort: "newest" as const };
   const shown = applied(f({ open: ["blog"], query: "old", sources: ["TC"] }), search);
-  assert.deepEqual(shown, f({ view: "shortlist", kinds: ["news", "blog"], interests: ["AMOC"], sort: "newest", open: ["blog"] }));
+  assert.deepEqual(shown, f({ view: "starred", kinds: ["news", "blog"], interests: ["AMOC"], sort: "newest", open: ["blog"] }));
   assert.ok(isShown(shown, search));
   assert.ok(!isShown({ ...shown, sort: "score" }, search));
   assert.ok(!isShown({ ...shown, query: "melt" }, search));

@@ -27,11 +27,11 @@ fn interests_and_rules_are_printed() {
     );
     assert_eq!(
         s.ok(&["rules"]),
-        "\"kind:news\" -> seen\n\"prof:Ice score:8-\" -> shortlist\n"
+        "\"kind:news\" -> seen\n\"prof:Ice score:8-\" -> star\n"
     );
     assert_eq!(
         s.json(&["rules", "--json"])[1],
-        serde_json::json!({"when": "prof:Ice score:8-", "then": "shortlist"})
+        serde_json::json!({"when": "prof:Ice score:8-", "then": "star"})
     );
     // none: nothing printed
     let empty = Sandbox::new(Recorded::new());

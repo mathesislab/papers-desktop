@@ -151,7 +151,7 @@ fn fetch_merge_triage_and_reopen() {
     assert_eq!(paper.sources[0].entry.source, tc.id);
     assert_eq!(feeds.triage(&paper.id), Triage::New);
     clock.advance(1);
-    feeds.set_triage(&paper.id, Triage::Shortlisted).unwrap();
+    feeds.set_triage(&paper.id, Triage::Starred).unwrap();
     assert!(matches!(
         feeds.set_triage("nope", Triage::Seen),
         Err(Error::NoItem { .. })
@@ -161,7 +161,7 @@ fn fetch_merge_triage_and_reopen() {
     assert_eq!(reopened.subscriptions(), feeds.subscriptions());
     assert_eq!(reopened.items(), feeds.items());
     let mark = reopened.mark(&paper.id).unwrap();
-    assert_eq!(mark.triage, Triage::Shortlisted);
+    assert_eq!(mark.triage, Triage::Starred);
     assert_eq!(mark.at, Utc.with_ymd_and_hms(2026, 11, 1, 8, 0, 0).unwrap());
     let mut files: Vec<String> = std::fs::read_dir(dir.path())
         .unwrap()
@@ -312,7 +312,7 @@ fn triage_follows_merged_items() {
     assert_eq!(feeds.items().len(), 2, "two titles, no shared key yet");
     let (pre, paper) = (feeds.items()[0].id.clone(), feeds.items()[1].id.clone());
     feeds.set_triage(&pre, Triage::Seen).unwrap();
-    feeds.set_triage(&paper, Triage::Shortlisted).unwrap();
+    feeds.set_triage(&paper, Triage::Starred).unwrap();
 
     // arXiv now gives the journal's DOI: one item, the older id
     let report = feeds.fetch(&http, &Access::default()).unwrap();
@@ -332,10 +332,10 @@ fn triage_follows_merged_items() {
     assert_eq!(feeds.item(&paper).unwrap().id, pre);
     assert_eq!(
         feeds.triage(&pre),
-        Triage::Shortlisted,
+        Triage::Starred,
         "the strongest decision"
     );
-    assert_eq!(feeds.triage(&paper), Triage::Shortlisted);
+    assert_eq!(feeds.triage(&paper), Triage::Starred);
 }
 
 #[test]
@@ -358,7 +358,7 @@ fn prune_drops_old_items_no_feed_lists() {
         .reply(blog, Reply::ok(blog, atom(&all[3..])));
     feeds.fetch(&http, &Access::default()).unwrap();
     let ids: Vec<String> = feeds.items().iter().map(|i| i.id.clone()).collect();
-    feeds.set_triage(&ids[0], Triage::Shortlisted).unwrap();
+    feeds.set_triage(&ids[0], Triage::Starred).unwrap();
     feeds.set_triage(&ids[1], Triage::Dismissed).unwrap();
     feeds.set_triage(&ids[2], Triage::Seen).unwrap();
     clock.advance(10);
@@ -383,7 +383,7 @@ fn prune_drops_old_items_no_feed_lists() {
     assert_eq!(
         left,
         ["First post", "Fourth post"],
-        "shortlisted, and still listed"
+        "starred, and still listed"
     );
     assert_eq!(feeds.mark(&ids[1]), None);
     let reopened = clock.open(dir.path());
@@ -440,16 +440,14 @@ fn an_article_of_two_feeds_is_one_item_and_its_duplicates_collapse() {
     let mut feeds = Feeds::open(dir.path()).unwrap();
     assert_eq!(feeds.items().len(), 2);
     let kept = feeds.items()[0].id.clone();
-    feeds
-        .set_triage(&duplicate_id, Triage::Shortlisted)
-        .unwrap();
+    feeds.set_triage(&duplicate_id, Triage::Starred).unwrap();
 
     feeds.fetch(&http, &Access::default()).unwrap();
     assert_eq!(feeds.items().len(), 1);
     assert_eq!(feeds.items()[0].id, kept, "the older id stays");
     assert_eq!(feeds.items()[0].sources.len(), 2);
     assert_eq!(feeds.resolve(&duplicate_id), kept);
-    assert_eq!(feeds.triage(&kept), Triage::Shortlisted);
+    assert_eq!(feeds.triage(&kept), Triage::Starred);
 }
 
 #[test]

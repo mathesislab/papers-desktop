@@ -154,9 +154,9 @@ fn mark_shows_in_the_list_and_dismissed_items_are_left_out() {
     let list = s.ok(&["list", "--sort", "score"]);
     let rows = lines(&list);
     let (first, second, third) = (&rows[0].0, &rows[1].0, &rows[2].0);
-    let said = s.ok(&["mark", "shortlisted", first, second]);
+    let said = s.ok(&["mark", "starred", first, second]);
     assert!(
-        said.starts_with(&format!("shortlisted {first} Empirical evidence")),
+        said.starts_with(&format!("starred {first} Empirical evidence")),
         "{said}"
     );
     assert_eq!(said.lines().count(), 2);
@@ -179,7 +179,7 @@ fn mark_shows_in_the_list_and_dismissed_items_are_left_out() {
         "{all}"
     );
     assert_eq!(s.ok(&["list", "is:dismissed"]).lines().count(), 1);
-    assert_eq!(s.ok(&["list", "is:shortlisted"]).lines().count(), 2);
+    assert_eq!(s.ok(&["list", "is:starred"]).lines().count(), 2);
 
     // an unknown id changes nothing
     let bad = s.run(&["mark", "added", first, "nope"]);
@@ -187,10 +187,14 @@ fn mark_shows_in_the_list_and_dismissed_items_are_left_out() {
         (bad.code, bad.err.as_str(), bad.out.as_str()),
         (1, "feeds: error: nope: no such item\n", "")
     );
-    assert_eq!(s.json(&["show", first, "--json"])["triage"], "shortlisted");
+    assert_eq!(s.json(&["show", first, "--json"])["triage"], "starred");
     s.ok(&["mark", "new", first]);
     assert_eq!(s.json(&["show", first, "--json"])["triage"], "new");
-    assert_eq!(s.run(&["mark", "starred", first]).code, 2);
+    assert_eq!(
+        s.run(&["mark", "shortlisted", first]).code,
+        2,
+        "the word of before"
+    );
     assert_eq!(s.run(&["mark", "seen"]).code, 2);
 }
 
@@ -200,7 +204,7 @@ fn show_gives_every_field() {
     s.ok(&["fetch"]);
     let list = s.ok(&["list", "--sort", "score"]);
     let id = list.split(' ').next().unwrap();
-    s.ok(&["mark", "shortlisted", id]);
+    s.ok(&["mark", "starred", id]);
     let sub = s.json(&["subscriptions", "--json"])[0]["id"]
         .as_str()
         .unwrap()
@@ -214,7 +218,7 @@ fn show_gives_every_field() {
          journal  TC - recent papers\n\
          date     2026-10-30\n\
          kind     paper\n\
-         state    shortlisted (since 2026-10-31)\n\
+         state    starred (since 2026-10-31)\n\
          id       {id}\n\
          doi      10.5194/tc-20-6181-2026\n\
          url      https://doi.org/10.5194/tc-20-6181-2026\n\
@@ -235,7 +239,7 @@ fn show_gives_every_field() {
 
     let json = s.json(&["show", id, "--json"]);
     assert_eq!(json["doi"], "10.5194/tc-20-6181-2026");
-    assert_eq!(json["triage"], "shortlisted");
+    assert_eq!(json["triage"], "starred");
     assert_eq!(json["sources"][0]["entry"]["source"], sub);
     assert_eq!(json["scores"][0]["score"], 10.0);
     assert_eq!(json["covered_by"], serde_json::json!([]));

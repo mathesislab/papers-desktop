@@ -1,5 +1,5 @@
 // The commands of the Search tab (src-tauri/src/search.rs): a search of OpenAlex's works, page by page, the works
-// found again, those saved for later, a search followed in the Feeds tab. The works found are items of a folder of
+// found again, those starred, a search followed in the Feeds tab. The works found are items of a folder of
 // feeds of their own: their details, triage, abstracts and PDFs are the Feeds tab's commands with the store
 // "search" ($lib/feeds/api.ts).
 
@@ -19,13 +19,13 @@ export interface SearchPage {
 }
 
 /** A page of the works of a query: the first (`cursor` none), whose works take the place of those found before but
- *  for those saved for later or added; or the next. Refused, said, for what OpenAlex cannot be asked. */
+ *  for those starred or added; or the next. Refused, said, for what OpenAlex cannot be asked. */
 export const run = (query: string, order: Order, cursor: string | null) =>
   invoke<SearchPage>("search_run", { query, order, cursor });
 /** The rows of works found again, in that order, the query's words marked: after a triage or an add. */
 export const rowsOf = (ids: string[], query: string) => invoke<FeedRow[]>("search_rows", { ids, query });
-/** The works saved for later, the latest found first. */
-export const saved = () => invoke<FeedRow[]>("search_saved");
+/** The works starred, the latest found first. */
+export const starred = () => invoke<FeedRow[]>("search_starred");
 /** A query followed in the Feeds tab, as a sweep of OpenAlex: the subscription made, to fetch. */
 export const follow = (query: string) => invoke<SubscriptionInfo>("search_follow", { query });
 

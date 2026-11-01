@@ -2,7 +2,7 @@
   // The details of the item selected in the Feeds tab or the Search tab, to read: the buttons of the tab (they do
   // what the keys do), its title, authors and where it appeared, then a paper's abstract, marked where the query or
   // an interest matched, and what tells whether to add it (Facts); a post's text, and the papers behind it, each to
-  // add, shortlist or show (*Find linked paper* looks for them again).
+  // add, star or show (*Find linked paper* looks for them again).
 
   import type { Snippet } from "svelte";
   import type { FeedDetail, FeedRow, Linked, Store } from "./api";
@@ -22,7 +22,7 @@
     actions,
     finding = false,
     onaddlink,
-    onshortlistlink,
+    onstarlink,
     onfind,
     onitem,
     onentry,
@@ -41,10 +41,10 @@
     /** the buttons of the tab, at the top, for the item shown */
     actions: Snippet<[FeedDetail]>;
     /** a post's papers (the Feeds tab's: the works found in the Search tab are no posts): being looked for; one
-     *  added, by its DOI; one shortlisted, or no longer; looked for again */
+     *  added, by its DOI; one starred, or no longer; looked for again */
     finding?: boolean;
     onaddlink?: (link: Linked) => void;
-    onshortlistlink?: (item: string) => void;
+    onstarlink?: (item: string) => void;
     onfind?: () => void;
     onitem: (id: string) => void;
     onentry: (id: string) => void;
@@ -107,7 +107,7 @@
           <div class="actions">
             <button class="primary" onclick={() => onaddlink?.(link)}>Add</button>
             {#if link.item}
-              <button onclick={() => onshortlistlink?.(link.item!)}>{row?.triage === "shortlisted" ? "★ Starred" : "☆ Star"}</button>
+              <button onclick={() => onstarlink?.(link.item!)}>{row?.triage === "starred" ? "★ Starred" : "☆ Star"}</button>
               <button onclick={() => onitem(link.item!)}>Show paper</button>
             {/if}
           </div>

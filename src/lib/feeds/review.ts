@@ -1,16 +1,16 @@
-// Reviewing the shortlist: the steps of the Review. Pure, tested by scripts/feeds.test.ts (npm test).
+// Reviewing the starred items: the steps of the Review. Pure, tested by scripts/feeds.test.ts (npm test).
 
 import type { ViewRequest } from "./api.ts";
 
 /** What was done with an item of the review. */
 export type Outcome = "added" | "dismissed" | "later";
 
-/** The review of the shortlist: its items as it began, best score first, the one shown (`at`, the length when all
+/** The review of the starred items: its items as it began, best score first, the one shown (`at`, the length when all
  *  are through), and what was done with each. */
 export type Review = { ids: string[]; at: number; done: Record<string, Outcome> };
 
-/** What the review asks the backend for: the shortlist, by score. */
-export const REVIEW_REQUEST: ViewRequest = { query: "is:shortlisted", sort: "score" };
+/** What the review asks the backend for: the starred items, by score. */
+export const REVIEW_REQUEST: ViewRequest = { query: "is:starred", sort: "score" };
 
 export const startReview = (ids: string[]): Review => ({ ids, at: 0, done: {} });
 

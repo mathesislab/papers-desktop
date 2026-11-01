@@ -1,5 +1,5 @@
 //! Rules: a query in the feeds' language and what to do with the new items
-//! it matches (`prof:amoc score:6-` → shortlist, `kind:news -src:futurity`
+//! it matches (`prof:amoc score:6-` → star, `kind:news -src:futurity`
 //! → seen, `t:editorial` → dismiss). They act once, on the items a fetch
 //! brings, never on an item with a triage.
 
@@ -24,13 +24,15 @@ pub struct Rule {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Action {
-    Shortlist,
+    /// `shortlist` in a config.json of before
+    #[serde(alias = "shortlist")]
+    Star,
     Dismiss,
     Seen,
 }
 
 words!(Action {
-    Shortlist => "shortlist",
+    Star => "star",
     Dismiss => "dismiss",
     Seen => "seen",
 });
@@ -38,7 +40,7 @@ words!(Action {
 impl Action {
     pub fn triage(self) -> Triage {
         match self {
-            Action::Shortlist => Triage::Shortlisted,
+            Action::Star => Triage::Starred,
             Action::Dismiss => Triage::Dismissed,
             Action::Seen => Triage::Seen,
         }

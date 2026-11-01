@@ -404,7 +404,7 @@
       <div class="line">
         <input class="text grow" type="text" spellcheck="false" placeholder="Query" bind:value={rule.when} />
         <select bind:value={rule.then}>
-          <option value="shortlist">Star</option>
+          <option value="star">Star</option>
           <option value="seen">Mark seen</option>
           <option value="dismiss">Dismiss</option>
         </select>
@@ -412,7 +412,7 @@
       </div>
     {/each}
     <div class="actions">
-      <button class="small" onclick={() => draft!.rules.push({ when: "", then: "shortlist" })}>Add Rule</button>
+      <button class="small" onclick={() => draft!.rules.push({ when: "", then: "star" })}>Add Rule</button>
     </div>
 
     {#if dirty || draftError}

@@ -88,9 +88,9 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
     },
     star: {
       key: "s",
-      label: (items) => (all(items, "shortlisted") ? "Unstar" : "Star"),
-      enabled: (items) => toggled(items, "shortlist") !== null,
-      run: (ids) => d.triage("shortlist", ids),
+      label: (items) => (all(items, "starred") ? "Unstar" : "Star"),
+      enabled: (items) => toggled(items, "star") !== null,
+      run: (ids) => d.triage("star", ids),
     },
     read: {
       key: "m",

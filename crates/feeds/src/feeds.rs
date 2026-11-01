@@ -345,14 +345,14 @@ impl Feeds {
         self.mark(id).and_then(|m| m.reminder((self.now)()))
     }
 
-    /// The days an item no feed lists is kept, unless shortlisted, added or to
+    /// The days an item no feed lists is kept, unless starred, added or to
     /// be reminded of.
     pub fn keep_days(&self) -> u32 {
         self.config.settings.keep_days
     }
 
     /// Drops the items first seen more than `keep_days` ago that no feed
-    /// lists any more, unless shortlisted or added, and the lookups older
+    /// lists any more, unless starred or added, and the lookups older
     /// (which may then be made again); the number of items dropped. On
     /// opening and after a fetch too; written if anything went.
     pub fn prune(&mut self) -> Result<usize> {

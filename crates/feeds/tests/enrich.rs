@@ -95,7 +95,7 @@ fn a_preprint_and_its_paper_become_one_item() {
     assert_eq!(report.follow_up.lookups, 1);
     assert_eq!(feeds.items().len(), 2);
     let (pre, paper) = (feeds.items()[0].id.clone(), feeds.items()[1].id.clone());
-    feeds.set_triage(&pre, Triage::Shortlisted).unwrap();
+    feeds.set_triage(&pre, Triage::Starred).unwrap();
     feeds.set_triage(&paper, Triage::Seen).unwrap();
 
     // Crossref relates them: one item, the published version first
@@ -128,7 +128,7 @@ fn a_preprint_and_its_paper_become_one_item() {
     );
     assert_eq!(
         feeds.triage(&paper),
-        Triage::Shortlisted,
+        Triage::Starred,
         "the strongest decision"
     );
     let lookups = item

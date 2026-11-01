@@ -11,8 +11,8 @@
 //! newest; 25 a page, the next from a cursor.
 //!
 //! The works found go into a folder of feeds of their own (the app's
-//! `search`), an item each: the searches before go, but for the items saved
-//! for later (shortlisted) or added. A search followed is a sweep of the
+//! `search`), an item each: the searches before go, but for the items
+//! starred or added. A search followed is a sweep of the
 //! feeds: its words searched in the titles and abstracts.
 
 use std::ops::RangeInclusive;
@@ -301,10 +301,10 @@ impl Feeds {
     /// The works found, into the items, an item each (merged as a feed's
     /// entries are); their ids, in their order. With `fresh` (another
     /// search), the items of the searches before go first, but for those
-    /// saved for later (shortlisted) or added.
+    /// starred or added.
     pub fn found(&mut self, entries: Vec<Entry>, fresh: bool) -> Result<Vec<String>> {
         if fresh {
-            let kept = |t: Triage| matches!(t, Triage::Shortlisted | Triage::Added);
+            let kept = |t: Triage| matches!(t, Triage::Starred | Triage::Added);
             let gone: Vec<String> = (self.items().iter())
                 .filter(|i| !kept(self.triage(&i.id)))
                 .map(|i| i.id.clone())

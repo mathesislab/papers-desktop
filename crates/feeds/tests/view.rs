@@ -239,12 +239,16 @@ fn facets_numbers_and_fields() {
     assert_eq!(titles(&feeds, "abs:layer"), [p1]);
 
     feeds
-        .set_triage(&id_of(&feeds, n1), Triage::Shortlisted)
+        .set_triage(&id_of(&feeds, n1), Triage::Starred)
         .unwrap();
     feeds
         .set_triage(&id_of(&feeds, j3), Triage::Dismissed)
         .unwrap();
-    assert_eq!(titles(&feeds, "is:shortlisted"), [n1]);
+    assert_eq!(titles(&feeds, "is:starred"), [n1]);
+    assert!(
+        titles(&feeds, "is:shortlisted").is_empty(),
+        "the word of before: a value no item has"
+    );
     assert_eq!(titles(&feeds, "is:new").len(), 3);
     assert_eq!(titles(&feeds, "-is:dismissed").len(), 4);
 
@@ -335,7 +339,7 @@ fn counts_are_of_live_items_whatever_the_query() {
         .set_triage(&id_of(&feeds, N1.1), Triage::Dismissed)
         .unwrap();
     feeds
-        .set_triage(&id_of(&feeds, P1.1), Triage::Shortlisted)
+        .set_triage(&id_of(&feeds, P1.1), Triage::Starred)
         .unwrap();
     feeds.set_library(in_library(None));
     let request = ViewRequest {
@@ -355,7 +359,7 @@ fn counts_are_of_live_items_whatever_the_query() {
             ("editorial".to_string(), 1),
             ("inlibrary".to_string(), 1),
             ("new".to_string(), 3),
-            ("shortlisted".to_string(), 1),
+            ("starred".to_string(), 1),
         ]
     );
     let total = &counts.total;
@@ -371,7 +375,7 @@ fn counts_are_of_live_items_whatever_the_query() {
     assert_eq!(total.sources[&subscriptions[0].id], 3);
     assert_eq!(total.sources[&subscriptions[1].id], 1);
     assert!(!total.sources.contains_key(&subscriptions[2].id));
-    // the unread: not the shortlisted preprint
+    // the unread: not the starred preprint
     assert_eq!(
         counts.unread.kinds.into_iter().collect::<Vec<_>>(),
         [(ItemKind::Paper, 3)]
@@ -390,7 +394,7 @@ fn rules_triage_the_new_items_only() {
         then,
     };
     let rules = vec![
-        rule("prof:firn score:5-", Action::Shortlist),
+        rule("prof:firn score:5-", Action::Star),
         rule("kind:preprint", Action::Dismiss),
         rule("is:editorial", Action::Dismiss),
         rule("kind:news -src:futurity", Action::Dismiss),
@@ -398,7 +402,7 @@ fn rules_triage_the_new_items_only() {
     ];
     let mut feeds = feeds(dir.path(), &clock, rules.clone());
     let triage = |feeds: &Feeds, e: E| feeds.triage(&id_of(feeds, e.1));
-    assert_eq!(triage(&feeds, P1), Triage::Shortlisted, "the first rule");
+    assert_eq!(triage(&feeds, P1), Triage::Starred, "the first rule");
     assert_eq!(triage(&feeds, J2), Triage::Dismissed);
     assert_eq!(triage(&feeds, N1), Triage::Seen);
     assert_eq!(triage(&feeds, J1), Triage::New);
@@ -409,7 +413,7 @@ fn rules_triage_the_new_items_only() {
         .set_triage(&id_of(&feeds, J1.1), Triage::Seen)
         .unwrap();
     let mut rules = rules;
-    rules.push(rule("prof:\"ice sheets\"", Action::Shortlist));
+    rules.push(rule("prof:\"ice sheets\"", Action::Star));
     rules.push(rule("", Action::Dismiss));
     feeds
         .set_settings(FeedSettings {
@@ -521,7 +525,7 @@ fn rules_at_fetch_use_the_likeness() {
         .unwrap();
     let rule = Rule {
         when: "like:20-".to_string(),
-        then: Action::Shortlist,
+        then: Action::Star,
     };
     feeds
         .set_settings(FeedSettings {
@@ -532,7 +536,7 @@ fn rules_at_fetch_use_the_likeness() {
     let http = Recorded::new().reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2, J3])));
     feeds.fetch(&http, &Access::default()).unwrap();
     let triage = |e: E| feeds.triage(&id_of(&feeds, e.1));
-    assert_eq!(triage(J1), Triage::Shortlisted);
+    assert_eq!(triage(J1), Triage::Starred);
     assert_eq!(triage(J2), Triage::New);
     assert_eq!(triage(J3), Triage::New);
 }
@@ -585,6 +589,7 @@ fn the_config_file() {
     let feeds = Feeds::open(dir.path()).unwrap();
     assert_eq!(feeds.interests()[0].min_score, 4.0);
     assert_eq!(feeds.title_boost(), 2.5);
+    assert_eq!(feeds.rules()[0].then, Action::Star, "shortlist, as before");
     assert_eq!(feeds.rules()[1].then, Action::Dismiss);
     assert_eq!(feeds.keep_days(), 30);
     let empty = tempfile::tempdir().unwrap();
@@ -605,7 +610,7 @@ fn old_items_go_on_opening_and_fetching() {
     let clock = Clock::new();
     let mut feeds = feeds(dir.path(), &clock, Vec::new());
     feeds
-        .set_triage(&id_of(&feeds, J2.1), Triage::Shortlisted)
+        .set_triage(&id_of(&feeds, J2.1), Triage::Starred)
         .unwrap();
     // the journal now lists J1 only
     let http = Recorded::new()
@@ -627,7 +632,7 @@ fn old_items_go_on_opening_and_fetching() {
     let mut feeds = clock.open(dir.path());
     let left =
         |feeds: &Feeds| -> Vec<String> { feeds.items().iter().map(|i| i.title.clone()).collect() };
-    assert_eq!(left(&feeds), [J1.1, J2.1, P1.1, N1.1], "J2 shortlisted");
+    assert_eq!(left(&feeds), [J1.1, J2.1, P1.1, N1.1], "J2 starred");
     let items = std::fs::read_to_string(dir.path().join("items.json")).unwrap();
     assert!(!items.contains(J3.1), "written");
     feeds.fetch(&http, &Access::default()).unwrap();

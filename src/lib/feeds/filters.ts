@@ -10,7 +10,7 @@ import type { FeedCounts, ItemKind, Sort, ViewRequest } from "./api.ts";
 import { ITEM_KINDS, isItemKind } from "./kinds.ts";
 
 /** the views of the sidebar: the items by their triage */
-export type Shelf = "unread" | "shortlist" | "snoozed" | "added" | "all";
+export type Shelf = "unread" | "starred" | "snoozed" | "added" | "all";
 
 /** What the Feeds tab keeps between sessions (the layout's `feeds`). */
 export type FeedFilters = {
@@ -38,7 +38,7 @@ export const NO_FEED_FILTERS: FeedFilters = {
 
 export const SHELVES: { view: Shelf; name: string; term: string | null }[] = [
   { view: "unread", name: "Unread", term: "is:new" },
-  { view: "shortlist", name: "Starred", term: "is:shortlisted" },
+  { view: "starred", name: "Starred", term: "is:starred" },
   { view: "snoozed", name: "Snoozed", term: "is:snoozed" },
   { view: "added", name: "Added", term: "is:added" },
   { view: "all", name: "All", term: null },
@@ -62,14 +62,18 @@ function values<T extends string>(many: unknown, one: unknown, valid: (v: unknow
   return [...new Set(list.filter(valid))];
 }
 
+/** the views of the sidebar by their names of before */
+const SHELVES_BEFORE: Record<string, Shelf> = { shortlist: "starred" };
+
 /** Filters as saved, any part missing or of a wrong type made the default; a single choice of an older version
- *  becomes the only one of its group. */
+ *  becomes the only one of its group, a view of an older name the view of now. */
 export function restoredFeeds(
   saved: (Partial<FeedFilters> & { kind?: unknown; interest?: unknown; source?: unknown }) | null | undefined,
 ): FeedFilters {
   const d = NO_FEED_FILTERS;
+  const view = typeof saved?.view === "string" ? (SHELVES_BEFORE[saved.view] ?? saved.view) : null;
   return {
-    view: SHELVES.find((s) => s.view === saved?.view)?.view ?? d.view,
+    view: SHELVES.find((s) => s.view === view)?.view ?? d.view,
     kinds: values(saved?.kinds, saved?.kind, isItemKind),
     interests: values(saved?.interests, saved?.interest, text),
     sources: values(saved?.sources, saved?.source, text),
@@ -223,7 +227,7 @@ export function shelfCounts(counts: FeedCounts | null): Record<Shelf, number> {
   const is = counts?.is ?? {};
   return {
     unread: is.new ?? 0,
-    shortlist: is.shortlisted ?? 0,
+    starred: is.starred ?? 0,
     snoozed: is.snoozed ?? 0,
     added: is.added ?? 0,
     all: counts?.all ?? 0,

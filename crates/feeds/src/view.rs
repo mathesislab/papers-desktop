@@ -203,13 +203,13 @@ impl Feeds {
         Some(self.row(item, seen, &marks, covered_by))
     }
 
-    /// The items shortlisted, the latest first seen first.
-    pub fn shortlisted(&self) -> Vec<&Item> {
-        let mut shortlisted: Vec<&Item> = (self.items().iter())
-            .filter(|i| self.triage(&i.id) == Triage::Shortlisted)
+    /// The items starred, the latest first seen first.
+    pub fn starred(&self) -> Vec<&Item> {
+        let mut starred: Vec<&Item> = (self.items().iter())
+            .filter(|i| self.triage(&i.id) == Triage::Starred)
             .collect();
-        shortlisted.sort_by_key(|i| std::cmp::Reverse(i.first_seen()));
-        shortlisted
+        starred.sort_by_key(|i| std::cmp::Reverse(i.first_seen()));
+        starred
     }
 
     /// The posts that link each DOI, by their ids.

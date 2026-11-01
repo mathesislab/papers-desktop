@@ -47,6 +47,10 @@ test("the Feeds tab's columns of an older version still, widths by column: in th
   ]);
 });
 
+test("the Starred view of the Feeds tab by its name of before", () => {
+  assert.equal(restore({ feeds: { view: "shortlist" } } as never).feeds.filters.view, "starred");
+});
+
 test("the layout saved read back as it was; a tab unknown is the library", () => {
   const layout = restore(BEFORE as never);
   assert.deepEqual(restore(JSON.parse(JSON.stringify(layout))), layout);

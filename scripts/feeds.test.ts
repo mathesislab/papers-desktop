@@ -56,8 +56,8 @@ test("the query: a term per group of choices, then the text typed; dismissed lef
   assert.equal(searchOf(f()), "is:new -is:dismissed", "every kind");
   assert.equal(searchOf(f({ view: "all" })), "-is:dismissed");
   assert.equal(
-    searchOf(f({ query: " greenland ", view: "shortlist", kinds: ["preprint"], interests: ["Ice sheets"], sources: ["The Cryosphere", "GRL"] })),
-    'is:shortlisted kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL greenland -is:dismissed',
+    searchOf(f({ query: " greenland ", view: "starred", kinds: ["preprint"], interests: ["Ice sheets"], sources: ["The Cryosphere", "GRL"] })),
+    'is:starred kind:preprint prof:"Ice sheets" src:"The Cryosphere",GRL greenland -is:dismissed',
   );
   assert.equal(queryOf(f({ kinds: ["news", "blog"], interests: ['say "hi"'] })), 'is:new kind:news,blog prof:"say hi"');
   assert.equal(searchOf(f({ view: "all", query: "is:dismissed" })), "is:dismissed");
@@ -129,10 +129,10 @@ test("the sorts in turn, and a likeness as the list shows it", () => {
 });
 
 test("the counts of the views, and the sources in their groups", () => {
-  assert.deepEqual(shelfCounts(null), { unread: 0, shortlist: 0, snoozed: 0, added: 0, all: 0 });
-  assert.deepEqual(shelfCounts({ all: 9, is: { new: 4, shortlisted: 2, snoozed: 1 }, kinds: {}, interests: {}, sources: {} }), {
+  assert.deepEqual(shelfCounts(null), { unread: 0, starred: 0, snoozed: 0, added: 0, all: 0 });
+  assert.deepEqual(shelfCounts({ all: 9, is: { new: 4, starred: 2, snoozed: 1 }, kinds: {}, interests: {}, sources: {} }), {
     unread: 4,
-    shortlist: 2,
+    starred: 2,
     snoozed: 1,
     added: 0,
     all: 9,
@@ -237,15 +237,15 @@ test("a journal of the Subscribe sheet: its facts, followed or not, what its sit
 const it = (id: string, triage: Triage) => ({ id, triage });
 
 test("the keys toggle the triage of the selection", () => {
-  assert.deepEqual(toggled([it("a", "new"), it("b", "shortlisted")], "shortlist"), { ids: ["a"], triage: "shortlisted" });
-  assert.deepEqual(toggled([it("a", "shortlisted"), it("b", "shortlisted")], "shortlist"), { ids: ["a", "b"], triage: "seen" });
+  assert.deepEqual(toggled([it("a", "new"), it("b", "starred")], "star"), { ids: ["a"], triage: "starred" });
+  assert.deepEqual(toggled([it("a", "starred"), it("b", "starred")], "star"), { ids: ["a", "b"], triage: "seen" });
   assert.deepEqual(toggled([it("a", "seen")], "dismiss"), { ids: ["a"], triage: "dismissed" });
   assert.deepEqual(toggled([it("a", "dismissed")], "dismiss"), { ids: ["a"], triage: "seen" });
   // m: the new ones seen; with none new, the seen ones new; the others keep theirs
   assert.deepEqual(toggled([it("a", "new"), it("b", "seen"), it("c", "added")], "read"), { ids: ["a"], triage: "seen" });
-  assert.deepEqual(toggled([it("b", "seen"), it("c", "shortlisted")], "read"), { ids: ["b"], triage: "new" });
+  assert.deepEqual(toggled([it("b", "seen"), it("c", "starred")], "read"), { ids: ["b"], triage: "new" });
   assert.equal(toggled([it("c", "added")], "read"), null);
-  assert.equal(toggled([], "shortlist"), null);
+  assert.equal(toggled([], "star"), null);
 });
 
 test("mark all above, ranges, the next after some go", () => {
@@ -374,7 +374,7 @@ test("seen on dwell: an item that stays, not one passed over", () => {
   }
 });
 
-test("the review steps through the shortlist", () => {
+test("the review steps through the starred items", () => {
   let r = startReview(["a", "b", "c"]);
   assert.equal(reviewed(r), "a");
   assert.deepEqual(progressOf(r), { text: "1 of 3", fraction: 0 });

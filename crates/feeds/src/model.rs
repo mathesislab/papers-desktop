@@ -469,7 +469,9 @@ pub enum Triage {
     #[default]
     New,
     Seen,
-    Shortlisted,
+    /// `shortlisted` in the state of before
+    #[serde(alias = "shortlisted")]
+    Starred,
     Dismissed,
     /// added to the library
     Added,
@@ -478,7 +480,7 @@ pub enum Triage {
 words!(Triage {
     New => "new",
     Seen => "seen",
-    Shortlisted => "shortlisted",
+    Starred => "starred",
     Dismissed => "dismissed",
     Added => "added",
 });
@@ -491,14 +493,14 @@ impl Triage {
             Triage::New => 0,
             Triage::Seen => 1,
             Triage::Dismissed => 2,
-            Triage::Shortlisted => 3,
+            Triage::Starred => 3,
             Triage::Added => 4,
         }
     }
 
     /// Kept by a prune, however old.
     pub fn kept(self) -> bool {
-        matches!(self, Triage::Shortlisted | Triage::Added)
+        matches!(self, Triage::Starred | Triage::Added)
     }
 }
 
@@ -612,7 +614,7 @@ mod tests {
         same_as_json(&[Journal, Preprints, News, Blog]);
         let kinds = [ItemKind::Paper, ItemKind::Preprint];
         same_as_json(&[kinds[0], kinds[1], ItemKind::News, ItemKind::Blog]);
-        let triage = [Triage::New, Triage::Seen, Triage::Shortlisted];
+        let triage = [Triage::New, Triage::Seen, Triage::Starred];
         same_as_json(&[
             triage[0],
             triage[1],
@@ -630,5 +632,13 @@ mod tests {
             refused,
             r#""podcast": not one of paper, preprint, news, blog"#
         );
+    }
+
+    #[test]
+    fn a_star_of_before_reads_as_starred() {
+        let triage: Triage = serde_json::from_str(r#""shortlisted""#).unwrap();
+        assert_eq!(triage, Triage::Starred);
+        assert_eq!(serde_json::to_string(&triage).unwrap(), r#""starred""#);
+        assert!("shortlisted".parse::<Triage>().is_err(), "its word no more");
     }
 }

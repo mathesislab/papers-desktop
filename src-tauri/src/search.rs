@@ -2,7 +2,7 @@
 //! works (crates/feeds' `search_works`) and the folder of the works found,
 //! `app_data_dir/search` (a `Folder` of its own, `Store::Search`). A
 //! search's first page takes the place of the works found before, but for
-//! those saved for later (shortlisted) or added; the next page adds to it.
+//! those starred or added; the next page adds to it.
 //! The last query's journals and works looked up are kept for its next pages
 //! and its following. The rows are the Feeds tab's (`FeedRow`); the details,
 //! the triage, the abstracts and the PDFs are the Feeds tab's commands, with
@@ -136,13 +136,13 @@ pub async fn search_follow(app: AppHandle, query: String) -> Result<Subscription
     .await
 }
 
-/// The works saved for later, the latest found first.
+/// The works starred, the latest found first.
 #[tauri::command]
-pub async fn search_saved(app: AppHandle) -> Result<Vec<FeedRow>, String> {
+pub async fn search_starred(app: AppHandle) -> Result<Vec<FeedRow>, String> {
     blocking(move || {
         let ids = app.state::<AppState>().search.read(|feeds| {
-            let saved = feeds.shortlisted().into_iter();
-            saved.map(|i| i.id.clone()).collect::<Vec<_>>()
+            let starred = feeds.starred().into_iter();
+            starred.map(|i| i.id.clone()).collect::<Vec<_>>()
         })?;
         rows_of(&app, &ids, "")
     })

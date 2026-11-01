@@ -36,7 +36,7 @@ pub enum Command {
     Fetch(AccessArgs),
     /// The items, one a line: id, state, score, kind, date, title, journal
     ///
-    /// The state column: `*` shortlisted, `x` dismissed, `+` added, `.` seen, blank new.
+    /// The state column: `*` starred, `x` dismissed, `+` added, `.` seen, blank new.
     /// Dismissed items are left out unless asked for.
     List(ListArgs),
     /// All that is known of an item
@@ -45,7 +45,7 @@ pub enum Command {
     Find(FindArgs),
     /// Set the state of items
     Mark(MarkArgs),
-    /// Drop the old items no feed lists (shortlisted and added stay); done on opening too
+    /// Drop the old items no feed lists (starred and added stay); done on opening too
     Prune,
     /// The interests: weighted terms that score the items
     Interests(JsonArg),
@@ -99,7 +99,7 @@ pub struct ConfigArgs {
 /// The settings `feeds config` changes.
 #[derive(Debug, Subcommand)]
 pub enum ConfigSet {
-    /// The days an item no feed lists is kept, unless shortlisted or added
+    /// The days an item no feed lists is kept, unless starred or added
     KeepDays {
         #[arg(value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
         days: u32,
@@ -214,7 +214,7 @@ pub struct FindArgs {
 /// `feeds mark`.
 #[derive(Debug, Args)]
 pub struct MarkArgs {
-    /// new, seen, shortlisted, dismissed or added
+    /// new, seen, starred, dismissed or added
     pub state: Triage,
     #[arg(required = true)]
     pub ids: Vec<String>,
