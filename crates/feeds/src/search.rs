@@ -65,6 +65,16 @@ pub struct Asked {
     pub around: Vec<(&'static str, Vec<String>, bool)>,
 }
 
+/// What a query asks of OpenAlex once its journals and works are looked up:
+/// its full-text search and its filters. The pages of a search and a search
+/// followed are of it, the lookups made once.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Resolved {
+    /// the words and phrases, `NOT` before those left out
+    pub search: Vec<String>,
+    pub filters: Vec<String>,
+}
+
 /// A page of a search: the works found, how many there are in all, the
 /// cursor of the next page (none after the last).
 #[derive(Debug, Clone, PartialEq)]
@@ -78,45 +88,39 @@ pub struct Page {
 pub fn ask(query: &str) -> std::result::Result<Asked, String> {
     let mut asked = Asked::default();
     for term in Query::written(query, SCHEMA) {
-        let values: Vec<String> = term
-            .values
-            .iter()
-            .filter(|v| !v.text.trim().is_empty())
-            .map(|v| match v.quoted {
-                true => format!("\"{}\"", v.text.trim()),
-                false => v.text.trim().to_string(),
-            })
+        let values: Vec<String> = (term.values.iter())
+            .map(|v| v.text.trim().to_string())
+            .filter(|v| !v.is_empty())
             .collect();
         if values.is_empty() {
             continue;
         }
-        let name = term.field.as_deref();
-        let refused = |why: &str| {
-            let field = name.map_or(String::new(), |n| format!("{n}:"));
-            Err(format!(
-                "{}{field}: {why}",
-                if term.negated { "-" } else { "" }
-            ))
+        // as OpenAlex's search takes them: a phrase quoted
+        let quoted = || {
+            let quoted = (term.values.iter()).filter(|v| !v.text.trim().is_empty());
+            quoted.map(|v| match v.quoted {
+                true => format!("\"{}\"", v.text.trim()),
+                false => v.text.trim().to_string(),
+            })
         };
-        let filter =
-            |field: &str, values: &[String], joint: &str| format!("{field}:{}", values.join(joint));
+        let name = term.field.as_deref();
+        let not = if term.negated { "-" } else { "" };
+        let refused = |name: &str, why: &str| Err(format!("{not}{name}: {why}"));
+        let filter = |field: &str| {
+            let values: Vec<String> = quoted().collect();
+            format!("{field}:{}", values.join(" OR "))
+        };
         match name {
-            None => asked
-                .search
-                .extend(values.into_iter().map(|v| match term.negated {
-                    true => format!("NOT {v}"),
-                    false => v,
-                })),
-            Some("title" | "abstract" | "author") if term.negated => {
-                return refused("OpenAlex cannot leave out by it");
+            None => asked.search.extend(quoted().map(|v| match term.negated {
+                true => format!("NOT {v}"),
+                false => v,
+            })),
+            Some(name @ ("title" | "abstract" | "author")) if term.negated => {
+                return refused(name, "OpenAlex cannot leave out by it");
             }
-            Some("title") => asked.filters.push(filter("title.search", &values, " OR ")),
-            Some("abstract") => asked
-                .filters
-                .push(filter("abstract.search", &values, " OR ")),
-            Some("author") => asked
-                .filters
-                .push(filter("raw_author_name.search", &values, " OR ")),
+            Some("title") => asked.filters.push(filter("title.search")),
+            Some("abstract") => asked.filters.push(filter("abstract.search")),
+            Some("author") => asked.filters.push(filter("raw_author_name.search")),
             Some("year") => {
                 let years: Vec<RangeInclusive<i32>> = values
                     .iter()
@@ -124,25 +128,20 @@ pub fn ask(query: &str) -> std::result::Result<Asked, String> {
                     .collect::<Option<_>>()
                     .ok_or_else(|| format!("y:{}: not years", values.join(",")))?;
                 if term.negated && years.iter().any(|y| y.start() != y.end()) {
-                    return refused("OpenAlex cannot leave out a span of years");
+                    return refused("year", "OpenAlex cannot leave out a span of years");
                 }
                 let not = if term.negated { "!" } else { "" };
                 let years: Vec<String> = (years.iter())
                     .map(|y| format!("{not}{}", publication_years(y)))
                     .collect();
                 let joint = if term.negated { "+" } else { "|" };
-                asked
-                    .filters
-                    .push(filter("publication_year", &years, joint));
+                (asked.filters).push(format!("publication_year:{}", years.join(joint)));
             }
-            Some("journal") => {
-                let names = values.iter().map(|v| v.trim_matches('"').to_string());
-                asked.journals.push((names.collect(), term.negated));
-            }
+            Some("journal") => asked.journals.push((values, term.negated)),
             Some("doi") => {
                 let dois: Vec<String> = values
                     .iter()
-                    .map(|v| canonical_doi(v.trim_matches('"')))
+                    .map(|v| canonical_doi(v))
                     .collect::<Option<_>>()
                     .ok_or_else(|| format!("doi:{}: not a DOI", values.join(",")))?;
                 let not = if term.negated { "!" } else { "" };
@@ -154,13 +153,12 @@ pub fn ask(query: &str) -> std::result::Result<Asked, String> {
                 } else {
                     "cited_by"
                 };
-                let works = values.iter().map(|v| {
-                    let v = v.trim_matches('"');
-                    canonical_doi(v).unwrap_or_else(|| work_id(v))
-                });
+                let works = values
+                    .iter()
+                    .map(|v| canonical_doi(v).unwrap_or_else(|| work_id(v)));
                 asked.around.push((field, works.collect(), term.negated));
             }
-            Some(_) => return refused("not a field of OpenAlex's works"),
+            Some(name) => return refused(name, "not a field of OpenAlex's works"),
         }
     }
     Ok(asked)
@@ -179,7 +177,6 @@ fn publication_years(years: &RangeInclusive<i32>) -> String {
 
 /// An OpenAlex id (`W2741809807`) of a value, its address or the id.
 fn work_id(value: &str) -> String {
-    let value = value.trim_matches('"').trim();
     let id = value.rsplit('/').next().unwrap_or(value);
     id.to_ascii_uppercase()
 }
@@ -195,14 +192,14 @@ fn any_of(field: &str, ids: &[String], excluded: bool) -> String {
     }
 }
 
-/// The filters of what a query asks, its journals and works looked up: a
-/// journal by its name (the one named so, `journals::best_named`, else
-/// OpenAlex's best), a work by its DOI.
-pub fn filters(
+/// What a query asks, its journals and works looked up: a journal by its
+/// name (the one named so, `journals::best_named`, else OpenAlex's best), a
+/// work by its DOI.
+pub fn resolve(
     http: &dyn Http,
     access: &Access,
     asked: &Asked,
-) -> std::result::Result<Vec<String>, String> {
+) -> std::result::Result<Resolved, String> {
     let mut filters = asked.filters.clone();
     for (names, excluded) in &asked.journals {
         let mut ids = Vec::new();
@@ -228,20 +225,21 @@ pub fn filters(
         }
         filters.push(any_of(field, &ids, *excluded));
     }
-    Ok(filters)
+    Ok(Resolved {
+        search: asked.search.clone(),
+        filters,
+    })
 }
 
-/// The request of a page of a search, of its words and its filters: from
-/// the first page, or from a cursor.
+/// The request of a page of a search: from the first page, or from a cursor.
 pub fn search_url(
-    words: &[String],
-    filters: &[String],
+    resolved: &Resolved,
     order: Order,
     cursor: Option<&str>,
     access: &Access,
 ) -> std::result::Result<String, String> {
-    let search = words.join(" ");
-    if search.is_empty() && filters.is_empty() {
+    let search = resolved.search.join(" ");
+    if search.is_empty() && resolved.filters.is_empty() {
         return Err("Nothing to search for".to_string());
     }
     let sort = match order {
@@ -251,7 +249,7 @@ pub fn search_url(
     };
     let query = WorksQuery {
         search: &search,
-        filters,
+        filters: &resolved.filters,
         sort: Some(sort),
         per_page: PER_SEARCH,
         cursor: cursor.unwrap_or("*"),
@@ -260,17 +258,15 @@ pub fn search_url(
 }
 
 /// A page of the works of a query, in an order: from the first, or from a
-/// cursor (its journals and works looked up again: `filters`).
+/// cursor.
 pub fn search_works(
     http: &dyn Http,
     access: &Access,
-    query: &str,
+    resolved: &Resolved,
     order: Order,
     cursor: Option<&str>,
 ) -> std::result::Result<Page, String> {
-    let asked = ask(query)?;
-    let filters = filters(http, access, &asked)?;
-    let url = search_url(&asked.search, &filters, order, cursor, access)?;
+    let url = search_url(resolved, order, cursor, access)?;
     let list: List = get_json(http, &url)?.unwrap_or_default();
     let entries = list
         .results
@@ -287,19 +283,14 @@ pub fn search_works(
 /// The OpenAlex filter of a query followed as a sweep of the feeds: its
 /// words searched in the titles and abstracts (their commas, which would end
 /// the filter, dropped), then its filters.
-pub fn follow_filter(
-    http: &dyn Http,
-    access: &Access,
-    query: &str,
-) -> std::result::Result<String, String> {
-    let asked = ask(query)?;
+pub fn follow_filter(resolved: &Resolved) -> std::result::Result<String, String> {
     let mut all = Vec::new();
-    let words = asked.search.join(" ").replace(',', " ");
+    let words = resolved.search.join(" ").replace(',', " ");
     let words = words.split_whitespace().collect::<Vec<_>>().join(" ");
     if !words.is_empty() {
         all.push(format!("title_and_abstract.search:{words}"));
     }
-    all.extend(filters(http, access, &asked)?);
+    all.extend(resolved.filters.iter().cloned());
     if all.is_empty() {
         return Err("Nothing to follow".to_string());
     }

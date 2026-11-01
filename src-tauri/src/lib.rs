@@ -114,6 +114,8 @@ struct AppState {
     feeds: feeds::FeedsState,
     /// the works found in the Search tab, opened at its first command
     search: feeds::FeedsState,
+    /// the Search tab's last query, its journals and works looked up
+    resolved: search::LastResolved,
 }
 
 impl AppState {
@@ -967,6 +969,7 @@ pub fn run() {
                     app.path().app_data_dir()?.join("search"),
                     app.path().app_data_dir()?.join("search-fetched.json"),
                 ),
+                resolved: search::LastResolved::default(),
             });
             app.state::<AppState>()
                 .downloads

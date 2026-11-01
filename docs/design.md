@@ -1146,9 +1146,11 @@ years (`2000-2010`, `2000-`, `-2010`, `2005`, `201` the 2010s); `j:` a
 journal, looked up by its name (the one whose title is the name, else
 OpenAlex's best); `doi:`; `cites:` and `citedby:`, the works around a work,
 by its OpenAlex id or its DOI (looked up). What OpenAlex cannot be asked
-(another field, a title or author that excludes) is refused, said. Sorted by
-relevance (without words, the most cited), the most cited or the newest; 25
-a page, *Show 25 more* from the cursor.
+(another field, a title or author that excludes) is refused, said. A query is
+asked (`ask`) then resolved once (`resolve`: its journals and DOIs looked up;
+the app keeps the last query's `Resolved` for its next pages and its
+following). Sorted by relevance (without words, the most cited), the most
+cited or the newest; 25 a page, *Show 25 more* from the cursor.
 
 **The works found** are items of a folder of feeds of their own
 (`app_data_dir/search`, `Store::Search`), so the rows, the details, the

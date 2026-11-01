@@ -74,8 +74,8 @@ pub use parse::{Parsed, parse};
 pub use pdf::{OpenAccess, Pdf, pdf};
 pub use rules::{Action, Rule};
 pub use search::{
-    Asked, FOUND, Order, PER_SEARCH, Page, SEARCH_FACETS, ask, filters, follow_filter, search_url,
-    search_works,
+    Asked, FOUND, Order, PER_SEARCH, Page, Resolved, SEARCH_FACETS, ask, follow_filter, resolve,
+    search_url, search_works,
 };
 pub use searches::Search;
 pub use store::{FeedSettings, LOOKBACK_DAYS};

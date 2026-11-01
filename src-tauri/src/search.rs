@@ -3,10 +3,17 @@
 //! `app_data_dir/search` (a `FeedsState` of its own, `Store::Search`). A
 //! search's first page takes the place of the works found before, but for
 //! those saved for later (shortlisted) or added; the next page adds to it.
-//! The rows are the Feeds tab's (`FeedRow`); the details, the triage, the
-//! abstracts and the PDFs are the Feeds tab's commands, with the store.
+//! The last query's journals and works looked up are kept for its next pages
+//! and its following. The rows are the Feeds tab's (`FeedRow`); the details,
+//! the triage, the abstracts and the PDFs are the Feeds tab's commands, with
+//! the store.
 
-use papers_feeds::{Feed, Order, SourceKind, SubscriptionSettings, follow_filter, search_works};
+use std::sync::Mutex;
+
+use papers_feeds::{
+    Access, Feed, Http, Order, Resolved, SourceKind, SubscriptionSettings, ask, follow_filter,
+    resolve, search_works,
+};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -28,6 +35,26 @@ pub struct SearchPage {
     total: u64,
     /// the cursor of the next page; none after the last
     next: Option<String>,
+}
+
+/// The last query resolved: what it asks of OpenAlex, its journals and works
+/// looked up.
+#[derive(Default)]
+pub struct LastResolved(Mutex<Option<(String, Resolved)>>);
+
+impl LastResolved {
+    /// What a query asks of OpenAlex: the last one's, else resolved and kept.
+    fn of(&self, query: &str, http: &dyn Http, access: &Access) -> Result<Resolved, String> {
+        let mut last = self.0.lock().unwrap();
+        if let Some((asked, resolved)) = last.as_ref()
+            && asked == query
+        {
+            return Ok(resolved.clone());
+        }
+        let resolved = resolve(http, access, &ask(query)?)?;
+        *last = Some((query.to_string(), resolved.clone()));
+        Ok(resolved)
+    }
 }
 
 /// The rows of items of the works found, in their order, the query's words
@@ -53,8 +80,10 @@ pub async fn search_run(
     cursor: Option<String>,
 ) -> Result<SearchPage, String> {
     blocking(move || {
-        let (network, access) = network(&app.state::<AppState>())?;
-        let found = search_works(&network, &access, &query, order, cursor.as_deref())?;
+        let state = app.state::<AppState>();
+        let (network, access) = network(&state)?;
+        let resolved = state.resolved.of(&query, &network, &access)?;
+        let found = search_works(&network, &access, &resolved, order, cursor.as_deref())?;
         let fresh = cursor.is_none();
         let ids = match change_in(&app, Store::Search, Change::Found(found.entries, fresh))? {
             Applied::Ids(ids) => ids,
@@ -84,8 +113,9 @@ pub async fn search_rows(
 #[tauri::command]
 pub async fn search_follow(app: AppHandle, query: String) -> Result<SubscriptionInfo, String> {
     blocking(move || {
-        let (network, access) = network(&app.state::<AppState>())?;
-        let filter = follow_filter(&network, &access, &query)?;
+        let state = app.state::<AppState>();
+        let (network, access) = network(&state)?;
+        let filter = follow_filter(&state.resolved.of(&query, &network, &access)?)?;
         let feed = Feed::OpenAlex { filter };
         let settings = SubscriptionSettings {
             title: Some(query),
@@ -132,4 +162,27 @@ pub async fn search_saved(app: AppHandle) -> Result<Vec<FeedRow>, String> {
         rows_of(&app, &ids, "")
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use papers_feeds::Reply;
+    use papers_feeds::http::Recorded;
+
+    use super::*;
+
+    #[test]
+    fn a_query_is_resolved_once() {
+        let doi = "https://api.openalex.org/works/doi:10.5194/tc-1?select=id,doi,title,\
+            publication_date,authorships,primary_location,abstract_inverted_index,type,cited_by_count";
+        let w1 = r#"{"id": "https://openalex.org/W1"}"#;
+        let http = Recorded::new().reply(doi, Reply::ok(doi, w1));
+        let (last, access) = (LastResolved::default(), Access::default());
+        let cites = last.of("cites:10.5194/tc-1", &http, &access).unwrap();
+        assert_eq!(cites.filters, ["cites:W1"]);
+        let again = last.of("cites:10.5194/tc-1", &http, &access).unwrap();
+        assert_eq!((again, http.requests().len()), (cites, 1), "kept");
+        let other = last.of("cites:10.5194/tc-2", &http, &access);
+        assert!(other.is_err(), "another query looked up again");
+    }
 }

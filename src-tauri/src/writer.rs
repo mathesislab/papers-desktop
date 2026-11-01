@@ -1200,6 +1200,7 @@ mod tests {
                 dir.join("search"),
                 dir.join("search-fetched.json"),
             ),
+            resolved: Default::default(),
         }
     }
 
