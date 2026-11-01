@@ -44,7 +44,7 @@
     onshow,
     onclose,
   }: {
-    /** the .bib file to add to, unless the user chooses another: that of the paper selected */
+    /** the .bib file to add to, unless the user chooses another (none: the main library, else the first) */
     bib?: string | null;
     /** the papers of the library, by id */
     rows: Map<string, Row>;
@@ -234,7 +234,7 @@
         message = { text: String(e), error: true };
       }
     } else {
-      target = preferred && bibs.some((w) => w.bib === preferred) ? preferred : (bibs[0]?.bib ?? "");
+      target = preferred && bibs.some((w) => w.bib === preferred) ? preferred : ((bibs.find((w) => w.main) ?? bibs[0])?.bib ?? "");
     }
     if (first) setPdf(first);
     else if (choosing) chooseFile();

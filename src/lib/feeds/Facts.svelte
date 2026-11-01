@@ -60,10 +60,14 @@
   };
 </script>
 
-<!-- the library's papers of the same item (its DOI, or its title and year), each to show: the details' -->
-{#snippet inLibrary(ids: string[], onentry: (id: string) => void)}
-  <span class="badge lib">in library</span>
-  {#each ids as id (id)}<button class="link" onclick={() => onentry(id)}>show</button>{/each}
+<!-- the library's papers of the same item (its DOI, or its title and year), each to show, after the .bib it is in
+     when the library has several (`libraryOf`): the details' -->
+{#snippet inLibrary(ids: string[], onentry: (id: string) => void, libraryOf: (id: string) => string | null)}
+  {#each ids as id, i (id)}
+    {@const bib = libraryOf(id)}
+    {#if bib || i === 0}<span class="badge lib">{bib ? `in ${bib}` : "in library"}</span>{/if}
+    <button class="link" onclick={() => onentry(id)}>show</button>
+  {/each}
 {/snippet}
 
 {#if scored.length}

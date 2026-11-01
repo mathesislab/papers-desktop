@@ -34,7 +34,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
 use crate::AppState;
-use crate::settings::{WriterChoice, expand};
+use crate::settings::{Settings, WriterChoice, expand};
 use builtin::Builtin;
 use command::{Found, PAPERS_MIN_NAME, PapersCommand};
 
@@ -61,6 +61,9 @@ pub struct Writer {
     pub version: Option<String>,
     /// why the library cannot be written, when it is known (e.g. it is not a papers library)
     pub problem: Option<String>,
+    /// the main library: the .bib in the papers folder of the settings, which a paper is added
+    /// to unless the user chose another library
+    pub main: bool,
 }
 
 /// An error of a write, of a kind the page tells apart.
@@ -303,8 +306,9 @@ impl Writers {
         }
     }
 
-    /// The writer of each .bib file, papers looked for once.
-    fn writers(&self, bibs: &[PathBuf]) -> Vec<Writer> {
+    /// The writer of each .bib file, papers looked for once; the main library's that in the folder
+    /// `papers` (the papers folder of the settings).
+    fn writers(&self, bibs: &[PathBuf], papers: Option<&Path>) -> Vec<Writer> {
         let mut backend = None;
         bibs.iter()
             .map(|bib| {
@@ -313,6 +317,7 @@ impl Writers {
                     kind,
                     version,
                     problem,
+                    main: papers.is_some_and(|folder| bib.parent() == Some(folder)),
                 };
                 let Some(folder) = papers_folder(bib) else {
                     return writer(Kind::Native, None, None);
@@ -515,13 +520,16 @@ pub(crate) async fn write<T: Send + 'static>(
     .map_err(|e| WriteError::failed(e.to_string()))?
 }
 
-/// The writer of each .bib file of the library.
+/// The writer of each .bib file of the library, the main library's marked.
 #[tauri::command]
 pub async fn writers(app: AppHandle) -> Vec<Writer> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let bibs = state.library.read().unwrap().bibs().to_vec();
-        state.writers.writers(&bibs)
+        let papers = Settings::load(&state.settings_path)
+            .ok()
+            .and_then(|s| s.papers_dir());
+        state.writers.writers(&bibs, papers.as_deref())
     })
     .await
     .unwrap_or_default()
@@ -1310,6 +1318,25 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn the_main_library_is_the_bib_in_the_papers_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let papers = dir.path().join("Papers");
+        let bibs = [papers.join("papers.bib"), papers.join("thesis/thesis.bib")];
+        for bib in &bibs {
+            fs::create_dir_all(bib.parent().unwrap()).unwrap();
+            fs::write(bib, ENTRIES).unwrap();
+        }
+        let state = state(dir.path(), &bibs, WriterChoice::BuiltIn, "");
+        let main = |folder| -> Vec<bool> {
+            (state.writers.writers(&bibs, folder).iter())
+                .map(|w| w.main)
+                .collect()
+        };
+        assert_eq!(main(Some(&papers)), [true, false]);
+        assert_eq!(main(None), [false, false]);
+    }
+
+    #[test]
     fn native_writes_undo_and_redo() {
         let dir = tempfile::tempdir().unwrap();
         let bib = dir.path().join("refs.bib");
@@ -1320,7 +1347,7 @@ pub(crate) mod tests {
             WriterChoice::BuiltIn,
             "",
         );
-        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        let writers = state.writers.writers(std::slice::from_ref(&bib), None);
         assert_eq!(writers[0].kind, Kind::Native);
 
         tag(
@@ -1509,7 +1536,7 @@ pub(crate) mod tests {
             WriterChoice::Command,
             "/nonexistent/papers",
         );
-        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        let writers = state.writers.writers(std::slice::from_ref(&bib), None);
         assert_eq!(writers[0].kind, Kind::PapersMissing);
 
         let error = tag(&state, &strings(&["a"]), &strings(&["x"]), &[]).unwrap_err();
@@ -1972,7 +1999,7 @@ pub(crate) mod tests {
             WriterChoice::BuiltIn,
             "",
         );
-        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        let writers = state.writers.writers(std::slice::from_ref(&bib), None);
         assert_eq!(writers[0].kind, Kind::PapersRs);
         assert_eq!(writers[0].version, None);
         assert_eq!(writers[0].problem, None);
@@ -2018,7 +2045,7 @@ pub(crate) mod tests {
             "",
         );
         // no problem is announced: a shallow library is written as the others
-        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        let writers = state.writers.writers(std::slice::from_ref(&bib), None);
         assert_eq!(writers[0].kind, Kind::PapersRs);
         assert_eq!(writers[0].problem, None);
         // an entry added to the library goes to the pool too (its new entries always do)
@@ -2079,7 +2106,7 @@ pub(crate) mod tests {
             WriterChoice::Command,
             &papers,
         );
-        let writers = state.writers.writers(std::slice::from_ref(&bib));
+        let writers = state.writers.writers(std::slice::from_ref(&bib), None);
         assert_eq!(writers[0].kind, Kind::Papers);
         assert!(writers[0].version.is_some());
         every_command(&state, &bib);

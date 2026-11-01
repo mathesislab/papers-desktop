@@ -348,11 +348,19 @@ test("badges", () => {
       { interest: "Ice", score: 1, terms: [], reached: false },
     ],
   };
+  const one = () => null;
   assert.deepEqual(
-    badges(r).map((b) => b.text),
+    badges(r, one).map((b) => b.text),
     ["in library", "has preprint", "2 news", "AMOC"],
   );
-  assert.deepEqual(badges({ ...row("p"), kind: "news", links: 1 }).map((b) => b.text), ["→ paper"]);
+  assert.deepEqual(badges({ ...row("p"), kind: "news", links: 1 }, one).map((b) => b.text), ["→ paper"]);
+  // a library of several .bib files: each named, once
+  const bibs: Record<string, string> = { x: "thesis.bib", y: "papers.bib", z: "thesis.bib" };
+  const several = (id: string) => bibs[id] ?? null;
+  assert.deepEqual(
+    badges({ ...row("b"), inLibrary: ["x", "y", "z"] }, several).map((b) => b.text),
+    ["in thesis.bib", "in papers.bib"],
+  );
 });
 
 test("seen on dwell: an item that stays, not one passed over", () => {

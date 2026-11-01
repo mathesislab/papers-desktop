@@ -26,6 +26,7 @@
     onfind,
     onitem,
     onentry,
+    libraryOf,
     onback,
   }: {
     detail: FeedDetail;
@@ -48,6 +49,8 @@
     onfind?: () => void;
     onitem: (id: string) => void;
     onentry: (id: string) => void;
+    /** the .bib of a paper of the library, by its name, when it has several */
+    libraryOf: (id: string) => string | null;
     /** read in place of the list: back to it, as Esc */
     onback?: () => void;
   } = $props();
@@ -77,7 +80,7 @@
       {where}
     </p>
     {#if detail.inLibrary.length}
-      <p class="by">{@render inLibrary(detail.inLibrary, onentry)}</p>
+      <p class="by">{@render inLibrary(detail.inLibrary, onentry, libraryOf)}</p>
     {/if}
   </div>
 

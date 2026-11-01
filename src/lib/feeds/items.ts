@@ -176,15 +176,20 @@ export function fetchLine(last: FetchSummary | null, now = Date.now()): string {
   return parts.join(" · ");
 }
 
-/** The badges of a row, after its title. */
-export function badges(row: FeedRow): { text: string; kind: "lib" | "pre" | "news" | "link" | "interest" | "remind" }[] {
+/** The badges of a row, after its title: in the library, by the .bib of each paper of it there when the library has
+ *  several (`libraryOf`, "in thesis.bib"; none: "in library"), once each. */
+export function badges(
+  row: FeedRow,
+  libraryOf: (id: string) => string | null,
+): { text: string; kind: "lib" | "pre" | "news" | "link" | "interest" | "remind" }[] {
   const list: ReturnType<typeof badges> = [];
   if (row.reminder === "due") list.push({ text: "⏰", kind: "remind" });
   else if (row.reminder === "snoozed" && row.remind) {
     const day = new Date(row.remind).toLocaleDateString(undefined, { day: "numeric", month: "short" });
     list.push({ text: `⏰ ${day}`, kind: "remind" });
   }
-  if (row.inLibrary.length) list.push({ text: "in library", kind: "lib" });
+  const bibs = new Set(row.inLibrary.map((id) => libraryOf(id)));
+  for (const bib of bibs) list.push({ text: bib ? `in ${bib}` : "in library", kind: "lib" });
   if (row.kind === "preprint") list.push({ text: "preprint", kind: "pre" });
   else if (row.hasVersions && row.kind === "paper") list.push({ text: "has preprint", kind: "pre" });
   if (row.coveredBy) list.push({ text: `${row.coveredBy} news`, kind: "news" });

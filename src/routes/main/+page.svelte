@@ -69,6 +69,7 @@
     // the Add sheet is the library's, over the tab: after the paper is added, the tab stays in front
     onadd: (initial) => library?.addFrom(initial) ?? Promise.resolve(null),
     onentry: (id) => library?.showEntry(id),
+    libraryOf: (id) => library?.libraryOf(id) ?? null,
   });
 
   /** The window is made hidden, not to flash empty: shown once drawn. */

@@ -29,6 +29,7 @@
     menu,
     sort,
     colours,
+    libraryOf,
     look = "table",
     unread = true,
     star = STAR.row,
@@ -54,6 +55,8 @@
     sort?: Sort;
     /** the interests of the settings, each with its colour; none: no interests yet */
     colours: Map<string, string>;
+    /** the .bib of a paper of the library, by its name, when it has several: the badge of an item in it */
+    libraryOf: (id: string) => string | null;
     /** a table, or calm (the Feeds tab's) */
     look?: Look;
     /** a new item's title bold, one seen muted */
@@ -135,7 +138,7 @@
 
 {#snippet badgeList(row: FeedRow)}
   <span class="badges">
-    {#each badges(row) as b (b.text)}
+    {#each badges(row, libraryOf) as b (b.text)}
       <span class="badge {b.kind}" style:--c={b.kind === "interest" ? colours.get(b.text) : null}>{b.text}</span>
     {/each}
   </span>

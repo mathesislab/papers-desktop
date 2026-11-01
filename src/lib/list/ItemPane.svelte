@@ -29,7 +29,7 @@
   }: {
     list: ItemList;
     /** the table's own: its columns, their names and widths, the order, the star, what follows the last row */
-    table: Omit<ComponentProps<typeof FeedTable>, "rows" | "selected" | "focus" | "colours" | "look" | "onselect" | "onopen">;
+    table: Omit<ComponentProps<typeof FeedTable>, "rows" | "selected" | "focus" | "colours" | "libraryOf" | "look" | "onselect" | "onopen">;
     /** the colour of the tab: the row pinned over the item read */
     tint?: string;
     /** the details beside the list, with no item in focus */
@@ -65,6 +65,7 @@
           selected={selection.selected}
           focus={selection.focus}
           colours={tab.colours}
+          libraryOf={tab.libraryOf}
           look={list.look}
           onselect={list.select}
           onopen={(id) => list.openItems(selection.selected.has(id) ? list.targets() : [id])}
@@ -104,6 +105,7 @@
     onfind={onfind && (() => onfind(d.id))}
     onitem={list.showItem}
     onentry={tab.onentry}
+    libraryOf={tab.libraryOf}
     onback={wide ? () => (list.reading = false) : undefined}
   />
 {/snippet}

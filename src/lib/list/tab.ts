@@ -1,6 +1,6 @@
 // What the main window (src/routes/main/+page.svelte) gives its Feeds and Search tabs alike, through the context:
 // the switch of the tabs, the details beside the list or not, the panes' widths and whether they show, the colours
-// of the interests, the library's Add sheet, a paper shown in the Library tab. The tabs and their ItemList read it as they start.
+// of the interests, the library's Add sheet, a paper shown in the Library tab and the .bib it is in. The tabs and their ItemList read it as they start.
 
 import { createContext, type Snippet } from "svelte";
 
@@ -21,6 +21,8 @@ export interface Tab {
   onadd(initial: { id: string; pdf: boolean }): Promise<string | null>;
   /** a paper of the library shown, in the Library tab */
   onentry(id: string): void;
+  /** the .bib file a paper of the library is in, by its name, when the library has several; none: it has one */
+  libraryOf(id: string): string | null;
 }
 
 export const [tabContext, setTabContext] = createContext<Tab>();

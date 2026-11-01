@@ -853,6 +853,11 @@
     adding = null;
   }
 
+  /** The .bib a paper is added to, unless the user chooses another in the sheet: here (`own`), that of the paper in
+   *  focus; else, from the Feeds or Search tab, or without one, the library chosen in the sidebar; none: the main
+   *  library (Add). */
+  const addTo = (own: boolean) => (own && selection.focus ? byId.get(selection.focus)?.bib : null) ?? layout.library.bibs[0] ?? null;
+
   /** The sheet, for an item of the Feeds tab: its DOI (or arXiv id) fetched at once, its free PDF looked for or
    *  not (`pdf`). The Feeds tab stays in front: the answer is what was added, said (none: the sheet was closed). */
   export function addFrom(initial: { id: string; pdf: boolean }): Promise<string | null> {
@@ -863,6 +868,13 @@
   /** A paper of the library, selected in the library tab with its details: from the Feeds tab, an item in it. */
   export function showEntry(id: string) {
     return show(id);
+  }
+
+  /** The .bib file of a paper, by its name, when the library has several: what the Feeds and Search tabs say it is
+   *  in; none: it has one (or the paper is not in it). */
+  export function libraryOf(id: string): string | null {
+    const bib = libraries.length > 1 ? byId.get(id)?.bib : undefined;
+    return bib ? fileName(bib) : null;
   }
 
   function say(text: string) {
@@ -1080,7 +1092,7 @@
 {#if adding}
   <Add
     bind:this={sheet}
-    bib={(selection.focus ? byId.get(selection.focus)?.bib : null) ?? layout.library.bibs[0] ?? null}
+    bib={addTo(!adding.initial)}
     rows={byId}
     forId={adding.id}
     pdf={adding.pdf}
