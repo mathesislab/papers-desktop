@@ -731,7 +731,7 @@
       <span>{list.selection.selected.size} selected</span>
       {#each BAR_BUTTONS as name (name)}
         {@const action = actions[name]}
-        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action.label(items))}</button>
+        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action, items)}</button>
       {/each}
       <span class="spacer"></span>
       <button class="plain" onclick={() => list.selection.only(list.selection.focus)}>Clear selection</button>

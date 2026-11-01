@@ -12,6 +12,7 @@
   import TableHead from "$lib/list/TableHead.svelte";
   import { ROW, Rows } from "$lib/list/virtual.svelte";
   import Marked from "$lib/Marked.svelte";
+  import { STAR } from "./actions";
   import type { FeedRow, Sort } from "./api";
   import type { FeedColumn } from "./columns";
   import { ago, badges, citedText, likeText, scoreText, yearOf } from "./items";
@@ -27,6 +28,7 @@
     sort,
     colours,
     unread = true,
+    star = STAR.row,
     after,
     onsort,
     oncolumns,
@@ -50,6 +52,8 @@
     colours: Map<string, string>;
     /** a new item's title bold, one seen muted */
     unread?: boolean;
+    /** what the star of a row says, on and off (the tab's `StarWords`) */
+    star?: { on: string; off: string };
     /** after the last row, in the scroll of the list: *Show 25 more* */
     after?: Snippet;
     onsort?: (sort: Sort) => void;
@@ -137,7 +141,7 @@
             <button
               class="star"
               class:on={row.triage === "starred"}
-              title={row.triage === "starred" ? "Starred: unstar" : "Star"}
+              title={row.triage === "starred" ? star.on : star.off}
               onmousedown={(e) => e.stopPropagation()}
               ondblclick={(e) => e.stopPropagation()}
               onclick={() => onstar(row.id)}>{row.triage === "starred" ? "★" : "☆"}</button

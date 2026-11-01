@@ -863,7 +863,8 @@ Library tab):
   not make the list jump under the cursor; a dismissed item goes, the next
   selected. A ☆ at the start of a row stars it (*Starred*), or unstars it.
   The actions on items are one table (`actions.ts`: `itemActions` open, add
-  and star, the Search tab's too; `feedActions` those and the triage), which
+  and star, the Search tab's too, the star in each tab's words; `feedActions`
+  those and the triage), which
   the keys, the row menu, the selection bar, the buttons of the details and
   *Later ▾* read in both tabs, each named one way (*Mark read* or *Mark unread*, *Star* or
   *Unstar*, *Dismiss* or *Restore*: a toggle says which way it goes; marking
@@ -1225,13 +1226,13 @@ the list it was asked for was replaced (another search, page or list: another
 (`app_data_dir/search`, `Store::Search`), so the rows, the details, the
 abstracts looked up, the free PDF, the Add sheet, *in library* and *Similar in
 your library* are the Feeds tab's (the item commands take the store). A new
-search drops the works found before but those starred (☆, `s`: in that
-folder, apart from the Feeds tab's Starred: works kept from a search, not yet
-sure to add; `search_starred`) and those added. Each keeps the
+search drops the works found before but those *saved for later* (☆, `s`:
+starred in that folder, apart from the Feeds tab's Starred: works kept from a
+search, not yet sure to add; `search_starred`) and those added. Each keeps the
 citations OpenAlex counted (`cited`, the *Cited* column). The tab keeps the
 search shown (its ids, total, cursor), the 20 last searches and the columns
-in the window's layout (`search`); the sidebar: Results, *Starred (N)*,
-Recent searches.
+in the window's layout (`search`); the sidebar: Results, *Saved for later
+(N)*, Recent searches.
 
 **Around a paper**: *Cited by* (`cites:`) and *References* (`citedby:`)
 search again, the most cited first. **Follow this search** subscribes the
@@ -1242,10 +1243,13 @@ The list and the details are the Feeds tab's (`ItemList`, `ItemPane`: the
 columns and the buttons given by the tab; `Reader`, the item read in place of
 the list, by the switch `feeds-beside`; the same keys to move, `/` with or
 without ⇧), in the tab's violet (`--search`). Its actions are the table's
-of both tabs (`itemActions`: *Open*, *Add…*, *Add without PDF…*, *Star*,
+of both tabs (`itemActions`: *Open*, *Add…*, *Add without PDF…* and the star,
 the keys `o`, `a`, `s`), in the keys, the row menu (then *Cited By*,
 *References*), the selection bar and the buttons of the details, said as in
-the Feeds tab. The interests' colours are those of the settings, in their
+the Feeds tab but for the star, which each tab says in its words
+(`StarWords`: the Feeds tab's *Star* / *Unstar*, the Search tab's *Save for
+later* / *Remove from Saved for Later*, *★ Saved for later* on a button,
+`SAVED_FOR_LATER` in `search/state.ts`). The interests' colours are those of the settings, in their
 order, given by the window to both tabs: an interest has one colour.
 
 ## Later, optional: Spotlight add-on

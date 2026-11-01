@@ -3,9 +3,10 @@
   // and add them to the library. The query is the app's (words, "phrases", -word, t:, abs:, a:, j:, y:, doi:, and
   // cites:, citedby: for the works around a work), the Year field added as y:; Enter runs it, a page of 25 works at
   // a time (*Show 25 more* at the end of the list). A new search takes the place of the works found before, but for
-  // those starred (☆, S) or added. The sidebar: the works found (Results), those starred, the recent searches. The
-  // list and the details are the Feeds tab's (ItemPane, on an ItemList), with the store "search": the details beside
-  // the list or in place of it, its actions those of the Feeds tab's table (`itemActions`). The window
+  // those saved for later (☆, S: starred in its folder) or added. The sidebar: the works found (Results), those saved
+  // for later, the recent searches. The list and the details are the Feeds tab's (ItemPane, on an ItemList), with the
+  // store "search": the details beside the list or in place of it, its actions those of the Feeds tab's table
+  // (`itemActions`, the star in the tab's words: `SAVED_FOR_LATER`). The window
   // (src/routes/main/+page.svelte) keeps the layout (the fields, the recent searches, the search shown), gives
   // what both its Feeds and Search tabs take (`tabContext`), and passes on the commands of the menu and the keys
   // while the tab is in front. The Add sheet is the library's.
@@ -35,6 +36,7 @@
     moreText,
     totalText,
     withRecent,
+    SAVED_FOR_LATER,
     type Typed,
   } from "./state";
   import SearchSidebar from "./SearchSidebar.svelte";
@@ -64,7 +66,7 @@
   /** the searches asked: an answer to one before the last is dropped */
   let asked = 0;
 
-  /** the works of the search shown, or those starred; those unstarred in *Starred* stay in place
+  /** the works of the search shown, or those saved for later; those unsaved in *Saved for later* stay in place
    *  until another list is shown */
   const list = new ItemList({
     store: "search",
@@ -77,7 +79,7 @@
   let orderText = $derived(ORDERS.find((o) => o.order === search.order)?.text ?? "");
   let summary = $derived(
     (view === "starred"
-      ? `${list.rows.length} starred`
+      ? `${list.rows.length} saved`
       : results
         ? totalText(results.total) + (results.ids.length < results.total ? ` · ${results.ids.length} shown` : "")
         : "") + (list.selection.selected.size > 1 ? ` · ${list.selection.selected.size} selected` : ""),
@@ -99,8 +101,8 @@
     };
   });
 
-  /** The list again as the works are now: those of the search shown, found again, or those starred (those unstarred
-   *  here kept in place); and how many are starred. An answer for a list no longer shown (another list, another
+  /** The list again as the works are now: those of the search shown, found again, or those saved for later (those
+   *  unsaved here kept in place); and how many are saved. An answer for a list no longer shown (another list, another
    *  search or page of it: another `results`) is dropped. */
   async function refresh() {
     const shown = view;
@@ -133,7 +135,7 @@
   }
 
   /** Enter, Search: the first page of the query of the fields, in place of the works found before (but for those
-   *  starred or added); kept in the recent searches. A query OpenAlex cannot be asked (years that are none,
+   *  saved for later or added); kept in the recent searches. A query OpenAlex cannot be asked (years that are none,
    *  a field it has not) is said where the works would be. */
   async function run() {
     const query = composed(search.query, search.year);
@@ -231,18 +233,25 @@
     }
   }
 
-  /** s, the star: the works starred, or no longer when all are (`ItemList.toggled`); those added keep being added. */
+  /** s, the star: the works saved for later, or no longer when all are (`ItemList.toggled`); those added keep being
+   *  added. */
   async function triage(action: TriageAction, ids: string[]) {
     const change = await list.toggled(action, ids);
-    if (change) await list.setTo(change.ids, change.triage);
+    if (!change) return;
+    const n = change.ids.length === 1 ? "" : ` ${change.ids.length}`;
+    list.say(change.triage === "starred" ? `Saved${n} for later` : `No longer saved${n}`);
+    await list.setTo(change.ids, change.triage);
   }
 
   /** what can be done to the works, as in the Feeds tab: the keys, the menu, the buttons */
-  const actions = itemActions({
-    open: (ids) => list.openItems(ids),
-    add: (ids, pdf) => list.addItems(ids, pdf),
-    triage,
-  });
+  const actions = itemActions(
+    {
+      open: (ids) => list.openItems(ids),
+      add: (ids, pdf) => list.addItems(ids, pdf),
+      triage,
+    },
+    SAVED_FOR_LATER,
+  );
   /** the buttons of the details, but for the works around it; those of the selection bar */
   const BUTTONS: ItemActionName[] = ["add", "open", "addBare", "star"];
   const BAR_BUTTONS: ItemActionName[] = ["add", "star", "open"];
@@ -365,6 +374,7 @@
         specs: SEARCH_SPECS,
         menu: SEARCH_ORDER,
         unread: false,
+        star: SAVED_FOR_LATER.row,
         after: view === "results" && results?.next ? showMore : undefined,
         oncolumns: (shown) => (search.columns = shown),
         onstar: (id) => actions.star.run([id]),
@@ -379,7 +389,7 @@
     <footer class="status">
       <span>{searching ? "Searching OpenAlex…" : "OpenAlex's works"}</span>
       <span class="spacer"></span>
-      <span>Starred {starredCount}</span>
+      <span>Saved for later {starredCount}</span>
     </footer>
   </div>
 </main>
@@ -388,7 +398,7 @@
 {#snippet listBar()}
   <div class="filters">
     {#if view === "starred"}
-      <span class="chip"><span class="text">★ Starred</span></span>
+      <span class="chip"><span class="text">★ Saved for later</span></span>
     {:else if results}
       <span class="chip">
         <span class="text" title={results.query}>{results.query}</span>
@@ -410,7 +420,7 @@
       <span>{list.selection.selected.size} selected</span>
       {#each BAR_BUTTONS as name (name)}
         {@const action = actions[name]}
-        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action.label(items))}</button>
+        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action, items)}</button>
       {/each}
       <span class="spacer"></span>
       <button class="plain" onclick={() => list.selection.only(list.selection.focus)}>Clear selection</button>
@@ -431,7 +441,7 @@
   {:else}
     <p class="empty">
       {view === "starred"
-        ? "Nothing starred. ☆ or S keeps a work found, to come back to it without searching again."
+        ? "Nothing saved for later. ☆ or S keeps a work found, to come back to it without searching again."
         : "No works found."}
     </p>
   {/if}
@@ -475,7 +485,7 @@
       cites (<code>citedby:W…</code>), the most cited first.
     </p>
     <p>
-      ☆ (S) stars a work, to come back to it: a new search replaces the works found, but for those starred or added.
+      ☆ (S) saves a work for later: a new search replaces the works found, but for those saved for later or added.
       <b>Follow this search</b> brings its new works into the Feeds tab.
     </p>
   </div>

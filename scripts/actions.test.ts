@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buttonText, feedActions, itemActions, titled, type Item } from "../src/lib/feeds/actions.ts";
+import { SAVED_FOR_LATER } from "../src/lib/search/state.ts";
 
 const done: [string, unknown[]][] = [];
 let focus: string | null = null;
@@ -73,22 +74,26 @@ test("the menus in title case, the buttons with their marks", () => {
   assert.equal(titled("Add without PDF…"), "Add Without PDF…");
   assert.equal(titled("Snooze 1 day"), "Snooze 1 Day");
   assert.equal(titled("Save for later"), "Save for Later");
-  assert.equal(buttonText("star", "Unstar"), "★ Unstar");
-  assert.equal(buttonText("star", "Star"), "☆ Star");
-  assert.equal(buttonText("later", "Later"), "⏰ Later ▾");
-  assert.equal(buttonText("open", "Open post"), "Open post ↗");
-  assert.equal(buttonText("read", "Mark read"), "Mark read");
+  assert.equal(buttonText("star", actions.star, [item("a", "starred")]), "★ Unstar");
+  assert.equal(buttonText("star", actions.star, [item("a")]), "☆ Star");
+  assert.equal(buttonText("later", actions.later, [item("a")]), "⏰ Later ▾");
+  assert.equal(buttonText("open", actions.open, [item("a", "new", { kind: "news" })]), "Open post ↗");
+  assert.equal(buttonText("read", actions.read, [item("a")]), "Mark read");
 });
 
-test("the Search tab's actions: those of both tabs, said alike", () => {
-  const search = itemActions({ open: () => {}, add: () => {}, triage: () => {} });
+test("the Search tab's actions: those of both tabs, the star in its words", () => {
+  const search = itemActions({ open: () => {}, add: () => {}, triage: () => {} }, SAVED_FOR_LATER);
   assert.deepEqual(Object.keys(search).sort(), ["add", "addBare", "open", "star"]);
   for (const name of ["open", "add", "addBare", "star"] as const) {
     const items = [item("a", "starred")];
-    assert.equal(search[name].label(items), actions[name].label(items), name);
+    if (name !== "star") assert.equal(search[name].label(items), actions[name].label(items), name);
     assert.equal(search[name].key, actions[name].key, name);
   }
+  assert.equal(titled(search.star.label([item("a")])), "Save for Later");
+  assert.equal(titled(search.star.label([item("a", "starred")])), "Remove from Saved for Later");
+  assert.equal(buttonText("star", search.star, [item("a", "starred")]), "★ Saved for later");
+  assert.equal(buttonText("star", search.star, [item("a")]), "☆ Save for later");
   // an item added keeps being added: the star says the others
-  assert.equal(search.star.label([item("a", "starred"), item("b", "added")]), "Unstar");
+  assert.equal(search.star.label([item("a", "starred"), item("b", "added")]), "Remove from saved for later");
   assert.equal(search.star.enabled([item("b", "added")]), false);
 });

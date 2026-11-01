@@ -2,6 +2,7 @@
 // years Rust reads, and refuses when they are none), the recent searches, what the window's layout keeps of the tab,
 // the works around a work. Pure functions, tested by scripts/search.test.ts (npm test).
 
+import type { StarWords } from "../feeds/actions.ts";
 import type { FeedDetail } from "../feeds/api.ts";
 import { anyOf } from "../query.ts";
 import type { Order } from "./api.ts";
@@ -12,6 +13,15 @@ export const ORDERS: { order: Order; text: string }[] = [
   { order: "cited", text: "Most cited" },
   { order: "newest", text: "Newest" },
 ];
+
+/** The star of the tab, in its words: a work saved for later (starred in its folder). */
+export const SAVED_FOR_LATER: StarWords = {
+  star: "Save for later",
+  unstar: "Remove from saved for later",
+  starred: "Saved for later",
+  hint: "Keep it, to find it again without searching: a new search does not drop it",
+  row: { on: "Saved for later: unsave", off: "Save for later" },
+};
 
 /** The works of a page of a search (crates/feeds' `PER_SEARCH`). */
 export const PER_PAGE = 25;

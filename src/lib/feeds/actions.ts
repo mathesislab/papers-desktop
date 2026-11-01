@@ -1,7 +1,7 @@
 // The actions on the items of the Feeds and Search tabs, each once: the keys, the row menu, the selection bar, the
 // buttons of the details and Later ▾ read them from here, so that each says its name one way (the menus in title
-// case, `titled`) in both tabs. Those of both (`itemActions`: open, add, star) and the Feeds tab's own
-// (`feedActions`). What they run is the tab's (`Doers`); their names and when they apply are pure, tested by
+// case, `titled`). Those of both (`itemActions`: open, add, star, the star in the tab's words, `StarWords`) and the
+// Feeds tab's own (`feedActions`). What they run is the tab's (`Doers`); their names and when they apply are pure, tested by
 // scripts/actions.test.ts (npm test).
 
 import type { ItemKind, Reminder, Triage } from "./api.ts";
@@ -20,6 +20,8 @@ export interface Action {
   key: string | null;
   /** what it is called for the items it acts on, in sentence case: a toggle says which way it goes */
   label: (items: Item[]) => string;
+  /** what a button of it says, when not its label */
+  button?: (items: Item[]) => string;
   /** whether it can act on them */
   enabled: (items: Item[]) => boolean;
   /** what a button of it says on hover */
@@ -57,9 +59,30 @@ export const SNOOZES: { text: string; days: number }[] = [
 
 const always = () => true;
 const all = (items: Item[], triage: Triage) => items.length > 0 && items.every((i) => i.triage === triage);
+/** Whether the items a star acts on are all starred: it unstars them. */
+const starred = (items: Item[]) => all(items.filter(starrable), "starred");
 
-/** The actions of both tabs, by name. */
-export function itemActions(d: ItemDoers): Record<ItemActionName, Action> {
+/** How a tab says its star, in sentence case: what stars, what unstars (the menus), what a button of starred items
+ *  says, its hint; the star of a row on hover, on and off. */
+export interface StarWords {
+  star: string;
+  unstar: string;
+  starred: string;
+  hint: string;
+  row: { on: string; off: string };
+}
+
+/** the Feeds tab's */
+export const STAR: StarWords = {
+  star: "Star",
+  unstar: "Unstar",
+  starred: "Unstar",
+  hint: "Keep it, to come back to it",
+  row: { on: "Starred: unstar", off: "Star" },
+};
+
+/** The actions of both tabs, by name: the star in the tab's words. */
+export function itemActions(d: ItemDoers, words: StarWords = STAR): Record<ItemActionName, Action> {
   return {
     open: {
       key: "o",
@@ -85,9 +108,10 @@ export function itemActions(d: ItemDoers): Record<ItemActionName, Action> {
     },
     star: {
       key: "s",
-      label: (items) => (all(items.filter(starrable), "starred") ? "Unstar" : "Star"),
+      label: (items) => (starred(items) ? words.unstar : words.star),
+      button: (items) => (starred(items) ? words.starred : words.star),
       enabled: (items) => toggled(items, "star") !== null,
-      hint: "Keep it, to come back to it",
+      hint: words.hint,
       run: (ids) => d.triage("star", ids),
     },
   };
@@ -148,9 +172,11 @@ const SMALL = new Set(["a", "an", "the", "and", "or", "as", "at", "by", "for", "
 export const titled = (label: string) =>
   label.replace(/\S+/g, (word, at: number) => (at > 0 && SMALL.has(word) ? word : word[0].toUpperCase() + word.slice(1)));
 
-/** An action as a button says it: the star and the clock before it, ↗ after what opens a page, ▾ after a menu. */
-export function buttonText(name: ActionName, label: string): string {
-  if (name === "star") return `${label === "Unstar" ? "★" : "☆"} ${label}`;
+/** An action as a button says it, on items: the star (★ when they are starred) and the clock before it, ↗ after what
+ *  opens a page, ▾ after a menu. */
+export function buttonText(name: ActionName, action: Action, items: Item[]): string {
+  const label = (action.button ?? action.label)(items);
+  if (name === "star") return `${starred(items) ? "★" : "☆"} ${label}`;
   if (name === "later") return `⏰ ${label} ▾`;
   if (name === "open") return `${label} ↗`;
   return label;
