@@ -274,7 +274,8 @@
     const unlisten = [
       listen<Status>("status", (e) => {
         status = e.payload;
-        if (status.state === "ready") loadLibrary();
+        // the library read, or emptied: its last .bib taken out
+        if (status.state === "ready" || status.state === "no-library") loadLibrary();
       }),
       // papers opened from the panel meanwhile, settings changed
       getCurrentWindow().onFocusChanged(({ payload: focused }) => {
@@ -1229,10 +1230,12 @@
           <p class="empty">Loading the library…</p>
         {:else if status.state === "failed"}
           <p class="empty error">{status.error}</p>
-        {:else if !rows.length}
+        {:else if status.state === "no-library"}
           <p class="empty">
-            No .bib file yet. <button class="link" onclick={() => invoke("open_settings")}>Choose them in Settings</button>
+            No library yet. <button class="link" onclick={() => invoke("open_welcome")}>Set up a library</button>
           </p>
+        {:else if !rows.length}
+          <p class="empty">No paper yet.</p>
         {:else if matched && !shown.length}
           <p class="empty">No paper matches.</p>
         {:else}

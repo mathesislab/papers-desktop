@@ -40,6 +40,8 @@ export type Found = { hits: Hit[]; total: number; years: YearCount[] };
 export type Status =
   | { state: "loading" }
   | { state: "ready"; count: number }
+  /** no .bib file in the settings: the welcome window sets up a library */
+  | { state: "no-library" }
   | { state: "failed"; error: string };
 
 /** mirrors papers_core::Row: an item as a row of the table of the main window */

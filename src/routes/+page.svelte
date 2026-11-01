@@ -418,6 +418,8 @@
             {total === 1 ? "match" : "matches"}
           {:else if status.state === "ready"}
             {status.count} papers
+          {:else if status.state === "no-library"}
+            No library yet: {label(libraryShortcut)} opens the main window, to set one up
           {:else}
             {status.error}
           {/if}

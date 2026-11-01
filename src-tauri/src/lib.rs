@@ -69,10 +69,12 @@ const REPO: &str = "https://github.com/mathesislab/papers-desktop";
 
 /// The library as the panel sees it, sent with the "status" event.
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "state", rename_all = "lowercase")]
+#[serde(tag = "state", rename_all = "kebab-case")]
 enum Status {
     Loading,
     Ready { count: usize },
+    /// no .bib file in the settings: the welcome window sets up a library
+    NoLibrary,
     Failed { error: String },
 }
 
@@ -663,10 +665,12 @@ fn load(app: &AppHandle) {
             .writers
             .configure(settings.writer, settings.papers_command());
         let bibs = settings.bibs();
-        if bibs.is_empty() {
-            return Err("No library: choose its .bib files (menu-bar icon → Settings…)".into());
-        }
-        let library = Library::load(&bibs).map_err(|e| e.to_string())?;
+        // none: an empty library, until one is set up (`NoLibrary`)
+        let library = if bibs.is_empty() {
+            Library::default()
+        } else {
+            Library::load(&bibs).map_err(|e| e.to_string())?
+        };
         Ok((bibs, library))
     });
     if state.reloads.load(Ordering::SeqCst) != reload {
@@ -683,7 +687,11 @@ fn load(app: &AppHandle) {
             watch(app, &bibs);
             date_added(app);
             feeds::index_library(app);
-            Status::Ready { count }
+            if bibs.is_empty() {
+                Status::NoLibrary
+            } else {
+                Status::Ready { count }
+            }
         }
         Err(error) => {
             eprintln!("papers-desktop: {error}");

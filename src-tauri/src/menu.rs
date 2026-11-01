@@ -94,6 +94,9 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                 &[
                     &item("add", "Add…", "CmdOrCtrl+N")?,
                     &separator()?,
+                    &MenuItem::with_id(app, "new-bib", "New .bib…", true, None::<&str>)?,
+                    &MenuItem::with_id(app, "import", "Import into Library…", true, None::<&str>)?,
+                    &separator()?,
                     &MenuItem::with_id(app, "close", "Close", true, Some("CmdOrCtrl+W"))?,
                 ],
             )?,
@@ -161,6 +164,9 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "close" => close(app),
         "settings" => crate::settings_window(app, None),
+        "new-bib" => crate::welcome_window(app, Some("new")),
+        // the Library tab, whose Import… chooses the file and the .bib
+        "import" => crate::settings_window(app, Some("library")),
         "install-cli" => crate::cli_tool::install_from_menu(app),
         id => match id.parse::<Toggle>() {
             Ok(toggle) => flip(app, toggle),

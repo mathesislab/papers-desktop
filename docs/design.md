@@ -1280,6 +1280,43 @@ later* / *Remove from Saved for Later*, *★ Saved for later* on a button,
 `SAVED_FOR_LATER` in `search/state.ts`). The interests' colours are those of the settings, in their
 order, given by the window to both tabs: an interest has one colour.
 
+## Onboarding (branch `onboarding`)
+
+**The first start**: when the settings have no .bib once papers' default
+library is looked for (`Settings::load`), the welcome window opens
+(`welcome_window`, `src/routes/welcome`). *Start* says what the app does
+(Library and the hotkey of the panel, Feeds, Search) and offers four ways
+to a library: *Start a new library*; *Open a papers library* (a folder,
+`library_open`); *Use a .bib file as it is* (added to the settings as the
+Library tab adds one); *Import a .bib or RIS file into a new library* (the
+file chosen, then *New*, then `library_import`; Zotero, Mendeley, EndNote…
+export .bib or RIS). *Details* asks for the email and the OpenAlex key, both
+optional; *Done* says what was made, the import's report and the hotkey,
+and opens the library. The main window without a .bib (the status
+`no-library`) says *No library yet. Set up a library*, which opens the
+window at *Start*; the panel says so in its footer.
+
+**New .bib** (File → New .bib…, the Library tab's *New .bib…*: the window
+at *New*): a name (`papers` at the first start; the .bib is `<name>.bib`),
+a folder, its PDFs in a folder of their own (`<folder>/files` unless chosen)
+or shared with the main library (a shallow library, `papers init
+--shallow`: none copied), made by `library_create` as `papers init` makes
+it. The first library goes in the papers folder itself (`~/Papers` unless
+set); a later one in `<papers folder>/<name>`, which follows the name until
+a folder is chosen. A folder that holds a library already is refused: one
+papers library a folder.
+
+**Import** (File → Import into Library…, the Library tab's *Import…*): a
+.bib, RIS or CSL-JSON file into a .bib of the library (chosen when there
+are several), its PDFs copied and named by papers in a papers library;
+duplicates and missing PDFs left out and counted in the report.
+
+**The papers folder** (`papers_folder` in the settings) is the folder of the
+main library: where a new .bib goes by default, later the root of sync
+(`docs/sync.md`). It is papers' default library's folder when there is one,
+else the first self-contained library made or opened, else chosen in the
+Library tab; once set it is kept. The PDFs can be anywhere.
+
 ## Later, optional: Spotlight add-on
 
 A small Swift helper that indexes the items of the core with Core Spotlight,
