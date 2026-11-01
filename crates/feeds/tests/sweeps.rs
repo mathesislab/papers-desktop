@@ -82,7 +82,7 @@ fn crossref_sweep_of_an_issn_since_the_last() {
         report.feeds[0].outcome,
         Outcome::Fetched { entries: 3, new: 3 }
     );
-    assert_eq!(report.lookups, 0, "Crossref's works are whole");
+    assert_eq!(report.follow_up.lookups, 0, "Crossref's works are whole");
     assert_eq!(http.requests().len(), 1);
     assert_eq!(
         feeds.subscriptions()[0].title.as_deref(),

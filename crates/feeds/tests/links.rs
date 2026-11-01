@@ -75,9 +75,9 @@ fn futurity_posts_link_their_papers_from_the_feed() {
         .reply(&plants_openalex, Reply::status(&plants_openalex, 404))
         .reply(&superbug_openalex, Reply::status(&superbug_openalex, 404));
     let report = feeds.fetch(&http, &Access::default()).unwrap();
-    assert_eq!(report.pages, 0, "no pages unless asked");
+    assert_eq!(report.follow_up.pages, 0, "no pages unless asked");
     assert_eq!(
-        report.lookups, 4,
+        report.follow_up.lookups, 4,
         "Crossref and OpenAlex, which Crossref lacks"
     );
     let post = feeds.items()[0].clone();
@@ -155,8 +155,8 @@ fn physorg_pages_read_at_fetch_time_when_asked() {
     assert!(urls[3].starts_with(&format!(
         "{WORKS}?query.bibliographic=A%20decade%20of%20carbon"
     )));
-    assert_eq!(report.pages, 3);
-    assert_eq!(report.lookups, 1);
+    assert_eq!(report.follow_up.pages, 3);
+    assert_eq!(report.follow_up.lookups, 1);
 
     // each page once; the paper then made
     let http = Recorded::new()
@@ -169,7 +169,7 @@ fn physorg_pages_read_at_fetch_time_when_asked() {
             ),
         );
     let report = feeds.fetch(&http, &Access::default()).unwrap();
-    assert_eq!(report.pages, 0);
+    assert_eq!(report.follow_up.pages, 0);
     let urls: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
     assert_eq!(urls[..2], [PHYSORG, paper.as_str()]);
     let made = feeds.items().iter().find(|i| i.title == title).unwrap();

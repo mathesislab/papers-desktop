@@ -85,7 +85,7 @@ fn a_preprint_and_its_paper_become_one_item() {
 
     // offline: two items, and no item for the review comment
     let report = feeds.fetch(&http, &Access::default()).unwrap();
-    assert_eq!(report.lookups, 1);
+    assert_eq!(report.follow_up.lookups, 1);
     assert_eq!(feeds.items().len(), 2);
     let (pre, paper) = (feeds.items()[0].id.clone(), feeds.items()[1].id.clone());
     feeds.set_triage(&pre, Triage::Shortlisted).unwrap();
@@ -93,7 +93,7 @@ fn a_preprint_and_its_paper_become_one_item() {
 
     // Crossref relates them: one item, the published version first
     let report = feeds.fetch(&http, &Access::default()).unwrap();
-    assert_eq!(report.lookups, 2);
+    assert_eq!(report.follow_up.lookups, 2);
     assert_eq!(feeds.items().len(), 1);
     let item = &feeds.items()[0];
     assert_eq!(item.id, pre, "the older id");
@@ -188,7 +188,7 @@ fn teasers_first_and_openalex_for_what_crossref_lacks() {
         [journal, &zenodo, openalex, &whole_doi, whole_openalex],
         "the teaser first"
     );
-    assert_eq!(report.lookups, 4);
+    assert_eq!(report.follow_up.lookups, 4);
     assert_eq!(
         feeds.items()[0].summary.as_deref(),
         Some(whole.trim()),
@@ -284,7 +284,7 @@ fn openalex_refusing_leaves_crossref_asked() {
     let report = feeds.fetch(&http, &Access::default()).unwrap();
     let urls: Vec<String> = http.requests().into_iter().map(|r| r.url).collect();
     assert_eq!(urls, [journal, &one, &refused, &two]);
-    assert_eq!(report.lookups, 3);
+    assert_eq!(report.follow_up.lookups, 3);
 }
 
 #[test]

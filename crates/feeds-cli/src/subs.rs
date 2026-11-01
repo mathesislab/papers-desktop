@@ -161,7 +161,7 @@ pub fn fetch(ctx: &mut Ctx, a: AccessArgs) -> Result<()> {
         });
     }
     write!(ctx.out, "{}", table(&rows))?;
-    let (lookups, pages) = (report.lookups, report.pages);
+    let (lookups, pages) = (report.follow_up.lookups, report.follow_up.pages);
     writeln!(ctx.out, "new: {total}; lookups: {lookups}; pages: {pages}")?;
     Ok(())
 }

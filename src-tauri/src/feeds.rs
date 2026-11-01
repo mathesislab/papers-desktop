@@ -45,7 +45,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use papers_core::{Library, Likeness, Matching, Span};
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
-    Access, Confidence, Entry, Feed, Feeds, FetchReport, Groups, Interest, Item, ItemKind, Journal,
+    Access, Confidence, Entry, Feed, FeedReport, Feeds, Groups, Interest, Item, ItemKind, Journal,
     Journals, LibraryFacts, Network, Outcome, Pdf, Reminder, Rule, Score, Search, SiteFeed, Sort,
     SourceKind, Stage, Subscription, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
@@ -284,9 +284,10 @@ fn title_of(subscription: &Subscription) -> String {
     (subscription.title.clone()).unwrap_or_else(|| subscription.feed.to_string())
 }
 
-/// The summary of a fetch, and each subscription's last fetch.
+/// The summary of the feeds read (nothing looked up yet), and each
+/// subscription's last fetch.
 fn summary(
-    report: &FetchReport,
+    reports: &[FeedReport],
     subscriptions: &[Subscription],
     added: usize,
     at: DateTime<Utc>,
@@ -297,11 +298,11 @@ fn summary(
         unchanged: 0,
         failed: Vec::new(),
         added,
-        lookups: report.lookups,
-        pages: report.pages,
+        lookups: 0,
+        pages: 0,
     };
     let mut last = Vec::new();
-    for feed in &report.feeds {
+    for feed in reports {
         let error = match &feed.outcome {
             Outcome::Fetched { .. } => {
                 summary.fetched += 1;

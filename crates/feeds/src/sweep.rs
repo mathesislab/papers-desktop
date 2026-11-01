@@ -6,138 +6,77 @@
 
 use chrono::{NaiveDate, TimeDelta};
 
-use crate::feeds::{Feeds, Outcome};
+use crate::fetch::Got;
 use crate::http::{Access, Http, get_json, redact};
-use crate::model::{Entry, Feed, Subscription};
+use crate::model::Subscription;
+use crate::store::Validators;
 use crate::{crossref, openalex};
 
 /// The most pages of one sweep.
 pub const SWEEP_PAGES: usize = 10;
 
-/// What a sweep got.
-struct Swept {
-    entries: Vec<Entry>,
-    /// the journal's title (Crossref's container title)
-    title: Option<String>,
-    /// whether its entries have all a lookup by DOI would give (Crossref's)
-    complete: bool,
-}
-
-impl Feeds {
-    /// Fetches a subscription: a feed by a conditional GET; a sweep of
-    /// Crossref or OpenAlex for the works since its last (since the lookback
-    /// the first time), merged; a sweep that fails is asked for again whole.
-    pub(crate) fn fetch_subscription(
-        &mut self,
-        i: usize,
-        http: &dyn Http,
-        access: &Access,
-    ) -> Outcome {
-        let subscription = &self.config.subscriptions[i];
-        let id = subscription.id.clone();
-        let mut validators = self.http.get(&id).cloned().unwrap_or_default();
-        let now = (self.now)();
-        let lookback = TimeDelta::days(self.config.lookback_days.into());
-        let since = validators.swept.unwrap_or(now - lookback).date_naive();
-        let swept = match &subscription.feed {
-            Feed::Rss { url } => {
-                let url = url.clone();
-                return self.fetch_feed(i, &url, http);
-            }
-            Feed::Crossref { issn } => crossref(http, access, subscription, issn, since, lookback),
-            Feed::OpenAlex { filter } => {
-                openalex(http, access, subscription, filter, since - lookback)
-            }
-        };
-        let swept = match swept {
-            Ok(swept) => swept,
-            Err(message) => return Outcome::Failed(message),
-        };
-        if swept.complete {
-            for doi in swept.entries.iter().filter_map(|e| e.doi.as_ref()) {
-                self.lookups.insert(format!("crossref:{doi}"), now);
-            }
-        }
-        let entries = swept.entries.len();
-        let new = self.merge(&id, swept.entries);
-        let subscription = &mut self.config.subscriptions[i];
-        if subscription.title.is_none() {
-            subscription.title = swept.title;
-        }
-        validators.swept = Some(now);
-        self.http.insert(id, validators);
-        Outcome::Fetched { entries, new }
-    }
-}
-
 /// Crossref's works of a journal indexed since a day and created within the
-/// lookback before it.
-fn crossref(
+/// lookback before it, with the journal's title; as looked up.
+pub(crate) fn crossref(
     http: &dyn Http,
     access: &Access,
     subscription: &Subscription,
     issn: &str,
     since: NaiveDate,
     lookback: TimeDelta,
-) -> Result<Swept, String> {
+) -> Result<Got, String> {
     let kind = subscription.kind.item_kind();
-    let mut swept = Swept {
-        entries: Vec::new(),
-        title: None,
-        complete: true,
-    };
+    let (mut entries, mut title) = (Vec::new(), None);
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {
         let url = crossref::list_url(issn, since, since - lookback, &cursor, access);
         let page: crossref::Message<crossref::List> =
             get_json(http, &url)?.ok_or_else(|| redact(&format!("{url}: not found"), &url))?;
         let page = page.message;
-        if swept.title.is_none() {
-            swept.title = page
-                .items
-                .iter()
-                .find_map(|w| w.container_title.first().cloned());
+        if title.is_none() {
+            title = (page.items.iter()).find_map(|w| w.container_title.first().cloned());
         }
         let full = page.items.len() == crossref::ROWS;
-        let entries = page
-            .items
-            .iter()
-            .filter_map(|w| w.entry(&subscription.id, kind));
-        swept.entries.extend(entries);
+        entries.extend((page.items.iter()).filter_map(|w| w.entry(&subscription.id, kind)));
         match page.next_cursor {
             Some(next) if full => cursor = next,
             _ => break,
         }
     }
-    Ok(swept)
+    Ok(Got::Entries {
+        entries,
+        title,
+        validators: Validators::default(),
+        looked_up: true,
+    })
 }
 
 /// OpenAlex's articles of a filter published since a day; with its key, if
 /// set (without, OpenAlex answers a small daily budget).
-fn openalex(
+pub(crate) fn openalex(
     http: &dyn Http,
     access: &Access,
     subscription: &Subscription,
     filter: &str,
     published: NaiveDate,
-) -> Result<Swept, String> {
+) -> Result<Got, String> {
     let kind = subscription.kind.item_kind();
-    let mut swept = Swept {
-        entries: Vec::new(),
-        title: None,
-        complete: false,
-    };
+    let mut entries = Vec::new();
     let mut cursor = "*".to_string();
     for _ in 0..SWEEP_PAGES {
         let url = openalex::list_url(filter, published, &cursor, access);
         let page: openalex::List =
             get_json(http, &url)?.ok_or_else(|| redact(&format!("{url}: not found"), &url))?;
-        let entries = page.results.iter().map(|w| w.entry(&subscription.id, kind));
-        swept.entries.extend(entries);
+        entries.extend(page.results.iter().map(|w| w.entry(&subscription.id, kind)));
         match page.meta.next_cursor {
             Some(next) if !page.results.is_empty() => cursor = next,
             _ => break,
         }
     }
-    Ok(swept)
+    Ok(Got::Entries {
+        entries,
+        title: None,
+        validators: Validators::default(),
+        looked_up: false,
+    })
 }

@@ -111,18 +111,26 @@ impl Default for Items {
 /// `state.json`: the triage of items, by id.
 pub(crate) type State = BTreeMap<String, Mark>;
 
-/// What the next request of a subscription is conditional on: the validators
-/// of a feed's last answer, the start of a sweep's last success.
+/// What a feed's next request is conditional on: the validators of its last
+/// answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Validators {
     pub etag: Option<String>,
     pub last_modified: Option<String>,
+}
+
+/// What a subscription's next fetch starts from: its feed's validators, the
+/// start of its sweep's last success.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Since {
+    #[serde(flatten)]
+    pub validators: Validators,
     #[serde(default)]
     pub swept: Option<DateTime<Utc>>,
 }
 
-/// `http.json`: the validators, by subscription id.
-pub(crate) type Validated = BTreeMap<String, Validators>;
+/// `http.json`: what each subscription's next fetch starts from, by its id.
+pub(crate) type Validated = BTreeMap<String, Since>;
 
 /// `lookups.json`: what was looked up, found or not, and when: `crossref:`
 /// and `openalex:` and a DOI, `page:` and an item's id.

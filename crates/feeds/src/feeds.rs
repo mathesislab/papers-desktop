@@ -1,7 +1,5 @@
-//! The feeds of a folder: subscribing, fetching every subscription into the
-//! items (the rules triaging the new ones, and what follows: the papers of
-//! posts, the lookups by DOI), the triage of items, and the pruning of old
-//! ones.
+//! The feeds of a folder: subscribing, entries into the items (a fetch's,
+//! [`crate::fetch`]), the triage of items, and the pruning of old ones.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -9,59 +7,19 @@ use std::sync::Arc;
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-use crate::http::{Access, FEED_ACCEPT, Http, Request, failure};
 use crate::interest::{self, Lexicon};
 use crate::library::LibraryFacts;
 use crate::merge::{Merger, refresh};
 use crate::model::{Entry, Feed, Item, Mark, Origin, Reminder, SourceKind, Subscription, Triage};
 use crate::normalize::{is_attachment_doi, short_id};
-use crate::parse::{kind_of, parse};
+use crate::parse::kind_of;
 use crate::store::{
     self, CONFIG, Config, FORMAT, HTTP, ITEMS, Items, LOOKUPS, Lookups, STATE, State, Validated,
-    Validators,
 };
 use crate::{Error, Result};
 
 /// The time of the feeds: the clock, or a test's.
 pub type Now = Box<dyn Fn() -> DateTime<Utc> + Send + Sync>;
-
-/// What a fetch did, per subscription, and what followed.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct FetchReport {
-    pub feeds: Vec<FeedReport>,
-    /// the requests of Crossref and OpenAlex for works by DOI, title or PII
-    pub lookups: usize,
-    /// the posts looked for on the web (their page, then their title)
-    pub pages: usize,
-}
-
-/// What followed reading the feeds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct FollowUp {
-    /// the requests of Crossref and OpenAlex for works by DOI, title or PII
-    pub lookups: usize,
-    /// the posts looked for on the web (their page, then their title)
-    pub pages: usize,
-}
-
-/// What the fetch of a subscription did.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FeedReport {
-    /// the subscription's id
-    pub subscription: String,
-    pub outcome: Outcome,
-}
-
-/// How the fetch of a subscription ended.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Outcome {
-    /// the entries of the feed, and the items they made
-    Fetched { entries: usize, new: usize },
-    /// not modified since the last fetch (304)
-    Unchanged,
-    /// no answer, an error status, or a feed that does not parse
-    Failed(String),
-}
 
 /// A feeds folder, loaded.
 pub struct Feeds {
@@ -247,72 +205,6 @@ impl Feeds {
         store::write(&self.dir, CONFIG, &self.config)
     }
 
-    /// Fetches every subscription ([`Feeds::read_feeds`]), then what follows
-    /// ([`Feeds::follow_up`]).
-    pub fn fetch(&mut self, http: &dyn Http, access: &Access) -> Result<FetchReport> {
-        let known = self.ids();
-        let mut report = self.read_feeds(None, http, access)?;
-        let followed = self.follow_up(&known, http, access)?;
-        report.lookups = followed.lookups;
-        report.pages = followed.pages;
-        Ok(report)
-    }
-
-    /// The ids of the items, to tell those a fetch brings.
-    pub fn ids(&self) -> BTreeSet<String> {
-        self.items().iter().map(|i| i.id.clone()).collect()
-    }
-
-    /// Reads every subscription, or the one of id `only`, one after the
-    /// other, into the items: the feeds' own text, written. A feed that fails
-    /// is reported and the others go on; the APIs of the sweeps are asked
-    /// with `access`.
-    pub fn read_feeds(
-        &mut self,
-        only: Option<&str>,
-        http: &dyn Http,
-        access: &Access,
-    ) -> Result<FetchReport> {
-        if let Some(id) = only
-            && !self.subscriptions().iter().any(|s| s.id == id)
-        {
-            return Err(Error::NoSubscription { id: id.to_string() });
-        }
-        let mut report = FetchReport::default();
-        for i in 0..self.config.subscriptions.len() {
-            let subscription = self.config.subscriptions[i].id.clone();
-            if only.is_some_and(|id| id != subscription) {
-                continue;
-            }
-            let outcome = self.fetch_subscription(i, http, access);
-            report.feeds.push(FeedReport {
-                subscription,
-                outcome,
-            });
-        }
-        self.save()?;
-        Ok(report)
-    }
-
-    /// What follows reading the feeds: the papers of posts, the lookups by
-    /// DOI. The rules then triage the items not `known` before (their
-    /// abstracts looked up), and old items go; written.
-    pub fn follow_up(
-        &mut self,
-        known: &BTreeSet<String>,
-        http: &dyn Http,
-        access: &Access,
-    ) -> Result<FollowUp> {
-        let budget = self.complete(http, access);
-        self.apply_rules(known);
-        self.drop_old();
-        self.save()?;
-        Ok(FollowUp {
-            lookups: budget.lookups_used(),
-            pages: budget.pages_used(),
-        })
-    }
-
     /// Every file of the folder.
     pub(crate) fn save(&self) -> Result<()> {
         store::write(&self.dir, CONFIG, &self.config)?;
@@ -320,61 +212,6 @@ impl Feeds {
         store::write(&self.dir, STATE, &self.state)?;
         store::write(&self.dir, HTTP, &self.http)?;
         store::write(&self.dir, LOOKUPS, &self.lookups)
-    }
-
-    /// Fetches a feed: a conditional GET, the feed parsed and merged.
-    pub(crate) fn fetch_feed(&mut self, i: usize, url: &str, http: &dyn Http) -> Outcome {
-        let subscription = &self.config.subscriptions[i];
-        let id = subscription.id.clone();
-        let known = self.http.get(&id).cloned().unwrap_or_default();
-        let request = Request {
-            url: url.to_string(),
-            accept: Some(FEED_ACCEPT.to_string()),
-            if_none_match: known.etag.clone(),
-            if_modified_since: known.last_modified.clone(),
-        };
-        let reply = match http.get(&request) {
-            Ok(reply) => reply,
-            Err(message) => return Outcome::Failed(message),
-        };
-        let validators = Validators {
-            etag: reply.etag.clone().or(known.etag),
-            last_modified: reply.last_modified.clone().or(known.last_modified),
-            swept: None,
-        };
-        match reply.status {
-            304 => {
-                self.http.insert(id, validators);
-                Outcome::Unchanged
-            }
-            200..=299 => match parse(&reply.body, Some(&reply.url), subscription) {
-                Ok(parsed) => {
-                    let entries = parsed.entries.len();
-                    let new = self.merge(&id, parsed.entries);
-                    let subscription = &mut self.config.subscriptions[i];
-                    if subscription.title.is_none() {
-                        subscription.title = parsed.title;
-                    }
-                    self.http.insert(id, validators);
-                    Outcome::Fetched { entries, new }
-                }
-                Err(e) => Outcome::Failed(e.to_string()),
-            },
-            _ => Outcome::Failed(failure(&reply)),
-        }
-    }
-
-    /// The entries of a subscription's feed into the items; the number of new
-    /// items. Only these entries are listed by it now.
-    pub(crate) fn merge(&mut self, subscription: &str, entries: Vec<Entry>) -> usize {
-        for item in &mut self.items.items {
-            for source in &mut item.sources {
-                if source.entry.source == subscription {
-                    source.listed = false;
-                }
-            }
-        }
-        self.add(entries, true)
     }
 
     /// Entries into the items, listed by their feed or not (a lookup's),
@@ -481,7 +318,7 @@ impl Feeds {
     }
 
     /// [`Feeds::prune`], not written.
-    fn drop_old(&mut self) -> usize {
+    pub(crate) fn drop_old(&mut self) -> usize {
         let before = (self.now)() - TimeDelta::days(self.config.keep_days.into());
         self.lookups.retain(|_, &mut at| at >= before);
         let state = &self.state;
