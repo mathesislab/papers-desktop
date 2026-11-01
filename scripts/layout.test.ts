@@ -53,16 +53,17 @@ test("the Feeds tab's columns of an older version still, widths by column: in th
   assert.deepEqual(layout.feeds.columns[4], { key: "score", width: 90 });
 });
 
-test("a column no longer of the tables (the Similar column of before, now a part of the score) is left out", () => {
-  const saved = [
-    { key: "title", width: 300 },
-    { key: "similar", width: 70 },
-    { key: "score", width: 60 },
-  ];
-  const layout = restore({ feeds: { filters: {}, columns: saved }, search: { columns: saved } } as never);
+test("the Similar column of before (now a part of the score): the Score column in its place, unless shown too", () => {
   const keys = (columns: { key: string }[]) => columns.map((c) => c.key);
-  assert.deepEqual(keys(layout.feeds.columns), ["title", "score"]);
-  assert.deepEqual(keys(layout.search.columns), ["title", "score"]);
+  const shown = (...keys: string[]) => keys.map((key) => ({ key, width: key === "similar" ? 72 : 100 }));
+  const feeds = shown("date", "journal", "title", "authors", "similar", "score", "badges");
+  const search = shown("cited", "similar", "title", "authors", "journal", "year", "badges");
+  const layout = restore({ feeds: { filters: {}, columns: feeds }, search: { columns: search } } as never);
+  assert.deepEqual(keys(layout.feeds.columns), ["date", "journal", "title", "authors", "score", "badges"]);
+  assert.deepEqual(keys(layout.search.columns), ["cited", "score", "title", "authors", "journal", "year", "badges"]);
+  assert.deepEqual(layout.search.columns[1], { key: "score", width: 72 }, "at the width of the Similar column");
+  const older = restore({ feedColumns: shown("title", "similar") } as never);
+  assert.deepEqual(keys(older.feeds.columns), ["title", "score"]);
 });
 
 test("the library's star column shown once in a layout of before version 2, then hidden if hidden", () => {

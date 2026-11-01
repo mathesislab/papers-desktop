@@ -878,8 +878,10 @@ Library tab):
   library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
   reached). A simple row has the bars too, smaller, before its badges.
   Sorted by score or newest (the headers, or the count above the list,
-  which goes through them). The *Similar* column of before is gone: a
-  layout that saved it drops it, a sort `like` saved is the score. Click, ⇧-click and ⌘-click select as in the library; the keys act
+  which goes through them). The *Similar* column of before is gone: in a
+  layout that saved it (Feeds or Search), the Score column takes its place
+  and width, unless the score is shown too (then it is left out:
+  `similarAsScore`); a sort `like` saved is the score. Click, ⇧-click and ⌘-click select as in the library; the keys act
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
   not make the list jump under the cursor; a removed item goes, the next

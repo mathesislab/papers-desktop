@@ -35,3 +35,13 @@ export const SEARCH_SPECS: Specs<FeedColumn> = {
   journal: { name: "Journal", width: 170 },
   badges: { ...FEED_SPECS.badges, width: 110 },
 };
+
+/** The columns of the Feeds or Search tab as a layout of before saved them, its Similar column (`similar`, now the
+ *  library part of the score) the Score column in its place and at its width, unless the score is shown too (then
+ *  left out by `restoredColumns`, as any column no longer of the table). */
+export function similarAsScore(saved: unknown): unknown {
+  if (!Array.isArray(saved)) return saved;
+  const keyOf = (c: unknown) => (c && typeof c === "object" ? (c as { key?: unknown }).key : null);
+  if (saved.some((c) => keyOf(c) === "score")) return saved;
+  return saved.map((c) => (keyOf(c) === "similar" ? { ...c, key: "score" } : c));
+}
