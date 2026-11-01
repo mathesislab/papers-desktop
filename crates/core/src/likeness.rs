@@ -8,8 +8,15 @@
 //! length 1. An inverted index (each word's papers and weights) adds up the
 //! cosines of the papers that share a word with the text, so that scoring
 //! thousands of items against thousands of papers is quick.
+//!
+//! A score says little alone: a library of one field scores higher than one
+//! of many. The index keeps its own [`Likeness::reference`], the median
+//! score of its papers each against the others, and a text's score over it
+//! is [`Like::scaled`]: 100 for a text as like the library as its typical
+//! paper is.
 
 use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
 
 use serde::Serialize;
 
@@ -23,6 +30,9 @@ pub const TITLE: f32 = 2.0;
 pub const TOP: usize = 5;
 /// The papers listed as nearest.
 pub const NEAREST: usize = 3;
+/// The papers whose scores make the reference, at most: a large library's
+/// evenly spaced, so that building the index stays quick.
+pub const SAMPLE: usize = 500;
 
 /// The words that say nothing of what a paper is about.
 const STOPWORDS: &[&str] = &[
@@ -54,6 +64,9 @@ pub struct Doc {
 pub struct Like {
     /// the mean of the best [`TOP`] cosines, times 100 (0–100)
     pub score: f64,
+    /// the score over the index's reference, times 100, at most 100: 100
+    /// for a text as like the library as its typical paper is, or more
+    pub scaled: f64,
     /// the ids of the [`NEAREST`] papers and their cosines, the nearest first
     pub nearest: Vec<(String, f64)>,
 }
@@ -70,14 +83,17 @@ pub struct Likeness {
     postings: Vec<Vec<(u32, f32)>>,
     /// the idf of a word no paper has
     unknown: f32,
+    /// the median score of the papers, each against the others
+    reference: f64,
 }
 
 impl Likeness {
-    /// The index of these papers.
+    /// The index of these papers, and its reference.
     pub fn build(docs: impl IntoIterator<Item = Doc>) -> Likeness {
+        let docs: Vec<Doc> = docs.into_iter().collect();
         let mut index = Likeness::default();
         let mut counts: Vec<Vec<(u32, f32)>> = Vec::new();
-        for doc in docs {
+        for doc in &docs {
             let mut tf: BTreeMap<u32, f32> = BTreeMap::new();
             let keywords = doc.keywords.join(" ");
             for (text, weight) in [
@@ -91,7 +107,7 @@ impl Likeness {
                     *tf.entry(id).or_default() += weight;
                 }
             }
-            index.ids.push(doc.id);
+            index.ids.push(doc.id.clone());
             counts.push(tf.into_iter().collect());
         }
         let mut df = vec![0u32; index.vocabulary.len()];
@@ -114,12 +130,33 @@ impl Likeness {
                 index.postings[w as usize].push((d as u32, x / norm));
             }
         }
+        index.reference = index.reference_of(&docs);
         index
     }
 
-    /// The index of a library's papers.
-    pub fn of(library: &Library) -> Likeness {
-        Likeness::build(library.items().iter().map(|item| {
+    /// The median score of the papers (at most [`SAMPLE`] of them, evenly
+    /// spaced), each by its title and abstract as a text is scored, against
+    /// the others: itself left out of its best cosines. 0 for fewer than two
+    /// papers.
+    fn reference_of(&self, docs: &[Doc]) -> f64 {
+        let step = docs.len().div_ceil(SAMPLE).max(1);
+        let mut scores: Vec<f64> = (docs.iter().enumerate().step_by(step))
+            .map(|(d, doc)| self.cosines(&doc.title, &doc.r#abstract, Some(d)).0)
+            .collect();
+        scores.sort_by(f64::total_cmp);
+        let n = scores.len();
+        match n {
+            0 => 0.0,
+            _ if n % 2 == 1 => scores[n / 2],
+            _ => (scores[n / 2 - 1] + scores[n / 2]) / 2.0,
+        }
+    }
+
+    /// The index of a library's papers, those of the .bib files of `skip`
+    /// left out.
+    pub fn of(library: &Library, skip: &[PathBuf]) -> Likeness {
+        let kept = (library.items().iter()).filter(|item| !skip.contains(&item.bib));
+        Likeness::build(kept.map(|item| {
             let entry = library.entry(&item.id);
             let r#abstract = entry.and_then(|e| field(&e.entry, &["abstract"]));
             Doc {
@@ -140,9 +177,40 @@ impl Likeness {
         self.ids.is_empty()
     }
 
+    /// What a text as like the library as its typical paper scores: the
+    /// median score of its papers, each against the others.
+    pub fn reference(&self) -> f64 {
+        self.reference
+    }
+
     /// How like the library a title and an abstract are: 0 without a word
     /// or a paper.
     pub fn like(&self, title: &str, r#abstract: &str) -> Like {
+        let (score, cosines) = self.cosines(title, r#abstract, None);
+        // a reference of 0 (a paper alone, or papers of no word in common):
+        // any likeness is more than the typical paper's
+        let scaled = match score > 0.0 {
+            true => (100.0 * score / self.reference).min(100.0),
+            false => 0.0,
+        };
+        Like {
+            score,
+            scaled,
+            nearest: (cosines.iter().take(NEAREST))
+                .map(|&(d, c)| (self.ids[d as usize].clone(), f64::from(c)))
+                .collect(),
+        }
+    }
+
+    /// The score of a title and an abstract, and the best cosines (at most
+    /// [`TOP`]), the nearest first; the paper `left_out` (a paper of the
+    /// index scored against the others) not among them.
+    fn cosines(
+        &self,
+        title: &str,
+        r#abstract: &str,
+        left_out: Option<usize>,
+    ) -> (f64, Vec<(u32, f32)>) {
         // in order: the same text sums to the same score
         let mut tf: BTreeMap<&str, f32> = BTreeMap::new();
         let (title, r#abstract) = (terms(title), terms(r#abstract));
@@ -167,9 +235,12 @@ impl Likeness {
                 dot[d as usize] += x * y;
             }
         }
+        if let Some(d) = left_out {
+            dot[d] = 0.0;
+        }
         let shared = dot.into_iter().enumerate().filter(|&(_, x)| x > 0.0);
         let mut cosines: Vec<(u32, f32)> = shared.map(|(d, x)| (d as u32, x / norm)).collect();
-        let top = TOP.min(self.ids.len());
+        let top = TOP.min(self.ids.len() - usize::from(left_out.is_some()));
         if cosines.len() > top {
             cosines.select_nth_unstable_by(top, |a, b| b.1.total_cmp(&a.1));
             cosines.truncate(top);
@@ -177,16 +248,11 @@ impl Likeness {
         cosines.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
         // from 0, not the -0 of an empty sum
         let sum = (cosines.iter()).fold(0.0, |sum, &(_, c)| sum + f64::from(c));
-        Like {
-            score: if top == 0 {
-                0.0
-            } else {
-                100.0 * sum / top as f64
-            },
-            nearest: (cosines.iter().take(NEAREST))
-                .map(|&(d, c)| (self.ids[d as usize].clone(), f64::from(c)))
-                .collect(),
-        }
+        let score = match top {
+            0 => 0.0,
+            _ => 100.0 * sum / top as f64,
+        };
+        (score, cosines)
     }
 }
 
@@ -288,6 +354,7 @@ mod tests {
             unlike,
             Like {
                 score: 0.0,
+                scaled: 0.0,
                 nearest: Vec::new()
             }
         );
@@ -319,9 +386,76 @@ mod tests {
         let text = "@article{a, title = {Ocean heat}, abstract = {Antarctic shelf warming}}\n\
                     @article{b, title = {Songbirds}, keywords = {migration, autumn}}\n";
         std::fs::write(&bib, text).unwrap();
-        let index = Likeness::of(&Library::load(&[bib]).unwrap());
+        let index = Likeness::of(&Library::load(&[bib]).unwrap(), &[]);
         assert_eq!(index.len(), 2);
         assert_eq!(index.like("Antarctic warming", "").nearest[0].0, "a");
         assert_eq!(index.like("Autumn migration", "").nearest[0].0, "b");
+    }
+
+    #[test]
+    fn of_a_library_leaves_out_the_bib_files_skipped() {
+        let dir = tempfile::tempdir().unwrap();
+        let (main, group) = (dir.path().join("main.bib"), dir.path().join("group.bib"));
+        std::fs::write(&main, "@article{a, title = {Ocean heat}}\n").unwrap();
+        std::fs::write(&group, "@article{b, title = {Songbirds}}\n").unwrap();
+        let library = Library::load(&[main.clone(), group.clone()]).unwrap();
+        assert_eq!(Likeness::of(&library, &[]).len(), 2);
+        let index = Likeness::of(&library, &[group]);
+        assert_eq!(index.len(), 1);
+        assert!(index.like("Songbirds", "").nearest.is_empty());
+        assert_eq!(Likeness::of(&library, &[main.clone(), main]).len(), 1);
+    }
+
+    #[test]
+    fn the_reference_is_the_median_paper_against_the_others() {
+        // two papers alike and one apart: each of the two has a cosine of 1
+        // with the other, of its 2 best (the third shares no word): 50; the
+        // third 0
+        let index = Likeness::build([
+            doc("a", "Greenland ice sheet melt", ""),
+            doc("b", "Greenland ice sheet melt", ""),
+            doc("c", "Songbird migration", ""),
+        ]);
+        assert!(
+            (index.reference() - 50.0).abs() < 1e-4,
+            "{}",
+            index.reference()
+        );
+        // a text of the same words: 2 cosines of 1 of 3, over 50
+        let same = index.like("Greenland ice sheet melt", "");
+        assert!((same.score - 200.0 / 3.0).abs() < 1e-3);
+        assert_eq!(same.scaled, 100.0, "at most 100");
+        let half = index.like("Songbird migration", "");
+        assert!((half.scaled - 100.0 * half.score / 50.0).abs() < 1e-9);
+        assert!(half.scaled < 100.0);
+        assert_eq!(index.like("Quantum chromodynamics", "").scaled, 0.0);
+        // a paper alone: no other to be like; any likeness is the most
+        let alone = Likeness::build([doc("a", "Greenland ice sheet melt", "")]);
+        assert_eq!(alone.reference(), 0.0);
+        assert_eq!(alone.like("Greenland melt", "").scaled, 100.0);
+        assert_eq!(alone.like("Songbirds", "").scaled, 0.0);
+        assert_eq!(Likeness::build([]).reference(), 0.0);
+    }
+
+    #[test]
+    fn a_large_library_samples_its_papers_evenly() {
+        // 1000 papers: every other one counts, from the first. The even ones
+        // all alike (100 against the others), the odd ones each of a word
+        // of its own (0): the reference of the even ones alone
+        let word = |i: usize| -> String {
+            let letters = |i: usize| (b'a' + (i % 18) as u8) as char;
+            format!("x{}{}{}", letters(i), letters(i / 18), letters(i / 324))
+        };
+        let docs = (0..1000).map(|i| match i % 2 {
+            0 => doc(&i.to_string(), "Glacier calving", ""),
+            _ => doc(&i.to_string(), &word(i), ""),
+        });
+        let index = Likeness::build(docs);
+        assert_eq!(index.len(), 1000);
+        assert!(
+            (index.reference() - 100.0).abs() < 1e-3,
+            "{}",
+            index.reference()
+        );
     }
 }

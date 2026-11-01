@@ -115,7 +115,7 @@ fn list_sorts_filters_and_limits() {
     assert_eq!(
         line,
         format!(
-            "{id}     10.0  paper  2026-10-30  Empirical evidence of overestimated Ku-band sea ice \
+            "{id}     100  paper  2026-10-30  Empirical evidence of overestimated Ku-band sea ice \
              radar freeboards in satellite altimetry — TC - recent papers\n"
         )
     );
@@ -125,8 +125,8 @@ fn list_sorts_filters_and_limits() {
         (2, "feeds: showing 2 of 5 items\n")
     );
 
-    // the query's language: score ranges, kinds, words
-    assert_eq!(titles(&["list", "score:3-"]).len(), 2);
+    // the query's language: score ranges (0–100: an interest's min_score is 50), kinds, words
+    assert_eq!(titles(&["list", "score:50-"]).len(), 2);
     assert_eq!(titles(&["list", "--kind", "news"]).len(), 2);
     assert_eq!(
         titles(&["list", "--kind", "paper,news", "snow", "mountain"]),
@@ -140,7 +140,14 @@ fn list_sorts_filters_and_limits() {
     )
     .unwrap();
     assert_eq!(json[0]["id"], id);
-    assert_eq!(json[0]["score"], 10.0);
+    assert_eq!(json[0]["score"], 100.0);
+    assert_eq!(json[0]["keywords"], 100.0);
+    assert_eq!(
+        json[0]["library"],
+        serde_json::Value::Null,
+        "without --library"
+    );
+    assert_eq!(json[0]["interests"][0]["score"], 10.0);
     assert_eq!(json[0]["interests"][0]["terms"][0], "sea ice");
     assert_eq!(json[0]["triage"], "new");
     assert_eq!(json[0]["authors"][0], "Catherine Taelman");
@@ -220,6 +227,7 @@ fn show_gives_every_field() {
          kind     paper\n\
          state    starred (since 2026-10-31)\n\
          id       {id}\n\
+         score    100 · keywords 100\n\
          doi      10.5194/tc-20-6181-2026\n\
          url      https://doi.org/10.5194/tc-20-6181-2026\n\
          interests:\n  Sea ice: 10.0 (reached) sea ice, snow\n\
@@ -333,21 +341,19 @@ fn library_tells_how_like_its_papers_an_item_is() {
     .unwrap();
     let library = bib.display().to_string();
 
-    // without the library: like: matches nothing, and the Like sort needs it
+    // without the library: like: matches nothing
     assert_eq!(s.ok(&["list", "like:0-"]), "");
-    let sorted = s.run(&["list", "--sort", "like"]);
-    assert_eq!(sorted.code, 1);
-    assert!(sorted.err.contains("--library"), "{}", sorted.err);
 
     let with = |args: &[&str]| s.ok(&[&["--library", library.as_str()], args].concat());
-    let list = with(&["list", "--sort", "like"]);
+    let list = with(&["list", "--sort", "score"]);
     let first = list.lines().next().unwrap();
     assert!(
         first.contains("Empirical evidence of overestimated Ku-band"),
         "{list}"
     );
     let json: serde_json::Value = serde_json::from_str(&with(&["list", "--json"])).unwrap();
-    assert!(json.as_array().unwrap().iter().all(|r| r["like"].is_f64()));
+    let rows = json.as_array().unwrap();
+    assert!(rows.iter().all(|r| r["library"].is_f64()), "{json}");
     let liked = with(&["list", "like:10-"]);
     assert!(!liked.is_empty() && liked.lines().count() < 5, "{liked}");
 

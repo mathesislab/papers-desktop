@@ -1,6 +1,6 @@
 //! The view of the items, for the app and the CLI: those that a query
-//! passes, sorted, each with its scores, its likeness to the library and its
-//! texts marked (the query's words and its interests' terms), and the counts
+//! passes, sorted, each with its score and its parts, its scores in the
+//! interests and its texts marked (the query's words and its interests' terms), and the counts
 //! of the sidebar.
 //!
 //! The counts are those of the library's sidebar: over every live item (not
@@ -18,7 +18,8 @@ use serde::{Deserialize, Serialize};
 use crate::feeds::Feeds;
 use crate::interest::{Score, joined};
 use crate::model::{Item, ItemKind, Reminder, Triage, words};
-use crate::query::{Seen, best, names_removed, parse};
+use crate::query::{Seen, names_removed, parse};
+use crate::rating::Rating;
 
 /// The order of the rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -27,17 +28,15 @@ pub enum Sort {
     /// by date, else by when first fetched
     #[default]
     Newest,
-    /// the best score first, then the newest
+    /// the best score first, then the newest; `like` (the sort by likeness
+    /// to the library of before, now a part of the score) read as it
+    #[serde(alias = "like")]
     Score,
-    /// the most like the library first, then the newest; those without a
-    /// likeness (no index) last
-    Like,
 }
 
 words!(Sort {
     Newest => "newest",
     Score => "score",
-    Like => "like",
 });
 
 /// What a view shows.
@@ -68,11 +67,10 @@ pub struct View {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Row {
     pub id: String,
-    /// its best score in an interest; 0 without any
-    pub score: f64,
-    /// how like the library it is (0–100); none without the index
-    pub like: Option<f64>,
-    /// the interests it matched a term of, the best first
+    /// its score and its parts
+    pub rating: Rating,
+    /// the interests it matched a term of, the best first (by their scaled
+    /// scores, as the keywords part takes them)
     pub interests: Vec<Score>,
     /// the words of the query and the terms of its interests marked
     pub title: Vec<Span>,
@@ -178,10 +176,9 @@ impl Feeds {
         }
         match request.sort {
             Sort::Newest => rows.sort_by_key(|r| std::cmp::Reverse(r.0)),
-            Sort::Score => rows.sort_by(|a, b| b.1.score.total_cmp(&a.1.score).then(b.0.cmp(&a.0))),
-            Sort::Like => {
-                let like = |row: &Row| row.like.unwrap_or(f64::NEG_INFINITY);
-                rows.sort_by(|a, b| like(&b.1).total_cmp(&like(&a.1)).then(b.0.cmp(&a.0)))
+            Sort::Score => {
+                let score = |row: &Row| row.rating.score;
+                rows.sort_by(|a, b| score(&b.1).total_cmp(&score(&a.1)).then(b.0.cmp(&a.0)))
             }
         }
         // the reminders due first, in that order
@@ -245,11 +242,10 @@ impl Feeds {
             .filter(|s| !s.terms.is_empty())
             .cloned()
             .collect();
-        interests.sort_by(|a, b| b.score.total_cmp(&a.score));
+        interests.sort_by(|a, b| b.scaled.total_cmp(&a.scaled));
         Row {
             id: item.id.clone(),
-            score: best(&seen.scores),
-            like: seen.like.map(|l| l.score),
+            rating: seen.rating,
             interests,
             title,
             authors,

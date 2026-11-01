@@ -1,4 +1,5 @@
-//! The digest: the items of the last days that reach an interest, as paper-feeder's RSS feed
+//! The digest: the items of the last days of a score of 50 or more (an interest's `min_score`
+//! reached, or as like the library as half its typical paper), as paper-feeder's RSS feed
 //! (guid the DOI else the link, `dc:creator` the authors, category the journal, a lead line
 //! "journal — matched: terms" before the abstract) and its HTML page.
 
@@ -151,7 +152,7 @@ fn article(entry: &Entry, today: &str) -> String {
     }
     let _ = write!(a, "<div class=\"meta\">{meta}</div>");
     let score =
-        (entry.score > 0.0).then(|| format!("<span class=\"score\">{:.1}</span>", entry.score));
+        (entry.score > 0.0).then(|| format!("<span class=\"score\">{:.0}</span>", entry.score));
     let matched = (!entry.matched.is_empty())
         .then(|| format!("matched: {}", escape(&entry.matched.join(", "))));
     let why: Vec<String> = score.into_iter().chain(matched).collect();
@@ -236,7 +237,7 @@ pub fn digest(ctx: &mut Ctx, a: DigestArgs) -> Result<()> {
         .transpose()?;
     let typed = a.query.as_deref().unwrap_or(match search {
         Some(_) => "",
-        None => "score:3-",
+        None => "score:50-",
     });
     let query = with_saved(search, typed);
     let view = feeds.view(&ViewRequest {
@@ -262,7 +263,7 @@ pub fn digest(ctx: &mut Ctx, a: DigestArgs) -> Result<()> {
             }
             Entry {
                 item,
-                score: row.score,
+                score: row.rating.score,
                 matched,
             }
         })

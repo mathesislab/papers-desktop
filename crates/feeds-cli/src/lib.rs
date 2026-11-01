@@ -1,7 +1,8 @@
 //! The `feeds` program: the commands of the feeds crate on a folder, as paper-feeder's job
 //! and more (subscribe, fetch, list, show, mark, the interests, rules and saved views, the
 //! RSS digest). With `--library`, the .bib files of a library
-//! tell how like its papers an item is (`like:`), and whether it is one (`is:inlibrary`).
+//! tell how like its papers an item is (the library part of its score, `like:`), and whether
+//! it is one (`is:inlibrary`).
 //!
 //! [`run`] is the whole program, on a [`Host`] (the environment, the clock, where requests
 //! go) and two writers, so that the tests run it with recorded replies.
@@ -142,7 +143,7 @@ fn library(bibs: &[PathBuf]) -> Result<Option<(Library, Arc<LibraryFacts>)>> {
     }
     let library = Library::load(bibs)?;
     let facts = LibraryFacts {
-        likeness: Some(Arc::new(Likeness::of(&library))),
+        likeness: Some(Arc::new(Likeness::of(&library, &[]))),
         identities: library.identities(),
     };
     Ok(Some((library, Arc::new(facts))))

@@ -7,8 +7,8 @@ use std::collections::{BTreeMap, HashMap};
 use chrono::{DateTime, Utc};
 use papers_core::{Library, Matching, Span};
 use papers_feeds::{
-    Confidence, Feeds, Groups, Item, ItemKind, Reminder, Score, Sort, SourceKind, Stage, Triage,
-    Via, ViewRequest as CrateRequest, safe_html,
+    Confidence, Feeds, Groups, Item, ItemKind, Rating, Reminder, Score, Sort, SourceKind, Stage,
+    Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 
@@ -36,10 +36,10 @@ pub struct FeedRow {
     /// the titles of the subscriptions that listed it
     sources: Vec<String>,
     date: Option<DateTime<Utc>>,
-    score: f64,
+    /// its score and its parts: `score`, `keywords`, `library`, `excluded`
+    #[serde(flatten)]
+    rating: Rating,
     interests: Vec<Score>,
-    /// how like the library it is, 0–100; none before the library is indexed
-    like: Option<f64>,
     triage: Triage,
     /// snoozed, or due (first in the list)
     reminder: Option<Reminder>,
@@ -136,7 +136,9 @@ pub struct FeedDetail {
     triage: Triage,
     in_library: Vec<String>,
     version_in_library: Vec<String>,
-    like: Option<f64>,
+    /// its score and its parts, as its row's
+    #[serde(flatten)]
+    rating: Rating,
     /// the papers of the library most like it, the nearest first
     nearest: Vec<Nearest>,
     /// the works that cite it, as OpenAlex counted them when it was found
@@ -258,9 +260,8 @@ impl<'a> Rows<'a> {
             id: row.id,
             title: row.title,
             authors: row.authors,
-            score: row.score,
+            rating: row.rating,
             interests: row.interests,
-            like: row.like,
         }
     }
 }
@@ -337,7 +338,7 @@ pub fn detail(
         triage: feeds.triage(&item.id),
         version_in_library: feeds.versions_in_library(item, &in_library),
         in_library,
-        like: like.map(|l| l.score),
+        rating: row.rating,
         nearest,
     })
 }

@@ -51,7 +51,7 @@ use papers_core::Likeness;
 use papers_feeds::http::{Paced, Pacing};
 use papers_feeds::{
     Access, Feed, Feeds, Interest, Journals, LibraryFacts, Network, Pdf, Rule, SavedView,
-    SourceKind, Subscription, SubscriptionSettings, Triage,
+    ScoreMode, SourceKind, Subscription, SubscriptionSettings, Triage,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -224,6 +224,8 @@ fn present<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<Strin
 pub struct FeedSettings {
     interests: Vec<Interest>,
     title_boost: f64,
+    /// how the keywords and the library make an item's score
+    score: ScoreMode,
     rules: Vec<Rule>,
     keep_days: u32,
     lookback_days: u32,
@@ -306,7 +308,7 @@ pub fn index_library(app: &AppHandle) {
             likeness: old.and_then(|f| f.likeness.clone()),
             identities: identities.clone(),
         });
-        let likeness = (!library.is_empty()).then(|| Arc::new(Likeness::of(&library)));
+        let likeness = (!library.is_empty()).then(|| Arc::new(Likeness::of(&library, &[])));
         drop(library);
         give(&|_| LibraryFacts {
             likeness: likeness.clone(),
@@ -534,6 +536,7 @@ pub async fn feeds_settings(app: AppHandle) -> Result<FeedSettings, String> {
             FeedSettings {
                 interests: kept.interests,
                 title_boost: kept.title_boost,
+                score: kept.score,
                 rules: kept.rules,
                 keep_days: kept.keep_days,
                 lookback_days: kept.lookback_days,
@@ -574,6 +577,7 @@ pub async fn feeds_set_settings(app: AppHandle, settings: FeedSettings) -> Resul
         let kept = papers_feeds::FeedSettings {
             interests: settings.interests,
             title_boost: settings.title_boost,
+            score: settings.score,
             rules: settings.rules,
             keep_days: settings.keep_days,
             lookback_days: settings.lookback_days,

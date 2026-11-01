@@ -8,8 +8,9 @@ use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use papers_core::{Doc, Identities, Identity, Likeness, Matching, Span};
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Action, Feed, FeedSettings, Feeds, Interest, ItemKind, LibraryFacts, Matcher, Reminder,
-    Reply, Rule, Sort, SourceKind, SubscriptionSettings, Triage, View, ViewRequest, Weighted,
+    Access, Action, Feed, FeedSettings, Feeds, Interest, ItemKind, LibraryFacts, Matcher, Rating,
+    Reminder, Reply, Rule, ScoreMode, Sort, SourceKind, SubscriptionSettings, Triage, View,
+    ViewRequest, Weighted,
 };
 
 const TC: &str = "https://example.org/tc.atom";
@@ -224,7 +225,9 @@ fn facets_numbers_and_fields() {
     assert_eq!(titles(&feeds, "src:*sphere"), [j1, p1, j2, j3]);
     assert_eq!(titles(&feeds, r#"prof:"ice sheets""#), [n1, j1, p1]);
     assert_eq!(titles(&feeds, "prof:firn"), [p1]);
-    assert_eq!(titles(&feeds, "score:5-"), [j1, p1]);
+    // scaled: an interest's min_score of 3 is 50, 6 or more 100
+    assert_eq!(titles(&feeds, "score:60-"), [j1, p1]);
+    assert_eq!(titles(&feeds, "score:50-99"), [n1]);
     assert_eq!(titles(&feeds, "score:-0"), [j2, j3], "vetoed: 0");
     assert_eq!(titles(&feeds, "has:doi"), [j1]);
     assert_eq!(titles(&feeds, "-has:abstract"), [j2]);
@@ -270,7 +273,17 @@ fn rows_are_sorted_scored_and_marked() {
     };
     let view = feeds.view(&request);
     let row = &view.rows[0];
-    assert_eq!(row.score, 3.0 * 2.0 + 3.0 + 4.0);
+    assert_eq!(
+        row.rating,
+        Rating {
+            score: 100.0,
+            keywords: Some(100.0),
+            library: None,
+            excluded: None,
+        },
+        "twice the min_score or more: 100; no index, no library part"
+    );
+    assert_eq!(row.interests[0].score, 3.0 * 2.0 + 3.0 + 4.0);
     assert_eq!(row.interests.len(), 1);
     assert_eq!(row.interests[0].terms, ["ice sheet", "GIA"]);
     let marked = |spans: &[Span]| -> Vec<String> {
@@ -464,7 +477,9 @@ fn likeness() -> Likeness {
             "hysteresis",
             "Hysteresis and overshoot of the Greenland ice sheet",
         ),
+        doc("melt", "Surface melt of the Greenland ice sheet"),
         doc("firn", "Firn densification in a warmer climate"),
+        doc("aquifer", "Firn aquifers of Greenland"),
         doc("songbirds", "Songbird migration in autumn"),
     ])
 }
@@ -483,7 +498,7 @@ fn like_needs_the_index_of_the_library() {
             .view(&ViewRequest::default())
             .rows
             .iter()
-            .all(|r| r.like.is_none())
+            .all(|r| r.rating.library.is_none())
     );
     assert_eq!(feeds.like(&feeds.items()[0]), None);
 
@@ -492,23 +507,72 @@ fn like_needs_the_index_of_the_library() {
     let like = feeds.like(j1).unwrap();
     assert_eq!(like.nearest[0].0, "hysteresis");
     assert!(like.score > 20.0, "{like:?}");
-    assert_eq!(titles(&feeds, "like:20-"), [J1.1]);
+    assert_eq!(feeds.rating(j1).library, Some(like.scaled));
+    // scaled by the library's reference, at most 100
+    let j3 = feeds
+        .like(feeds.item(&id_of(&feeds, J3.1)).unwrap())
+        .unwrap();
+    let reference = likeness().reference();
+    assert!(reference > 0.0);
+    assert!((j3.scaled - 100.0 * j3.score / reference).abs() < 1e-9);
+    assert!(0.0 < j3.scaled && j3.scaled < 100.0, "{j3:?}");
+    assert_eq!(titles(&feeds, "like:100"), [N1.1, J1.1, P1.1]);
+    assert_eq!(
+        titles(&feeds, "like:1-"),
+        [N1.1, J1.1, P1.1],
+        "J3 vetoed by an exclude: 0"
+    );
     assert_eq!(
         titles(&feeds, "like:0-").len(),
         5,
         "every item has a likeness"
     );
-    let view = feeds.view(&ViewRequest {
-        sort: Sort::Like,
-        ..ViewRequest::default()
-    });
-    assert_eq!(titles_of(&view)[..2], [J1.1, P1.1]);
-    assert_eq!(view.rows[0].like, Some(like.score));
-    let likes: Vec<f64> = view.rows.iter().map(|r| r.like.unwrap()).collect();
-    assert!(likes.is_sorted_by(|a, b| a >= b));
-
     feeds.set_library(in_library(None));
     assert!(titles(&feeds, "like:0-").is_empty());
+}
+
+#[test]
+fn the_mode_makes_the_score_of_its_parts() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut feeds = feeds(dir.path(), &Clock::new(), Vec::new());
+    feeds.set_library(in_library(Some(likeness())));
+    let mode = |feeds: &mut Feeds, score| {
+        feeds
+            .set_settings(FeedSettings {
+                score,
+                ..feeds.settings().clone()
+            })
+            .unwrap();
+    };
+    let rating = |feeds: &Feeds, e: E| feeds.rating(feeds.item(&id_of(feeds, e.1)).unwrap());
+    let n1 = rating(&feeds, N1);
+    assert_eq!(
+        n1.score,
+        n1.keywords.unwrap().max(n1.library.unwrap()),
+        "the higher"
+    );
+    mode(&mut feeds, ScoreMode::Library);
+    assert_eq!(rating(&feeds, N1).score, n1.library.unwrap());
+    let by_score = feeds.view(&ViewRequest {
+        sort: Sort::Score,
+        ..ViewRequest::default()
+    });
+    let scores: Vec<f64> = by_score.rows.iter().map(|r| r.rating.score).collect();
+    assert!(scores.is_sorted_by(|a, b| a >= b), "{scores:?}");
+    mode(&mut feeds, ScoreMode::Keywords);
+    assert_eq!(rating(&feeds, N1).score, 50.0);
+    assert_eq!(
+        Feeds::open(dir.path()).unwrap().settings().score,
+        ScoreMode::Keywords,
+        "kept"
+    );
+    // vetoed by an exclude: both parts 0, whatever the mode
+    let j3 = rating(&feeds, J3);
+    assert_eq!(
+        (j3.score, j3.keywords, j3.library),
+        (0.0, Some(0.0), Some(0.0))
+    );
+    assert_eq!(j3.excluded.as_deref(), Some("Georgia"));
 }
 
 #[test]
@@ -524,7 +588,7 @@ fn rules_at_fetch_use_the_likeness() {
         )
         .unwrap();
     let rule = Rule {
-        when: "like:20-".to_string(),
+        when: "like:90-".to_string(),
         then: Action::Star,
     };
     feeds

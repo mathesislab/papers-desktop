@@ -1,12 +1,12 @@
 //! The items: the list, one in full, the papers behind a post, the triage, the prune.
 
-use papers_feeds::{Feeds, Item, Row, Sort, Triage, ViewRequest};
+use papers_feeds::{Feeds, Item, Rating, Row, Sort, Triage, ViewRequest};
 use serde_json::{Value, json};
 
 use crate::cli::{FindArgs, ListArgs, MarkArgs, ShowArgs};
 use crate::text::{day, newest, source_label, table, wrap};
 use crate::views::{saved, with_saved};
-use crate::{Ctx, Error, Result, fail};
+use crate::{Ctx, Error, Result};
 
 /// The mark of a state in the list.
 fn marker(triage: Triage) -> &'static str {
@@ -25,18 +25,18 @@ fn item_json(feeds: &Feeds, item: &Item) -> Value {
     let object = json.as_object_mut().expect("an item is an object");
     object.insert("triage".into(), json!(feeds.triage(&item.id).as_str()));
     object.insert("scores".into(), json!(feeds.scores(item)));
-    object.insert(
-        "best_score".into(),
-        json!(papers_feeds::query::best(&feeds.scores(item))),
-    );
+    object.insert("rating".into(), json!(feeds.rating(item)));
     json
 }
 
-/// A row of the list as JSON: the item without its sources and full text, with its scores.
+/// A row of the list as JSON: the item without its sources and full text, with its score, its
+/// parts and its scores in the interests.
 fn row_json(feeds: &Feeds, row: &Row, item: &Item) -> Value {
+    let rating = &row.rating;
     json!({
         "id": item.id, "kind": item.kind.as_str(), "triage": feeds.triage(&item.id).as_str(),
-        "score": row.score, "interests": row.interests, "like": row.like, "date": item.date,
+        "score": rating.score, "keywords": rating.keywords, "library": rating.library,
+        "excluded": rating.excluded, "interests": row.interests, "date": item.date,
         "title": item.title,
         "authors": item.authors, "journal": item.journal, "doi": item.doi, "arxiv": item.arxiv,
         "url": item.url, "editorial": item.editorial, "summary": item.summary,
@@ -57,9 +57,6 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
         query = format!("{query} kind:{}", kinds.join(","));
     }
     let sort = (a.sort).unwrap_or(search.map_or(Sort::Newest, |s| s.sort));
-    if sort == Sort::Like && ctx.library.is_none() {
-        return fail("sorting by like needs the library: --library <file.bib>");
-    }
     let request = ViewRequest {
         query: &query,
         sort,
@@ -88,19 +85,14 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
                 .journal
                 .as_deref()
                 .map_or(String::new(), |j| format!(" — {j}"));
-            // the likeness after the score, with the library
-            let mut line = vec![
+            vec![
                 item.id.clone(),
                 marker(feeds.triage(&item.id)).to_string(),
-                format!("{:>4.1}", row.score),
-            ];
-            line.extend(row.like.map(|like| format!("{like:>3.0}")));
-            line.extend([
+                format!("{:>3.0}", row.rating.score),
                 item.kind.as_str().to_string(),
                 day(newest(item)),
                 format!("{}{journal}", item.title),
-            ]);
-            line
+            ]
         };
         let lines: Vec<Vec<String>> = rows.iter().map(line).collect();
         write!(ctx.out, "{}", table(&lines))?;
@@ -113,6 +105,17 @@ pub fn list(ctx: &mut Ctx, a: ListArgs) -> Result<()> {
         )?;
     }
     Ok(())
+}
+
+/// A score and its parts, as `show` says them: "72 · keywords 72 · library 41", each part
+/// with what it has (none without interests, or without the library).
+fn score_line(rating: &Rating) -> String {
+    let mut said = vec![format!("{:.0}", rating.score)];
+    for (name, part) in [("keywords", rating.keywords), ("library", rating.library)] {
+        said.extend(part.map(|p| format!("{name} {p:.0}")));
+    }
+    said.extend((rating.excluded.iter()).map(|term| format!("excluded ({term})")));
+    said.join(" · ")
 }
 
 /// An item by its id, an alias, or the error.
@@ -140,7 +143,7 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
         if let Some(like) = &like {
             let near = |&(cosine, key, title): &(f64, &str, &str)| json!({"key": key, "title": title, "cosine": cosine});
             let nearest: Vec<Value> = nearest.iter().map(near).collect();
-            json["like"] = json!({"score": like.score, "nearest": nearest});
+            json["like"] = json!({"score": like.score, "scaled": like.scaled, "nearest": nearest});
         }
         let by = |i: &&Item| json!({"id": i.id, "title": i.title, "kind": i.kind.as_str()});
         json["covered_by"] = covered.iter().map(by).collect();
@@ -167,11 +170,7 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
             format!("{}{since}", feeds.triage(&item.id).as_str()),
         ),
         ("id", item.id.clone()),
-        (
-            "like",
-            like.as_ref()
-                .map_or(String::new(), |l| format!("{:.0}", l.score)),
-        ),
+        ("score", score_line(&feeds.rating(item))),
         ("doi", item.doi.clone().unwrap_or_default()),
         ("arxiv", item.arxiv.clone().unwrap_or_default()),
         ("url", item.url.clone().unwrap_or_default()),
@@ -188,10 +187,10 @@ pub fn show(ctx: &mut Ctx, a: ShowArgs) -> Result<()> {
     let scores = feeds.scores(item);
     let interests = scores
         .iter()
-        .filter(|s| s.score > 0.0 || s.excluded)
+        .filter(|s| s.score > 0.0 || s.excluded.is_some())
         .map(|s| {
-            let status = match (s.excluded, s.reached) {
-                (true, _) => "excluded".to_string(),
+            let status = match (&s.excluded, s.reached) {
+                (Some(term), _) => format!("excluded ({term})"),
                 (_, true) => format!("{:.1} (reached) {}", s.score, s.terms.join(", ")),
                 _ => format!("{:.1} {}", s.score, s.terms.join(", ")),
             };

@@ -1,5 +1,5 @@
 //! Rules: a query in the feeds' language and what to do with the new items
-//! it matches (`prof:amoc score:6-` → star, `kind:news -src:futurity`
+//! it matches (`prof:amoc score:80-` → star, `kind:news -src:futurity`
 //! → seen, `t:editorial` → remove). They act once, on the items a fetch
 //! brings, never on an item with a triage.
 

@@ -3,7 +3,9 @@
 //! case, its inner spaces as spaces or hyphens (`ice sheet` matches
 //! `ice-sheet`); a pattern is a regex, in any case. An include counts once
 //! per field: its weight times the title boost in the title, its weight in
-//! the abstract. An exclude in either vetoes: the score is 0.
+//! the abstract. An exclude in either vetoes: the score is 0. The score
+//! scaled to 0–100 is the keywords part of an item's score (`crate::rating`):
+//! the interest's `min_score` is 50, twice that 100.
 //!
 //! Scores are computed when asked, not stored: the includes of an interest
 //! are one `RegexSet`, one pass over each text, so scoring every item is
@@ -17,6 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::feeds::Feeds;
 use crate::model::Item;
+use crate::rating::Rating;
 use crate::{Error, Result};
 
 /// A named profile of weighted terms: what it is about, and what it is not.
@@ -97,10 +100,14 @@ pub struct Score {
     pub interest: String,
     /// 0 when vetoed
     pub score: f64,
+    /// the score on 0–100: the interest's `min_score` is 50, twice that or
+    /// more 100, linear from 0
+    pub scaled: f64,
     /// the labels of the includes that matched, in the interest's order
     pub terms: Vec<String>,
-    /// an exclude matched
-    pub excluded: bool,
+    /// the exclude that matched, the first in the interest's order: its term
+    /// or pattern
+    pub excluded: Option<String>,
     /// not vetoed, and the interest's `min_score` or more: the item is of it
     pub reached: bool,
 }
@@ -121,6 +128,8 @@ pub(crate) struct Lexicon {
     include: RegexSet,
     terms: Vec<Term>,
     exclude: RegexSet,
+    /// the terms and patterns of `exclude`, in their order
+    excludes: Vec<String>,
     title_boost: f64,
     min_score: f64,
 }
@@ -158,6 +167,11 @@ impl Lexicon {
             include: set(&includes)?,
             terms: terms.collect::<Result<_>>()?,
             exclude: set(&excludes)?,
+            excludes: (interest.exclude.iter())
+                .map(|m| match m {
+                    Matcher::Term(s) | Matcher::Pattern(s) => s.clone(),
+                })
+                .collect(),
             title_boost,
             min_score: interest.min_score,
         })
@@ -167,10 +181,12 @@ impl Lexicon {
     /// with `boost` added unless an exclude vetoes (paper-feeder's
     /// `score_boost`: it counts with no term matching too).
     pub(crate) fn score(&self, title: &str, r#abstract: &str, boost: f64) -> Score {
-        let excluded = self.exclude.is_match(title) || self.exclude.is_match(r#abstract);
+        let matched = |text| self.exclude.matches(text).into_iter();
+        let excluded =
+            (matched(title).chain(matched(r#abstract)).min()).map(|i| self.excludes[i].clone());
         let mut score = 0.0;
         let mut terms = Vec::new();
-        if !excluded {
+        if excluded.is_none() {
             let (in_title, in_abstract) = (
                 self.include.matches(title),
                 self.include.matches(r#abstract),
@@ -189,12 +205,18 @@ impl Lexicon {
             }
             score += boost;
         }
+        // a min_score of 0: every item is past twice it
+        let scaled = match score >= 2.0 * self.min_score {
+            true => 100.0,
+            false => (50.0 * score / self.min_score).clamp(0.0, 100.0),
+        };
         Score {
             interest: self.name.clone(),
             score,
+            scaled,
             terms,
+            reached: excluded.is_none() && score >= self.min_score,
             excluded,
-            reached: !excluded && score >= self.min_score,
         }
     }
 
@@ -259,6 +281,17 @@ impl Feeds {
             .iter()
             .map(|l| l.score(&item.title, r#abstract, boost))
             .collect()
+    }
+
+    /// The score of an item and its parts, as the settings make them.
+    pub fn rating(&self, item: &Item) -> Rating {
+        self.rating_of(item, &self.scores(item))
+    }
+
+    /// [`Feeds::rating`], the item's scores in the interests given.
+    pub(crate) fn rating_of(&self, item: &Item, scores: &[Score]) -> Rating {
+        let like = self.like(item);
+        Rating::of(scores, like.as_ref(), self.config.settings.score)
     }
 
     /// The boost of an item: the strongest of the subscriptions that list it
@@ -346,7 +379,7 @@ mod tests {
             ["ice sheet", "glacial isostatic adjustment", "GIA"],
             "in the interest's order, a pattern by its label"
         );
-        assert!(both.reached && !both.excluded);
+        assert!(both.reached && both.excluded.is_none());
         assert!(!l.unboosted("", "nothing relevant").reached);
     }
 
@@ -377,13 +410,34 @@ mod tests {
     fn an_exclude_vetoes() {
         let l = lexicon();
         let s = l.unboosted("ice sheet", "in Georgia");
-        assert_eq!((s.score, s.excluded, s.reached), (0.0, true, false));
+        assert_eq!((s.score, s.scaled, s.reached), (0.0, 0.0, false));
+        assert_eq!(s.excluded.as_deref(), Some("Georgia"));
         assert!(s.terms.is_empty());
-        assert!(l.unboosted("Gene therapy", "").excluded, "in any case");
+        let gene = l.unboosted("Gene therapy in Georgia", "");
+        assert_eq!(
+            gene.excluded.as_deref(),
+            Some("Georgia"),
+            "the first of the interest's, in any case"
+        );
         assert!(
-            !l.unboosted("", "genes and ice sheets").excluded,
+            l.unboosted("", "genes and ice sheets").excluded.is_none(),
             "a whole word"
         );
+    }
+
+    #[test]
+    fn scaled_the_min_score_is_50_twice_it_100() {
+        let l = lexicon();
+        let scaled = |title: &str, r#abstract: &str| l.unboosted(title, r#abstract).scaled;
+        assert_eq!(scaled("", "nothing"), 0.0);
+        assert_eq!(scaled("", "sea-level rise"), 50.0 * 2.0 / 3.0);
+        assert_eq!(scaled("", "the ice sheet"), 50.0, "the min_score");
+        assert_eq!(scaled("The ice sheet", ""), 100.0, "twice the min_score");
+        assert_eq!(scaled("GIA and the ice sheet", "GIA"), 100.0, "at most");
+        let mut ice = ice();
+        ice.min_score = 0.0;
+        let every = Lexicon::new(&ice, 2.0).unwrap();
+        assert_eq!(every.unboosted("", "nothing").scaled, 100.0);
     }
 
     #[test]

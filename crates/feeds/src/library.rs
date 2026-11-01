@@ -1,6 +1,7 @@
 //! What the feeds know of the library, given whole whenever it is read: how
-//! like its papers an item is (`like:`), and which of its papers an item is
-//! (`is:inlibrary`). The queries, the rules and the rows see the same facts.
+//! like its papers an item is (the library part of its score, `like:`), and
+//! which of its papers an item is (`is:inlibrary`). The queries, the rules
+//! and the rows see the same facts.
 
 use std::sync::Arc;
 
@@ -21,9 +22,10 @@ pub struct LibraryFacts {
 }
 
 impl Feeds {
-    /// Sets the facts of the library that `like:`, `is:inlibrary`, the sort
-    /// by likeness and the rows use; without them, or without an index,
-    /// `like:` matches nothing, and no item is in the library.
+    /// Sets the facts of the library that the scores, `like:`,
+    /// `is:inlibrary` and the rows use; without them, or without an index,
+    /// a score has no library part, `like:` matches nothing, and no item is
+    /// in the library.
     pub fn set_library(&mut self, library: Arc<LibraryFacts>) {
         self.library = Some(library);
     }

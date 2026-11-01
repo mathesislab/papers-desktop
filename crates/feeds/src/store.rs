@@ -1,5 +1,5 @@
 //! The files of a feeds folder: `config.json` (the subscriptions, interests,
-//! rules, saved views, the days kept), `items.json` (the items and the aliases of merged
+//! the score's mode, rules, saved views, the days kept), `items.json` (the items and the aliases of merged
 //! ones), `state.json` (the triage of each item), `http.json` (the
 //! validators of each subscription's last answer, the time of its last
 //! sweep), `lookups.json` (what was looked up, and when), `journals.json`
@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::interest::Interest;
 use crate::model::{Item, Mark, Subscription};
+use crate::rating::ScoreMode;
 use crate::rules::Rule;
 use crate::views::SavedView;
 use crate::{Error, Result};
@@ -51,6 +52,9 @@ pub struct FeedSettings {
     /// the factor of a term's weight in a title, for every interest
     #[serde(default = "title_boost")]
     pub title_boost: f64,
+    /// how the keywords and the library make an item's score
+    #[serde(default)]
+    pub score: ScoreMode,
     /// tried in order on the items a fetch brings
     #[serde(default)]
     pub rules: Vec<Rule>,
@@ -67,6 +71,7 @@ impl Default for FeedSettings {
         FeedSettings {
             interests: Vec::new(),
             title_boost: title_boost(),
+            score: ScoreMode::default(),
             rules: Vec::new(),
             keep_days: keep_days(),
             lookback_days: LOOKBACK_DAYS,

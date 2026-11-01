@@ -3,17 +3,18 @@
 //! starred, removed, added, editorial, snoozed (not new till its day),
 //! reminder (new again, due), inlibrary (with the library's facts)), `src:` (a
 //! subscription's title or id), `prof:` (an interest the item reaches the
-//! min_score of), and the numbers `score:` (its best score in an interest)
-//! and `like:` (how like the library it is, 0–100: none without the index of
-//! the library, which then matches nothing). A query leaves the removed
-//! items out unless it names them (`is:removed`, `-is:seen,removed`).
+//! min_score of), and the numbers `score:` (its score, 0–100: `Rating`) and
+//! `like:` (the library part of it, 0–100: none without the index of the
+//! library, which then matches nothing). A query leaves the removed items out
+//! unless it names them (`is:removed`, `-is:seen,removed`).
 
-use papers_core::{Like, Query, Record, Schema};
+use papers_core::{Query, Record, Schema};
 
 use crate::feeds::Feeds;
 use crate::interest::Score;
 use crate::model::{Item, Mark, Reminder, Triage};
 use crate::normalize::family_name;
+use crate::rating::Rating;
 
 /// The facets of an item.
 pub const FACETS: &[&str] = &["kind", "is", "src", "prof"];
@@ -37,11 +38,6 @@ pub(crate) fn names_removed(query: &Query) -> bool {
     query.names("is", Triage::Removed.as_str())
 }
 
-/// The best of the scores; 0 without any.
-pub fn best(scores: &[Score]) -> f64 {
-    scores.iter().map(|s| s.score).fold(0.0, f64::max)
-}
-
 /// An item as a query sees it: its record, and the values counted.
 pub(crate) struct Seen {
     pub record: Record,
@@ -50,8 +46,8 @@ pub(crate) struct Seen {
     /// where its reminder is now
     pub reminder: Option<Reminder>,
     pub scores: Vec<Score>,
-    /// how like the library it is, with an index
-    pub like: Option<Like>,
+    /// its score, of its keywords and its likeness to the library
+    pub rating: Rating,
     /// its `is:` values, `unread` left out
     pub is: Vec<&'static str>,
     /// the library's entries of the same paper
@@ -117,11 +113,11 @@ impl Feeds {
             .facet("kind", [item.kind.as_str()])
             .facet("is", is.iter().copied().chain(unread))
             .facet("src", src)
-            .facet("prof", prof)
-            .number("score", best(&scores));
-        let like = self.like(item);
-        let record = match &like {
-            Some(like) => record.number("like", like.score),
+            .facet("prof", prof);
+        let rating = self.rating_of(item, &scores);
+        let record = record.number("score", rating.score);
+        let record = match rating.library {
+            Some(library) => record.number("like", library),
             None => record,
         };
         Seen {
@@ -129,7 +125,7 @@ impl Feeds {
             mark,
             reminder,
             scores,
-            like,
+            rating,
             is,
             in_library,
             sources,

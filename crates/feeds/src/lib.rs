@@ -11,10 +11,11 @@
 //! DOIs are looked up in Crossref (abstracts, authors, a preprint and its
 //! paper as one item), and the papers behind posts found ([`Linked`]).
 //! [`Feeds`] keeps them in a folder of JSON files with their [`Triage`].
-//! [`Interest`]s score the items, as paper-feeder does; [`Rule`]s triage new
-//! items by a [`query`] (core's language over a `Record` of an item); the
-//! facts of the library, given to [`Feeds::set_library`], tell how like its
-//! papers an item is (`like:`) and whether it is one (`is:inlibrary`);
+//! [`Interest`]s score the items, as paper-feeder does; the facts of the
+//! library, given to [`Feeds::set_library`], tell how like its papers an item
+//! is and whether it is one (`is:inlibrary`); both make an item's [`Rating`],
+//! its score of 0–100 (`score:`); [`Rule`]s triage new items by a [`query`]
+//! (core's language over a `Record` of an item);
 //! [`Feeds::view`] gives the items a query shows and the counts of the
 //! sidebar, those of the [`SavedView`]s too. The subscriptions go out and come in as OPML; [`suggested`]
 //! lists some to start with, [`library_journals`] the journals of the
@@ -45,6 +46,7 @@ mod opml;
 mod parse;
 mod pdf;
 pub mod query;
+mod rating;
 mod rules;
 mod search;
 mod store;
@@ -76,6 +78,7 @@ pub use online::{OwnService, Service, check_services, online_url};
 pub use opml::Outline;
 pub use parse::{Parsed, parse};
 pub use pdf::{OpenAccess, Pdf, pdf};
+pub use rating::{Rating, ScoreMode};
 pub use rules::{Action, Rule};
 pub use search::{
     Asked, FOUND, Order, PER_SEARCH, Page, Resolved, SEARCH_FACETS, ask, resolve, search_url,

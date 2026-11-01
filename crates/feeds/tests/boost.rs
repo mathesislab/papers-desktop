@@ -155,7 +155,11 @@ fn the_boost_is_in_the_queries_and_in_config_json() {
         titles
     };
     assert_eq!(titles(&feeds, "prof:Firn"), ["Melt", "Shared"]);
-    assert_eq!(titles(&feeds, "score:4-"), ["Melt", "Shared"]);
+    assert_eq!(
+        titles(&feeds, "score:60-"),
+        ["Melt", "Shared"],
+        "4 of a min_score of 3"
+    );
 
     // zero is not written, the other is, and both come back
     let text = std::fs::read_to_string(dir.path().join("config.json")).unwrap();

@@ -140,7 +140,7 @@ fn the_window_and_the_query_choose_the_items() {
             .starts_with("3 items in ")
     );
     assert!(
-        s.ok(&["digest", "--rss", rss, "--query", "score:9-"])
+        s.ok(&["digest", "--rss", rss, "--query", "score:90-"])
             .starts_with("1 items in ")
     );
     assert!(

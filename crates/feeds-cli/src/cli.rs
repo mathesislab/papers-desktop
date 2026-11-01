@@ -13,8 +13,8 @@ pub struct Cli {
     /// platform]. Do not point it at the folder of the app while the app runs: nothing locks it
     #[arg(long, global = true, value_name = "FOLDER")]
     pub dir: Option<PathBuf>,
-    /// A .bib file of the library (repeated for several): `like:`, `--sort like`, and the
-    /// nearest papers of `show` tell how like its papers an item is
+    /// A .bib file of the library (repeated for several): the library part of the scores,
+    /// `like:`, and the nearest papers of `show` tell how like its papers an item is
     #[arg(long, global = true, value_name = "FILE")]
     pub library: Vec<PathBuf>,
     #[command(subcommand)]
@@ -171,13 +171,12 @@ pub struct EditArgs {
 /// `feeds list`.
 #[derive(Debug, Args)]
 pub struct ListArgs {
-    /// A query: words, `kind:`, `is:`, `src:`, `prof:`, `score:3-`, `like:30-`, `abs:`, ...
+    /// A query: words, `kind:`, `is:`, `src:`, `prof:`, `score:50-`, `like:80-`, `abs:`, ...
     pub query: Vec<String>,
     /// The items of a saved view (and of the query, if there is one)
     #[arg(long, value_name = "NAME")]
     pub saved: Option<String>,
-    /// The order: score (the best first), newest, or like (the most like the library first, with
-    /// --library) [default: the saved view's, else newest]
+    /// The order: score (the best first) or newest [default: the saved view's, else newest]
     #[arg(long)]
     pub sort: Option<Sort>,
     /// Only these kinds, separated by commas: paper, preprint, news, blog
@@ -229,7 +228,7 @@ pub struct DigestArgs {
     /// Write the HTML page to this file
     #[arg(long, value_name = "FILE")]
     pub html: Option<PathBuf>,
-    /// Which items: a query, best score first [default: score:3-, none with --saved]
+    /// Which items: a query, best score first [default: score:50-, none with --saved]
     #[arg(long)]
     pub query: Option<String>,
     /// The items of a saved view (and of --query, if given)
@@ -266,7 +265,7 @@ pub enum ViewAction {
         /// The query, as `list` takes it (`is:new kind:paper prof:AMOC`)
         #[arg(required = true)]
         query: Vec<String>,
-        /// The order of its items: score, newest or like
+        /// The order of its items: score or newest
         #[arg(long, default_value = "newest")]
         sort: Sort,
     },
