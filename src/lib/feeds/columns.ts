@@ -1,5 +1,5 @@
 // The columns of the lists of the Feeds and Search tabs (FeedTable): their names, their widths at first and least,
-// those shown at first in each tab.
+// those shown at first in each tab; the looks of the Feeds tab's list, a table or calm, and the height of a calm row.
 
 import type { Specs } from "../list/columns.ts";
 
@@ -31,3 +31,10 @@ export const SEARCH_SPECS: Specs<FeedColumn> = {
   journal: { name: "Journal", width: 170 },
   badges: { ...FEED_SPECS.badges, width: 110 },
 };
+
+/** How the Feeds tab shows its list: calm, a row of three lines (the source, the title, the authors) after the date,
+ *  no headers; or a table of the columns, whose headers sort, move and resize them. The Search tab's is a table. */
+export type Look = "calm" | "table";
+
+/** the height of a row of the calm list, px: its three lines */
+export const CALM_ROW = 58;

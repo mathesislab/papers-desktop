@@ -2,10 +2,11 @@
   // The list of the Feeds tab: the items the filters select, best score, most similar to the library or newest
   // first; and of the Search tab: the works found, in the order OpenAlex gave them (the caller chooses the columns).
   // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
-  // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). A new item's
-  // title is bold; one seen is
-  // muted (in the Feeds tab). A click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a
-  // right-click its menu; the star at its start stars the item, or unstars it (✓: added).
+  // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). The Feeds tab
+  // shows it calm, at first (`look`): no headers, each row taller, its date, then its source, title and authors a
+  // line each, its badges small at its end. A new item's title is bold; one seen is muted (in the Feeds tab). A
+  // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
+  // its start stars the item, or unstars it (✓: added).
 
   import type { Snippet } from "svelte";
   import { gridOf, widthOf, type Shown, type Specs } from "$lib/list/columns";
@@ -14,7 +15,7 @@
   import Marked from "$lib/Marked.svelte";
   import { STAR } from "./actions";
   import type { FeedRow, Sort } from "./api";
-  import type { FeedColumn } from "./columns";
+  import { CALM_ROW, type FeedColumn, type Look } from "./columns";
   import { ago, badges, citedText, likeText, scoreText, yearOf } from "./items";
   import { ITEM_KINDS, isPost } from "./kinds";
 
@@ -27,6 +28,7 @@
     menu,
     sort,
     colours,
+    look = "table",
     unread = true,
     star = STAR.row,
     after,
@@ -50,6 +52,8 @@
     sort?: Sort;
     /** the colours of the interests */
     colours: Map<string, string>;
+    /** a table, or calm (the Feeds tab's) */
+    look?: Look;
     /** a new item's title bold, one seen muted */
     unread?: boolean;
     /** what the star of a row says, on and off (the tab's `StarWords`) */
@@ -76,13 +80,16 @@
   };
 
   let now = $state(Date.now());
+  let calm = $derived(look === "calm");
   let template = $derived(gridOf(LEAD, columns, specs));
   let minWidth = $derived(widthOf(LEAD, columns, specs));
-  /** only the rows in view drawn; the one in focus scrolled into view */
-  const view = new Rows(
-    () => rows.length,
-    () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
-  );
+  /** only the rows in view drawn; the one in focus scrolled into view (calm, no headers over the rows) */
+  const view = new Rows({
+    count: () => rows.length,
+    focus: () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
+    row: () => (calm ? CALM_ROW : ROW),
+    head: () => (calm ? 0 : ROW),
+  });
 
   /** A header: its name, its arrow when the list is sorted by it. */
   function heading(column: FeedColumn) {
@@ -106,10 +113,31 @@
 
   /** The family names of a row: three, then "et al." */
   const authorsOf = (row: FeedRow) => row.authors.slice(0, 3);
+
+  /** The journal of a row, else the first subscription that listed it. */
+  const sourceOf = (row: FeedRow) => row.journal ?? row.sources[0] ?? "";
 </script>
+
+<!-- the authors of a row, a post's kind without -->
+{#snippet names(row: FeedRow)}
+  {#if row.authors.length}
+    {#each authorsOf(row) as name, j}{#if j}{", "}{/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
+  {:else if isPost(row.kind)}
+    {ITEM_KINDS[row.kind].name}
+  {/if}
+{/snippet}
+
+{#snippet badgeList(row: FeedRow)}
+  <span class="badges">
+    {#each badges(row) as b (b.text)}
+      <span class="badge {b.kind}" style:--c={b.kind === "interest" ? colours.get(b.text) : null}>{b.text}</span>
+    {/each}
+  </span>
+{/snippet}
 
 <div
   class="table"
+  class:calm
   role="grid"
   aria-rowcount={rows.length}
   bind:this={view.table}
@@ -117,8 +145,10 @@
   bind:clientWidth={view.width}
   onscroll={view.scrolled}
 >
-  <TableHead lead={LEAD} room={view.width} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
-  <div class="rows" style:height="{rows.length * ROW}px" style:min-width="{minWidth}px">
+  {#if !calm}
+    <TableHead lead={LEAD} room={view.width} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
+  {/if}
+  <div class="rows" style:height="{rows.length * view.row}px" style:min-width={calm ? null : `${minWidth}px`}>
     {#each rows.slice(view.first, view.last) as row, i (row.id)}
       <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
       <div
@@ -127,8 +157,9 @@
         role="row"
         tabindex="-1"
         aria-selected={selected.has(row.id)}
-        style:top="{(view.first + i) * ROW}px"
-        style:grid-template-columns={template}
+        style:top="{(view.first + i) * view.row}px"
+        style:height="{view.row}px"
+        style:grid-template-columns={calm ? null : template}
         onmousedown={(e) => onselect(row.id, e)}
         ondblclick={() => onopen(row.id)}
         oncontextmenu={(e) => {
@@ -149,37 +180,37 @@
           >
         {/if}
         <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
-        {#each columns as { key: column } (column)}
-          {#if column === "score"}
-            <span class="score">{scoreText(row.score)}</span>
-          {:else if column === "cited"}
-            <span class="cited muted" title="The works that cite it, as OpenAlex counts them">{citedText(row.cited)}</span>
-          {:else if column === "similar"}
-            <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
-          {:else if column === "title"}
+        {#if calm}
+          <span class="muted date">{ago(row.date, now)}</span>
+          <span class="lines">
+            <span class="muted small" title={row.sources.join(", ")}>{sourceOf(row)}</span>
             <span class="title"><Marked spans={row.title} /></span>
-          {:else if column === "authors"}
-            <span class="muted">
-              {#if row.authors.length}
-                {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
-              {:else if isPost(row.kind)}
-                {ITEM_KINDS[row.kind].name}
-              {/if}
-            </span>
-          {:else if column === "journal"}
-            <span class="muted" title={row.sources.join(", ")}>{row.journal ?? row.sources[0] ?? ""}</span>
-          {:else if column === "date"}
-            <span class="muted date">{ago(row.date, now)}</span>
-          {:else if column === "year"}
-            <span class="muted date">{yearOf(row.date)}</span>
-          {:else}
-            <span class="badges">
-              {#each badges(row) as b (b.text)}
-                <span class="badge {b.kind}" style:--c={b.kind === "interest" ? colours.get(b.text) : null}>{b.text}</span>
-              {/each}
-            </span>
-          {/if}
-        {/each}
+            <span class="muted small">{@render names(row)}</span>
+          </span>
+          {@render badgeList(row)}
+        {:else}
+          {#each columns as { key: column } (column)}
+            {#if column === "score"}
+              <span class="score">{scoreText(row.score)}</span>
+            {:else if column === "cited"}
+              <span class="cited muted" title="The works that cite it, as OpenAlex counts them">{citedText(row.cited)}</span>
+            {:else if column === "similar"}
+              <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
+            {:else if column === "title"}
+              <span class="title"><Marked spans={row.title} /></span>
+            {:else if column === "authors"}
+              <span class="muted">{@render names(row)}</span>
+            {:else if column === "journal"}
+              <span class="muted" title={row.sources.join(", ")}>{sourceOf(row)}</span>
+            {:else if column === "date"}
+              <span class="muted date">{ago(row.date, now)}</span>
+            {:else if column === "year"}
+              <span class="muted date">{yearOf(row.date)}</span>
+            {:else}
+              {@render badgeList(row)}
+            {/if}
+          {/each}
+        {/if}
       </div>
     {/each}
   </div>
@@ -196,7 +227,10 @@
   .row {
     display: grid;
     align-items: center;
-    height: 26px;
+  }
+  /* calm: the star, the mark, the date, the three lines taking the room left, the badges */
+  .calm .row {
+    grid-template-columns: 22px 18px 62px minmax(0, 1fr) auto;
   }
   .rows {
     position: relative;
@@ -212,6 +246,33 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  .lines {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .lines > span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 16px;
+  }
+  .lines > .small {
+    font-size: 11px;
+    line-height: 14px;
+  }
+  .calm .date {
+    font-size: 12px;
+  }
+  /* calm, the badges quiet: smaller, as many as fit */
+  .calm .badges {
+    max-width: 220px;
+    overflow: hidden;
+  }
+  .calm .badge {
+    font-size: 10px;
+    line-height: 14px;
   }
   .row.new .title {
     font-weight: 600;

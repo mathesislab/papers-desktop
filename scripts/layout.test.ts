@@ -11,6 +11,7 @@ test("no layout: the defaults, the Library tab in front", () => {
   assert.equal(layout.tab, "library");
   assert.equal(layout.feeds.shown, null);
   assert.equal(layout.feeds.filters.view, "unread");
+  assert.equal(layout.feeds.look, "calm");
   assert.ok(layout.feeds.columns.some((c) => c.key === "score"));
   assert.ok(layout.search.columns.some((c) => c.key === "cited"));
 });
@@ -36,6 +37,7 @@ test("a layout of an older version: the tab in front, the Feeds and Search tabs'
   assert.deepEqual(layout.feeds.filters, BEFORE.feeds);
   assert.deepEqual(layout.feeds.columns, BEFORE.feedColumns);
   assert.equal(layout.feeds.shown, BEFORE.feedsShown);
+  assert.equal(layout.feeds.look, "calm");
   assert.deepEqual(layout.search, { ...BEFORE.search, columns: BEFORE.searchColumns });
   for (const key of ["view", "feedColumns", "feedsShown", "searchColumns"]) assert.ok(!(key in layout), key);
 });
@@ -63,6 +65,13 @@ test("the library's star column shown once in a layout of before version 2, then
   assert.deepEqual(restore({ columns: moved } as never).columns, moved);
   const hidden = { ...JSON.parse(JSON.stringify(shown)), columns: before.columns };
   assert.deepEqual(restore(hidden).columns, before.columns);
+});
+
+test("the Feeds tab's list calm unless a table was chosen", () => {
+  const nested = { filters: {}, columns: [], shown: null };
+  assert.equal(restore({ feeds: nested } as never).feeds.look, "calm");
+  assert.equal(restore({ feeds: { ...nested, look: "table" } } as never).feeds.look, "table");
+  assert.equal(restore({ feeds: { ...nested, look: "cards" } } as never).feeds.look, "calm");
 });
 
 test("the Starred view of the Feeds tab by its name of before", () => {

@@ -3,7 +3,7 @@
   // place of it, its row pinned at the top (Reader), or its details beside the list (the window's switch), a splitter
   // between, at the window's width. The tab gives what is above the list (`bar`: its filters, the selection bar), what shows in
   // place of the table (`empty`: the list loading, failed or empty), the buttons of the details (`actions`) and the
-  // table's columns.
+  // table's columns; the list says how it shows (`ItemList.look`).
 
   import type { ComponentProps, Snippet } from "svelte";
   import type { FeedDetail, Linked } from "$lib/feeds/api";
@@ -29,7 +29,7 @@
   }: {
     list: ItemList;
     /** the table's own: its columns, their names and widths, the order, the star, what follows the last row */
-    table: Omit<ComponentProps<typeof FeedTable>, "rows" | "selected" | "focus" | "colours" | "onselect" | "onopen">;
+    table: Omit<ComponentProps<typeof FeedTable>, "rows" | "selected" | "focus" | "colours" | "look" | "onselect" | "onopen">;
     /** the colour of the tab: the row pinned over the item read */
     tint?: string;
     /** the details beside the list, with no item in focus */
@@ -65,6 +65,7 @@
           selected={selection.selected}
           focus={selection.focus}
           colours={tab.colours}
+          look={list.look}
           onselect={list.select}
           onopen={(id) => list.openItems(selection.selected.has(id) ? list.targets() : [id])}
         />

@@ -92,11 +92,11 @@
   let template = $derived(gridOf(LEAD, columns, COLUMNS));
   let minWidth = $derived(widthOf(LEAD, columns, COLUMNS));
   /** only the rows in view drawn, back where they were left; the one in focus scrolled into view */
-  const view = new Rows(
-    () => rows.length,
-    () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
-    () => scroll,
-  );
+  const view = new Rows({
+    count: () => rows.length,
+    focus: () => (focus ? rows.findIndex((r) => r.id === focus) : -1),
+    start: () => scroll,
+  });
 
   /** the papers selected before the first click of a double-click, which the second opens together */
   let before: string[] | null = null;

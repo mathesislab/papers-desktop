@@ -11,11 +11,13 @@ import * as api from "$lib/feeds/api";
 import type { FeedDetail, FeedRow, Store, Triage } from "$lib/feeds/api";
 import { titled, type Action, type Item } from "$lib/feeds/actions";
 import { addTarget, pageOf, toggled, type TriageAction } from "$lib/feeds/items";
+import { CALM_ROW, type Look } from "$lib/feeds/columns";
 import { isPost } from "$lib/feeds/kinds";
 import { mac, matches, type Shortcut } from "$lib/keys";
 import { OPEN_ASK } from "$lib/library/selection";
 import { Selection } from "./selection.svelte";
 import { tabContext, type Tab } from "./tab";
+import { ROW } from "./virtual.svelte";
 
 const ALL: Shortcut = { key: "a", mod: true };
 /** how long an item is shown before its abstract is looked up: j held down does not ask for each */
@@ -38,6 +40,8 @@ export interface ListOptions {
   reload: () => unknown;
   /** the pages of items opened in the browser */
   opened?: (ids: string[]) => void;
+  /** how the list shows (the Feeds tab's choice); none: a table */
+  look?: () => Look;
 }
 
 export class ItemList {
@@ -103,6 +107,11 @@ export class ItemList {
   /** the details beside the list, else in place of it */
   get beside(): boolean {
     return this.#tab.beside;
+  }
+
+  /** how the list shows: calm, or a table */
+  get look(): Look {
+    return this.#options.look?.() ?? "table";
   }
 
   /** the folder of feeds the items are of */
@@ -257,8 +266,9 @@ export class ItemList {
     const go = (to: number | "first" | "last", extend = e.shiftKey) => act(() => this.selection.move(this.ids, to, extend));
     if (e.key === "ArrowDown") return go(mod ? "last" : 1);
     if (e.key === "ArrowUp") return go(mod ? "first" : -1);
-    if (e.key === "PageDown") return go(pageRows());
-    if (e.key === "PageUp") return go(-pageRows());
+    const page = pageRows(this.look === "calm" ? CALM_ROW : ROW);
+    if (e.key === "PageDown") return go(page);
+    if (e.key === "PageUp") return go(-page);
     if (typing(e)) return e.key === "Escape" && act(() => (e.target as HTMLElement).blur());
     if (matches(e, ALL)) return act(() => (this.selection.selected = new Set(this.ids)));
     if (e.metaKey || e.ctrlKey || e.altKey) return false;
@@ -282,5 +292,5 @@ export class ItemList {
   }
 }
 
-/** the rows a page key moves: about those in view */
-const pageRows = () => Math.max(1, Math.floor((window.innerHeight - 160) / 26));
+/** the rows a page key moves: about those in view, `row` px high */
+const pageRows = (row: number) => Math.max(1, Math.floor((window.innerHeight - 160) / row));

@@ -270,7 +270,7 @@
   onfront={() => showTab("library")}
 />
 {#if shownTabs.feeds && layout.tab === "feeds"}
-  <FeedsView bind:this={feeds} bind:filters={layout.feeds.filters} bind:columns={layout.feeds.columns} bind:shown={layout.feeds.shown} />
+  <FeedsView bind:this={feeds} bind:filters={layout.feeds.filters} bind:columns={layout.feeds.columns} bind:look={layout.feeds.look} bind:shown={layout.feeds.shown} />
 {:else if shownTabs.search && layout.tab === "search"}
   <SearchView bind:this={search} bind:search={layout.search} />
 {/if}
