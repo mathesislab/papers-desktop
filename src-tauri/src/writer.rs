@@ -67,7 +67,7 @@ pub struct Writer {
 #[derive(Debug, Serialize)]
 pub struct WriteError {
     kind: ErrorKind,
-    message: String,
+    pub(crate) message: String,
     /// for `Kept`: what an edit of an entry changed, "key", "tags" or "file"
     #[serde(skip_serializing_if = "Option::is_none")]
     what: Option<&'static str>,
@@ -89,7 +89,7 @@ pub enum ErrorKind {
 }
 
 impl WriteError {
-    fn failed(message: impl Into<String>) -> WriteError {
+    pub(crate) fn failed(message: impl Into<String>) -> WriteError {
         WriteError {
             kind: ErrorKind::Failed,
             message: message.into(),
@@ -279,6 +279,11 @@ impl Writers {
         Ok(())
     }
 
+    /// The global configuration of papers that the tests give; none: the user's.
+    pub(crate) fn machine(&self) -> Option<MachineConfig> {
+        self.machine.lock().unwrap().clone()
+    }
+
     /// Forget the papers command found: it is gone, or changed.
     fn forget_command(&self) {
         *self.found.lock().unwrap() = None;
@@ -288,7 +293,7 @@ impl Writers {
     fn backend(&self) -> Backend {
         match *self.choice.lock().unwrap() {
             WriterChoice::BuiltIn => {
-                let machine = self.machine.lock().unwrap().clone();
+                let machine = self.machine();
                 Backend::Ready(Arc::new(Builtin::new(machine)))
             }
             WriterChoice::Command => match self.command() {
@@ -484,7 +489,7 @@ fn in_library(state: &AppState, bib: &Path) -> Result<(), WriteError> {
 /// Run a write on a thread of its own, one at a time. Then read the library
 /// again, for the next write to start from the files as written; and after
 /// a refusal, for the next try.
-async fn write<T: Send + 'static>(
+pub(crate) async fn write<T: Send + 'static>(
     app: AppHandle,
     op: impl FnOnce(&AppState) -> Result<T, WriteError> + Send + 'static,
 ) -> Result<T, WriteError> {
@@ -831,7 +836,7 @@ fn check_kept(pdf: &Path) -> Result<(), WriteError> {
     Ok(())
 }
 
-fn add(state: &AppState, bib: &Path, text: &str, mut options: AddOptions) -> Result<Added, WriteError> {
+pub(crate) fn add(state: &AppState, bib: &Path, text: &str, mut options: AddOptions) -> Result<Added, WriteError> {
     in_library(state, bib)?;
     let keys = papers_core::entry_keys(text)?;
     if let Some(pdf) = &options.pdf {
@@ -916,12 +921,12 @@ fn default_files(state: &AppState, bib: &Path) -> Result<Option<FilesMode>, Writ
     let Some(folder) = papers_folder(bib) else {
         return Ok(None);
     };
-    let machine = state.writers.machine.lock().unwrap().clone();
+    let machine = state.writers.machine();
     Builtin::new(machine).files_mode(&folder).map(Some)
 }
 
 /// The key of an entry by a key template, with a letter after it when `taken` has it (without case).
-fn made_key(format: &KeyFormat, entry: &Entry, taken: &[String]) -> Result<String, String> {
+pub(crate) fn made_key(format: &KeyFormat, entry: &Entry, taken: &[String]) -> Result<String, String> {
     let key = format.render(entry).map_err(|e| e.0)?;
     let lower: Vec<&str> = taken.iter().map(String::as_str).collect();
     if lower.iter().any(|k| k.to_lowercase() == key.to_lowercase()) {
@@ -936,7 +941,7 @@ fn library_key_of(state: &AppState, bib: &Path, text: &str) -> Result<String, St
     let entry = crate::input::entry_of(text, "The BibTeX")?;
     let format = match papers_folder(bib) {
         Some(folder) => {
-            let machine = state.writers.machine.lock().unwrap().clone();
+            let machine = state.writers.machine();
             Builtin::new(machine).key_format(&folder).map_err(|e| e.message)?
         }
         None => KeyFormat::key(),
@@ -1114,7 +1119,7 @@ fn step(state: &AppState, bib: &Path, back: bool) -> Result<(), WriteError> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::sync::RwLock;
     use std::sync::atomic::AtomicU64;
 
@@ -1166,7 +1171,7 @@ mod tests {
         state_with(dir, bibs, choice, papers, machine(&dir.join("history")))
     }
 
-    fn state_with(
+    pub(crate) fn state_with(
         dir: &Path,
         bibs: &[PathBuf],
         choice: WriterChoice,
@@ -1203,7 +1208,7 @@ mod tests {
     }
 
     /// The library read again, as after a write.
-    fn reload(state: &AppState) {
+    pub(crate) fn reload(state: &AppState) {
         let bibs = state.library.read().unwrap().bibs().to_vec();
         *state.library.write().unwrap() = Library::load(&bibs).unwrap();
     }
@@ -1353,7 +1358,7 @@ mod tests {
         assert_eq!(fs::read_to_string(&bib).unwrap(), ENTRIES);
     }
 
-    fn fixture_pdf(to: &Path, fixture: &str) -> PathBuf {
+    pub(crate) fn fixture_pdf(to: &Path, fixture: &str) -> PathBuf {
         let fixtures =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/papers-rs/tests/fixtures/pdf");
         fs::create_dir_all(to.parent().unwrap()).unwrap();
