@@ -1,6 +1,6 @@
 //! Rules: a query in the feeds' language and what to do with the new items
 //! it matches (`prof:amoc score:6-` → star, `kind:news -src:futurity`
-//! → seen, `t:editorial` → dismiss). They act once, on the items a fetch
+//! → seen, `t:editorial` → remove). They act once, on the items a fetch
 //! brings, never on an item with a triage.
 
 use std::collections::BTreeSet;
@@ -27,13 +27,15 @@ pub enum Action {
     /// `shortlist` in a config.json of before
     #[serde(alias = "shortlist")]
     Star,
-    Dismiss,
+    /// `dismiss` in a config.json of before: an alias kept on purpose
+    #[serde(alias = "dismiss")]
+    Remove,
     Seen,
 }
 
 words!(Action {
     Star => "star",
-    Dismiss => "dismiss",
+    Remove => "remove",
     Seen => "seen",
 });
 
@@ -41,7 +43,7 @@ impl Action {
     pub fn triage(self) -> Triage {
         match self {
             Action::Star => Triage::Starred,
-            Action::Dismiss => Triage::Dismissed,
+            Action::Remove => Triage::Removed,
             Action::Seen => Triage::Seen,
         }
     }

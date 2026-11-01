@@ -1,12 +1,12 @@
 //! The query language over items: the library's (core's), with the facets
 //! `kind:` (paper, preprint, news, blog), `is:` (new or unread, seen,
-//! starred, dismissed, added, editorial, snoozed (not new till its day),
+//! starred, removed, added, editorial, snoozed (not new till its day),
 //! reminder (new again, due), inlibrary (with the library's facts)), `src:` (a
 //! subscription's title or id), `prof:` (an interest the item reaches the
 //! min_score of), and the numbers `score:` (its best score in an interest)
 //! and `like:` (how like the library it is, 0–100: none without the index of
-//! the library, which then matches nothing). A query leaves the dismissed
-//! items out unless it names them (`is:dismissed`, `-is:seen,dismissed`).
+//! the library, which then matches nothing). A query leaves the removed
+//! items out unless it names them (`is:removed`, `-is:seen,removed`).
 
 use papers_core::{Like, Query, Record, Schema};
 
@@ -32,9 +32,9 @@ pub fn parse(text: &str) -> Query {
     Query::parse(text, SCHEMA)
 }
 
-/// Whether a query shows the dismissed items: those it names.
-pub(crate) fn names_dismissed(query: &Query) -> bool {
-    query.names("is", Triage::Dismissed.as_str())
+/// Whether a query shows the removed items: those it names.
+pub(crate) fn names_removed(query: &Query) -> bool {
+    query.names("is", Triage::Removed.as_str())
 }
 
 /// The best of the scores; 0 without any.

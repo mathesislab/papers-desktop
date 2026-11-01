@@ -66,7 +66,7 @@ selected for a moment counts as seen.
 |---|---|
 | `j` `k`, `↑` `↓` | move; with `⇧` and the arrows, extend the selection |
 | `s` | shortlist, or no longer |
-| `x` | dismiss, or bring back |
+| `x` | remove, or bring back |
 | `m` | mark read, or unread |
 | `o` | open the item's page in the browser |
 | `a` | add the paper (a post: its linked paper), staying in Feeds |
@@ -74,7 +74,7 @@ selected for a moment counts as seen.
 | `⇧Space` | mark all above as seen |
 | `/`, `⌘F` | search the feeds |
 | `⌘R` | fetch |
-| `⌘↩` | review the shortlist: `a` add, `b` add without PDF, `o` open, `l` later, `x` dismiss, `j` `k`, `Esc` leaves |
+| `⌘↩` | review the shortlist: `a` add, `b` add without PDF, `o` open, `l` later, `x` remove, `j` `k`, `Esc` leaves |
 
 Drag a paper out of the list to drop its PDF in the Finder, a mail or a
 chat, and the citation out of the preview to drop it, formatted, in a

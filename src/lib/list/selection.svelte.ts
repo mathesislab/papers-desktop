@@ -90,7 +90,7 @@ export class Selection {
     if (!keepFocus && this.focus !== null && !set.has(this.focus)) this.focus = null;
   }
 
-  /** Rows that go from the list `ids` (dismissed, deleted, moved away): they leave the selection; the focus, if it
+  /** Rows that go from the list `ids` (removed, deleted, moved away): they leave the selection; the focus, if it
    *  is one of them, goes to the next row that stays (`nextAfter`), alone selected. */
   nextAfter(ids: string[], removed: Set<string>) {
     if (this.focus !== null && removed.has(this.focus)) this.only(nextAfter(ids, removed));

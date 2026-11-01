@@ -36,8 +36,8 @@ pub enum Command {
     Fetch(AccessArgs),
     /// The items, one a line: id, state, score, kind, date, title, journal
     ///
-    /// The state column: `*` starred, `x` dismissed, `+` added, `.` seen, blank new.
-    /// Dismissed items are left out unless asked for.
+    /// The state column: `*` starred, `x` removed, `+` added, `.` seen, blank new.
+    /// Removed items are left out unless asked for.
     List(ListArgs),
     /// All that is known of an item
     Show(ShowArgs),
@@ -186,9 +186,9 @@ pub struct ListArgs {
     /// At most this many
     #[arg(long, value_name = "N")]
     pub limit: Option<usize>,
-    /// Dismissed items too
+    /// Removed items too
     #[arg(long)]
-    pub dismissed: bool,
+    pub removed: bool,
     /// As JSON
     #[arg(long)]
     pub json: bool,
@@ -214,7 +214,7 @@ pub struct FindArgs {
 /// `feeds mark`.
 #[derive(Debug, Args)]
 pub struct MarkArgs {
-    /// new, seen, starred, dismissed or added
+    /// new, seen, starred, removed or added
     pub state: Triage,
     #[arg(required = true)]
     pub ids: Vec<String>,

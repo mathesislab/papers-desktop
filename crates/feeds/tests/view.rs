@@ -242,7 +242,7 @@ fn facets_numbers_and_fields() {
         .set_triage(&id_of(&feeds, n1), Triage::Starred)
         .unwrap();
     feeds
-        .set_triage(&id_of(&feeds, j3), Triage::Dismissed)
+        .set_triage(&id_of(&feeds, j3), Triage::Removed)
         .unwrap();
     assert_eq!(titles(&feeds, "is:starred"), [n1]);
     assert!(
@@ -250,7 +250,7 @@ fn facets_numbers_and_fields() {
         "the word of before: a value no item has"
     );
     assert_eq!(titles(&feeds, "is:new").len(), 3);
-    assert_eq!(titles(&feeds, "-is:dismissed").len(), 4);
+    assert_eq!(titles(&feeds, "-is:removed").len(), 4);
 
     // the library's papers
     assert!(titles(&feeds, "is:inlibrary").is_empty(), "no library");
@@ -336,7 +336,7 @@ fn counts_are_of_live_items_whatever_the_query() {
     let dir = tempfile::tempdir().unwrap();
     let mut feeds = feeds(dir.path(), &Clock::new(), Vec::new());
     feeds
-        .set_triage(&id_of(&feeds, N1.1), Triage::Dismissed)
+        .set_triage(&id_of(&feeds, N1.1), Triage::Removed)
         .unwrap();
     feeds
         .set_triage(&id_of(&feeds, P1.1), Triage::Starred)
@@ -349,7 +349,7 @@ fn counts_are_of_live_items_whatever_the_query() {
     let view = feeds.view(&request);
     assert_eq!(view.rows.len(), 1);
     let counts = view.counts;
-    assert_eq!(counts.all, 4, "not the dismissed");
+    assert_eq!(counts.all, 4, "not the removed");
     let pairs = |map: &std::collections::BTreeMap<String, usize>| -> Vec<(String, usize)> {
         map.iter().map(|(k, &v)| (k.clone(), v)).collect()
     };
@@ -395,15 +395,15 @@ fn rules_triage_the_new_items_only() {
     };
     let rules = vec![
         rule("prof:firn score:5-", Action::Star),
-        rule("kind:preprint", Action::Dismiss),
-        rule("is:editorial", Action::Dismiss),
-        rule("kind:news -src:futurity", Action::Dismiss),
+        rule("kind:preprint", Action::Remove),
+        rule("is:editorial", Action::Remove),
+        rule("kind:news -src:futurity", Action::Remove),
         rule("kind:news", Action::Seen),
     ];
     let mut feeds = feeds(dir.path(), &clock, rules.clone());
     let triage = |feeds: &Feeds, e: E| feeds.triage(&id_of(feeds, e.1));
     assert_eq!(triage(&feeds, P1), Triage::Starred, "the first rule");
-    assert_eq!(triage(&feeds, J2), Triage::Dismissed);
+    assert_eq!(triage(&feeds, J2), Triage::Removed);
     assert_eq!(triage(&feeds, N1), Triage::Seen);
     assert_eq!(triage(&feeds, J1), Triage::New);
     assert_eq!(feeds.mark(&id_of(&feeds, P1.1)).unwrap().at, clock.now());
@@ -414,7 +414,7 @@ fn rules_triage_the_new_items_only() {
         .unwrap();
     let mut rules = rules;
     rules.push(rule("prof:\"ice sheets\"", Action::Star));
-    rules.push(rule("", Action::Dismiss));
+    rules.push(rule("", Action::Remove));
     feeds
         .set_settings(FeedSettings {
             rules: rules.clone(),
@@ -431,12 +431,12 @@ fn rules_triage_the_new_items_only() {
     assert_eq!(triage(&feeds, J3), Triage::New);
     assert_eq!(
         triage(&feeds, P2),
-        Triage::Dismissed,
+        Triage::Removed,
         "kind:preprint before prof:\"ice sheets\""
     );
     let reopened = clock.open(dir.path());
     assert_eq!(reopened.rules(), rules);
-    assert_eq!(triage(&reopened, P2), Triage::Dismissed, "written");
+    assert_eq!(triage(&reopened, P2), Triage::Removed, "written");
 }
 
 /// An index of a library of a paper on Greenland's hysteresis, one on firn
@@ -554,7 +554,7 @@ fn rules_at_fetch_see_the_library() {
         .unwrap();
     let rule = Rule {
         when: "is:inlibrary".to_string(),
-        then: Action::Dismiss,
+        then: Action::Remove,
     };
     feeds
         .set_settings(FeedSettings {
@@ -565,7 +565,7 @@ fn rules_at_fetch_see_the_library() {
     let http = Recorded::new().reply(TC, Reply::ok(TC, atom("The Cryosphere", &[J1, J2])));
     feeds.fetch(&http, &Access::default()).unwrap();
     let triage = |e: E| feeds.triage(&id_of(&feeds, e.1));
-    assert_eq!(triage(J1), Triage::Dismissed, "a paper of the library");
+    assert_eq!(triage(J1), Triage::Removed, "a paper of the library");
     assert_eq!(triage(J2), Triage::New);
 }
 
@@ -590,7 +590,7 @@ fn the_config_file() {
     assert_eq!(feeds.interests()[0].min_score, 4.0);
     assert_eq!(feeds.title_boost(), 2.5);
     assert_eq!(feeds.rules()[0].then, Action::Star, "shortlist, as before");
-    assert_eq!(feeds.rules()[1].then, Action::Dismiss);
+    assert_eq!(feeds.rules()[1].then, Action::Remove, "dismiss, as before");
     assert_eq!(feeds.keep_days(), 30);
     let empty = tempfile::tempdir().unwrap();
     let defaults = Feeds::open(empty.path()).unwrap();
@@ -682,7 +682,7 @@ fn what_was_fetched_since_the_list_was_shown_is_held_back() {
     let clock = Clock::new();
     let mut feeds = feeds(dir.path(), &clock, Vec::new());
     let j2_id = id_of(&feeds, J2.1);
-    feeds.set_triage(&j2_id, Triage::Dismissed).unwrap();
+    feeds.set_triage(&j2_id, Triage::Removed).unwrap();
     let before = ViewRequest {
         shown: Some(clock.now() - TimeDelta::hours(1)),
         ..ViewRequest::default()
@@ -692,7 +692,7 @@ fn what_was_fetched_since_the_list_was_shown_is_held_back() {
     assert_eq!(
         (view.held, view.counts.all),
         (4, 0),
-        "the dismissed one not counted"
+        "the removed one not counted"
     );
     let after = ViewRequest {
         shown: Some(clock.now()),
@@ -702,6 +702,6 @@ fn what_was_fetched_since_the_list_was_shown_is_held_back() {
     assert_eq!(
         (view.rows.len(), view.held),
         (4, 0),
-        "the dismissed one left out"
+        "the removed one left out"
     );
 }

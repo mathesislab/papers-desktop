@@ -407,7 +407,7 @@
         <select bind:value={rule.then}>
           <option value="star">Star</option>
           <option value="seen">Mark seen</option>
-          <option value="dismiss">Dismiss</option>
+          <option value="remove">Remove</option>
         </select>
         <button class="remove" onclick={() => draft!.rules.splice(i, 1)}>✕</button>
       </div>

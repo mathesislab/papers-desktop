@@ -240,8 +240,8 @@ const it = (id: string, triage: Triage) => ({ id, triage });
 test("the keys toggle the triage of the selection", () => {
   assert.deepEqual(toggled([it("a", "new"), it("b", "starred")], "star"), { ids: ["a"], triage: "starred" });
   assert.deepEqual(toggled([it("a", "starred"), it("b", "starred")], "star"), { ids: ["a", "b"], triage: "seen" });
-  assert.deepEqual(toggled([it("a", "seen")], "dismiss"), { ids: ["a"], triage: "dismissed" });
-  assert.deepEqual(toggled([it("a", "dismissed")], "dismiss"), { ids: ["a"], triage: "seen" });
+  assert.deepEqual(toggled([it("a", "seen")], "remove"), { ids: ["a"], triage: "removed" });
+  assert.deepEqual(toggled([it("a", "removed")], "remove"), { ids: ["a"], triage: "seen" });
   // m: the new ones seen; with none new, the seen ones new; the others keep theirs
   assert.deepEqual(toggled([it("a", "new"), it("b", "seen"), it("c", "added")], "read"), { ids: ["a"], triage: "seen" });
   assert.deepEqual(toggled([it("b", "seen"), it("c", "starred")], "read"), { ids: ["b"], triage: "new" });

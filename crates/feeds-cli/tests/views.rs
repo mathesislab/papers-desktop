@@ -99,11 +99,11 @@ fn list_and_digest_take_a_saved_view_and_a_query_too() {
         ids(&s.ok(&["list", "kind:paper", "sea", "ice", "--sort", "score"]))
     );
     assert!(both.len() < papers.len() && !both.is_empty(), "{both:?}");
-    // dismissed items left out, unless asked
-    s.ok(&["mark", "dismissed", &papers[0]]);
+    // removed items left out, unless asked
+    s.ok(&["mark", "removed", &papers[0]]);
     assert_eq!(ids(&s.ok(&["list", "--saved", "Papers"])).len(), 2);
     assert_eq!(
-        ids(&s.ok(&["list", "--saved", "Papers", "--dismissed"])).len(),
+        ids(&s.ok(&["list", "--saved", "Papers", "--removed"])).len(),
         3
     );
     let unknown = s.run(&["list", "--saved", "None"]);

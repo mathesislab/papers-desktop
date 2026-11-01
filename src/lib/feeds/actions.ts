@@ -13,7 +13,7 @@ export type Item = { id: string; kind: ItemKind; triage: Triage; reminder?: Remi
 
 /** the actions of both tabs */
 export type ItemActionName = "open" | "add" | "addBare" | "star";
-export type ActionName = ItemActionName | "find" | "read" | "dismiss" | "keepUnread" | "later" | "clearReminder";
+export type ActionName = ItemActionName | "find" | "read" | "remove" | "keepUnread" | "later" | "clearReminder";
 
 export interface Action {
   /** the key that does it to the selection; none: the menus and the buttons only */
@@ -137,12 +137,12 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
       enabled: (items) => toggled(items, "read") !== null,
       run: (ids) => d.triage("read", ids),
     },
-    dismiss: {
+    remove: {
       key: "x",
-      label: (items) => (all(items, "dismissed") ? "Restore" : "Dismiss"),
-      enabled: (items) => toggled(items, "dismiss") !== null,
-      hint: (items) => (all(items, "dismissed") ? undefined : "Hide it from the feed"),
-      run: (ids) => d.triage("dismiss", ids),
+      label: (items) => (all(items, "removed") ? "Restore" : "Remove"),
+      enabled: (items) => toggled(items, "remove") !== null,
+      hint: (items) => (all(items, "removed") ? undefined : "Hide it from the feed"),
+      run: (ids) => d.triage("remove", ids),
     },
     keepUnread: {
       key: "u",
@@ -173,7 +173,7 @@ const SMALL = new Set(["a", "an", "the", "and", "or", "as", "at", "by", "for", "
 export const titled = (label: string) =>
   label.replace(/\S+/g, (word, at: number) => (at > 0 && SMALL.has(word) ? word : word[0].toUpperCase() + word.slice(1)));
 
-/** What the button of an action on a row says on hover: its label, its key, its hint (`Dismiss (X): hide it from
+/** What the button of an action on a row says on hover: its label, its key, its hint (`Remove (X): hide it from
  *  the feed`). */
 export function rowHint(action: Action, items: Item[]): string {
   const key = action.key ? ` (${action.key.toUpperCase()})` : "";

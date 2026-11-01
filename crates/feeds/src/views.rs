@@ -1,7 +1,7 @@
 //! Saved views: a name for a query of the feeds and the order of its
 //! items, as the Feeds tab's sidebar and the CLI's `--saved` use them. The
 //! query is the whole of what the tab chose (`is:new kind:paper,preprint
-//! prof:AMOC`, and the text typed); dismissed items are left out unless it
+//! prof:AMOC`, and the text typed); removed items are left out unless it
 //! names them, as every query of the view.
 
 use serde::{Deserialize, Serialize};

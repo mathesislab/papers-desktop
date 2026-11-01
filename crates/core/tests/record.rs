@@ -77,7 +77,7 @@ fn facets() {
     assert!(matches("kind:paper is:unread"));
     assert!(matches("Kind:PAPER is:star*"));
     assert!(matches(r#"src:"The Cryosphere" src:*sphere src:the*"#));
-    assert!(matches("-is:dismissed prof:ice-sheets"));
+    assert!(matches("-is:removed prof:ice-sheets"));
     assert!(!matches("-is:unread"));
     // the whole value
     assert!(!matches("src:cryosphere"));
@@ -131,7 +131,7 @@ fn alternatives() {
     assert!(!matches("tag:amoc,ice"));
     assert!(matches("has:pdf,abstract doi:10.1038,tc-18"));
     // excluded when any matches
-    assert!(matches("-src:grl,esd -is:dismissed,new"));
+    assert!(matches("-src:grl,esd -is:removed,new"));
     assert!(!matches("-src:grl,*sphere"));
     assert!(!matches("-y:2012,2024"));
     // still being typed

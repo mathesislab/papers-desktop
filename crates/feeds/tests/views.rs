@@ -1,5 +1,5 @@
 //! Saved views: kept in `config.json`, their names checked, their counts in
-//! the view; and the dismissed items, which a query shows when it names them.
+//! the view; and the removed items, which a query shows when it names them.
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
@@ -34,7 +34,7 @@ fn view(name: &str, query: &str, sort: Sort) -> SavedView {
     }
 }
 
-/// A journal with three papers, the first dismissed.
+/// A journal with three papers, the first removed.
 fn feeds(dir: &std::path::Path) -> Feeds {
     let mut feeds = Feeds::open(dir).unwrap();
     feeds
@@ -48,7 +48,7 @@ fn feeds(dir: &std::path::Path) -> Feeds {
     feeds.fetch(&http, &Access::default()).unwrap();
     let first = feeds.items().iter().find(|i| i.title == "Ice sheet melt");
     let id = first.unwrap().id.clone();
-    feeds.set_triage(&id, Triage::Dismissed).unwrap();
+    feeds.set_triage(&id, Triage::Removed).unwrap();
     feeds
 }
 
@@ -117,7 +117,7 @@ fn the_counts_of_the_saved_views_are_what_they_show() {
     feeds
         .set_saved_views(vec![
             view("Ice", "ice", Sort::Newest),
-            view("Dismissed", "is:dismissed", Sort::Newest),
+            view("Removed", "is:removed", Sort::Newest),
             view("Everything", "", Sort::Newest),
             view("None", "glacier", Sort::Newest),
         ])
@@ -129,28 +129,28 @@ fn the_counts_of_the_saved_views_are_what_they_show() {
     };
     let counts = feeds.view(&request).counts.views;
     let count = |name: &str| counts.get(name).copied();
-    assert_eq!(count("Ice"), Some(1), "the dismissed one left out");
-    assert_eq!(count("Dismissed"), Some(1));
+    assert_eq!(count("Ice"), Some(1), "the removed one left out");
+    assert_eq!(count("Removed"), Some(1));
     assert_eq!(count("Everything"), Some(2));
     assert_eq!(count("None"), None);
 }
 
 #[test]
-fn a_query_shows_the_dismissed_items_when_it_names_them() {
+fn a_query_shows_the_removed_items_when_it_names_them() {
     let dir = tempfile::tempdir().unwrap();
     let feeds = feeds(dir.path());
-    let rows = |query: &str, dismissed: bool| {
+    let rows = |query: &str, removed: bool| {
         let request = ViewRequest {
             query,
-            dismissed,
+            removed,
             ..ViewRequest::default()
         };
         feeds.view(&request).rows.len()
     };
     assert_eq!(rows("", false), 2);
     assert_eq!(rows("ice", false), 1);
-    assert_eq!(rows("is:dismissed", false), 1);
-    assert_eq!(rows("ice -IS:seen,dismissed", false), 1);
-    assert_eq!(rows("is:new,\"dismissed\"", false), 3);
+    assert_eq!(rows("is:removed", false), 1);
+    assert_eq!(rows("ice -IS:seen,removed", false), 1);
+    assert_eq!(rows("is:new,\"removed\"", false), 3);
     assert_eq!(rows("ice", true), 2, "asked for whatever the query");
 }

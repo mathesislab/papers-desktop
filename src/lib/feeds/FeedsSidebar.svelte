@@ -2,7 +2,7 @@
   // The sidebar of the Feeds tab: the views (the items by their triage), the kinds, the interests, the sources in
   // their groups (folded or not). A click chooses one of a group, a second click lets it go (*All* for the views);
   // ⌘-click (Ctrl elsewhere) adds one to the choices of its group, or takes it out. The choices are filters of the
-  // list, a chip per group above it. The counts are over every item not dismissed, whatever the search. A source's
+  // list, a chip per group above it. The counts are over every item not removed, whatever the search. A source's
   // menu (right-click) sets its kind, fetches it or unsubscribes; the Sources header opens the Subscribe sheet. A kind,
   // an interest or a source counts its unread items (none: no number), the total on hover; a view, its items.
 

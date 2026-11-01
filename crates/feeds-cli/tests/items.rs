@@ -148,7 +148,7 @@ fn list_sorts_filters_and_limits() {
 }
 
 #[test]
-fn mark_shows_in_the_list_and_dismissed_items_are_left_out() {
+fn mark_shows_in_the_list_and_removed_items_are_left_out() {
     let s = fetched();
     s.ok(&["fetch"]);
     let list = s.ok(&["list", "--sort", "score"]);
@@ -160,7 +160,7 @@ fn mark_shows_in_the_list_and_dismissed_items_are_left_out() {
         "{said}"
     );
     assert_eq!(said.lines().count(), 2);
-    s.ok(&["mark", "dismissed", third]);
+    s.ok(&["mark", "removed", third]);
     let after = s.ok(&["list", "--sort", "score"]);
     assert_eq!(after.lines().count(), 4);
     assert!(
@@ -172,13 +172,13 @@ fn mark_shows_in_the_list_and_dismissed_items_are_left_out() {
     );
     assert!(!after.contains(third.as_str()));
     // asked for, or named by the query
-    let all = s.ok(&["list", "--dismissed", "--sort", "score"]);
+    let all = s.ok(&["list", "--removed", "--sort", "score"]);
     assert_eq!(all.lines().count(), 5);
     assert!(
         all.lines().any(|l| l.starts_with(&format!("{third}  x  "))),
         "{all}"
     );
-    assert_eq!(s.ok(&["list", "is:dismissed"]).lines().count(), 1);
+    assert_eq!(s.ok(&["list", "is:removed"]).lines().count(), 1);
     assert_eq!(s.ok(&["list", "is:starred"]).lines().count(), 2);
 
     // an unknown id changes nothing

@@ -168,7 +168,7 @@ they would hide it.
 **Several papers at once** (`LibraryView.svelte`, `Table.svelte`, `rowmenu.ts`,
 `selection.ts`, pure and tested by `scripts/selection.test.ts`; the selection
 itself is `list/selection.svelte.ts`, the three tabs', on `list/order.ts`:
-⇧ ranges, the keys' steps, and after a delete, a move or a dismissal the row
+⇧ ranges, the keys' steps, and after a delete, a move or a removal the row
 after the last one gone):
 
 - *Open*: Enter, a double-click, or *Open* in the context menu opens every
@@ -810,10 +810,10 @@ the post's id, which merging leaves behind), the items of one article's page
 (merged before pages were compared) made one. phys.org answers a program with a Cloudflare
 challenge (403), so its pages give nothing.
 
-**Triage**: new → seen → starred, dismissed or added (`starred` was
-`shortlisted`, still read in `state.json`). Keys: `j`/`k`, `s` star (an added
-item stays added), `x` dismiss, `m` read, `o` open, `a` add, `f` find the
-paper of a post. The actions on an item are also in its details and the menu
+**Triage**: new → seen → starred, removed or added (`starred` was
+`shortlisted`, `removed` was `dismissed`, both still read in `state.json`).
+Keys: `j`/`k`, `s` star (an added item stays added), `x` remove, `m` read, `o`
+open, `a` add, `f` find the paper of a post. The actions on an item are also in its details and the menu
 of its row.
 
 **The tab** (`src/lib/feeds/`: `FeedsView`, `FeedsSidebar`, `FeedTable`,
@@ -839,7 +839,7 @@ Library tab):
   apart; a group folds). A view shows the number of its items; a kind, an
   interest, a source or a group of them the number of its unread ones (none:
   no number), the total on hover (`counts.unread`, `counts.total`: every
-  item not dismissed, whatever the search). A source's menu (right-click) sets its
+  item not removed, whatever the search). A source's menu (right-click) sets its
   kind (*Source Is*), fetches it alone (*Fetch This Source*) or ends it
   (*Unsubscribe…*, asked first; its items stay until they are old); the
   *Sources* header opens the Subscribe sheet. A click chooses one of a group, a second
@@ -849,8 +849,8 @@ Library tab):
   with several); the backend is asked for a term per group, any of its
   choices (`is:new kind:preprint prof:"Ice sheets" src:"The
   Cryosphere",GRL`; the query is the whole of the tab's choices,
-  `queryOf`), then the typed text; `Feeds::view` leaves the dismissed items
-  out unless the query has an `is:` term on `dismissed`. No kind chosen: every kind (papers and posts
+  `queryOf`), then the typed text; `Feeds::view` leaves the removed items
+  out unless the query has an `is:` term on `removed`. No kind chosen: every kind (papers and posts
   together; the *Papers | Posts | All* of before is gone, a source of posts
   chosen showing nothing under *Papers*). The choices,
   the sort, the search and the groups unfolded are kept in the layout
@@ -875,17 +875,17 @@ Library tab):
   above the list, which goes through them). Click, ⇧-click and ⌘-click select as in the library; the keys act
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
-  not make the list jump under the cursor; a dismissed item goes, the next
+  not make the list jump under the cursor; a removed item goes, the next
   selected. A ☆ at the start of a row stars it (*Starred*), or unstars it.
   The actions on items are one table (`actions.ts`: `itemActions` open, add
   and star, the Search tab's too, the star in each tab's words; `feedActions`
   those and the triage), which
   the keys, the row menu, the selection bar, the buttons of the details and
   *Later ▾* read in both tabs, each named one way (*Mark read* or *Mark unread*, *Star* or
-  *Unstar*, *Dismiss* or *Restore*: a toggle says which way it goes; marking
+  *Unstar*, *Remove* or *Restore*: a toggle says which way it goes; marking
   read above 50 asks first, and says *Marked 12 read*). With several rows
   selected, a bar above the list marks them read or unread, stars,
-  dismisses or snoozes them; *Mark read ▾* marks the
+  removes or snoozes them; *Mark read ▾* marks the
   list, the items older than 1, 3 or 7 days, or those above. The row menu's
   *Source Is* sets the kind of its subscription (Journal, Preprint Server,
   News & Press, General), which its items take at once.
@@ -1011,7 +1011,7 @@ of a paper-feeder setup, `feeds import-paper-feeder`, is gone.)
 the sidebar; `Feeds::saved_views`, `saved_view` by a name in any case,
 `set_saved_views`, which refuses a blank name or one given twice in any
 case: `Error::View`). The query is the whole of the tab's choices (below);
-dismissed items are left out unless it has an `is:` term on them, as the
+removed items are left out unless it has an `is:` term on them, as the
 app's and the CLI's lists. `Feeds::view` counts the items each one shows
 (`counts.views`, by name), whatever the request. CLI: `feeds views [--json]`
 (`searches` also), `views add NAME QUERY... [--sort score|newest|like]` (in
@@ -1020,8 +1020,8 @@ place of the view of that name), `views remove NAME`, and `--saved NAME` on
 with the query typed too.
 
 **Rules**: `{when, then}`, a query of the feeds and `star` (`shortlist`
-before, still read), `dismiss` or `seen` (`prof:amoc score:6-` → star,
-`t:editorial` → dismiss). They act on the items a fetch brings, the first that matches
+before, still read), `remove` (`dismiss` before, still read) or `seen`
+(`prof:amoc score:6-` → star, `t:editorial` → remove). They act on the items a fetch brings, the first that matches
 deciding, never on an item with a triage.
 
 **Likeness** (*Similar in your library*): how close an item is to the
@@ -1047,7 +1047,7 @@ star). A library of 2,353 papers (titles; one abstract) is indexed in
 5,000 items in about 80 ms.
 
 **The feeds' query**: the facets `kind:` (paper, preprint, news, blog),
-`is:` (new or unread, seen, starred, dismissed, added, editorial,
+`is:` (new or unread, seen, starred, removed, added, editorial,
 `inlibrary` with the library's facts; `is:shortlisted` of before is a value
 no item has), `src:` (a subscription's title or id),
 `prof:` (the interests whose `min_score` the item reaches), and the numbers
@@ -1057,9 +1057,9 @@ of its authors, year, journal, summary (`abs:`), DOI, `has:abstract`,
 newest, by score or by likeness, each with its scores and likeness, the terms that matched and its
 title, authors and abstract marked (the query's words and the interests'
 terms), and the counts of the sidebar: as the library's, over every live
-item (not dismissed) whatever the query, by `is:`, kind, interest and
-subscription. Dismissed items are rows only if the query names them
-(`is:dismissed`, `-is:seen,dismissed`: core's `Query::names`), decided once
+item (not removed) whatever the query, by `is:`, kind, interest and
+subscription. Removed items are rows only if the query names them
+(`is:removed`, `-is:seen,removed`: core's `Query::names`), decided once
 by the view for its rows and for each saved view; the page asks for the
 query of its choices alone.
 

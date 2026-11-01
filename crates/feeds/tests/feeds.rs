@@ -359,7 +359,7 @@ fn prune_drops_old_items_no_feed_lists() {
     feeds.fetch(&http, &Access::default()).unwrap();
     let ids: Vec<String> = feeds.items().iter().map(|i| i.id.clone()).collect();
     feeds.set_triage(&ids[0], Triage::Starred).unwrap();
-    feeds.set_triage(&ids[1], Triage::Dismissed).unwrap();
+    feeds.set_triage(&ids[1], Triage::Removed).unwrap();
     feeds.set_triage(&ids[2], Triage::Seen).unwrap();
     clock.advance(10);
     // the feed now lists the fourth post only

@@ -101,7 +101,7 @@ export function queryOf(f: FeedFilters): string {
     .join(" ");
 }
 
-/** What `view` is asked for: the query of the choices (the backend leaves the dismissed items out unless it names
+/** What `view` is asked for: the query of the choices (the backend leaves the removed items out unless it names
  *  them), the order. */
 export function requestOf(f: FeedFilters): ViewRequest {
   return { query: queryOf(f), sort: f.sort };

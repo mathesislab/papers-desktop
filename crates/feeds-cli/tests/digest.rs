@@ -8,7 +8,7 @@ use support::{Sandbox, ok};
 const URL: &str = "https://example.org/journal.atom";
 
 /// An Atom feed: a matching paper whose title needs escaping, one that matches in the
-/// abstract only, one that does not match, one of long ago, one to dismiss.
+/// abstract only, one that does not match, one of long ago, one to remove.
 fn atom() -> String {
     let names = [
         "Anne Moreau",
@@ -37,8 +37,8 @@ fn atom() -> String {
           <published>2026-10-29T00:00:00Z</published><summary>Proteins.</summary></entry>\
          <entry><id>d</id><title>The ice sheet of long ago</title><link href=\"https://example.org/d\"/>\
           <published>2026-08-01T00:00:00Z</published><summary>Old.</summary></entry>\
-         <entry><id>e</id><title>Ice sheet dismissed</title><link href=\"https://example.org/e\"/>\
-          <published>2026-10-30T00:00:00Z</published><summary>Dismissed.</summary></entry>\
+         <entry><id>e</id><title>Ice sheet removed</title><link href=\"https://example.org/e\"/>\
+          <published>2026-10-30T00:00:00Z</published><summary>Removed.</summary></entry>\
          </feed>"
     )
 }
@@ -51,11 +51,11 @@ fn digest_sandbox() -> Sandbox {
     );
     s.ok(&["subscribe", URL, "--journal", "The Cryosphere"]);
     s.ok(&["fetch"]);
-    let dismissed = s.json(&["list", "Ice sheet dismissed", "--json"])[0]["id"]
+    let removed = s.json(&["list", "Ice sheet removed", "--json"])[0]["id"]
         .as_str()
         .unwrap()
         .to_string();
-    s.ok(&["mark", "dismissed", &dismissed]);
+    s.ok(&["mark", "removed", &removed]);
     s
 }
 
@@ -86,7 +86,7 @@ fn the_rss_feed_has_paper_feeders_items() {
     let feed = feed_rs::parser::parse(xml.as_bytes()).unwrap();
     assert_eq!(feed.title.unwrap().content, "Ice & papers");
     assert_eq!(feed.links[0].href, "https://example.org/feed/");
-    // the best score first; the old, the dismissed and the unmatched are not there
+    // the best score first; the old, the removed and the unmatched are not there
     let titles: Vec<&str> = feed
         .entries
         .iter()
