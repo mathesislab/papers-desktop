@@ -1,14 +1,15 @@
 <script lang="ts" generics="K extends string">
   // The headers of a table of the three tabs (the library's Table, FeedTable), after the columns without one
-  // (`lead`): a click on a header sorts by it (the table's `onclick`), a header dragged moves its column, an edge
-  // dragged resizes (`resized`: the edge follows the pointer, the flexible column, the title, takes the room left),
-  // a right-click shows or hides columns. The window's layout keeps the columns.
+  // (`lead`), at the top of the table as it scrolls: a click on a header sorts by it (the table's `onclick`), a
+  // header dragged moves its column, an edge dragged resizes the column to its left (`resized`: the columns after it
+  // follow, the last giving the room), a right-click shows or hides columns. The window's layout keeps the columns.
 
   import { CheckMenuItem, Menu } from "@tauri-apps/api/menu";
-  import { flexibleOf, gridOf, moved, resized, toggled, widthOf, widthsOf, type Shown, type Specs } from "./columns";
+  import { gridOf, moved, resized, toggled, widthOf, type Shown, type Specs } from "./columns";
 
   let {
     lead,
+    room,
     columns,
     specs,
     menu,
@@ -18,6 +19,8 @@
   }: {
     /** the widths of the columns before, without a header (a mark, the star) */
     lead: number[];
+    /** the width of the table in view */
+    room: number;
     columns: Shown<K>[];
     specs: Specs<K>;
     /** the columns the menu offers, in its order */
@@ -33,13 +36,9 @@
   const DRAG = 4;
 
   let head = $state<HTMLDivElement>();
-  /** the width of the headers: the table's in view, or the columns' when they are wider */
-  let room = $state(0);
 
   let template = $derived(gridOf(lead, columns, specs));
   let minWidth = $derived(widthOf(lead, columns, specs));
-  /** the flexible column wider than its least: it fills the room, the columns after it keep to the right */
-  let fills = $derived(room > minWidth);
 
   /** a header pressed: dragged to move its column, or clicked */
   let press: { index: number; x: number; dragging: boolean } | null = null;
@@ -72,24 +71,22 @@
     dropAt = null;
   }
 
-  /** the edge after a column dragged: where it was pressed, the columns then, as they were drawn, whether the
-   *  flexible one filled the room */
-  let resizing: { index: number; x: number; start: Shown<K>[]; drawn: number[]; filled: boolean } | null = null;
-
+  /** The edge after a column pressed: dragged, it resizes the columns as they were then, in the room then. The
+   *  window follows the pointer, the edge keeping it (its cursor) while it is there. */
   function edgeDown(e: PointerEvent, index: number) {
     if (e.button !== 0) return;
     e.stopPropagation();
-    const drawn = widthsOf(columns, specs);
-    const flexible = flexibleOf(columns);
-    if (fills) drawn[flexible] += room - minWidth;
-    resizing = { index, x: e.clientX, start: columns, drawn, filled: fills };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-
-  function edgeMove(e: PointerEvent) {
-    if (!resizing) return;
-    const { index, x, start, drawn, filled } = resizing;
-    oncolumns(resized(start, specs, drawn, index, Math.round(e.clientX - x), filled));
+    const [x, start, space] = [e.clientX, columns, room - lead.reduce((sum, w) => sum + w, 0)];
+    const move = (m: PointerEvent) => oncolumns(resized(start, specs, space, index, Math.round(m.clientX - x)));
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
   }
 
   /** Right-click on the headers: the columns to show. */
@@ -117,7 +114,6 @@
   role="row"
   tabindex="-1"
   bind:this={head}
-  bind:clientWidth={room}
   style:grid-template-columns={template}
   style:min-width="{minWidth}px"
   oncontextmenu={columnMenu}
@@ -139,28 +135,29 @@
       onpointerup={() => headerUp(key)}
     >
       <span class="name">{h.name ?? specs[key].name}</span>{#if h.arrow}<span class="arrow">{h.arrow}</span>{/if}
-      <!-- the end of the table, while the flexible column fills the room, does not move -->
-      {#if i < columns.length - 1 || !fills}
-        <span
-          class="edge"
-          role="separator"
-          aria-orientation="vertical"
-          onpointerdown={(e) => edgeDown(e, i)}
-          onpointermove={edgeMove}
-          onpointerup={() => (resizing = null)}
-        ></span>
-      {/if}
+      <span
+        class="edge"
+        class:last={i === columns.length - 1}
+        role="separator"
+        aria-orientation="vertical"
+        onpointerdown={(e) => edgeDown(e, i)}
+      ></span>
     </div>
   {/each}
 </div>
 
 <style>
+  /* as high as a row (ROW), over the rows as they scroll */
   .head {
-    flex: none;
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: grid;
     align-items: center;
+    box-sizing: border-box;
     height: 26px;
     border-bottom: 1px solid var(--line);
+    background: var(--bg);
   }
   .cell {
     position: relative;
@@ -202,6 +199,13 @@
     z-index: 1;
     width: 6px;
     cursor: col-resize;
+  }
+  /* the end of the table: inside it, not wider than the room, with no line */
+  .edge.last {
+    right: 0;
+  }
+  .edge.last::after {
+    content: none;
   }
   .edge::after {
     content: "";

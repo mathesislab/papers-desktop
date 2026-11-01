@@ -1,9 +1,25 @@
-// The columns of the tables: their grid, how an edge resizes, how a header moves its column, the menu, the layout
-// of an older version read. node --test scripts/ (npm test)
+// The columns of the tables: their grid, the widths drawn, how an edge resizes (each edge of the three tables), how
+// a header moves its column, the menu, the layout of an older version read. node --test scripts/ (npm test)
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { columnsOf, gridOf, moved, resized, restoredColumns, toggled, widthOf, type Specs } from "../src/lib/list/columns.ts";
+import { FEED_ORDER, FEED_SPECS, SEARCH_ORDER, SEARCH_SPECS } from "../src/lib/feeds/columns.ts";
+import { COLUMNS, DEFAULT_ORDER } from "../src/lib/library/columns.ts";
+import {
+  columnsOf,
+  drawnOf,
+  flexibleOf,
+  gridOf,
+  leastOf,
+  moved,
+  resized,
+  restoredColumns,
+  toggled,
+  widthOf,
+  widthsOf,
+  type Shown,
+  type Specs,
+} from "../src/lib/list/columns.ts";
 
 type K = "score" | "title" | "authors" | "date";
 const specs: Specs<K> = {
@@ -21,24 +37,123 @@ test("the grid: the title takes the room left, a width under its least drawn at 
   assert.equal(widthOf([22, 18], shown, specs), 22 + 18 + 60 + 240 + 150 + 58);
 });
 
-test("an edge before the title resizes its column; the title takes the room", () => {
-  const drawn = [60, 400, 150, 58];
-  assert.deepEqual(resized(shown, specs, drawn, 0, 25, true).map((c) => c.width), [85, 240, 150, 58]);
-  // not under its least
-  assert.deepEqual(resized(shown, specs, drawn, 0, -40, true).map((c) => c.width), [60, 240, 150, 58]);
+const total = (widths: number[]) => widths.reduce((a, w) => a + w, 0);
+
+test("the widths drawn: the flexible column takes the room left, none when the columns are wider", () => {
+  assert.deepEqual(drawnOf(shown, specs, 608), [60, 340, 150, 58]);
+  assert.deepEqual(drawnOf(shown, specs, 400), [60, 240, 150, 58]);
+  // no title: the last column takes it
+  assert.deepEqual(drawnOf(columnsOf(["score", "date"], specs), specs, 200), [60, 140]);
 });
 
-test("an edge after the title, which fills the room, resizes the column after it, the title giving the room", () => {
-  const drawn = [60, 400, 150, 58];
-  // the title's edge to the right: the authors narrower, the title wider (its least stays)
-  assert.deepEqual(resized(shown, specs, drawn, 1, 30, true).map((c) => c.width), [60, 240, 120, 58]);
-  // to the left: the authors wider, the title narrower, its least going down with it once under it
-  assert.deepEqual(resized(shown, specs, drawn, 1, -200, true).map((c) => c.width), [60, 200, 350, 58]);
-  // no further than the title's least and the column's
-  assert.deepEqual(resized(shown, specs, drawn, 1, -500, true).map((c) => c.width), [60, 100, 450, 58]);
-  assert.deepEqual(resized(shown, specs, drawn, 2, 500, true).map((c) => c.width), [60, 240, 150, 58]);
-  // with the title at its least, the edge resizes the column before it and the table grows
-  assert.deepEqual(resized(shown, specs, [60, 240, 150, 58], 2, 20, false).map((c) => c.width), [60, 240, 170, 58]);
+test("an edge resizes the column to its left; those after follow; the last gives the room or takes it", () => {
+  // 608 wide: the title drawn 340, its least 240
+  const room = 608;
+  // the score's edge: the score wider, the date narrower to its least, then the table wider than the room
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 0, -10), specs, room), [60, 340, 150, 58]);
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 0, 25), specs, room), [85, 340, 150, 58]);
+  // the authors' edge, after the title: the title stays as drawn
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 2, -40), specs, room), [60, 340, 110, 98]);
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 2, 30), specs, room), [60, 340, 180, 58]);
+  // the title's own edge: the title narrower, the date taking the room; wider, the table scrolls across
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 1, -100), specs, room), [60, 240, 150, 158]);
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 1, -300), specs, room), [60, 100, 150, 298]);
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 1, 20), specs, room), [60, 360, 150, 58]);
+  // the last edge: the date wider, the table across; not narrower than the room
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 3, 12), specs, room), [60, 340, 150, 70]);
+  assert.deepEqual(drawnOf(resized(shown, specs, room, 3, -12), specs, room), [60, 340, 150, 58]);
+});
+
+test("the title's width kept: its least, as before, unless the table grows wider than the room", () => {
+  const room = 608;
+  // the room given back to the title: the window narrowed, it narrows to its least again
+  assert.equal(resized(shown, specs, room, 2, -40)[1].width, 240);
+  assert.equal(resized(shown, specs, room, 1, -50)[1].width, 240);
+  // its least lowered with it
+  assert.equal(resized(shown, specs, room, 1, -150)[1].width, 190);
+  // wider than the room: the title as it was drawn, or as its edge left it
+  assert.equal(resized(shown, specs, room, 2, 30)[1].width, 340);
+  assert.equal(resized(shown, specs, room, 1, 50)[1].width, 390);
+  // the window narrower than the table: the widths as they were, the last edge narrowing the last column down to
+  // its least, or to the room
+  assert.deepEqual(drawnOf(resized(shown, specs, 300, 3, -100), specs, 300), [60, 240, 150, 58]);
+  const wide = columnsOf(order, specs).map((c) => (c.key === "date" ? { ...c, width: 120 } : c));
+  assert.deepEqual(drawnOf(resized(wide, specs, 540, 3, -100), specs, 540), [60, 240, 150, 90]);
+});
+
+/** The three tables' columns: as at first, moved about, some hidden, the title hidden. */
+function arrangements<C extends string>(specs: Specs<C>, order: C[]): Shown<C>[][] {
+  const all = Object.keys(specs) as C[];
+  const without = (keys: C[], key: C) => keys.filter((k) => k !== key);
+  const title = "title" as C;
+  const lists: C[][] = [
+    order,
+    [...order].reverse(),
+    [title, ...without(order, title)],
+    [...without(order, title), title],
+    without(order, title),
+    without(order, order[order.length - 1]),
+    all,
+    [order[0]],
+    [title],
+  ];
+  // stored widths of every kind: at first, under their least, wide
+  return lists.flatMap((keys) => [
+    columnsOf(keys, specs),
+    keys.map((key, i) => ({ key, width: i % 2 ? 10 : specs[key].width + 40 })),
+  ]);
+}
+
+const TABLES: [string, Specs<string>, string[]][] = [
+  ["library", COLUMNS, DEFAULT_ORDER],
+  ["feeds", FEED_SPECS, FEED_ORDER],
+  ["search", SEARCH_SPECS, SEARCH_ORDER],
+];
+
+test("every edge of the three tables, the columns moved about or hidden, in a room wider or narrower", () => {
+  for (const [table, specs, order] of TABLES) {
+    for (const columns of arrangements(specs, order)) {
+      const width = total(widthsOf(columns, specs));
+      for (const room of [width + 300, width + 1, width, width - 150]) {
+        const drawn = drawnOf(columns, specs, room);
+        const last = columns.length - 1;
+        const least = (i: number) => leastOf(specs, columns[i].key);
+        for (let index = 0; index <= last; index++) {
+          for (const move of [-600, -45, -1, 0, 1, 45, 600]) {
+            const at = `${table} ${columns.map((c) => c.key)} in ${room}, edge ${index} by ${move}`;
+            const out = resized(columns, specs, room, index, move);
+            const now = drawnOf(out, specs, room);
+            assert.deepEqual(out.map((c) => c.key), columns.map((c) => c.key), at);
+            // the columns before the edge do not move
+            assert.deepEqual(now.slice(0, index), drawn.slice(0, index), at);
+            // the column to its left resized, not under its least
+            const sized = Math.max(least(index), drawn[index] + move);
+            if (index < last) {
+              assert.equal(now[index], sized, at);
+              // those after it keep their widths, the last giving the room or taking it
+              assert.deepEqual(now.slice(index + 1, last), drawn.slice(index + 1, last), at);
+              assert.equal(now[last], Math.max(least(last), drawn[last] - (sized - drawn[index])), at);
+            } else {
+              // the last: the table no narrower than the room
+              assert.equal(now[last], Math.max(sized, room - total(drawn.slice(0, last))), at);
+            }
+            // no column under its least, the table no narrower than the room
+            now.forEach((w, i) => assert.ok(w >= least(i), at));
+            assert.ok(total(now) >= room, at);
+            // the widths kept draw the same after a reload
+            const saved = restoredColumns(JSON.parse(JSON.stringify(out)), specs, order);
+            assert.deepEqual(drawnOf(saved, specs, room), now, at);
+            // the window wider than the table: the flexible column takes the room
+            const flexible = flexibleOf(out);
+            const wider = drawnOf(out, specs, total(now) + 100);
+            assert.deepEqual(wider, now.map((w, i) => (i === flexible ? w + 100 : w)), at);
+          }
+          // a press without a move moves nothing
+          assert.deepEqual(drawnOf(resized(columns, specs, room, index, 0), specs, room), drawn, `${table} ${index}`);
+        }
+      }
+    }
+  }
 });
 
 test("a header dragged moves its column", () => {

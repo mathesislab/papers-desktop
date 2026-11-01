@@ -172,48 +172,48 @@
   });
 </script>
 
-<div class="table" role="grid" aria-rowcount={rows.length}>
-  <TableHead lead={LEAD} {columns} specs={COLUMNS} menu={Object.keys(COLUMNS) as Column[]} {heading} onclick={sortBy} {oncolumns} />
-  <div
-    class="body"
-    bind:this={view.body}
-    bind:clientHeight={view.height}
-    style:min-width="{minWidth}px"
-    onscroll={() => onscrolled?.(view.scrolled())}
-  >
-    <div style:height="{rows.length * ROW}px" style:position="relative">
-      {#each rows.slice(view.first, view.last) as row, i (row.id)}
-        <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
-        <div
-          class="row"
-          class:selected={selected.has(row.id)}
-          role="row"
-          tabindex="-1"
-          aria-selected={selected.has(row.id)}
-          style:top="{(view.first + i) * ROW}px"
-          style:grid-template-columns={template}
-          onpointerdown={(e) => rowPress(e, row.id)}
-          onmousedown={(e) => rowDown(e, row.id)}
-          onclick={() => rowClick(row.id)}
-          ondblclick={() => rowOpen(row.id)}
-          oncontextmenu={(e) => {
-            e.preventDefault();
-            onmenu(row.id, e);
-          }}
-        >
-          <span class="file" title={row.file === "missing" ? "File not found" : ""}>
-            {#if row.file !== "none"}
-              <svg class:missing={row.file === "missing"} viewBox="0 0 12 14" aria-hidden="true">
-                <path d="M2 1h5l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.2" />
-              </svg>
-            {/if}
-          </span>
-          {#each columns as { key } (key)}
-            <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added"}>{text(row, key)}</span>
-          {/each}
-        </div>
-      {/each}
-    </div>
+<div
+  class="table"
+  role="grid"
+  aria-rowcount={rows.length}
+  bind:this={view.table}
+  bind:clientHeight={view.height}
+  bind:clientWidth={view.width}
+  onscroll={() => onscrolled?.(view.scrolled())}
+>
+  <TableHead lead={LEAD} room={view.width} {columns} specs={COLUMNS} menu={Object.keys(COLUMNS) as Column[]} {heading} onclick={sortBy} {oncolumns} />
+  <div class="rows" style:height="{rows.length * ROW}px" style:min-width="{minWidth}px">
+    {#each rows.slice(view.first, view.last) as row, i (row.id)}
+      <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
+      <div
+        class="row"
+        class:selected={selected.has(row.id)}
+        role="row"
+        tabindex="-1"
+        aria-selected={selected.has(row.id)}
+        style:top="{(view.first + i) * ROW}px"
+        style:grid-template-columns={template}
+        onpointerdown={(e) => rowPress(e, row.id)}
+        onmousedown={(e) => rowDown(e, row.id)}
+        onclick={() => rowClick(row.id)}
+        ondblclick={() => rowOpen(row.id)}
+        oncontextmenu={(e) => {
+          e.preventDefault();
+          onmenu(row.id, e);
+        }}
+      >
+        <span class="file" title={row.file === "missing" ? "File not found" : ""}>
+          {#if row.file !== "none"}
+            <svg class:missing={row.file === "missing"} viewBox="0 0 12 14" aria-hidden="true">
+              <path d="M2 1h5l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.2" />
+            </svg>
+          {/if}
+        </span>
+        {#each columns as { key } (key)}
+          <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added"}>{text(row, key)}</span>
+        {/each}
+      </div>
+    {/each}
   </div>
 </div>
 
@@ -239,29 +239,27 @@
     text-overflow: ellipsis;
     pointer-events: none;
   }
+  /* one scroll, down and across: the headers and the rows keep their columns together */
   .table {
     flex: 1;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow-x: auto;
+    overflow: auto;
   }
   .row {
     display: grid;
     align-items: center;
     height: 26px;
   }
-  .body {
-    flex: 1;
-    overflow-y: auto;
+  .rows {
+    position: relative;
   }
-  .body .row {
+  .rows .row {
     position: absolute;
     left: 0;
     right: 0;
     border-bottom: 1px solid var(--line);
   }
-  .body .row span {
+  .rows .row span {
     padding: 0 8px;
     overflow: hidden;
     white-space: nowrap;

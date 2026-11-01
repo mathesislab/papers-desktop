@@ -214,16 +214,24 @@
     layout.library.bibs.length ? tagCounts(rows.filter((r) => layout.library.bibs.includes(r.bib))) : tags,
   );
 
+  /** the width of the date added where *Recently added* shows it: kept while the window is open, not in the layout */
+  let addedWidth = $state(COLUMNS.added.width);
+
   /** the columns of the table: in *Recently added*, the date added too (last, unless shown already) */
   let columns = $derived(
     layout.library.view === "added" && !layout.columns.some((c) => c.key === "added")
-      ? [...layout.columns, { key: "added" as const, width: COLUMNS.added.width }]
+      ? [...layout.columns, { key: "added" as const, width: addedWidth }]
       : layout.columns,
   );
 
-  /** The columns changed in the table: the date added, shown by *Recently added* only, is not kept. */
+  /** The columns changed in the table: the date added, shown by *Recently added* only, is not kept in the layout. */
   function setColumns(next: Shown<Column>[]) {
-    layout.columns = columns === layout.columns ? next : next.filter((c) => c.key !== "added");
+    if (columns === layout.columns) {
+      layout.columns = next;
+      return;
+    }
+    addedWidth = next.find((c) => c.key === "added")?.width ?? addedWidth;
+    layout.columns = next.filter((c) => c.key !== "added");
   }
 
   /** the filters on, as chips above the table */

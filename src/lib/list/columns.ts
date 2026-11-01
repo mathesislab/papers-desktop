@@ -1,8 +1,8 @@
 // The columns of the tables of the three tabs (the library's Table, FeedTable; their headers are TableHead): those
 // shown, in their order, each with its width; the one that takes the room left (the title, else the last), whose
-// width is its least; each column's least width; how an edge of a header resizes, how a header dragged moves its
-// column, the menu that shows or hides one, the layout of an older version read. Pure functions, tested by
-// scripts/columns.test.ts (npm test).
+// width is its least; each column's least width; the widths drawn; how an edge of a header resizes (the column to
+// its left, the last column giving the room), how a header dragged moves its column, the menu that shows or hides
+// one, the layout of an older version read. Pure functions, tested by scripts/columns.test.ts (npm test).
 
 /** A column shown, and its width in pixels (the flexible column's: its least). */
 export type Shown<K extends string = string> = { key: K; width: number };
@@ -44,34 +44,42 @@ export function gridOf<K extends string>(lead: number[], shown: Shown<K>[], spec
 export const widthOf = <K extends string>(lead: number[], shown: Shown<K>[], specs: Specs<K>) =>
   [...lead, ...widthsOf(shown, specs)].reduce((sum, w) => sum + w, 0);
 
+const sum = (widths: number[]) => widths.reduce((a, w) => a + w, 0);
+
+/** The widths the columns shown are drawn at in `room` pixels (the table's in view, after its lead), as `gridOf`
+ *  draws them: each at its width, the flexible one taking the room left. */
+export function drawnOf<K extends string>(shown: Shown<K>[], specs: Specs<K>, room: number): number[] {
+  const drawn = widthsOf(shown, specs);
+  drawn[flexibleOf(shown)] += Math.max(0, room - sum(drawn));
+  return drawn;
+}
+
 /**
- * The edge after column `index` dragged `moved` pixels from where it was pressed, the columns being `shown` then
- * and drawn `drawn` wide (the flexible one as wide as it was drawn) and the flexible one filled the room (`filled`): the edge
- * follows the pointer, the other columns keep their widths. Before the flexible column, after the last, or with the
- * flexible one at its least, the edge resizes the column before it (the flexible one takes the room left); after
- * the flexible column, which fills the room, it resizes the column after it, the flexible one giving the room or
- * taking it (its least going down with it).
+ * The columns after the edge of column `index` dragged `moved` pixels from where it was pressed, the columns being
+ * `shown` then in `room` pixels (the table's in view, after its lead). The edge resizes the column to its left, not
+ * under its least; the columns before it do not move, those after it follow it, and the last column gives the room
+ * or takes it, down to its least, beyond which the table grows wider than the room and scrolls across. The last
+ * column's own edge resizes it, the table no narrower than the room. The flexible column keeps its width unless the
+ * edge is its own; its width kept is its least: as before, unless the table grows wider than the room, when it is the
+ * width it is drawn at.
  */
 export function resized<K extends string>(
   shown: Shown<K>[],
   specs: Specs<K>,
-  drawn: number[],
+  room: number,
   index: number,
   moved: number,
-  filled: boolean,
 ): Shown<K>[] {
-  const flexible = flexibleOf(shown);
   const least = (i: number) => leastOf(specs, shown[i].key);
-  const out = shown.map((c) => ({ ...c }));
-  if (index < flexible || index === shown.length - 1 || !filled) {
-    out[index].width = Math.max(least(index), drawn[index] + moved);
-    return out;
-  }
-  // as far as the column after the edge and the flexible one allow
-  const change = Math.min(drawn[index + 1] - least(index + 1), Math.max(least(flexible) - drawn[flexible], moved));
-  out[index + 1].width = drawn[index + 1] - change;
-  out[flexible].width = Math.min(widthsOf(shown, specs)[flexible], drawn[flexible] + change);
-  return out;
+  const drawn = drawnOf(shown, specs, room);
+  const last = shown.length - 1;
+  const out = [...drawn];
+  out[index] = Math.max(least(index), drawn[index] + moved);
+  if (index < last) out[last] = Math.max(least(last), drawn[last] - (out[index] - drawn[index]));
+  else out[last] = Math.max(out[last], room - sum(drawn.slice(0, last)));
+  const flexible = flexibleOf(shown);
+  const kept = sum(out) > room ? out[flexible] : Math.min(widthsOf(shown, specs)[flexible], out[flexible]);
+  return shown.map((c, i) => ({ key: c.key, width: i === flexible ? kept : out[i] }));
 }
 
 /** The column at `from` moved before the column at `to` (the end: `shown.length`); the same when it would not move. */

@@ -108,108 +108,106 @@
   const authorsOf = (row: FeedRow) => row.authors.slice(0, 3);
 </script>
 
-<div class="table" role="grid" aria-rowcount={rows.length}>
-  <TableHead lead={LEAD} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
-  <div
-    class="body"
-    bind:this={view.body}
-    bind:clientHeight={view.height}
-    style:min-width="{minWidth}px"
-    onscroll={view.scrolled}
-  >
-    <div style:height="{rows.length * ROW}px" style:position="relative">
-      {#each rows.slice(view.first, view.last) as row, i (row.id)}
-        <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
-        <div
-          class="row {unread ? row.triage : ''}"
-          class:selected={selected.has(row.id)}
-          role="row"
-          tabindex="-1"
-          aria-selected={selected.has(row.id)}
-          style:top="{(view.first + i) * ROW}px"
-          style:grid-template-columns={template}
-          onmousedown={(e) => onselect(row.id, e)}
-          ondblclick={() => onopen(row.id)}
-          oncontextmenu={(e) => {
-            e.preventDefault();
-            onmenu(row.id);
-          }}
-        >
-          {#if row.triage === "added"}
-            <span class="star added" title="Added">✓</span>
+<div
+  class="table"
+  role="grid"
+  aria-rowcount={rows.length}
+  bind:this={view.table}
+  bind:clientHeight={view.height}
+  bind:clientWidth={view.width}
+  onscroll={view.scrolled}
+>
+  <TableHead lead={LEAD} room={view.width} {columns} {specs} {menu} {heading} onclick={sortBy} {oncolumns} />
+  <div class="rows" style:height="{rows.length * ROW}px" style:min-width="{minWidth}px">
+    {#each rows.slice(view.first, view.last) as row, i (row.id)}
+      <!-- svelte-ignore a11y_click_events_have_key_events (the keys of the window move the selection) -->
+      <div
+        class="row {unread ? row.triage : ''}"
+        class:selected={selected.has(row.id)}
+        role="row"
+        tabindex="-1"
+        aria-selected={selected.has(row.id)}
+        style:top="{(view.first + i) * ROW}px"
+        style:grid-template-columns={template}
+        onmousedown={(e) => onselect(row.id, e)}
+        ondblclick={() => onopen(row.id)}
+        oncontextmenu={(e) => {
+          e.preventDefault();
+          onmenu(row.id);
+        }}
+      >
+        {#if row.triage === "added"}
+          <span class="star added" title="Added">✓</span>
+        {:else}
+          <button
+            class="star"
+            class:on={row.triage === "starred"}
+            title={row.triage === "starred" ? star.on : star.off}
+            onmousedown={(e) => e.stopPropagation()}
+            ondblclick={(e) => e.stopPropagation()}
+            onclick={() => onstar(row.id)}>{row.triage === "starred" ? "★" : "☆"}</button
+          >
+        {/if}
+        <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
+        {#each columns as { key: column } (column)}
+          {#if column === "score"}
+            <span class="score">{scoreText(row.score)}</span>
+          {:else if column === "cited"}
+            <span class="cited muted" title="The works that cite it, as OpenAlex counts them">{citedText(row.cited)}</span>
+          {:else if column === "similar"}
+            <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
+          {:else if column === "title"}
+            <span class="title"><Marked spans={row.title} /></span>
+          {:else if column === "authors"}
+            <span class="muted">
+              {#if row.authors.length}
+                {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
+              {:else if isPost(row.kind)}
+                {ITEM_KINDS[row.kind].name}
+              {/if}
+            </span>
+          {:else if column === "journal"}
+            <span class="muted" title={row.sources.join(", ")}>{row.journal ?? row.sources[0] ?? ""}</span>
+          {:else if column === "date"}
+            <span class="muted date">{ago(row.date, now)}</span>
+          {:else if column === "year"}
+            <span class="muted date">{yearOf(row.date)}</span>
           {:else}
-            <button
-              class="star"
-              class:on={row.triage === "starred"}
-              title={row.triage === "starred" ? star.on : star.off}
-              onmousedown={(e) => e.stopPropagation()}
-              ondblclick={(e) => e.stopPropagation()}
-              onclick={() => onstar(row.id)}>{row.triage === "starred" ? "★" : "☆"}</button
-            >
+            <span class="badges">
+              {#each badges(row) as b (b.text)}
+                <span class="badge {b.kind}" style:--c={b.kind === "interest" ? colours.get(b.text) : null}>{b.text}</span>
+              {/each}
+            </span>
           {/if}
-          <span class="mark {row.kind}" title={ITEM_KINDS[row.kind].name}>{row.kind === "paper" ? "" : ITEM_KINDS[row.kind].mark}</span>
-          {#each columns as { key: column } (column)}
-            {#if column === "score"}
-              <span class="score">{scoreText(row.score)}</span>
-            {:else if column === "cited"}
-              <span class="cited muted" title="The works that cite it, as OpenAlex counts them">{citedText(row.cited)}</span>
-            {:else if column === "similar"}
-              <span class="like muted" title="How similar to the papers of your library (0–100)">{likeText(row.like)}</span>
-            {:else if column === "title"}
-              <span class="title"><Marked spans={row.title} /></span>
-            {:else if column === "authors"}
-              <span class="muted">
-                {#if row.authors.length}
-                  {#each authorsOf(row) as name, j}{#if j}, {/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
-                {:else if isPost(row.kind)}
-                  {ITEM_KINDS[row.kind].name}
-                {/if}
-              </span>
-            {:else if column === "journal"}
-              <span class="muted" title={row.sources.join(", ")}>{row.journal ?? row.sources[0] ?? ""}</span>
-            {:else if column === "date"}
-              <span class="muted date">{ago(row.date, now)}</span>
-            {:else if column === "year"}
-              <span class="muted date">{yearOf(row.date)}</span>
-            {:else}
-              <span class="badges">
-                {#each badges(row) as b (b.text)}
-                  <span class="badge {b.kind}" style:--c={b.kind === "interest" ? colours.get(b.text) : null}>{b.text}</span>
-                {/each}
-              </span>
-            {/if}
-          {/each}
-        </div>
-      {/each}
-    </div>
-    {@render after?.()}
+        {/each}
+      </div>
+    {/each}
   </div>
+  {@render after?.()}
 </div>
 
 <style>
+  /* one scroll, down and across: the headers and the rows keep their columns together */
   .table {
     flex: 1;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow-x: auto;
+    overflow: auto;
   }
   .row {
     display: grid;
     align-items: center;
     height: 26px;
   }
-  .body {
-    flex: 1;
-    overflow-y: auto;
+  .rows {
+    position: relative;
   }
-  .body .row {
+  .rows .row {
     position: absolute;
     left: 0;
     right: 0;
     border-bottom: 1px solid var(--line);
   }
-  .body .row > span {
+  .rows .row > span {
     padding: 0 8px;
     overflow: hidden;
     white-space: nowrap;
@@ -242,8 +240,8 @@
     font-variant-numeric: tabular-nums;
     text-align: right;
   }
-  .body .row > .mark,
-  .body .row > .star {
+  .rows .row > .mark,
+  .rows .row > .star {
     padding: 0;
     text-align: center;
     font-size: 11px;

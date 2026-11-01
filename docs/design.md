@@ -50,13 +50,20 @@ Three panes, each resized by dragging, the right one hidden on demand:
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
   missing file), multi-select. Only the rows on screen are drawn
-  (`list/virtual.svelte.ts`). The headers are the three tables' (`TableHead`,
+  (`list/virtual.svelte.ts`); the table scrolls as one, down and across, its
+  headers staying at its top. The headers are the three tables' (`TableHead`,
   `list/columns.ts`, the library's, the Feeds and the Search tab's): a click
   sorts, a header dragged moves its column, a right-click shows or hides
-  columns, an edge resizes, following the pointer (the title, else the last
-  column, takes the room left; after it, an edge resizes the column after it,
-  the title giving or taking the room; each column has a least width; their
-  names and widths at first in `library/columns.ts` and `feeds/columns.ts`).
+  columns. An edge dragged resizes the column to its left, following the
+  pointer: the columns before it do not move, those after it follow, and the
+  last column gives the room or takes it; at its least width, the table grows
+  wider than the window and scrolls across. The last column's own edge
+  resizes it, the table no narrower than the window. The title (else the last
+  column) takes the room the window gives or takes, down to the width kept
+  for it, its least, which a drag leaves as it was unless the table grows
+  wider than the window; it changes width in a drag only by its own edge.
+  Each column has a least width; their names and widths at first are in
+  `library/columns.ts` and `feeds/columns.ts`.
   The layout keeps each table's columns as a list of `{key, width}`; that of
   an older version is read (the library's `{column, width}`, the Feeds and
   Search tabs' widths by column, in their first order). A line
@@ -284,14 +291,15 @@ A tag or the selection exports to a `.bib` file, e.g. a manuscript's
 **Recently added** (#1; `added.rs`, the view in `filters.ts`): the last 100
 papers added to the library chosen, newest first, before the tags and the
 search narrow them, with an *Added* column (the date as the Downloads panel
-writes it; shown in that view, and in the column menu of any view). Nothing in
-a `.bib` tells when an entry came, so the app keeps it: `added.json` in its data
-folder, for each .bib (by its real path) each key with the time it was first
-seen (`added`, Unix seconds, or `null`) and what tells the paper apart (`doi`,
-`title`: the identity of `papers_core::Identity`, by which duplicates are
-found). Not portable: another computer starts again. Each time the library is
-read, a thread of its own (the library shows at once; the page is told,
-`added`) compares its keys with the file:
+writes it; shown in that view, its width kept while the window is open, and in
+the column menu of any view). Nothing in a `.bib` tells when an entry came, so
+the app keeps it: `added.json` in its data folder, for each .bib (by its real
+path) each key with the time it was first seen (`added`, Unix seconds, or
+`null`) and what tells the paper apart (`doi`, `title`: the identity of
+`papers_core::Identity`, by which duplicates are found). Not portable: another
+computer starts again. Each time the library is read, a thread of its own (the
+library shows at once; the page is told, `added`) compares its keys with the
+file:
 
 - a key not there yet takes the time papers' history gives it
   (`History::entry_times` of papers-rs: the oldest state on the line of the
