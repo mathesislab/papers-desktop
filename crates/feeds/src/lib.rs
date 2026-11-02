@@ -72,7 +72,7 @@ pub use library::LibraryFacts;
 pub use links::Found;
 pub use model::{
     Confidence, Entry, Feed, Item, ItemKind, LOOKUP, Linked, Mark, Origin, Reminder, Source,
-    SourceKind, Stage, Subscription, SubscriptionSettings, Triage, Version, Via,
+    SourceKind, Stage, Stages, Subscription, SubscriptionSettings, Triage, Version, Via,
 };
 pub use online::{OwnService, Service, check_services, online_url};
 pub use opml::Outline;

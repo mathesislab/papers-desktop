@@ -357,6 +357,15 @@ words!(Stage {
     Published => "published",
 });
 
+/// The stages of a paper known: its own (a preprint's, else published) and its versions'.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Stages {
+    Preprint,
+    Published,
+    Both,
+}
+
 /// A DOI of an item: its preprint or its published version.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Version {
@@ -453,6 +462,21 @@ impl Item {
     /// Whether it is a preprint, or has one among its versions.
     pub fn has_versions(&self) -> bool {
         self.kind == ItemKind::Preprint || self.versions.iter().any(|v| v.stage == Stage::Preprint)
+    }
+
+    /// The stages known of it: its own, and those of its versions.
+    pub fn stages(&self) -> Stages {
+        let own = if self.kind == ItemKind::Preprint {
+            Stage::Preprint
+        } else {
+            Stage::Published
+        };
+        let known = |stage| own == stage || self.versions.iter().any(|v| v.stage == stage);
+        match (known(Stage::Preprint), known(Stage::Published)) {
+            (true, true) => Stages::Both,
+            (true, false) => Stages::Preprint,
+            _ => Stages::Published,
+        }
     }
 
     /// Its OpenAlex id (`W…`), if an entry is OpenAlex's work.

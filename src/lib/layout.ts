@@ -2,7 +2,7 @@
 // commands `layout` and `save_layout`), and that of an older version read. Pure, tested by scripts/layout.test.ts
 // (npm test).
 
-import { FEED_ORDER, FEED_SPECS, SEARCH_ORDER, SEARCH_SPECS, similarAsScore, type FeedColumn } from "./feeds/columns.ts";
+import { FEED_ORDER, FEED_SPECS, SEARCH_ORDER, SEARCH_SPECS, olderColumns, type FeedColumn } from "./feeds/columns.ts";
 import { NO_FEED_FILTERS, restoredFeeds, type FeedFilters } from "./feeds/filters.ts";
 import { COLUMNS, DEFAULT_COLUMNS, DEFAULT_ORDER, type Column, type Sort } from "./library/columns.ts";
 import { NO_FILTERS, restored, type Filters } from "./library/filters.ts";
@@ -87,7 +87,7 @@ const DEFAULTS: Layout = {
  *  tab's, a table), and what it kept apart (`Before`) comes in its place; the filters of the library tab and of the
  *  Feeds tab, and the Search tab's, are checked (`restored`, `restoredFeeds`, `restoredSearch`), as are the columns
  *  of the three tables (`restoredColumns`: those of the Feeds and Search tabs, once widths by column, become a list
- *  in their first order, at the widths saved; their Similar column of before is the Score column, `similarAsScore`)
+ *  in their first order, at the widths saved; their columns of before renamed, `olderColumns`)
  *  and the looks of the three lists (`restoredLook`). */
 export function restore(saved: (Partial<Layout> & Before) | null): Layout {
   const { view, feedColumns, feedsShown, searchColumns, ...kept } = saved ?? {};
@@ -109,13 +109,13 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
     library: restored(kept.library),
     feeds: {
       filters: restoredFeeds(feeds.filters as Partial<FeedFilters> | undefined),
-      columns: restoredColumns(similarAsScore(feeds.columns), FEED_SPECS, FEED_ORDER),
+      columns: restoredColumns(olderColumns(feeds.columns), FEED_SPECS, FEED_ORDER),
       look: restoredLook(feeds.look, "simple"),
       shown: typeof feeds.shown === "string" ? feeds.shown : null,
     },
     search: {
       ...restoredSearch(search),
-      columns: restoredColumns(similarAsScore(search?.columns ?? searchColumns), SEARCH_SPECS, SEARCH_ORDER),
+      columns: restoredColumns(olderColumns(search?.columns ?? searchColumns), SEARCH_SPECS, SEARCH_ORDER),
       look: restoredLook(search?.look, "table"),
     },
   };

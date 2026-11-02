@@ -6,7 +6,8 @@
 
 use papers_feeds::http::Recorded;
 use papers_feeds::{
-    Access, Feed, Feeds, ItemKind, LOOKUP, Reply, SourceKind, Stage, SubscriptionSettings, Triage,
+    Access, Feed, Feeds, ItemKind, LOOKUP, Reply, SourceKind, Stage, Stages, SubscriptionSettings,
+    Triage,
 };
 
 const TC: &str = "https://tc.copernicus.org/xml/rss2_0.xml";
@@ -117,6 +118,7 @@ fn a_preprint_and_its_paper_become_one_item() {
         stages,
         [(EGU_DOI, Stage::Preprint), (TC_DOI, Stage::Published)]
     );
+    assert_eq!(item.stages(), Stages::Both, "the paper, its preprint known");
     assert_eq!(
         item.authors[0], "David R. Casson",
         "Crossref's, the feeds had none"

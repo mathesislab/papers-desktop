@@ -34,10 +34,11 @@ import {
   addTarget,
   Dwell,
   ago,
-  badges,
   barOf,
   fetchLine,
+  marks,
   mergeRows,
+  stagesOf,
   NO_INTERESTS,
   newAbove,
   newOlderThan,
@@ -293,7 +294,7 @@ const row = (id: string, triage: Triage = "new"): FeedRow => ({
   reminder: null,
   remind: null,
   inLibrary: [],
-  hasVersions: false,
+  stages: "published",
   coveredBy: 0,
   links: 0,
 });
@@ -346,30 +347,36 @@ test("ages, staleness and the status line", () => {
   assert.equal(fetchLine(null, now), "not fetched yet");
 });
 
-test("badges", () => {
-  const r = {
-    ...row("a"),
-    inLibrary: ["x"],
-    hasVersions: true,
-    coveredBy: 2,
-    interests: [
-      { interest: "AMOC", score: 4, scaled: 66.7, terms: [], excluded: null, reached: true },
-      { interest: "Ice", score: 1, scaled: 16.7, terms: [], excluded: null, reached: false },
-    ],
-  };
+test("the status of an item: its version, the library, the news, the reminder, in that order", () => {
   const one = () => null;
-  assert.deepEqual(
-    badges(r, one).map((b) => b.text),
-    ["in library", "has preprint", "2 news", "AMOC"],
-  );
-  assert.deepEqual(badges({ ...row("p"), kind: "news", links: 1 }, one).map((b) => b.text), ["→ paper"]);
-  // a library of several .bib files: each named, once
+  const said = (r: Parameters<typeof marks>[0], libraryOf: (id: string) => string | null = one) =>
+    marks(r, libraryOf).map((m) => [m.symbol, m.text]);
+  assert.deepEqual(said({ ...row("a"), inLibrary: ["x"], stages: "both", coveredBy: 2 }), [
+    ["both", "preprint and published"],
+    ["library", "in library"],
+    ["covered", "2 news"],
+  ]);
+  assert.deepEqual(said({ ...row("p"), kind: "preprint", stages: "preprint", reminder: "due" }), [
+    ["preprint", "preprint"],
+    ["due", "reminder due"],
+  ]);
+  assert.deepEqual(said({ ...row("n"), kind: "news", links: 2 }), [["news", "news & press · → 2 papers"]]);
+  // a library of several .bib files: each named, once, with an entry of it to show
   const bibs: Record<string, string> = { x: "thesis.bib", y: "papers.bib", z: "thesis.bib" };
-  const several = (id: string) => bibs[id] ?? null;
-  assert.deepEqual(
-    badges({ ...row("b"), inLibrary: ["x", "y", "z"] }, several).map((b) => b.text),
-    ["in thesis.bib", "in papers.bib"],
-  );
+  const lib = marks({ ...row("b"), inLibrary: ["x", "y", "z"] }, (id) => bibs[id] ?? null)[1];
+  assert.equal(lib.text, "in thesis.bib, papers.bib");
+  assert.deepEqual(lib.slot === "library" && lib.entries, [
+    { id: "x", bib: "thesis.bib" },
+    { id: "y", bib: "papers.bib" },
+  ]);
+});
+
+test("the stages of a paper known: its own and its versions'", () => {
+  assert.equal(stagesOf("paper", []), "published");
+  assert.equal(stagesOf("preprint", []), "preprint");
+  assert.equal(stagesOf("paper", ["preprint"]), "both");
+  assert.equal(stagesOf("preprint", ["published"]), "both");
+  assert.equal(stagesOf("preprint", ["preprint"]), "preprint");
 });
 
 test("seen on dwell: an item that stays, not one passed over", () => {

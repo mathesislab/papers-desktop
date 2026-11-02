@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use papers_core::{Library, Matching, Span};
 use papers_feeds::{
     Confidence, Feeds, Groups, Item, ItemKind, Rating, Reminder, Score, Sort, SourceKind, Stage,
-    Triage, Via, ViewRequest as CrateRequest, safe_html,
+    Stages, Triage, Via, ViewRequest as CrateRequest, safe_html,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,7 +46,8 @@ pub struct FeedRow {
     /// when it is to be reminded of
     remind: Option<DateTime<Utc>>,
     in_library: Vec<String>,
-    has_versions: bool,
+    /// the stages of it known: a preprint, published, or both
+    stages: Stages,
     covered_by: usize,
     links: usize,
     /// the works that cite it, as OpenAlex counted them when it was found
@@ -253,7 +254,7 @@ impl<'a> Rows<'a> {
             reminder: row.reminder,
             remind: feeds.mark(&item.id).and_then(|m| m.remind),
             in_library: row.in_library,
-            has_versions: item.has_versions(),
+            stages: item.stages(),
             covered_by: row.covered_by,
             links: item.links.len(),
             cited: item.cited,

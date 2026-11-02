@@ -47,7 +47,7 @@ test("a layout of an older version: the tab in front, the Feeds and Search tabs'
 test("the Feeds tab's columns of an older version still, widths by column: in their first order", () => {
   const layout = restore({ feedColumns: { score: 90, journal: 120 } } as never);
   assert.deepEqual(layout.feeds.columns.slice(0, 4), [
-    { key: "badges", width: 190 },
+    { key: "status", width: 72 },
     { key: "score", width: 90 },
     { key: "date", width: 58 },
     { key: "journal", width: 120 },
@@ -60,8 +60,10 @@ test("the Similar column of before (now a part of the score): the Score column i
   const feeds = shown("date", "journal", "title", "authors", "similar", "score", "badges");
   const search = shown("cited", "similar", "title", "authors", "journal", "year", "badges");
   const layout = restore({ feeds: { filters: {}, columns: feeds }, search: { columns: search } } as never);
-  assert.deepEqual(keys(layout.feeds.columns), ["date", "journal", "title", "authors", "score", "badges"]);
-  assert.deepEqual(keys(layout.search.columns), ["cited", "score", "title", "authors", "journal", "year", "badges"]);
+  // the Badges column of before too: the Status column, at its own width
+  assert.deepEqual(keys(layout.feeds.columns), ["date", "journal", "title", "authors", "score", "status"]);
+  assert.deepEqual(keys(layout.search.columns), ["cited", "score", "title", "authors", "journal", "year", "status"]);
+  assert.deepEqual(layout.feeds.columns.at(-1), { key: "status", width: 72 });
   assert.deepEqual(layout.search.columns[1], { key: "score", width: 72 }, "at the width of the Similar column");
   const older = restore({ feedColumns: shown("title", "similar") } as never);
   assert.deepEqual(keys(older.feeds.columns), ["title", "score"]);

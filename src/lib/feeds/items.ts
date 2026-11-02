@@ -2,8 +2,8 @@
 // shown counts as seen, what an item adds to the library, how old things are said to be. Pure, tested by
 // scripts/feeds.test.ts (npm test).
 
-import type { FeedDetail, FeedRow, FetchSummary, Linked, Rated, Reminder, Scored, Triage } from "./api.ts";
-import { isPost } from "./kinds.ts";
+import type { FeedDetail, FeedRow, FetchSummary, ItemKind, Linked, Rated, Reminder, Scored, Stages, Triage } from "./api.ts";
+import { ITEM_KINDS, isPost } from "./kinds.ts";
 
 /** the keys that change the triage of the items selected */
 export type TriageAction = "star" | "remove" | "read";
@@ -176,27 +176,75 @@ export function fetchLine(last: FetchSummary | null, now = Date.now()): string {
   return parts.join(" · ");
 }
 
-/** The badges of a row, after its title: in the library, by the .bib of each paper of it there when the library has
- *  several (`libraryOf`, "in thesis.bib"; none: "in library"), once each. */
-export function badges(
-  row: FeedRow,
-  libraryOf: (id: string) => string | null,
-): { text: string; kind: "lib" | "pre" | "news" | "link" | "interest" | "remind" }[] {
-  const list: ReturnType<typeof badges> = [];
-  if (row.reminder === "due") list.push({ text: "⏰", kind: "remind" });
-  else if (row.reminder === "snoozed" && row.remind) {
-    const day = new Date(row.remind).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-    list.push({ text: `⏰ ${day}`, kind: "remind" });
+/** What the status of an item says (`marks`): a row's, or the details' (`detailMarked`). */
+export interface Markable {
+  kind: ItemKind;
+  inLibrary: string[];
+  stages: Stages;
+  /** the posts that link to it */
+  coveredBy: number;
+  /** a post: the papers found behind it */
+  links: number;
+  reminder?: Reminder | null;
+  remind?: string | null;
+}
+
+/** A symbol of the status of an item, in its slot (the slots in this order: its version or, a post, its kind; the
+ *  library; the news; the reminder), with what it says in words (on hover; in the details beside it). An item in
+ *  the library has its entries, by the .bib of each when the library has several (else null), once a .bib. */
+export type Mark =
+  | { slot: "version"; symbol: "preprint" | "published" | "both" | "news" | "blog"; text: string }
+  | { slot: "library"; symbol: "library"; text: string; entries: { id: string; bib: string | null }[] }
+  | { slot: "news"; symbol: "covered"; text: string }
+  | { slot: "reminder"; symbol: "due" | "snoozed"; text: string };
+
+export const MARK_SLOTS = ["version", "library", "news", "reminder"] as const;
+
+/** The status of an item as symbols: a paper a preprint (◐), published (◑) or both known (●), a post its kind with
+ *  the papers behind it; in the library, by its .bib files (`libraryOf`, "in thesis.bib"; none: "in library"); the
+ *  news that covered it; its reminder. */
+export function marks(item: Markable, libraryOf: (id: string) => string | null): Mark[] {
+  const list: Mark[] = [];
+  if (isPost(item.kind)) {
+    const behind = item.links ? ` · → ${item.links === 1 ? "1 paper" : `${item.links} papers`}` : "";
+    list.push({ slot: "version", symbol: item.kind === "news" ? "news" : "blog", text: ITEM_KINDS[item.kind].name + behind });
+  } else {
+    list.push({ slot: "version", symbol: item.stages, text: item.stages === "both" ? "preprint and published" : item.stages });
   }
-  const bibs = new Set(row.inLibrary.map((id) => libraryOf(id)));
-  for (const bib of bibs) list.push({ text: bib ? `in ${bib}` : "in library", kind: "lib" });
-  if (row.kind === "preprint") list.push({ text: "preprint", kind: "pre" });
-  else if (row.hasVersions && row.kind === "paper") list.push({ text: "has preprint", kind: "pre" });
-  if (row.coveredBy) list.push({ text: `${row.coveredBy} news`, kind: "news" });
-  if (row.links) list.push({ text: row.links === 1 ? "→ paper" : `→ ${row.links} papers`, kind: "link" });
-  for (const s of row.interests.filter((s) => s.reached)) list.push({ text: s.interest, kind: "interest" });
+  if (item.inLibrary.length) {
+    const entries = new Map<string | null, string>();
+    for (const id of item.inLibrary) {
+      const bib = libraryOf(id);
+      if (!entries.has(bib)) entries.set(bib, id);
+    }
+    const bibs = [...entries.keys()];
+    const text = bibs.every((b) => b === null) ? "in library" : `in ${bibs.filter((b) => b !== null).join(", ")}`;
+    list.push({ slot: "library", symbol: "library", text, entries: [...entries].map(([bib, id]) => ({ id, bib })) });
+  }
+  if (item.coveredBy) list.push({ slot: "news", symbol: "covered", text: `${item.coveredBy} news` });
+  if (item.reminder === "due") list.push({ slot: "reminder", symbol: "due", text: "reminder due" });
+  else if (item.reminder === "snoozed" && item.remind) {
+    const day = new Date(item.remind).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    list.push({ slot: "reminder", symbol: "snoozed", text: `reminder ${day}` });
+  }
   return list;
 }
+
+/** The stages of a paper known: its own (a preprint's, else published) and those of its versions (as
+ *  `Item::stages` in Rust). */
+export function stagesOf(kind: ItemKind, versions: ("preprint" | "published")[]): Stages {
+  const known = (stage: "preprint" | "published") => (kind === "preprint") === (stage === "preprint") || versions.includes(stage);
+  return known("preprint") ? (known("published") ? "both" : "preprint") : "published";
+}
+
+/** The details of an item as its status sees them. */
+export const detailMarked = (d: FeedDetail): Markable => ({
+  kind: d.kind,
+  inLibrary: d.inLibrary,
+  stages: stagesOf(d.kind, d.versions.map((v) => v.stage)),
+  coveredBy: d.coveredBy.length,
+  links: d.links.length,
+});
 
 /** Why a score has no keywords: no interest to score in. */
 export const NO_INTERESTS = "No interests yet: add them in Settings → Score";

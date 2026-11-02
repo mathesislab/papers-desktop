@@ -40,6 +40,9 @@ export interface Rated {
   excluded: string | null;
 }
 
+/** The stages of a paper known: a preprint, published, or both. */
+export type Stages = "preprint" | "published" | "both";
+
 /** A row of the list. */
 export interface FeedRow extends Rated {
   id: string;
@@ -59,8 +62,8 @@ export interface FeedRow extends Rated {
   remind: string | null;
   /** the ids of the library entries of the same paper (DOI, or title and year) */
   inLibrary: string[];
-  /** a preprint, or a paper whose preprint is known */
-  hasVersions: boolean;
+  /** the stages of it known: its own, and its versions' */
+  stages: Stages;
   /** the posts that link to it */
   coveredBy: number;
   /** a post: the papers found behind it */
