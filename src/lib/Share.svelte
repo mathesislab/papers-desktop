@@ -1,6 +1,8 @@
 <script lang="ts">
+  // Share: a click copies the snippet (the title and its link, as plain text); ▾ the other ways (the link, the DOI,
+  // the citation, as text or HTML).
   import { toCopy } from "$lib/cite";
-  import { copy, escape, type Copy } from "$lib/clipboard";
+  import { copy, type Copy } from "$lib/clipboard";
   import type { Item } from "$lib/types";
 
   let {
@@ -20,12 +22,8 @@
   let cited = $derived(citation ? toCopy(citation) : null);
   /** what each choice copies; nothing when the paper does not have it */
   let choices = $derived<{ label: string; copy: Copy | null }[]>([
-    {
-      label: "Snippet (title + link)",
-      copy: link
-        ? { text: `${item.title}\n${link}`, html: `<a href="${escape(link)}">${escape(item.title)}</a>` }
-        : { text: item.title },
-    },
+    // plain text: an app that takes HTML would make a link of the title (in Markdown, `[title](link)`)
+    { label: "Snippet (title and link)", copy: { text: link ? `${item.title}\n${link}` : item.title } },
     { label: "Link", copy: link ? { text: link } : null },
     { label: "DOI", copy: item.doi ? { text: item.doi } : null },
     { label: "Citation", copy: cited },
@@ -54,11 +52,14 @@
 
 <!-- the search field keeps the focus -->
 <span class="share" bind:this={root}>
-  <button
-    class="toggle"
+  <button class="toggle main" title="Copy the title and its link" onmousedown={(e) => e.preventDefault()} onclick={() => share(choices[0].copy!)}
+    >{copied ? "Copied ✓" : "Share"}</button
+  ><button
+    class="toggle caret"
+    aria-label="Other ways to share"
     aria-expanded={open}
     onmousedown={(e) => e.preventDefault()}
-    onclick={() => (open = !open)}>{copied ? "Copied ✓" : "Share ▾"}</button
+    onclick={() => (open = !open)}>▾</button
   >
   {#if open}
     <div class="menu" role="menu">
@@ -93,9 +94,19 @@
   .toggle:hover {
     border-color: var(--muted);
   }
+  .main {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .caret {
+    margin-left: -1px;
+    padding: 0 4px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
   .menu {
     position: absolute;
-    right: 0;
+    left: 0;
     top: calc(100% + 4px);
     z-index: 1;
     display: flex;

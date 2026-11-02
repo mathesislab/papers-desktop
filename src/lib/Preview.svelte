@@ -8,6 +8,7 @@
   import { label, matches } from "$lib/keys";
   import type { Editor } from "$lib/library/editor.svelte";
   import { cached, thumbnail } from "$lib/pdf";
+  import { copy } from "$lib/clipboard";
   import Share from "$lib/Share.svelte";
   import type { Item } from "$lib/types";
 
@@ -196,6 +197,20 @@
     }
   }
 
+  let citationCopied = $state(false);
+  $effect(() => {
+    void item.id;
+    citationCopied = false;
+  });
+
+  /** A click on the citation: copied, formatted for the apps that take it so (as Copy → Citation). */
+  async function copyCitation() {
+    if (!citation) return;
+    await copy(item.id, cite.toCopy(citation));
+    citationCopied = true;
+    setTimeout(() => (citationCopied = false), 1200);
+  }
+
   /** Drag the citation out, formatted for the apps that take it so. */
   function dragCitation(e: DragEvent) {
     if (!citation || !e.dataTransfer) return;
@@ -245,13 +260,16 @@
     <div class="section-head">
       <h3>Citation{#if style}<span class="muted"> · {style}</span>{/if}</h3>
       <Share {item} {citation} />
+      {#if citationCopied}<span class="muted copied">Copied ✓</span>{/if}
     </div>
-    <!-- citeproc-js escapes the fields of the entry -->
+    <!-- citeproc-js escapes the fields of the entry; a click copies it -->
     {#if citationError}
       <div class="citation error">{citationError}</div>
     {:else}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="citation" draggable={!!citation} ondragstart={dragCitation}>{@html citation ?? ""}</div>
+      <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+      <div class="citation" title="Click to copy" draggable={!!citation} ondragstart={dragCitation} onclick={copyCitation}>
+        {@html citation ?? ""}
+      </div>
     {/if}
   </section>
   <section>
@@ -408,7 +426,6 @@
   .section-head {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
     gap: 10px;
     margin-bottom: 5px;
   }
@@ -451,6 +468,7 @@
     transform: rotate(90deg);
   }
   .citation {
+    cursor: copy;
     font-size: 12.5px;
     line-height: 1.45;
   }
