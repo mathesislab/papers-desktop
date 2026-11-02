@@ -32,8 +32,9 @@ const TO_PAGE: &[&str] = &[
 ];
 
 /// The items of the Window menu that follow the switches (`Toggle`): Window → Feeds and Search, there
-/// only while their tab is shown; Show Feeds Tab, Show Search Tab and Feeds Details Beside the List,
-/// ticked as their switch is (the last there while the Feeds tab is shown). The id of a ticked item
+/// only while their tab is shown; Show Feeds Tab, Show Search Tab, Feeds Details Beside the List
+/// and Library Details Beside the List, ticked as their switch is (the Feeds one there while the
+/// Feeds tab is shown). The id of a ticked item
 /// is its switch's name.
 struct ToggleItems {
     feeds: MenuItem<Wry>,
@@ -41,6 +42,7 @@ struct ToggleItems {
     feeds_tab: CheckMenuItem<Wry>,
     search_tab: CheckMenuItem<Wry>,
     feeds_beside: CheckMenuItem<Wry>,
+    library_beside: CheckMenuItem<Wry>,
 }
 
 pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
@@ -58,6 +60,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
         feeds_tab: check(Toggle::FeedsTab, "Show Feeds Tab")?,
         search_tab: check(Toggle::SearchTab, "Show Search Tab")?,
         feeds_beside: check(Toggle::FeedsBeside, "Feeds Details Beside the List")?,
+        library_beside: check(Toggle::LibraryBeside, "Library Details Beside the List")?,
     };
     let menu = Menu::with_items(
         app,
@@ -150,6 +153,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                         "CmdOrCtrl+Shift+[",
                     )?,
                     &separator()?,
+                    &toggles.library_beside,
                     &toggles.feeds_tab,
                     &toggles.feeds_beside,
                     &toggles.search_tab,
@@ -196,6 +200,7 @@ pub fn sync(app: &AppHandle, toggles: &Toggles) {
         let _ = items.search_tab.set_checked(toggles.search_tab);
         let _ = items.feeds_beside.set_enabled(toggles.feeds_tab);
         let _ = items.feeds_beside.set_checked(toggles.feeds_beside);
+        let _ = items.library_beside.set_checked(toggles.library_beside);
     }
 }
 

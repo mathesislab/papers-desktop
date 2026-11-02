@@ -1,14 +1,14 @@
 // The switches of the main window (src-tauri/src/toggle.rs): its Feeds and Search tabs shown, an item's details
-// beside the list. The settings keep them; the settings window and the Window menu set them, and every window is
+// beside the list (in the Feeds and Search tabs; in the Library tab). The settings keep them; the settings window and the Window menu set them, and every window is
 // told (`EVENT`).
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export type Toggle = "feeds-tab" | "search-tab" | "feeds-beside";
+export type Toggle = "feeds-tab" | "search-tab" | "feeds-beside" | "library-beside";
 export type Toggles = Record<Toggle, boolean>;
 
-const TOGGLES: Toggle[] = ["feeds-tab", "search-tab", "feeds-beside"];
+const TOGGLES: Toggle[] = ["feeds-tab", "search-tab", "feeds-beside", "library-beside"];
 
 /** Whether a switch is on. */
 export const toggle = (toggle: Toggle) => invoke<boolean>("toggle", { toggle });

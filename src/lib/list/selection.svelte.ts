@@ -51,13 +51,16 @@ export class Selection {
     return alone;
   }
 
-  /** The click that ends a press on one of several selected rows, which no drag followed: that row alone. */
-  release(id: string) {
-    if (this.#held === id) {
+  /** The click that ends a press on one of several selected rows, which no drag followed: that row alone. Whether
+   *  it selected the row alone. */
+  release(id: string): boolean {
+    const held = this.#held === id;
+    if (held) {
       this.selected = new Set([id]);
       this.anchor = id;
     }
     this.#held = null;
+    return held;
   }
 
   /** The focus moved by some rows, or to the first or last (`stepped`); the selection extended from the anchor, or

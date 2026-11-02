@@ -100,6 +100,9 @@ pub struct Toggles {
     /// the details of an item of the Feeds and Search tabs beside the list; off by default: an
     /// item opens in place of the list, to read
     pub feeds_beside: bool,
+    /// the details of a paper of the Library tab beside the list; on by default: else a paper
+    /// opens in place of the list, to read
+    pub library_beside: bool,
     /// the Search tab; on by default
     pub search_tab: bool,
 }
@@ -111,10 +114,16 @@ pub enum Toggle {
     FeedsTab,
     SearchTab,
     FeedsBeside,
+    LibraryBeside,
 }
 
 impl Toggle {
-    const ALL: [Toggle; 3] = [Toggle::FeedsTab, Toggle::SearchTab, Toggle::FeedsBeside];
+    const ALL: [Toggle; 4] = [
+        Toggle::FeedsTab,
+        Toggle::SearchTab,
+        Toggle::FeedsBeside,
+        Toggle::LibraryBeside,
+    ];
 
     /// The name the page knows it by, also the id of its item of the Window menu.
     pub fn as_str(self) -> &'static str {
@@ -122,6 +131,7 @@ impl Toggle {
             Toggle::FeedsTab => "feeds-tab",
             Toggle::SearchTab => "search-tab",
             Toggle::FeedsBeside => "feeds-beside",
+            Toggle::LibraryBeside => "library-beside",
         }
     }
 }
@@ -143,6 +153,7 @@ impl Toggles {
             Toggle::FeedsTab => self.feeds_tab,
             Toggle::SearchTab => self.search_tab,
             Toggle::FeedsBeside => self.feeds_beside,
+            Toggle::LibraryBeside => self.library_beside,
         }
     }
 
@@ -151,6 +162,7 @@ impl Toggles {
             Toggle::FeedsTab => &mut self.feeds_tab,
             Toggle::SearchTab => &mut self.search_tab,
             Toggle::FeedsBeside => &mut self.feeds_beside,
+            Toggle::LibraryBeside => &mut self.library_beside,
         } = on;
     }
 }
@@ -160,6 +172,7 @@ impl Default for Toggles {
         Toggles {
             feeds_tab: true,
             feeds_beside: false,
+            library_beside: true,
             search_tab: true,
         }
     }
@@ -467,11 +480,12 @@ mod tests {
     }
 
     #[test]
-    fn the_tabs_shown_and_the_details_in_place_by_default_also_for_older_files() {
+    fn the_tabs_shown_and_the_feeds_details_in_place_by_default_also_for_older_files() {
         let settings: Settings = serde_json::from_str("{}").unwrap();
         let toggles = settings.elsewhere.toggles;
         assert!(toggles.get(Toggle::FeedsTab) && toggles.get(Toggle::SearchTab));
         assert!(!toggles.get(Toggle::FeedsBeside));
+        assert!(toggles.get(Toggle::LibraryBeside));
         let json = r#"{"feeds_tab": false, "feeds_beside": true, "search_tab": false}"#;
         let mut set: Settings = serde_json::from_str(json).unwrap();
         let toggles = &mut set.elsewhere.toggles;
@@ -503,7 +517,7 @@ mod tests {
             "search_services": [{"name": "Base", "url": "https://base.example/?q={query}"}],
             "feeds_poll": true,
             "feeds_poll_minutes": 30, "feeds_tab": false, "feeds_beside": true,
-            "search_tab": false}"#;
+            "library_beside": false, "search_tab": false}"#;
         let old: Value = serde_json::from_str(json).unwrap();
         let settings: Settings = serde_json::from_value(old.clone()).unwrap();
         assert_eq!(settings.elsewhere.pinned_tags, [Some("ice".into()), None]);

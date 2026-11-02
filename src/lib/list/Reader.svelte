@@ -1,20 +1,21 @@
 <script lang="ts">
-  // An item read in place of the list (the Feeds and Search tabs, without the details beside the list): over the
-  // table, which stays as it was, scrolled where it was; its row pinned at the top, in the tab's colour, a click on it
-  // the list again (as Esc); the details under it, in a column of reading width.
+  // An item read in place of the list (a tab without the details beside the list: Library, Feeds, Search): over the
+  // table, which stays as it was, scrolled where it was; its row pinned at the top, its title and its source, in the
+  // tab's colour, a click on it the list again (as Esc); the details under it, in a column of reading width.
 
   import type { Snippet } from "svelte";
-  import Marked from "$lib/Marked.svelte";
-  import type { FeedRow } from "./api";
 
   let {
-    row,
+    title,
+    source,
     tint = "var(--feeds)",
     onback,
     children,
   }: {
-    /** the row of the item read */
-    row: FeedRow;
+    /** the title of the item read */
+    title: Snippet;
+    /** its journal, or where it came from */
+    source: string;
     /** the colour of the tab: the pinned row's tint and caret */
     tint?: string;
     /** back to the list */
@@ -29,8 +30,8 @@
     <svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
       <path d="M1.5 3.5h9L6 9.5z" fill="currentColor" />
     </svg>
-    <span class="title"><Marked spans={row.title} /></span>
-    <span class="muted">{row.journal ?? row.sources[0] ?? ""}</span>
+    <span class="title">{@render title()}</span>
+    <span class="muted">{source}</span>
     <span class="muted keys">↑ ↓ previous, next · Esc the list</span>
   </button>
   <div class="page">

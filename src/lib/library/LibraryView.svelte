@@ -1,6 +1,7 @@
 <script lang="ts">
   // The library tab of the main window: the sidebar, the table of the current set or the paper in front, the
-  // details; and the sheets and questions of the library. The window (src/routes/main/+page.svelte) keeps the
+  // details, beside the table or, a paper clicked, in place of it to read (the window's switch, `beside`); and the
+  // sheets and questions of the library. The window (src/routes/main/+page.svelte) keeps the
   // layout, and passes on the commands of the menu and the keys that are the library's.
 
   import { invoke } from "@tauri-apps/api/core";
@@ -55,6 +56,7 @@
   import { PdfjsReader } from "$lib/library/pdfjs.svelte";
   import ReaderBar from "$lib/library/ReaderBar.svelte";
   import ReaderView from "$lib/library/ReaderView.svelte";
+  import Reader from "$lib/list/Reader.svelte";
   import { added as savedAdded, changed, refusal, removed, renamed, sameName } from "$lib/saved";
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
@@ -103,6 +105,7 @@
   let {
     layout = $bindable(),
     visible,
+    beside,
     tabs,
     onfront,
   }: {
@@ -110,6 +113,8 @@
     layout: Layout;
     /** whether the Library tab of the window is in front */
     visible: boolean;
+    /** the details beside the table (the switch `library-beside`), else a paper clicked is read in place of it */
+    beside: boolean;
     /** the switch of the tabs of the window, at the start of the toolbar */
     tabs: Snippet;
     /** the Library tab to the front: a paper opened from the panel, a paper shown after it was added */
@@ -144,6 +149,10 @@
   const table = { scroll: 0 };
   /** the papers selected, the one in focus: a press on one of several selected keeps them, for a drag */
   const selection = new Selection(true);
+  /** the paper pressed alone: a click on it that no drag followed reads it, without the details beside */
+  let pressed: string | null = null;
+  /** the paper in focus read in place of the table (without the details beside) */
+  let reading = $state(false);
   let item = $state<Item | null>(null);
   let input = $state<HTMLInputElement>();
   /** the menu of the export, open */
@@ -518,8 +527,25 @@
   async function select(id: string, e: MouseEvent) {
     if (e.button !== 0 || !(await leave(id))) return;
     lastWrite = null;
-    selection.click(id, e, listed());
+    pressed = selection.click(id, e, listed()) ? id : null;
   }
+
+  /** A click on a row that no drag followed: the row alone, of several pressed; alone, read without the details
+   *  beside. */
+  function clicked(id: string) {
+    const alone = selection.release(id) || pressed === id;
+    pressed = null;
+    if (alone && !beside) reading = true;
+  }
+
+  /** The details of the paper in focus: beside the table, or it read in place of it. */
+  function showDetails() {
+    if (beside) layout.showDetails = true;
+    else reading = true;
+  }
+
+  /** the row of the paper read in place of the table */
+  let readRow = $derived(reading && !beside && !layout.active && selection.focus ? byId.get(selection.focus) : undefined);
 
   /** The papers of `ids` that are in the table, in its order. */
   function ordered(ids: Iterable<string>): string[] {
@@ -636,7 +662,7 @@
   async function showOnly(id: string): Promise<boolean> {
     if (!(await leave(id))) return false;
     selection.only(id);
-    layout.showDetails = true;
+    showDetails();
     await tick();
     return true;
   }
@@ -648,7 +674,7 @@
 
   /** Edit tags… of the menu: the papers selected, the field of the tags in the details open. */
   async function editTags(ids: string[]) {
-    layout.showDetails = true;
+    showDetails();
     selection.selected = new Set(ids);
     if (!selection.focus || !ids.includes(selection.focus)) selection.focus = ids[0];
     await tick();
@@ -794,7 +820,7 @@
     await loadLibrary();
     if (!shown.some((r) => r.id === id)) layout.library = restored(null);
     selection.only(id);
-    layout.showDetails = true;
+    showDetails();
     showLibrary();
   }
 
@@ -1043,7 +1069,7 @@
   /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
    *  elsewhere (after asking), the arrows, the page keys, Home
    *  and End move (shift extends the selection), Enter opens, Esc leaves the
-   *  search, 1–9 toggle the tag pinned to the key, s the star. */
+   *  search or the paper read, 1–9 toggle the tag pinned to the key, s the star. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -1078,6 +1104,9 @@
     } else if (e.key === "Escape" && typing) {
       e.preventDefault();
       input?.blur();
+    } else if (e.key === "Escape" && readRow) {
+      e.preventDefault();
+      reading = false;
     } else if (/^[1-9]$/.test(e.key) && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       togglePinned(Number(e.key) - 1);
@@ -1251,12 +1280,14 @@
       <button class="tool" title="Add a paper ({label(commands.add)}), or drop a PDF on the window"
         onclick={() => (adding = { id: null, pdf: null, choose: false })}>Add…</button
       >
-      <button
-        class="tool"
-        class:on={layout.showDetails}
-        title="Details ({label(commands.details)})"
-        onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
-      >
+      {#if beside}
+        <button
+          class="tool"
+          class:on={layout.showDetails}
+          title="Details ({label(commands.details)})"
+          onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
+        >
+      {/if}
     </header>
     <div class="content">
       <section class="library" {...{ [DROP_NEW]: "" }}>
@@ -1291,44 +1322,40 @@
         {:else if matched && !shown.length}
           <p class="empty">No paper matches.</p>
         {:else}
-          <Table
-            rows={shown}
-            {columns}
-            selected={selection.selected}
-            focus={selection.focus}
-            sort={layout.sort}
-            look={layout.look}
-            scroll={table.scroll}
-            onscrolled={(top) => (table.scroll = top)}
-            oncolumns={setColumns}
-            onsort={(sort) => (layout.sort = sort)}
-            onselect={select}
-            onclickrow={(id) => selection.release(id)}
-            onopen={openMany}
-            onmenu={rowMenu}
-            ondrop={openMany}
-            onstar={(id) => star([id])}
-          />
+          <div class="rows">
+            <Table
+              rows={shown}
+              {columns}
+              selected={selection.selected}
+              focus={selection.focus}
+              sort={layout.sort}
+              look={layout.look}
+              scroll={table.scroll}
+              onscrolled={(top) => (table.scroll = top)}
+              oncolumns={setColumns}
+              onsort={(sort) => (layout.sort = sort)}
+              onselect={select}
+              onclickrow={clicked}
+              onopen={openMany}
+              onmenu={rowMenu}
+              ondrop={openMany}
+              onstar={(id) => star([id])}
+            />
+            {#if readRow}
+              {@const row = readRow}
+              <Reader source={row.container ?? ""} tint="var(--accent)" onback={() => (reading = false)}>
+                {#snippet title()}{row.title}{/snippet}
+                {#if item}{@render paperDetails(item)}{/if}
+              </Reader>
+            {/if}
+          </div>
         {/if}
       </section>
-      {#if layout.showDetails}
+      {#if beside && layout.showDetails}
         <Splitter bind:width={layout.details} side="right" min={260} max={600} />
         <aside class="details" style:width="{layout.details}px">
           {#if item}
-            <Details
-              {item}
-              rows={targets}
-              {tags}
-              filtered={(tag) => hasTag(layout.library.tags, tag)}
-              ontag={filterByTag}
-              onset={(add, remove) => write(() => setTags(targets.map((r) => r.id), add, remove))}
-              onopen={() => open(item!.id)}
-              {editor}
-              onedit={() => edit(item!.id)}
-              onaddpdf={() => addPdf(item!.id)}
-              onsave={saveEdit}
-              oncancel={() => leave(null)}
-            />
+            {@render paperDetails(item)}
           {:else}
             <p class="empty">No paper selected</p>
           {/if}
@@ -1337,6 +1364,23 @@
     </div>
   </div>
 </main>
+
+{#snippet paperDetails(item: Item)}
+  <Details
+    {item}
+    rows={targets}
+    {tags}
+    filtered={(tag) => hasTag(layout.library.tags, tag)}
+    ontag={filterByTag}
+    onset={(add, remove) => write(() => setTags(targets.map((r) => r.id), add, remove))}
+    onopen={() => open(item.id)}
+    {editor}
+    onedit={() => edit(item.id)}
+    onaddpdf={() => addPdf(item.id)}
+    onsave={saveEdit}
+    oncancel={() => leave(null)}
+  />
+{/snippet}
 
 <style>
   main {
@@ -1571,6 +1615,14 @@
     display: flex;
     flex-direction: column;
     border-left: 1px solid var(--line);
+  }
+  /* the table, and the paper read over it: the table stays as it was, scrolled where it was */
+  .rows {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .empty {

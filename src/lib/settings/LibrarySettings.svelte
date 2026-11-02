@@ -1,8 +1,9 @@
 <script lang="ts">
   // The Library tab of the settings window: the papers folder, kept once set; the .bib files of the library, each with
   // what writes it, and how more come in: a new one made in the welcome window, a .bib used as it is, a papers library
-  // opened (library.rs), the entries of a file imported into one of them; the Downloads panel of the main window and
-  // its folder, also set there (`downloads`).
+  // opened (library.rs), the entries of a file imported into one of them; the details of a paper beside the list or
+  // in place of it (the switch `library-beside`, also set by the Window menu); the Downloads panel of the main window
+  // and its folder, also set there (`downloads`).
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
@@ -10,6 +11,7 @@
   import { onMount } from "svelte";
   import { mac } from "$lib/keys";
   import { writers as listWriters } from "$lib/library/writes";
+  import { onToggle, setToggle, toggle } from "$lib/toggles";
   import type { Status, Writer } from "$lib/types";
   import "./settings.css";
   import { fileName, imported, type ImportReport, type Preferences, type View } from "./settings.svelte";
@@ -20,18 +22,26 @@
   /** how each .bib file is written: by papers-rs, by a papers command, or by the app */
   let writers = $state<Writer[]>([]);
 
+  /** the details of a paper beside the list (the switch `library-beside`), else in place of it */
+  let beside = $state(true);
+
   /** a file to import, while the .bib it goes into is chosen */
   let importing = $state<{ file: string; bib: string } | null>(null);
 
   onMount(() => {
     listWriters().then((w) => (writers = w));
+    toggle("library-beside").then((on) => (beside = on));
+    const unlistenToggle = onToggle((t, on) => t === "library-beside" && (beside = on));
     const unlisten = [
       // the panel hidden, or its folder chosen, in the main window
       listen("downloads", syncDownloads),
       // the library read again: a .bib added, or a papers library opened
       listen<Status>("status", (e) => e.payload.state === "ready" && listWriters().then((w) => (writers = w))),
     ];
-    return () => unlisten.forEach((u) => u.then((f) => f()));
+    return () => {
+      unlistenToggle();
+      unlisten.forEach((u) => u.then((f) => f()));
+    };
   });
 
   function writtenBy(file: string): Writer | undefined {
@@ -198,6 +208,25 @@
     The panel searches them all, and reloads one when it changes. A papers library is a folder made by papers; an
     import adds the entries of a .bib, RIS or CSL-JSON file (Zotero, Mendeley and EndNote export them) to a .bib.
   </p>
+</section>
+
+<section>
+  <h2>Details</h2>
+  <label class="row">
+    <span>
+      <span class="label">Details beside the list</span>
+      <span class="hint"
+        >Otherwise a paper opens in place of the list, to read (Esc goes back); also Window → Library Details Beside
+        the List</span
+      >
+    </span>
+    <input
+      type="checkbox"
+      class="switch"
+      checked={beside}
+      onchange={(e) => setToggle("library-beside", e.currentTarget.checked).catch((err) => prefs.show(String(err), true))}
+    />
+  </label>
 </section>
 
 <section>

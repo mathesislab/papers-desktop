@@ -9,9 +9,10 @@
   import type { FeedDetail, Linked } from "$lib/feeds/api";
   import FeedDetails from "$lib/feeds/FeedDetails.svelte";
   import FeedTable from "$lib/feeds/FeedTable.svelte";
-  import Reader from "$lib/feeds/Reader.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
+  import Marked from "$lib/Marked.svelte";
   import type { ItemList } from "./ItemList.svelte";
+  import Reader from "./Reader.svelte";
   import { tabContext } from "./tab";
 
   let {
@@ -71,7 +72,9 @@
           onopen={(id) => list.openItems(selection.selected.has(id) ? list.targets() : [id])}
         />
         {#if list.reading && !list.beside && list.focusRow}
-          <Reader row={list.focusRow} {tint} onback={() => (list.reading = false)}>
+          {@const row = list.focusRow}
+          <Reader source={row.journal ?? row.sources[0] ?? ""} {tint} onback={() => (list.reading = false)}>
+            {#snippet title()}<Marked spans={row.title} />{/snippet}
             {#if list.detail}{@render itemDetails(list.detail, true)}{/if}
           </Reader>
         {/if}

@@ -29,7 +29,7 @@
   /** the settings as saved */
   let saved = $derived(feedPrefs.saved);
   /** the switches of the main window, also set by the Window menu */
-  let switches = $state<Toggles>({ "feeds-tab": true, "search-tab": true, "feeds-beside": false });
+  let switches = $state<Toggles>({ "feeds-tab": true, "search-tab": true, "feeds-beside": false, "library-beside": true });
   const SWITCHES: { toggle: Toggle; label: string; hint: string }[] = [
     { toggle: "feeds-tab", label: "Show the Feeds tab", hint: "In the main window; also Window → Show Feeds Tab" },
     {

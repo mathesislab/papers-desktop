@@ -31,6 +31,8 @@
   let shownTabs = $state<Record<Tab, boolean>>({ library: true, feeds: true, search: true });
   /** the details of the Feeds and Search tabs beside the list: the switch `feeds-beside` */
   let beside = $state(false);
+  /** the details of the Library tab beside the list: the switch `library-beside` */
+  let libraryBeside = $state(true);
   /** the colours of the interests of the feeds' settings, for both tabs */
   let colours = $state(new Map<string, string>());
   let loaded = false;
@@ -125,6 +127,10 @@
   function setToggle(toggle: Toggle, on: boolean) {
     if (toggle === "feeds-beside") {
       beside = on;
+      return;
+    }
+    if (toggle === "library-beside") {
+      libraryBeside = on;
       return;
     }
     const tab = TABS.find((t) => t.toggle === toggle)!.tab;
@@ -267,6 +273,7 @@
   bind:this={library}
   bind:layout
   visible={layout.tab === "library"}
+  beside={libraryBeside}
   {tabs}
   onfront={() => showTab("library")}
 />
