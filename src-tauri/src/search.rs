@@ -42,6 +42,9 @@ pub struct SearchPage {
     total: u64,
     /// the cursor of the next page; none after the last
     next: Option<String>,
+    /// OpenAlex not reached (offline, say), why: the page is the library's
+    /// papers alone
+    offline: Option<String>,
 }
 
 /// The last query resolved: what it asks of OpenAlex, its journals and works
@@ -102,7 +105,8 @@ fn library_entries(library: &Library, reference: &str) -> Vec<Entry> {
 
 /// A page of the works of a query: the first (`cursor` none), with the papers
 /// of the library closest to `library` (the search in plain words) first, or
-/// the next.
+/// the next. A query OpenAlex cannot be asked is refused; OpenAlex not
+/// reached, the first page is the library's papers alone (none: the error).
 #[tauri::command]
 pub async fn search_run(
     app: AppHandle,
@@ -113,28 +117,37 @@ pub async fn search_run(
 ) -> Result<SearchPage, String> {
     blocking(move || {
         let state = app.state::<AppState>();
-        let requests = state.requests()?;
-        let resolved = state
-            .resolved
-            .of(&query, &requests.http, &requests.access)?;
-        let found = search_works(
-            &requests.http,
-            &requests.access,
-            &resolved,
-            order,
-            cursor.as_deref(),
-        )?;
+        // what it cannot ask, said before asking
+        ask(&query)?;
         let fresh = cursor.is_none();
         let mut entries = match fresh {
             true => library_entries(&state.library.read().unwrap(), &library),
             false => Vec::new(),
         };
-        entries.extend(found.entries);
+        let online = state.requests().and_then(|requests| {
+            let resolved = (state.resolved).of(&query, &requests.http, &requests.access)?;
+            search_works(
+                &requests.http,
+                &requests.access,
+                &resolved,
+                order,
+                cursor.as_deref(),
+            )
+        });
+        let (total, next, offline) = match online {
+            Ok(found) => {
+                entries.extend(found.entries);
+                (found.total, found.next, None)
+            }
+            Err(error) if !entries.is_empty() => (entries.len() as u64, None, Some(error)),
+            Err(error) => return Err(error),
+        };
         let ids = (state.search).change(&app, move |feeds| feeds.found(entries.clone(), fresh))?;
         Ok(SearchPage {
             rows: rows_of(&app, &ids, &query)?,
-            total: found.total,
-            next: found.next,
+            total,
+            next,
+            offline,
         })
     })
     .await

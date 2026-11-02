@@ -16,6 +16,8 @@ export interface SearchPage {
   total: number;
   /** the cursor of the next page; none after the last */
   next: string | null;
+  /** OpenAlex not reached (offline, say), why: the page is the library's papers alone */
+  offline: string | null;
 }
 
 /** A page of the works of a query: the first (`cursor` none), whose works take the place of those found before but

@@ -137,6 +137,8 @@
     {#each authorsOf(row) as name, j}{#if j}{", "}{/if}<Marked spans={name} />{/each}{#if row.authors.length > 3}, et al.{/if}
   {:else if isPost(row.kind)}
     {ITEM_KINDS[row.kind].name}
+  {:else}
+    –
   {/if}
 {/snippet}
 

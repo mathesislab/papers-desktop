@@ -71,6 +71,8 @@
   let more = $state(false);
   /** what the search answered instead of works: the query refused, OpenAlex not reached */
   let failure = $state<string | null>(null);
+  /** OpenAlex not reached by the last search, why: the works shown are the library's alone */
+  let offline = $state<string | null>(null);
   let subscribing = $state(false);
   let yearInput = $state<HTMLInputElement>();
   let authorsInput = $state<HTMLInputElement>();
@@ -172,11 +174,13 @@
     resetList();
     searching = true;
     failure = null;
+    offline = null;
     try {
       const page = await api.run(query, plainWords(typed), askedOf(typed.order), null);
       if (n !== asked) return;
       const rows = inOrder(page.rows, typed.order);
       search.results = { query, order: typed.order, ids: rows.map((r) => r.id), total: page.total, next: page.next };
+      offline = page.offline;
       search.recent = withRecent(search.recent, typed);
       list.rows = rows;
     } catch (e) {
@@ -237,22 +241,25 @@
   /** The services of *Search online*, from its menu: the query of the fields opened in the browser at one; *Add a
    *  service…* the settings, where they are listed. */
   async function onlineMenu() {
-    const open = async (service: string) => {
-      try {
-        await openUrl(await api.online(service, composed(search)));
-      } catch (e) {
-        list.say(String(e));
-      }
-    };
     const names = await api.services();
     const menu = await Menu.new({
       items: [
-        ...(await Promise.all(names.map((name) => MenuItem.new({ text: name, action: () => open(name) })))),
+        ...(await Promise.all(names.map((name) => MenuItem.new({ text: name, action: () => openOnline(name) })))),
         await PredefinedMenuItem.new({ item: "Separator" }),
         await MenuItem.new({ text: "Add a service…", action: () => invoke("open_settings", { section: "search" }) }),
       ],
     });
     await menu.popup();
+  }
+
+  /** The search of the fields opened in the browser at a service; none: the first (Google Scholar). */
+  async function openOnline(service?: string) {
+    try {
+      const name = service ?? (await api.services())[0];
+      await openUrl(await api.online(name, composed(search)));
+    } catch (e) {
+      list.say(String(e));
+    }
   }
 
   /** The × of the search field: the fields blank, the search field ready. */
@@ -272,6 +279,7 @@
     search.results = null;
     list.rows = [];
     failure = null;
+    offline = null;
     resetList();
     list.focusSearch();
   }
@@ -406,7 +414,9 @@
            matches words in the texts only); next in the tab order, shown on the second line (`order`) -->
       <div class="fields">
         <label class="field"
-          ><span class="name" style:width="{Math.max(0, fieldsLeft - 6)}px">Author(s)</span><input
+          ><span class="name" style:width="{Math.max(0, fieldsLeft - 6)}px"
+            >{#if offline}<span class="offline" title={offline}>Offline: your library only</span>{/if}Author(s)</span
+          ><input
             bind:this={authorsInput}
             bind:value={search.authors}
             class="authors"
@@ -435,7 +445,10 @@
       <button class="tool primary" disabled={searching} title="Search OpenAlex (Enter in the fields)" onclick={run}>
         {searching ? "Searching…" : "Search"}
       </button>
-      <button class="tool" title="Search online" onclick={onlineMenu}>Online ▾</button>
+      <span class="split">
+        <button class="tool" title="Search Google Scholar with the fields (▾: another service)" onclick={() => openOnline()}>Online</button>
+        <button class="tool caret" aria-label="Search online at another service" onclick={onlineMenu}>▾</button>
+      </span>
       <span class="notice">{list.notice ?? ""}</span>
       <span class="spacer"></span>
       <button
@@ -611,7 +624,19 @@
     font-size: 12px;
   }
   .field .name {
-    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+  }
+  /* OpenAlex not reached: said under the tabs, the reason on hover */
+  .offline {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--error);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .field input {
     height: 24px;
@@ -644,6 +669,32 @@
   }
   .explain b {
     font-weight: 600;
+  }
+  /* Online: Google Scholar, ▾ the other services */
+  .split {
+    flex: none;
+    display: flex;
+  }
+  /* the header's buttons, a level down */
+  .split .tool {
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .split .tool:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .split .caret {
+    margin-left: -1px;
+    padding: 3px 6px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
   }
   /* Subscribe: the feed's mark, its words on hover */
   .tool.feed {

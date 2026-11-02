@@ -26,8 +26,13 @@
   /** What a cell shows: its value, a date as the Downloads panel writes it. */
   export function text(row: Row, column: Column): string {
     if (column === "added") return row.added ? formatDate(row.added) : "";
+    // no authors in the entry: said, not a blank
+    if (column === "authors" && !row.authors) return NO_AUTHORS;
     return String(value(row, column) ?? "");
   }
+
+  /** what the Authors column says of an entry without authors */
+  const NO_AUTHORS = "–";
 </script>
 
 <script lang="ts">
@@ -248,7 +253,7 @@
           {@render starButton(row)}
           <SimpleRow lead={2} date={text(row, "year")} source={text(row, "container")}>
             {#snippet title()}{row.title}{/snippet}
-            {#snippet authors()}{row.authors}{/snippet}
+            {#snippet authors()}{text(row, "authors")}{/snippet}
             {#snippet end()}{text(row, "tags")}{/snippet}
           </SimpleRow>
         {:else}
@@ -256,7 +261,9 @@
             {#if key === "star"}
               {@render starButton(row)}
             {:else}
-              <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added"}>{text(row, key)}</span>
+              <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added" || (key === "authors" && !row.authors)}
+                >{text(row, key)}</span
+              >
             {/if}
           {/each}
         {/if}

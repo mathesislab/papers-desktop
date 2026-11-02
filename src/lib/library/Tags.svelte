@@ -142,6 +142,7 @@
 
 <div class="tags">
   <div class="chips">
+    <span class="label">Tags</span>
     {#each chips as { tag, count } (foldTag(tag))}
       <span class="chip" class:some={count < rows.length} class:on={filtered(tag)}>
         <button class="name" title="Filter by {tag}" onclick={(e) => ontoggle(tag, modClick(e))}>
@@ -214,7 +215,16 @@
   .chips {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
+  }
+  /* what the row is: the + alone says little */
+  .label {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   .chip {
     display: inline-flex;
@@ -300,11 +310,11 @@
     outline-offset: 1px;
   }
   /* as tall as a chip: the row stays as it is when the field opens */
-  /* the rest of the row: it wraps only when less than its minimum is left */
+  /* a tag is a word or a few: the field as wide as that */
   .field {
     box-sizing: border-box;
-    flex: 1 1 90px;
-    min-width: 90px;
+    flex: none;
+    width: 150px;
     height: 22px;
     padding: 0 9px;
     border: 1px solid var(--accent);
