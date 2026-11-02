@@ -7,6 +7,7 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import { onMount } from "svelte";
   import { mac } from "$lib/keys";
+  import { WINDOW_COLOURS, onWindowColour, setWindowColour, windowColour, type WindowColour } from "$lib/windowColour";
   import "./settings.css";
   import { fileName, type Preferences, type Settings } from "./settings.svelte";
   import type { Updates } from "./updates.svelte";
@@ -21,11 +22,18 @@
   let custom = $derived(!prefs.styles.includes(settings.citation_style) ? settings.citation_style : null);
 
   let recentCleared = $state(false);
+  /** the colour of the main window's bar, also set by a right-click on it */
+  let colour = $state<WindowColour>("none");
 
   onMount(() => {
     // ⌘+ and ⌘- in another window
     const unlisten = listen<Settings["text_size"]>("text-size", (e) => (settings.text_size = e.payload));
-    return () => unlisten.then((f) => f());
+    windowColour().then((c) => (colour = c));
+    const unlistenColour = onWindowColour((c) => (colour = c));
+    return () => {
+      unlisten.then((f) => f());
+      unlistenColour();
+    };
   });
 
   async function toggleStartAtLogin() {
@@ -72,6 +80,27 @@
 
 <section>
   <h2>General</h2>
+  <div class="row">
+    <span>
+      <span class="label">Window colour</span>
+      <span class="hint">A thin bar at the top of the main window, to tell it apart; also a right-click on the bar</span>
+    </span>
+    <span class="swatches" role="radiogroup" aria-label="Window colour">
+      {#each WINDOW_COLOURS as c (c.colour)}
+        <button
+          class="swatch"
+          class:on={colour === c.colour}
+          class:none={!c.css}
+          style:--c={c.css}
+          role="radio"
+          aria-checked={colour === c.colour}
+          title={c.name}
+          aria-label={c.name}
+          onclick={() => setWindowColour(c.colour).catch((err) => prefs.show(String(err), true))}
+        ></button>
+      {/each}
+    </span>
+  </div>
   <label class="row">
     <span class="label">Start at login</span>
     <input type="checkbox" class="switch" checked={prefs.startAtLogin} onchange={toggleStartAtLogin} />
@@ -231,5 +260,27 @@
     margin: 0 0 6px;
     font-size: 12px;
     color: var(--muted);
+  }
+  /* the colours of the window's bar: a dot each, the one chosen ringed; none crossed */
+  .swatches {
+    display: flex;
+    gap: 6px;
+  }
+  .swatch {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background: var(--c);
+    box-shadow: 0 0 0 1px var(--border);
+    cursor: pointer;
+  }
+  .swatch.none {
+    background: linear-gradient(135deg, transparent 45%, var(--muted) 45%, var(--muted) 55%, transparent 55%);
+  }
+  .swatch.on {
+    border-color: var(--bg);
+    box-shadow: 0 0 0 2px var(--fg);
   }
 </style>

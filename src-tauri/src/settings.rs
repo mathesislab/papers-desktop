@@ -89,8 +89,28 @@ pub struct Elsewhere {
     pub feeds_poll: bool,
     /// the minutes between two fetches of the polling (5 at least)
     pub feeds_poll_minutes: u32,
+    /// the bar at the top of the main window, to tell it apart; set in the
+    /// settings window and by a right-click on the bar (`toggle.rs`)
+    pub window_colour: WindowColour,
     #[serde(flatten)]
     pub toggles: Toggles,
+}
+
+/// The colour of the bar at the top of the main window; none: no bar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WindowColour {
+    #[default]
+    Blue,
+    Teal,
+    Green,
+    Yellow,
+    Orange,
+    Red,
+    Pink,
+    Purple,
+    Graphite,
+    None,
 }
 
 /// The switches of the main window, each set in the settings window and by the Window menu
@@ -188,6 +208,7 @@ impl Default for Elsewhere {
             saved_searches: Vec::new(),
             feeds_poll: false,
             feeds_poll_minutes: 60,
+            window_colour: WindowColour::default(),
             toggles: Toggles::default(),
         }
     }
@@ -521,7 +542,7 @@ mod tests {
             "downloads_panel": false, "downloads_folder": "/tmp/in",
             "search_services": [{"name": "Base", "url": "https://base.example/?q={query}"}],
             "feeds_poll": true,
-            "feeds_poll_minutes": 30, "feeds_tab": false, "feeds_beside": true,
+            "feeds_poll_minutes": 30, "window_colour": "teal", "feeds_tab": false, "feeds_beside": true,
             "library_beside": false, "search_tab": false}"#;
         let old: Value = serde_json::from_str(json).unwrap();
         let settings: Settings = serde_json::from_value(old.clone()).unwrap();

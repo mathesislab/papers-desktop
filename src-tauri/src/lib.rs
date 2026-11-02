@@ -1240,7 +1240,9 @@ pub fn run() {
             search::search_online,
             search::search_services,
             toggle::toggle,
-            toggle::set_toggle
+            toggle::set_toggle,
+            toggle::window_colour,
+            toggle::set_window_colour
         ])
         .run(context)
         .expect("error while running tauri application");

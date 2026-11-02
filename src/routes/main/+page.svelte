@@ -21,6 +21,8 @@
   import { NO_HISTORY, goBack, goForward, kept, placeOf, placeText, went, type History, type Place } from "$lib/navigation";
   import SearchView from "$lib/search/SearchView.svelte";
   import { onToggle, toggles, type Toggle } from "$lib/toggles";
+  import { CheckMenuItem, Menu } from "@tauri-apps/api/menu";
+  import { WINDOW_COLOURS, cssOf, onWindowColour, setWindowColour, windowColour, type WindowColour } from "$lib/windowColour";
 
   /** the tabs of the window, in their order: the switch that shows each, but the library's, always there */
   const TABS: { tab: Tab; name: string; title: string; toggle: Toggle | null }[] = [
@@ -88,6 +90,18 @@
     libraryOf: (id) => library?.libraryOf(id) ?? null,
   });
 
+  /** the colour of the bar at the top, to tell the window apart (the setting) */
+  let colour = $state<WindowColour>("none");
+
+  /** A right-click on the bar: its colour to choose. */
+  async function colourMenu(e: MouseEvent) {
+    e.preventDefault();
+    const items = WINDOW_COLOURS.map((c) =>
+      CheckMenuItem.new({ text: c.name, checked: colour === c.colour, action: () => setWindowColour(c.colour) }),
+    );
+    await (await Menu.new({ items: await Promise.all(items) })).popup();
+  }
+
   /** the minutes after which a tab not used has its search cleared (the setting); 0: never */
   let clearAfter = 60;
 
@@ -103,6 +117,8 @@
       used();
     });
     const unlistenSettings = listen("settings", readClearAfter);
+    const unlistenColour = onWindowColour((c) => (colour = c));
+    windowColour().then((c) => (colour = c));
     load();
     readColours();
     readClearAfter();
@@ -111,6 +127,7 @@
       unlistenToggle();
       unlistenFocus.then((f) => f());
       unlistenSettings.then((f) => f());
+      unlistenColour();
     };
   });
 
@@ -338,6 +355,11 @@
 
 <svelte:window {onkeydown} onpointerdown={() => used()} />
 
+<!-- the window's colour, at its top, to tell it apart among others; a right-click chooses it -->
+{#if cssOf(colour)}
+  <div class="colour" style:background={cssOf(colour)} title="The colour of the window: right-click to choose" oncontextmenu={colourMenu} role="presentation"></div>
+{/if}
+
 <!-- back and forward; no switch with the Feeds and Search tabs hidden: the Library tab alone -->
 {#snippet tabs()}
   {@const shown = TABS.filter((t) => shownTabs[t.tab])}
@@ -399,6 +421,14 @@
   }
 
   /* Library | Feeds | Search, at the start of the toolbar of each tab */
+  .colour {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    height: 4px;
+  }
   .steps {
     flex: none;
     display: flex;
