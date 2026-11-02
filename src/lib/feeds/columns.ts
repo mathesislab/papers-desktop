@@ -24,8 +24,8 @@ export const FEED_SPECS: Specs<FeedColumn> = {
   status: {
     name: "Status",
     hint: "Its version (◐ preprint, ◑ published, ● both; a post ✦ news or ✎ general), ✓ in the library, ✦ covered by news, ⏰ its reminder",
-    width: 72,
-    least: 72,
+    width: 60,
+    least: 60,
   },
 };
 

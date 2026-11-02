@@ -79,7 +79,7 @@
   }
   .slots .slot {
     flex: none;
-    width: 14px;
+    width: 13px;
     display: inline-flex;
     justify-content: center;
   }
@@ -103,14 +103,16 @@
     display: block;
     flex: none;
   }
+  /* the ring quieter than the fill */
   .stage .ring {
     fill: none;
     stroke: currentColor;
+    stroke-opacity: 0.55;
     stroke-width: 1;
   }
   .stage .fill {
     fill: currentColor;
-    fill-opacity: 0.28;
+    fill-opacity: 0.45;
   }
   .sym.library {
     color: #2f9e6e;

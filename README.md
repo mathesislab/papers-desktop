@@ -70,8 +70,8 @@ typical paper is to the others, 100). The score is the higher of both, or
 one alone (Settings → Score, with the interests and the .bib files it
 compares with); it sorts the list and is `score:50-` in a search or a rule
 (0–100: rules written for the scores of before need new thresholds). The
-sidebar's views, kinds, interests and sources filter it. An item selected
-for a moment counts as seen.
+sidebar's views, kinds, interests and sources filter it. An item counts as
+seen once opened (its details, or its page); one only selected stays new.
 
 | Key (Feeds tab) | Action |
 |---|---|

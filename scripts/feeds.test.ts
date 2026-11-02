@@ -32,7 +32,6 @@ import {
 } from "../src/lib/feeds/subscriptions.ts";
 import {
   addTarget,
-  Dwell,
   ago,
   barOf,
   fetchLine,
@@ -377,30 +376,6 @@ test("the stages of a paper known: its own and its versions'", () => {
   assert.equal(stagesOf("paper", ["preprint"]), "both");
   assert.equal(stagesOf("preprint", ["published"]), "both");
   assert.equal(stagesOf("preprint", ["preprint"]), "preprint");
-});
-
-test("seen on dwell: an item that stays, not one passed over", () => {
-  mock.timers.enable({ apis: ["setTimeout"] });
-  try {
-    const seen: string[] = [];
-    const dwell = new Dwell((id) => seen.push(id), 800);
-    dwell.show("a", true);
-    mock.timers.tick(300);
-    dwell.show("b", true);
-    mock.timers.tick(300);
-    dwell.show("c", false);
-    mock.timers.tick(1000);
-    assert.deepEqual(seen, []);
-    dwell.show("d", true);
-    mock.timers.tick(800);
-    assert.deepEqual(seen, ["d"]);
-    dwell.show("e", true);
-    dwell.stop();
-    mock.timers.tick(1000);
-    assert.deepEqual(seen, ["d"]);
-  } finally {
-    mock.timers.reset();
-  }
 });
 
 test("the kinds, named once", () => {

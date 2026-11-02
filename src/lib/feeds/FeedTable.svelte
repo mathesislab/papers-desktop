@@ -300,6 +300,10 @@
   .rows .row > .score {
     align-self: stretch;
   }
+  /* the symbols' slots fill it: a little room either side */
+  .rows .row > .status {
+    padding: 0 4px;
+  }
   /* simple: the date over the score, under the star */
   .simple .row {
     grid-template-rows: 34px 1fr;

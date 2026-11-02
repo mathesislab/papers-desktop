@@ -915,12 +915,12 @@ Library tab):
   and ↑↓ go through the items. *Details beside the list* (the switch
   `feeds-beside`: the settings, Window → Feeds Details Beside the List) shows
   them beside it instead, in both tabs.
-- *Seen on dwell*: an item selected for 800 ms becomes seen (`Dwell`); one
-  passed over faster (j held down) stays new: its title went by, its
-  details were not read. `⇧Space` (and the row menu's *Mark All Above as
-  Read*) marks the new items above it seen, for titles skimmed. Opening an
-  item marks it seen.
-- *Details*, to read: the buttons (*Open* in the feeds' green), the title,
+- *Seen when opened*: an item becomes seen when its details are opened (a
+  double-click, Enter; read in place, each item the keys move to) or its
+  page; one only selected stays new, its details beside the list or not.
+  `⇧Space` (and the row menu's *Mark All Above as Read*) marks the new items
+  above it seen, for titles skimmed.
+- *Details*, to read: the buttons, the status in words, the title,
   authors, journal and date, then a paper's abstract marked by the query and
   the interests (*Summary from the feed* until Crossref or OpenAlex gives
   one; looked up 300 ms after it is shown, once per item), *Why it is here*

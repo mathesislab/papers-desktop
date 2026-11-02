@@ -36,40 +36,6 @@ export function toggled(items: { id: string; triage: Triage }[], action: TriageA
   }
 }
 
-/** How long an item must stay selected to count as seen, ms. */
-export const DWELL_MS = 800;
-
-/**
- * Seen on dwell: a new item selected becomes seen once it has stayed selected `ms`. One passed over faster (j held
- * down, the arrows run through the list) stays new: its title went by, its details were not read. *Mark all above
- * as read* (⇧Space) is for the titles skimmed.
- */
-export class Dwell {
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private readonly onseen: (id: string) => void;
-  private readonly ms: number;
-
-  constructor(onseen: (id: string) => void, ms = DWELL_MS) {
-    this.onseen = onseen;
-    this.ms = ms;
-  }
-
-  /** The item selected now (none: no item), and whether it is new: the one before, if not seen yet, was passed. */
-  show(id: string | null, isNew: boolean) {
-    this.stop();
-    if (id === null || !isNew) return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      this.onseen(id);
-    }, this.ms);
-  }
-
-  stop() {
-    if (this.timer !== null) clearTimeout(this.timer);
-    this.timer = null;
-  }
-}
-
 /** A row unread: new, not snoozed. */
 export const unread = (r: { triage: Triage; reminder?: Reminder | null }) => r.triage === "new" && r.reminder !== "snoozed";
 

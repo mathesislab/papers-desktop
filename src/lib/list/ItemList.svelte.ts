@@ -5,6 +5,7 @@
 // window's context (`tabContext`) its own.
 
 import { MenuItem } from "@tauri-apps/api/menu";
+import { untrack } from "svelte";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import * as api from "$lib/feeds/api";
@@ -38,7 +39,7 @@ export interface ListOptions {
   query: () => string;
   /** the list again, after a change refused: the backend tells of those made (`feeds-changed`), which ask for it */
   reload: () => unknown;
-  /** the pages of items opened in the browser */
+  /** the items opened: their pages in the browser, their details (`showDetails`, the item read in place) */
   opened?: (ids: string[]) => void;
   /** how the list shows (the tab's choice, which the layout keeps); none: a table */
   look?: () => Look;
@@ -90,6 +91,12 @@ export class ItemList {
       return () => {
         live = false;
       };
+    });
+
+    // the item read in place of the list is opened, as the keys move through the list
+    $effect(() => {
+      const id = this.reading ? this.selection.focus : null;
+      if (id !== null) untrack(() => options.opened?.([id]));
     });
 
     // the abstract of the item shown, looked up if its lookups may still find it (the items then change)
@@ -153,9 +160,11 @@ export class ItemList {
 
   /** A double-click, Enter: the details of the item in focus, beside the list (the pane shown) or in place of it. */
   showDetails = () => {
-    if (this.selection.focus === null) return;
-    if (this.beside) this.#tab.showDetails = true;
-    else this.reading = true;
+    const id = this.selection.focus;
+    if (id === null) return;
+    if (!this.beside) return (this.reading = true);
+    this.#tab.showDetails = true;
+    this.#options.opened?.([id]);
   };
 
   /** Space: the PDF of the item in focus, the library's in the Library tab if it is there, else its free copy in the

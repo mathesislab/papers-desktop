@@ -11,7 +11,7 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
   import { ask } from "@tauri-apps/plugin-dialog";
-  import { onDestroy, onMount, untrack } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { label, matches, type Shortcut } from "$lib/keys";
   import { modalOpen } from "$lib/library/modal.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
@@ -44,7 +44,6 @@
     type FeedFilters,
   } from "./filters";
   import {
-    Dwell,
     fetchLine,
     mergeRows,
     newAbove,
@@ -110,7 +109,7 @@
     query: () => request.query,
     reload: () => load(true),
     look: () => look,
-    // an item opened is seen
+    // an item opened, its page or its details, is seen; one only selected stays new
     opened: (ids) => {
       const fresh = ids.filter((id) => list.byId.get(id)?.triage === "new");
       if (fresh.length) list.setTo(fresh, "seen");
@@ -135,11 +134,6 @@
     keepUnread,
     later: laterMenu,
     clearReminder: (ids) => list.setTo(ids, "new"),
-  });
-
-  /** An item becomes seen once it has stayed selected a moment (`Dwell`); one passed over stays new. */
-  const dwell = new Dwell((id) => {
-    if (list.byId.get(id)?.triage === "new") list.setTo([id], "seen");
   });
 
   onMount(() => {
@@ -170,8 +164,6 @@
       unlisten.forEach((u) => u.then((f) => f()));
     };
   });
-
-  onDestroy(() => dwell.stop());
 
   /** The tab opened: the subscriptions, the saved views, and a fetch when the last is older than 15 minutes. */
   async function start() {
@@ -253,16 +245,6 @@
     untrack(() => {
       list.sticky.clear();
       load(false);
-    });
-  });
-
-  // the item in focus, if new, is seen once it stays
-  $effect(() => {
-    const id = list.selection.focus;
-    // a reminder stays new until marked read
-    untrack(() => {
-      const row = id === null ? undefined : list.byId.get(id);
-      dwell.show(id, row?.triage === "new" && !row.reminder);
     });
   });
 
