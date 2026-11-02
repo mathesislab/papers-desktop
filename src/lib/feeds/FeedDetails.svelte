@@ -1,15 +1,17 @@
 <script lang="ts">
   // The details of the item selected in the Feeds tab or the Search tab, to read: the buttons of the tab (they do
-  // what the keys do), its title, authors and where it appeared, then a paper's abstract, marked where the query or
+  // what the keys do), its status in words (Marks: its version, the library, the news), its title, authors and
+  // where it appeared, then a paper's abstract, marked where the query or
   // an interest matched, and what tells whether to add it (Facts); a post's text, and the papers behind it, each to
   // add, star or show (*Find linked paper* looks for them again).
 
   import type { Snippet } from "svelte";
   import type { FeedDetail, FeedRow, Linked, Store } from "./api";
-  import Facts, { inLibrary } from "./Facts.svelte";
-  import { dayText } from "./items";
+  import Facts from "./Facts.svelte";
+  import { dayText, detailMarked, marks } from "./items";
+  import Marks from "./Marks.svelte";
   import PostHtml from "./PostHtml.svelte";
-  import { ITEM_KINDS, isPost } from "./kinds";
+  import { isPost } from "./kinds";
   import Spans from "./Spans.svelte";
 
   let {
@@ -72,16 +74,13 @@
   </div>
 
   <div>
+    <p class="by status"><Marks marks={marks(detailMarked(detail), libraryOf)} look="words" {onentry} /></p>
     <h3><Spans spans={detail.title} /></h3>
     {#if detail.authors.length}<p class="authors">{detail.authors.join(", ")}</p>{/if}
     <p class="by">
-      {#if detail.kind !== "paper"}<span class="badge {detail.kind}">{ITEM_KINDS[detail.kind].name}</span>{/if}
       {#if detail.editorial}<span class="badge">editorial</span>{/if}
       {where}
     </p>
-    {#if detail.inLibrary.length}
-      <p class="by">{@render inLibrary(detail.inLibrary, onentry, libraryOf)}</p>
-    {/if}
   </div>
 
   {#if post}
@@ -171,6 +170,11 @@
     color: var(--muted);
     font-size: 12px;
   }
+  /* the status, over the title */
+  .status {
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
   h3 {
     margin: 0 0 5px;
     font-size: 16px;
@@ -243,16 +247,6 @@
     background: var(--accent);
     color: var(--on-accent);
   }
-  /* lightly in the feeds' green, as the library's light blue buttons: the paper's page, to decide */
-  .actions :global(button.open) {
-    border-color: color-mix(in srgb, var(--feeds) 40%, transparent);
-    background: color-mix(in srgb, var(--feeds) 14%, transparent);
-    color: var(--feeds);
-    font-weight: 500;
-  }
-  .actions :global(button.open:hover:not(:disabled)) {
-    background: color-mix(in srgb, var(--feeds) 24%, transparent);
-  }
   /* at the end of the item read: the list again */
   button.back {
     flex: none;
@@ -292,17 +286,5 @@
     border-radius: 4px;
     color: var(--muted);
     font-size: 10.5px;
-  }
-  .badge.preprint {
-    border-color: #a16207;
-    color: #a16207;
-  }
-  .badge.news {
-    border-color: #c2410c;
-    color: #c2410c;
-  }
-  .badge.blog {
-    border-color: #0e7490;
-    color: #0e7490;
   }
 </style>

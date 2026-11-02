@@ -28,3 +28,10 @@ export interface Tab {
 }
 
 export const [tabContext, setTabContext] = createContext<Tab>();
+
+/** The paper of the details in the library, to show there: the buttons say so (`ActionButtons.owned`) when they act
+ *  on it alone. */
+export function ownedOf(tab: Tab, d: { inLibrary: string[] }, ids: string[]): (() => void) | undefined {
+  const entry = d.inLibrary[0];
+  return entry && ids.length === 1 ? () => tab.onentry(entry) : undefined;
+}

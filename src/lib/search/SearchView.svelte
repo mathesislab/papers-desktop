@@ -30,7 +30,7 @@
   import LookSwitch from "$lib/list/LookSwitch.svelte";
   import type { SearchLayout } from "$lib/layout";
   import "$lib/list/tab.css";
-  import { tabContext } from "$lib/list/tab";
+  import { ownedOf, tabContext } from "$lib/list/tab";
   import * as api from "./api";
   import {
     ORDERS,
@@ -287,7 +287,7 @@
     SAVED_FOR_LATER,
   );
   /** the buttons of the details, but for the works around it; those of the selection bar */
-  const BUTTONS: ItemActionName[] = ["add", "open", "addBare", "star"];
+  const BUTTONS: ItemActionName[] = ["add", "open", "star"];
   const BAR_BUTTONS: ItemActionName[] = ["add", "star", "open"];
 
   /** Right-click on a row: the works selected when it is one of them, else that work alone. */
@@ -499,7 +499,7 @@
   {@const ids = list.targetsOr(d.id)}
   <!-- the works around it are searched by its OpenAlex id, else its DOI -->
   {@const unknown = !d.openalex && !d.doi}
-  <ActionButtons {actions} names={BUTTONS} {ids} items={list.itemsOf(ids)} />
+  <ActionButtons {actions} names={BUTTONS} menus={{ add: ["addBare"] }} {ids} items={list.itemsOf(ids)} owned={ownedOf(tab, d, ids)} />
   <button onclick={() => around(d, "cites")} disabled={unknown} title="Search the works that cite it, the most cited first">Cited by</button>
   <button onclick={() => around(d, "citedby")} disabled={unknown} title="Search the works it cites, the most cited first">References</button>
 {/snippet}

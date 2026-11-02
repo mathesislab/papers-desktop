@@ -20,7 +20,7 @@
   import ItemPane from "$lib/list/ItemPane.svelte";
   import LookSwitch from "$lib/list/LookSwitch.svelte";
   import "$lib/list/tab.css";
-  import { tabContext } from "$lib/list/tab";
+  import { ownedOf, tabContext } from "$lib/list/tab";
   import { added, changed, refusal, removed, renamed, sameName } from "$lib/saved";
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
@@ -100,7 +100,7 @@
   const MARK_ASK = 50;
   /** the buttons of the details, a post's and a paper's; those of the selection bar */
   const POST_BUTTONS: ActionName[] = ["open", "read", "star", "remove", "later"];
-  const PAPER_BUTTONS: ActionName[] = ["add", "open", "addBare", "star", "remove", "later"];
+  const PAPER_BUTTONS: ActionName[] = ["add", "open", "star", "remove", "later"];
   const BAR_BUTTONS: ActionName[] = ["read", "star", "remove", "later"];
 
   let request = $derived(requestOf(filters));
@@ -738,7 +738,14 @@
 <!-- the buttons of the details, a post's or a paper's: on the selection when the item is in it -->
 {#snippet detailButtons(d: FeedDetail)}
   {@const ids = list.targetsOr(d.id)}
-  <ActionButtons {actions} names={isPost(d.kind) ? POST_BUTTONS : PAPER_BUTTONS} {ids} items={list.itemsOf(ids)} />
+  <ActionButtons
+    {actions}
+    names={isPost(d.kind) ? POST_BUTTONS : PAPER_BUTTONS}
+    menus={{ add: ["addBare"] }}
+    {ids}
+    items={list.itemsOf(ids)}
+    owned={ownedOf(tab, d, ids)}
+  />
 {/snippet}
 
 <style>

@@ -1,7 +1,3 @@
-<script lang="ts" module>
-  export { inLibrary };
-</script>
-
 <script lang="ts">
   // What tells whether a paper of the feeds is worth adding, in the details: why it is here (its score and its two
   // parts: its keywords, with the interests and the terms that matched, and its library; or the exclude that vetoed
@@ -65,14 +61,6 @@
 
 <!-- the library's papers of the same item (its DOI, or its title and year), each to show, after the .bib it is in
      when the library has several (`libraryOf`): the details' -->
-{#snippet inLibrary(ids: string[], onentry: (id: string) => void, libraryOf: (id: string) => string | null)}
-  {#each ids as id, i (id)}
-    {@const bib = libraryOf(id)}
-    {#if bib || i === 0}<span class="badge lib">{bib ? `in ${bib}` : "in library"}</span>{/if}
-    <button class="link" onclick={() => onentry(id)}>show</button>
-  {/each}
-{/snippet}
-
 <!-- the interests in the order of their scaled scores, the best first (the keywords part is the best's) -->
 <section>
   <h5>Why it is here · score {part(detail.score)}</h5>
