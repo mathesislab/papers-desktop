@@ -372,4 +372,8 @@
     background: var(--line);
     color: var(--fg);
   }
+  /* the keys of the window move the selection: no ring on the row pressed */
+  .row:focus {
+    outline: none;
+  }
 </style>

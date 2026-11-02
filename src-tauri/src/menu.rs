@@ -34,8 +34,8 @@ const TO_PAGE: &[&str] = &[
 ];
 
 /// The items of the Window menu that follow the switches (`Toggle`): Window → Feeds and Search, there
-/// only while their tab is shown; Show Feeds Tab, Show Search Tab, Feeds Details Beside the List
-/// and Library Details Beside the List, ticked as their switch is (the Feeds one there while the
+/// only while their tab is shown; Show Feeds Tab, Show Search Tab, Feeds Side View and Library Side
+/// View, ticked as their switch is (the Feeds one there while the
 /// Feeds tab is shown). The id of a ticked item
 /// is its switch's name.
 struct ToggleItems {
@@ -61,8 +61,8 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
         search: item("search", "Search", "CmdOrCtrl+3")?,
         feeds_tab: check(Toggle::FeedsTab, "Show Feeds Tab")?,
         search_tab: check(Toggle::SearchTab, "Show Search Tab")?,
-        feeds_beside: check(Toggle::FeedsBeside, "Feeds Details Beside the List")?,
-        library_beside: check(Toggle::LibraryBeside, "Library Details Beside the List")?,
+        feeds_beside: check(Toggle::FeedsBeside, "Feeds Side View")?,
+        library_beside: check(Toggle::LibraryBeside, "Library Side View")?,
     };
     let menu = Menu::with_items(
         app,
@@ -101,6 +101,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &separator()?,
                     &MenuItem::with_id(app, "new-bib", "New .bib…", true, None::<&str>)?,
                     &MenuItem::with_id(app, "import", "Import into Library…", true, None::<&str>)?,
+                    &item("export", "Export…", "CmdOrCtrl+Shift+E")?,
                     &separator()?,
                     &MenuItem::with_id(app, "close", "Close", true, Some("CmdOrCtrl+W"))?,
                 ],
@@ -127,7 +128,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                 true,
                 &[
                     &item("sidebar", "Show or Hide the Sidebar", "CmdOrCtrl+Alt+S")?,
-                    &item("details", "Show or Hide the Details", "CmdOrCtrl+Alt+I")?,
+                    &item("details", "Show or Hide the Side View", "CmdOrCtrl+Alt+I")?,
                     &separator()?,
                     &item("zoom-in", ZOOM_IN, "CmdOrCtrl+=")?,
                     &item("zoom-out", "Zoom Out", "CmdOrCtrl+-")?,

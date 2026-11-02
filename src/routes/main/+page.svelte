@@ -230,13 +230,15 @@
     }
   }
 
-  /** A command in the Feeds or the Search tab: ⌘W closes the window, ⌘N opens the Add sheet of the library, ⌘F
+  /** A command in the Feeds or the Search tab: ⌘W closes the window, ⌘N opens the Add sheet of the library (and
+   *  Export… exports from it), ⌘F
    *  goes to the tab's search field; the papers open and their keys are the Library tab's. */
   function tabCommand(name: string) {
     switch (name) {
       case "close":
         return library?.closeWindow();
       case "add":
+      case "export":
         return library?.command(name);
       case "find":
         return (layout.tab === "feeds" ? feeds : search)?.focusSearch();

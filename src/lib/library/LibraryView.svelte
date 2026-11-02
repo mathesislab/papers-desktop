@@ -153,8 +153,6 @@
   let reading = $state(false);
   let item = $state<Item | null>(null);
   let input = $state<HTMLInputElement>();
-  /** the menu of the export, open */
-  let exporting = $state(false);
   /** papers to install, to write a papers library: the version found, too old */
   let missing = $state<{ version: string | null } | null>(null);
   /** the sheet to add a paper, open: for a PDF to add to the paper `id`, else a new paper; with a PDF to start with, or the chooser of one;
@@ -770,9 +768,14 @@
 
   const openPaper = (id: string) => openPapers([id]);
 
+  /** File → Export…: the papers selected, unless all or none are; then those shown. */
+  function exportTargets(): string[] {
+    const picked = ordered(selection.selected);
+    return picked.length && picked.length < shown.length ? picked : shown.map((r) => r.id);
+  }
+
   /** The papers in a .bib file of their own, e.g. a manuscript's references. */
   async function exportBib(ids: string[]) {
-    exporting = false;
     const path = await save({
       title: "Export as a .bib file",
       defaultPath: "references.bib",
@@ -1047,6 +1050,8 @@
         return reader ? reader.focusFind() : input?.select();
       case "library":
         return showLibrary();
+      case "export":
+        return exportBib(exportTargets());
       case "next-tab":
       case "show-next-tab":
         return cycle(1);
@@ -1077,7 +1082,7 @@
   /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
    *  elsewhere (after asking), the arrows, the page keys, Home
    *  and End move (shift extends the selection), Enter (as a double-click) shows the details, Space opens the PDFs,
-   *  Esc leaves the search or the paper read, else leaves the paper in focus alone selected, 1–9 toggle the tag pinned to the key, s the star. */
+   *  Esc leaves the search or the paper read, else selects nothing, 1–9 toggle the tag pinned to the key, s the star. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -1118,9 +1123,9 @@
     } else if (e.key === "Escape" && readRow) {
       e.preventDefault();
       reading = false;
-    } else if (e.key === "Escape" && !typing && selection.selected.size > 1) {
+    } else if (e.key === "Escape" && !typing && selection.selected.size) {
       e.preventDefault();
-      selection.only(selection.focus);
+      selection.only(null);
     } else if (/^[1-9]$/.test(e.key) && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       togglePinned(Number(e.key) - 1);
@@ -1277,18 +1282,6 @@
           onsave={(name) => keepSaved(savedAdded(savedSearches, currentSaved(name)))}
         />
         <span class="count">{notice ?? summary}</span>
-        <div class="export">
-          <button class="tool" class:on={exporting} onclick={() => (exporting = !exporting)}>Export…</button>
-          {#if exporting}
-            <button class="backdrop" aria-label="Close" onclick={() => (exporting = false)}></button>
-            <div class="menu" role="menu">
-              <button role="menuitem" disabled={!selection.selected.size} onclick={() => exportBib([...selection.selected])}>
-                The {selection.selected.size} selected
-              </button>
-              <button role="menuitem" onclick={() => exportBib(shown.map((r) => r.id))}>The {shown.length} shown</button>
-            </div>
-          {/if}
-        </div>
       {/if}
       <span class="spacer"></span>
       <button class="tool" title="Add a paper ({label(commands.add)}), or drop a PDF on the window"
@@ -1298,8 +1291,8 @@
         <button
           class="tool"
           class:on={layout.showDetails}
-          title="Details ({label(commands.details)})"
-          onclick={() => (layout.showDetails = !layout.showDetails)}>Details</button
+          title="The details of the paper beside the list ({label(commands.details)})"
+          onclick={() => (layout.showDetails = !layout.showDetails)}>Side view</button
         >
       {/if}
     </header>
@@ -1319,6 +1312,20 @@
               {sortText(layout.sort)} ▾
             </button>
             <LookSwitch bind:look={layout.look} />
+            {#if selection.selected.size > 1}
+              {@const ids = ordered(selection.selected)}
+              <div class="selbar">
+                <span>{ids.length} selected</span>
+                <button onclick={() => openMany(ids)}>Open</button>
+                <button onclick={() => star(ids)}>☆ Star</button>
+                <button onclick={() => editTags(ids)}>Tags…</button>
+                <button onclick={() => copyMany(ids, "pandoc")}>Copy [@keys]</button>
+                <button onclick={() => exportBib(ids)}>Export…</button>
+                <button onclick={() => askDelete(ids)}>Delete…</button>
+                <span class="spacer"></span>
+                <button class="plain" onclick={() => selection.only(null)}>Clear selection</button>
+              </div>
+            {/if}
           </div>
         {/if}
         {#if reader}
@@ -1487,6 +1494,7 @@
   }
   /* above the table: the filters on (library › view › tags › search), the order, the look */
   .chips {
+    position: relative;
     flex: none;
     display: flex;
     flex-wrap: wrap;
@@ -1546,9 +1554,6 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .export {
-    position: relative;
-  }
   /* a PDF is over the window: the frame says where it would go */
   .drop {
     position: fixed;
@@ -1571,41 +1576,29 @@
     color: var(--on-accent);
     font-size: 12px;
   }
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 2;
-    border: none;
-    background: none;
-  }
-  .menu {
+  /* two or more papers selected: what acts on them all, over the chips (nothing below moves) */
+  .selbar {
     position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
-    z-index: 3;
+    inset: 0;
+    z-index: 1;
     display: flex;
-    flex-direction: column;
-    min-width: 160px;
-    padding: 4px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--menu-bg);
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+    color: var(--fg);
   }
-  .menu button {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 5px;
-    background: none;
+  .selbar button {
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
     color: var(--fg);
     font: inherit;
-    text-align: left;
-    white-space: nowrap;
   }
-  .menu button:hover:not(:disabled) {
-    background: var(--selection);
-    color: var(--on-selection);
-  }
-  .menu button:disabled {
+  .selbar button.plain {
+    border: none;
+    background: none;
     color: var(--muted);
   }
   .spacer {

@@ -7,6 +7,7 @@ import type { Shortcut } from "./keys";
 export const commands: Record<string, Shortcut> = {
   close: { key: "w", mod: true },
   add: { key: "n", mod: true },
+  export: { key: "e", mod: true, shift: true },
   find: { key: "f", mod: true },
   "zoom-in": { key: "=", mod: true },
   "zoom-out": { key: "-", mod: true },

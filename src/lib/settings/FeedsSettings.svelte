@@ -1,8 +1,8 @@
 <script lang="ts">
-  // The Feeds tab of the settings window: the subscriptions (added by
-  // address, ISSN or OpenAlex filter, or from the suggested list; edited;
-  // OPML in and out), the rules, the days kept, the background polling; the switches of the main window (whether
-  // the Feeds and Search tabs show, the details beside the list). The interests are the Score tab's
+  // The Feeds tab of the settings window: the options first, the switches of the main window (whether the Feeds and
+  // Search tabs show, the side view), the fetching (in the background, the days kept and looked back) and the rules;
+  // then, apart, the subscriptions (added by address, ISSN or OpenAlex filter, or from the suggested list; edited;
+  // OPML in and out). The interests are the Score tab's
   // (ScoreSettings); both save over the feeds' settings as saved (`FeedPrefs`). The commands are those of
   // $lib/feeds/api.ts and, for the switches, $lib/toggles.ts.
   import { open, save as saveFile } from "@tauri-apps/plugin-dialog";
@@ -39,8 +39,8 @@
     },
     {
       toggle: "feeds-beside",
-      label: "Details beside the list",
-      hint: "Otherwise an item opens in place of the list, to read (Esc goes back), in the Feeds and Search tabs; also Window → Feeds Details Beside the List",
+      label: "Open in side view",
+      hint: "An item's details beside the list; otherwise it opens in place of the list, to read (Esc goes back), in the Feeds and Search tabs; also Window → Feeds Side View",
     },
   ];
   /** the rules being edited */
@@ -232,6 +232,68 @@
     </label>
   {/each}
 
+  {#if draft && saved}
+    <h3>Fetching</h3>
+    <label class="row">
+      <span>
+        <span class="label">Fetch in the background</span>
+        <span class="hint">Otherwise when the Feeds tab opens, and on {"⌘R"}</span>
+      </span>
+      <input type="checkbox" class="switch" checked={saved.poll} onchange={(e) => setNow({ poll: e.currentTarget.checked })} />
+    </label>
+    {#if saved.poll}
+      <label class="row">
+        <span class="label">Every (minutes)</span>
+        <input class="num" type="number" min="5" value={saved.pollMinutes} onchange={(e) => setNow({ pollMinutes: number(e) })} />
+      </label>
+    {/if}
+    <label class="row">
+      <span>
+        <span class="label">Keep items (days)</span>
+        <span class="hint">An item no feed lists any more goes after this, unless starred or added</span>
+      </span>
+      <input class="num" type="number" min="1" value={saved.keepDays} onchange={(e) => setNow({ keepDays: number(e) })} />
+    </label>
+    <label class="row">
+      <span>
+        <span class="label">Look back (days)</span>
+        <span class="hint">How far the first sweep of an ISSN or a filter reaches</span>
+      </span>
+      <input class="num" type="number" min="1" value={saved.lookbackDays} onchange={(e) => setNow({ lookbackDays: number(e) })} />
+    </label>
+
+    <h3>Rules</h3>
+    <p class="hint">Applied to the new items of a fetch, the first that matches deciding: a query of the feeds (<code>prof:amoc score:80-</code>, the score 0–100 of Settings → Score; <code>t:editorial</code>) and what to do.</p>
+    {#each draft as rule, i (i)}
+      <div class="line">
+        <input class="text grow" type="text" spellcheck="false" placeholder="Query" bind:value={rule.when} />
+        <select bind:value={rule.then}>
+          <option value="star">Star</option>
+          <option value="seen">Mark seen</option>
+          <option value="remove">Remove</option>
+        </select>
+        <button class="remove" onclick={() => draft!.splice(i, 1)}>✕</button>
+      </div>
+    {/each}
+    <div class="actions">
+      <button class="small" onclick={() => draft!.push({ when: "", then: "star" })}>Add Rule</button>
+    </div>
+
+    {#if dirty || draftError}
+      <div class="save">
+        <span class="hint" class:error={!!draftError}>{draftError || "Rules changed"}</span>
+        <span class="buttons">
+          <button class="small" onclick={revert}>Revert</button>
+          <button class="small primary" disabled={busy || !dirty} onclick={saveDraft}>Save</button>
+        </span>
+      </div>
+    {/if}
+  {/if}
+</section>
+
+<!-- the subscriptions apart from the options, after them: each to edit or remove, a new one, the suggested -->
+<section>
+  <h2>Subscriptions</h2>
   <ul class="subs">
     {#each subscriptions as s (s.id)}
       <li>
@@ -311,64 +373,6 @@
         Subscribe to {picked.length || ""} Selected
       </button>
     </div>
-  {/if}
-
-  {#if draft && saved}
-    <h3>Rules</h3>
-    <p class="hint">Applied to the new items of a fetch, the first that matches deciding: a query of the feeds (<code>prof:amoc score:80-</code>, the score 0–100 of Settings → Score; <code>t:editorial</code>) and what to do.</p>
-    {#each draft as rule, i (i)}
-      <div class="line">
-        <input class="text grow" type="text" spellcheck="false" placeholder="Query" bind:value={rule.when} />
-        <select bind:value={rule.then}>
-          <option value="star">Star</option>
-          <option value="seen">Mark seen</option>
-          <option value="remove">Remove</option>
-        </select>
-        <button class="remove" onclick={() => draft!.splice(i, 1)}>✕</button>
-      </div>
-    {/each}
-    <div class="actions">
-      <button class="small" onclick={() => draft!.push({ when: "", then: "star" })}>Add Rule</button>
-    </div>
-
-    {#if dirty || draftError}
-      <div class="save">
-        <span class="hint" class:error={!!draftError}>{draftError || "Rules changed"}</span>
-        <span class="buttons">
-          <button class="small" onclick={revert}>Revert</button>
-          <button class="small primary" disabled={busy || !dirty} onclick={saveDraft}>Save</button>
-        </span>
-      </div>
-    {/if}
-
-    <h3>Fetching</h3>
-    <label class="row">
-      <span>
-        <span class="label">Fetch in the background</span>
-        <span class="hint">Otherwise when the Feeds tab opens, and on {"⌘R"}</span>
-      </span>
-      <input type="checkbox" class="switch" checked={saved.poll} onchange={(e) => setNow({ poll: e.currentTarget.checked })} />
-    </label>
-    {#if saved.poll}
-      <label class="row">
-        <span class="label">Every (minutes)</span>
-        <input class="num" type="number" min="5" value={saved.pollMinutes} onchange={(e) => setNow({ pollMinutes: number(e) })} />
-      </label>
-    {/if}
-    <label class="row">
-      <span>
-        <span class="label">Keep items (days)</span>
-        <span class="hint">An item no feed lists any more goes after this, unless starred or added</span>
-      </span>
-      <input class="num" type="number" min="1" value={saved.keepDays} onchange={(e) => setNow({ keepDays: number(e) })} />
-    </label>
-    <label class="row">
-      <span>
-        <span class="label">Look back (days)</span>
-        <span class="hint">How far the first sweep of an ISSN or a filter reaches</span>
-      </span>
-      <input class="num" type="number" min="1" value={saved.lookbackDays} onchange={(e) => setNow({ lookbackDays: number(e) })} />
-    </label>
   {/if}
 </section>
 

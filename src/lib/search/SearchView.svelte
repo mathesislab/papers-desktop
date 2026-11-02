@@ -450,20 +450,20 @@
       </button>
     {/if}
     <LookSwitch bind:look={search.look} />
+    {#if list.selection.selected.size > 1}
+      {@const ids = list.chosen()}
+      {@const items = list.itemsOf(ids)}
+      <div class="selbar">
+        <span>{list.selection.selected.size} selected</span>
+        {#each BAR_BUTTONS as name (name)}
+          {@const action = actions[name]}
+          <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action, items)}</button>
+        {/each}
+        <span class="spacer"></span>
+        <button class="plain" onclick={() => list.selection.only(null)}>Clear selection</button>
+      </div>
+    {/if}
   </div>
-  {#if list.selection.selected.size > 1}
-    {@const ids = list.chosen()}
-    {@const items = list.itemsOf(ids)}
-    <div class="selbar">
-      <span>{list.selection.selected.size} selected</span>
-      {#each BAR_BUTTONS as name (name)}
-        {@const action = actions[name]}
-        <button disabled={!action.enabled(items)} onclick={() => action.run(ids)}>{buttonText(name, action, items)}</button>
-      {/each}
-      <span class="spacer"></span>
-      <button class="plain" onclick={() => list.selection.only(list.selection.focus)}>Clear selection</button>
-    </div>
-  {/if}
 {/snippet}
 
 <!-- in place of the list: searching, refused, before a search (the help), no works -->

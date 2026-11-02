@@ -89,7 +89,7 @@ main.tab {
 :where(.tab > .right > header) > .spacer,
 :where(.tab > .right > .status) > .spacer,
 :where(.tab .list > .filters) > .spacer,
-:where(.tab .list > .selbar) > .spacer {
+:where(.tab .list > .filters > .selbar) > .spacer {
   flex: 1;
 }
 :where(.tab > .right > header) > .tool {
@@ -112,6 +112,7 @@ main.tab {
 
 /* above the list: its filters as chips, the count, the order */
 :where(.tab .list) > .filters {
+  position: relative;
   flex: none;
   display: flex;
   flex-wrap: wrap;
@@ -166,18 +167,19 @@ main.tab {
   color: var(--fg);
 }
 
-/* two or more rows selected: what acts on them all */
-:where(.tab .list) > .selbar {
-  flex: none;
+/* two or more rows selected: what acts on them all, over the filters (nothing below moves) */
+:where(.tab .list > .filters) > .selbar {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
   font-size: 12px;
 }
-:where(.tab .list > .selbar) > button {
+:where(.tab .list > .filters > .selbar) > button {
   padding: 2px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -185,7 +187,7 @@ main.tab {
   color: var(--fg);
   font: inherit;
 }
-:where(.tab .list > .selbar) > button.plain {
+:where(.tab .list > .filters > .selbar) > button.plain {
   border: none;
   background: none;
   color: var(--muted);

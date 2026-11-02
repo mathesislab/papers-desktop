@@ -41,8 +41,8 @@ The library window (in the Dock while open) lists the papers in a table
 that the same search filters, with the `.bib` files, views (recently opened,
 recently added, no PDF, broken file links, possible duplicates) and tags in the sidebar.
 Its columns sort, move, resize, and show or hide (right-click the headers).
-A click selects; Enter or a double-click shows a paper's details (beside the
-list, or in place of it: Settings → Library); Space opens it in a tab of the
+A click selects; Enter or a double-click shows a paper's details (in the side
+view beside the list, or in place of it: Settings → Library); Space opens it in a tab of the
 sidebar: on macOS the PDF shows as in Preview (PDFKit), elsewhere with pdf.js.
 The Feeds and Search tabs work alike (Space: the library's PDF if the paper is
 in it, else its free copy in the browser). Export… writes the
@@ -59,7 +59,7 @@ selection, or the papers shown, to a `.bib` file.
 | `⌘1`, `⌘2` | the Library tab (in it: the library), the Feeds tab |
 | `⌃Tab`, `⌃⇧Tab` | the next tab, the one before |
 | `⌘[`, `⌘]` | back, forward: the tabs and papers shown before (‹ › by the tabs) |
-| `⌘⌥S`, `⌘⌥I` | show or hide the sidebar, the details |
+| `⌘⌥S`, `⌘⌥I` | show or hide the sidebar, the side view |
 | `⌘=` `⌘-` `⌘0` | zoom in, out, fit the width |
 
 The Feeds tab lists the new papers and posts of the journals, preprint

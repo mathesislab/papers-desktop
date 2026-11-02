@@ -211,13 +211,13 @@
 </section>
 
 <section>
-  <h2>Details</h2>
+  <h2>Side view</h2>
   <label class="row">
     <span>
-      <span class="label">Details beside the list</span>
+      <span class="label">Open in side view</span>
       <span class="hint"
-        >Otherwise a paper opens in place of the list, to read (Esc goes back); also Window → Library Details Beside
-        the List</span
+        >A paper's details beside the list; otherwise it opens in place of the list, to read (Esc goes back); also
+        Window → Library Side View</span
       >
     </span>
     <input
