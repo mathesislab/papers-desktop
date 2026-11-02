@@ -12,6 +12,7 @@
   let {
     lead,
     date,
+    dateTitle,
     source,
     sources,
     title,
@@ -24,6 +25,8 @@
     lead: number;
     /** the date of the row, as an age or a year */
     date: string;
+    /** what the date says on hover: its reminder */
+    dateTitle?: string;
     /** its journal, or where it came from */
     source: string;
     /** what the source says on hover: where else it came from */
@@ -39,7 +42,7 @@
   } = $props();
 </script>
 
-<span class="muted date" style:grid-column={lead + 1}>{date}</span>
+<span class="muted date" style:grid-column={lead + 1} title={dateTitle}>{date}</span>
 <span class="lines" class:both={!!under} style:grid-column={lead + 2}>
   <span class="small sourced"><span class="muted" title={sources}>{source}</span>{@render beside?.()}</span>
   <span>{@render title()}</span>

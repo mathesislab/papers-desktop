@@ -6,7 +6,7 @@
   // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). Simple
   // (`look`, the Feeds tab's at first; SimpleRow): no headers, each row taller, its date (an age; in the Search tab,
   // its year) over its score, then its source, title and authors a line each, its status beside its source. The
-  // status is symbols (Marks), in their slots in its column. A new item's title is bold; one seen is muted (in the
+  // status is symbols (Marks), in their slots in its column; a reminder, ⏰ before the date. A new item's title is bold; one seen is muted (in the
   // Feeds tab). A click selects (⇧ a range, ⌘ one more), a double-click opens its details, a right-click its menu; the star at
   // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
   // selected, removes it (or restores it, removed).
@@ -20,7 +20,7 @@
   import { STAR, rowHint, type Action } from "./actions";
   import type { FeedRow, Sort } from "./api";
   import type { FeedColumn } from "./columns";
-  import { ago, citedText, marks, yearOf } from "./items";
+  import { ago, citedText, marks, reminderOf, yearOf } from "./items";
   import { ITEM_KINDS, isPost } from "./kinds";
   import Marks from "./Marks.svelte";
   import ScoreBars from "./ScoreBars.svelte";
@@ -192,7 +192,8 @@
         {#if view.simple}
           <SimpleRow
             lead={LEAD.length}
-            date={date === "age" ? ago(row.date, now) : yearOf(row.date)}
+            date={(reminderOf(row) ? "⏰ " : "") + (date === "age" ? ago(row.date, now) : yearOf(row.date))}
+            dateTitle={reminderOf(row)?.text}
             source={sourceOf(row)}
             sources={row.sources.join(", ")}
           >
@@ -214,7 +215,8 @@
             {:else if column === "journal"}
               <span class="muted" title={row.sources.join(", ")}>{sourceOf(row)}</span>
             {:else if column === "date"}
-              <span class="muted date">{ago(row.date, now)}</span>
+              {@const reminder = reminderOf(row)}
+              <span class="muted date" title={reminder?.text}>{reminder ? "⏰ " : ""}{ago(row.date, now)}</span>
             {:else if column === "year"}
               <span class="muted date">{yearOf(row.date)}</span>
             {:else}

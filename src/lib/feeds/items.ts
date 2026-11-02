@@ -151,24 +151,21 @@ export interface Markable {
   coveredBy: number;
   /** a post: the papers found behind it */
   links: number;
-  reminder?: Reminder | null;
-  remind?: string | null;
 }
 
 /** A symbol of the status of an item, in its slot (the slots in this order: its version or, a post, its kind; the
- *  library; the news; the reminder), with what it says in words (on hover; in the details beside it). An item in
+ *  library; the news), with what it says in words (on hover; in the details beside it). An item in
  *  the library has its entries, by the .bib of each when the library has several (else null), once a .bib. */
 export type Mark =
   | { slot: "version"; symbol: "preprint" | "published" | "both" | "news" | "blog"; text: string }
   | { slot: "library"; symbol: "library"; text: string; entries: { id: string; bib: string | null }[] }
-  | { slot: "news"; symbol: "covered"; text: string }
-  | { slot: "reminder"; symbol: "due" | "snoozed"; text: string };
+  | { slot: "news"; symbol: "covered"; text: string };
 
-export const MARK_SLOTS = ["version", "library", "news", "reminder"] as const;
+export const MARK_SLOTS = ["version", "library", "news"] as const;
 
 /** The status of an item as symbols: a paper a preprint (◐), published (◑) or both known (●), a post its kind with
  *  the papers behind it; in the library, by its .bib files (`libraryOf`, "in thesis.bib"; none: "in library"); the
- *  news that covered it; its reminder. */
+ *  news that covered it. */
 export function marks(item: Markable, libraryOf: (id: string) => string | null): Mark[] {
   const list: Mark[] = [];
   if (isPost(item.kind)) {
@@ -188,12 +185,15 @@ export function marks(item: Markable, libraryOf: (id: string) => string | null):
     list.push({ slot: "library", symbol: "library", text, entries: [...entries].map(([bib, id]) => ({ id, bib })) });
   }
   if (item.coveredBy) list.push({ slot: "news", symbol: "covered", text: `${item.coveredBy} news` });
-  if (item.reminder === "due") list.push({ slot: "reminder", symbol: "due", text: "reminder due" });
-  else if (item.reminder === "snoozed" && item.remind) {
-    const day = new Date(item.remind).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-    list.push({ slot: "reminder", symbol: "snoozed", text: `reminder ${day}` });
-  }
   return list;
+}
+
+/** The reminder of a row, by its date (⏰): due, or snoozed till a day ("reminder 3 Nov"); none without one. */
+export function reminderOf(row: { reminder: Reminder | null; remind: string | null }): { due: boolean; text: string } | null {
+  if (row.reminder === "due") return { due: true, text: "Reminder due" };
+  if (row.reminder !== "snoozed" || !row.remind) return null;
+  const day = new Date(row.remind).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return { due: false, text: `Reminder ${day}` };
 }
 
 /** The stages of a paper known: its own (a preprint's, else published) and those of its versions (as

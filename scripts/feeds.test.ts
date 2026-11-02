@@ -37,6 +37,7 @@ import {
   fetchLine,
   marks,
   mergeRows,
+  reminderOf,
   stagesOf,
   NO_INTERESTS,
   newAbove,
@@ -346,7 +347,7 @@ test("ages, staleness and the status line", () => {
   assert.equal(fetchLine(null, now), "not fetched yet");
 });
 
-test("the status of an item: its version, the library, the news, the reminder, in that order", () => {
+test("the status of an item: its version, the library, the news, in that order", () => {
   const one = () => null;
   const said = (r: Parameters<typeof marks>[0], libraryOf: (id: string) => string | null = one) =>
     marks(r, libraryOf).map((m) => [m.symbol, m.text]);
@@ -355,10 +356,7 @@ test("the status of an item: its version, the library, the news, the reminder, i
     ["library", "in library"],
     ["covered", "2 news"],
   ]);
-  assert.deepEqual(said({ ...row("p"), kind: "preprint", stages: "preprint", reminder: "due" }), [
-    ["preprint", "preprint"],
-    ["due", "reminder due"],
-  ]);
+  assert.deepEqual(said({ ...row("p"), kind: "preprint", stages: "preprint" }), [["preprint", "preprint"]]);
   assert.deepEqual(said({ ...row("n"), kind: "news", links: 2 }), [["news", "news & press · → 2 papers"]]);
   // a library of several .bib files: each named, once, with an entry of it to show
   const bibs: Record<string, string> = { x: "thesis.bib", y: "papers.bib", z: "thesis.bib" };
@@ -368,6 +366,14 @@ test("the status of an item: its version, the library, the news, the reminder, i
     { id: "x", bib: "thesis.bib" },
     { id: "y", bib: "papers.bib" },
   ]);
+});
+
+test("the reminder of a row: due, or snoozed till a day", () => {
+  assert.equal(reminderOf(row("a")), null);
+  assert.deepEqual(reminderOf({ reminder: "due", remind: null }), { due: true, text: "Reminder due" });
+  const snoozed = reminderOf({ reminder: "snoozed", remind: "2026-11-03T00:00:00Z" });
+  assert.equal(snoozed?.due, false);
+  assert.match(snoozed!.text, /^Reminder /);
 });
 
 test("the stages of a paper known: its own and its versions'", () => {

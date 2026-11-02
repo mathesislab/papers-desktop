@@ -1,6 +1,6 @@
 <script lang="ts">
   // The status of an item as symbols (`marks`): its version, a half circle (◐ a preprint, ◑ published, ● both) or, a
-  // post, its kind (a newspaper: news; ✎ general); ✓ in the library; a newspaper: news that covered it; ⏰ its reminder. What each says is
+  // post, its kind (a newspaper: news; ✎ general); ✓ in the library; a newspaper: news that covered it. What each says is
   // its hover. In a table's column, each in its slot, so that they line up from row to row (`slots`); beside a simple
   // row's source, those there (`inline`); in the details, each with its words, an entry of the library to show
   // (`words`).
@@ -38,7 +38,7 @@
       <path d="M3.5 4.5h5M3.5 6.5h5M3.5 8h3" />
     </svg>
   {:else}
-    <span class="sym {m.symbol}" aria-hidden="true">{{ blog: "✎", library: "✓", due: "⏰", snoozed: "⏰" }[m.symbol]}</span>
+    <span class="sym {m.symbol}" aria-hidden="true">{{ blog: "✎", library: "✓" }[m.symbol]}</span>
   {/if}
 {/snippet}
 
@@ -127,9 +127,6 @@
   }
   .sym.library {
     color: #2f9e6e;
-  }
-  .sym.snoozed {
-    opacity: 0.5;
   }
   .link {
     padding: 0;

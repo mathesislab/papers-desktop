@@ -1077,7 +1077,7 @@
   /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
    *  elsewhere (after asking), the arrows, the page keys, Home
    *  and End move (shift extends the selection), Enter (as a double-click) shows the details, Space opens the PDFs,
-   *  Esc leaves the search or the paper read, 1–9 toggle the tag pinned to the key, s the star. */
+   *  Esc leaves the search or the paper read, else leaves the paper in focus alone selected, 1–9 toggle the tag pinned to the key, s the star. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -1118,6 +1118,9 @@
     } else if (e.key === "Escape" && readRow) {
       e.preventDefault();
       reading = false;
+    } else if (e.key === "Escape" && !typing && selection.selected.size > 1) {
+      e.preventDefault();
+      selection.only(selection.focus);
     } else if (/^[1-9]$/.test(e.key) && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       togglePinned(Number(e.key) - 1);

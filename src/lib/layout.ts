@@ -71,7 +71,8 @@ const DEFAULTS: Layout = {
   showSidebar: true,
   showDetails: true,
   columns: DEFAULT_COLUMNS,
-  sort: null,
+  // by the first author, A first
+  sort: { column: "authors", descending: false },
   look: "table",
   library: NO_FILTERS,
   open: [],

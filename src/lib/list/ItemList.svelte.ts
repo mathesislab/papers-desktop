@@ -285,7 +285,8 @@ export class ItemList {
 
   /** The keys that move through the list and read it, whether `e` was one: the arrows and the page keys move (⇧
    *  extends the selection with the arrows), in a field too; out of one, Home and End, j and k move, ⌘A selects
-   *  all, Enter shows the details of the item (`showDetails`), Esc goes back from the item read, Space opens its PDF;
+   *  all, Enter shows the details of the item (`showDetails`), Esc goes back from the item read (else leaves the row
+   *  in focus alone selected), Space opens its PDF;
    *  / (⇧/ on some keyboards) goes to the search field, Esc leaves a field. */
   navKey(e: KeyboardEvent): boolean {
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -311,7 +312,8 @@ export class ItemList {
       case " ":
         return this.selection.focus !== null && act(() => this.openPdf());
       case "Escape":
-        return this.reading && act(() => (this.reading = false));
+        if (this.reading) return act(() => (this.reading = false));
+        return this.selection.selected.size > 1 && act(() => this.selection.only(this.selection.focus));
       case "Home":
         return go("first");
       case "End":
