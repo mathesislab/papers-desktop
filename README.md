@@ -41,15 +41,19 @@ The library window (in the Dock while open) lists the papers in a table
 that the same search filters, with the `.bib` files, views (recently opened,
 recently added, no PDF, broken file links, possible duplicates) and tags in the sidebar.
 Its columns sort, move, resize, and show or hide (right-click the headers).
-Enter or a double-click opens a paper in a tab of the sidebar: on macOS the
-PDF shows as in Preview (PDFKit), elsewhere with pdf.js. Export… writes the
+A click selects; Enter or a double-click shows a paper's details (beside the
+list, or in place of it: Settings → Library); Space opens it in a tab of the
+sidebar: on macOS the PDF shows as in Preview (PDFKit), elsewhere with pdf.js.
+The Feeds and Search tabs work alike (Space: the library's PDF if the paper is
+in it, else its free copy in the browser). Export… writes the
 selection, or the papers shown, to a `.bib` file.
 
 | Key (library window) | Action |
 |---|---|
 | `/`, `⌘F` | search the library, or find in the PDF |
 | `↑` `↓`, `⇟` `⇞`, `↖` `↘` (`⌘↑` `⌘↓`) | move; with `⇧`, extend the selection |
-| `↵` | open the paper |
+| `↵` | show the details |
+| `Space` | open the paper |
 | `Esc` | clear the search, then leave it |
 | `⌘W` | close the paper (the window, from the library) |
 | `⌘1`, `⌘2` | the Library tab (in it: the library), the Feeds tab |
@@ -75,6 +79,8 @@ for a moment counts as seen.
 | `s` | shortlist, or no longer |
 | `x` | remove, or bring back |
 | `m` | mark read, or unread |
+| `↵` | show the details |
+| `Space` | open the PDF (the library's, else the free one in the browser) |
 | `o` | open the item's page in the browser |
 | `a` | add the paper (a post: its linked paper), staying in Feeds |
 | `f` | find the paper behind a post |

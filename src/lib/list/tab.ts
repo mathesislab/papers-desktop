@@ -13,7 +13,7 @@ export interface Tab {
   sidebar: number;
   details: number;
   readonly showSidebar: boolean;
-  readonly showDetails: boolean;
+  showDetails: boolean;
   /** the colours of the interests of the settings (`interestColours`): an interest's the same in both tabs */
   readonly colours: Map<string, string>;
   /** the library's Add sheet, over the tab: a DOI (or arXiv id) to fetch, its free PDF looked for or not. The
@@ -21,6 +21,8 @@ export interface Tab {
   onadd(initial: { id: string; pdf: boolean }): Promise<string | null>;
   /** a paper of the library shown, in the Library tab */
   onentry(id: string): void;
+  /** the PDF of a paper of the library opened, in the Library tab (its web page, without a PDF) */
+  onpdf(id: string): void;
   /** the .bib file a paper of the library is in, by its name, when the library has several; none: it has one */
   libraryOf(id: string): string | null;
 }

@@ -65,12 +65,16 @@
     get showDetails() {
       return layout.showDetails;
     },
+    set showDetails(on) {
+      layout.showDetails = on;
+    },
     get colours() {
       return colours;
     },
     // the Add sheet is the library's, over the tab: after the paper is added, the tab stays in front
     onadd: (initial) => library?.addFrom(initial) ?? Promise.resolve(null),
     onentry: (id) => library?.showEntry(id),
+    onpdf: (id) => library?.openEntry(id),
     libraryOf: (id) => library?.libraryOf(id) ?? null,
   });
 

@@ -146,11 +146,33 @@ export class ItemList {
     this.#noticeTimer = setTimeout(() => (this.notice = null), 4000);
   };
 
-  /** A click on a row: selected (`Selection.click`); alone, read in place of the list. */
+  /** A click on a row: selected (`Selection.click`). */
   select = (id: string, e: MouseEvent) => {
-    if (e.button !== 0) return;
-    if (this.selection.click(id, e, this.ids) && !this.beside) this.reading = true;
+    if (e.button === 0) this.selection.click(id, e, this.ids);
   };
+
+  /** A double-click, Enter: the details of the item in focus, beside the list (the pane shown) or in place of it. */
+  showDetails = () => {
+    if (this.selection.focus === null) return;
+    if (this.beside) this.#tab.showDetails = true;
+    else this.reading = true;
+  };
+
+  /** Space: the PDF of the item in focus, the library's in the Library tab if it is there, else its free copy in the
+   *  browser. */
+  async openPdf() {
+    const id = this.selection.focus;
+    if (id === null) return;
+    const entry = this.byId.get(id)?.inLibrary[0];
+    if (entry) return this.#tab.onpdf(entry);
+    try {
+      const pdf = await api.pdfOf(id, this.#options.store);
+      if (pdf.url && pdf.access !== "closed") await openUrl(pdf.url);
+      else this.say("No free PDF");
+    } catch (e) {
+      this.say(String(e));
+    }
+  }
 
   /** An item to show, from the details (a post that covers it, a linked paper, another version): selected, in the
    *  list or not. */
@@ -212,7 +234,7 @@ export class ItemList {
     }
   }
 
-  /** o, a double-click: the page of each item in the browser (above 5, after asking). */
+  /** o: the page of each item in the browser (above 5, after asking). */
   async openItems(ids: string[]) {
     if (!ids.length) return;
     const question = `Open ${ids.length} pages in the browser?`;
@@ -254,8 +276,8 @@ export class ItemList {
 
   /** The keys that move through the list and read it, whether `e` was one: the arrows and the page keys move (⇧
    *  extends the selection with the arrows), in a field too; out of one, Home and End, j and k move, ⌘A selects
-   *  all, Enter reads the item in place of the list, Esc goes back; / (⇧/ on some keyboards) goes to the search
-   *  field, Esc leaves a field. */
+   *  all, Enter shows the details of the item (`showDetails`), Esc goes back from the item read, Space opens its PDF;
+   *  / (⇧/ on some keyboards) goes to the search field, Esc leaves a field. */
   navKey(e: KeyboardEvent): boolean {
     const mod = mac ? e.metaKey : e.ctrlKey;
     const act = (action: () => unknown) => {
@@ -276,7 +298,9 @@ export class ItemList {
     if (e.shiftKey) return false;
     switch (e.key) {
       case "Enter":
-        return !this.beside && this.selection.focus !== null && act(() => (this.reading = !this.reading));
+        return this.selection.focus !== null && act(this.showDetails);
+      case " ":
+        return this.selection.focus !== null && act(() => this.openPdf());
       case "Escape":
         return this.reading && act(() => (this.reading = false));
       case "Home":

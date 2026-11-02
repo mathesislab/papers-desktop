@@ -78,7 +78,7 @@ Three panes, each resized by dragging, the right one hidden on demand:
 
 **Tabs.** The window works as a browser does: the first tab is always the
 library, then one tab per open paper, listed in the sidebar (*Open*): author,
-year and title in full, as a tab bar cannot. Enter or a double-click opens a
+year and title in full, as a tab bar cannot. Space (or *Open*) opens a
 paper; `⌘W` closes it, which shows what was shown before it, as a browser's
 back does: the list or another paper, in the order they were last shown (the
 list last; `history.ts`, not kept across launches). A setting shows the library
@@ -171,11 +171,10 @@ itself is `list/selection.svelte.ts`, the three tabs', on `list/order.ts`:
 ⇧ ranges, the keys' steps, and after a delete, a move or a removal the row
 after the last one gone):
 
-- *Open*: Enter, a double-click, or *Open* in the context menu opens every
-  paper selected as a tab (`openPapers`, the first in front); a double-click on
-  one of several selected opens all of them (a click on one of several selected
-  keeps them selected until the button is released, as in Finder, so that they
-  can be dragged). Above 5 papers it asks first (*Open 12 papers?*). A paper
+- *Open*: Space, or *Open* in the context menu, opens every paper selected as
+  a tab (`openPapers`, the first in front); Enter or a double-click shows the
+  details (a click on one of several selected keeps them selected until the
+  button is released, as in Finder, so that they can be dragged). Above 5 papers it asks first (*Open 12 papers?*). A paper
   without a file opens its web page in the browser, as before.
 - *Drag* rows (the selection if the row is in it, else the row) onto the
   *Open* section of the sidebar: they open as tabs. The drag is made of pointer

@@ -82,8 +82,8 @@
     onselect: (id: string, e: MouseEvent) => void;
     /** a click that did not start a drag, after the selection was left as it was (see `onselect`) */
     onclickrow: (id: string) => void;
-    /** Enter-like: the papers to open, a double-click on one of several selected being those selected */
-    onopen: (ids: string[]) => void;
+    /** a double-click on a row: its details */
+    onopen: (id: string) => void;
     /** right-click on a row: its context menu */
     onmenu: (id: string, e: MouseEvent) => void;
     /** the rows dragged and dropped on the Open section of the sidebar */
@@ -107,8 +107,6 @@
     look: () => look,
   });
 
-  /** the papers selected before the first click of a double-click, which the second opens together */
-  let before: string[] | null = null;
   /** a click that ends a drag is not a click on the row */
   let dragged = false;
 
@@ -119,16 +117,11 @@
   };
 
   function rowDown(e: MouseEvent, id: string) {
-    if (e.detail === 1) before = selected.has(id) && selected.size > 1 ? inOrder(selected) : null;
     onselect(id, e);
   }
 
   function rowClick(id: string) {
     if (!dragged) onclickrow(id);
-  }
-
-  function rowOpen(id: string) {
-    onopen(before?.includes(id) ? before : [id]);
   }
 
   /** A row pressed: dragged far enough, the rows are dragged (the selection when the row is in it, else the
@@ -244,7 +237,7 @@
         onpointerdown={(e) => rowPress(e, row.id)}
         onmousedown={(e) => rowDown(e, row.id)}
         onclick={() => rowClick(row.id)}
-        ondblclick={() => rowOpen(row.id)}
+        ondblclick={() => onopen(row.id)}
         oncontextmenu={(e) => {
           e.preventDefault();
           onmenu(row.id, e);

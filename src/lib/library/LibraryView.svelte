@@ -1,7 +1,7 @@
 <script lang="ts">
   // The library tab of the main window: the sidebar, the table of the current set or the paper in front, the
-  // details, beside the table or, a paper clicked, in place of it to read (the window's switch, `beside`); and the
-  // sheets and questions of the library. The window (src/routes/main/+page.svelte) keeps the
+  // details, beside the table or in place of it to read (the window's switch, `beside`); and the sheets and questions
+  // of the library. The window (src/routes/main/+page.svelte) keeps the
   // layout, and passes on the commands of the menu and the keys that are the library's.
 
   import { invoke } from "@tauri-apps/api/core";
@@ -113,7 +113,7 @@
     layout: Layout;
     /** whether the Library tab of the window is in front */
     visible: boolean;
-    /** the details beside the table (the switch `library-beside`), else a paper clicked is read in place of it */
+    /** the details beside the table (the switch `library-beside`), else a paper is read in place of it */
     beside: boolean;
     /** the switch of the tabs of the window, at the start of the toolbar */
     tabs: Snippet;
@@ -149,8 +149,6 @@
   const table = { scroll: 0 };
   /** the papers selected, the one in focus: a press on one of several selected keeps them, for a drag */
   const selection = new Selection(true);
-  /** the paper pressed alone: a click on it that no drag followed reads it, without the details beside */
-  let pressed: string | null = null;
   /** the paper in focus read in place of the table (without the details beside) */
   let reading = $state(false);
   let item = $state<Item | null>(null);
@@ -527,21 +525,14 @@
   async function select(id: string, e: MouseEvent) {
     if (e.button !== 0 || !(await leave(id))) return;
     lastWrite = null;
-    pressed = selection.click(id, e, listed()) ? id : null;
+    selection.click(id, e, listed());
   }
 
-  /** A click on a row that no drag followed: the row alone, of several pressed; alone, read without the details
-   *  beside. */
-  function clicked(id: string) {
-    const alone = selection.release(id) || pressed === id;
-    pressed = null;
-    if (alone && !beside) reading = true;
-  }
-
-  /** The details of the paper in focus: beside the table, or it read in place of it. */
+  /** A double-click, Enter: the details of the paper in focus, beside the table (the pane shown), or it read in
+   *  place of the table. */
   function showDetails() {
     if (beside) layout.showDetails = true;
-    else reading = true;
+    else if (selection.focus) reading = true;
   }
 
   /** the row of the paper read in place of the table */
@@ -566,7 +557,7 @@
     selection.move(ids, to, extend);
   }
 
-  /** Enter, a double-click: the paper in a tab, unless it has no file (its
+  /** The paper in a tab, unless it has no file (its
    *  web page then opens in the browser). */
   async function open(id: string) {
     if (byId.get(id)?.file === "none") {
@@ -582,7 +573,7 @@
     return n <= OPEN_ASK || (await ask(question, { title: button, okLabel: button, cancelLabel: "Cancel" }));
   }
 
-  /** Enter, a double-click, Open: the papers each in a tab (above 5, after asking); one without a file opens its web
+  /** Space, Open: the papers each in a tab (above 5, after asking); one without a file opens its web
    *  page in the browser. The first in front. */
   async function openMany(ids: string[]) {
     if (!ids.length || !(await confirmMany(ids.length, `Open ${count(ids.length)}?`, "Open"))) return;
@@ -931,6 +922,12 @@
     return show(id);
   }
 
+  /** A paper of the library opened, from the Feeds and Search tabs: its PDF in a tab of the library, else its web
+   *  page. */
+  export function openEntry(id: string) {
+    return open(id);
+  }
+
   /** The .bib file of a paper, by its name, when the library has several: what the Feeds and Search tabs say it is
    *  in; none: it has one (or the paper is not in it). */
   export function libraryOf(id: string): string | null {
@@ -1068,8 +1065,8 @@
 
   /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
    *  elsewhere (after asking), the arrows, the page keys, Home
-   *  and End move (shift extends the selection), Enter opens, Esc leaves the
-   *  search or the paper read, 1–9 toggle the tag pinned to the key, s the star. */
+   *  and End move (shift extends the selection), Enter (as a double-click) shows the details, Space opens the PDFs,
+   *  Esc leaves the search or the paper read, 1–9 toggle the tag pinned to the key, s the star. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -1093,6 +1090,9 @@
     } else if (e.key === "End" && !typing) {
       go("last");
     } else if (e.key === "Enter" && selection.focus) {
+      e.preventDefault();
+      showDetails();
+    } else if (e.key === " " && !typing && selection.focus) {
       e.preventDefault();
       openMany(selection.targets(listed()));
     } else if (e.key === "Backspace" && mod && !e.shiftKey && !e.altKey && (e.target === input || !typing)) {
@@ -1335,8 +1335,8 @@
               oncolumns={setColumns}
               onsort={(sort) => (layout.sort = sort)}
               onselect={select}
-              onclickrow={clicked}
-              onopen={openMany}
+              onclickrow={(id) => selection.release(id)}
+              onopen={showDetails}
               onmenu={rowMenu}
               ondrop={openMany}
               onstar={(id) => star([id])}

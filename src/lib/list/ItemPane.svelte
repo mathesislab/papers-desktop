@@ -68,7 +68,7 @@
           libraryOf={tab.libraryOf}
           look={list.look}
           onselect={list.select}
-          onopen={(id) => list.openItems(selection.selected.has(id) ? list.targets() : [id])}
+          onopen={list.showDetails}
         />
         {#if list.reading && !list.beside && list.focusRow}
           {@const row = list.focusRow}
