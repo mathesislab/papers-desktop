@@ -19,7 +19,7 @@
   import { onMount } from "svelte";
   import * as feedsApi from "$lib/feeds/api";
   import { buttonText, itemActions, type ItemActionName } from "$lib/feeds/actions";
-  import type { FeedDetail } from "$lib/feeds/api";
+  import type { FeedDetail, FeedRow } from "$lib/feeds/api";
   import { SEARCH_ORDER, SEARCH_SPECS } from "$lib/feeds/columns";
   import { mergeRows, type TriageAction } from "$lib/feeds/items";
   import { modalOpen } from "$lib/library/modal.svelte";
@@ -35,12 +35,14 @@
   import {
     ORDERS,
     aroundQuery,
+    askedOf,
     appended,
     composed,
     moreText,
     totalText,
     withRecent,
     SAVED_FOR_LATER,
+    type SearchOrder,
     type Typed,
   } from "./state";
   import SearchSidebar from "./SearchSidebar.svelte";
@@ -153,11 +155,12 @@
     searching = true;
     failure = null;
     try {
-      const page = await api.run(query, typed.order, null);
+      const page = await api.run(query, askedOf(typed.order), null);
       if (n !== asked) return;
-      search.results = { query, order: typed.order, ids: page.rows.map((r) => r.id), total: page.total, next: page.next };
+      const rows = ordered(page.rows, typed.order);
+      search.results = { query, order: typed.order, ids: rows.map((r) => r.id), total: page.total, next: page.next };
       search.recent = withRecent(search.recent, typed);
-      list.rows = page.rows;
+      list.rows = rows;
     } catch (e) {
       if (n === asked) failure = String(e);
     } finally {
@@ -172,17 +175,21 @@
     if (!r?.next || more || searching) return;
     more = true;
     try {
-      const page = await api.run(r.query, r.order, r.next);
+      const page = await api.run(r.query, askedOf(r.order), r.next);
       if (results !== r) return;
-      const ids = [...new Set([...r.ids, ...page.rows.map((w) => w.id)])];
-      search.results = { ...r, ids, total: page.total, next: page.next };
-      if (view === "results") list.rows = appended(list.rows, page.rows);
+      const rows = ordered(appended(list.rows, page.rows), r.order);
+      search.results = { ...r, ids: rows.map((w) => w.id), total: page.total, next: page.next };
+      if (view === "results") list.rows = rows;
     } catch (e) {
       list.say(String(e));
     } finally {
       more = false;
     }
   }
+
+  /** The works found in the order of the search: by score, the best first (a page more sorted in); else as OpenAlex
+   *  gave them. */
+  const ordered = (rows: FeedRow[], order: SearchOrder) => (order === "score" ? [...rows].sort((a, b) => b.score - a.score) : rows);
 
   /** A recent search, or the works around a work, in the fields, run. */
   function runAgain(again: Typed) {
@@ -438,7 +445,7 @@
     <span class="spacer"></span>
     <span class="count">{summary}</span>
     {#if view === "results"}
-      <button class="sort" title="The order of the works found: the best match, the most cited or the newest first" onclick={orderMenu}>
+      <button class="sort" title="The order of the works found: the newest, the best score, the most cited first, or as OpenAlex ranks them" onclick={orderMenu}>
         {orderText} ▾
       </button>
     {/if}

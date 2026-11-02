@@ -18,7 +18,7 @@ import {
   type Typed,
 } from "../src/lib/search/state.ts";
 
-const a = (query: string, year = "", order: Typed["order"] = "relevance"): Typed => ({ query, year, order });
+const a = (query: string, year = "", order: Typed["order"] = "newest"): Typed => ({ query, year, order });
 
 test("the query asked: the field's text, then the years as y:, spaces left out", () => {
   assert.equal(composed("greenland ice sheet", "2000-2010"), "greenland ice sheet y:2000-2010");
@@ -58,7 +58,7 @@ test("the recent searches: at most 20", () => {
 test("a recent search as the sidebar says it", () => {
   assert.equal(recentText(a("greenland ice sheet", "2000-2010", "cited")), "greenland ice sheet · 2000-2010 · Most cited");
   assert.equal(recentText(a("firn")), "firn");
-  assert.equal(recentText(a("", "2005", "newest")), "2005 · Newest");
+  assert.equal(recentText(a("", "2005", "relevance")), "2005 · OpenAlex relevance");
 });
 
 test("the layout restored: the defaults for what is missing or wrong", () => {

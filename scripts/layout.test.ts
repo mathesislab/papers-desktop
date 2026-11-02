@@ -46,7 +46,8 @@ test("a layout of an older version: the tab in front, the Feeds and Search tabs'
 
 test("the Feeds tab's columns of an older version still, widths by column: in their first order", () => {
   const layout = restore({ feedColumns: { score: 90, journal: 120 } } as never);
-  assert.deepEqual(layout.feeds.columns.slice(0, 3), [
+  assert.deepEqual(layout.feeds.columns.slice(0, 4), [
+    { key: "badges", width: 190 },
     { key: "score", width: 90 },
     { key: "date", width: 58 },
     { key: "journal", width: 120 },

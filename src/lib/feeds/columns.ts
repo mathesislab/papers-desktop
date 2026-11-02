@@ -24,11 +24,13 @@ export const FEED_SPECS: Specs<FeedColumn> = {
   badges: { name: "Badges", width: 190 },
 };
 
-/** the columns of the Feeds tab at first, in their order: those its menu offers */
-export const FEED_ORDER: FeedColumn[] = ["score", "date", "journal", "title", "authors", "badges"];
+/** the columns of the Feeds tab at first, in their order: those its menu offers. The journal and the title before
+ *  the authors: a feed is looked through */
+export const FEED_ORDER: FeedColumn[] = ["badges", "score", "date", "journal", "title", "authors"];
 
-/** the columns of the Search tab: the score first, the citations, the year; wider titles and journals */
-export const SEARCH_ORDER: FeedColumn[] = ["score", "cited", "title", "authors", "journal", "year", "badges"];
+/** the columns of the Search tab: as the library's, after the badges and the score; the citations last. Wider titles
+ *  and journals */
+export const SEARCH_ORDER: FeedColumn[] = ["badges", "score", "year", "authors", "title", "journal", "cited"];
 export const SEARCH_SPECS: Specs<FeedColumn> = {
   ...FEED_SPECS,
   title: { ...FEED_SPECS.title, width: 280 },

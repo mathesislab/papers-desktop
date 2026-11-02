@@ -318,6 +318,10 @@
     font-variant-numeric: tabular-nums;
     text-align: right;
   }
+  /* the count off the edge of the window, when its column is the last */
+  .rows .row > .cited:last-child {
+    padding-right: 16px;
+  }
   .rows .row > .score {
     align-self: stretch;
   }

@@ -32,5 +32,5 @@ export const sortText = (sort: Sort) =>
   sort ? `${COLUMNS[sort.column].name}, ${sort.descending ? "descending" : "ascending"}` : "Library order";
 
 /** the columns shown at first */
-export const DEFAULT_ORDER: Column[] = ["star", "authors", "year", "title", "container", "tags"];
+export const DEFAULT_ORDER: Column[] = ["star", "year", "authors", "title", "container", "tags"];
 export const DEFAULT_COLUMNS = columnsOf(DEFAULT_ORDER, COLUMNS);

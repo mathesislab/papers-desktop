@@ -7,12 +7,20 @@ import type { FeedDetail } from "../feeds/api.ts";
 import { anyOf } from "../query.ts";
 import type { Order } from "./api.ts";
 
+/** The order of the works found: one OpenAlex gives, or the score (`score`): the works OpenAlex finds most relevant,
+ *  those shown sorted by their score, the best first. */
+export type SearchOrder = Order | "score";
+
 /** The orders of the works found, as the tab offers them. */
-export const ORDERS: { order: Order; text: string }[] = [
-  { order: "relevance", text: "Relevance" },
-  { order: "cited", text: "Most cited" },
+export const ORDERS: { order: SearchOrder; text: string }[] = [
   { order: "newest", text: "Newest" },
+  { order: "score", text: "Score" },
+  { order: "cited", text: "Most cited" },
+  { order: "relevance", text: "OpenAlex relevance" },
 ];
+
+/** The order OpenAlex is asked for: the score sorts the most relevant. */
+export const askedOf = (order: SearchOrder): Order => (order === "score" ? "relevance" : order);
 
 /** The star of the tab, in its words: a work saved for later (starred in its folder). */
 export const SAVED_FOR_LATER: StarWords = {
@@ -33,14 +41,14 @@ export const RECENT_MAX = 20;
 export interface Typed {
   query: string;
   year: string;
-  order: Order;
+  order: SearchOrder;
 }
 
 /** The search the tab shows: the query asked (the Year field in it), its order, the works found so far in their
  *  order, how many there are in all, the cursor of the next page. */
 export interface Results {
   query: string;
-  order: Order;
+  order: SearchOrder;
   ids: string[];
   total: number;
   next: string | null;
@@ -53,7 +61,7 @@ export interface SearchState extends Typed {
   results: Results | null;
 }
 
-export const NO_SEARCH: SearchState = { query: "", year: "", order: "relevance", recent: [], results: null };
+export const NO_SEARCH: SearchState = { query: "", year: "", order: "newest", recent: [], results: null };
 
 /** The query asked of OpenAlex: the text of the search field, then the Year field as `y:`, spaces left out. ""
  *  when both are blank. */
@@ -74,21 +82,22 @@ export function withRecent(list: Typed[], search: Typed, max = RECENT_MAX): Type
   return [entry, ...list.filter((r) => !same(r, entry))].slice(0, max);
 }
 
-/** A recent search as the sidebar shows it: `greenland ice sheet · 2000-2010 · Most cited`. */
+/** A recent search as the sidebar shows it: `greenland ice sheet · 2000-2010 · Most cited`; the order at first not
+ *  said. */
 export function recentText(r: Typed): string {
-  const order = r.order === "relevance" ? null : ORDERS.find((o) => o.order === r.order)?.text;
+  const order = r.order === NO_SEARCH.order ? null : ORDERS.find((o) => o.order === r.order)?.text;
   return [r.query.trim(), r.year, order].filter(Boolean).join(" · ");
 }
 
 const text = (v: unknown): v is string => typeof v === "string";
-const isOrder = (v: unknown): v is Order => ORDERS.some((o) => o.order === v);
+const isOrder = (v: unknown): v is SearchOrder => ORDERS.some((o) => o.order === v);
 
 /** A search as saved, or null when it is not one. */
 function typed(v: unknown): Typed | null {
   if (!v || typeof v !== "object") return null;
   const r = v as Partial<Typed>;
   if (!text(r.query) || !text(r.year)) return null;
-  return { query: r.query, year: r.year, order: isOrder(r.order) ? r.order : "relevance" };
+  return { query: r.query, year: r.year, order: isOrder(r.order) ? r.order : NO_SEARCH.order };
 }
 
 /** The search shown as saved, or null when it is not one. */
