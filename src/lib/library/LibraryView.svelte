@@ -26,6 +26,8 @@
   import {
     addBibtex,
     attachPdf,
+    attachFiles,
+    setFiles,
     errorText,
     redo,
     removeEntries,
@@ -1411,6 +1413,8 @@
     {editor}
     onedit={() => edit(item.id)}
     onaddpdf={() => addPdf(item.id)}
+    onfiles={(files, del) => write(() => setFiles(item.id, files, del))}
+    onattach={(files, replace) => write(() => attachFiles(item.id, files, replace))}
     onsave={saveEdit}
     oncancel={() => leave(null)}
   />

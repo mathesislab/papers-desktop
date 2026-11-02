@@ -1,10 +1,12 @@
 <script lang="ts">
   // The details of the paper in focus in the Library tab, as those of the Feeds and Search tabs: the buttons (Open
   // PDF ▾: Reveal in Finder; Open ↗ its page; Copy [@key]; Edit), its status in words (✓ its .bib), its title and
-  // authors with the first page of its PDF beside (Preview), its tags; of several selected, their tags.
+  // authors with the first page of its PDF beside (Preview), its files (Files), its tags; of several selected, their
+  // tags.
   import { invoke } from "@tauri-apps/api/core";
   import { Menu, MenuItem } from "@tauri-apps/api/menu";
   import Marks from "$lib/feeds/Marks.svelte";
+  import Files from "$lib/library/Files.svelte";
   import { mac } from "$lib/keys";
   import { fileName } from "$lib/library/filters";
   import Preview from "$lib/Preview.svelte";
@@ -25,6 +27,8 @@
     onsave,
     oncancel,
     onaddpdf,
+    onfiles,
+    onattach,
   }: {
     item: Item;
     /** the papers the tags change: the selection when it has several, else the paper */
@@ -42,6 +46,10 @@
     oncancel: () => void;
     /** add a PDF to the paper: the sheet, with the chooser of the PDF */
     onaddpdf: () => void;
+    /** the files of the paper set: those kept in their order, those of `del` deleted */
+    onfiles: (files: string[], del: string[]) => unknown;
+    /** files added to the paper, after the others or in place of `replace` */
+    onattach: (files: string[], replace: string | null) => unknown;
   } = $props();
 
   let copied = $state(false);
@@ -83,12 +91,15 @@
       <button onclick={copyKey}>{copied ? "Copied" : "Copy [@key]"}</button>
       <button onclick={onedit} disabled={editor.id === item.id}>Edit</button>
     </div>
-    <Preview {item} marked={item.authors.map(() => false)} {onopen} keywords={false} {editor} {onsave} {oncancel} {onaddpdf}>
+    <Preview {item} marked={item.authors.map(() => false)} {onopen} keywords={false} count={false} {editor} {onsave} {oncancel} {onaddpdf}>
       {#snippet status()}
         {@const bib = fileName(item.bib)}
         <Marks marks={[{ slot: "library", symbol: "library", text: `in ${bib}`, entries: [{ id: item.id, bib }] }]} look="words" />
       {/snippet}
-      {#snippet after()}{#if rows.length}<Tags {rows} {tags} {filtered} ontoggle={ontag} {onset} />{/if}{/snippet}
+      {#snippet after()}
+        <Files {item} onset={onfiles} {onattach} />
+        {#if rows.length}<Tags {rows} {tags} {filtered} ontoggle={ontag} {onset} />{/if}
+      {/snippet}
     </Preview>
   {:else}
     <h4>{rows.length} papers selected</h4>

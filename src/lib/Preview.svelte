@@ -23,6 +23,7 @@
     onaddpdf,
     status,
     after,
+    count = true,
   }: {
     item: Item;
     /** for each author, whether the search matched it */
@@ -38,8 +39,10 @@
     onaddpdf?: () => void;
     /** over the title: its status */
     status?: Snippet;
-    /** after the title and the page: its tags */
+    /** after the title and the page: its files, its tags */
     after?: Snippet;
+    /** how many files it has, when more than one: not where its files are listed (`after`) */
+    count?: boolean;
   } = $props();
 
   const PAGE_WIDTH = 170;
@@ -244,7 +247,7 @@
           {#each item.keywords as keyword}<span>{keyword}</span>{/each}
         </p>
       {/if}
-      {#if item.files.length > 1}<p class="muted">{item.files.length} files</p>{/if}
+      {#if count && item.files.length > 1}<p class="muted">{item.files.length} files</p>{/if}
     </div>
     <!-- no PDF, where a PDF can be added: a click opens the chooser, a drop adds the file (data-drop-pdf) -->
     {#if !hasPdf && onaddpdf}

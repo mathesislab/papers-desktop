@@ -590,6 +590,26 @@ fn citation_style(state: State<AppState>) -> Result<Style, String> {
     Style::load(&state.citation_style.read().unwrap())
 }
 
+/// A file of a paper, as the side view lists it: there or not, its size.
+#[derive(Debug, Serialize)]
+struct FileInfo {
+    path: PathBuf,
+    exists: bool,
+    size: Option<u64>,
+}
+
+/// The files of a paper, in their order: the first is its PDF.
+#[tauri::command]
+fn files_of(state: State<AppState>, id: String) -> Result<Vec<FileInfo>, String> {
+    let item = state.item(&id)?;
+    Ok((item.files.into_iter())
+        .map(|path| {
+            let size = std::fs::metadata(&path).ok().filter(|m| m.is_file()).map(|m| m.len());
+            FileInfo { exists: size.is_some(), size, path }
+        })
+        .collect())
+}
+
 /// The path of the first PDF of an item, for the PDFKit view (tauri-plugin-pdfkit); refused when it
 /// has none, or it is gone.
 #[tauri::command]
@@ -1185,6 +1205,7 @@ pub fn run() {
             open_library,
             open_paper,
             pdf_path,
+            files_of,
             layout,
             save_layout,
             send_feedback,

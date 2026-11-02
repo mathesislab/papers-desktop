@@ -70,6 +70,19 @@ export function attachPdf(id: string, text: string | null, pdf: string, files: F
   return write("attach_pdf", { id, text, pdf, files });
 }
 
+/** Files added to a paper, after those it has, or with `replace` (a link of it, to a file that is gone) in its place:
+ *  placed as `files` says (none: the library's setting; a plain .bib links them where they are). */
+export function attachFiles(id: string, files: string[], replace: string | null, mode: FilesMode | null = null): Promise<void> {
+  return write("attach_files", { id, files, replace, mode });
+}
+
+/** The files of a paper set: `files`, of those it has, in this order, the others unlinked (the files kept), but those
+ *  of `del`, deleted when no other entry links to them (kept in a papers library's history, which undo brings back; a
+ *  plain .bib's to the trash). */
+export function setFiles(id: string, files: string[], del: string[] = []): Promise<void> {
+  return write("set_files", { id, files, delete: del });
+}
+
 /** What is done by default with a PDF added to a paper of a .bib file: the `files` setting of a
  *  papers library; none for a plain .bib. */
 export function defaultFiles(bib: string): Promise<FilesMode | null> {
