@@ -40,6 +40,7 @@
     queryOf,
     requestOf,
     withoutChip,
+    NO_FEED_FILTERS,
     type FeedChip,
     type FeedFilters,
   } from "./filters";
@@ -497,6 +498,11 @@
     if (matches(e, REFRESH)) return act(() => bringUpToDate(false));
     if (matches(e, FETCH)) return act(() => fetchNow());
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+    // Esc, last: the search and the choices as at first (the order, the groups unfolded kept)
+    if (e.key === "Escape") {
+      const plain = { ...NO_FEED_FILTERS, sort: filters.sort, open: filters.open };
+      return JSON.stringify(filters) !== JSON.stringify(plain) && act(() => (filters = plain));
+    }
     if (e.key === " " && e.shiftKey) return act(() => markAbove());
     if (e.shiftKey) return;
     const action = Object.values(actions).find((a) => a.key === e.key);

@@ -427,7 +427,7 @@
     left: 0;
     right: 0;
     z-index: 50;
-    height: 4px;
+    height: 6px;
   }
   .steps {
     flex: none;

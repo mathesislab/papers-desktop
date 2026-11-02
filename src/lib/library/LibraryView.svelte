@@ -61,6 +61,7 @@
   import SavedSearches from "$lib/SavedSearches.svelte";
   import SaveSearch from "$lib/SaveSearch.svelte";
   import {
+    NO_FILTERS,
     VIEWS,
     chooseLibrary,
     chips,
@@ -1070,10 +1071,18 @@
   /** Whether the question before a delete is open: it has the keys. */
   export const asking = () => deleting !== null;
 
-  /** A key of the window that is no command: a paper in front has the keys of its reader, the editor of BibTeX its
-   *  own; else they are the library's. */
+  /** A key of the window that is no command: a paper in front has the keys of its reader (Esc out of a field closes
+   *  it), the editor of BibTeX its own; else they are the library's. */
   export function key(e: KeyboardEvent) {
-    if (!layout.active && !(e.target instanceof HTMLTextAreaElement)) libraryKey(e);
+    const field = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+    if (layout.active) {
+      if (e.key === "Escape" && !field && !e.defaultPrevented) {
+        e.preventDefault();
+        closePaper(layout.active);
+      }
+      return;
+    }
+    if (!(e.target instanceof HTMLTextAreaElement)) libraryKey(e);
   }
 
   /** the rows a page key moves: about those in view, as high as the list's look has them */
@@ -1082,7 +1091,7 @@
   /** The keys of the library: / to search, ⌘⌫ clears the search in its field and deletes the papers selected
    *  elsewhere (after asking), the arrows, the page keys, Home
    *  and End move (shift extends the selection), Enter (as a double-click) shows the details, Space opens the PDFs,
-   *  Esc leaves the search or the paper read, else selects nothing, 1–9 toggle the tag pinned to the key, s the star. */
+   *  Esc leaves the search field or the paper read, then selects nothing, then clears the search and the filters, 1–9 toggle the tag pinned to the key, s the star. */
   function libraryKey(e: KeyboardEvent) {
     const typing = e.target instanceof HTMLInputElement;
     const mod = mac ? e.metaKey : e.ctrlKey;
@@ -1126,6 +1135,10 @@
     } else if (e.key === "Escape" && !typing && selection.selected.size) {
       e.preventDefault();
       selection.only(null);
+    } else if (e.key === "Escape" && !typing && filterChips.length) {
+      // last, the search and the filters: all the papers, the search field left alone
+      e.preventDefault();
+      layout.library = NO_FILTERS;
     } else if (/^[1-9]$/.test(e.key) && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       togglePinned(Number(e.key) - 1);

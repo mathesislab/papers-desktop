@@ -54,7 +54,7 @@ selection, or the papers shown, to a `.bib` file.
 | `↑` `↓`, `⇟` `⇞`, `↖` `↘` (`⌘↑` `⌘↓`) | move; with `⇧`, extend the selection |
 | `↵` | show the details |
 | `Space` | open the paper |
-| `Esc` | clear the search, then leave it |
+| `Esc` | step back: leave a field, close the PDF or the paper read, select nothing, then clear the search and filters (in every tab) |
 | `⌘W` | close the paper (the window, from the library) |
 | `⌘1`, `⌘2` | the Library tab (in it: the library), the Feeds tab |
 | `⌃Tab`, `⌃⇧Tab` | the next tab, the one before |

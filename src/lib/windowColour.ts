@@ -7,17 +7,18 @@ import { listen } from "@tauri-apps/api/event";
 
 export type WindowColour = "blue" | "teal" | "green" | "yellow" | "orange" | "red" | "pink" | "purple" | "graphite" | "none";
 
-/** The colours, in the order of the menus: their names and how they are drawn; none: no bar. */
+/** The colours, in the order of the menus: their names and how they are drawn, pastel (a bar to tell the window
+ *  apart, not to catch the eye); none: no bar. */
 export const WINDOW_COLOURS: { colour: WindowColour; name: string; css: string | null }[] = [
-  { colour: "blue", name: "Blue", css: "#3b82f6" },
-  { colour: "teal", name: "Teal", css: "#14b8a6" },
-  { colour: "green", name: "Green", css: "#22c55e" },
-  { colour: "yellow", name: "Yellow", css: "#eab308" },
-  { colour: "orange", name: "Orange", css: "#f97316" },
-  { colour: "red", name: "Red", css: "#ef4444" },
-  { colour: "pink", name: "Pink", css: "#ec4899" },
-  { colour: "purple", name: "Purple", css: "#8b5cf6" },
-  { colour: "graphite", name: "Graphite", css: "#6b7280" },
+  { colour: "blue", name: "Blue", css: "#a8c8f0" },
+  { colour: "teal", name: "Teal", css: "#9fdcd3" },
+  { colour: "green", name: "Green", css: "#b5e0b0" },
+  { colour: "yellow", name: "Yellow", css: "#f3e19a" },
+  { colour: "orange", name: "Orange", css: "#f7c79a" },
+  { colour: "red", name: "Red", css: "#f2aaa6" },
+  { colour: "pink", name: "Pink", css: "#f2b5d4" },
+  { colour: "purple", name: "Purple", css: "#cdb9f0" },
+  { colour: "graphite", name: "Graphite", css: "#c3c6cc" },
   { colour: "none", name: "None", css: null },
 ];
 
