@@ -10,6 +10,7 @@
     "core:window:allow-set-focus",
     "opener:default",
     "dialog:default",
-    "drag:default"
+    "drag:default",
+    "pdfkit:default"
   ]
 }

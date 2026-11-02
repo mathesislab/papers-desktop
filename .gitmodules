@@ -1,5 +1,0 @@
-[submodule "spec/papers"]
-	path = spec/papers
-	url = https://github.com/perrette/papers.git
-	shallow = true
-	branch = v3

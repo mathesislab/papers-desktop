@@ -1386,8 +1386,7 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn fixture_pdf(to: &Path, fixture: &str) -> PathBuf {
-        let fixtures =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/papers-rs/tests/fixtures/pdf");
+        let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/pdf");
         fs::create_dir_all(to.parent().unwrap()).unwrap();
         fs::copy(fixtures.join(fixture), to).unwrap();
         to.to_path_buf()
@@ -1623,8 +1622,7 @@ pub(crate) mod tests {
         fs::create_dir(&dl).unwrap();
         let pdf = |name: &str, fixture: &str| {
             let path = dl.join(name);
-            let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../crates/papers-rs/tests/fixtures/pdf");
+            let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/pdf");
             fs::copy(fixtures.join(fixture), &path).unwrap();
             path
         };

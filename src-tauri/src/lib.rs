@@ -14,7 +14,6 @@ mod main_window;
 #[cfg(target_os = "macos")]
 mod menu;
 #[cfg(target_os = "macos")]
-mod pdf_view;
 mod recent;
 mod search;
 mod selection;
@@ -592,6 +591,20 @@ fn citation_style(state: State<AppState>) -> Result<Style, String> {
     Style::load(&state.citation_style.read().unwrap())
 }
 
+/// The path of the first PDF of an item, for the PDFKit view (tauri-plugin-pdfkit); refused when it
+/// has none, or it is gone.
+#[tauri::command]
+fn pdf_path(state: State<AppState>, id: String) -> Result<PathBuf, String> {
+    let item = state.item(&id)?;
+    let file = (item.files.into_iter())
+        .find(|f| f.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
+        .ok_or(format!("{id}: no PDF"))?;
+    match file.exists() {
+        true => Ok(file),
+        false => Err(format!("{}: not found", file.display())),
+    }
+}
+
 /// The first PDF of an item, for the preview.
 #[tauri::command]
 async fn pdf(app: AppHandle, id: String) -> Result<Response, String> {
@@ -1012,6 +1025,12 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // the PDFs in a native PDFKit view (macOS), zoomed as the text of the windows
+        .plugin(
+            tauri_plugin_pdfkit::Builder::new()
+                .zoom(text_size::factor)
+                .build(),
+        )
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -1102,10 +1121,6 @@ pub fn run() {
                         {
                             let _ = settings.destroy();
                         }
-                        #[cfg(target_os = "macos")]
-                        if let Some(mtm) = objc2::MainThreadMarker::new() {
-                            pdf_view::close(mtm);
-                        }
                         main_window::closed(window.app_handle());
                     }
                     _ => {}
@@ -1170,20 +1185,7 @@ pub fn run() {
             open_welcome,
             open_library,
             open_paper,
-            #[cfg(target_os = "macos")]
-            pdf_view::pdf_open,
-            #[cfg(target_os = "macos")]
-            pdf_view::pdf_frame,
-            #[cfg(target_os = "macos")]
-            pdf_view::pdf_cover,
-            #[cfg(target_os = "macos")]
-            pdf_view::pdf_close,
-            #[cfg(target_os = "macos")]
-            pdf_view::pdf_find,
-            #[cfg(target_os = "macos")]
-            pdf_view::pdf_zoom,
-            #[cfg(target_os = "macos")]
-            pdf_view::pdf_go,
+            pdf_path,
             layout,
             save_layout,
             send_feedback,

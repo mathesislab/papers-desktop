@@ -260,12 +260,14 @@ Finder* and *Hide*.
 A paper tab shows its PDF in the app, with the details beside it: on macOS
 in a native view of PDFKit, as Preview shows it (smooth scrolling and zoom;
 later, annotations written in the PDF), placed over the reader area of the
-page; elsewhere with pdf.js (to tune when Linux comes: its drawing on the
+page (tauri-plugin-pdfkit, github.com/mathesislab/tauri-plugin-pdfkit: its
+`open` takes the PDF's path, `pdf_path` of the app; the page in view comes as
+`pdfkit:page`; zoomed as the text of the windows, `text_size::factor`); elsewhere with pdf.js (to tune when Linux comes: its drawing on the
 GPU, fewer redraws). Find, zoom and the outline (a strip at the left of the
 PDF) drive either. A native view lies above all of the web view, the modals of
 the page (the Add sheet, the delete question, the papers-missing notice) included:
 each holds `holdModal` (`modal.svelte.ts`) while it is open, and the page has
-the reader step aside (`Reader.cover`: PDFKit's view is hidden, `pdf_cover`,
+the reader step aside (`Reader.cover`: PDFKit's view is hidden, the plugin's `cover`,
 and the keys go to the page; shown again, with the keys, when the last modal
 has closed). A pdf.js PDF is in the page, under the modals by their z-index. The tab in front (Library or Feeds), the library tab, the open papers, their pages, the pane widths and the
 details shown or not are kept in the data folder of the app (`window.json`), as
@@ -474,11 +476,12 @@ file:
   - *Edit* in the details has the same *DOI* field and *Fetch*, merged into the
     text being edited (`merge_fetched`: papers' merge, the key stays), to review
     and save with ⌘S.
-- **The command line tool**: the app ships `papers-rs` (crates/papers-rs-cli,
-  release) as a Tauri sidecar (`bundle.externalBin`, `papers-rs-cli` in
+- **The command line tool**: the app ships `papers-rs` (papers-rs-cli of
+  github.com/mathesislab/papers-rs, release) as a Tauri sidecar (`bundle.externalBin`, `papers-rs-cli` in
   `Contents/MacOS/` next to the executable: tauri-build copies it into
   `target/<profile>/`, where `papers-rs` is cargo's own); `scripts/sidecar.sh`,
-  run by `beforeBuildCommand`, builds it into
+  run by `beforeBuildCommand`, installs it (`cargo install --git … --rev`, the
+  revision of papers-rs in `Cargo.lock`, `--locked`) into
   `src-tauri/binaries/papers-rs-cli-<triple>` (`build.rs` puts a placeholder
   there for `cargo check` and `cargo test`). Settings (General)
   and the app menu (macOS: *Install Command Line Tool…*) install it as a link
@@ -620,76 +623,20 @@ writes as papers does; then the app links it and needs no Python.
 
 ## papers-rs: a Rust port of papers
 
-Decided with Mahé Perrette: a second implementation of papers, in Rust,
-here for now, that can leave as its own repository. papers (Python) is the
-truth; papers-rs does what it does, with the same output and the same
-files, so that both (and the app) work on the same libraries and the same
-history. In the long run a standard both follow and change together.
+Decided with Mahé Perrette: a second implementation of papers, in Rust, with
+the same output and the same files, so that both (and the app) work on the
+same libraries and the same history; papers (Python) is the truth. It lives
+in its own repository, **github.com/mathesislab/papers-rs**: the library
+(`papers-rs`), the command (`papers-rs-cli`, `papers-rs`), the port of
+pylatexenc (`latexenc-rs`), and papers' conformance suite (`spec/papers`, a
+submodule of perrette/papers). What it follows of papers, the suite's
+results, its speed and the standard both follow are there.
 
-- `crates/papers-rs` (the library) and `crates/papers-rs-cli` (the command,
-  `papers-rs`): no dependency on the app's crates. MIT, Mahé's copyright
-  kept.
-- `crates/latexenc-rs` (library `latexenc`): a port of pylatexenc 2.11 (the
-  LaTeX parser, LaTeX to text, Unicode to LaTeX), with all its options; on
-  its own, for anyone. Started from tex2word-latexwalker (yfyang86).
-- `spec/papers`: papers itself (a git submodule of perrette/papers, pinned
-  at the commit papers-rs follows), for its conformance suite
-  (`design/cases`, upstream since perrette/papers#206). A case is a library
-  before, commands, and what they print and leave after; recorded by
-  running papers (`record.py`), checked on any implementation (`run.py
-  --papers CMD`). See `spec/README.md`.
-- **The standard**: Mahé's specification (perrette/papers, `design/`:
-  library, bibtex, formats, exchange, history)
-  marks each rule *Contract* (files, keys, formats on disk: identical) or
-  *Free* (messages, prompts, caches). The suite is its executable side: a
-  case names its section and whether it checks a contract.
-
-**Done**: follows papers v3 at 3b7f5fd (3.0.0b7: the free PDF of an
-entry, `file fetch`, `add --fetch-pdf`, `fetch --pdf`, perrette/papers#211
-to #215; the file of a broken link in the other libraries of the machine;
-`--openalex` as papers has it, #205; #207, #210. Since e179067, #219 to
-#222: the version of a fetched PDF in `.papers/files.json`, `file fetch
---upgrade` (the published version in place of the file, undone by `papers
-undo`), `papers list --format files`, `file-version` in CSL-JSON and
-BibJSON, `--pdf-version`; the `citation_pdf_url` of the repository pages
-that OpenAlex names, an HTTP 429 asked again once; a line per entry without
-PDF in a `file fetch` of several; `fetch --pdf -o FILE` checked before the
-download, porcelain `exists ID FILE`; CSL-JSON import leaves out blank name
-parts. Since faeaf4d: an accepted
-manuscript or a submitted version attached or downloaded after the
-published version was refused names the published link to open in a
-browser; a `file fetch` of several entries ends with a summary (the PDFs
-by version, those found locally, those without PDF, the links to open);
-`fetch --pdf --porcelain` prints lines for programs, `downloaded ID VERSION
-URL FILE`, `refused-published ID URL`, `refused ID URL`, `failed ID`
-(formats.md 7.2); CSL-JSON import leaves out a name whose parts are all
-null). It passes all 252
-offline cases of the suite in contract-only mode (`spec/papers`); the full
-comparison differs only in Free output (bibtexparser's warnings, PyMuPDF's
-messages). Earlier: every command of papers 3.0.0b5 but `open`, `install`,
-`uninstall`, `git` and Google Scholar (`--scholar`: scraping, left out),
-pools and the exchanges included. Interop both ways: each reads, undoes and
-pulls what the other recorded. 3 to 8 times faster than papers
-(`crates/papers-rs/PERFORMANCE.md`). The app writes with it, built in
-(*Writing*). Decided: transliteration with AnyAscii (ISC; the `any_ascii` crate, papers'
-own table since v3, perrette/papers#192: the output matches papers for every
-code point), PDF text with `pdf-extract` (PyMuPDF has no
-permissive Rust binding), the release profile unwinds (a panic of
-pdf-extract is caught).
-
-**`--openalex`** (add, extract, fetch): first an extension of papers-rs, a
-full-text search on OpenAlex's open API where papers has `--scholar`; in
-papers since #205, and papers-rs does what papers does. On 300 of the
-user's PDFs it finds 21 of the 38 (with text) that papers' chain misses.
-
-**Upstream**: findings posted on perrette/papers (#188–#194), with the
-offer of the suite and `--openalex` (#193). The way of working, agreed
-with Mahé: `design/` is the basis; papers-rs reports what it finds there
-as issues or pull requests, and catches up with each release.
-
-**Next**: the crates leave for a repository of their own and are published
-(crates.io: `latexenc-rs`, `papers-rs`, `papers-rs-cli`; prebuilt binaries
-in releases, Homebrew), the app depending on the published crates.
+The app depends on it by git (`papers-rs = { git = … }` in
+`src-tauri/Cargo.toml`): `Cargo.lock` pins the revision, which the sidecar's
+command is built from too (*The command line tool*); a new version of
+papers-rs comes with `cargo update -p papers-rs`. The app writes with it,
+built in (*Writing*).
 
 ## Later (P2)
 

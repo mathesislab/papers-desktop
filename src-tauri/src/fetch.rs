@@ -610,8 +610,7 @@ mod tests {
         "issued": {"date-parts": [[2020]]}}}"#;
 
     fn pdf(name: &str) -> PathBuf {
-        let fixtures =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/papers-rs/tests/fixtures/pdf");
+        let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/pdf");
         fixtures.join(name)
     }
 
