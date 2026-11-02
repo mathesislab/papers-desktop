@@ -1,7 +1,7 @@
 // The rows of a long list, only those in view drawn (and a few around, for a smooth scroll): the library's Table
 // and FeedTable, as a table or simple (its rows taller, no headers). The list scrolls as one, down and across: a
 // table's headers (TableHead, as high as a row of it) stay at its top, over the rows. The row in focus is scrolled
-// into view, below the headers, when the keys move to it.
+// into view, below the headers, when the keys move to it (`scrolledTo`).
 
 import { untrack } from "svelte";
 import type { Look } from "./columns";
@@ -15,6 +15,18 @@ const SIMPLE_ROW = 58;
 export const rowOf = (look: Look) => (look === "simple" ? SIMPLE_ROW : ROW);
 /** rows drawn above and below the ones in view */
 const EXTRA = 12;
+
+/** Where a list is scrolled to for its row at `top` (`height` high) to be in view, `rows` px of rows shown: as it
+ *  is if it is; a step away (the keys moved), just enough; farther (a paper shown, the list back), the row a third
+ *  of the way down. */
+export function scrolledTo(top: number, height: number, scroll: number, rows: number): number {
+  const above = top < scroll;
+  const below = top + height > scroll + rows;
+  if (!above && !below) return scroll;
+  const near = top >= scroll - height && top + height <= scroll + rows + height;
+  if (near) return above ? top : top + height - rows;
+  return Math.max(0, top - Math.floor(rows / 3));
+}
 
 /** What the rows are: how many; the index of the row in focus (-1: none); where the list is scrolled to when it
  *  comes, before the row in focus is scrolled into view; the look of the list (none: a table), which says the height
@@ -49,16 +61,17 @@ export class Rows {
         if (table) table.scrollTop = untrack(start);
       });
     }
+    // once the list has its height (none while it is laid out: the row would go to its foot)
     $effect(() => {
       const index = focus();
       const table = this.table;
-      if (index < 0 || !table) return;
-      const height = this.row;
-      const top = index * height;
-      // the rows in view: below the headers, a table's
-      const rows = table.clientHeight - (this.simple ? 0 : ROW);
-      if (top < table.scrollTop) table.scrollTop = top;
-      else if (top + height > table.scrollTop + rows) table.scrollTop = top + height - rows;
+      const view = this.height;
+      if (index < 0 || !table || view <= 0) return;
+      untrack(() => {
+        // the rows in view: below the headers, a table's
+        const rows = view - (this.simple ? 0 : ROW);
+        table.scrollTop = scrolledTo(index * this.row, this.row, table.scrollTop, rows);
+      });
     });
   }
 

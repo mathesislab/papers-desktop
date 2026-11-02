@@ -9,6 +9,8 @@ export type Item = {
   authors: string[];
   year: number | null;
   container: string | null;
+  /** a preprint's server, where its journal would be: an entry of no journal, of a DOI or an address of one */
+  server: string | null;
   doi: string | null;
   url: string | null;
   keywords: string[];
@@ -55,6 +57,8 @@ export type Row = {
   year: number | null;
   title: string;
   container: string | null;
+  /** a preprint's server, without a journal */
+  server: string | null;
   tags: string[];
   doi: string | null;
   /** whether the item links a file, and whether the files are there */

@@ -10,6 +10,7 @@ mod bib;
 mod fields;
 mod item;
 mod likeness;
+mod preprint;
 mod query;
 mod record;
 mod redact;
@@ -25,6 +26,7 @@ use std::path::PathBuf;
 
 pub use item::{Cite, Item};
 pub use likeness::{Doc, Like, Likeness};
+pub use preprint::{SERVERS, Server, preprint_host, preprint_server};
 pub use query::{Query, Schema, Value, Written, year_range};
 pub use record::{Marks, Record};
 pub use redact::redact;

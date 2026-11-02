@@ -38,6 +38,8 @@ pub struct Row {
     pub title: String,
     /// journal or book title
     pub container: Option<String>,
+    /// a preprint's server, without a journal
+    pub server: Option<String>,
     pub tags: Vec<String>,
     pub doi: Option<String>,
     pub file: FileState,
@@ -292,6 +294,7 @@ fn row(item: &Item) -> Row {
         year: item.year,
         title: item.title.clone(),
         container: item.container.clone(),
+        server: item.server.clone(),
         tags: item.keywords.clone(),
         doi: item.doi.clone(),
         file,

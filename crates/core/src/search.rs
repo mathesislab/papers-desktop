@@ -330,7 +330,13 @@ fn record((item, entry): (&Item, &BibEntry)) -> Record {
     Record::new(&item.title)
         .authors(&item.families)
         .year(item.year)
-        .container(item.container.as_deref().unwrap_or_default())
+        // a preprint's server searched as its journal
+        .container(
+            item.container
+                .as_deref()
+                .or(item.server.as_deref())
+                .unwrap_or_default(),
+        )
         .r#abstract(&field(&entry.entry, &["abstract"]).unwrap_or_default())
         .keywords(&item.keywords)
         .key(&item.key)

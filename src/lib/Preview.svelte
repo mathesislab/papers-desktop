@@ -88,7 +88,8 @@
   }
 
   let hasPdf = $derived(item.files.some((f) => f.toLowerCase().endsWith(".pdf")));
-  let source = $derived([item.container, item.year].filter(Boolean).join(" · "));
+  /** its journal (a preprint's server, in italics) and year */
+  let journal = $derived(item.container ?? item.server);
 
   $effect(() => {
     const id = item.id;
@@ -231,7 +232,12 @@
           {#each item.authors as author, i}{#if i}{", "}{/if}{#if marked[i]}<b>{author}</b>{:else}{author}{/if}{/each}
         </p>
       {/if}
-      {#if source}<p>{source}</p>{/if}
+      {#if journal || item.year}
+        <p>
+          {#if journal}<span class:server={!item.container} title={item.container ? undefined : "A preprint server"}>{journal}</span
+            >{/if}{#if journal && item.year}{" · "}{/if}{item.year ?? ""}
+        </p>
+      {/if}
       {#if item.doi}<p class="doi">{item.doi}</p>{/if}
       {#if keywords && item.keywords.length}
         <p class="keywords">
@@ -383,6 +389,11 @@
     line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  /* a preprint's server: in italics, light red */
+  .server {
+    font-style: italic;
+    color: color-mix(in srgb, var(--error) 60%, var(--muted));
   }
   .doi,
   .muted {

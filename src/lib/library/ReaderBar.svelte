@@ -33,8 +33,8 @@
 <button title="Zoom out" onclick={() => reader.zoom(-1)}>−</button>
 <button title="Fit the width" onclick={() => reader.zoom(0)}>Fit</button>
 <button title="Zoom in" onclick={() => reader.zoom(1)}>+</button>
-<button title="Open in the default PDF app" onclick={() => invoke("open", { id: reader.id })}>Open ↗</button>
-<button class="close" title="Close ({label({ key: 'w', mod: true })})" onclick={onclose}>Close PDF</button>
+<button class="icon" title="Open in the default PDF app" aria-label="Open in the default PDF app" onclick={() => invoke("open", { id: reader.id })}>↗</button>
+<button class="icon close" title="Close the PDF ({label({ key: 'w', mod: true })})" aria-label="Close the PDF" onclick={onclose}>✕</button>
 
 <style>
   button {
@@ -45,6 +45,14 @@
     color: var(--fg);
     font: inherit;
     font-size: 12px;
+  }
+  /* a mark alone, its words on hover; on one line */
+  button {
+    white-space: nowrap;
+  }
+  button.icon {
+    min-width: 28px;
+    padding: 3px 7px;
   }
   button.on {
     background: var(--line);

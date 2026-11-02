@@ -5,7 +5,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use chrono::{DateTime, Utc};
-use papers_core::{Library, Matching, Span};
+use papers_core::{Library, Matching, Span, preprint_server};
 use papers_feeds::{
     Confidence, Feeds, Groups, Item, ItemKind, Rating, Reminder, Score, Sort, SourceKind, Stage,
     Stages, Triage, Via, ViewRequest as CrateRequest, safe_html,
@@ -245,7 +245,7 @@ impl<'a> Rows<'a> {
         let item = feeds.item(&row.id).expect("a row's item");
         FeedRow {
             kind: item.kind,
-            journal: item.journal.clone(),
+            journal: journal_of(item),
             sources: (feeds.subscriptions_of(item).into_iter())
                 .map(title_of)
                 .collect(),
@@ -265,6 +265,13 @@ impl<'a> Rows<'a> {
             interests: row.interests,
         }
     }
+}
+
+/// The journal of an item; a preprint's without one, its server (by its DOI
+/// or its address).
+fn journal_of(item: &Item) -> Option<String> {
+    let server = || preprint_server(item.doi.as_deref(), item.url.as_deref()).map(String::from);
+    (item.journal.clone()).or_else(|| (item.kind == ItemKind::Preprint).then(server).flatten())
 }
 
 /// An item, for the details: its texts marked by the query and its interests.
@@ -301,7 +308,7 @@ pub fn detail(
         kind: item.kind,
         title: row.title,
         authors: item.authors.clone(),
-        journal: item.journal.clone(),
+        journal: journal_of(item),
         date: item.date,
         doi: item.doi.clone(),
         arxiv: item.arxiv.clone(),

@@ -3,6 +3,7 @@
 //! journal's (items with DOIs, or its title a journal of OpenAlex), else
 //! general (blogs, comics, anything else; news is not told from a blog).
 
+use papers_core::preprint_host;
 use serde::Serialize;
 
 use crate::http::{Access, FEED_ACCEPT, Http, get_ok};
@@ -10,35 +11,12 @@ use crate::journals::{best_named, sources};
 use crate::model::{Feed, ItemKind, SourceKind, Subscription};
 use crate::parse::parse;
 
-/// The hosts of preprint servers, and their subdomains.
-const PREPRINT_HOSTS: &[&str] = &[
-    "arxiv.org",
-    "biorxiv.org",
-    "medrxiv.org",
-    "chemrxiv.org",
-    "eartharxiv.org",
-    "essopenarchive.org",
-    "egusphere.copernicus.org",
-    "preprints.org",
-    "researchsquare.com",
-    "ssrn.com",
-];
-
 /// A kind guessed, and what tells it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Guess {
     pub kind: SourceKind,
     /// "its items have DOIs"
     pub reason: String,
-}
-
-/// Whether an address is of a preprint server (its host, or a subdomain).
-pub fn preprint_host(url: &str) -> bool {
-    let host = url::Url::parse(url)
-        .ok()
-        .and_then(|u| u.host_str().map(str::to_lowercase))
-        .unwrap_or_default();
-    (PREPRINT_HOSTS.iter()).any(|h| host == *h || host.ends_with(&format!(".{h}")))
 }
 
 /// The kind of the feed at an address: read (as a subscription fetches it),

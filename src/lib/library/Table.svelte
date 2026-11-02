@@ -18,6 +18,9 @@
         return fileName(row.bib);
       case "added":
         return row.added ?? null;
+      // a preprint's server where its journal would be
+      case "container":
+        return row.container ?? row.server;
       default:
         return row[column];
     }
@@ -251,7 +254,7 @@
         {@render fileMark(row)}
         {#if view.simple}
           {@render starButton(row)}
-          <SimpleRow lead={2} date={text(row, "year")} source={text(row, "container")}>
+          <SimpleRow lead={2} date={text(row, "year")} source={text(row, "container")} server={!row.container && !!row.server}>
             {#snippet title()}{row.title}{/snippet}
             {#snippet authors()}{text(row, "authors")}{/snippet}
             {#snippet end()}{text(row, "tags")}{/snippet}
@@ -261,8 +264,10 @@
             {#if key === "star"}
               {@render starButton(row)}
             {:else}
-              <span class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added" || (key === "authors" && !row.authors)}
-                >{text(row, key)}</span
+              <span
+                class:muted={key === "tags" || key === "kind" || key === "bib" || key === "added" || (key === "authors" && !row.authors)}
+                class:server={key === "container" && !row.container && !!row.server}
+                title={key === "container" && !row.container && row.server ? "A preprint server" : undefined}>{text(row, key)}</span
               >
             {/if}
           {/each}
@@ -364,6 +369,14 @@
   }
   .file svg.missing {
     color: var(--error);
+  }
+  /* a preprint's server, where its journal would be: in italics, light red */
+  .server {
+    font-style: italic;
+    color: color-mix(in srgb, var(--error) 60%, var(--muted));
+  }
+  .row.selected .server {
+    color: inherit;
   }
   /* the keys of the window move the selection: no ring on the row pressed */
   .row:focus {

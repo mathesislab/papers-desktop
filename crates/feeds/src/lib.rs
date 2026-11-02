@@ -58,10 +58,10 @@ mod views;
 use std::path::PathBuf;
 
 pub use enrich::{LOOKUPS_PER_FETCH, PAGES_PER_FETCH, TEASER};
-pub use guess::{Guess, guess_kind, preprint_host};
-pub use html::safe_html;
 pub use feeds::{Feeds, Now};
 pub use fetch::{FeedReport, FetchReport, FollowUp, Outcome};
+pub use guess::{Guess, guess_kind};
+pub use html::safe_html;
 pub use http::{Access, Http, Network, Reply, Request};
 pub use interest::{Interest, Matcher, Score, Weighted};
 pub use journals::{
@@ -76,6 +76,7 @@ pub use model::{
 };
 pub use online::{OwnService, Service, check_services, online_url};
 pub use opml::Outline;
+pub use papers_core::preprint_host;
 pub use parse::{Parsed, parse};
 pub use pdf::{OpenAccess, Pdf, pdf};
 pub use rating::{Rating, ScoreMode, Scoring};

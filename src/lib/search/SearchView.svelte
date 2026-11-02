@@ -356,7 +356,8 @@
   }
 
   /** A key of the window while the tab is in front (none while a sheet is open): Enter in the fields runs the
-   *  search; the list's keys move and read (`navKey`); the keys of the actions act on the selection (s, a, o). */
+   *  search; the list's keys move and read (`navKey`: Esc leaves a field, then the item read, then the selection);
+   *  Esc with nothing more to leave clears the search; the keys of the actions act on the selection (s, a, o). */
   export function key(e: KeyboardEvent) {
     if (modalOpen()) return;
     const act = (action: () => unknown) => {
@@ -366,6 +367,7 @@
     const field = e.target === list.input || e.target === authorsInput || e.target === yearInput;
     if (field && e.key === "Enter" && !e.isComposing) return act(run);
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+    if (e.key === "Escape" && (results || search.query || search.authors || search.year)) return act(clearSearch);
     const action = Object.values(actions).find((a) => a.key === e.key);
     if (action) act(() => action.run(list.targets()));
   }

@@ -9,6 +9,7 @@ use biblatex::{DateValue, Entry, PermissiveType};
 
 use crate::bib::BibEntry;
 use crate::fields::{Name, clean_doi, field, names, raw};
+use crate::preprint::preprint_server;
 use crate::record::Marks;
 use crate::text::{Span, Text};
 
@@ -37,6 +38,10 @@ pub struct Item {
     pub year: Option<i32>,
     /// journal or book title
     pub container: Option<String>,
+    /// a preprint's server, where its journal would be: an entry of no
+    /// journal, of a DOI or an address of one (`preprint_server`)
+    #[serde(default)]
+    pub server: Option<String>,
     pub doi: Option<String>,
     pub url: Option<String>,
     pub keywords: Vec<String>,
@@ -81,6 +86,7 @@ impl Item {
             title,
             authors: people.iter().map(display_name).collect(),
             year: year(entry),
+            server: None,
             container,
             doi: raw(entry, "doi").map(clean_doi),
             url: raw(entry, "url"),
@@ -96,6 +102,10 @@ impl Item {
             families: people.iter().map(Name::full_family).collect(),
             key,
         };
+        if item.container.is_none() {
+            item.server =
+                preprint_server(item.doi.as_deref(), item.url.as_deref()).map(String::from);
+        }
         let spans = item.subtitle_spans(&Marks::default());
         item.subtitle = spans.into_iter().map(|s| s.text).collect();
         item
@@ -131,9 +141,9 @@ impl Item {
         let year = self
             .year
             .map(|y| vec![Span::new(y.to_string(), marks.year)]);
-        let container = self
-            .container
-            .as_deref()
+        // a preprint's server where its journal would be
+        let container = (self.container.as_deref())
+            .or(self.server.as_deref())
             .map(|c| Text::new(c).spans(&marks.container));
         let parts: Vec<Vec<Span>> = [names, year, container].into_iter().flatten().collect();
         parts.join(&Span::plain(" · "))
