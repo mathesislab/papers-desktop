@@ -30,12 +30,13 @@ impl Feeds {
         self.library = Some(library);
     }
 
-    /// How like the library's papers an item is, by its title and summary;
-    /// none without an index.
+    /// How like the library's papers an item is, by its title and summary,
+    /// its own entries there left out (a paper is not like itself); none
+    /// without an index.
     pub fn like(&self, item: &Item) -> Option<Like> {
         let likeness = self.library.as_ref()?.likeness.as_ref()?;
         let summary = item.summary.as_deref().unwrap_or("");
-        Some(likeness.like(&item.title, summary))
+        Some(likeness.like_without(&item.title, summary, &self.in_library(item)))
     }
 
     /// The ids of the library's entries of the same paper: of its DOI, or of

@@ -1,8 +1,10 @@
 <script lang="ts">
   // The Search tab of the main window: a search of OpenAlex's works, as a search engine of papers, to find papers
   // and add them to the library. The query is the app's (words, "phrases", -word, t:, abs:, a:, j:, y:, doi:, and
-  // cites:, citedby: for the works around a work), the Year field added as y:; Enter runs it, a page of 25 works at
-  // a time (*Show 25 more* at the end of the list). A new search takes the place of the works found before, but for
+  // cites:, citedby: for the works around a work), the Author(s) field added as a:, the Year(s) field as y: (on a
+  // line of their own, under the search field: OpenAlex matches words in the texts only); Enter runs it, a page of
+  // 25 works at a time (*Show 25 more* at the end of the list), the papers of the library closest to it among the
+  // first (✓, each work once), all by score at first. A new search takes the place of the works found before, but for
   // those saved for later (☆, S: starred in its folder) or added. The sidebar: the works found (Results), those saved
   // for later, the recent searches. The list and the details are the Feeds tab's (ItemPane, on an ItemList), with the
   // store "search": the details beside the list or in place of it, its actions those of the Feeds tab's table
@@ -19,7 +21,7 @@
   import { onMount } from "svelte";
   import * as feedsApi from "$lib/feeds/api";
   import { buttonText, itemActions, type ItemActionName } from "$lib/feeds/actions";
-  import type { FeedDetail, FeedRow } from "$lib/feeds/api";
+  import type { FeedDetail } from "$lib/feeds/api";
   import { SEARCH_ORDER, SEARCH_SPECS } from "$lib/feeds/columns";
   import { mergeRows, type TriageAction } from "$lib/feeds/items";
   import { modalOpen } from "$lib/library/modal.svelte";
@@ -37,12 +39,13 @@
     aroundQuery,
     askedOf,
     appended,
+    inOrder,
     composed,
+    plainWords,
     moreText,
     totalText,
     withRecent,
     SAVED_FOR_LATER,
-    type SearchOrder,
     type Typed,
   } from "./state";
   import SearchSidebar from "./SearchSidebar.svelte";
@@ -70,6 +73,21 @@
   let failure = $state<string | null>(null);
   let subscribing = $state(false);
   let yearInput = $state<HTMLInputElement>();
+  let authorsInput = $state<HTMLInputElement>();
+  let header = $state<HTMLElement>();
+  let searchBox = $state<HTMLElement>();
+  /** where the search field starts in the header: the Author(s) field starts there too */
+  let fieldsLeft = $state(0);
+
+  // the tabs' width changes with the tabs shown, the header's with the window
+  $effect(() => {
+    if (!header || !searchBox) return;
+    const measure = () => (fieldsLeft = searchBox!.getBoundingClientRect().left - header!.getBoundingClientRect().left - 12);
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    measure();
+    return () => observer.disconnect();
+  });
   /** the searches asked: an answer to one before the last is dropped */
   let asked = 0;
 
@@ -146,18 +164,18 @@
    *  saved for later or added); kept in the recent searches. A query OpenAlex cannot be asked (years that are none,
    *  a field it has not) is said where the works would be. */
   async function run() {
-    const query = composed(search.query, search.year);
+    const query = composed(search);
     if (!query) return list.focusSearch();
-    const typed: Typed = { query: search.query, year: search.year, order: search.order };
+    const typed: Typed = { query: search.query, authors: search.authors, year: search.year, order: search.order };
     const n = ++asked;
     view = "results";
     resetList();
     searching = true;
     failure = null;
     try {
-      const page = await api.run(query, askedOf(typed.order), null);
+      const page = await api.run(query, plainWords(typed), askedOf(typed.order), null);
       if (n !== asked) return;
-      const rows = ordered(page.rows, typed.order);
+      const rows = inOrder(page.rows, typed.order);
       search.results = { query, order: typed.order, ids: rows.map((r) => r.id), total: page.total, next: page.next };
       search.recent = withRecent(search.recent, typed);
       list.rows = rows;
@@ -175,9 +193,9 @@
     if (!r?.next || more || searching) return;
     more = true;
     try {
-      const page = await api.run(r.query, askedOf(r.order), r.next);
+      const page = await api.run(r.query, "", askedOf(r.order), r.next);
       if (results !== r) return;
-      const rows = ordered(appended(list.rows, page.rows), r.order);
+      const rows = inOrder(appended(list.rows, page.rows), r.order);
       search.results = { ...r, ids: rows.map((w) => w.id), total: page.total, next: page.next };
       if (view === "results") list.rows = rows;
     } catch (e) {
@@ -187,13 +205,10 @@
     }
   }
 
-  /** The works found in the order of the search: by score, the best first (a page more sorted in); else as OpenAlex
-   *  gave them. */
-  const ordered = (rows: FeedRow[], order: SearchOrder) => (order === "score" ? [...rows].sort((a, b) => b.score - a.score) : rows);
-
   /** A recent search, or the works around a work, in the fields, run. */
   function runAgain(again: Typed) {
     search.query = again.query;
+    search.authors = again.authors;
     search.year = again.year;
     search.order = again.order;
     run();
@@ -202,14 +217,14 @@
   /** Cited by: the works that cite it (`cites:`); References: those it cites (`citedby:`); the most cited first. */
   function around(d: Pick<FeedDetail, "openalex" | "doi">, facet: "cites" | "citedby") {
     const query = aroundQuery(d, facet);
-    if (query) runAgain({ query, year: "", order: "cited" });
+    if (query) runAgain({ query, authors: "", year: "", order: "cited" });
   }
 
   /** The order of the works found, from its menu: the search of the fields again in it. */
   async function orderMenu() {
     const choose = (order: Typed["order"]) => {
       search.order = order;
-      if (composed(search.query, search.year) !== "") run();
+      if (composed(search) !== "") run();
     };
     const menu = await Menu.new({
       items: await Promise.all(
@@ -224,7 +239,7 @@
   async function onlineMenu() {
     const open = async (service: string) => {
       try {
-        await openUrl(await api.online(service, composed(search.query, search.year)));
+        await openUrl(await api.online(service, composed(search)));
       } catch (e) {
         list.say(String(e));
       }
@@ -243,6 +258,7 @@
   /** The chip's ×: no search shown, the fields blank (the works found stay until the next search). */
   function clearSearch() {
     search.query = "";
+    search.authors = "";
     search.year = "";
     search.results = null;
     list.rows = [];
@@ -330,7 +346,7 @@
       e.preventDefault();
       action();
     };
-    const field = e.target === list.input || e.target === yearInput;
+    const field = e.target === list.input || e.target === authorsInput || e.target === yearInput;
     if (field && e.key === "Enter" && !e.isComposing) return act(run);
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
     const action = Object.values(actions).find((a) => a.key === e.key);
@@ -340,6 +356,7 @@
   /** An example of the help, in the search field. */
   function example(text: string) {
     search.query = text;
+    search.authors = "";
     search.year = "";
     list.input?.focus();
   }
@@ -361,14 +378,14 @@
     <Splitter bind:width={tab.sidebar} side="left" min={160} max={420} />
   {/if}
   <div class="right">
-    <header>
+    <header class="two" bind:this={header}>
       {@render tab.tabs()}
-      <div class="search">
+      <div class="search" bind:this={searchBox}>
         <input
           bind:this={list.input}
           bind:value={search.query}
           type="search"
-          placeholder={'Search OpenAlex: words, "phrases", -word, t:, abs:, a:, j:, doi:'}
+          placeholder={'Search OpenAlex and your library: words, "phrases", -word, t:, abs:, j:, doi:'}
           spellcheck="false"
           autocomplete="off"
         />
@@ -376,15 +393,6 @@
           <button class="clear" aria-label="Clear the search field" onclick={() => ((search.query = ""), list.input?.focus())}>×</button>
         {/if}
       </div>
-      <input
-        bind:this={yearInput}
-        bind:value={search.year}
-        class="year"
-        placeholder="Year"
-        title="The years of the works: 2005, 2000-2010, 2000- or -2010 (y: in the query)"
-        spellcheck="false"
-        autocomplete="off"
-      />
       <button class="tool primary" disabled={searching} title="Search OpenAlex (Enter in the fields)" onclick={run}>
         {searching ? "Searching…" : "Search"}
       </button>
@@ -401,6 +409,36 @@
       >
         {subscribing ? "Subscribing…" : "Subscribe to this search"}
       </button>
+      <!-- the names and years apart, the author's field under the search field, its label under the tabs: OpenAlex
+           matches words in the texts only -->
+      <div class="fields">
+        <label class="field"
+          ><span class="name" style:width="{Math.max(0, fieldsLeft - 6)}px">Author(s)</span><input
+            bind:this={authorsInput}
+            bind:value={search.authors}
+            class="authors"
+            placeholder="Smith, Fricker"
+            title="The authors of the works, each required: separated by commas, & or and (a: in the query)"
+            spellcheck="false"
+            autocomplete="off"
+          /></label
+        >
+        <label class="field"
+          >Year(s)<input
+            bind:this={yearInput}
+            bind:value={search.year}
+            class="year"
+            placeholder="2020, 2000-2010"
+            title="The years of the works: 2005, 2000-2010, 2000-, -2010, or several: 2015, 2020 (y: in the query)"
+            spellcheck="false"
+            autocomplete="off"
+          /></label
+        >
+        <span class="explain"
+          >OpenAlex looks for the words in titles, abstracts and full texts only: names and years go in their fields.
+          Online ▾ sends all of it as one query.</span
+        >
+      </div>
     </header>
     <ItemPane
       {list}
@@ -511,7 +549,9 @@
     <p>
       Words and <code>"phrases"</code> are looked for in the whole work; <code>-word</code> leaves out. The fields:
       <code>t:</code> title, <code>abs:</code> abstract, <code>a:</code> author, <code>j:</code> journal,
-      <code>y:</code> years, <code>doi:</code>. The Year field adds <code>y:</code> (2005, 2000-2010, 2000-, -2010).
+      <code>y:</code> years, <code>doi:</code>. The Author(s) field adds <code>a:</code> (Smith, Fricker: both), the
+      Year(s) field <code>y:</code> (2005, 2000-2010, 2000-, -2010, 2015, 2020). The papers of your library closest to
+      the search come too (✓).
     </p>
     <ul>
       {#each [["greenland ice sheet y:2000-2010", "words, and the years"], ['t:"surface mass balance" a:Robinson', "a phrase in the title, an author"], ['j:"The Cryosphere" firn', "a word, in a journal"], ["doi:10.5194/tc-", "a work by its DOI (complete it)"]] as [text, what] (text)}
@@ -530,12 +570,62 @@
 {/snippet}
 
 <style>
-  /* the years: room for 2000-2010 */
-  input.year {
+  /* two lines: the tabs, the search field and its buttons; under them the names and years, the Author(s) field
+     under the search field (`fieldsLeft`) */
+  header.two {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .fields {
+    flex: 1 0 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .field {
     flex: none;
-    width: 92px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .field .name {
+    text-align: right;
+  }
+  .field input {
+    height: 24px;
     padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-size: 12px;
+  }
+  .field input:focus {
+    border-color: var(--search);
+    outline: none;
+  }
+  input.authors {
+    width: 200px;
+  }
+  /* the years: room for 2000-2010, 2020 */
+  input.year {
+    width: 120px;
     font-variant-numeric: tabular-nums;
+  }
+  .explain {
+    flex: 1;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.3;
   }
   /* Search: in the tab's violet */
   .tool.primary {

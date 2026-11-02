@@ -141,7 +141,7 @@ impl Likeness {
     fn reference_of(&self, docs: &[Doc]) -> f64 {
         let step = docs.len().div_ceil(SAMPLE).max(1);
         let mut scores: Vec<f64> = (docs.iter().enumerate().step_by(step))
-            .map(|(d, doc)| self.cosines(&doc.title, &doc.r#abstract, Some(d)).0)
+            .map(|(d, doc)| self.cosines(&doc.title, &doc.r#abstract, &[d]).0)
             .collect();
         scores.sort_by(f64::total_cmp);
         let n = scores.len();
@@ -186,7 +186,16 @@ impl Likeness {
     /// How like the library a title and an abstract are: 0 without a word
     /// or a paper.
     pub fn like(&self, title: &str, r#abstract: &str) -> Like {
-        let (score, cosines) = self.cosines(title, r#abstract, None);
+        self.like_without(title, r#abstract, &[])
+    }
+
+    /// How like the library a title and an abstract are, the papers `ids` left out: a paper of the library is not
+    /// like itself.
+    pub fn like_without(&self, title: &str, r#abstract: &str, ids: &[String]) -> Like {
+        let left_out: Vec<usize> = (ids.iter())
+            .filter_map(|id| self.ids.iter().position(|i| i == id))
+            .collect();
+        let (score, cosines) = self.cosines(title, r#abstract, &left_out);
         // a reference of 0 (a paper alone, or papers of no word in common):
         // any likeness is more than the typical paper's
         let scaled = match score > 0.0 {
@@ -203,14 +212,9 @@ impl Likeness {
     }
 
     /// The score of a title and an abstract, and the best cosines (at most
-    /// [`TOP`]), the nearest first; the paper `left_out` (a paper of the
+    /// [`TOP`]), the nearest first; the papers `left_out` (a paper of the
     /// index scored against the others) not among them.
-    fn cosines(
-        &self,
-        title: &str,
-        r#abstract: &str,
-        left_out: Option<usize>,
-    ) -> (f64, Vec<(u32, f32)>) {
+    fn cosines(&self, title: &str, r#abstract: &str, left_out: &[usize]) -> (f64, Vec<(u32, f32)>) {
         // in order: the same text sums to the same score
         let mut tf: BTreeMap<&str, f32> = BTreeMap::new();
         let (title, r#abstract) = (terms(title), terms(r#abstract));
@@ -235,12 +239,12 @@ impl Likeness {
                 dot[d as usize] += x * y;
             }
         }
-        if let Some(d) = left_out {
+        for &d in left_out {
             dot[d] = 0.0;
         }
         let shared = dot.into_iter().enumerate().filter(|&(_, x)| x > 0.0);
         let mut cosines: Vec<(u32, f32)> = shared.map(|(d, x)| (d as u32, x / norm)).collect();
-        let top = TOP.min(self.ids.len() - usize::from(left_out.is_some()));
+        let top = TOP.min(self.ids.len().saturating_sub(left_out.len()));
         if cosines.len() > top {
             cosines.select_nth_unstable_by(top, |a, b| b.1.total_cmp(&a.1));
             cosines.truncate(top);
@@ -359,6 +363,23 @@ mod tests {
             }
         );
         assert!(index.like("Songbird migration", "").score > 10.0);
+    }
+
+    #[test]
+    fn a_paper_of_the_library_is_not_like_itself() {
+        let index = library();
+        let (title, text) = (
+            "Greenland ice sheet melt",
+            "Surface melt of the Greenland ice sheet under warming.",
+        );
+        let like = index.like_without(title, text, &["ice".to_string()]);
+        assert!(like.nearest.iter().all(|(id, _)| id != "ice"));
+        assert!(like.score < index.like(title, text).score);
+        // an id the index has not: nothing left out
+        assert_eq!(
+            index.like_without(title, text, &["none".to_string()]),
+            index.like(title, text)
+        );
     }
 
     #[test]

@@ -19,9 +19,10 @@ export interface SearchPage {
 }
 
 /** A page of the works of a query: the first (`cursor` none), whose works take the place of those found before but
- *  for those starred or added; or the next. Refused, said, for what OpenAlex cannot be asked. */
-export const run = (query: string, order: Order, cursor: string | null) =>
-  invoke<SearchPage>("search_run", { query, order, cursor });
+ *  for those starred or added, the papers of the library closest to `library` (the search in plain words) among
+ *  them; or the next. Refused, said, for what OpenAlex cannot be asked. */
+export const run = (query: string, library: string, order: Order, cursor: string | null) =>
+  invoke<SearchPage>("search_run", { query, library, order, cursor });
 /** The rows of works found again, in that order, the query's words marked: after a triage or an add. */
 export const rowsOf = (ids: string[], query: string) => invoke<FeedRow[]>("search_rows", { ids, query });
 /** The works starred, the latest found first. */

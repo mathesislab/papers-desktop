@@ -40,7 +40,7 @@ test("a layout of an older version: the tab in front, the Feeds and Search tabs'
   assert.deepEqual(layout.feeds.columns, BEFORE.feedColumns);
   assert.equal(layout.feeds.shown, BEFORE.feedsShown);
   assert.equal(layout.feeds.look, "simple");
-  assert.deepEqual(layout.search, { ...BEFORE.search, columns: BEFORE.searchColumns, look: "table" });
+  assert.deepEqual(layout.search, { ...BEFORE.search, authors: "", columns: BEFORE.searchColumns, look: "table" });
   for (const key of ["view", "feedColumns", "feedsShown", "searchColumns"]) assert.ok(!(key in layout), key);
 });
 

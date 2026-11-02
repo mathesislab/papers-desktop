@@ -1,5 +1,6 @@
-// The state of the Search tab: the query asked of OpenAlex (the text of the search field and the Year field, whose
-// years Rust reads, and refuses when they are none), the recent searches, what the window's layout keeps of the tab,
+// The state of the Search tab: the query asked of OpenAlex (the text of the search field, the Author(s) field as a:,
+// the Year(s) field as y:, whose years Rust reads, and refuses when they are none), the same in plain words (the
+// library's papers matched as a reference is, the services online), the recent searches, what the window's layout keeps of the tab,
 // the works around a work. Pure functions, tested by scripts/search.test.ts (npm test).
 
 import type { StarWords } from "../feeds/actions.ts";
@@ -19,6 +20,24 @@ export const ORDERS: { order: SearchOrder; text: string }[] = [
   { order: "relevance", text: "OpenAlex relevance" },
 ];
 
+/** The works found in the order of the search, the library's papers among them: by score, the newest, the most
+ *  cited first (those of no date or count last); OpenAlex's relevance as found (the library's papers first). A page
+ *  more is sorted in. */
+export function inOrder<T extends { score: number; date: string | null; cited: number | null }>(rows: T[], order: SearchOrder): T[] {
+  const last = (x: number | null) => x ?? -Infinity;
+  const time = (d: string | null) => (d ? Date.parse(d) : -Infinity);
+  switch (order) {
+    case "score":
+      return [...rows].sort((a, b) => b.score - a.score);
+    case "newest":
+      return [...rows].sort((a, b) => time(b.date) - time(a.date));
+    case "cited":
+      return [...rows].sort((a, b) => last(b.cited) - last(a.cited));
+    case "relevance":
+      return rows;
+  }
+}
+
 /** The order OpenAlex is asked for: the score sorts the most relevant. */
 export const askedOf = (order: SearchOrder): Order => (order === "score" ? "relevance" : order);
 
@@ -37,14 +56,15 @@ export const PER_PAGE = 25;
 /** The recent searches kept, the latest first. */
 export const RECENT_MAX = 20;
 
-/** A search as typed: the text of the search field, the Year field, the order. */
+/** A search as typed: the text of the search field, the Author(s) and Year(s) fields, the order. */
 export interface Typed {
   query: string;
+  authors: string;
   year: string;
   order: SearchOrder;
 }
 
-/** The search the tab shows: the query asked (the Year field in it), its order, the works found so far in their
+/** The search the tab shows: the query asked (the authors and years in it), its order, the works found so far in their
  *  order, how many there are in all, the cursor of the next page. */
 export interface Results {
   query: string;
@@ -61,32 +81,53 @@ export interface SearchState extends Typed {
   results: Results | null;
 }
 
-export const NO_SEARCH: SearchState = { query: "", year: "", order: "newest", recent: [], results: null };
+export const NO_SEARCH: SearchState = { query: "", authors: "", year: "", order: "score", recent: [], results: null };
 
-/** The query asked of OpenAlex: the text of the search field, then the Year field as `y:`, spaces left out. ""
- *  when both are blank. */
-export function composed(query: string, year: string): string {
-  const years = year.replace(/\s+/g, "");
-  return [query.trim(), years && `y:${years}`].filter(Boolean).join(" ");
+/** The names of the Author(s) field: separated by commas, semicolons, `&`, `and` or `AND`; each one required. */
+export function namesOf(authors: string): string[] {
+  return (authors.split(/[,;&]|\s+and\s+/i))
+    .map((name) => name.trim().replace(/\s+/g, " "))
+    .filter(Boolean);
 }
 
-/** The same search: the same text (spaces aside) and years; the order is not part of it. */
+/** The query asked of OpenAlex: the text of the search field, each name as `a:` (quoted when of several words), the
+ *  Year(s) field as `y:` (`2015, 2020`, `2000 - 2010`: spaces left out). "" when all are blank. */
+export function composed(s: Pick<Typed, "query" | "authors" | "year">): string {
+  const years = s.year.replace(/\s+/g, "");
+  const names = namesOf(s.authors).map((name) => (name.includes(" ") ? `a:"${name}"` : `a:${name}`));
+  return [s.query.trim(), ...names, years && `y:${years}`].filter(Boolean).join(" ");
+}
+
+/** The search in plain words, as a reference is written: the text, the names, the years (the library's papers are
+ *  matched to it as a reference is). */
+export function plainWords(s: Pick<Typed, "query" | "authors" | "year">): string {
+  return [s.query.trim(), ...namesOf(s.authors), s.year.trim()].filter(Boolean).join(" ");
+}
+
+/** The same search: the same text (spaces aside), names and years; the order is not part of it. */
 const same = (a: Typed, b: Typed) =>
-  a.query.trim().replace(/\s+/g, " ") === b.query.trim().replace(/\s+/g, " ") && a.year.replace(/\s+/g, "") === b.year.replace(/\s+/g, "");
+  a.query.trim().replace(/\s+/g, " ") === b.query.trim().replace(/\s+/g, " ") &&
+  namesOf(a.authors).join(",") === namesOf(b.authors).join(",") &&
+  a.year.replace(/\s+/g, "") === b.year.replace(/\s+/g, "");
 
 /** The recent searches after one more: it first, taking the place of the same search before (its order now), the
  *  list at most `max` long. A blank search is not kept. */
 export function withRecent(list: Typed[], search: Typed, max = RECENT_MAX): Typed[] {
-  const entry = { query: search.query.trim(), year: search.year.replace(/\s+/g, ""), order: search.order };
-  if (!entry.query && !entry.year) return list;
+  const entry = {
+    query: search.query.trim(),
+    authors: namesOf(search.authors).join(", "),
+    year: search.year.replace(/\s+/g, ""),
+    order: search.order,
+  };
+  if (!entry.query && !entry.authors && !entry.year) return list;
   return [entry, ...list.filter((r) => !same(r, entry))].slice(0, max);
 }
 
-/** A recent search as the sidebar shows it: `greenland ice sheet · 2000-2010 · Most cited`; the order at first not
- *  said. */
+/** A recent search as the sidebar shows it: `greenland ice sheet · Smith, Fricker · 2000-2010 · Most cited`; the
+ *  order at first not said. */
 export function recentText(r: Typed): string {
   const order = r.order === NO_SEARCH.order ? null : ORDERS.find((o) => o.order === r.order)?.text;
-  return [r.query.trim(), r.year, order].filter(Boolean).join(" · ");
+  return [r.query.trim(), r.authors, r.year, order].filter(Boolean).join(" · ");
 }
 
 const text = (v: unknown): v is string => typeof v === "string";
@@ -97,7 +138,7 @@ function typed(v: unknown): Typed | null {
   if (!v || typeof v !== "object") return null;
   const r = v as Partial<Typed>;
   if (!text(r.query) || !text(r.year)) return null;
-  return { query: r.query, year: r.year, order: isOrder(r.order) ? r.order : NO_SEARCH.order };
+  return { query: r.query, authors: text(r.authors) ? r.authors : "", year: r.year, order: isOrder(r.order) ? r.order : NO_SEARCH.order };
 }
 
 /** The search shown as saved, or null when it is not one. */
@@ -120,6 +161,7 @@ export function restoredSearch(saved: Partial<SearchState> | null | undefined): 
   const recent = Array.isArray(saved?.recent) ? saved.recent.map(typed).filter((r): r is Typed => r !== null) : d.recent;
   return {
     query: text(saved?.query) ? saved.query : d.query,
+    authors: text(saved?.authors) ? saved.authors : d.authors,
     year: text(saved?.year) ? saved.year : d.year,
     order: isOrder(saved?.order) ? saved.order : d.order,
     recent: recent.slice(0, RECENT_MAX),

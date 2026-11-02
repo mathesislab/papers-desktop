@@ -10,6 +10,9 @@ import {
   appended,
   aroundQuery,
   composed,
+  inOrder,
+  namesOf,
+  plainWords,
   moreText,
   recentText,
   restoredSearch,
@@ -18,17 +21,42 @@ import {
   type Typed,
 } from "../src/lib/search/state.ts";
 
-const a = (query: string, year = "", order: Typed["order"] = "newest"): Typed => ({ query, year, order });
+const a = (query: string, year = "", order: Typed["order"] = "score", authors = ""): Typed => ({ query, authors, year, order });
 
-test("the query asked: the field's text, then the years as y:, spaces left out", () => {
-  assert.equal(composed("greenland ice sheet", "2000-2010"), "greenland ice sheet y:2000-2010");
-  assert.equal(composed("  greenland  ", ""), "greenland");
-  assert.equal(composed("", "2005"), "y:2005");
-  assert.equal(composed('t:"surface mass balance"', " -2010 "), 't:"surface mass balance" y:-2010');
-  assert.equal(composed("", ""), "");
-  assert.equal(composed("firn", " 2000 - 2010 "), "firn y:2000-2010");
+test("the query asked: the field's text, the names as a:, the years as y:, spaces left out", () => {
+  const q = (query: string, year = "", authors = "") => composed({ query, authors, year });
+  assert.equal(q("greenland ice sheet", "2000-2010"), "greenland ice sheet y:2000-2010");
+  assert.equal(q("  greenland  "), "greenland");
+  assert.equal(q("", "2005"), "y:2005");
+  assert.equal(q('t:"surface mass balance"', " -2010 "), 't:"surface mass balance" y:-2010');
+  assert.equal(q("", ""), "");
+  assert.equal(q("firn", " 2000 - 2010 "), "firn y:2000-2010");
+  assert.equal(q("firn", "2015, 2020"), "firn y:2015,2020");
   // what is not years is Rust's to refuse
-  assert.equal(composed("firn", "20-30"), "firn y:20-30");
+  assert.equal(q("firn", "20-30"), "firn y:20-30");
+  assert.equal(q("ice sheet", "2020", "smith, Ben Smith"), 'ice sheet a:smith a:"Ben Smith" y:2020');
+});
+
+test("the names of the Author(s) field: by commas, semicolons, & or and", () => {
+  assert.deepEqual(namesOf("Smith, Fricker"), ["Smith", "Fricker"]);
+  assert.deepEqual(namesOf("smith AND fricker & Paolo;  van den Broeke "), ["smith", "fricker", "Paolo", "van den Broeke"]);
+  assert.deepEqual(namesOf("Alexander  Robinson"), ["Alexander Robinson"]);
+  assert.deepEqual(namesOf(" , "), []);
+});
+
+test("the search in plain words: for the library and the services online", () => {
+  assert.equal(plainWords({ query: " ice sheet ", authors: "Smith, Fricker", year: "2020" }), "ice sheet Smith Fricker 2020");
+  assert.equal(plainWords({ query: "", authors: "", year: "" }), "");
+});
+
+test("the works in the order of the search, the library's among them", () => {
+  const w = (id: string, score: number, date: string | null, cited: number | null) => ({ id, score, date, cited });
+  const rows = [w("a", 10, "2019-05-01", 3), w("lib", 80, "2020-01-01", null), w("b", 40, null, 50)];
+  const ids = (order: Typed["order"]) => inOrder(rows, order).map((r) => r.id);
+  assert.deepEqual(ids("score"), ["lib", "b", "a"]);
+  assert.deepEqual(ids("newest"), ["lib", "a", "b"]);
+  assert.deepEqual(ids("cited"), ["b", "a", "lib"]);
+  assert.deepEqual(ids("relevance"), ["a", "lib", "b"]);
 });
 
 test("the recent searches: the latest first, the same search once, blank ones not kept", () => {
@@ -72,8 +100,10 @@ test("the layout restored: the defaults for what is missing or wrong", () => {
     recent: [a("firn", "2000-", "newest"), { query: 3 }, null, { query: "melt", year: "", order: "best" }],
     results: { query: "firn y:2000-", order: "newest", ids: ["a", 4, "b"], total: 1234, next: "cursor" },
   } as unknown as Parameters<typeof restoredSearch>[0];
+  // a layout of before the Author(s) field: none
   assert.deepEqual(restoredSearch(saved), {
     query: "firn",
+    authors: "",
     year: "2000-",
     order: "newest",
     recent: [a("firn", "2000-", "newest"), a("melt")],

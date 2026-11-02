@@ -6,14 +6,19 @@
 //! The last query's journals and works looked up are kept for its next pages
 //! and its subscription. The rows are the Feeds tab's (`FeedRow`); the details,
 //! the triage, the abstracts and the PDFs are the Feeds tab's commands, with
-//! the store. A search online is the address of a service without an API
+//! the store. A search's first page has the papers of the library closest to
+//! it among OpenAlex's works (as a reference is matched: its words, names
+//! and years), each work once. A search online is the address of a service without an API
 //! (crates/feeds' `online_url`), which the page opens in the browser.
 
 use std::sync::Mutex;
 
+use chrono::{TimeZone, Utc};
+use papers_core::Library;
+use papers_feeds::normalize::canonical_doi;
 use papers_feeds::{
-    Access, Feed, Http, Order, Resolved, Service, SourceKind, SubscriptionSettings, ask,
-    online_url, resolve, search_works, subscription_filter,
+    Access, Entry, FOUND, Feed, Http, ItemKind, Order, Origin, Resolved, Service, SourceKind,
+    SubscriptionSettings, ask, online_url, resolve, search_works, subscription_filter,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
@@ -25,6 +30,9 @@ use crate::settings::Settings;
 
 /// The items' event of the Search tab: the works found changed.
 pub const CHANGED: &str = "search-changed";
+
+/// The papers of the library a search shows among the works found, at most.
+pub const LIBRARY_HITS: usize = 25;
 
 /// A page of a search, as the list shows it.
 #[derive(Debug, Serialize)]
@@ -70,11 +78,36 @@ fn rows_of(app: &AppHandle, ids: &[String], query: &str) -> Result<Vec<FeedRow>,
     })
 }
 
-/// A page of the works of a query: the first (`cursor` none), or the next.
+/// The papers of the library closest to a search, as works found: `reference`
+/// its words, names and years, matched as a reference is (`Library::closest`).
+fn library_entries(library: &Library, reference: &str) -> Vec<Entry> {
+    if reference.trim().is_empty() {
+        return Vec::new();
+    }
+    (library.closest(reference, LIBRARY_HITS).hits.into_iter())
+        .map(|hit| {
+            let item = hit.item;
+            let guid = format!("library:{}", item.id);
+            let mut entry = Entry::new(FOUND, Origin::Work, guid, item.title, ItemKind::Paper);
+            entry.authors = item.authors;
+            entry.journal = item.container;
+            entry.date = (item.year).and_then(|y| Utc.with_ymd_and_hms(y, 1, 1, 0, 0, 0).single());
+            entry.doi = item.doi.as_deref().and_then(canonical_doi);
+            entry.url = item.url;
+            entry.summary = library.field(&item.id, &["abstract"]);
+            entry
+        })
+        .collect()
+}
+
+/// A page of the works of a query: the first (`cursor` none), with the papers
+/// of the library closest to `library` (the search in plain words) first, or
+/// the next.
 #[tauri::command]
 pub async fn search_run(
     app: AppHandle,
     query: String,
+    library: String,
     order: Order,
     cursor: Option<String>,
 ) -> Result<SearchPage, String> {
@@ -92,7 +125,11 @@ pub async fn search_run(
             cursor.as_deref(),
         )?;
         let fresh = cursor.is_none();
-        let entries = found.entries;
+        let mut entries = match fresh {
+            true => library_entries(&state.library.read().unwrap(), &library),
+            false => Vec::new(),
+        };
+        entries.extend(found.entries);
         let ids = (state.search).change(&app, move |feeds| feeds.found(entries.clone(), fresh))?;
         Ok(SearchPage {
             rows: rows_of(&app, &ids, &query)?,

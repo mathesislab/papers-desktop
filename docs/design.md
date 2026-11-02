@@ -1313,7 +1313,7 @@ user's (`search_services` in the settings, the Search section: a name and an
 address with `{query}` or `{scholar}` in it, http or https, checked when
 saved by `save_settings`), then *Add a service…* (the settings at that
 section). A choice opens the browser at the service's address for the query
-and the Year field (`search_online`, the address of crates/feeds'
+and the Author(s) and Year(s) fields, as one query (`search_online`, the address of crates/feeds'
 `online_url`, `online.rs`, pure and tested; the page opens it). Google
 Scholar's: words and "phrases" as they are, `-word`, `a:` as
 `author:"Name"`, `t:` as `intitle:"…"`, `j:` as `source:"…"`, `abs:` its
