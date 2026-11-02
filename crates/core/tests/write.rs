@@ -415,6 +415,33 @@ fn files_linked_to_an_entry_as_they_are() {
 }
 
 #[test]
+fn the_files_of_an_entry_set_in_their_order() {
+    let (_dir, bibs) = copies(&["write.bib"]);
+    let lib = Library::load(&bibs).unwrap();
+    let (a, b) = (PathBuf::from("/d/paper.pdf"), PathBuf::from("/d/si.pdf"));
+    lib.attach_files("nofield", None, &[a.clone(), b.clone()]).unwrap();
+    // reordered: the same links, the SI first
+    let lib = Library::load(&bibs).unwrap();
+    assert_eq!(lib.set_files("nofield", &[b.clone(), a.clone()]).unwrap().len(), 1);
+    let lib = Library::load(&bibs).unwrap();
+    assert_eq!(lib.get("nofield").unwrap().files, [b.clone(), a.clone()]);
+    // the same links: nothing written
+    let text = read(&bibs[0]);
+    assert!(lib.set_files("nofield", &[b.clone(), a]).unwrap().is_empty());
+    assert_eq!(read(&bibs[0]), text);
+    // one left out: unlinked
+    lib.set_files("nofield", std::slice::from_ref(&b)).unwrap();
+    let lib = Library::load(&bibs).unwrap();
+    assert_eq!(lib.get("nofield").unwrap().files, [b]);
+    // none: the field goes, in the style of the others
+    lib.set_files("nofield", &[]).unwrap();
+    let lib = Library::load(&bibs).unwrap();
+    assert!(lib.get("nofield").unwrap().files.is_empty());
+    assert!(!lib.raw("nofield").unwrap().contains("file"));
+    assert!(lib.raw("nofield").unwrap().ends_with("year = {2019}\n}"), "{}", lib.raw("nofield").unwrap());
+}
+
+#[test]
 fn files_linked_with_the_entry_replaced() {
     let (_dir, bibs) = copies(&["library.bib"]);
     let lib = Library::load(&bibs).unwrap();

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use papers_rs::command::add::{AddRequest, add};
 use papers_rs::command::edit::replace_from_text;
+use papers_rs::command::file_cmd::{Attach, attach_files, files_to_delete};
 use papers_rs::command::files::{Mode, files_mode};
 use papers_rs::command::pool::push_after_travel;
 use papers_rs::command::report::Changes;
@@ -266,6 +267,78 @@ impl PapersWriter for Builtin {
                 ..AddRequest::default()
             };
             add(session, &request, &mut Resolver::new(Merging::Skip))
+        })
+    }
+
+    fn attach_files(
+        &self,
+        folder: &Path,
+        key: &str,
+        files: &[PathBuf],
+        replace: Option<&Path>,
+        chosen: Option<FilesMode>,
+    ) -> Result<Changes, WriteError> {
+        let files: Vec<String> = files.iter().map(|f| f.to_string_lossy().into_owned()).collect();
+        let mut args = vec![key.to_string()];
+        args.extend(files.iter().cloned());
+        // (papers has no replace: what papers-rs records for the link replaced)
+        args.extend(replace.map(|r| format!("--replace={}", r.display())));
+        args.extend(chosen.map(|m| m.flag().to_string()));
+        self.transact(folder, ("file attach", &args), |session| {
+            let keys = session.library.select(&[key.to_string()])?;
+            let mut options = Attach::new(mode(chosen, &session.config)?);
+            let added = match replace {
+                // the link as the entry has it: the same file by its real path
+                Some(gone) => {
+                    let gone = realpath(&gone.to_string_lossy());
+                    let links = session.library.files(&keys[0]);
+                    let Some(link) = links.into_iter().find(|f| realpath(f) == gone) else {
+                        return Err(Error::exit(format!("{key}: no link to {gone}")));
+                    };
+                    options.replace = vec![(link, files)];
+                    Vec::new()
+                }
+                None => files,
+            };
+            attach_files(session, &keys[0], &added, &options)?;
+            Ok(keys)
+        })
+    }
+
+    fn set_files(
+        &self,
+        folder: &Path,
+        key: &str,
+        files: &[PathBuf],
+        delete: &[PathBuf],
+    ) -> Result<Changes, WriteError> {
+        let files: Vec<String> = files.iter().map(|f| f.to_string_lossy().into_owned()).collect();
+        let delete: Vec<String> = delete.iter().map(|f| f.to_string_lossy().into_owned()).collect();
+        // (papers has no order of the links: what papers-rs records for it)
+        let mut args = vec![key.to_string()];
+        args.extend(files.iter().cloned());
+        args.extend(delete.iter().flat_map(|f| ["--delete-file".to_string(), f.clone()]));
+        self.transact_deleting(folder, ("file set", &args), !delete.is_empty(), |session| {
+            if !delete.is_empty() && session.config.shallow() {
+                return Err(Error::exit(
+                    "The files of a shallow library are the pool's: remove them with `papers file rm FILE`",
+                ));
+            }
+            let keys = session.library.select(&[key.to_string()])?;
+            // the links as the entry has them (the same files by their real paths), in this order
+            let links = session.library.files(&keys[0]);
+            let ordered = files
+                .iter()
+                .map(|f| {
+                    let real = realpath(f);
+                    let link = links.iter().find(|l| realpath(l) == real);
+                    link.cloned().ok_or_else(|| Error::exit(format!("{key}: no link to {f}")))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            session.library.set_files(&keys[0], &ordered)?;
+            // those that no entry links to any more, of those to delete
+            let (inside, outside, _kept) = files_to_delete(&session.library, &delete);
+            Ok((keys, inside.into_iter().chain(outside).collect()))
         })
     }
 

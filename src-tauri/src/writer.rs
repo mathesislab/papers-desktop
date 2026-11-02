@@ -178,6 +178,33 @@ trait PapersWriter: Send + Sync {
         files: Option<FilesMode>,
     ) -> Result<Changes, WriteError>;
 
+    /// `papers file attach KEY FILE... --move|--copy|--link`: files added to an entry, after those
+    /// it has; with `replace` (a link of it, to a file that is gone), in its place. Placed as the
+    /// mode says (none: the `files` setting of the library). Built in, one step; a papers command,
+    /// which has no replace, detaches the link first and adds the files last (`set_files` puts
+    /// them in its place after)
+    fn attach_files(
+        &self,
+        folder: &Path,
+        key: &str,
+        files: &[PathBuf],
+        replace: Option<&Path>,
+        mode: Option<FilesMode>,
+    ) -> Result<Changes, WriteError>;
+
+    /// The links of an entry set: `files`, links of it, in this order; those it had and that are
+    /// not among them unlinked (`papers file detach`, the files kept), but those of `delete`,
+    /// deleted when no other entry links to them (`papers file rm`: kept in the history, which
+    /// undo brings back). Built in, one step; a papers command, which has no order of the links,
+    /// removes `delete` first, then all the links, and links `files` again in their order
+    fn set_files(
+        &self,
+        folder: &Path,
+        key: &str,
+        files: &[PathBuf],
+        delete: &[PathBuf],
+    ) -> Result<Changes, WriteError>;
+
     /// `papers rm KEY... --keep-files`, and the `files` of these entries deleted, those that no
     /// other entry links to: kept in the history, which undo brings back. Built in, in the same
     /// step as the entries; a papers command deletes them first (`papers file rm`), a step of
@@ -583,6 +610,28 @@ pub async fn attach_pdf(
     write(app, move |state| attach(state, &id, text.as_deref(), &pdf, files)).await
 }
 
+/// Files added to a paper, after those it has, or with `replace` (a link of it, to a file that is
+/// gone) in its place: placed as `mode` says (none: the library's setting; a plain .bib links them
+/// where they are).
+#[tauri::command]
+pub async fn attach_files(
+    app: AppHandle,
+    id: String,
+    files: Vec<PathBuf>,
+    replace: Option<PathBuf>,
+    mode: Option<FilesMode>,
+) -> Result<(), WriteError> {
+    write(app, move |state| attach_new(state, &id, &files, replace.as_deref(), mode)).await
+}
+
+/// The links of a paper set: `files`, of those it has, in this order, the others unlinked (the
+/// files kept), but those of `delete`, deleted when no other entry links to them: kept in a papers
+/// library's history, which undo brings back; a plain .bib's to the trash.
+#[tauri::command]
+pub async fn set_files(app: AppHandle, id: String, files: Vec<PathBuf>, delete: Vec<PathBuf>) -> Result<(), WriteError> {
+    write(app, move |state| set_links(state, &id, &files, &delete)).await
+}
+
 /// What a PDF added to a paper of a .bib file is done with by default (see `default_files`).
 #[tauri::command]
 pub async fn default_files_mode(app: AppHandle, bib: PathBuf) -> Result<Option<FilesMode>, WriteError> {
@@ -916,6 +965,108 @@ fn attach(
                 .unwrap()
                 .attach_files(id, changed, std::slice::from_ref(&pdf.to_path_buf()))?;
             state.writers.done(changes);
+        }
+    }
+    Ok(())
+}
+
+/// Files added to a paper (`attach_files`): a papers library by its writer; with a papers command,
+/// which adds them last, those taking the place of `replace` are put there after (`set_files`). A
+/// plain .bib links them where they are.
+fn attach_new(
+    state: &AppState,
+    id: &str,
+    files: &[PathBuf],
+    replace: Option<&Path>,
+    mode: Option<FilesMode>,
+) -> Result<(), WriteError> {
+    let item = state.item(id).map_err(WriteError::failed)?;
+    let files = files.iter().map(|f| checked_pdf(f)).collect::<Result<Vec<_>, _>>()?;
+    if files.is_empty() {
+        return Ok(());
+    }
+    if let Some(gone) = replace
+        && !item.files.iter().any(|f| f == gone)
+    {
+        return Err(WriteError::failed(format!("{}: not a file of {}", gone.display(), item.key)));
+    }
+    let targets = state.writers.targets([item.bib.as_path()])?;
+    match targets.papers(&item.bib) {
+        Some(library) => {
+            library.writer.attach_files(&library.folder, &item.key, &files, replace, mode)?;
+            if let Some(gone) = replace
+                && library.writer.kind() == Kind::Papers
+            {
+                // the files added last, where they go: in place of the link gone
+                let links = links_of(&item.bib, &item.key)?;
+                let added: Vec<PathBuf> = links.iter().filter(|f| !item.files.contains(f)).cloned().collect();
+                let order = replaced(&item.files, gone, &added);
+                library.writer.set_files(&library.folder, &item.key, &order, &[])?;
+            }
+        }
+        None => {
+            for file in &files {
+                check_kept(file)?;
+            }
+            let order = match replace {
+                Some(gone) => replaced(&item.files, gone, &files),
+                None => item.files.iter().chain(&files).cloned().collect(),
+            };
+            let changes = state.library.read().unwrap().set_files(id, &order)?;
+            state.writers.done(changes);
+        }
+    }
+    Ok(())
+}
+
+/// The links of a paper with `gone` replaced by `new`, in its place.
+fn replaced(links: &[PathBuf], gone: &Path, new: &[PathBuf]) -> Vec<PathBuf> {
+    links
+        .iter()
+        .flat_map(|f| if f == gone { new.to_vec() } else { vec![f.clone()] })
+        .collect()
+}
+
+/// The links of an entry of a .bib as the file has them now (read again: a papers command wrote it).
+fn links_of(bib: &Path, key: &str) -> Result<Vec<PathBuf>, WriteError> {
+    let library = papers_core::Library::load(&[bib.to_path_buf()]).map_err(WriteError::from)?;
+    let found = library.find(bib, key).map(|it| it.files.clone());
+    found.ok_or_else(|| WriteError::failed(format!("{key}: no entry found")))
+}
+
+/// The links of a paper set (`set_files`): `files` and `delete` must be links of it, those to
+/// delete not among those kept. Nothing is written when the links are already these.
+fn set_links(state: &AppState, id: &str, files: &[PathBuf], delete: &[PathBuf]) -> Result<(), WriteError> {
+    let item = state.item(id).map_err(WriteError::failed)?;
+    if let Some(other) = files.iter().chain(delete).find(|f| !item.files.contains(f)) {
+        return Err(WriteError::failed(format!("{}: not a file of {}", other.display(), item.key)));
+    }
+    if let Some(kept) = delete.iter().find(|f| files.contains(f)) {
+        return Err(WriteError::failed(format!("{}: both kept and deleted", kept.display())));
+    }
+    if files == item.files.as_slice() && delete.is_empty() {
+        return Ok(());
+    }
+    let targets = state.writers.targets([item.bib.as_path()])?;
+    match targets.papers(&item.bib) {
+        Some(library) => {
+            library.writer.set_files(&library.folder, &item.key, files, delete)?;
+        }
+        None => {
+            let changes = state.library.read().unwrap().set_files(id, files)?;
+            state.writers.done(changes);
+            // to the trash, those that no other entry links to
+            let others: BTreeSet<PathBuf> = {
+                let library = state.library.read().unwrap();
+                let others = library.items().iter().filter(|it| it.id != id);
+                others.flat_map(|it| it.files.iter().map(|f| real(f))).collect()
+            };
+            let mut done = BTreeSet::new();
+            for file in delete.iter().map(|f| real(f)) {
+                if file.is_file() && !others.contains(&file) && done.insert(file.clone()) {
+                    state.writers.trash(&file)?;
+                }
+            }
         }
     }
     Ok(())
@@ -1390,6 +1541,89 @@ pub(crate) mod tests {
         fs::create_dir_all(to.parent().unwrap()).unwrap();
         fs::copy(fixtures.join(fixture), to).unwrap();
         to.to_path_buf()
+    }
+
+    /// The files of the entry `key` of `bib`, the library read again.
+    fn links(state: &AppState, bib: &Path, key: &str) -> (String, Vec<PathBuf>) {
+        reload(state);
+        let library = state.library.read().unwrap();
+        let item = library.find(bib, key).unwrap();
+        (item.id.clone(), item.files.clone())
+    }
+
+    #[test]
+    fn built_in_orders_removes_and_replaces_the_files_of_an_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = init_library(dir.path());
+        let state = state(dir.path(), std::slice::from_ref(&bib), WriterChoice::BuiltIn, "");
+        let paper = fixture_pdf(&dir.path().join("dl/paper.pdf"), "two-pages.pdf");
+        let options = AddOptions { pdf: Some(paper), ..AddOptions::default() };
+        add(&state, &bib, "@article{a,\n author = {Doe, Jane},\n title = {A},\n year = {2024}\n}", options).unwrap();
+        let (id, files) = links(&state, &bib, "a");
+        assert_eq!(files.len(), 1);
+        // the SI after the paper, moved into the library as the setting says
+        let si = fixture_pdf(&dir.path().join("dl/si.pdf"), "no-doi.pdf");
+        attach_new(&state, &id, std::slice::from_ref(&si), None, None).unwrap();
+        let (id, files) = links(&state, &bib, "a");
+        assert_eq!(files.len(), 2);
+        assert!(!si.exists() && files[1].is_file());
+        // reordered: one step of papers' history
+        set_links(&state, &id, &[files[1].clone(), files[0].clone()], &[]).unwrap();
+        assert_eq!(links(&state, &bib, "a").1, [files[1].clone(), files[0].clone()]);
+        step(&state, &bib, true).unwrap();
+        assert_eq!(links(&state, &bib, "a").1, files);
+        // the SI to the trash: undo brings the file and its link back
+        set_links(&state, &id, std::slice::from_ref(&files[0]), std::slice::from_ref(&files[1])).unwrap();
+        assert_eq!(links(&state, &bib, "a").1, [files[0].clone()]);
+        assert!(!files[1].exists());
+        step(&state, &bib, true).unwrap();
+        assert!(files[1].is_file());
+        assert_eq!(links(&state, &bib, "a").1, files);
+        // unlinked only: the file stays
+        set_links(&state, &id, std::slice::from_ref(&files[0]), &[]).unwrap();
+        assert!(files[1].is_file());
+        step(&state, &bib, true).unwrap();
+        // the paper gone from its folder: a new file in its place, first
+        fs::remove_file(&files[0]).unwrap();
+        reload(&state);
+        let new = fixture_pdf(&dir.path().join("dl/new.pdf"), "text-doi.pdf");
+        attach_new(&state, &id, std::slice::from_ref(&new), Some(&files[0]), None).unwrap();
+        let (_, now) = links(&state, &bib, "a");
+        assert_eq!(now.len(), 2);
+        assert!(now[0].is_file() && now[0] != files[1]);
+        assert_eq!(now[1], files[1]);
+        // what is not a link of the entry is refused
+        let error = set_links(&state, &id, &[dir.path().join("x.pdf")], &[]).unwrap_err();
+        assert!(error.message.contains("not a file of a"), "{}", error.message);
+    }
+
+    #[test]
+    fn native_orders_removes_and_replaces_files_where_they_are() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib = dir.path().join("refs.bib");
+        fs::write(&bib, ENTRIES).unwrap();
+        let state = state(dir.path(), std::slice::from_ref(&bib), WriterChoice::BuiltIn, "");
+        let trash = dir.path().join("trash");
+        fs::create_dir(&trash).unwrap();
+        *state.writers.trash.lock().unwrap() = Some(trash.clone());
+        let (id, _) = links(&state, &bib, "b");
+        let one = fs::canonicalize(fixture_pdf(&dir.path().join("pdfs/one.pdf"), "two-pages.pdf")).unwrap();
+        let two = fs::canonicalize(fixture_pdf(&dir.path().join("pdfs/two.pdf"), "no-doi.pdf")).unwrap();
+        attach_new(&state, &id, &[one.clone(), two.clone()], None, None).unwrap();
+        assert_eq!(links(&state, &bib, "b").1, [one.clone(), two.clone()]);
+        // linked where they are, reordered
+        set_links(&state, &id, &[two.clone(), one.clone()], &[]).unwrap();
+        assert_eq!(links(&state, &bib, "b").1, [two.clone(), one.clone()]);
+        // one to the trash
+        set_links(&state, &id, std::slice::from_ref(&two), std::slice::from_ref(&one)).unwrap();
+        assert_eq!(links(&state, &bib, "b").1, std::slice::from_ref(&two));
+        assert!(!one.exists() && trash.join("one.pdf").is_file());
+        // the other gone: a new one in its place
+        fs::remove_file(&two).unwrap();
+        reload(&state);
+        let three = fs::canonicalize(fixture_pdf(&dir.path().join("pdfs/three.pdf"), "text-doi.pdf")).unwrap();
+        attach_new(&state, &id, std::slice::from_ref(&three), Some(&two), None).unwrap();
+        assert_eq!(links(&state, &bib, "b").1, [three]);
     }
 
     #[test]

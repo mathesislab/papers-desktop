@@ -1199,6 +1199,8 @@ pub fn run() {
             writer::replace_entry,
             writer::add_bibtex,
             writer::attach_pdf,
+            writer::attach_files,
+            writer::set_files,
             writer::default_files_mode,
             writer::library_key,
             writer::remove_entries,

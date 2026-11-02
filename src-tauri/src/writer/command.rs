@@ -185,6 +185,49 @@ impl PapersWriter for PapersCommand {
         self.run(folder, "add", &args, None)
     }
 
+    fn attach_files(
+        &self,
+        folder: &Path,
+        key: &str,
+        files: &[PathBuf],
+        replace: Option<&Path>,
+        mode: Option<FilesMode>,
+    ) -> Result<Changes, WriteError> {
+        if let Some(gone) = replace {
+            let args = [gone.display().to_string(), "--key".to_string(), key.to_string()];
+            self.run(folder, "file detach", &args, None)?;
+        }
+        let mut args = vec![key.to_string()];
+        args.extend(files.iter().map(|f| f.display().to_string()));
+        args.extend(mode.map(|m| m.flag().to_string()));
+        self.run(folder, "file attach", &args, None)
+    }
+
+    fn set_files(
+        &self,
+        folder: &Path,
+        key: &str,
+        files: &[PathBuf],
+        delete: &[PathBuf],
+    ) -> Result<Changes, WriteError> {
+        // the files to delete first, with their links (`papers file rm FILE... --key KEY`)
+        let delete: Vec<String> = delete.iter().filter(|f| f.is_file()).map(|f| f.display().to_string()).collect();
+        if !delete.is_empty() {
+            let mut args = delete;
+            args.extend(["--key".to_string(), key.to_string()]);
+            self.run(folder, "file rm", &args, None)?;
+        }
+        // then every link, and those kept again in their order, where the files are
+        let changes = self.run(folder, "file detach", &["--key".to_string(), key.to_string()], None)?;
+        if files.is_empty() {
+            return Ok(changes);
+        }
+        let mut args = vec![key.to_string()];
+        args.extend(files.iter().map(|f| f.display().to_string()));
+        args.push("--link".to_string());
+        self.run(folder, "file attach", &args, None)
+    }
+
     fn remove(&self, folder: &Path, keys: &[String], files: &[PathBuf]) -> Result<Changes, WriteError> {
         // the files first, `papers file rm FILE... --key KEY...` (the links of these entries, and the
         // files that no other entry links to): once the entries are gone papers has no entry to delete
