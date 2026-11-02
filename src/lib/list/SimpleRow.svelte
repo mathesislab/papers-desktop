@@ -15,6 +15,7 @@
     dateTitle,
     source,
     sources,
+    server = false,
     title,
     beside,
     authors,
@@ -31,6 +32,8 @@
     source: string;
     /** what the source says on hover: where else it came from */
     sources?: string;
+    /** the source is a preprint server: in italics */
+    server?: boolean;
     title: Snippet;
     /** after the source, on its line: the badges */
     beside?: Snippet;
@@ -44,7 +47,7 @@
 
 <span class="muted date" style:grid-column={lead + 1} title={dateTitle}>{date}</span>
 <span class="lines" class:both={!!under} style:grid-column={lead + 2}>
-  <span class="small sourced"><span class="muted" title={sources}>{source}</span>{@render beside?.()}</span>
+  <span class="small sourced"><span class="muted" class:server title={sources}>{source}</span>{@render beside?.()}</span>
   <span>{@render title()}</span>
   <span class="muted small">{@render authors()}</span>
 </span>
@@ -86,6 +89,14 @@
   .lines > .small {
     font-size: 11px;
     line-height: 14px;
+  }
+  /* a preprint server: in italics, light red */
+  .muted.server {
+    font-style: italic;
+    color: color-mix(in srgb, var(--error) 60%, var(--muted));
+  }
+  :global(.row.selected) .muted.server {
+    color: inherit;
   }
   /* the source cut short before what is beside it */
   .lines > .sourced {

@@ -127,8 +127,10 @@
   /** The family names of a row: three, then "et al." */
   const authorsOf = (row: FeedRow) => row.authors.slice(0, 3);
 
-  /** The journal of a row, else the first subscription that listed it. */
+  /** The journal of a row (a preprint's: its server), else the first subscription that listed it. */
   const sourceOf = (row: FeedRow) => row.journal ?? row.sources[0] ?? "";
+  /** What its source says on hover: a preprint's that it is a server, where else it came from. */
+  const sourcesOf = (row: FeedRow) => (row.kind === "preprint" ? "A preprint server · " : "") + row.sources.join(", ");
 </script>
 
 <!-- the authors of a row, a post's kind without -->
@@ -197,7 +199,8 @@
             date={(reminderOf(row) ? "⏰ " : "") + (date === "age" ? ago(row.date, now) : yearOf(row.date))}
             dateTitle={reminderOf(row)?.text}
             source={sourceOf(row)}
-            sources={row.sources.join(", ")}
+            server={row.kind === "preprint"}
+            sources={sourcesOf(row)}
           >
             {#snippet title()}<span class="title"><Marked spans={row.title} /></span>{/snippet}
             {#snippet beside()}<Marks marks={marks(row, libraryOf)} look="inline" />{/snippet}
@@ -215,7 +218,7 @@
             {:else if column === "authors"}
               <span class="muted">{@render names(row)}</span>
             {:else if column === "journal"}
-              <span class="muted" title={row.sources.join(", ")}>{sourceOf(row)}</span>
+              <span class="muted" class:server={row.kind === "preprint"} title={sourcesOf(row)}>{sourceOf(row)}</span>
             {:else if column === "date"}
               {@const reminder = reminderOf(row)}
               <span class="muted date" title={reminder?.text}>{reminder ? "⏰ " : ""}{ago(row.date, now)}</span>
@@ -271,6 +274,14 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  /* a preprint's server, in italics and light red: no journal yet */
+  .muted.server {
+    font-style: italic;
+    color: color-mix(in srgb, var(--error) 60%, var(--muted));
+  }
+  .row.selected .muted.server {
+    color: inherit;
   }
   .row.new .title {
     font-weight: 600;

@@ -60,7 +60,8 @@
   let post = $derived(isPost(detail.kind));
   let date = $derived(detail.date ? dayText(detail.date) : null);
   let cited = $derived(detail.cited === null ? null : `cited ${detail.cited.toLocaleString("en-US")}×`);
-  let where = $derived([detail.journal, date, cited, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
+  /** after the journal (a preprint's server, in italics): the date, the citations, a paper's DOI */
+  let rest = $derived([date, cited, post ? null : detail.doi].filter((x): x is string => !!x).join(" · "));
   const VIA: Record<Linked["via"], string> = { feed: "named in the feed", page: "found on the page", title: "found by its title" };
 </script>
 
@@ -79,7 +80,9 @@
     {#if detail.authors.length}<p class="authors">{detail.authors.join(", ")}</p>{/if}
     <p class="by">
       {#if detail.editorial}<span class="badge">editorial</span>{/if}
-      {where}
+      {#if detail.journal}<span class:server={detail.kind === "preprint"} title={detail.kind === "preprint" ? "A preprint server" : undefined}
+          >{detail.journal}</span
+        >{#if rest}{" · "}{/if}{/if}{rest}
     </p>
   </div>
 
@@ -183,6 +186,11 @@
   .authors {
     margin: 0 0 3px;
     line-height: 1.4;
+  }
+  /* a preprint's server: in italics, light red */
+  .server {
+    font-style: italic;
+    color: color-mix(in srgb, var(--error) 60%, var(--muted));
   }
   .by {
     margin: 0 0 3px;
