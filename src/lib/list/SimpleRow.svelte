@@ -1,6 +1,6 @@
 <script lang="ts">
   // What a row of a simple list shows after its lead (the star, a mark): its date or year, then three lines, its
-  // journal or source small, its title (and, quiet, what the tab says of it beside: the badges), its authors small;
+  // journal or source small (and, quiet, what the tab says of it beside: the badges), its title, its authors small;
   // at its end, quiet, what the tab adds (the tags), as much as fits; under the lead and the date, what the tab
   // shows there (the score), the same place in every row. The row is the list's (FeedTable, the library's Table):
   // its grid (`simpleGridOf`), its clicks and its selection; so are the title and the authors, the words searched
@@ -29,7 +29,7 @@
     /** what the source says on hover: where else it came from */
     sources?: string;
     title: Snippet;
-    /** after the title, on its line: the badges */
+    /** after the source, on its line: the badges */
     beside?: Snippet;
     authors: Snippet;
     /** at the end of the row: the tags */
@@ -41,8 +41,8 @@
 
 <span class="muted date" style:grid-column={lead + 1}>{date}</span>
 <span class="lines" class:both={!!under} style:grid-column={lead + 2}>
-  <span class="muted small" title={sources}>{source}</span>
-  <span class="titled">{@render title()}{@render beside?.()}</span>
+  <span class="small sourced"><span class="muted" title={sources}>{source}</span>{@render beside?.()}</span>
+  <span>{@render title()}</span>
   <span class="muted small">{@render authors()}</span>
 </span>
 <span class="muted end" class:both={!!under} style:grid-column={lead + 3}>{@render end?.()}</span>
@@ -84,13 +84,13 @@
     font-size: 11px;
     line-height: 14px;
   }
-  /* the title cut short before what is beside it */
-  .lines > .titled {
+  /* the source cut short before what is beside it */
+  .lines > .sourced {
     display: flex;
     align-items: center;
     gap: 6px;
   }
-  .titled > :global(:first-child) {
+  .sourced > .muted {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

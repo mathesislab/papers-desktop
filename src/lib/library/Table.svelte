@@ -254,7 +254,7 @@
         {#if view.simple}
           {@render starButton(row)}
           <SimpleRow lead={2} date={text(row, "year")} source={text(row, "container")}>
-            {#snippet title()}<span>{row.title}</span>{/snippet}
+            {#snippet title()}{row.title}{/snippet}
             {#snippet authors()}{row.authors}{/snippet}
             {#snippet end()}{text(row, "tags")}{/snippet}
           </SimpleRow>

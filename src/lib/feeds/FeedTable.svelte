@@ -5,7 +5,7 @@
   // Only the rows in view are drawn, as in the library's table; the headers move, resize, show and hide the columns
   // as the library's do (TableHead: the title takes the room left; the window's layout keeps them). Simple
   // (`look`, the Feeds tab's at first; SimpleRow): no headers, each row taller, its date (an age; in the Search tab,
-  // its year) over its score, then its source, title and authors a line each, its badges quiet beside its title. A new item's title is
+  // its year) over its score, then its source, title and authors a line each, its badges quiet beside its source. A new item's title is
   // bold; one seen is muted (in the Feeds tab). A
   // click selects (⇧ a range, ⌘ one more), a double-click opens the item's page, a right-click its menu; the star at
   // its start stars the item, or unstars it (✓: added); in the Feeds tab, the ✕ at its end, on hover and on the row
@@ -279,7 +279,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* simple, the badges quiet beside the title: smaller, no border, their colour faint */
+  /* simple, the badges quiet beside the source: smaller, no border, their colour faint */
   .simple .badge {
     border-color: transparent;
     background: color-mix(in srgb, currentColor 9%, transparent);
