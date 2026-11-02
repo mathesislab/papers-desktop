@@ -13,7 +13,6 @@ mod library;
 mod main_window;
 #[cfg(target_os = "macos")]
 mod menu;
-#[cfg(target_os = "macos")]
 mod recent;
 mod search;
 mod selection;
