@@ -421,8 +421,10 @@
   }
 
   /* Library | Feeds | Search, at the start of the toolbar of each tab */
+  /* absolute, not fixed: WebKit tints the title bar with what is fixed at the top of the page (the window does not
+     scroll: it stays there) */
   .colour {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
