@@ -29,6 +29,8 @@ const TO_PAGE: &[&str] = &[
     "previous-tab",
     "show-next-tab",
     "show-previous-tab",
+    "back",
+    "forward",
 ];
 
 /// The items of the Window menu that follow the switches (`Toggle`): Window → Feeds and Search, there
@@ -130,6 +132,9 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &item("zoom-in", ZOOM_IN, "CmdOrCtrl+=")?,
                     &item("zoom-out", "Zoom Out", "CmdOrCtrl+-")?,
                     &item("zoom-fit", "Actual Size", "CmdOrCtrl+0")?,
+                    &separator()?,
+                    &item("back", "Back", "CmdOrCtrl+[")?,
+                    &item("forward", "Forward", "CmdOrCtrl+]")?,
                 ],
             )?,
             &Submenu::with_items(

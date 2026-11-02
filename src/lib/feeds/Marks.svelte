@@ -1,6 +1,6 @@
 <script lang="ts">
   // The status of an item as symbols (`marks`): its version, a half circle (◐ a preprint, ◑ published, ● both) or, a
-  // post, its kind (✦ news, ✎ general); ✓ in the library; ✦ news that covered it; ⏰ its reminder. What each says is
+  // post, its kind (a newspaper: news; ✎ general); ✓ in the library; a newspaper: news that covered it; ⏰ its reminder. What each says is
   // its hover. In a table's column, each in its slot, so that they line up from row to row (`slots`); beside a simple
   // row's source, those there (`inline`); in the details, each with its words, an entry of the library to show
   // (`words`).
@@ -32,10 +32,13 @@
       {/if}
       <circle cx="6" cy="6" r="5" class="ring" />
     </svg>
+  {:else if m.symbol === "news" || m.symbol === "covered"}
+    <svg class="paper" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+      <rect x="1.5" y="2" width="9" height="8" rx="1" />
+      <path d="M3.5 4.5h5M3.5 6.5h5M3.5 8h3" />
+    </svg>
   {:else}
-    <span class="sym {m.symbol}" aria-hidden="true"
-      >{{ news: "✦", blog: "✎", library: "✓", covered: "✦", due: "⏰", snoozed: "⏰" }[m.symbol]}</span
-    >
+    <span class="sym {m.symbol}" aria-hidden="true">{{ blog: "✎", library: "✓", due: "⏰", snoozed: "⏰" }[m.symbol]}</span>
   {/if}
 {/snippet}
 
@@ -113,6 +116,14 @@
   .stage .fill {
     fill: currentColor;
     fill-opacity: 0.45;
+  }
+  /* news: a newspaper, drawn as the ring is */
+  .paper {
+    display: block;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 0.9;
   }
   .sym.library {
     color: #2f9e6e;

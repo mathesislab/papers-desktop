@@ -58,6 +58,7 @@ selection, or the papers shown, to a `.bib` file.
 | `⌘W` | close the paper (the window, from the library) |
 | `⌘1`, `⌘2` | the Library tab (in it: the library), the Feeds tab |
 | `⌃Tab`, `⌃⇧Tab` | the next tab, the one before |
+| `⌘[`, `⌘]` | back, forward: the tabs and papers shown before (‹ › by the tabs) |
 | `⌘⌥S`, `⌘⌥I` | show or hide the sidebar, the details |
 | `⌘=` `⌘-` `⌘0` | zoom in, out, fit the width |
 

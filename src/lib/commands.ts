@@ -18,6 +18,8 @@ export const commands: Record<string, Shortcut> = {
   search: { key: "3", mod: true },
   "show-next-tab": { key: "]", code: "BracketRight", mod: true, shift: true },
   "show-previous-tab": { key: "[", code: "BracketLeft", mod: true, shift: true },
+  back: { key: "[", code: "BracketLeft", mod: true },
+  forward: { key: "]", code: "BracketRight", mod: true },
   settings: { key: ",", mod: true },
   // the library's, except in a field, where they are the field's (the menu of macOS has them)
   undo: { key: "z", mod: true },

@@ -23,7 +23,7 @@ export const FEED_SPECS: Specs<FeedColumn> = {
   year: { name: "Year", width: 50, least: 48 },
   status: {
     name: "Status",
-    hint: "Its version (◐ preprint, ◑ published, ● both; a post ✦ news or ✎ general), ✓ in the library, ✦ covered by news, ⏰ its reminder",
+    hint: "Its version (◐ preprint, ◑ published, ● both; a post: news or ✎ general), ✓ in the library, the news that covered it, ⏰ its reminder",
     width: 60,
     least: 60,
   },

@@ -922,6 +922,17 @@
     return show(id);
   }
 
+  /** A place of the window's history (navigation.ts): the PDF of a paper open, or the list (none). Whether it is
+   *  shown: a BibTeX being edited asks first. */
+  export async function showPlace(paper: string | null): Promise<boolean> {
+    if (!(await leave(paper ?? selection.focus))) return false;
+    toFront(paper);
+    return true;
+  }
+
+  /** The title of a paper of the library, by its id. */
+  export const titleOf = (id: string): string | undefined => byId.get(id)?.title;
+
   /** A paper of the library opened, from the Feeds and Search tabs: its PDF in a tab of the library, else its web
    *  page. */
   export function openEntry(id: string) {

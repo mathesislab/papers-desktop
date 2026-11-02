@@ -1,12 +1,13 @@
 <script lang="ts">
   // The main window: its tabs, Library (LibraryView, with the papers open), Feeds (FeedsView) and Search
-  // (SearchView), the last two unless hidden by their settings; its layout, kept between sessions; the commands of
-  // the menu and the keys, the window's own or passed on to the tab in front.
+  // (SearchView), the last two unless hidden by their settings; its layout, kept between sessions; back and forward
+  // through the places it showed (navigation.ts); the commands of the menu and the keys, the window's own or passed
+  // on to the tab in front.
 
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import "$lib/theme.css";
   import { commands } from "$lib/commands";
   import { settings as feedSettings } from "$lib/feeds/api";
@@ -16,6 +17,7 @@
   import { restore, type Layout, type Tab } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
   import { setTabContext } from "$lib/list/tab";
+  import { NO_HISTORY, goBack, goForward, kept, placeOf, placeText, went, type History, type Place } from "$lib/navigation";
   import SearchView from "$lib/search/SearchView.svelte";
   import { onToggle, toggles, type Toggle } from "$lib/toggles";
 
@@ -37,6 +39,13 @@
   let colours = $state(new Map<string, string>());
   let loaded = false;
   let timer: ReturnType<typeof setTimeout>;
+
+  /** back and forward: the places shown before and after the one shown */
+  let history = $state<History>(NO_HISTORY);
+  /** the place shown, as the window shows it */
+  let place = $derived(placeOf(layout.tab, layout.active));
+  /** the place last shown: when the place shown changes, it goes back (`went`); back and forward set it first */
+  let lastPlace: Place | null = null;
 
   let library = $state<ReturnType<typeof LibraryView>>();
   let feeds = $state<ReturnType<typeof FeedsView>>();
@@ -127,6 +136,39 @@
     if (tab === "library") tick().then(() => library?.focusSearch());
   }
 
+  // each place shown, once the layout is read, a step
+  $effect(() => {
+    const now = place;
+    untrack(() => {
+      if (lastPlace && loaded) history = went(history, lastPlace, now);
+      lastPlace = now;
+    });
+  });
+
+  // a paper closed: its places go
+  $effect(() => {
+    const open = layout.open;
+    untrack(() => (history = kept(history, open, place)));
+  });
+
+  /** Back or forward (`goBack`, `goForward`): the place before or after shown, unless the BibTeX being edited stays. */
+  async function go(step: typeof goBack) {
+    const from = place;
+    const next = step(history, from);
+    if (!next) return;
+    lastPlace = next.to;
+    if (next.to.tab === "library" && library && !(await library.showPlace(next.to.paper))) {
+      lastPlace = from;
+      return;
+    }
+    history = next.history;
+    showTab(next.to.tab);
+  }
+
+  /** What back or forward goes to, on hover. */
+  const stepTitle = (word: string, to: Place | undefined, keys: string) =>
+    to ? `${word} to ${placeText(to, (id) => library?.titleOf(id))} (${keys})` : word;
+
   /** A switch set: a tab shown or hidden (hidden in front, the Library tab comes), the details beside or not. */
   function setToggle(toggle: Toggle, on: boolean) {
     if (toggle === "feeds-beside") {
@@ -175,6 +217,10 @@
       case "settings":
         invoke("open_settings");
         return;
+      case "back":
+        return go(goBack);
+      case "forward":
+        return go(goForward);
       case "undo":
         return undo(true);
       case "redo":
@@ -253,9 +299,23 @@
 
 <svelte:window {onkeydown} />
 
-<!-- no switch with the Feeds and Search tabs hidden: the Library tab alone -->
+<!-- back and forward; no switch with the Feeds and Search tabs hidden: the Library tab alone -->
 {#snippet tabs()}
   {@const shown = TABS.filter((t) => shownTabs[t.tab])}
+  <div class="steps">
+    <button
+      disabled={!history.back.length}
+      aria-label="Back"
+      title={stepTitle("Back", history.back.at(-1), label(commands.back))}
+      onclick={() => go(goBack)}>‹</button
+    >
+    <button
+      disabled={!history.forward.length}
+      aria-label="Forward"
+      title={stepTitle("Forward", history.forward[0], label(commands.forward))}
+      onclick={() => go(goForward)}>›</button
+    >
+  </div>
   {#if shown.length > 1}
     <div class="tabs" role="tablist">
       {#each shown as t (t.tab)}
@@ -300,6 +360,29 @@
   }
 
   /* Library | Feeds | Search, at the start of the toolbar of each tab */
+  .steps {
+    flex: none;
+    display: flex;
+    gap: 2px;
+  }
+  .steps button {
+    width: 22px;
+    padding: 0 0 2px;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 18px;
+    line-height: 22px;
+  }
+  .steps button:hover:not(:disabled) {
+    background: var(--line);
+    color: var(--fg);
+  }
+  .steps button:disabled {
+    opacity: 0.35;
+  }
   .tabs {
     flex: none;
     display: flex;
