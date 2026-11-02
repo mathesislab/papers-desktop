@@ -210,7 +210,6 @@
 <style>
   .tags {
     position: relative;
-    padding: 10px 16px 0;
   }
   .chips {
     display: flex;

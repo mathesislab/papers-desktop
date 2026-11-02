@@ -1,5 +1,9 @@
 <script lang="ts">
+  // A paper of the library to read about: what is said of it (`status`) over its title, authors, journal and DOI, the
+  // first page of its PDF beside them, on the right (a click opens it; without a PDF, a click or a drop adds one); what
+  // follows (`after`: its tags); its citation, to copy or drag out, and its BibTeX, to read or edit.
   import { invoke } from "@tauri-apps/api/core";
+  import type { Snippet } from "svelte";
   import * as cite from "$lib/cite";
   import { label, matches } from "$lib/keys";
   import type { Editor } from "$lib/library/editor.svelte";
@@ -16,6 +20,8 @@
     onsave,
     oncancel,
     onaddpdf,
+    status,
+    after,
   }: {
     item: Item;
     /** for each author, whether the search matched it */
@@ -29,6 +35,10 @@
     oncancel?: () => void;
     /** add a PDF to a paper that has none (a click on the empty page, or a PDF dropped on it) */
     onaddpdf?: () => void;
+    /** over the title: its status */
+    status?: Snippet;
+    /** after the title and the page: its tags */
+    after?: Snippet;
   } = $props();
 
   const PAGE_WIDTH = 170;
@@ -198,21 +208,8 @@
 
 <div class="preview">
   <div class="head">
-    <!-- no PDF, where a PDF can be added: a click opens the chooser, a drop adds the file (data-drop-pdf) -->
-    {#if !hasPdf && onaddpdf}
-      <button class="page" onclick={onaddpdf} title="Add a PDF, or drop one here" data-drop-pdf={item.id} style:width="{PAGE_WIDTH}px">
-        <span>No PDF<br />Click or drop one</span>
-      </button>
-    {:else}
-      <button class="page" onclick={onopen} title="Open" style:width="{PAGE_WIDTH}px">
-        {#if image}
-          <img src={image} alt="First page" />
-        {:else}
-          <span>{hasPdf ? (failed ? "Cannot read the PDF" : "") : "No PDF"}</span>
-        {/if}
-      </button>
-    {/if}
     <div class="meta">
+      {#if status}<p class="status">{@render status()}</p>{/if}
       <h2>{item.title}</h2>
       {#if item.authors.length}
         <p class="authors">
@@ -228,7 +225,22 @@
       {/if}
       {#if item.files.length > 1}<p class="muted">{item.files.length} files</p>{/if}
     </div>
+    <!-- no PDF, where a PDF can be added: a click opens the chooser, a drop adds the file (data-drop-pdf) -->
+    {#if !hasPdf && onaddpdf}
+      <button class="page" onclick={onaddpdf} title="Add a PDF, or drop one here" data-drop-pdf={item.id} style:width="{PAGE_WIDTH}px">
+        <span>No PDF<br />Click or drop one</span>
+      </button>
+    {:else}
+      <button class="page" onclick={onopen} title="Open" style:width="{PAGE_WIDTH}px">
+        {#if image}
+          <img src={image} alt="First page" />
+        {:else}
+          <span>{hasPdf ? (failed ? "Cannot read the PDF" : "") : "No PDF"}</span>
+        {/if}
+      </button>
+    {/if}
   </div>
+  {@render after?.()}
   <section>
     <div class="section-head">
       <h3>Citation{#if style}<span class="muted"> · {style}</span>{/if}</h3>
@@ -304,15 +316,16 @@
     -webkit-user-select: text;
     user-select: text;
   }
-  /* the page above the meta when the pane is narrow */
+  /* the meta, and the page on its right: narrower, both take their part (2/3, 1/3), the page in its place */
   .head {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: 14px;
-    align-items: flex-start;
+    align-items: start;
   }
   .page {
-    flex: none;
+    justify-self: end;
+    max-width: 100%;
     aspect-ratio: 1 / 1.414;
     padding: 0;
     border: 1px solid var(--line);
@@ -330,9 +343,11 @@
     font-size: 12px;
   }
   .meta {
-    flex: 1 1 160px;
     min-width: 0;
     font-size: 12px;
+  }
+  .status {
+    color: var(--muted);
   }
   h2 {
     margin: 0 0 6px;
