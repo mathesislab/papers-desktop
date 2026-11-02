@@ -23,6 +23,8 @@ export type Settings = {
   citation_style: string;
   check_updates: boolean;
   after_close: "library" | "next";
+  /** the minutes after which a tab of the main window not used has its search and filters cleared; 0: never */
+  clear_after_minutes: number;
   /** the zoom of the windows: the text size */
   text_size: "smallest" | "smaller" | "default" | "larger" | "largest";
   /** what writes the papers libraries: papers-rs, built in, or a papers command */

@@ -1,6 +1,7 @@
 <script lang="ts">
   // The main window: its tabs, Library (LibraryView, with the papers open), Feeds (FeedsView) and Search
-  // (SearchView), the last two unless hidden by their settings; its layout, kept between sessions; back and forward
+  // (SearchView), the last two unless hidden by their settings; its layout, kept between sessions (a tab's search
+  // cleared when it comes back after a while unused, the setting `clear_after_minutes`); back and forward
   // through the places it showed (navigation.ts); the commands of the menu and the keys, the window's own or passed
   // on to the tab in front.
 
@@ -14,7 +15,7 @@
   import { interestColours } from "$lib/feeds/filters";
   import FeedsView from "$lib/feeds/FeedsView.svelte";
   import { label, mac, matches, zoomStep } from "$lib/keys";
-  import { restore, type Layout, type Tab } from "$lib/layout";
+  import { USE_STEP, cleared, restore, stale, type Layout, type Tab } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
   import { setTabContext } from "$lib/list/tab";
   import { NO_HISTORY, goBack, goForward, kept, placeOf, placeText, went, type History, type Place } from "$lib/navigation";
@@ -87,29 +88,61 @@
     libraryOf: (id) => library?.libraryOf(id) ?? null,
   });
 
+  /** the minutes after which a tab not used has its search cleared (the setting); 0: never */
+  let clearAfter = 60;
+
   /** The window is made hidden, not to flash empty: shown once drawn. */
   onMount(() => {
     // from the menu of the app
     const unlisten = listen<string>("command", (e) => command(e.payload));
     const unlistenToggle = onToggle(setToggle);
-    // back from the settings: the interests again
+    // back from the settings: the interests again; back after a while: the tab in front without its search
     const unlistenFocus = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-      if (focused) readColours();
+      if (!focused) return;
+      readColours();
+      used();
     });
+    const unlistenSettings = listen("settings", readClearAfter);
     load();
     readColours();
+    readClearAfter();
     return () => {
       unlisten.then((f) => f());
       unlistenToggle();
       unlistenFocus.then((f) => f());
+      unlistenSettings.then((f) => f());
     };
   });
+
+  async function readClearAfter() {
+    const { settings } = await invoke<{ settings: { clear_after_minutes: number } }>("get_settings");
+    clearAfter = settings.clear_after_minutes;
+  }
+
+  /** The tab in front used now (a key, a click, the window back, the tab shown): first its search cleared if it
+   *  was not used for longer than the setting; noted, at most once a minute (the layout is saved with it). */
+  function used(tab: Tab = layout.tab) {
+    if (!loaded) return;
+    const now = Date.now();
+    if (stale(layout.used, tab, now, clearAfter)) clear(tab);
+    if (now - (layout.used[tab] ?? 0) > USE_STEP) layout.used = { ...layout.used, [tab]: now };
+  }
+
+  /** The search and filters of a tab as at first (`cleared`); the Search tab in front clears its list too. */
+  function clear(tab: Tab) {
+    if (tab === "search" && layout.tab === "search" && search) return search.clearSearch();
+    const next = cleared(layout, tab);
+    if (tab === "library") layout.library = next.library;
+    else if (tab === "feeds") layout.feeds.filters = next.feeds.filters;
+    else layout.search = next.search;
+  }
 
   async function load() {
     const [saved, on] = await Promise.all([invoke<Partial<Layout> | null>("layout"), toggles()]);
     layout = restore(saved);
     for (const [name, value] of Object.entries(on)) setToggle(name as Toggle, value);
     loaded = true;
+    used();
     await library?.load();
     await tick();
     const window = getCurrentWindow();
@@ -132,6 +165,9 @@
   function showTab(tab: Tab) {
     if (layout.tab === tab) return;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    // the tab left was used till now; the tab shown, if long unused, without its search
+    layout.used = { ...layout.used, [layout.tab]: Date.now() };
+    used(tab);
     layout.tab = tab;
     if (tab === "library") tick().then(() => library?.focusSearch());
   }
@@ -260,6 +296,7 @@
   }
 
   function onkeydown(e: KeyboardEvent) {
+    used();
     // the question before a delete has the keys
     if (library?.asking()) return;
     // ⌃Tab: the menu of macOS does not get it from a field of the page
@@ -299,7 +336,7 @@
   }
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onpointerdown={() => used()} />
 
 <!-- back and forward; no switch with the Feeds and Search tabs hidden: the Library tab alone -->
 {#snippet tabs()}

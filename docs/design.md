@@ -872,7 +872,7 @@ Library tab):
   library's green; a part missing an empty track, both tinted red when
   vetoed; on hover *Score 72 · keywords 72 (ice sheet, AMOC) · library 41*,
   *Excluded: Georgia*, or on a line of its own *No interests yet: add them
-  in Settings → Score*), the title (bold
+  in Settings → General → Score*), the title (bold
   while new, muted once seen), authors, journal or source, age, badges (*in
   library*, *preprint* or *has preprint*, *N news*, *→ paper*, the interests
   reached). A simple row has the bars too, smaller, before its badges.
@@ -1077,7 +1077,7 @@ digest. Two parts, each 0–100:
   `min(100, 100 · like / reference)` (core's `Like::scaled`, above). None
   without an index.
 
-The mode (`ScoreMode`, `score` in `config.json`, set in Settings → Score)
+The mode (`ScoreMode`, `score` in `config.json`, set in Settings → General → Score)
 takes them: `higher` (the default: the higher of the parts there are, so
 the library alone without interests), `keywords` or `library` (0 without
 that part). An exclude of any interest vetoes the item: the score and both

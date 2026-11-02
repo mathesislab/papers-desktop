@@ -1,7 +1,8 @@
 <script lang="ts">
-  // The settings window: a bar of tabs (⌘1…⌘6, Ctrl elsewhere), the tab shown, which scrolls, and the line at its
-  // foot. The tabs stay made while the window is open: each keeps what is typed in it, and where it was scrolled. The
-  // feeds' settings are read once for the Feeds and Score tabs, which set them (`FeedPrefs`).
+  // The settings window: a bar of tabs (⌘1…⌘4, Ctrl elsewhere), General first (its own, then the score and the
+  // advanced, sections of it), then those of the main window's tabs in their order; the tab shown, which scrolls, and
+  // the line at its foot. The tabs stay made while the window is open: each keeps what is typed in it, and where it
+  // was scrolled. The feeds' settings are read once for the Feeds tab and the score, which set them (`FeedPrefs`).
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -20,20 +21,20 @@
 
   /** the tabs, in the order of the bar and of their keys; their ids are the sections `open_settings` names */
   const TABS = [
+    { id: "general", name: "General" },
     { id: "library", name: "Library" },
     { id: "feeds", name: "Feeds" },
-    { id: "score", name: "Score" },
     { id: "search", name: "Search" },
-    { id: "general", name: "General" },
-    { id: "advanced", name: "Advanced" },
   ] as const;
   type Tab = (typeof TABS)[number]["id"];
+  /** the sections of the General tab `open_settings` may name: shown scrolled to */
+  const GENERAL_SECTIONS = ["updates", "score", "advanced"];
 
   const prefs = new Preferences();
   const feedPrefs = new FeedPrefs();
   const updates = new Updates();
-  /** the tab shown: the last one while the window is open; Library at first */
-  let tab = $state<Tab>("library");
+  /** the tab shown: the last one while the window is open; General at first */
+  let tab = $state<Tab>("general");
 
   onMount(() => {
     load();
@@ -52,14 +53,14 @@
     if (location.hash) showSection(location.hash.slice(1));
   }
 
-  /** Show a section the app names: a tab, or "updates", those of the General tab, which also look for one unless
-   *  found. */
+  /** Show a section the app names: a tab, or a section of the General tab (`GENERAL_SECTIONS`), scrolled to; the
+   *  updates also look for one unless found. */
   async function showSection(section: string) {
-    if (section === "updates") {
+    if (GENERAL_SECTIONS.includes(section)) {
       tab = "general";
       await tick();
-      document.getElementById("updates")?.scrollIntoView({ block: "start" });
-      updates.lookFor();
+      document.getElementById(section)?.scrollIntoView({ block: "start" });
+      if (section === "updates") updates.lookFor();
       return;
     }
     const named = TABS.find((t) => t.id === section);
@@ -69,10 +70,10 @@
   /** the key of the tab at `i`: its digit, whatever the layout types there */
   const shortcut = (i: number) => ({ key: String(i + 1), code: `Digit${i + 1}`, mod: true });
 
-  /** ⌘W closes the window, ⌘+ and ⌘- change the text size, ⌘1…⌘6 show a tab. A hotkey being recorded takes the
-   *  keys before (SearchSettings). */
+  /** ⌘W and Esc close the window, ⌘+ and ⌘- change the text size, ⌘1…⌘4 show a tab. A hotkey being recorded takes
+   *  the keys before (SearchSettings): its Esc is its own. */
   function onkeydown(e: KeyboardEvent) {
-    if (matches(e, { key: "w", mod: true })) getCurrentWindow().close();
+    if (matches(e, { key: "w", mod: true }) || (e.key === "Escape" && !e.defaultPrevented)) getCurrentWindow().close();
     const zoom = zoomStep(e);
     if (zoom !== null) {
       e.preventDefault();
@@ -105,18 +106,16 @@
     </div>
     {#each TABS as t (t.id)}
       <div class="panel" role="tabpanel" id="panel-{t.id}" aria-labelledby="tab-{t.id}" hidden={tab !== t.id}>
-        {#if t.id === "library"}
+        {#if t.id === "general"}
+          <GeneralSettings {prefs} {updates} />
+          <div id="score"><ScoreSettings {prefs} {feedPrefs} /></div>
+          <div id="advanced"><AdvancedSettings {prefs} /></div>
+        {:else if t.id === "library"}
           <LibrarySettings {prefs} />
         {:else if t.id === "feeds"}
           <FeedsSettings {feedPrefs} notify={prefs.show} />
-        {:else if t.id === "score"}
-          <ScoreSettings {prefs} {feedPrefs} />
-        {:else if t.id === "search"}
-          <SearchSettings {prefs} shown={tab === "search"} />
-        {:else if t.id === "general"}
-          <GeneralSettings {prefs} {updates} />
         {:else}
-          <AdvancedSettings {prefs} />
+          <SearchSettings {prefs} shown={tab === "search"} />
         {/if}
       </div>
     {/each}

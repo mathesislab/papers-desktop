@@ -43,6 +43,9 @@ pub struct Settings {
     pub check_updates: bool,
     /// what the main window shows after a paper is closed
     pub after_close: AfterClose,
+    /// the minutes after which a tab of the main window not used has its
+    /// search and filters cleared, when it comes back; 0: never
+    pub clear_after_minutes: u32,
     /// the size of the text, as a zoom of every window (see `text_size.rs`)
     pub text_size: TextSize,
     /// what writes the papers libraries: papers-rs, built in, or a papers command
@@ -281,6 +284,7 @@ impl Default for Settings {
             citation_style: crate::styles::DEFAULT.into(),
             check_updates: true,
             after_close: AfterClose::default(),
+            clear_after_minutes: 60,
             text_size: TextSize::default(),
             writer: WriterChoice::default(),
             papers: PathBuf::new(),
@@ -510,6 +514,7 @@ mod tests {
         let json = r#"{"bibtex": ["~/papers.bib"], "papers_folder": "~/Papers",
             "similar_skip": ["~/group.bib"], "hotkey": "Alt+Space", "matching": "word-start",
             "citation_style": "apa", "check_updates": false, "after_close": "library",
+            "clear_after_minutes": 1440,
             "text_size": "larger", "writer": "command", "papers": "/bin/papers",
             "email": "me@example.org", "openalex_key": "KEY", "pinned_tags": ["ice", null],
             "saved_searches": [{"name": "AMOC", "filters": {}, "sort": null}],

@@ -3,7 +3,9 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { LAYOUT_VERSION, restore } from "../src/lib/layout.ts";
+import { NO_FEED_FILTERS } from "../src/lib/feeds/filters.ts";
+import { LAYOUT_VERSION, cleared, restore, stale } from "../src/lib/layout.ts";
+import { NO_FILTERS } from "../src/lib/library/filters.ts";
 import { COLUMNS } from "../src/lib/library/columns.ts";
 
 test("no layout: the defaults, the Library tab in front", () => {
@@ -114,4 +116,24 @@ test("the layout saved read back as it was; a tab unknown is the library", () =>
   const layout = restore(BEFORE as never);
   assert.deepEqual(restore(JSON.parse(JSON.stringify(layout))), layout);
   assert.equal(restore({ tab: "elsewhere" } as never).tab, "library");
+});
+
+test("a tab not used for a while: its search cleared when it comes back", () => {
+  const hour = 60 * 60_000;
+  assert.equal(stale({ library: 0 }, "library", hour + 1, 60), true);
+  assert.equal(stale({ library: 0 }, "library", hour, 60), false);
+  assert.equal(stale({ library: 0 }, "library", 10 * hour, 0), false, "never");
+  assert.equal(stale({}, "feeds", 10 * hour, 60), false, "not used yet");
+  const layout = restore({
+    library: { bibs: ["a.bib"], view: "recent", tags: ["ice"], query: "melt" },
+    feeds: { filters: { view: "starred", kinds: ["news"], interests: [], sources: ["EOS"], sort: "newest", query: "amoc", open: ["news"] } },
+    search: { query: "firn", authors: "Smith", year: "2020", recent: [{ query: "firn", authors: "", year: "", order: "score" }] },
+    used: { library: 5, feeds: "x", other: 3 },
+  } as never);
+  assert.deepEqual(layout.used, { library: 5 }, "the times of the tabs only");
+  assert.deepEqual(cleared(layout, "library").library, NO_FILTERS);
+  assert.deepEqual(cleared(layout, "feeds").feeds.filters, { ...NO_FEED_FILTERS, sort: "newest", open: ["news"] });
+  const search = cleared(layout, "search").search;
+  assert.deepEqual([search.query, search.authors, search.year, search.results], ["", "", "", null]);
+  assert.equal(search.recent.length, 1, "the recent searches kept");
 });

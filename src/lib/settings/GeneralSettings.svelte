@@ -105,6 +105,21 @@
       <option value="library">Show the library</option>
     </select>
   </label>
+  <label class="row">
+    <span>
+      <span class="label">Clear searches after</span>
+      <span class="hint">A tab of the main window not used for this long comes back with its search and filters cleared</span>
+    </span>
+    <select
+      value={String(settings.clear_after_minutes)}
+      onchange={(e) => prefs.save({ clear_after_minutes: Number(e.currentTarget.value) })}
+    >
+      <option value="15">15 minutes</option>
+      <option value="60">1 hour</option>
+      <option value="1440">1 day</option>
+      <option value="0">Never</option>
+    </select>
+  </label>
   <div class="row">
     <span>
       <span class="label">Recent papers</span>

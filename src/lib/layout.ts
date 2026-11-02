@@ -46,6 +46,9 @@ export type Layout = {
   openTags: string[];
   feeds: FeedsLayout;
   search: SearchLayout;
+  /** when each tab was last used (ms since the epoch): its search is cleared when it comes back after a while
+   *  (`stale`, `cleared`) */
+  used: Partial<Record<Tab, number>>;
 };
 
 /** What an older version kept apart, beside the keys of `Layout`: `view` for `tab`, the Feeds tab's filters in
@@ -81,6 +84,7 @@ const DEFAULTS: Layout = {
   openTags: [],
   feeds: { filters: NO_FEED_FILTERS, columns: columnsOf(FEED_ORDER, FEED_SPECS), look: "simple", shown: null },
   search: { ...NO_SEARCH, columns: columnsOf(SEARCH_ORDER, SEARCH_SPECS), look: "table" },
+  used: {},
 };
 
 /** The layout saved (none: the defaults): what a file of an older version does not have takes its default (one of
@@ -119,5 +123,38 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
       columns: restoredColumns(olderColumns(search?.columns ?? searchColumns), SEARCH_SPECS, SEARCH_ORDER),
       look: restoredLook(search?.look, "table"),
     },
+    used: restoredUsed(kept.used),
   };
+}
+
+/** When the tabs were last used, as saved: those of a tab and a time. */
+function restoredUsed(saved: unknown): Partial<Record<Tab, number>> {
+  if (!saved || typeof saved !== "object") return {};
+  const entries = Object.entries(saved).filter(([tab, at]) => TABS.includes(tab as Tab) && typeof at === "number");
+  return Object.fromEntries(entries);
+}
+
+/** how often the use of a tab is noted, at most, ms: the layout is saved once a minute while it is used */
+export const USE_STEP = 60_000;
+
+/** Whether the search of a tab shown at `now` is cleared: not used for more than `minutes` (0: never cleared). */
+export function stale(used: Partial<Record<Tab, number>>, tab: Tab, now: number, minutes: number): boolean {
+  const at = used[tab];
+  return minutes > 0 && at !== undefined && now - at > minutes * 60_000;
+}
+
+/** The layout with the search of a tab cleared: the library's filters and search none (all its papers); the
+ *  Feeds tab's choices and search as at first, its order and groups unfolded kept; the Search tab's fields blank and
+ *  no search shown (the recent searches kept). */
+export function cleared(layout: Layout, tab: Tab): Layout {
+  switch (tab) {
+    case "library":
+      return { ...layout, library: NO_FILTERS };
+    case "feeds": {
+      const { sort, open } = layout.feeds.filters;
+      return { ...layout, feeds: { ...layout.feeds, filters: { ...NO_FEED_FILTERS, sort, open } } };
+    }
+    case "search":
+      return { ...layout, search: { ...layout.search, query: "", authors: "", year: "", results: null } };
+  }
 }

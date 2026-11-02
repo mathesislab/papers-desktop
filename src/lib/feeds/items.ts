@@ -213,7 +213,7 @@ export const detailMarked = (d: FeedDetail): Markable => ({
 });
 
 /** Why a score has no keywords: no interest to score in. */
-export const NO_INTERESTS = "No interests yet: add them in Settings → Score";
+export const NO_INTERESTS = "No interests yet: add them in Settings → General → Score";
 
 /** What the score of a row says on hover: "Score 72 · keywords 72 (ice sheet, AMOC) · library 41", the terms its
  *  interests matched, the best interest's first; vetoed, the exclude that did ("Excluded: Georgia"); without

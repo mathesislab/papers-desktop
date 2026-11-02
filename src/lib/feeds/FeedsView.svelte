@@ -680,7 +680,7 @@
     </button>
     <button
       class="sort"
-      title="Sort by score (its keywords and its library, as Settings → Score takes them; the newest first of the same) or by date"
+      title="Sort by score (its keywords and its library, as Settings → General → Score takes them; the newest first of the same) or by date"
       onclick={() => (filters.sort = nextSort(filters.sort))}
     >
       {summary} · {SORTS.find((s) => s.sort === filters.sort)?.text}

@@ -263,7 +263,7 @@
     </label>
 
     <h3>Rules</h3>
-    <p class="hint">Applied to the new items of a fetch, the first that matches deciding: a query of the feeds (<code>prof:amoc score:80-</code>, the score 0–100 of Settings → Score; <code>t:editorial</code>) and what to do.</p>
+    <p class="hint">Applied to the new items of a fetch, the first that matches deciding: a query of the feeds (<code>prof:amoc score:80-</code>, the score 0–100 of Settings → General → Score; <code>t:editorial</code>) and what to do.</p>
     {#each draft as rule, i (i)}
       <div class="line">
         <input class="text grow" type="text" spellcheck="false" placeholder="Query" bind:value={rule.when} />

@@ -68,7 +68,7 @@ servers, news sites and blogs followed (+ Subscribe…), each with a score of
 interests: an interest's minimum score is 50, twice it 100) over its
 library (how close it is to the papers of your library: as close as their
 typical paper is to the others, 100). The score is the higher of both, or
-one alone (Settings → Score, with the interests and the .bib files it
+one alone (Settings → General → Score, with the interests and the .bib files it
 compares with); it sorts the list and is `score:50-` in a search or a rule
 (0–100: rules written for the scores of before need new thresholds). The
 sidebar's views, kinds, interests and sources filter it. An item counts as

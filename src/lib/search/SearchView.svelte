@@ -255,8 +255,17 @@
     await menu.popup();
   }
 
-  /** The chip's ×: no search shown, the fields blank (the works found stay until the next search). */
-  function clearSearch() {
+  /** The × of the search field: the fields blank, the search field ready. */
+  function clearFields() {
+    search.query = "";
+    search.authors = "";
+    search.year = "";
+    list.input?.focus();
+  }
+
+  /** The chip's ×, the tab long unused (`cleared` of the layout): no search shown, the fields blank (the works found
+   *  stay until the next search). */
+  export function clearSearch() {
     search.query = "";
     search.authors = "";
     search.year = "";
@@ -389,28 +398,12 @@
           spellcheck="false"
           autocomplete="off"
         />
-        {#if search.query}
-          <button class="clear" aria-label="Clear the search field" onclick={() => ((search.query = ""), list.input?.focus())}>×</button>
+        {#if search.query || search.authors || search.year}
+          <button class="clear" tabindex="-1" aria-label="Clear the search fields" title="Clear the search fields" onclick={clearFields}>×</button>
         {/if}
       </div>
-      <button class="tool primary" disabled={searching} title="Search OpenAlex (Enter in the fields)" onclick={run}>
-        {searching ? "Searching…" : "Search"}
-      </button>
-      <button class="tool" title="Search online" onclick={onlineMenu}>Online ▾</button>
-      <span class="notice">{list.notice ?? ""}</span>
-      <span class="spacer"></span>
-      <button
-        class="tool"
-        disabled={!results || subscribing}
-        title={results
-          ? `Subscribe to “${results.query}” in the Feeds tab: its new works come with the feeds (a sweep of OpenAlex)`
-          : "Search first, then subscribe to the search in the Feeds tab"}
-        onclick={subscribe}
-      >
-        {subscribing ? "Subscribing…" : "Subscribe to this search"}
-      </button>
-      <!-- the names and years apart, the author's field under the search field, its label under the tabs: OpenAlex
-           matches words in the texts only -->
+      <!-- the names and years apart, the author's field under the search field, its label under the tabs (OpenAlex
+           matches words in the texts only); next in the tab order, shown on the second line (`order`) -->
       <div class="fields">
         <label class="field"
           ><span class="name" style:width="{Math.max(0, fieldsLeft - 6)}px">Author(s)</span><input
@@ -435,10 +428,31 @@
           /></label
         >
         <span class="explain"
-          >OpenAlex looks for the words in titles, abstracts and full texts only: names and years go in their fields.
-          Online ▾ sends all of it as one query.</span
+          ><b>OpenAlex</b> looks for the words in titles, abstracts and full texts only: names and years go in their
+          fields.<br /><b>Online ▾</b> sends all of it as one query.</span
         >
       </div>
+      <button class="tool primary" disabled={searching} title="Search OpenAlex (Enter in the fields)" onclick={run}>
+        {searching ? "Searching…" : "Search"}
+      </button>
+      <button class="tool" title="Search online" onclick={onlineMenu}>Online ▾</button>
+      <span class="notice">{list.notice ?? ""}</span>
+      <span class="spacer"></span>
+      <button
+        class="tool feed"
+        disabled={!results || subscribing}
+        aria-label="Subscribe to this search"
+        title={results
+          ? `Subscribe to “${results.query}” in the Feeds tab: its new works come with the feeds (a sweep of OpenAlex)`
+          : "Search first, then subscribe to the search in the Feeds tab"}
+        onclick={subscribe}
+      >
+        <!-- the feed's mark: a dot and its waves -->
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="3.5" cy="12.5" r="1.6" fill="currentColor" />
+          <path d="M2 7.5a6.5 6.5 0 0 1 6.5 6.5M2 2.5A11.5 11.5 0 0 1 13.5 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </button>
     </header>
     <ItemPane
       {list}
@@ -580,6 +594,7 @@
     padding-bottom: 8px;
   }
   .fields {
+    order: 1;
     flex: 1 0 100%;
     box-sizing: border-box;
     display: flex;
@@ -626,6 +641,14 @@
     color: var(--muted);
     font-size: 11px;
     line-height: 1.3;
+  }
+  .explain b {
+    font-weight: 600;
+  }
+  /* Subscribe: the feed's mark, its words on hover */
+  .tool.feed {
+    padding: 3px 7px;
+    color: var(--search);
   }
   /* Search: in the tab's violet */
   .tool.primary {

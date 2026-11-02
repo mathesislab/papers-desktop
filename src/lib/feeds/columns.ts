@@ -11,7 +11,7 @@ export type FeedColumn = "score" | "cited" | "title" | "authors" | "journal" | "
 export const FEED_SPECS: Specs<FeedColumn> = {
   score: {
     name: "Score",
-    hint: "Two bars, 0–100: on top how well it matches your interests, under how close it is to the papers of your library (Settings → Score)",
+    hint: "Two bars, 0–100: on top how well it matches your interests, under how close it is to the papers of your library (Settings → General → Score)",
     width: 60,
     least: 60,
   },
