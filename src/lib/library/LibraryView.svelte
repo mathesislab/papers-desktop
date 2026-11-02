@@ -876,15 +876,16 @@
   }
 
   /** A paper changed: its entry takes `text` (the values chosen of an entry that is the same paper, or the changes
-   *  of the edit), then the PDF is added to it, if there is one. Then the sheet closes and the paper is shown. */
+   *  of the edit), then the PDF is added to it, if there is one (in place of `replace`, a file of it that is gone). Then the sheet closes and the paper is shown. */
   async function changePaper(
     id: string,
     text: string | null,
     pdf: string | null,
     files: FilesMode | null,
+    replace: string | null,
     fail: (message: string) => void,
   ): Promise<boolean> {
-    const change = () => (pdf ? attachPdf(id, text, pdf, files) : replaceEntry(id, text ?? ""));
+    const change = () => (pdf ? attachPdf(id, text, pdf, files, replace) : replaceEntry(id, text ?? ""));
     if (!(await write(change, (error) => fail(errorText(error))))) return false;
     const done = adding?.done;
     adding = null;

@@ -65,9 +65,16 @@ export function addBibtex(bib: string, text: string, options: AddOptions): Promi
 }
 
 /** Add a PDF to a paper of the library, after the changes of `text` to its entry (the key, tags
- *  and files stay); a plain .bib links the file where it is. */
-export function attachPdf(id: string, text: string | null, pdf: string, files: FilesMode | null): Promise<void> {
-  return write("attach_pdf", { id, text, pdf, files });
+ *  and files stay), in place of `replace` (a file of it that is gone) when given; a plain .bib links the file where
+ *  it is. */
+export function attachPdf(
+  id: string,
+  text: string | null,
+  pdf: string,
+  files: FilesMode | null,
+  replace: string | null = null,
+): Promise<void> {
+  return write("attach_pdf", { id, text, pdf, files, replace });
 }
 
 /** Files added to a paper, after those it has, or with `replace` (a link of it, to a file that is gone) in its place:

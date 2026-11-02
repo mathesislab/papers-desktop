@@ -1,7 +1,8 @@
 <script lang="ts">
   // Add a paper: from a PDF (its DOI is read, then its entry fetched), a DOI, the link of a
   // journal article, or BibTeX; with the PDF, which is moved, copied or left where it is.
-  // The same sheet adds a PDF to a paper of the library (`forId`): the entry is that paper's.
+  // The same sheet adds a PDF to a paper of the library (`forId`): the entry is that paper's; a file of it that is
+  // gone, the PDF takes its place (`replace`, chosen at first).
   // The entry's BibTeX is in a field to fix before adding, with the key the library gives it.
   // An entry that is a paper of the .bib already is not added: the sheet compares it with the
   // paper, field by field, to merge into it, and the PDF is attached to it.
@@ -58,12 +59,14 @@
     initial?: { id: string; pdf: boolean } | null;
     /** write the new paper; whether it was written, else `fail` was told why */
     onadd: (bib: string, text: string, options: AddOptions, fail: (message: string) => void) => Promise<boolean>;
-    /** change the paper: its entry to `text` when that is not null, then the PDF added when that is not null */
+    /** change the paper: its entry to `text` when that is not null, then the PDF added when that is not null, in place
+     *  of `replace` (a file of it that is gone) when that is not null */
     onchange: (
       id: string,
       text: string | null,
       pdf: string | null,
       files: FilesMode | null,
+      replace: string | null,
       fail: (message: string) => void,
     ) => Promise<boolean>;
     /** show a paper of the library: the sheet closes */
@@ -99,6 +102,10 @@
   let merging = $state<"keep" | "update">("keep");
   /** what is done with the PDF */
   let mode = $state<FilesMode>("move");
+  /** the files of the paper (`forId`) that are gone; the one the PDF takes the place of, none: after its files */
+  let missing = $state<string[]>([]);
+  let replace = $state<string | null>(null);
+  const nameOf = (path: string) => path.split(/[\\/]/).pop() ?? path;
   let modeChosen = false;
   /** the key the library gave the entry fetched (its key template, as `--update-key` makes it), which the BibTeX
    *  has until the user changes it */
@@ -226,6 +233,10 @@
       try {
         paper = await invoke<Item>("item", { id: forId });
         target = paper.bib;
+        // the files of the paper that are gone: the PDF in place of the first, at first
+        const infos = await invoke<{ path: string; exists: boolean }[]>("files_of", { id: forId });
+        missing = infos.filter((i) => !i.exists).map((i) => i.path);
+        replace = missing[0] ?? null;
         text = await invoke<string>("bibtex", { id: forId, raw: true });
         field = paper.doi ?? "";
         source = paper.doi ? "entry" : "none";
@@ -609,10 +620,10 @@
         // the paper of the library, with the values chosen, and the PDF as chosen
         const fields = taken.map((d) => d.field);
         const merged = fields.length ? await invoke<string>("merge_entry", { id: sameId, text, take: fields }) : null;
-        await onchange(sameId!, merged, attaching ? pdf!.path : null, attaching && !native ? mode : null, fail);
+        await onchange(sameId!, merged, attaching ? pdf!.path : null, attaching && !native ? mode : null, null, fail);
       } else {
         const files = pdf && !native ? mode : null;
-        if (forId) await onchange(forId, text, pdf!.path, files, fail);
+        if (forId) await onchange(forId, text, pdf!.path, files, replace, fail);
         else await onadd(target, text, { onDuplicate: "skip", updateKey: false, pdf: pdf?.path ?? null, files }, fail);
       }
     } catch (e) {
@@ -695,6 +706,23 @@
       {/if}
       <button disabled={!!busy} onclick={chooseFile}>{pdf ? "Change…" : "Choose…"}</button>
     </div>
+    {#if forId && missing.length}
+      <!-- the paper's files that are gone: the PDF in place of one, or after its files -->
+      <div class="row">
+        <span class="label"></span>
+        <label class="replace">
+          <input type="checkbox" checked={replace !== null} onchange={(e) => (replace = e.currentTarget.checked ? missing[0] : null)} />
+          In place of the missing
+        </label>
+        {#if missing.length > 1}
+          <select bind:value={replace} disabled={replace === null}>
+            {#each missing as gone (gone)}<option value={gone}>{nameOf(gone)}</option>{/each}
+          </select>
+        {:else}
+          <span class="file" title={missing[0]}>{nameOf(missing[0])}</span>
+        {/if}
+      </div>
+    {/if}
     {#if pdf?.origin}
       <p class="source">
         {pdf.origin}
@@ -931,6 +959,12 @@
     margin-left: 2px;
     color: var(--muted);
     font-weight: 400;
+  }
+  .replace {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
   .row {
     display: flex;

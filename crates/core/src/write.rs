@@ -170,13 +170,19 @@ impl Library {
 
     /// Set the files of an entry: its `file` field the links of `files`, in that order, those it
     /// had and that are not among them unlinked (the files stay where they are); none: the field
-    /// goes. Nothing is written when the links are already these.
-    pub fn set_files(&self, id: &str, files: &[PathBuf]) -> Result<Vec<Change>> {
+    /// goes. With `text`, the entry is first replaced by it, as `replace_entry` does (the key and
+    /// tags stay), in the same write. Nothing is written when nothing changes.
+    pub fn set_files(&self, id: &str, text: Option<&str>, files: &[PathBuf]) -> Result<Vec<Change>> {
         let e = self.entry(id).ok_or_else(|| not_found(id))?;
-        let Some(edit) = files_set_edit(&e.bib, &e.raw, files)? else {
-            return Ok(Vec::new());
+        if let Some(text) = text {
+            self.check_edit(id, text)?;
+        }
+        let entry = text.map_or(e.raw.as_str(), str::trim);
+        let new = match files_set_edit(&e.bib, entry, files)? {
+            Some(edit) => splice(entry, vec![edit]),
+            None if text.is_some() => entry.to_string(),
+            None => return Ok(Vec::new()),
         };
-        let new = splice(&e.raw, vec![edit]);
         let before = self.text(&e.bib)?;
         let after = splice(&before, vec![(e.span.clone(), new.clone())]);
         check(&e.bib, &after, Some((e.span.start, &new)))?;

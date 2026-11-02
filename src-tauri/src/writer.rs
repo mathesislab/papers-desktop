@@ -598,7 +598,8 @@ pub async fn add_bibtex(
 }
 
 /// Add a PDF to a paper of the library, with the changes of `text` to its entry first, if any
-/// (the entry as edited: its key, tags and files stay).
+/// (the entry as edited: its key, tags and files stay); with `replace` (a link of it, to a file
+/// that is gone), in its place.
 #[tauri::command]
 pub async fn attach_pdf(
     app: AppHandle,
@@ -606,8 +607,9 @@ pub async fn attach_pdf(
     text: Option<String>,
     pdf: PathBuf,
     files: Option<FilesMode>,
+    replace: Option<PathBuf>,
 ) -> Result<(), WriteError> {
-    write(app, move |state| attach(state, &id, text.as_deref(), &pdf, files)).await
+    write(app, move |state| attach(state, &id, text.as_deref(), &pdf, files, replace.as_deref())).await
 }
 
 /// Files added to a paper, after those it has, or with `replace` (a link of it, to a file that is
@@ -933,13 +935,15 @@ pub(crate) fn add(state: &AppState, bib: &Path, text: &str, mut options: AddOpti
 }
 
 /// Add a PDF to a paper of the library, which first takes the changes in `text` (the entry as
-/// edited, with the key, tags and files it has); a plain .bib links the file where it is.
+/// edited, with the key, tags and files it has); with `replace`, in place of that link of it. A
+/// plain .bib links the file where it is.
 fn attach(
     state: &AppState,
     id: &str,
     text: Option<&str>,
     pdf: &Path,
     files: Option<FilesMode>,
+    replace: Option<&Path>,
 ) -> Result<(), WriteError> {
     let item = state.item(id).map_err(WriteError::failed)?;
     let pdf = &checked_pdf(pdf)?;
@@ -953,17 +957,21 @@ fn attach(
                 state.library.read().unwrap().check_edit(id, text)?;
                 library.writer.edit(&library.folder, &item.key, text)?;
             }
-            library
-                .writer
-                .attach(&library.folder, &item.key, pdf, files)?;
+            match replace {
+                Some(gone) => attach_papers(&item, library, std::slice::from_ref(&pdf.to_path_buf()), Some(gone), files)?,
+                None => {
+                    library.writer.attach(&library.folder, &item.key, pdf, files)?;
+                }
+            }
         }
         None => {
             check_kept(pdf)?;
-            let changes = state
-                .library
-                .read()
-                .unwrap()
-                .attach_files(id, changed, std::slice::from_ref(&pdf.to_path_buf()))?;
+            let pdf = [pdf.to_path_buf()];
+            let library = state.library.read().unwrap();
+            let changes = match replace {
+                Some(gone) => library.set_files(id, changed, &replaced(&item.files, gone, &pdf))?,
+                None => library.attach_files(id, changed, &pdf)?,
+            };
             state.writers.done(changes);
         }
     }
@@ -992,18 +1000,7 @@ fn attach_new(
     }
     let targets = state.writers.targets([item.bib.as_path()])?;
     match targets.papers(&item.bib) {
-        Some(library) => {
-            library.writer.attach_files(&library.folder, &item.key, &files, replace, mode)?;
-            if let Some(gone) = replace
-                && library.writer.kind() == Kind::Papers
-            {
-                // the files added last, where they go: in place of the link gone
-                let links = links_of(&item.bib, &item.key)?;
-                let added: Vec<PathBuf> = links.iter().filter(|f| !item.files.contains(f)).cloned().collect();
-                let order = replaced(&item.files, gone, &added);
-                library.writer.set_files(&library.folder, &item.key, &order, &[])?;
-            }
-        }
+        Some(library) => attach_papers(&item, library, &files, replace, mode)?,
         None => {
             for file in &files {
                 check_kept(file)?;
@@ -1012,9 +1009,30 @@ fn attach_new(
                 Some(gone) => replaced(&item.files, gone, &files),
                 None => item.files.iter().chain(&files).cloned().collect(),
             };
-            let changes = state.library.read().unwrap().set_files(id, &order)?;
+            let changes = state.library.read().unwrap().set_files(id, None, &order)?;
             state.writers.done(changes);
         }
+    }
+    Ok(())
+}
+
+/// Files added to a paper of a papers library, after its others or in place of `replace`: with a
+/// papers command, which adds them last, put there after (`set_files`).
+fn attach_papers(
+    item: &Item,
+    library: &PapersLibrary,
+    files: &[PathBuf],
+    replace: Option<&Path>,
+    mode: Option<FilesMode>,
+) -> Result<(), WriteError> {
+    library.writer.attach_files(&library.folder, &item.key, files, replace, mode)?;
+    if let Some(gone) = replace
+        && library.writer.kind() == Kind::Papers
+    {
+        let links = links_of(&item.bib, &item.key)?;
+        let added: Vec<PathBuf> = links.iter().filter(|f| !item.files.contains(f)).cloned().collect();
+        let order = replaced(&item.files, gone, &added);
+        library.writer.set_files(&library.folder, &item.key, &order, &[])?;
     }
     Ok(())
 }
@@ -1053,7 +1071,7 @@ fn set_links(state: &AppState, id: &str, files: &[PathBuf], delete: &[PathBuf]) 
             library.writer.set_files(&library.folder, &item.key, files, delete)?;
         }
         None => {
-            let changes = state.library.read().unwrap().set_files(id, files)?;
+            let changes = state.library.read().unwrap().set_files(id, None, files)?;
             state.writers.done(changes);
             // to the trash, those that no other entry links to
             let others: BTreeSet<PathBuf> = {
@@ -1598,6 +1616,39 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn a_pdf_added_in_place_of_one_gone_with_the_changes_of_the_entry() {
+        for choice in ["papers", "plain"] {
+            let dir = tempfile::tempdir().unwrap();
+            let bib = match choice {
+                "papers" => init_library(dir.path()),
+                _ => {
+                    let bib = dir.path().join("refs.bib");
+                    fs::write(&bib, "").unwrap();
+                    bib
+                }
+            };
+            let state = state(dir.path(), std::slice::from_ref(&bib), WriterChoice::BuiltIn, "");
+            let text = "@article{a,\n author = {Doe, Jane},\n title = {A},\n year = {2024}\n}";
+            add(&state, &bib, text, AddOptions::default()).unwrap();
+            let (id, _) = links(&state, &bib, "a");
+            let paper = fs::canonicalize(fixture_pdf(&dir.path().join("pdfs/paper.pdf"), "two-pages.pdf")).unwrap();
+            let si = fs::canonicalize(fixture_pdf(&dir.path().join("pdfs/si.pdf"), "no-doi.pdf")).unwrap();
+            attach_new(&state, &id, &[paper, si], None, Some(FilesMode::Link)).unwrap();
+            let (id, files) = links(&state, &bib, "a");
+            fs::remove_file(&files[0]).unwrap();
+            reload(&state);
+            let new = fixture_pdf(&dir.path().join("dl/new.pdf"), "text-doi.pdf");
+            let raw = state.library.read().unwrap().raw(&id).unwrap().to_string();
+            attach(&state, &id, Some(&raw.replace("{A}", "{A2}")), &new, None, Some(&files[0])).unwrap();
+            let (id, now) = links(&state, &bib, "a");
+            assert_eq!(now.len(), 2, "{choice}");
+            assert!(now[0].is_file() && now[0] != files[0], "{choice}");
+            assert_eq!(now[1], files[1], "{choice}");
+            assert!(state.library.read().unwrap().raw(&id).unwrap().contains("{A2}"), "{choice}");
+        }
+    }
+
+    #[test]
     fn native_orders_removes_and_replaces_files_where_they_are() {
         let dir = tempfile::tempdir().unwrap();
         let bib = dir.path().join("refs.bib");
@@ -1653,7 +1704,7 @@ pub(crate) mod tests {
         // a PDF for a paper that is there, with the changes of its entry
         let other = fs::canonicalize(fixture_pdf(&dir.path().join("dl/y.pdf"), "two-pages.pdf")).unwrap();
         let raw = state.library.read().unwrap().raw(&id("a")).unwrap().to_string();
-        attach(&state, &id("a"), Some(&raw.replace("{A}", "{A2}")), &other, None).unwrap();
+        attach(&state, &id("a"), Some(&raw.replace("{A}", "{A2}")), &other, None, None).unwrap();
         reload(&state);
         let text = fs::read_to_string(&bib).unwrap();
         assert!(text.contains("title = {A2}") && text.contains(&format!("{{:{}:PDF}}", other.display())), "{text}");
@@ -1664,7 +1715,7 @@ pub(crate) mod tests {
         // a downloaded PDF is in a folder that does not stay: a plain .bib cannot keep it
         let held = Path::new(&papers_rs::fetch::download::temp_dir()).join(format!("papers_dl_test{}", std::process::id()));
         let download = fixture_pdf(&held.join("z.pdf"), "no-doi.pdf");
-        let error = attach(&state, &id("b"), None, &download, None).unwrap_err();
+        let error = attach(&state, &id("b"), None, &download, None, None).unwrap_err();
         assert!(error.message.contains("downloaded PDF"), "{}", error.message);
         fs::remove_dir_all(held).unwrap();
     }
@@ -1908,24 +1959,24 @@ pub(crate) mod tests {
 
         // a PDF added to a paper that is there: placed as asked, and the entry is the one edited
         let doc = pdf("attached.pdf", "real-text-doi.pdf");
-        attach(state, &id("a"), None, &doc, Some(FilesMode::Copy)).unwrap();
+        attach(state, &id("a"), None, &doc, Some(FilesMode::Copy), None).unwrap();
         reload(state);
         let a = files("a");
         assert!(a.len() == 1 && a[0].is_file() && doc.is_file(), "{a:?}");
         let raw = state.library.read().unwrap().raw(&id("b")).unwrap().to_string();
         let doc = pdf("second.pdf", "real-xmp-doi.pdf");
         let edited = raw.replace("{B}", "{B2}");
-        attach(state, &id("b"), Some(&edited), &doc, Some(FilesMode::Move)).unwrap();
+        attach(state, &id("b"), Some(&edited), &doc, Some(FilesMode::Move), None).unwrap();
         reload(state);
         assert!(text(bib).contains("title = {B2}") && !doc.exists(), "{}", text(bib));
         assert_eq!(files("b").len(), 1);
         // the key and tags stay: a text that changes them is refused, and the PDF is not added
         let third = pdf("third.pdf", "no-doi.pdf");
         let raw = state.library.read().unwrap().raw(&id("b")).unwrap().to_string();
-        let error = attach(state, &id("b"), Some(&raw.replace("{b,", "{x,")), &third, None).unwrap_err();
+        let error = attach(state, &id("b"), Some(&raw.replace("{b,", "{x,")), &third, None, None).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Kept);
         assert!(third.is_file());
-        let error = attach(state, &id("b"), None, Path::new("relative.pdf"), None).unwrap_err();
+        let error = attach(state, &id("b"), None, Path::new("relative.pdf"), None, None).unwrap_err();
         assert!(error.message.contains("absolute"), "{}", error.message);
 
         // the key the library gives a new entry: its template, a letter after it when it is taken
@@ -1951,7 +2002,7 @@ pub(crate) mod tests {
         assert!(text(bib).contains("pages = {1--2}") && text(bib).contains("journal = {J}"), "{}", text(bib));
         let merged = crate::compare::merged(&library_entry("c"), &new, &strings(&["journal"]));
         let more = pdf("merged.pdf", "real-text-doi.pdf");
-        attach(state, &id("c"), Some(&merged), &more, Some(FilesMode::Copy)).unwrap();
+        attach(state, &id("c"), Some(&merged), &more, Some(FilesMode::Copy), None).unwrap();
         reload(state);
         assert!(text(bib).contains("journal = {Other}"), "{}", text(bib));
         assert_eq!(files("c").len(), 2, "{}", text(bib));
@@ -2021,7 +2072,7 @@ pub(crate) mod tests {
         reload(state);
         let id = state.library.read().unwrap().find(bib, "reed").unwrap().id.clone();
         let second = fixture_pdf(&dir.join("dl/reed2.pdf"), "two-pages.pdf");
-        attach(state, &id, None, &second, Some(FilesMode::Copy)).unwrap();
+        attach(state, &id, None, &second, Some(FilesMode::Copy), None).unwrap();
         reload(state);
         let files = state.library.read().unwrap().find(bib, "reed").unwrap().files.clone();
         assert!(files.len() == 2 && files.iter().all(|f| f.is_file()), "{}", text());
