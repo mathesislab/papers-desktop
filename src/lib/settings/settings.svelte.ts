@@ -23,6 +23,9 @@ export type Settings = {
   citation_style: string;
   check_updates: boolean;
   after_close: "library" | "next";
+  /** where the panel opens a PDF (Enter): a tab of the main window, the default app, Preview (macOS); ⌥Enter, the
+   *  other way */
+  open_pdf: "app" | "system" | "preview";
   /** the minutes after which a tab of the main window not used has its search and filters cleared; 0: never */
   clear_after_minutes: number;
   /** the zoom of the windows: the text size */

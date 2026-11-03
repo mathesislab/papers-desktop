@@ -43,6 +43,8 @@ pub struct Settings {
     pub check_updates: bool,
     /// what the main window shows after a paper is closed
     pub after_close: AfterClose,
+    /// where the panel opens a PDF (Enter); ⌥Enter opens it the other way
+    pub open_pdf: OpenPdf,
     /// the minutes after which a tab of the main window not used has its
     /// search and filters cleared, when it comes back; 0: never
     pub clear_after_minutes: u32,
@@ -247,6 +249,32 @@ pub enum AfterClose {
     Next,
 }
 
+/// Where the panel opens a PDF: in a tab of the main window, in the default
+/// app of the system, or in Preview (macOS; elsewhere the default app).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenPdf {
+    #[default]
+    App,
+    System,
+    Preview,
+}
+
+impl OpenPdf {
+    /// The other way, ⌥Enter's: outside the app for the app, else the app.
+    pub fn other(self) -> OpenPdf {
+        match self {
+            OpenPdf::App => OpenPdf::System,
+            OpenPdf::System | OpenPdf::Preview => OpenPdf::App,
+        }
+    }
+
+    /// The program that opens it outside the app; none: the default one.
+    pub fn program(self) -> Option<&'static str> {
+        (self == OpenPdf::Preview && cfg!(target_os = "macos")).then_some("Preview")
+    }
+}
+
 /// The size of the text, as a level of the zoom of the windows; the default
 /// is one step above what the app used before the setting (now "smaller").
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -305,6 +333,7 @@ impl Default for Settings {
             citation_style: crate::styles::DEFAULT.into(),
             check_updates: true,
             after_close: AfterClose::default(),
+            open_pdf: OpenPdf::default(),
             clear_after_minutes: 60,
             text_size: TextSize::default(),
             writer: WriterChoice::default(),
@@ -534,7 +563,7 @@ mod tests {
     fn the_file_keeps_its_keys_with_the_settings_set_elsewhere_nested() {
         let json = r#"{"bibtex": ["~/papers.bib"], "papers_folder": "~/Papers",
             "similar_skip": ["~/group.bib"], "hotkey": "Alt+Space", "matching": "word-start",
-            "citation_style": "apa", "check_updates": false, "after_close": "library",
+            "citation_style": "apa", "check_updates": false, "after_close": "library", "open_pdf": "system",
             "clear_after_minutes": 1440,
             "text_size": "larger", "writer": "command", "papers": "/bin/papers",
             "email": "me@example.org", "openalex_key": "KEY", "pinned_tags": ["ice", null],

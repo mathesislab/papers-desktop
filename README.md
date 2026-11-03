@@ -23,7 +23,8 @@ menu-bar icon has Open Library (also `⌘O` in the panel), Settings… (also
 
 | Key | Action |
 |---|---|
-| `↵` | open the PDF (the DOI page when there is none) |
+| `↵` | open the PDF in a tab of the library window (the DOI page when there is none); Settings → Search can open it in the default app instead |
+| `⌥↵` | open the PDF the other way: in the default app, or in the library window |
 | `⌘↵` | reveal the PDF in the Finder |
 | `⌘D` | open the DOI page |
 | `⌘⇧C` | copy the key |

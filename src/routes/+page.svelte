@@ -14,6 +14,7 @@
   import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
   import YearStrip from "$lib/YearStrip.svelte";
   import type { Found, Hit, Item, Status, YearCount } from "$lib/types";
+  import type { Settings } from "$lib/settings/settings.svelte";
 
   type Action = {
     /** in the list of shortcuts, and the label unless `label` is given */
@@ -39,6 +40,8 @@
   let menu = $state(false);
   let menuSelected = $state(0);
   let preview = $state(storedPreview());
+  /** where Enter opens a PDF (the settings); ⌥Enter, the other way */
+  let openPdf = $state<Settings["open_pdf"]>("app");
   let input: HTMLInputElement;
   let list = $state<HTMLUListElement>();
 
@@ -73,6 +76,14 @@
       run: call("open"),
     },
     {
+      get name() {
+        return openPdf === "app" ? "Open PDF in default app" : "Open PDF in Papers";
+      },
+      shortcut: { key: "Enter", alt: true },
+      when: (it) => it.files.length > 0,
+      run: call("open_other_way"),
+    },
+    {
       name: mac ? "Reveal in Finder" : "Show in folder",
       shortcut: { key: "Enter", mod: true },
       when: (it) => it.files.length > 0,
@@ -92,7 +103,7 @@
   const libraryShortcut: Shortcut = { key: "o", mod: true };
 
   /** the list shown in the empty panel */
-  const shortcuts: [string, string][] = [
+  let shortcuts: [string, string][] = $derived([
     ...actions.map((a): [string, string] => [a.name, label(a.shortcut)]),
     ["Preview", label(previewShortcut)],
     ["Settings", label(settingsShortcut)],
@@ -100,7 +111,7 @@
     ["All actions", label(menuShortcut)],
     ["Move", "↑ ↓"],
     ["Close", "Esc"],
-  ];
+  ]);
 
   /** the field filters of the query, also in the empty panel */
   const filters = [
@@ -119,6 +130,11 @@
   ];
 
   const actionLabel = (a: Action, it: Item) => a.label?.(it) ?? a.name;
+
+  /** Where Enter opens a PDF, as the settings say now. */
+  function readOpenPdf() {
+    invoke<Settings["open_pdf"]>("open_pdf_setting").then((v) => (openPdf = v), () => {});
+  }
 
   // the preview stays on or off between sessions
   function storedPreview(): boolean {
@@ -277,6 +293,7 @@
   onMount(() => {
     invoke<Status>("status").then((s) => (status = s));
     if (preview) invoke("set_preview", { on: true });
+    readOpenPdf();
     const unlisten = [
       listen<Status>("status", (e) => {
         status = e.payload;
@@ -290,6 +307,7 @@
         if (e.payload.trim()) find(e.payload);
       }),
       listen("shown", () => {
+        readOpenPdf();
         menu = false;
         notice = null;
         // the recent papers may have changed

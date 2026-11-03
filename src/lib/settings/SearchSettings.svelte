@@ -1,9 +1,10 @@
 <script lang="ts">
   // The Search tab of the settings window: the hotkey of the panel, recorded from the keys pressed (and the one of
-  // the selection on Linux; Services on macOS), how the words match; the services of *Search online*.
+  // the selection on Linux; Services on macOS), how the words match, where Enter opens a PDF; the services of
+  // *Search online*.
   import { hotkeyLabel, mac } from "$lib/keys";
   import "./settings.css";
-  import type { Preferences } from "./settings.svelte";
+  import type { Preferences, Settings } from "./settings.svelte";
 
   /** `shown`: whether its tab is shown; a hotkey being recorded stops when it is not */
   let { prefs, shown }: { prefs: Preferences; shown: boolean } = $props();
@@ -106,6 +107,20 @@
       checked={settings.matching === "inside-words"}
       onchange={(e) => prefs.save({ matching: e.currentTarget.checked ? "inside-words" : "word-start" })}
     />
+  </label>
+  <label class="row">
+    <span>
+      <span class="label">Open PDF in</span>
+      <span class="hint">What Enter does in the panel; {mac ? "⌥" : "Alt+"}Enter opens it the other way</span>
+    </span>
+    <select
+      value={settings.open_pdf}
+      onchange={(e) => prefs.save({ open_pdf: e.currentTarget.value as Settings["open_pdf"] })}
+    >
+      <option value="app">Papers</option>
+      <option value="system">The default app</option>
+      {#if mac}<option value="preview">Preview</option>{/if}
+    </select>
   </label>
 </section>
 
