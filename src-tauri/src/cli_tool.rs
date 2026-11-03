@@ -195,7 +195,8 @@ pub struct Status {
 }
 
 impl Status {
-    /// our link, to the copy of the app that runs
+    /// our link, to the copy of the app that runs: what the app menu (macOS) says
+    #[cfg(target_os = "macos")]
     pub fn installed(&self) -> bool {
         self.state == "ours" && self.current
     }
