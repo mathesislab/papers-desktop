@@ -44,14 +44,16 @@ export type Settings = {
   downloads_panel: boolean;
   /** its folder (~ for the home folder) */
   downloads_folder: string;
-  /** the user's services of the Search tab's *Search online*, after Google Scholar and Google: a name and an address
-   *  with {query} or {scholar} in it (checked when saved) */
+  /** the user's services of the Search tab's *Search online*, after those built in: a name and an address with
+   *  {query} or {scholar} in it (checked when saved) */
   search_services: { name: string; url: string }[];
+  /** the services built in that *Search online* leaves out, by name (never Google Scholar) */
+  search_services_hidden: string[];
   /** the background polling of the feeds: set in the Feeds tab (feeds_set_settings), kept as they are here */
   feeds_poll: boolean;
   feeds_poll_minutes: number;
 };
-export type View = { settings: Settings; styles: string[]; start_at_login: boolean; home: string | null };
+export type View = { settings: Settings; styles: string[]; services: string[]; start_at_login: boolean; home: string | null };
 
 /** mirrors library::ImportReport: what `library_import` did */
 export type ImportReport = { added: number; duplicates: number; missingPdfs: number };
@@ -74,6 +76,8 @@ export class Preferences {
   settings = $state<Settings | null>(null);
   /** the citation styles bundled with the app */
   styles = $state<string[]>([]);
+  /** the services of *Search online* built in, Google Scholar first */
+  services = $state<string[]>([]);
   startAtLogin = $state(false);
   home = $state<string | null>(null);
   /** what was just done, or why not: a success said for a moment, a failure until the next */
@@ -85,6 +89,7 @@ export class Preferences {
     const view = await invoke<View>("get_settings");
     this.settings = view.settings;
     this.styles = view.styles;
+    this.services = view.services;
     this.startAtLogin = view.start_at_login;
     this.home = view.home;
   }

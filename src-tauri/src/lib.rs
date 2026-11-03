@@ -419,6 +419,8 @@ struct SettingsView {
     settings: Settings,
     /// the bundled citation styles
     styles: Vec<&'static str>,
+    /// the services of *Search online* built in, in the order of the menu
+    services: Vec<&'static str>,
     start_at_login: bool,
     /// to write paths with ~
     home: Option<PathBuf>,
@@ -429,6 +431,7 @@ fn get_settings(app: AppHandle, state: State<AppState>) -> Result<SettingsView, 
     Ok(SettingsView {
         settings: Settings::load(&state.settings_path)?,
         styles: styles::names(),
+        services: papers_feeds::Service::built_in().collect(),
         start_at_login: app.autolaunch().is_enabled().unwrap_or(false),
         home: std::env::home_dir(),
     })

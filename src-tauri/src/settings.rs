@@ -68,9 +68,12 @@ pub struct Settings {
     /// the folder of the panel (~ for the home directory)
     pub downloads_folder: PathBuf,
     /// the user's services of the Search tab's *Search online* menu, after
-    /// Google Scholar and Google: a name and an address with `{query}` or
-    /// `{scholar}` in it (checked when saved)
+    /// those built in: a name and an address with `{query}` or `{scholar}` in
+    /// it (checked when saved)
     pub search_services: Vec<OwnService>,
+    /// the services built in that the menu leaves out, by name (never Google
+    /// Scholar, the Search tab's *Online*)
+    pub search_services_hidden: Vec<String>,
     /// the settings set elsewhere than in the settings window's fields, in the same file
     #[serde(flatten)]
     pub elsewhere: Elsewhere,
@@ -343,6 +346,7 @@ impl Default for Settings {
             downloads_panel: true,
             downloads_folder: PathBuf::from("~/Downloads"),
             search_services: Vec::new(),
+            search_services_hidden: Vec::new(),
             elsewhere: Elsewhere::default(),
         }
     }
@@ -570,6 +574,7 @@ mod tests {
             "saved_searches": [{"name": "AMOC", "filters": {}, "sort": null}],
             "downloads_panel": false, "downloads_folder": "/tmp/in",
             "search_services": [{"name": "Base", "url": "https://base.example/?q={query}"}],
+            "search_services_hidden": ["Zenodo"],
             "feeds_poll": true,
             "feeds_poll_minutes": 30, "window_colour": "teal", "feeds_tab": false, "feeds_beside": true,
             "library_beside": false, "search_tab": false}"#;

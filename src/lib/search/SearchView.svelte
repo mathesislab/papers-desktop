@@ -12,7 +12,7 @@
   // (src/routes/main/+page.svelte) keeps the layout (the fields, the recent searches, the search shown), gives
   // what both its Feeds and Search tabs take (`tabContext`), and passes on the commands of the menu and the keys
   // while the tab is in front. The Add sheet is the library's. *Search online* opens the query in the browser at a
-  // service without an API (Google Scholar, Google, the user's of the settings).
+  // service other than OpenAlex (Google Scholar, those built in, the user's of the settings).
 
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
