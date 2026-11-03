@@ -220,10 +220,11 @@ export class ItemList {
     }
   }
 
-  /** A triage given to items, shown at once: the list keeps them in place until it is let go (`sticky`), but for
+  /** A triage given to items, shown at once: the list keeps them in place until it is let go (`sticky`), unless
+   *  `keep` is off (a mark of many: they leave where they no longer belong when the list comes again), but for
    *  those removed, which go, the next selected. The backend tells the tab of the change, which asks for the
    *  list again; refused, the list again here, as it is. */
-  async setTo(ids: string[], triage: Triage) {
+  async setTo(ids: string[], triage: Triage, keep = true) {
     if (!ids.length) return;
     const set = new Set(ids);
     if (triage === "removed") {
@@ -231,7 +232,7 @@ export class ItemList {
       for (const id of ids) this.sticky.delete(id);
       this.rows = this.rows.filter((r) => !set.has(r.id));
     } else {
-      for (const id of ids) this.sticky.add(id);
+      for (const id of ids) keep ? this.sticky.add(id) : this.sticky.delete(id);
       this.rows = this.rows.map((r) => (set.has(r.id) ? { ...r, triage } : r));
     }
     if (this.detail && set.has(this.detail.id)) this.detail = { ...this.detail, triage };

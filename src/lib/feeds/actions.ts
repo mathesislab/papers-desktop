@@ -133,7 +133,7 @@ export function feedActions(d: Doers): Record<ActionName, Action> {
     },
     read: {
       key: "m",
-      label: (items) => (items.some((i) => i.triage === "new") ? "Mark read" : "Mark unread"),
+      label: (items) => (items.some((i) => i.triage === "new") ? "Mark as read" : "Mark as unread"),
       enabled: (items) => toggled(items, "read") !== null,
       run: (ids) => d.triage("read", ids),
     },

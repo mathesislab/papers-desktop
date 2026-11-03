@@ -166,6 +166,17 @@ main.tab {
 :where(.tab .list > .filters) > .sort:hover {
   color: var(--fg);
 }
+/* Mark as Read, and its ▾ of the other ways, as the sort says them */
+:where(.tab .list > .filters > .mark) > button {
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+}
+:where(.tab .list > .filters > .mark) > button:hover {
+  color: var(--fg);
+}
 
 /* two or more rows selected: what acts on them all, over the filters (nothing below moves) */
 :where(.tab .list > .filters) > .selbar {

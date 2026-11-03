@@ -96,7 +96,7 @@
   let subscribing = $state(false);
   let subscribed = false;
   let now = $state(Date.now());
-  /** above this many, Mark read asks first */
+  /** above this many, Mark as Read asks first */
   const MARK_ASK = 50;
   /** the buttons of the details, a post's and a paper's; those of the selection bar */
   const POST_BUTTONS: ActionName[] = ["open", "read", "star", "remove", "later"];
@@ -259,15 +259,21 @@
 
   /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked read. */
   function markAbove(from = list.selection.focus) {
-    markRead(newAbove(list.rows, from));
+    markRead(newAbove(list.rows, from), false);
   }
 
-  /** Mark read ▾: the new items of the list, those older than some days, those above the selection, marked seen
-   *  (above 50, after asking). */
+  /** the new items of the list */
+  const newInList = () => list.rows.filter((r) => r.triage === "new").map((r) => r.id);
+
+  /** Mark as Read: the new items of the list marked seen (above 50, after asking). */
+  const markAll = () => markRead(newInList(), false);
+
+  /** Mark as Read's ▾: the new items of the list, those older than some days, those above the selection, marked
+   *  seen (above 50, after asking). */
   async function markMenu() {
     const item = (text: string, ids: string[]) =>
-      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markRead(ids) });
-    const all = list.rows.filter((r) => r.triage === "new").map((r) => r.id);
+      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markRead(ids, false) });
+    const all = newInList();
     const older = (days: number) => newOlderThan(list.rows, days, Date.now());
     const menu = await Menu.new({
       items: [
@@ -283,13 +289,14 @@
     await menu.popup();
   }
 
-  /** Items marked read (above 50, after asking), said. */
-  async function markRead(ids: string[]) {
+  /** Items marked read (above 50, after asking), said; those of a mark of many (`keep` off) leave the list where
+   *  they no longer belong, as *Unread*. */
+  async function markRead(ids: string[], keep = true) {
     if (!ids.length) return;
     const question = `Mark ${ids.length} items as read?`;
-    if (ids.length > MARK_ASK && !(await ask(question, { title: "Mark read", okLabel: "Mark read", cancelLabel: "Cancel" }))) return;
-    list.setTo(ids, "seen");
-    list.say(`Marked ${ids.length} read`);
+    if (ids.length > MARK_ASK && !(await ask(question, { title: "Mark as Read", okLabel: "Mark as Read", cancelLabel: "Cancel" }))) return;
+    list.setTo(ids, "seen", keep);
+    list.say(`Marked ${ids.length} as read`);
   }
 
   /** U: kept unread (a reminder due now, first in the list); the reminders of items all kept so, cleared. */
@@ -670,7 +677,7 @@
   </div>
 </main>
 
-<!-- above the list: the choices as chips, Mark read ▾, the count and the sort, the list simple or a table; the
+<!-- above the list: the choices as chips, Mark as Read and its ▾, the count and the sort, the list simple or a table; the
      selection bar -->
 {#snippet listBar()}
   <div class="filters">
@@ -681,9 +688,10 @@
       </span>
     {/each}
     <span class="spacer"></span>
-    <button class="sort" title="Mark the new items of the list as read: all, the older ones, those above" onclick={markMenu}>
-      Mark read ▾
-    </button>
+    <span class="mark">
+      <button title="Mark the new items of the list as read" onclick={markAll}>Mark as Read</button>
+      <button aria-label="More ways to mark as read" title="Mark as read: all, the older ones, those above" onclick={markMenu}>▾</button>
+    </span>
     <button
       class="sort"
       title="Sort by score (its keywords and its library, as Settings → General → Score takes them; the newest first of the same) or by date"

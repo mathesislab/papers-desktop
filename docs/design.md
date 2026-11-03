@@ -830,18 +830,20 @@ Library tab):
   `similarAsScore`); a sort `like` saved is the score. Click, ⇧-click and ⌘-click select as in the library; the keys act
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
-  not make the list jump under the cursor; a removed item goes, the next
+  not make the list jump under the cursor (but for a mark of many, *Mark
+  as Read* or its ▾, or ⇧Space, whose items leave the list where they no longer
+  belong); a removed item goes, the next
   selected. A ☆ at the start of a row stars it (*Starred*), or unstars it.
   The actions on items are one table (`actions.ts`: `itemActions` open, add
   and star, the Search tab's too, the star in each tab's words; `feedActions`
   those and the triage), which
   the keys, the row menu, the selection bar, the buttons of the details and
-  *Later ▾* read in both tabs, each named one way (*Mark read* or *Mark unread*, *Star* or
+  *Later ▾* read in both tabs, each named one way (*Mark as read* or *Mark as unread*, *Star* or
   *Unstar*, *Remove* or *Restore*: a toggle says which way it goes; marking
-  read above 50 asks first, and says *Marked 12 read*). With several rows
+  read above 50 asks first, and says *Marked 12 as read*). With several rows
   selected, a bar above the list marks them read or unread, stars,
-  removes or snoozes them; *Mark read ▾* marks the
-  list, the items older than 1, 3 or 7 days, or those above. The row menu's
+  removes or snoozes them; *Mark as Read* marks the new items of the list,
+  and its ▾ the list, the items older than 1, 3 or 7 days, or those above. The row menu's
   *Source Is* sets the kind of its subscription (Journal, Preprint Server,
   News & Press, General), which its items take at once.
 - *Held updates*: a fetch in the background (polling) does not change the

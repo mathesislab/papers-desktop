@@ -45,7 +45,7 @@ export function newAbove(rows: { id: string; triage: Triage; reminder?: Reminder
   return rows.slice(0, at < 0 ? rows.length : at).filter(unread).map((r) => r.id);
 }
 
-/** Mark read, older than: the unread items dated more than some days before now (one without a date is not). */
+/** Mark as read, older than: the unread items dated more than some days before now (one without a date is not). */
 export function newOlderThan(
   rows: { id: string; triage: Triage; reminder?: Reminder | null; date: string | null }[],
   days: number,
