@@ -35,7 +35,11 @@ Two windows with different jobs:
 - **Main window** (mockup: `docs/mockups/main-window.html`): a normal
   window, in the Dock and `⌘Tab` while it is open. It opens from the
   menu-bar icon (Open Library) and with `⌘O` in the panel; `⌘I` in the
-  panel opens the selected paper in it.
+  panel opens the selected paper in it. Enter in the panel opens the PDF
+  there too, in a tab (`open_pdf` "app", the default), else in the default
+  app of the system ("system") or Preview ("preview", macOS); ⌥Enter opens
+  it the other way (Settings → Search, *Open PDF in*). The `papers` command
+  line keeps the default app.
 
 Three panes, each resized by dragging, the right one hidden on demand:
 

@@ -23,7 +23,7 @@ mod toggle;
 mod update;
 mod writer;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -33,7 +33,7 @@ use papers_core::{BibWatch, Cite, Found, Incoming, Item, Library, Matching, Row,
 use recent::Recent;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use settings::{SavedSearch, Settings, TextSize};
+use settings::{OpenPdf, SavedSearch, Settings, TextSize};
 use styles::Style;
 use tauri::image::Image;
 use tauri::ipc::Response;
@@ -248,18 +248,49 @@ fn hide_panel(app: AppHandle) {
     hide(&app);
 }
 
-/// Open the PDF of an item, else its web page.
+/// The panel's Enter: the PDF of an item where the settings say (`open_pdf`),
+/// else its web page.
 #[tauri::command]
 fn open(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
     let item = state.item(&id)?;
     match (item.files.first(), item.link()) {
-        (Some(file), _) => app.opener().open_path(file.to_string_lossy(), None::<&str>),
-        (None, Some(link)) => app.opener().open_url(link, None::<&str>),
-        (None, None) => return Err(format!("{id}: no file, DOI or URL")),
+        (Some(file), _) => open_pdf(&app, &state, &item, file, Settings::load(&state.settings_path)?.open_pdf),
+        (None, Some(link)) => {
+            app.opener().open_url(link, None::<&str>).map_err(|e| e.to_string())?;
+            state.recent.add(&item);
+            hide_window(&app);
+            Ok(())
+        }
+        (None, None) => Err(format!("{id}: no file, DOI or URL")),
     }
-    .map_err(|e| e.to_string())?;
-    state.recent.add(&item);
-    hide_window(&app);
+}
+
+/// The panel's ⌥Enter: the PDF of an item opened the other way than Enter's.
+#[tauri::command]
+fn open_other_way(app: AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
+    let item = state.item(&id)?;
+    let file = item.files.first().ok_or_else(|| format!("{id}: no file"))?;
+    open_pdf(&app, &state, &item, file, Settings::load(&state.settings_path)?.open_pdf.other())
+}
+
+/// Where the panel's Enter opens a PDF, which its ⌥Enter says the other way of.
+#[tauri::command]
+fn open_pdf_setting(state: State<AppState>) -> Result<OpenPdf, String> {
+    Ok(Settings::load(&state.settings_path)?.open_pdf)
+}
+
+/// A PDF of an item from the panel: in a tab of the main window (whose page
+/// adds it to the recent papers), else outside the app.
+fn open_pdf(app: &AppHandle, state: &AppState, item: &Item, file: &Path, with: OpenPdf) -> Result<(), String> {
+    if with == OpenPdf::App {
+        main_window::open_paper(app, &item.id);
+        return Ok(());
+    }
+    app.opener()
+        .open_path(file.to_string_lossy(), with.program())
+        .map_err(|e| e.to_string())?;
+    state.recent.add(item);
+    hide_window(app);
     Ok(())
 }
 
@@ -1173,6 +1204,8 @@ pub fn run() {
             status,
             hide_panel,
             open,
+            open_other_way,
+            open_pdf_setting,
             open_link,
             reveal,
             copy,
