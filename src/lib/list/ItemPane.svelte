@@ -59,7 +59,7 @@
     {#if empty}
       {@render empty()}
     {:else}
-      <div class="rows">
+      <div class="rows" class:reading={list.reading && !list.beside && !!list.focusRow}>
         <FeedTable
           {...table}
           rows={list.rows}
@@ -137,6 +137,10 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+  /* hidden under the item read, whose background lets what is under it show a little (the window's) */
+  .rows.reading > :global(.table) {
+    visibility: hidden;
   }
   .none {
     margin: auto;
