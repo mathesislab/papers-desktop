@@ -3,7 +3,8 @@
 //! Linux alike: no administrator prompt). If that folder is not in the PATH of
 //! the user's shell, the settings say so and offer to add it to the startup
 //! file of the shell, on a click. Only a link of ours is ever replaced or
-//! removed.
+//! removed. The app menu (macOS) says *Install Command Line Tool…* until it is
+//! installed, then *Command Line Tool…*, which shows it in the settings.
 
 use std::fs;
 use std::io::{self, ErrorKind, Read};
@@ -193,6 +194,13 @@ pub struct Status {
     pub current: bool,
 }
 
+impl Status {
+    /// our link, to the copy of the app that runs
+    pub fn installed(&self) -> bool {
+        self.state == "ours" && self.current
+    }
+}
+
 pub fn status(dir: Option<&Path>, binary: Option<&Path>) -> Status {
     let (Some(dir), Some(binary)) = (dir, binary) else {
         return Status {
@@ -231,7 +239,7 @@ fn target() -> Result<(PathBuf, PathBuf), Failure> {
     Ok((dir, binary))
 }
 
-fn current_status() -> Status {
+pub fn current_status() -> Status {
     let binary = bundled_binary().filter(|_| std::env::var_os("APPIMAGE").is_none());
     status(default_dir().as_deref(), binary.as_deref())
 }
@@ -242,21 +250,31 @@ pub fn cli_status() -> Status {
 }
 
 #[tauri::command]
-pub async fn install_cli() -> Result<Status, Failure> {
-    run(install_here).await
+pub async fn install_cli(app: tauri::AppHandle) -> Result<Status, Failure> {
+    run(&app, install_here).await
 }
 
 #[tauri::command]
-pub async fn uninstall_cli() -> Result<Status, Failure> {
-    run(uninstall_here).await
+pub async fn uninstall_cli(app: tauri::AppHandle) -> Result<Status, Failure> {
+    run(&app, uninstall_here).await
 }
 
-/// The change, off the thread of the page.
-async fn run(change: fn() -> Result<Done, Failure>) -> Result<Status, Failure> {
+/// The change, off the thread of the page; the menu as it then is.
+async fn run(app: &tauri::AppHandle, change: fn() -> Result<Done, Failure>) -> Result<Status, Failure> {
     tauri::async_runtime::spawn_blocking(change)
         .await
         .map_err(|e| Failure::new(FailureKind::Failed, e.to_string()))??;
-    Ok(current_status())
+    let status = current_status();
+    sync_menu(app, &status);
+    Ok(status)
+}
+
+/// The item of the app menu as the tool is (macOS).
+fn sync_menu(app: &tauri::AppHandle, status: &Status) {
+    #[cfg(target_os = "macos")]
+    crate::menu::sync_cli(app, status.installed());
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, status);
 }
 
 fn install_here() -> Result<Done, Failure> {
@@ -270,13 +288,16 @@ fn uninstall_here() -> Result<Done, Failure> {
 }
 
 /// At the start of the app, off its thread: our link pointed again if what it
-/// points to is gone (`repair`). Nothing when there is nothing to install.
-pub fn repair_at_start() {
-    std::thread::spawn(|| {
+/// points to is gone (`repair`), and the menu as it then is. Nothing when
+/// there is nothing to install.
+pub fn repair_at_start(app: &tauri::AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
         let Ok((dir, binary)) = target() else { return };
         if let Err(e) = repair(&dir, &binary) {
             eprintln!("papers-desktop: the papers-rs link: {}", e.message);
         }
+        sync_menu(&app, &current_status());
     });
 }
 
@@ -444,7 +465,7 @@ fn tilde(path: &Path) -> String {
 
 /// "Install Command Line Tool…" of the app menu (macOS): installs, then says
 /// so, with a note if `~/.local/bin` is not in the PATH of the shell (the
-/// settings add it).
+/// settings add it); the menu then says "Command Line Tool…".
 #[cfg(target_os = "macos")]
 pub fn install_from_menu(app: &tauri::AppHandle) {
     use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
@@ -467,6 +488,7 @@ pub fn install_from_menu(app: &tauri::AppHandle) {
             }
             Err(e) => (MessageDialogKind::Error, e.message),
         };
+        sync_menu(&app, &current_status());
         app.dialog()
             .message(text)
             .title("Command Line Tool")

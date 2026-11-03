@@ -33,6 +33,33 @@ const TO_PAGE: &[&str] = &[
     "forward",
 ];
 
+/// The item of the app menu of the command line tool: *Install Command Line
+/// Tool…*, else, once installed, *Command Line Tool…*, which shows it in the
+/// settings (`cli_tool`).
+struct CliItem(MenuItem<Wry>);
+
+const CLI: &str = "cli";
+
+fn cli_text(installed: bool) -> &'static str {
+    if installed { "Command Line Tool…" } else { "Install Command Line Tool…" }
+}
+
+/// The item of the command line tool as it is.
+pub fn sync_cli(app: &AppHandle, installed: bool) {
+    if let Some(item) = app.try_state::<CliItem>() {
+        let _ = item.0.set_text(cli_text(installed));
+    }
+}
+
+/// The item of the command line tool chosen: installs it, else shows it in the settings.
+fn cli(app: &AppHandle) {
+    if crate::cli_tool::current_status().installed() {
+        crate::settings_window(app, Some("advanced"));
+    } else {
+        crate::cli_tool::install_from_menu(app);
+    }
+}
+
 /// The items of the Window menu that follow the switches (`Toggle`): Window → Feeds and Search, there
 /// only while their tab is shown; Show Feeds Tab, Show Search Tab, Feeds Side View and Library Side
 /// View, ticked as their switch is (the Feeds one there while the
@@ -64,6 +91,13 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
         feeds_beside: check(Toggle::FeedsBeside, "Feeds Side View")?,
         library_beside: check(Toggle::LibraryBeside, "Library Side View")?,
     };
+    let cli_item = CliItem(MenuItem::with_id(
+        app,
+        CLI,
+        cli_text(crate::cli_tool::current_status().installed()),
+        true,
+        None::<&str>,
+    )?);
     let menu = Menu::with_items(
         app,
         &[
@@ -75,13 +109,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &PredefinedMenuItem::about(app, None, None)?,
                     &separator()?,
                     &MenuItem::with_id(app, "settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
-                    &MenuItem::with_id(
-                        app,
-                        "install-cli",
-                        "Install Command Line Tool…",
-                        true,
-                        None::<&str>,
-                    )?,
+                    &cli_item.0,
                     &separator()?,
                     &PredefinedMenuItem::services(app, None)?,
                     &separator()?,
@@ -169,6 +197,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
     )?;
     app.set_menu(menu)?;
     app.manage(toggles);
+    app.manage(cli_item);
     sync(app, &settings.elsewhere.toggles);
     show_plus(app);
     app.on_menu_event(|app, event| match event.id().as_ref() {
@@ -177,7 +206,7 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
         "new-bib" => crate::welcome_window(app, Some("new")),
         // the Library tab, whose Import… chooses the file and the .bib
         "import" => crate::settings_window(app, Some("library")),
-        "install-cli" => crate::cli_tool::install_from_menu(app),
+        CLI => cli(app),
         id => match id.parse::<Toggle>() {
             Ok(toggle) => flip(app, toggle),
             Err(()) => command(app, id),

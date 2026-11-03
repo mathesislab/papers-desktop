@@ -1099,7 +1099,7 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             menu::setup(app.handle(), &settings)?;
             selection::setup(app.handle());
-            cli_tool::repair_at_start();
+            cli_tool::repair_at_start(app.handle());
             reload(app.handle());
             update::watch(app.handle());
             feeds::watch(app.handle());
