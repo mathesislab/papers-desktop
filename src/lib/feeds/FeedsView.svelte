@@ -259,14 +259,14 @@
 
   /** ⇧Space, the menu: the new items above the one in focus (the menu's row) marked read. */
   function markAbove(from = list.selection.focus) {
-    markRead(newAbove(list.rows, from));
+    markRead(newAbove(list.rows, from), false);
   }
 
   /** Mark read ▾: the new items of the list, those older than some days, those above the selection, marked seen
    *  (above 50, after asking). */
   async function markMenu() {
     const item = (text: string, ids: string[]) =>
-      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markRead(ids) });
+      MenuItem.new({ text: `${text} (${ids.length})`, enabled: ids.length > 0, action: () => markRead(ids, false) });
     const all = list.rows.filter((r) => r.triage === "new").map((r) => r.id);
     const older = (days: number) => newOlderThan(list.rows, days, Date.now());
     const menu = await Menu.new({
@@ -283,12 +283,13 @@
     await menu.popup();
   }
 
-  /** Items marked read (above 50, after asking), said. */
-  async function markRead(ids: string[]) {
+  /** Items marked read (above 50, after asking), said; those of a mark of many (`keep` off) leave the list where
+   *  they no longer belong, as *Unread*. */
+  async function markRead(ids: string[], keep = true) {
     if (!ids.length) return;
     const question = `Mark ${ids.length} items as read?`;
     if (ids.length > MARK_ASK && !(await ask(question, { title: "Mark read", okLabel: "Mark read", cancelLabel: "Cancel" }))) return;
-    list.setTo(ids, "seen");
+    list.setTo(ids, "seen", keep);
     list.say(`Marked ${ids.length} read`);
   }
 

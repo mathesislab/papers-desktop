@@ -830,7 +830,9 @@ Library tab):
   `similarAsScore`); a sort `like` saved is the score. Click, ⇧-click and ⌘-click select as in the library; the keys act
   on the selection. An item triaged here stays in its place until the
   filters change (`mergeRows`), so that marking items seen in *Unread* does
-  not make the list jump under the cursor; a removed item goes, the next
+  not make the list jump under the cursor (but for a mark of many, *Mark
+  read ▾* or ⇧Space, whose items leave the list where they no longer
+  belong); a removed item goes, the next
   selected. A ☆ at the start of a row stars it (*Starred*), or unstars it.
   The actions on items are one table (`actions.ts`: `itemActions` open, add
   and star, the Search tab's too, the star in each tab's words; `feedActions`
