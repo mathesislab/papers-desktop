@@ -24,8 +24,8 @@ const item = (id: string, triage: Item["triage"] = "new", over: Partial<Item> = 
 test("a toggle says which way it goes", () => {
   assert.equal(actions.star.label([item("a"), item("b", "starred")]), "Star");
   assert.equal(actions.star.label([item("a", "starred")]), "Unstar");
-  assert.equal(actions.read.label([item("a", "seen"), item("b")]), "Mark read");
-  assert.equal(actions.read.label([item("a", "seen")]), "Mark unread");
+  assert.equal(actions.read.label([item("a", "seen"), item("b")]), "Mark as read");
+  assert.equal(actions.read.label([item("a", "seen")]), "Mark as unread");
   assert.equal(actions.remove.label([item("a", "removed")]), "Restore");
   assert.equal(actions.remove.label([item("a", "removed"), item("b")]), "Remove");
   assert.equal(actions.open.label([item("a", "new", { kind: "news" })]), "Open post");
@@ -78,7 +78,7 @@ test("the menus in title case, the buttons with their marks", () => {
   assert.equal(buttonText("star", actions.star, [item("a")]), "☆ Star");
   assert.equal(buttonText("later", actions.later, [item("a")]), "⏰ Later ▾");
   assert.equal(buttonText("open", actions.open, [item("a", "new", { kind: "news" })]), "Open post ↗");
-  assert.equal(buttonText("read", actions.read, [item("a")]), "Mark read");
+  assert.equal(buttonText("read", actions.read, [item("a")]), "Mark as read");
 });
 
 test("the ✕ of a row says what it does, its key and its hint", () => {

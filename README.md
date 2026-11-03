@@ -79,13 +79,13 @@ seen once opened (its details, or its page); one only selected stays new.
 | `j` `k`, `↑` `↓` | move; with `⇧` and the arrows, extend the selection |
 | `s` | shortlist, or no longer |
 | `x` | remove, or bring back |
-| `m` | mark read, or unread |
+| `m` | mark as read, or unread |
 | `↵` | show the details |
 | `Space` | open the PDF (the library's, else the free one in the browser) |
 | `o` | open the item's page in the browser |
 | `a` | add the paper (a post: its linked paper), staying in Feeds |
 | `f` | find the paper behind a post |
-| `⇧Space` | mark all above as seen |
+| `⇧Space` | mark all above as read |
 | `/`, `⌘F` | search the feeds |
 | `⌘R` | fetch |
 | `⌘↩` | review the shortlist: `a` add, `b` add without PDF, `o` open, `l` later, `x` remove, `j` `k`, `Esc` leaves |
