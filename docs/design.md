@@ -484,7 +484,8 @@ file:
   revision of papers-rs in `Cargo.lock`, `--locked`) into
   `src-tauri/binaries/papers-rs-cli-<triple>` (`build.rs` puts a placeholder
   there for `cargo check` and `cargo test`). Settings (General)
-  and the app menu (macOS: *Install Command Line Tool…*) install it as a link
+  and the app menu (macOS: *Install Command Line Tool…*, once installed
+  *Command Line Tool…*, which shows it in the settings) install it as a link
   `papers-rs` → the binary in the bundle (`cli_tool.rs`) in `~/.local/bin`
   (macOS and Linux alike, created if missing; no password, no administrator
   prompt; not from an AppImage, which is mounted only while it runs). At
