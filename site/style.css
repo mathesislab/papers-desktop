@@ -170,6 +170,114 @@ img {
   padding: 56px 0;
 }
 
+/* the five steps under the hero, each a link to its section */
+.loop {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  max-width: 980px;
+  margin: 0 auto 36px;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  text-align: left;
+}
+
+.loop a {
+  display: block;
+  height: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.loop a:hover {
+  border-color: var(--accent);
+}
+
+.loop b {
+  display: block;
+  color: var(--accent);
+}
+
+.loop b::before {
+  counter-increment: step;
+  content: counter(step) ". ";
+}
+
+.loop span {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* the windows of the app, one at a time */
+.tour .tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-soft);
+}
+
+.tour [role="tab"] {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tour [role="tab"][aria-selected="true"] {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+/* where a screenshot is still to be taken */
+.shot-todo {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 3;
+  padding: 24px;
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+}
+
+/* the step of the loop a section is */
+.step {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* how the steps feed each other */
+.together {
+  max-width: 760px;
+  margin: 0 auto 72px;
+  padding: 28px 32px;
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  text-align: center;
+}
+
+.together p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+}
+
 .feature.wide {
   display: grid;
   grid-template-columns: 1fr 1.6fr;
@@ -275,6 +383,12 @@ footer {
   padding-bottom: 40px;
   color: var(--muted);
   font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .loop {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
