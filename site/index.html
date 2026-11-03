@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Papers Desktop</title>
-<meta name="description" content="A search panel and a library window for your BibTeX files: find a paper in a keystroke, read its PDF, copy its citation or BibTeX. Plain .bib files, no database.">
+<meta name="description" content="Follow the new papers of your field, search all of science, keep what you choose in plain BibTeX files, read the PDFs in tabs, and cite any paper in a keystroke.">
 <link rel="icon" href="images/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -12,7 +12,10 @@
 <header class="top">
   <a class="brand" href="#"><img src="images/logo.svg" alt="" width="28" height="28">Papers Desktop</a>
   <nav>
-    <a href="#features">Features</a>
+    <a href="#follow">Follow</a>
+    <a href="#find">Find</a>
+    <a href="#keep">Keep</a>
+    <a href="#cite">Cite</a>
     <a href="#download">Download</a>
     <a href="https://github.com/mathesislab/papers-desktop">Source</a>
   </nav>
@@ -20,83 +23,124 @@
 
 <main>
 <section class="hero">
-  <h1>Your BibTeX library, a keystroke away</h1>
-  <p class="lead">Papers Desktop is a search panel for your <code>.bib</code> files and the PDFs they link to. Press
-    <kbd>⌥Space</kbd>, type a few letters of an author, a title or a year, and open the paper, or copy its
-    citation or its BibTeX. The library window shows it all, and opens the papers to read in tabs. Your library
-    stays plain files: no database, nothing to import.</p>
+  <h1>Your papers, from first sight to citation</h1>
+  <p class="lead">Papers Desktop follows the journals, preprints and blogs of your field, searches all of science,
+    keeps the papers you choose in your <code>.bib</code> files with their PDFs, opens them in tabs, and finds and
+    cites any of them in a keystroke. Plain files, no account, no database.</p>
   <p class="actions">
     <a class="button primary" href="#download">Download</a>
     <a class="button" href="https://github.com/mathesislab/papers-desktop">View source</a>
   </p>
-  <div class="shot">
-    <img src="images/main.png" alt="The search panel: the papers of an author, newest first, and the preview of the first one with its first page and citation" width="2532" height="1012">
+
+  <ol class="loop">
+    <li><a href="#follow"><b>Follow</b><span>New papers, ranked by what you already read</span></a></li>
+    <li><a href="#find"><b>Find</b><span>Search all of science, your papers marked</span></a></li>
+    <li><a href="#keep"><b>Keep</b><span>One key adds the entry and its PDF</span></a></li>
+    <li><a href="#read"><b>Read</b><span>PDFs in tabs, beside their details</span></a></li>
+    <li><a href="#cite"><b>Cite</b><span><kbd>⌥Space</kbd> from any app</span></a></li>
+  </ol>
+
+  <div class="tour" data-tour>
+    <div class="tabs" role="tablist" aria-label="The windows of the app">
+      <button role="tab" aria-selected="true" aria-controls="tour-feeds" id="tab-feeds">Feeds</button>
+      <button role="tab" aria-selected="false" aria-controls="tour-search" id="tab-search" tabindex="-1">Search</button>
+      <button role="tab" aria-selected="false" aria-controls="tour-library" id="tab-library" tabindex="-1">Library</button>
+      <button role="tab" aria-selected="false" aria-controls="tour-panel" id="tab-panel" tabindex="-1">Panel</button>
+    </div>
+    <div class="shot" role="tabpanel" id="tour-feeds" aria-labelledby="tab-feeds">
+      <img src="images/feeds-list.png" alt="The Feeds tab: the papers and posts of the last 90 days, the best score first, each with its source, title, authors and score bars" width="2400" height="1506">
+    </div>
+    <div class="shot" role="tabpanel" id="tour-search" aria-labelledby="tab-search" hidden>
+      <img src="images/search-list.png" alt="The Search tab: a search of OpenAlex for Greenland ice sheet melt, the works closest to the library first, those in it ticked" width="2400" height="1506">
+    </div>
+    <div class="shot" role="tabpanel" id="tour-library" aria-labelledby="tab-library" hidden>
+      <img src="images/library.png" alt="The library window: the papers on the Greenland ice sheet in a table, the views of the library in the sidebar, and the details of the paper selected" width="2400" height="1440">
+    </div>
+    <div class="shot" role="tabpanel" id="tour-panel" aria-labelledby="tab-panel" hidden>
+      <img src="images/main.png" alt="The search panel: the papers of an author, newest first, and the preview of the first one with its first page and citation" width="2532" height="1012">
+    </div>
   </div>
 </section>
 
-<section id="features" class="features">
-  <article class="feature wide">
+<section class="features">
+  <article id="follow" class="feature wide">
     <div>
-      <h2>Search the way you remember</h2>
-      <p>Every word must match, from the start of a word: <code>rob</code> finds Robinson. Filters narrow it down:
-        <code>f:</code> for the first author, <code>y:2010-2015</code> for years, <code>j:</code> for the journal,
-        <code>has:pdf</code> for the papers with a PDF, quotes for a phrase, <code>-</code> to leave something out.</p>
-      <p>Paste a reference from a paper or a web page to find the entries closest to it: the entry of its DOI, else
-        those with most of its authors, title and year.</p>
-      <p>Results come newest first, with the matched words in bold. A strip shows the matches of each year: drag
-        across it to keep a range of years.</p>
+      <p class="step">Follow</p>
+      <h2>The new papers of your field, the best first</h2>
+      <p>Subscribe to journals, preprint servers, news sites and blogs. Each new paper gets a score from your
+        keywords and from how close it is to the papers already in your library, so the ones you would read come
+        first, and the rest are a glance away.</p>
+      <p>Go through the list with the keys: <kbd>j</kbd> <kbd>k</kbd> to move, <kbd>s</kbd> to shortlist,
+        <kbd>m</kbd> to mark as read, <kbd>x</kbd> to hide, <kbd>a</kbd> to add to the library. A blog post leads
+        to the paper it is about; one for later can be snoozed.</p>
     </div>
-    <img src="images/years.png" alt="A search for Greenland between 2015 and 2020, the years kept highlighted on the strip of matches per year" loading="lazy" width="2532" height="1012">
+    <img src="images/feeds.png" alt="A paper of the Feeds tab open over the list: its buttons, abstract, and why it is there, its score from the keywords and the library" loading="lazy" width="2400" height="1506">
   </article>
 
-  <article class="feature wide reverse">
+  <article id="find" class="feature wide reverse">
     <div>
-      <h2>Cite in one key</h2>
-      <p>Open the PDF with <kbd>↵</kbd>, copy <code>[@key]</code> for Markdown, <code>\cite{key}</code> for LaTeX,
-        the BibTeX entry, or the citation, formatted, with <kbd>⌘⌥C</kbd>. <kbd>⌘K</kbd> lists every action.</p>
-      <p>The preview shows the first page, the citation in your style (Copernicus by default) and the entry, as
-        formatted or as written in the file.</p>
+      <p class="step">Find</p>
+      <h2>Search all of science</h2>
+      <p>The Search tab asks <a href="https://openalex.org">OpenAlex</a>, an open index of hundreds of millions of
+        works, with the same words and filters as your library: <code>a:</code>, <code>y:2015-</code>,
+        <code>j:</code>. The papers you already have are marked, and the closest ones of your library shown beside
+        each result.</p>
+      <p>Follow a paper's citations and references, add it in one key, or keep a search: <b>Subscribe</b> turns
+        it into a feed of the papers to come. <b>Online ▾</b> sends the same query to Google Scholar, Semantic
+        Scholar, arXiv, PubMed and others.</p>
     </div>
-    <img src="images/actions.png" alt="The list of actions over the results: open the PDF, reveal it, open the DOI page, copy the key, [@key], \cite{key} or the BibTeX" loading="lazy" width="2532" height="1012">
+    <img src="images/search.png" alt="A work found in the Search tab, open over the results: its buttons, Cited by and References, and its abstract with the words of the search marked" loading="lazy" width="2400" height="1506">
   </article>
 
-  <article class="feature wide">
+  <aside class="together">
+    <h2>One loop, not four apps</h2>
+    <p>A search you like becomes a feed. A paper in a feed is one key from your library, with its PDF. And your
+      library tells the feeds what to rank first: the more you keep, the better they get.</p>
+  </aside>
+
+  <article id="keep" class="feature wide">
     <div>
-      <h2>Your library in a window</h2>
-      <p>Open Library from the menu-bar icon, or <kbd>⌘O</kbd> in the panel: a table of your papers that the same
-        search filters, with views in the sidebar (recently opened, no PDF, broken file links, possible duplicates)
-        and your tags. Sort, move, resize and choose the columns.</p>
-      <p>Export the selection, or the papers of a tag, to a <code>.bib</code> file: the references of a
-        manuscript.</p>
+      <p class="step">Keep</p>
+      <h2>Your library, in plain files</h2>
+      <p>Your <code>.bib</code> files are the library: from papers, JabRef, BibDesk or a Zotero export. The library
+        window shows them in a table that the same search filters, with views (recently added, no PDF, broken file
+        links, possible duplicates) and your tags.</p>
+      <p>Add a paper by its DOI or arXiv id, with its free PDF; edit, tag and attach files; <kbd>⌘Z</kbd> undoes
+        any change. Export the papers of a tag to a <code>.bib</code> file: the references of a manuscript.</p>
     </div>
     <img src="images/library.png" alt="The library window: the papers on the Greenland ice sheet in a table, the views of the library in the sidebar, and the details of the paper selected" loading="lazy" width="2400" height="1440">
   </article>
 
-  <article class="feature wide reverse">
+  <article id="read" class="feature wide reverse">
     <div>
+      <p class="step">Read</p>
       <h2>Read in tabs</h2>
-      <p><kbd>↵</kbd> opens a paper in a tab of the sidebar, its details beside it. On macOS the PDF shows as in
-        Preview, smooth to scroll and zoom, with find and the outline. The papers you had open come back the next
-        time.</p>
-      <p>Everything has a key: <kbd>/</kbd> to search, <kbd>⌘1</kbd> for the library, <kbd>⌃Tab</kbd> from tab to
-        tab, <kbd>⌘W</kbd> to close.</p>
+      <p><kbd>Space</kbd> opens a paper in a tab, its details beside it. On macOS the PDF shows as in Preview,
+        smooth to scroll and zoom, with find and the outline. The papers you had open come back the next time.</p>
+      <p>Everything has a key: <kbd>/</kbd> to search, <kbd>⌘1</kbd> <kbd>⌘2</kbd> <kbd>⌘3</kbd> for the library,
+        the feeds and the search, <kbd>⌃Tab</kbd> from tab to tab, <kbd>⌘W</kbd> to close.</p>
     </div>
-    <img src="images/reader.png" alt="A paper open in the library window: its outline at the left, the PDF, and its details and citation at the right" loading="lazy" width="2400" height="1440">
+    <img src="images/reader.png" alt="A paper open in a tab of the library window: the PDF, with the views and the open papers in the sidebar" loading="lazy" width="2400" height="1506">
+  </article>
+
+  <article id="cite" class="feature wide">
+    <div>
+      <p class="step">Cite</p>
+      <h2>Any paper, a keystroke away</h2>
+      <p>Press <kbd>⌥Space</kbd> in any app and type a few letters of an author, a title or a year:
+        <code>rob</code> finds Robinson, <code>y:2010-2015</code> keeps those years, a pasted reference finds its
+        entry.</p>
+      <p><kbd>↵</kbd> opens the PDF, <kbd>⌘.</kbd> copies <code>[@key]</code> for Markdown, <kbd>⌘L</kbd>
+        <code>\cite{key}</code> for LaTeX, <kbd>⌘B</kbd> the BibTeX, <kbd>⌘⌥C</kbd> the citation in your style.
+        <kbd>⌘K</kbd> lists every action.</p>
+    </div>
+    <img src="images/actions.png" alt="The list of actions over the results: open the PDF, reveal it, open the DOI page, copy the key, [@key], \cite{key} or the BibTeX" loading="lazy" width="2532" height="1012">
   </article>
 
   <div class="grid">
     <article class="feature">
-      <h3>Plain files</h3>
-      <p>Reads <code>.bib</code> files as they are, from papers, JabRef, BibDesk or a Zotero export. The PDFs stay
-        in your folders, where any app opens them.</p>
-    </article>
-    <article class="feature">
       <h3>Always up to date</h3>
-      <p>Change a <code>.bib</code> file with any tool, or let a sync client do it: the panel reloads it at once.</p>
-    </article>
-    <article class="feature">
-      <h3>Several libraries</h3>
-      <p>Choose one or more <code>.bib</code> files; the panel searches them all.</p>
+      <p>Change a <code>.bib</code> file with any tool, or let a sync client do it: the app reloads it at once.</p>
     </article>
     <article class="feature">
       <h3>Quick</h3>
@@ -108,14 +152,9 @@
         <a href="https://www.zotero.org/styles">CSL style</a> works.</p>
     </article>
     <article class="feature">
-      <h3>Share</h3>
-      <p>Copy a snippet with the title as a link, the link, the DOI, or the citation as text or HTML. They paste
-        formatted in documents and mails, as plain text elsewhere.</p>
-    </article>
-    <article class="feature">
-      <h3>Drag out</h3>
-      <p>Drag a paper from the list to drop its PDF in a mail, a chat or a folder, and the citation from the
-        preview to drop it in a document.</p>
+      <h3>Share and drag out</h3>
+      <p>Copy the title as a link, the DOI or the citation, formatted where it pastes. Drag a paper out to drop its
+        PDF in a mail, a chat or a folder.</p>
     </article>
     <article class="feature">
       <h3>From any app</h3>
@@ -123,22 +162,19 @@
         press <kbd>Ctrl+Alt+Shift+Space</kbd>.</p>
     </article>
     <article class="feature">
-      <h3>Recent papers</h3>
-      <p>The empty panel lists the papers you opened or copied last, with a reminder of the keys and filters.</p>
-    </article>
-    <article class="feature">
       <h3>Out of the way</h3>
-      <p>It lives in the menu bar, opens with its hotkey and hides when you go back to work. The library window
-        is in the Dock only while it is open.</p>
+      <p>It lives in the menu bar and hides when you go back to work. The library window is in the Dock only
+        while it is open.</p>
     </article>
     <article class="feature">
-      <h3>Made with papers</h3>
-      <p>A companion of the <a href="https://github.com/perrette/papers">papers</a> command line, which adds PDFs to
-        the library with the right names. Papers Desktop needs nothing else to run.</p>
+      <h3>A command line too</h3>
+      <p><code>papers-rs</code>, the same program that writes your library, installs from the app menu. It works
+        with the <a href="https://github.com/perrette/papers">papers</a> command line.</p>
     </article>
     <article class="feature">
       <h3>Open source</h3>
-      <p>Free software under the MIT license, written in Rust with <a href="https://tauri.app">Tauri</a>.</p>
+      <p>Free software under the MIT license, written in Rust with <a href="https://tauri.app">Tauri</a>. It
+        updates itself.</p>
     </article>
   </div>
 </section>
@@ -188,5 +224,30 @@
     license</a>. The bundled citation styles come from the <a href="https://citationstyles.org">Citation Style
     Language</a> project, under CC BY-SA 3.0.</p>
 </footer>
+
+<script>
+  // the tour of the hero: one window at a time, its tab chosen by a click or the arrow keys
+  for (const tour of document.querySelectorAll("[data-tour]")) {
+    const tabs = [...tour.querySelectorAll('[role="tab"]')];
+    const show = (tab) => {
+      for (const t of tabs) {
+        const on = t === tab;
+        t.setAttribute("aria-selected", on);
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+      }
+    };
+    tabs.forEach((tab, i) => {
+      tab.addEventListener("click", () => show(tab));
+      tab.addEventListener("keydown", (e) => {
+        const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+        if (!step) return;
+        const next = tabs[(i + step + tabs.length) % tabs.length];
+        show(next);
+        next.focus();
+      });
+    });
+  }
+</script>
 </body>
 </html>
