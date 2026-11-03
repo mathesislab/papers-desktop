@@ -31,7 +31,7 @@ export const rowsOf = (ids: string[], query: string) => invoke<FeedRow[]>("searc
 export const starred = () => invoke<FeedRow[]>("search_starred");
 /** A query subscribed to in the Feeds tab, as a sweep of OpenAlex: the subscription made, to fetch. */
 export const subscribe = (query: string) => invoke<SubscriptionInfo>("search_subscribe", { query });
-/** The services of *Search online*, by name: Google Scholar, Google, then the user's of the settings. */
+/** The services of *Search online*, by name: Google Scholar, those built in the settings leave in, then the user's. */
 export const services = () => invoke<string[]>("search_services");
 /** The address of a search of a service online, to open in the browser; refused, said, for what the service cannot
  *  be asked. */

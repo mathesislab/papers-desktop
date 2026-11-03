@@ -202,17 +202,17 @@ pub async fn search_starred(app: AppHandle) -> Result<Vec<FeedRow>, String> {
     .await
 }
 
-/// The services of *Search online*, by name: those built in, then the
-/// user's of the settings.
+/// The services of *Search online*, by name: those built in that the
+/// settings do not leave out, Google Scholar first, then the user's.
 #[tauri::command]
 pub fn search_services(app: AppHandle) -> Result<Vec<String>, String> {
     let settings = Settings::load(&app.state::<AppState>().settings_path)?;
+    let hidden = &settings.search_services_hidden;
+    let built_in = Service::built_in()
+        .filter(|name| *name == Service::SCHOLAR || !hidden.iter().any(|h| h == name))
+        .map(String::from);
     let own = settings.search_services.into_iter().map(|s| s.name);
-    Ok(Service::BUILT_IN
-        .map(String::from)
-        .into_iter()
-        .chain(own)
-        .collect())
+    Ok(built_in.chain(own).collect())
 }
 
 /// The address of a search of a service online, by its name, for the

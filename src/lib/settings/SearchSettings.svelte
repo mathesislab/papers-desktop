@@ -112,9 +112,29 @@
 <section>
   <h2>Search online</h2>
   <p class="hint">
-    The services of the Search tab's <b>Online ▾</b>, after Google Scholar and Google: the query opened in the
-    browser. In the address, <code>{"{query}"}</code> is the query as words, <code>{"{scholar}"}</code> as Google
-    Scholar takes it (<code>author:</code>, <code>intitle:</code>, <code>source:</code>).
+    The services of the Search tab's <b>Online ▾</b>: the query opened in the browser. Google Scholar is
+    <b>Online</b> itself; the others built in are in the menu when ticked.
+  </p>
+  <div class="services">
+    {#each prefs.services.filter((name) => name !== "Google Scholar") as name (name)}
+      <label>
+        <input
+          type="checkbox"
+          checked={!settings.search_services_hidden.includes(name)}
+          onchange={(e) =>
+            prefs.save({
+              search_services_hidden: e.currentTarget.checked
+                ? settings.search_services_hidden.filter((h) => h !== name)
+                : [...settings.search_services_hidden, name],
+            })}
+        />
+        {name}
+      </label>
+    {/each}
+  </div>
+  <p class="hint">
+    Your own, after them. In the address, <code>{"{query}"}</code> is the query as words, <code>{"{scholar}"}</code>
+    as Google Scholar takes it (<code>author:</code>, <code>intitle:</code>, <code>source:</code>).
   </p>
   <ul class="files">
     {#each settings.search_services as s, i (s.name)}
@@ -160,6 +180,20 @@
   .hotkey.recording {
     border-color: var(--accent);
     color: var(--accent);
+  }
+
+  /* the services built in, ticked when in the menu: in columns */
+  .services {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 4px 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .services label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   /* a service of Search online being added: its name, its address taking the room */

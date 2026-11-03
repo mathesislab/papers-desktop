@@ -1255,7 +1255,11 @@ OpenAlex (`subscription_filter`: its words in the titles and abstracts, then
 its filters), fetched at once (*Subscribed to "…" in Feeds*).
 
 **Search online**: *Online ▾* next to *Search* (hover *Search online*) is a
-menu of the services that have no API: *Google Scholar*, *Google*, then the
+menu of services in the browser (the tab's own search stays OpenAlex's
+alone, so as not to be slower): *Google Scholar* (*Online* itself), those
+built in that take plain text (*Google*, *Semantic Scholar*, *Crossref*,
+*arXiv*, *bioRxiv*, *PubMed*, *Europe PMC*, *Zenodo*: each in the menu
+unless unticked in the settings, `search_services_hidden`), then the
 user's (`search_services` in the settings, the Search section: a name and an
 address with `{query}` or `{scholar}` in it, http or https, checked when
 saved by `save_settings`), then *Add a service…* (the settings at that
@@ -1267,10 +1271,10 @@ Scholar's: words and "phrases" as they are, `-word`, `a:` as
 words, `doi:` the DOI as a phrase, the alternatives of a field an OR, `y:`
 one span of years as `as_ylo` and `as_yhi`; what it cannot be asked (a field
 that excludes, `cites:`, `citedby:`, another field, two spans of years) is
-refused, said in the notice. Google's: all of it as plain text, phrases in
-their quotes, `-` before what is left out, the years as written. A user's
-`{query}` is Google's words, `{scholar}` Google Scholar's (its years then
-need a `{query}` too).
+refused, said in the notice. Google's and the others built in: all of it as
+plain text, phrases in their quotes, `-` before what is left out, the years
+as written. A user's `{query}` is those words, `{scholar}` Google Scholar's
+(its years then need a `{query}` too).
 
 The list and the details are the Feeds tab's (`ItemList`, `ItemPane`: the
 columns and the buttons given by the tab; `Reader`, the item read in place of

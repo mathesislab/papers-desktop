@@ -1,10 +1,11 @@
-//! Searching in the browser the services that have no API: Google Scholar,
-//! Google, or one of the user's, by an address. A query of the Search tab's
-//! language (core's, as [`ask`](crate::ask) reads it) as the words the
-//! service takes: Google Scholar's operators (`author:`, `intitle:`,
-//! `source:`, the years as its parameters `as_ylo` and `as_yhi`), or plain
-//! text (Google, a user's `{query}`). What Google Scholar cannot be asked is
-//! refused, said.
+//! Searching in the browser other services than OpenAlex: Google Scholar,
+//! those built in that take plain text (Google, Semantic Scholar, Crossref,
+//! arXiv, bioRxiv, PubMed, Europe PMC, Zenodo), or one of the user's, by an
+//! address. A query of the Search tab's language (core's, as
+//! [`ask`](crate::ask) reads it) as the words the service takes: Google
+//! Scholar's operators (`author:`, `intitle:`, `source:`, the years as its
+//! parameters `as_ylo` and `as_yhi`), or plain text (the others, a user's
+//! `{query}`). What Google Scholar cannot be asked is refused, said.
 
 use std::ops::RangeInclusive;
 
@@ -19,9 +20,54 @@ use crate::search::SCHEMA;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Service {
     Scholar,
-    Google,
+    /// one built in that takes the query as plain text
+    Web(&'static Web),
     Own(OwnService),
 }
+
+/// A service built in that takes the query as plain text: its name, and its
+/// address with `{query}` for the words.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Web {
+    pub name: &'static str,
+    url: &'static str,
+}
+
+/// The services built in after Google Scholar, in the order of the menu.
+const WEB: [Web; 8] = [
+    Web {
+        name: "Google",
+        url: "https://www.google.com/search?q={query}",
+    },
+    Web {
+        name: "Semantic Scholar",
+        url: "https://www.semanticscholar.org/search?q={query}",
+    },
+    Web {
+        name: "Crossref",
+        url: "https://search.crossref.org/search/works?q={query}&from_ui=yes",
+    },
+    Web {
+        name: "arXiv",
+        url: "https://arxiv.org/search/?query={query}&searchtype=all",
+    },
+    Web {
+        name: "bioRxiv",
+        url: "https://www.biorxiv.org/search/{query}",
+    },
+    Web {
+        name: "PubMed",
+        url: "https://pubmed.ncbi.nlm.nih.gov/?term={query}",
+    },
+    Web {
+        name: "Europe PMC",
+        url: "https://europepmc.org/search?query={query}",
+    },
+    Web {
+        name: "Zenodo",
+        url: "https://zenodo.org/search?q={query}",
+    },
+];
 
 /// A service of the user's: its name, and its address with `{query}` in it
 /// (the words as Google takes them) or `{scholar}` (as Google Scholar does).
@@ -44,15 +90,22 @@ const ENCODED: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'~');
 
 impl Service {
+    /// The name of Google Scholar, the first service: the Search tab's *Online*.
+    pub const SCHOLAR: &str = "Google Scholar";
+
     /// The names of the services built in, in the order of the menu.
-    pub const BUILT_IN: [&str; 2] = ["Google Scholar", "Google"];
+    pub fn built_in() -> impl Iterator<Item = &'static str> {
+        std::iter::once(Service::SCHOLAR).chain(WEB.iter().map(|web| web.name))
+    }
 
     /// The service of a name: one built in, else one of the user's.
     pub fn named(name: &str, own: &[OwnService]) -> Option<Service> {
-        match name {
-            "Google Scholar" => Some(Service::Scholar),
-            "Google" => Some(Service::Google),
-            _ => (own.iter().find(|s| s.name == name)).map(|s| Service::Own(s.clone())),
+        if name == Service::SCHOLAR {
+            return Some(Service::Scholar);
+        }
+        match WEB.iter().find(|web| web.name == name) {
+            Some(web) => Some(Service::Web(web)),
+            None => (own.iter().find(|s| s.name == name)).map(|s| Service::Own(s.clone())),
         }
     }
 }
@@ -85,8 +138,7 @@ pub fn check_services(services: &[OwnService]) -> std::result::Result<(), String
         service.check()?;
         let name = service.name.trim();
         let same = |other: &str| other.trim().eq_ignore_ascii_case(name);
-        if Service::BUILT_IN.iter().any(|b| same(b)) || services[..i].iter().any(|s| same(&s.name))
-        {
+        if Service::built_in().any(same) || services[..i].iter().any(|s| same(&s.name)) {
             return Err(format!("{name}: a service has that name already"));
         }
     }
@@ -110,10 +162,7 @@ pub fn online_url(service: &Service, query: &str) -> std::result::Result<String,
             }
             Ok(url)
         }
-        Service::Google => Ok(format!(
-            "https://www.google.com/search?q={}",
-            encoded(&plain(query)?)
-        )),
+        Service::Web(web) => Ok(web.url.replace(QUERY, &encoded(&plain(query)?))),
         Service::Own(own) => {
             own.check()?;
             let mut url = own.url.trim().to_string();
@@ -253,8 +302,12 @@ mod tests {
         online_url(&Service::Scholar, query).unwrap()
     }
 
+    fn google() -> Service {
+        Service::named("Google", &[]).unwrap()
+    }
+
     fn google_url(query: &str) -> String {
-        online_url(&Service::Google, query).unwrap()
+        online_url(&google(), query).unwrap()
     }
 
     #[test]
@@ -342,8 +395,33 @@ mod tests {
             "https://www.google.com/search?q=ice%20sheet"
         );
         assert_eq!(
-            online_url(&Service::Google, "  ").unwrap_err(),
+            online_url(&google(), "  ").unwrap_err(),
             "Nothing to search"
+        );
+    }
+
+    #[test]
+    fn the_services_built_in_take_the_words_in_their_address() {
+        let url =
+            |name: &str| online_url(&Service::named(name, &[]).unwrap(), "ice sheet").unwrap();
+        assert_eq!(
+            url("arXiv"),
+            "https://arxiv.org/search/?query=ice%20sheet&searchtype=all"
+        );
+        assert_eq!(url("bioRxiv"), "https://www.biorxiv.org/search/ice%20sheet");
+        assert_eq!(
+            Service::built_in().collect::<Vec<_>>(),
+            [
+                "Google Scholar",
+                "Google",
+                "Semantic Scholar",
+                "Crossref",
+                "arXiv",
+                "bioRxiv",
+                "PubMed",
+                "Europe PMC",
+                "Zenodo"
+            ]
         );
     }
 
@@ -377,7 +455,7 @@ mod tests {
             Service::named("Google Scholar", &mine),
             Some(Service::Scholar)
         );
-        assert_eq!(Service::named("Google", &mine), Some(Service::Google));
+        assert_eq!(Service::named("Google", &mine), Some(google()));
         assert_eq!(
             Service::named("Base", &mine),
             Some(Service::Own(mine[0].clone()))
