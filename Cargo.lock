@@ -3293,7 +3293,7 @@ dependencies = [
 
 [[package]]
 name = "papers-core"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "any_ascii",
  "biblatex",
@@ -3305,7 +3305,7 @@ dependencies = [
 
 [[package]]
 name = "papers-desktop"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "dirs 7.0.0",

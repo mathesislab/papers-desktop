@@ -14,7 +14,7 @@ ammonia = "4"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 feed-rs = "3"
 html-escape = "0.3"
-papers-core = { version = "0.8.1", path = "../core" }
+papers-core = { version = "0.9.0", path = "../core" }
 percent-encoding = "2"
 quick-xml = "0.42"
 regex = "1"
