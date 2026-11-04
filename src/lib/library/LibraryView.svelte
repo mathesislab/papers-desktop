@@ -1457,20 +1457,24 @@
         <ReaderBar {reader} onclose={closeActive} />
       {/if}
       <span class="spacer"></span>
-      {#if notice}<span class="count">{notice}</span>{/if}
       {#if front}
         {@const id = front}
-        <button
+        <!-- what was just done, floating over the bar left of its buttons: nothing moves (under the bar, the PDF view
+             of macOS would hide it) -->
+        <div class="actions">
+          {#if notice}{#key notice}<span class="pill" role="status">{notice}</span>{/key}{/if}
+          <button
           class="tool"
           class:on={layout.paperDetails}
           title="The details of the paper beside its PDF ({label(commands.details)})"
           onclick={() => (layout.paperDetails = !layout.paperDetails)}>Details</button
-        >
-        <button class="tool" title="The paper selected in the Library tab" onclick={() => show(id, false)}>Show in Library</button>
-        <span class="split">
-          <button class="tool" title="Copy the citation, in the style of the settings" onclick={() => copyCitations([id])}>Cite</button
-          ><button class="tool" title="Copy the key, [@key], \cite{'{'}key{'}'}, the BibTeX or the DOI link" aria-label="Other ways to copy" onclick={() => citeMenu(id)}>▾</button>
-        </span>
+          >
+          <button class="tool" title="Show in Library: the paper selected there" onclick={() => show(id, false)}>In Library</button>
+          <span class="split">
+            <button class="tool" title="Copy the citation, in the style of the settings" onclick={() => copyCitations([id])}>Cite</button
+            ><button class="tool" title="Copy the key, [@key], \cite{'{'}key{'}'}, the BibTeX or the DOI link" aria-label="Other ways to copy" onclick={() => citeMenu(id)}>▾</button>
+          </span>
+        </div>
       {/if}
     </header>
     <div class="content">
@@ -1723,6 +1727,46 @@
   }
   .tool.on {
     background: var(--line);
+  }
+  /* the buttons of the Papers tab, on one line; what was just done floats left of them */
+  .actions {
+    position: relative;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .actions .tool {
+    white-space: nowrap;
+  }
+  .pill {
+    position: absolute;
+    right: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 360px;
+    overflow: hidden;
+    padding: 3px 10px;
+    border-radius: 11px;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    animation: pill 4s ease forwards;
+  }
+  @keyframes pill {
+    0% {
+      opacity: 0;
+    }
+    5%,
+    85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
   /* Cite and its ▾, one button */
   .split {
