@@ -851,13 +851,13 @@ Library tab):
   and its ▾ the list, the items older than 1, 3 or 7 days, or those above. The row menu's
   *Source Is* sets the kind of its subscription (Journal, Preprint Server,
   News & Press, General), which its items take at once.
-- *Held updates*: a fetch in the background (polling) does not change the
-  list: the items first fetched after the list was last brought up to date
-  (`shown`, the layout's `feeds.shown`) are neither listed nor counted, and
-  wait behind *N new · Show*; a fetch asked for (⇧⌘R, *Fetch*, a
-  subscription) shows them at once. ⌘R brings the list up to date without
-  fetching: what was held back, the items triaged here gone from where they
-  no longer belong, sorted again.
+- *New items at once*: what a fetch brings, in the background (polling) or
+  asked for, comes into the list as soon as it is read (`feeds-changed`).
+  The items first fetched since the list was last shown (`found`, after the
+  layout's `feeds.shown`, which each answer moves on) are shaded in the
+  green of the tab, the shade fading over 5 s (`fetchedSince`); the first
+  time, none. ⌘R lets go the items triaged here, which leave where they no
+  longer belong, and sorts the list again, without fetching.
 - *Reminders*: `z` (*⏰ Later*) snoozes items 1, 3, 7 or 30 days (out of
   *Unread*, in *Snoozed*, back as new at the start of that day); `u` keeps
   them unread (a reminder due now). A due reminder is first in the list,
@@ -896,8 +896,9 @@ Library tab):
   adding, the Feeds tab stays in front (from the library, the paper is shown
   in the Library tab, as before) and the item becomes *added*. A post adds
   its linked paper.
-- *Fetch*: on opening the tab when the last fetch is older than 15 minutes,
-  and on `⇧⌘R` or ↻, in two phases: the feeds read (the list shown at
+- *Fetch*: by the polling (a setting) and on `⇧⌘R` or ↻, never by opening
+  the tab; the ↻ button says how long ago the last fetch was (*↻ Fetch 8
+  min*). In two phases: the feeds read (the list shown at
   once), then the lookups of Crossref and OpenAlex (*Looking up in Crossref
   and OpenAlex…*), the rules applied at their end; the `feeds-fetching`
   event says the phase (`reading`, `looking-up`, `done`), the
@@ -905,8 +906,7 @@ Library tab):
   1 failed*, the failures listed on hover and click); `feeds-changed` reads
   the list again. That event alone does after a change, here or elsewhere
   (a triage, a fetch, papers found, a subscription): the tab asks for the
-  list itself only when its filters change or it is brought up to date
-  (⌘R, *N new · Show*, a fetch asked for: `bringUpToDate`), and the phase
+  list itself only when its filters change or on ⌘R, and the phase
   event alone says whether a fetch is under way.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN, an OpenAlex
   filter or *Words*, with the kind of its items (the user's choice, Journal
@@ -1058,9 +1058,8 @@ subscription. Removed items are rows only if the query names them
 by the view for its rows and for each saved view; the page asks for the
 query of its choices alone.
 
-**When**: on opening the Feeds tab (the tab calls `feeds_fetch` when shown
-and the last fetch, `feeds_last_fetch`, is older than 15 minutes) and on
-⇧⌘R (`feeds_fetch` with `only`: one subscription, which leaves the last
+**When**: on ⇧⌘R and ↻ (never on opening the Feeds tab), on
+*Fetch This Source* (`feeds_fetch` with `only`: one subscription, which leaves the last
 fetch's summary as it was); polling in the background is a setting (off by default: the app sends
 nothing unless asked): a thread looks each minute, the settings read each
 time, and fetches when the last fetch is older than `feeds_poll_minutes`. The page of

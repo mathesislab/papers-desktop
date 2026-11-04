@@ -37,6 +37,7 @@
     look = "table",
     date = "age",
     unread = true,
+    fresh,
     star = STAR.row,
     remove,
     after,
@@ -67,6 +68,8 @@
     date?: "age" | "year";
     /** a new item's title bold, one seen muted */
     unread?: boolean;
+    /** the items fetched since the list was last shown: shaded, the shade fading */
+    fresh?: Set<string>;
     /** what the star of a row says, on and off (the tab's `StarWords`) */
     star?: { on: string; off: string };
     /** the ✕ of a row: what it does to the item (the Feeds tab's remove); none: no ✕ */
@@ -168,6 +171,7 @@
       <div
         class="row {unread ? row.triage : ''}"
         class:selected={selected.has(row.id)}
+        class:fresh={fresh?.has(row.id)}
         role="row"
         tabindex="-1"
         aria-selected={selected.has(row.id)}
@@ -292,6 +296,18 @@
   }
   .row.removed .title {
     text-decoration: line-through;
+  }
+  /* fetched since the list was last shown: shaded in the colour of the tab, fading */
+  .row.fresh:not(.selected) {
+    animation: fresh 5s ease-in forwards;
+  }
+  @keyframes fresh {
+    from {
+      background: color-mix(in srgb, var(--feeds) 22%, transparent);
+    }
+    to {
+      background: transparent;
+    }
   }
   .row.selected {
     background: var(--selection);

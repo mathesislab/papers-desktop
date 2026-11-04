@@ -19,9 +19,6 @@ use super::title_of;
 pub struct ViewRequest {
     query: String,
     sort: Sort,
-    /// when the list was last brought up to date: what was fetched since is held back
-    #[serde(default)]
-    shown: Option<DateTime<Utc>>,
 }
 
 /// A row of the list.
@@ -36,6 +33,8 @@ pub struct FeedRow {
     /// the titles of the subscriptions that listed it
     sources: Vec<String>,
     date: Option<DateTime<Utc>>,
+    /// when it was first fetched: the page shows those fetched since it was last shown, for a moment
+    found: DateTime<Utc>,
     /// its score and its parts: `score`, `keywords`, `library`, `excluded`
     #[serde(flatten)]
     rating: Rating,
@@ -94,8 +93,6 @@ impl FeedGroups {
 pub struct FeedView {
     rows: Vec<FeedRow>,
     counts: FeedCounts,
-    /// the items fetched since the list was shown, held back
-    held: usize,
 }
 
 /// A paper behind a post, and its item.
@@ -207,12 +204,10 @@ pub fn view(feeds: &Feeds, matching: Matching, request: &ViewRequest) -> FeedVie
         query: &request.query,
         matching,
         sort: request.sort,
-        shown: request.shown,
         ..CrateRequest::default()
     });
     let rows = Rows::new(feeds);
     FeedView {
-        held: view.held,
         counts: FeedCounts {
             all: view.counts.all,
             is: view.counts.is,
@@ -250,6 +245,7 @@ impl<'a> Rows<'a> {
                 .map(title_of)
                 .collect(),
             date: item.date,
+            found: item.first_seen(),
             triage: feeds.triage(&item.id),
             reminder: row.reminder,
             remind: feeds.mark(&item.id).and_then(|m| m.remind),

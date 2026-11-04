@@ -12,6 +12,7 @@
   import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { onMount, untrack } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
   import { label, matches, type Shortcut } from "$lib/keys";
   import { modalOpen } from "$lib/library/modal.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
@@ -45,12 +46,13 @@
     type FeedFilters,
   } from "./filters";
   import {
+    ago,
     fetchLine,
+    fetchedSince,
     mergeRows,
     newAbove,
     newOlderThan,
     snoozeUntil,
-    stale,
     type TriageAction,
   } from "./items";
   import { SOURCE_KINDS, isPost, sourceKinds } from "./kinds";
@@ -68,8 +70,8 @@
     columns: Shown<FeedColumn>[];
     /** the list simple, or a table of those columns: the window's layout keeps it */
     look: Look;
-    /** when the list was last brought up to date: what a fetch in the background brought since waits behind
-     *  *N new · Show*; a fetch asked for here (⌘R, Fetch, a subscription) shows it at once. The layout keeps it. */
+    /** when the list was last shown: what was fetched since is shaded for a moment when it comes in. The layout
+     *  keeps it. */
     shown: string | null;
   } = $props();
 
@@ -166,14 +168,14 @@
     };
   });
 
-  /** The tab opened: the subscriptions, the saved views, and a fetch when the last is older than 15 minutes. */
+  /** The tab opened: the subscriptions and the saved views. Opening it fetches nothing: the polling, ⇧⌘R and Fetch
+   *  do. */
   async function start() {
     try {
       [last, subscriptions, views] = await Promise.all([api.lastFetch(), api.subscriptions(), api.savedViews()]);
     } catch (e) {
       failure = String(e);
     }
-    if (stale(last) && subscriptions.length) fetchNow(false);
   }
 
   async function readKeepDays() {
@@ -186,8 +188,8 @@
 
   /** ⇧⌘R, ↻: every subscription fetched, or the one of id `only` (the phases of the fetch say where it is; one
    *  asked while another reads the feeds waits for it, and a full one then answers its summary); what it brought
-   *  shown at once, unless `show` is off (the fetch of a tab opening). */
-  async function fetchNow(show = true, only?: string) {
+   *  comes in with the change it makes (`feeds-changed`). */
+  async function fetchNow(only?: string) {
     failures = false;
     try {
       const summary = await api.fetchFeeds(only);
@@ -196,16 +198,12 @@
     } catch (e) {
       list.say(String(e));
     }
-    if (show) bringUpToDate(true);
   }
 
-  /** The list brought up to date: what was fetched since it was shown, held back, into it. ⌘R (`keep` off) also
-   *  lets go the items triaged here, which leave where they no longer belong, and sorts it again; *N new · Show*
-   *  and a fetch asked for here keep them in place. */
-  function bringUpToDate(keep: boolean) {
-    if (!keep) list.sticky.clear();
-    shown = new Date().toISOString();
-    load(keep);
+  /** ⌘R: the items triaged here let go, which leave where they no longer belong, and the list sorted again. */
+  function refresh() {
+    list.sticky.clear();
+    load(false);
   }
 
   /** A fetch read the feeds, or ended: its summary and the subscriptions again. */
@@ -218,19 +216,24 @@
   }
 
   let asked = 0;
-  /** the items fetched since the list was shown, held back */
-  let held = $state(0);
+  /** the items fetched since the list was last shown, shaded while their shade fades */
+  const fresh = new SvelteSet<string>();
+  const FRESH_MS = 5000;
 
   /** The items the filters select, and the counts; with `keep`, the items triaged here stay in their place. */
   async function load(keep: boolean) {
     const n = ++asked;
     try {
-      shown ??= new Date().toISOString();
-      const answer = await api.view({ ...request, shown });
+      const since = shown;
+      shown = new Date().toISOString();
+      const answer = await api.view(request);
       if (n !== asked) return;
+      for (const id of fetchedSince(answer.rows, since)) {
+        fresh.add(id);
+        setTimeout(() => fresh.delete(id), FRESH_MS);
+      }
       list.rows = keep ? mergeRows(list.rows, answer.rows, list.sticky) : answer.rows;
       counts = answer.counts;
-      held = answer.held;
       failure = null;
     } catch (e) {
       if (n !== asked) return;
@@ -432,7 +435,7 @@
           text: "Fetch This Source",
           enabled: !fetching,
           action: async () => {
-            for (const s of subs) await fetchNow(true, s.id);
+            for (const s of subs) await fetchNow(s.id);
           },
         }),
         await PredefinedMenuItem.new({ item: "Separator" }),
@@ -503,7 +506,7 @@
       e.preventDefault();
       action();
     };
-    if (matches(e, REFRESH)) return act(() => bringUpToDate(false));
+    if (matches(e, REFRESH)) return act(refresh);
     if (matches(e, FETCH)) return act(() => fetchNow());
     if (list.navKey(e) || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
     // Esc, last: the search and the choices as at first (the order, the groups unfolded kept)
@@ -615,14 +618,16 @@
       />
       <span class="notice">{list.notice ?? ""}</span>
       <span class="spacer"></span>
-      {#if held}
-        <button class="tool held" title="Show what was fetched since the list was brought up to date ({label(REFRESH)} also sorts it again)" onclick={() => bringUpToDate(true)}>
-          {held} new · Show
-        </button>
-      {/if}
-      <button class="tool" class:busy={fetching} disabled={fetching} title="Fetch every subscription ({label(FETCH)})" onclick={() => fetchNow()}>
+      <button
+        class="tool"
+        class:busy={fetching}
+        disabled={fetching}
+        title="Fetch every subscription ({label(FETCH)}); {fetchLine(last, now)}"
+        onclick={() => fetchNow()}
+      >
         <span class="spin">↻</span>
         {fetching ? "Fetching…" : "Fetch"}
+        {#if !fetching && last}<span class="ago">{ago(last.at, now)}</span>{/if}
       </button>
       <button class="tool" title="Subscribe to a journal, a preprint server, a news site or a blog, or unsubscribe" onclick={() => (subscribing = true)}>
         Subscribe…
@@ -635,6 +640,7 @@
         specs: FEED_SPECS,
         menu: FEED_ORDER,
         sort: filters.sort,
+        fresh,
         onsort: (sort) => (filters.sort = sort),
         oncolumns: (shown) => (columns = shown),
         onstar: (id) => actions.star.run([id]),
@@ -746,12 +752,11 @@
 {/snippet}
 
 <style>
-  /* what a fetch in the background brought, waiting */
-  .tool.held {
-    border-color: color-mix(in srgb, var(--feeds) 40%, transparent);
-    background: color-mix(in srgb, var(--feeds) 14%, transparent);
-    color: var(--feeds);
-    font-weight: 500;
+  /* how long ago the last fetch was, on the button that fetches */
+  .tool .ago {
+    margin-left: 2px;
+    color: var(--muted);
+    font-size: 11px;
   }
   .tool.busy .spin {
     animation: spin 1s linear infinite;

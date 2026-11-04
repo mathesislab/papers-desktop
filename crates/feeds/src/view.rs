@@ -48,10 +48,6 @@ pub struct ViewRequest<'a> {
     pub sort: Sort,
     /// the removed items too, whatever the query
     pub removed: bool,
-    /// when the list was last brought up to date: the items first fetched
-    /// since are held back (neither listed nor counted, `View::held`); none:
-    /// every item
-    pub shown: Option<DateTime<Utc>>,
 }
 
 /// The rows a request shows, and the counts of the sidebar.
@@ -59,8 +55,6 @@ pub struct ViewRequest<'a> {
 pub struct View {
     pub rows: Vec<Row>,
     pub counts: Counts,
-    /// the items held back, first fetched since the list was shown (not removed)
-    pub held: usize,
 }
 
 /// An item shown.
@@ -149,15 +143,10 @@ impl Feeds {
             .collect();
         let mut counts = Counts::default();
         let mut rows = Vec::new();
-        let mut held = 0;
         let covering = self.covering();
         for item in self.items() {
             let seen = self.seen(item);
             let live = seen.triage() != Triage::Removed;
-            if request.shown.is_some_and(|shown| item.first_seen() > shown) {
-                held += usize::from(live);
-                continue;
-            }
             if live {
                 counts.add(item, &seen);
             }
@@ -184,7 +173,7 @@ impl Feeds {
         // the reminders due first, in that order
         rows.sort_by_key(|(_, row)| row.reminder != Some(Reminder::Due));
         let rows = rows.into_iter().map(|(_, row)| row).collect();
-        View { rows, counts, held }
+        View { rows, counts }
     }
 
     /// An item alone, as the details show it: its texts marked where the
