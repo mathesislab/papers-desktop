@@ -240,10 +240,11 @@
     list.selection.prune(list.ids, keep);
   }
 
-  // the filters changed: the list again, the items triaged before let go
+  // the filters changed: the list again, the items triaged before let go, the item read in place left
   $effect(() => {
     request;
     untrack(() => {
+      list.reading = false;
       list.sticky.clear();
       load(false);
     });

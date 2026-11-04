@@ -505,6 +505,12 @@
     search(searchOf(layout.library));
   });
 
+  // another set (a search, a tag, a view, a library): the table shows it, not the paper read in place of it
+  $effect(() => {
+    filterChips;
+    untrack(() => (reading = false));
+  });
+
   // the details of the paper in front, else of the one in focus; again
   // when the library reloads
   $effect(() => {
