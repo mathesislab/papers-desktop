@@ -5,10 +5,12 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use crate::settings::Settings;
 
-#[derive(Debug, Clone, Copy)]
-enum Hotkey {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Hotkey {
     /// show or hide the panel
     Panel,
+    /// show the library of the main window, its search field ready
+    Library,
     /// find the selected text (the primary selection)
     #[cfg(target_os = "linux")]
     Selection,
@@ -17,6 +19,7 @@ enum Hotkey {
 impl Hotkey {
     const ALL: &[Hotkey] = &[
         Hotkey::Panel,
+        Hotkey::Library,
         #[cfg(target_os = "linux")]
         Hotkey::Selection,
     ];
@@ -25,6 +28,7 @@ impl Hotkey {
     fn keys(self, settings: &Settings) -> &str {
         match self {
             Hotkey::Panel => &settings.hotkey,
+            Hotkey::Library => &settings.library_hotkey,
             #[cfg(target_os = "linux")]
             Hotkey::Selection => &settings.selection_hotkey,
         }
@@ -33,6 +37,7 @@ impl Hotkey {
     fn run(self, app: &AppHandle) {
         match self {
             Hotkey::Panel => crate::toggle(app),
+            Hotkey::Library => crate::main_window::search_library(app),
             #[cfg(target_os = "linux")]
             Hotkey::Selection => crate::selection::find_selected(app),
         }
@@ -56,12 +61,8 @@ impl Hotkey {
             let _ = self.register(app, old);
             return Err(format!("{new} cannot be the hotkey: {e}"));
         }
-        // the menu shows the hotkey of the panel
-        match self {
-            Hotkey::Panel => crate::show_hotkey(app, new),
-            #[cfg(target_os = "linux")]
-            Hotkey::Selection => {}
-        }
+        // the menu bar's menu shows the hotkeys of the panel and the library
+        crate::show_hotkey(app, self, new);
         Ok(())
     }
 }

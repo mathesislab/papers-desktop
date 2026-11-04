@@ -34,7 +34,10 @@ Two windows with different jobs:
   writing.
 - **Main window** (mockup: `docs/mockups/main-window.html`): a normal
   window, in the Dock and `⌘Tab` while it is open. It opens from the
-  menu-bar icon (Open Library) and with `⌘O` in the panel; `⌘I` in the
+  menu-bar icon (Open Library), with `⌘O` in the panel, and with the
+  library hotkey from any app (`library_hotkey`, `⌃⌥Space` on macOS,
+  `Ctrl+Alt+Shift+L` elsewhere; Settings → Search), which shows the Library
+  tab, the list in front, its search field ready; `⌘I` in the
   panel opens the selected paper in it. Enter in the panel opens the PDF
   there too, in a tab (`open_pdf` "app", the default), else in the default
   app of the system ("system") or Preview ("preview", macOS); ⌥Enter opens

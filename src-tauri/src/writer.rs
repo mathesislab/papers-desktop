@@ -1366,7 +1366,7 @@ pub(crate) mod tests {
             status: RwLock::new(Status::Loading),
             watches: Mutex::new(Vec::new()),
             reloads: AtomicU64::new(0),
-            panel_item: Mutex::new(None),
+            hotkey_items: Mutex::new(Vec::new()),
             update_item: Mutex::new(None),
             recent: Recent::load(dir.join("recent.json")),
             added: DatesAdded::load(dir.join("added.json")),

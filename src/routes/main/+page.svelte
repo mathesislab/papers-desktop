@@ -165,7 +165,18 @@
     const window = getCurrentWindow();
     await window.show();
     await window.setFocus();
-    if (layout.tab === "library") library?.focusSearch();
+    // the window made for the library hotkey ("main?library")
+    if (new URLSearchParams(location.search).has("library")) searchLibrary();
+    else if (layout.tab === "library") library?.focusSearch();
+  }
+
+  /** The library hotkey: the Library tab, the list in front of the papers, its search field ready (its text
+   *  selected). */
+  async function searchLibrary() {
+    showTab("library");
+    library?.command("library");
+    await tick();
+    library?.command("find");
   }
 
   /** The colours of the interests, as the settings name them. */
@@ -254,6 +265,8 @@
       case "feeds":
       case "search":
         return shownTabs[name] ? showTab(name) : undefined;
+      case "search-library":
+        return searchLibrary();
       // the PDF in front has the keys; else they set the text size
       case "zoom-in":
         return zoom(1);
