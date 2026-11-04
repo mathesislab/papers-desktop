@@ -101,8 +101,9 @@ not have it gets that). With the library in front
 Library → paper 1 → … → Library; `⌘1` shows the library.
 
 **Library, Feeds and Search.** A switch at the start of the toolbar, *Library |
-Feeds | Search* (`⌘1`, `⌘2`, `⌘3`, in the Window menu; *Feeds* green and
-*Search* violet when in front), shows one of the tabs of the window
+Feeds | Search* (`⌘1`, `⌘2`, `⌘3`, in the Window menu; each tab in its
+colour, *Library* blue, *Feeds* green, *Search* violet: a light tint
+behind, full in front), shows one of the tabs of the window
 (`LibraryView.svelte`, `FeedsView.svelte`, `SearchView.svelte`; the page,
 `src/routes/main/+page.svelte`, keeps the layout, the tabs in one table
 (`TABS`) shown as their switches say, and passes the commands on). The papers open are tabs of the Library:

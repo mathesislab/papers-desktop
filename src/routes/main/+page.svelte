@@ -490,32 +490,36 @@
     border-radius: 6px;
     overflow: hidden;
   }
+  /* each tab in its colour: a light tint when behind, so that each is told apart at a glance; full in front */
   .tabs button {
+    --c: var(--accent);
+    --on-c: var(--on-accent);
     /* a width of its own: the bold of the tab in front does not move the other */
     width: 64px;
     padding: 3px 0;
     border: none;
-    background: none;
-    color: var(--muted);
+    background: color-mix(in srgb, var(--c) 11%, transparent);
+    color: var(--c);
     font: inherit;
     font-size: 12px;
+  }
+  .tabs button.feeds {
+    --c: var(--feeds);
+    --on-c: var(--on-feeds);
+  }
+  .tabs button.search {
+    --c: var(--search);
+    --on-c: var(--on-search);
   }
   .tabs button + button {
     border-left: 1px solid var(--border);
   }
+  .tabs button:hover:not(.on) {
+    background: color-mix(in srgb, var(--c) 20%, transparent);
+  }
   .tabs button.on {
-    background: var(--line);
-    color: var(--fg);
+    background: var(--c);
+    color: var(--on-c);
     font-weight: 600;
-  }
-  /* the Feeds tab's own colour, against the blue of the library */
-  .tabs button.feeds.on {
-    background: var(--feeds);
-    color: var(--on-feeds);
-  }
-  /* the Search tab's, violet */
-  .tabs button.search.on {
-    background: var(--search);
-    color: var(--on-search);
   }
 </style>
