@@ -126,6 +126,7 @@ test("the Papers tab: a PDF in front of the library of before, the paper in fron
   assert.equal(restore({ tab: "papers", open: [], active: null } as never).tab, "library", "no paper open");
   const gone = restore({ tab: "papers", open: ["a", "b"], active: "c" } as never);
   assert.deepEqual([gone.tab, gone.active], ["papers", "b"], "the last open");
+  assert.equal(restore(null).paperDetails, false);
 });
 
 test("a tab not used for a while: its search cleared when it comes back", () => {

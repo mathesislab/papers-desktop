@@ -299,7 +299,8 @@
         layout.showSidebar = !layout.showSidebar;
         return;
       case "details":
-        layout.showDetails = !layout.showDetails;
+        if (layout.tab === "papers") layout.paperDetails = !layout.paperDetails;
+        else layout.showDetails = !layout.showDetails;
         return;
       case "settings":
         invoke("open_settings");

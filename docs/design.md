@@ -100,8 +100,12 @@ with none (and then off, but as a place to drop rows on: below).
   lists the papers open (author, year and title in full, as a tab bar
   cannot; a × closes one, a dot says its BibTeX is being edited), its main
   pane shows the PDF of the one in front (`layout.active`), and its toolbar
-  the PDF's controls (outline, find, page, zoom, ↗ the default app, ✕).
-  Space (or *Open*) in the library
+  the PDF's controls (outline, find, page, zoom, ↗ the default app, ✕), then
+  *Details* (`⌘⌥I` here: the details of the paper beside its PDF,
+  `layout.paperDetails`), *Show in Library* (the paper selected in the
+  Library tab, the filters taken off if they hide it) and *Cite ▾* (Cite
+  copies the citation in the style of the settings; ▾ the key, `[@key]`,
+  `\cite{key}`, the BibTeX, the DOI link). Space (or *Open*) in the library
   opens a paper there, as do a paper opened from the panel and from the
   Feeds and Search tabs.
 - `⌘W` (and Esc out of a field) closes the paper in front, which shows what

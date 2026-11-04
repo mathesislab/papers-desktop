@@ -8,7 +8,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { CheckMenuItem, Menu, PredefinedMenuItem } from "@tauri-apps/api/menu";
+  import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
   import { ask, save } from "@tauri-apps/plugin-dialog";
   import { onMount, tick, untrack, type Snippet } from "svelte";
   import { commands } from "$lib/commands";
@@ -657,6 +657,40 @@
     } catch (err) {
       say(String(err));
     }
+  }
+
+  /** Cite ▾ of the Papers tab: the other ways to copy the paper in front. */
+  async function citeMenu(id: string) {
+    const row = byId.get(id);
+    const copyAs = (format: "key" | "pandoc" | "latex" | "bibtex") => async () => {
+      try {
+        const text = await invoke<string>("copy", { id, format });
+        say(format === "bibtex" ? "Copied the BibTeX" : `Copied ${text}`);
+      } catch (err) {
+        say(String(err));
+      }
+    };
+    const items = [
+      await MenuItem.new({ text: `Citation (${await cite.styleName()})`, action: () => copyCitations([id]) }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await MenuItem.new({ text: "Key", action: copyAs("key") }),
+      await MenuItem.new({ text: "[@key]", action: copyAs("pandoc") }),
+      await MenuItem.new({ text: "\\cite{key}", action: copyAs("latex") }),
+      await MenuItem.new({ text: "BibTeX", action: copyAs("bibtex") }),
+      ...(row?.doi
+        ? [
+            await MenuItem.new({
+              text: "DOI Link",
+              action: async () => {
+                const link = `https://doi.org/${row.doi}`;
+                await copyText(id, { text: link, html: `<a href="${link}">${link}</a>` });
+                say(`Copied ${link}`);
+              },
+            }),
+          ]
+        : []),
+    ];
+    await (await Menu.new({ items })).popup();
   }
 
   /** One paper alone selected, with the details shown. Whether it was: a BibTeX being edited asks first. */
@@ -1408,7 +1442,7 @@
   </div>
 </main>
 
-<!-- the Papers tab: the papers open in its sidebar, the PDF of the one in front -->
+<!-- the Papers tab: the papers open in its sidebar, the PDF of the one in front, its details beside it on demand -->
 <main class:hidden={layout.tab !== "papers"}>
   {#if layout.showSidebar}
     <aside class="sidebar" style:width="{layout.sidebar}px">
@@ -1424,6 +1458,20 @@
       {/if}
       <span class="spacer"></span>
       {#if notice}<span class="count">{notice}</span>{/if}
+      {#if front}
+        {@const id = front}
+        <button
+          class="tool"
+          class:on={layout.paperDetails}
+          title="The details of the paper beside its PDF ({label(commands.details)})"
+          onclick={() => (layout.paperDetails = !layout.paperDetails)}>Details</button
+        >
+        <button class="tool" title="The paper selected in the Library tab" onclick={() => show(id, false)}>Show in Library</button>
+        <span class="split">
+          <button class="tool" title="Copy the citation, in the style of the settings" onclick={() => copyCitations([id])}>Cite</button
+          ><button class="tool" title="Copy the key, [@key], \cite{'{'}key{'}'}, the BibTeX or the DOI link" aria-label="Other ways to copy" onclick={() => citeMenu(id)}>▾</button>
+        </span>
+      {/if}
     </header>
     <div class="content">
       <section class="pdf">
@@ -1433,6 +1481,12 @@
           <p class="empty">No paper open. Space or Enter in the Library opens one.</p>
         {/if}
       </section>
+      {#if front && layout.paperDetails}
+        <Splitter bind:width={layout.details} side="right" min={260} max={600} />
+        <aside class="details" style:width="{layout.details}px">
+          {#if item}{@render paperDetails(item)}{/if}
+        </aside>
+      {/if}
     </div>
   </div>
 </main>
@@ -1669,6 +1723,18 @@
   }
   .tool.on {
     background: var(--line);
+  }
+  /* Cite and its ▾, one button */
+  .split {
+    display: flex;
+  }
+  .split .tool:first-child {
+    border-radius: 6px 0 0 6px;
+  }
+  .split .tool + .tool {
+    padding: 3px 6px;
+    border-left: none;
+    border-radius: 0 6px 6px 0;
   }
 
   .details {

@@ -32,6 +32,8 @@ export type Layout = {
   details: number;
   showSidebar: boolean;
   showDetails: boolean;
+  /** the details of the paper beside its PDF, in the Papers tab */
+  paperDetails: boolean;
   columns: Shown<Column>[];
   sort: Sort;
   /** the library's list: a table of its columns, or simple */
@@ -73,6 +75,7 @@ const DEFAULTS: Layout = {
   details: 340,
   showSidebar: true,
   showDetails: true,
+  paperDetails: false,
   columns: DEFAULT_COLUMNS,
   // by the first author, A first
   sort: { column: "authors", descending: false },
@@ -118,6 +121,7 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
     tab,
     open,
     active,
+    paperDetails: kept.paperDetails === true,
     columns: before ? withColumn(columns, COLUMNS, DEFAULT_ORDER, "star") : columns,
     look: restoredLook(kept.look, "table"),
     library: restored(kept.library),
