@@ -22,6 +22,7 @@ const ZOOM_IN: &str = "Zoom In";
 const TO_PAGE: &[&str] = &[
     "add",
     "find",
+    "papers",
     "library",
     "feeds",
     "search",
@@ -84,8 +85,8 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
         CheckMenuItem::with_id(app, toggle.as_str(), text, true, false, None::<&str>)
     };
     let toggles = ToggleItems {
-        feeds: item("feeds", "Feeds", "CmdOrCtrl+2")?,
-        search: item("search", "Search", "CmdOrCtrl+3")?,
+        feeds: item("feeds", "Feeds", "CmdOrCtrl+3")?,
+        search: item("search", "Search", "CmdOrCtrl+4")?,
         feeds_tab: check(Toggle::FeedsTab, "Show Feeds Tab")?,
         search_tab: check(Toggle::SearchTab, "Show Search Tab")?,
         feeds_beside: check(Toggle::FeedsBeside, "Feeds Side View")?,
@@ -174,7 +175,8 @@ pub fn setup(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
                     &PredefinedMenuItem::minimize(app, None)?,
                     &PredefinedMenuItem::maximize(app, None)?,
                     &separator()?,
-                    &item("library", "Library", "CmdOrCtrl+1")?,
+                    &item("papers", "Open Papers", "CmdOrCtrl+1")?,
+                    &item("library", "Library", "CmdOrCtrl+2")?,
                     &toggles.feeds,
                     &toggles.search,
                     &item("next-tab", "Next Tab", "Ctrl+Tab")?,

@@ -57,9 +57,9 @@ Three panes, each resized by dragging, the right one hidden on demand:
   recently opened, recently added, no PDF, broken file links, possible
   duplicates: the same DOI, or the same title and year); the tags with their
   counts (a click filters by the tag, a second click takes the filter off;
-  `⌘`-click: below), *★ Starred* first (the tag `starred`, out of the tree);
-  *Open*: the library tab, then the open papers. The counts of the views and
-  the tags are those within the libraries chosen.
+  `⌘`-click: below), *★ Starred* first (the tag `starred`, out of the tree).
+  The counts of the views and the tags are those within the libraries
+  chosen. The papers open are the Papers tab's (below).
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
   missing file, a ☆ that stars the paper or unstars it: the tag `starred`,
@@ -88,44 +88,57 @@ Three panes, each resized by dragging, the right one hidden on demand:
 - **Details** of the selected paper: title, authors, tags, file (open,
   reveal), fields, citation, BibTeX (folded).
 
-**Tabs.** The window works as a browser does: the first tab is always the
-library, then one tab per open paper, listed in the sidebar (*Open*): author,
-year and title in full, as a tab bar cannot. Space (or *Open*) opens a
-paper; `⌘W` closes it, which shows what was shown before it, as a browser's
-back does: the list or another paper, in the order they were last shown (the
-list last; `history.ts`, not kept across launches). A setting shows the library
-at once instead (`after_close`, "next" by default, so a settings file that does
-not have it gets that). With the library in front
-`⌘W` closes the window. `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and
-*Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
-Library → paper 1 → … → Library; `⌘1` shows the library.
+**Tabs.** A switch at the start of the toolbar, *▢ | Library | Feeds |
+Search* (`⌘1` to `⌘4`, in the Window menu: *Open Papers*, *Library*,
+*Feeds*, *Search*), shows one of the tabs of the window, each in its colour
+(the papers orange, *Library* blue, *Feeds* green, *Search* violet): a light
+tint behind, full in front, so that each is told apart at a glance. The
+first, the **Papers** tab, is a PDF and the number of papers open, dimmed
+with none (and then off, but as a place to drop rows on: below).
 
-**Library, Feeds and Search.** A switch at the start of the toolbar, *Library |
-Feeds | Search* (`⌘1`, `⌘2`, `⌘3`, in the Window menu; each tab in its
-colour, *Library* blue, *Feeds* green, *Search* violet: a light tint
-behind, full in front), shows one of the tabs of the window
-(`LibraryView.svelte`, `FeedsView.svelte`, `SearchView.svelte`; the page,
-`src/routes/main/+page.svelte`, keeps the layout, the tabs in one table
-(`TABS`) shown as their switches say, and passes the commands on). The papers open are tabs of the Library:
-`⌃Tab` and `⌘⇧]` go through them there only. `⌘1` from Feeds shows the Library
-as it was left (a paper in front stays), in it the library. The library
-stays behind the feeds, hidden, with its selection, scroll and edit; its
-PDF view steps aside (`Reader.cover`) and its keys are off. In Feeds `⌘W`
-closes the window, `⌘N` opens the Add sheet, `⌘F` goes to the search of the
-feeds, and a paper opened from the panel (or shown after it was added from
-the library) brings the Library back. The page passes the keys to the tab in
-front only (`LibraryView.key`, `FeedsView.key`, `SearchView.key`): no tab's
-keys leak into another. The layout (`src/lib/layout.ts`, pure and tested by
-`scripts/layout.test.ts`) keeps the tab in front (`tab`), the Feeds tab's own
-(`feeds: {filters, columns, shown}`, below) and the Search tab's (`search`:
-its state and columns); a layout of before (`view`, `feedColumns`,
-`feedsShown`, `searchColumns` beside the rest) is read into them.
+- **Papers** (`OpenPapers.svelte`, in `LibraryView.svelte`): its sidebar
+  lists the papers open (author, year and title in full, as a tab bar
+  cannot; a × closes one, a dot says its BibTeX is being edited), its main
+  pane shows the PDF of the one in front (`layout.active`), and its toolbar
+  the PDF's controls (outline, find, page, zoom, ↗ the default app, ✕).
+  Space (or *Open*) in the library
+  opens a paper there, as do a paper opened from the panel and from the
+  Feeds and Search tabs.
+- `⌘W` (and Esc out of a field) closes the paper in front, which shows what
+  was shown before it, as a browser's back does: another paper, or the
+  Library tab, in the order they were last shown (`history.ts`, not kept
+  across launches). A setting shows the library at once instead
+  (`after_close`, "next" by default, so a settings file that does not have
+  it gets that). The last paper closed, the Library tab comes. With no paper
+  in front, `⌘W` closes the window.
+- `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and *Show Previous
+  Tab* of the Window menu) and `⌃Tab` go through the papers and the library:
+  Library → paper 1 → … → Library. `⌘1` shows the paper last in front.
+
+`LibraryView.svelte` draws both the Library and the Papers tab (the library's
+rows, the editor and the history are theirs); `FeedsView.svelte` and
+`SearchView.svelte` the others. The page, `src/routes/main/+page.svelte`,
+keeps the layout, the tabs in one table (`TABS`) shown as their switches
+say, and passes the commands on. The library stays behind the other tabs,
+hidden, with its selection, scroll and edit; the PDF of the Papers tab is
+made again when the tab comes back, at the page it was left at
+(`layout.pages`), and steps aside for a sheet (`Reader.cover`). In Feeds and
+Search `⌘W` closes the window, `⌘N` opens the Add sheet, `⌘F` goes to the
+tab's search. The page passes the keys to the tab in front only
+(`LibraryView.key`, `FeedsView.key`, `SearchView.key`): no tab's keys leak
+into another. The layout (`src/lib/layout.ts`, pure and tested by
+`scripts/layout.test.ts`) keeps the tab in front (`tab`), the papers open
+and the one in front of the Papers tab (`open`, `active`; a layout of before
+with a PDF in front of the library shows it in the Papers tab), the Feeds
+tab's own (`feeds: {filters, columns, shown}`, below) and the Search tab's
+(`search`: its state and columns); a layout of before (`view`,
+`feedColumns`, `feedsShown`, `searchColumns` beside the rest) is read into
+them.
 
 **The library tab is the current set**, and keeps it while papers are opened
 and closed: going back shows the same list, the selection and where it was
-scrolled to. Its sidebar row is `Library` with its count, and under it, in
-a second line (indented, smaller, muted, ellipsized), the filters it shows
-(`papers.bib · No PDF · amoc · "ice"`; no second line with no filter on). The set is the
+scrolled to. Another search or filter shows the list (a paper read in place
+of it let go). The set is the
 product of four filters (`src/lib/library/filters.ts`, a pure function of the
 rows, tested by `scripts/filters.test.ts`, `npm test`):
 
@@ -190,10 +203,11 @@ after the last one gone):
   button is released, as in Finder, so that they can be dragged). Above 5 papers it asks first (*Open 12 papers?*). A paper
   without a file opens its web page in the browser, as before.
 - *Drag* rows (the selection if the row is in it, else the row) onto the
-  *Open* section of the sidebar: they open as tabs. The drag is made of pointer
-  events (`drag.svelte.ts`: the page's own drag and drop is the window's drop of
-  PDFs); a label follows the pointer, the section shows a frame and *Drop to
-  open*; `Esc` cancels.
+  PDF of the tab switch: they open in the Papers tab. The drag is made of
+  pointer events (`drag.svelte.ts`: the page's own drag and drop is the
+  window's drop of PDFs); a label follows the pointer, the switch's PDF shows
+  a frame and *Drop to open*, and fills when the pointer is over it; `Esc`
+  cancels.
 - *Open in Preview* (macOS; *Open in default app* elsewhere): the PDFs of the
   selection outside the app (`open_pdfs`, the opener plugin: Preview on macOS,
   the system's default app elsewhere). A paper without a PDF is skipped, and
@@ -676,7 +690,7 @@ and the PDF dropped on the window. Left:
 ## Feeds (P1, branch `feed-reader`)
 
 The new papers of the journals, preprint servers, news sites and blogs
-followed, in a *Feeds* tab beside the *Library* tab (⌘1, ⌘2): every item
+followed, in a *Feeds* tab beside the *Library* tab (⌘2, ⌘3): every item
 comes in, filters and scores distil them, and a paper goes to the Add sheet
 without its website (which stays one key away). Proposals and the checks
 behind them: `docs/drafts/feeds-proposals.md`; mockup:
@@ -1221,7 +1235,7 @@ library* (core's index; `like:`, the sort, `--library`; the app and the tab).
 
 ## Search (P1, branch `feed-reading`)
 
-A third tab, *Search* (⌘3; hidden by the switch `search-tab`, Window →
+A fourth tab, *Search* (⌘4; hidden by the switch `search-tab`, Window →
 Show Search Tab): OpenAlex's works searched as a search engine of papers
 does, to find a paper and add it.
 

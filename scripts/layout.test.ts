@@ -118,6 +118,16 @@ test("the layout saved read back as it was; a tab unknown is the library", () =>
   assert.equal(restore({ tab: "elsewhere" } as never).tab, "library");
 });
 
+test("the Papers tab: a PDF in front of the library of before, the paper in front one of those open", () => {
+  const before = restore({ tab: "library", open: ["a", "b"], active: "a" } as never);
+  assert.equal(before.tab, "papers");
+  assert.equal(before.active, "a");
+  assert.equal(restore({ tab: "library", open: ["a"], active: null } as never).tab, "library");
+  assert.equal(restore({ tab: "papers", open: [], active: null } as never).tab, "library", "no paper open");
+  const gone = restore({ tab: "papers", open: ["a", "b"], active: "c" } as never);
+  assert.deepEqual([gone.tab, gone.active], ["papers", "b"], "the last open");
+});
+
 test("a tab not used for a while: its search cleared when it comes back", () => {
   const hour = 60 * 60_000;
   assert.equal(stale({ library: 0 }, "library", hour + 1, 60), true);

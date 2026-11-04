@@ -9,12 +9,12 @@ import { NO_FILTERS, restored, type Filters } from "./library/filters.ts";
 import { columnsOf, restoredColumns, restoredLook, withColumn, type Look, type Shown } from "./list/columns.ts";
 import { NO_SEARCH, restoredSearch, type SearchState } from "./search/state.ts";
 
-/** A tab of the window: the library (with the papers open), the feeds, or the search of OpenAlex. */
-export type Tab = "library" | "feeds" | "search";
+/** A tab of the window: the papers open (their PDFs), the library, the feeds, or the search of OpenAlex. */
+export type Tab = "papers" | "library" | "feeds" | "search";
 
 /** The Feeds tab: the choices of its sidebar, the segment, the sort, the search, the groups unfolded; its list's
- *  columns, and whether it shows them or is simple; when its list was last brought up to date (ISO): what was fetched
- *  since waits behind *N new*. */
+ *  columns, and whether it shows them or is simple; when its list was last shown (ISO): what was fetched since is
+ *  shaded for a moment. */
 export type FeedsLayout = { filters: FeedFilters; columns: Shown<FeedColumn>[]; look: Look; shown: string | null };
 
 /** The Search tab: its fields, its recent searches, the search shown; its list's columns, and whether it shows them
@@ -39,7 +39,7 @@ export type Layout = {
   /** the filters of the library tab: the current set it shows */
   library: Filters;
   open: string[];
-  /** the paper in front; none: the library */
+  /** the paper in front of the Papers tab: one of `open`, none only when none is open */
   active: string | null;
   pages: Record<string, number>;
   /** the parent tags unfolded in the sidebar, folded as `foldTag` does */
@@ -61,7 +61,7 @@ type Before = {
   searchColumns?: unknown;
 };
 
-const TABS: Tab[] = ["library", "feeds", "search"];
+const TABS: Tab[] = ["papers", "library", "feeds", "search"];
 
 /** The version of the layout: 2 since the library's star column, which a layout of before shows once (none: 1). */
 export const LAYOUT_VERSION = 2;
@@ -96,7 +96,14 @@ const DEFAULTS: Layout = {
  *  and the looks of the three lists (`restoredLook`). */
 export function restore(saved: (Partial<Layout> & Before) | null): Layout {
   const { view, feedColumns, feedsShown, searchColumns, ...kept } = saved ?? {};
-  const tab = [kept.tab, view].find((t): t is Tab => TABS.includes(t as Tab)) ?? DEFAULTS.tab;
+  const named = [kept.tab, view].find((t): t is Tab => TABS.includes(t as Tab)) ?? DEFAULTS.tab;
+  // the papers open, the one in front among them (the last open, else none)
+  const open = Array.isArray(kept.open) ? kept.open.filter((id): id is string => typeof id === "string") : [];
+  const active = typeof kept.active === "string" && open.includes(kept.active) ? kept.active : (open.at(-1) ?? null);
+  // a PDF in front of the library tab (a layout of before the Papers tab) is the Papers tab; that tab with no paper
+  // open, the library
+  const tab: Tab =
+    named === "library" && typeof kept.active === "string" && active === kept.active ? "papers" : named === "papers" && !active ? "library" : named;
   // the Feeds tab's own, nested, or its filters alone (an older version)
   const feeds: Partial<Record<keyof FeedsLayout, unknown>> =
     kept.feeds && "filters" in kept.feeds ? kept.feeds : { filters: kept.feeds, columns: feedColumns, shown: feedsShown };
@@ -109,6 +116,8 @@ export function restore(saved: (Partial<Layout> & Before) | null): Layout {
     ...kept,
     version: LAYOUT_VERSION,
     tab,
+    open,
+    active,
     columns: before ? withColumn(columns, COLUMNS, DEFAULT_ORDER, "star") : columns,
     look: restoredLook(kept.look, "table"),
     library: restored(kept.library),
@@ -156,5 +165,7 @@ export function cleared(layout: Layout, tab: Tab): Layout {
     }
     case "search":
       return { ...layout, search: { ...layout.search, query: "", authors: "", year: "", results: null } };
+    case "papers":
+      return layout;
   }
 }

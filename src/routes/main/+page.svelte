@@ -17,6 +17,7 @@
   import { label, mac, matches, zoomStep } from "$lib/keys";
   import { USE_STEP, cleared, restore, stale, type Layout, type Tab } from "$lib/layout";
   import LibraryView from "$lib/library/LibraryView.svelte";
+  import { DROP_OPEN, rowDrag } from "$lib/library/drag.svelte";
   import { setTabContext } from "$lib/list/tab";
   import { NO_HISTORY, goBack, goForward, kept, placeOf, placeText, went, type History, type Place } from "$lib/navigation";
   import SearchView from "$lib/search/SearchView.svelte";
@@ -24,8 +25,10 @@
   import { CheckMenuItem, Menu } from "@tauri-apps/api/menu";
   import { WINDOW_COLOURS, cssOf, onWindowColour, setWindowColour, windowColour, type WindowColour } from "$lib/windowColour";
 
-  /** the tabs of the window, in their order: the switch that shows each, but the library's, always there */
+  /** the tabs of the window, in their order: the switch that shows each, but the Papers and Library tabs', always
+   *  there */
   const TABS: { tab: Tab; name: string; title: string; toggle: Toggle | null }[] = [
+    { tab: "papers", name: "Papers", title: "The papers open", toggle: null },
     { tab: "library", name: "Library", title: "Library", toggle: null },
     { tab: "feeds", name: "Feeds", title: "Feeds", toggle: "feeds-tab" },
     { tab: "search", name: "Search", title: "Search OpenAlex's works", toggle: "search-tab" },
@@ -33,7 +36,7 @@
 
   let layout = $state<Layout>(restore(null));
   /** the tabs shown: their switches (Settings → Feeds, Window → Show Feeds Tab, Show Search Tab) */
-  let shownTabs = $state<Record<Tab, boolean>>({ library: true, feeds: true, search: true });
+  let shownTabs = $state<Record<Tab, boolean>>({ papers: true, library: true, feeds: true, search: true });
   /** the details of the Feeds and Search tabs beside the list: the switch `feeds-beside` */
   let beside = $state(false);
   /** the details of the Library tab beside the list: the switch `library-beside` */
@@ -149,6 +152,7 @@
 
   /** The search and filters of a tab as at first (`cleared`); the Search tab in front clears its list too. */
   function clear(tab: Tab) {
+    if (tab === "papers") return;
     if (tab === "search" && layout.tab === "search" && search) return search.clearSearch();
     const next = cleared(layout, tab);
     if (tab === "library") layout.library = next.library;
@@ -189,8 +193,7 @@
   /** The library hotkey: the Library tab, the list in front of the papers, its search field ready (its text
    *  selected). */
   async function searchLibrary() {
-    showTab("library");
-    library?.command("library");
+    await library?.command("library");
     await tick();
     library?.command("find");
   }
@@ -205,7 +208,7 @@
   }
 
   /** A tab of the window to the front. The focus does not stay in the one that goes; the library's search field
-   *  takes it, unless a paper is in front (its PDF has the keys). */
+   *  takes it (in the Papers tab, the PDF has the keys). */
   function showTab(tab: Tab) {
     if (layout.tab === tab) return;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -237,7 +240,8 @@
     const next = step(history, from);
     if (!next) return;
     lastPlace = next.to;
-    if (next.to.tab === "library" && library && !(await library.showPlace(next.to.paper))) {
+    const ofLibrary = next.to.tab === "library" || next.to.tab === "papers";
+    if (ofLibrary && library && !(await library.showPlace(next.to.paper))) {
       lastPlace = from;
       return;
     }
@@ -275,9 +279,10 @@
   /** A command of the window, from the menu of the app or its keys: the window's own, else the tab's in front. */
   function command(name: string) {
     switch (name) {
-      // from the Feeds tab, the Library tab as it was left; in it, the library in front of the papers
+      // the Library tab, the Papers tab with the paper last in front: the library's to show (a BibTeX edited asks)
       case "library":
-        return layout.tab === "library" ? library?.command(name) : showTab("library");
+      case "papers":
+        return library?.command(name);
       case "feeds":
       case "search":
         return shownTabs[name] ? showTab(name) : undefined;
@@ -308,7 +313,7 @@
       case "redo":
         return undo(false);
       default:
-        return layout.tab === "library" ? library?.command(name) : tabCommand(name);
+        return ofLibrary() ? library?.command(name) : tabCommand(name);
     }
   }
 
@@ -327,8 +332,11 @@
     }
   }
 
+  /** Whether the tab in front is the library's: the Library tab or the Papers tab (the library draws both). */
+  const ofLibrary = () => layout.tab === "library" || layout.tab === "papers";
+
   function zoom(steps: number) {
-    if (layout.tab !== "library" || !library?.zoom(steps)) invoke("text_size_step", { steps });
+    if (!ofLibrary() || !library?.zoom(steps)) invoke("text_size_step", { steps });
   }
 
   /** ⌘Z, ⌘⇧Z: in a field, the field's own undo; elsewhere the library's, in the Library tab. */
@@ -338,7 +346,7 @@
       document.execCommand(back ? "undo" : "redo");
       return;
     }
-    if (layout.tab === "library") library?.stepLibrary(back);
+    if (ofLibrary()) library?.stepLibrary(back);
   }
 
   function onkeydown(e: KeyboardEvent) {
@@ -376,7 +384,7 @@
       }
     }
     // the keys of the tab in front only: the other's stay off
-    if (layout.tab === "library") library?.key(e);
+    if (ofLibrary()) library?.key(e);
     else if (layout.tab === "feeds") feeds?.key(e);
     else search?.key(e);
   }
@@ -406,31 +414,46 @@
       onclick={() => go(goForward)}>›</button
     >
   </div>
-  {#if shown.length > 1}
-    <div class="tabs" role="tablist">
-      {#each shown as t (t.tab)}
+  <div class="tabs" role="tablist">
+    {#each shown as t (t.tab)}
+      {#if t.tab === "papers"}
+        {@const n = layout.open.length}
+        <!-- the papers open: a PDF and their number, dimmed with none; rows of the table dropped on it open -->
+        <button
+          role="tab"
+          aria-selected={layout.tab === "papers"}
+          aria-label="{n} {n === 1 ? 'paper' : 'papers'} open"
+          class="papers"
+          class:on={layout.tab === "papers"}
+          class:none={!n}
+          class:target={rowDrag.ids.length > 0}
+          class:over={rowDrag.over}
+          disabled={!n && !rowDrag.ids.length}
+          title={rowDrag.ids.length ? "Drop to open" : n ? `${t.title} (${label(commands.papers)})` : "No paper open"}
+          onclick={() => command("papers")}
+          {...{ [DROP_OPEN]: "" }}
+        >
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+            <path d="M4 1.5h5.5L13 5v9.5H4z M9.5 1.5V5H13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+          </svg>
+          {#if n}<span class="n">{n}</span>{/if}
+        </button>
+      {:else}
         <button
           role="tab"
           aria-selected={layout.tab === t.tab}
           class={t.tab}
           class:on={layout.tab === t.tab}
           title="{t.title} ({label(commands[t.tab])})"
-          onclick={() => showTab(t.tab)}>{t.name}</button
+          onclick={() => command(t.tab)}>{t.name}</button
         >
-      {/each}
-    </div>
-  {/if}
+      {/if}
+    {/each}
+  </div>
 {/snippet}
 
 <!-- the library stays, hidden behind the feeds: its selection, scroll and edit are there when it comes back -->
-<LibraryView
-  bind:this={library}
-  bind:layout
-  visible={layout.tab === "library"}
-  beside={libraryBeside}
-  {tabs}
-  onfront={() => showTab("library")}
-/>
+<LibraryView bind:this={library} bind:layout beside={libraryBeside} {tabs} onshow={showTab} />
 {#if shownTabs.feeds && layout.tab === "feeds"}
   <FeedsView bind:this={feeds} bind:filters={layout.feeds.filters} bind:columns={layout.feeds.columns} bind:look={layout.feeds.look} bind:shown={layout.feeds.shown} />
 {:else if shownTabs.search && layout.tab === "search"}
@@ -510,6 +533,32 @@
   .tabs button.search {
     --c: var(--search);
     --on-c: var(--on-search);
+  }
+  /* the papers open: a PDF and their number, narrow; dimmed with none */
+  .tabs button.papers {
+    --c: var(--papers);
+    --on-c: var(--on-papers);
+    width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+  .tabs button.papers .n {
+    font-size: 11px;
+  }
+  .tabs button.papers.none {
+    opacity: 0.45;
+  }
+  /* rows of the table being dragged: it takes them */
+  .tabs button.papers.target {
+    opacity: 1;
+    outline: 1px dashed var(--c);
+    outline-offset: -2px;
+  }
+  .tabs button.papers.over {
+    background: var(--c);
+    color: var(--on-c);
   }
   .tabs button + button {
     border-left: 1px solid var(--border);

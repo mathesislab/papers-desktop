@@ -7,12 +7,12 @@ import { HISTORY_MAX, NO_HISTORY, goBack, goForward, kept, placeOf, placeText, w
 
 const feeds: Place = { tab: "feeds", paper: null };
 const list: Place = { tab: "library", paper: null };
-const pdf = (id: string): Place => ({ tab: "library", paper: id });
+const pdf = (id: string): Place => ({ tab: "papers", paper: id });
 
-test("a place: the tab, and in the library the PDF in front", () => {
+test("a place: the tab, and in the Papers tab the PDF in front", () => {
   assert.deepEqual(placeOf("feeds", "a"), feeds);
-  assert.deepEqual(placeOf("library", "a"), pdf("a"));
-  assert.deepEqual(placeOf("library", null), list);
+  assert.deepEqual(placeOf("papers", "a"), pdf("a"));
+  assert.deepEqual(placeOf("library", "a"), list, "the library's list, whatever paper the Papers tab has");
 });
 
 test("back and forward, as a browser's: a new place drops the places forward", () => {

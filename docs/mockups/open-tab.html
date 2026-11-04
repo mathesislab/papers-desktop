@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open tab mockup</title>
+<style>
+  :root {
+    --bg: #f6f6f8; --win: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --border: rgba(0,0,0,.14); --line: rgba(0,0,0,.08);
+    --sidebar: #f0f0f2; --pdf: #e4e4e8; --sel: #dfe9fb;
+    --accent: #2f6fde; --feeds: #2e9a4f; --search: #6b5bc8; --open: #c0702a;
+    /* the light tints, when not in front */
+    --accent-t: rgba(47,111,222,.10); --feeds-t: rgba(46,154,79,.11); --search-t: rgba(107,91,200,.11); --open-t: rgba(192,112,42,.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #262628; --win: #1e1e20; --fg: #f2f2f4; --muted: #9a9aa0; --border: rgba(255,255,255,.16); --line: rgba(255,255,255,.08);
+      --sidebar: #29292c; --pdf: #2c2c30; --sel: rgba(58,120,230,.35);
+      --accent: #3a78e6; --feeds: #2f8a4a; --search: #6e5fc4; --open: #c47a38;
+      --accent-t: rgba(58,120,230,.20); --feeds-t: rgba(47,138,74,.22); --search-t: rgba(110,95,196,.24); --open-t: rgba(196,122,56,.22);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 40px; background: var(--bg); color: var(--fg);
+    font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 28px 0 6px; }
+  p.note { color: var(--muted); margin: 2px 0 10px; max-width: 760px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 8px 0; }
+  .row .label { width: 150px; color: var(--muted); font-size: 12px; }
+
+  /* the switch */
+  .steps { display: flex; gap: 2px; color: var(--muted); font-size: 18px; }
+  .steps span { width: 22px; text-align: center; }
+  .tabs { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .tabs b { width: 64px; padding: 3px 0; text-align: center; font-weight: 400; font-size: 12px; color: var(--muted); }
+  .tabs b + b { border-left: 1px solid var(--border); }
+  .tabs b.on { font-weight: 600; }
+  .tabs b.icon { width: 38px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+  .tabs b.icon .n { font-size: 10px; }
+  .tabs b.icon.none { opacity: .45; }
+  /* current: grey off, coloured on */
+  .cur b.on.library { background: var(--line); color: var(--fg); }
+  .cur b.on.feeds { background: var(--feeds); color: #fff; }
+  .cur b.on.search { background: var(--search); color: #fff; }
+  /* proposed: every tab tinted in its colour when off; full colour on */
+  .tint b.open { background: var(--open-t); color: var(--open); }
+  .tint b.library { background: var(--accent-t); color: var(--accent); }
+  .tint b.feeds { background: var(--feeds-t); color: var(--feeds); }
+  .tint b.search { background: var(--search-t); color: var(--search); }
+  .tint b.on.open { background: var(--open); color: #fff; }
+  .tint b.on.library { background: var(--accent); color: #fff; }
+  .tint b.on.feeds { background: var(--feeds); color: #fff; }
+  .tint b.on.search { background: var(--search); color: #fff; }
+  /* proposed, variant: a coloured underline when off */
+  .bar b { box-shadow: inset 0 -2px 0 var(--c); color: var(--fg); }
+  .bar b.on { background: var(--c); color: #fff; box-shadow: none; }
+  .bar .open { --c: var(--open); } .bar .library { --c: var(--accent); } .bar .feeds { --c: var(--feeds); } .bar .search { --c: var(--search); }
+  svg.doc { width: 13px; height: 13px; }
+
+  /* window */
+  .window { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--win);
+    display: grid; grid-template-columns: 220px 1fr 280px; grid-template-rows: 40px 460px; max-width: 1180px; }
+  .window.nodetails { grid-template-columns: 220px 1fr; }
+  .toolbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    border-bottom: 1px solid var(--line); background: var(--sidebar); white-space: nowrap; overflow: hidden; }
+  .btn { padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+  .btn.on { background: var(--line); }
+  .btn.new { outline: 2px dashed var(--open); outline-offset: 1px; }
+  .find { width: 150px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 12px; background: var(--win); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .spacer { flex: 1; }
+  .side { background: var(--sidebar); border-right: 1px solid var(--line); padding: 8px 6px; overflow: hidden; }
+  .side h4 { margin: 6px 8px 4px; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .side .it { padding: 5px 8px; border-radius: 6px; line-height: 1.3; }
+  .side .it small { display: block; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side .it.sel { background: var(--sel); }
+  .pdf { background: var(--pdf); display: flex; justify-content: center; padding: 18px; overflow: hidden; }
+  .page { width: 380px; background: #fff; color: #222; box-shadow: 0 1px 4px rgba(0,0,0,.2); padding: 28px 30px; font-family: Georgia, serif; font-size: 11px; line-height: 1.5; }
+  .page h3 { font-size: 15px; margin: 0 0 6px; line-height: 1.25; }
+  .page .bars i { display: block; height: 7px; background: #e5e5e5; margin: 6px 0; border-radius: 2px; }
+  .details { border-left: 1px solid var(--line); padding: 12px 14px; overflow: hidden; }
+  .details h3 { font-size: 14px; margin: 0 0 4px; line-height: 1.3; }
+  .details .f { margin: 8px 0; }
+  .details .f span { display: block; font-size: 11px; color: var(--muted); }
+  .chip { display: inline-block; padding: 1px 7px; border-radius: 9px; background: var(--line); font-size: 11px; margin-right: 3px; }
+
+  /* menu */
+  .menu { display: inline-block; vertical-align: top; border: 1px solid var(--border); border-radius: 8px; background: var(--win); padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,.15); min-width: 230px; }
+  .menu div { padding: 4px 10px; border-radius: 5px; display: flex; justify-content: space-between; gap: 20px; }
+  .menu div:first-child { background: var(--accent); color: #fff; }
+  .menu kbd { font: inherit; color: inherit; opacity: .7; }
+
+  /* quick panel */
+  .panel { width: 640px; border: 1px solid var(--border); border-radius: 12px; background: var(--win); overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.18); }
+  .panel .q { padding: 12px 14px; font-size: 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .panel .q .s { flex: 1; }
+  .panel .q .online { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--search-t); color: var(--search); white-space: nowrap; }
+  .panel .hit { padding: 6px 14px; display: flex; gap: 10px; }
+  .panel .hit.sel { background: var(--sel); }
+  .panel .hit .y { color: var(--muted); width: 36px; }
+  .panel .more { padding: 7px 14px; border-top: 1px solid var(--line); color: var(--search); display: flex; justify-content: space-between; }
+  .panel .foot { padding: 6px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>Open tab, tab switch, PDF toolbar, quick panel</h1>
+<p class="note">Mockups for papers-desktop. The PDF icon is the proposed fourth tab: the papers open, out of the Library tab.</p>
+
+<h2>1 · The tab switch</h2>
+<p class="note">Now: every tab grey until it is in front. Proposed: each tab keeps a light tint of its colour (Open orange, Library blue, Feeds green, Search violet), full colour in front. Variant B keeps the tabs neutral with a coloured underline. The PDF icon shows how many papers are open, dimmed with none.</p>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="doc" viewBox="0 0 16 16"><path d="M4 1.5h5.5L13 5v9.5H4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.5 1.5V5H13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+</defs></svg>
+
+<div class="row"><span class="label">Now</span>
+  <span class="steps"><span>‹</span><span>›</span></span>
+  <div class="tabs cur"><b class="library on">Library</b><b class="feeds">Feeds</b><b class="search">Search</b></div>
+  <div class="tabs cur"><b class="library">Library</b><b class="feeds on">Feeds</b><b class="search">Search</b></div>
+</div>
+
+<div class="row"><span class="label">A · tinted (recommended)</span>
+  <span class="steps"><span>‹</span><span>›</span></span>
+  <div class="tabs tint"><b class="icon open on"><svg class="doc"><use href="#doc"/></svg><span class="n">3</span></b><b class="library">Library</b><b class="feeds">Feeds</b><b class="search">Search</b></div>
+  <div class="tabs tint"><b class="icon open"><svg class="doc"><use href="#doc"/></svg><span class="n">3</span></b><b class="library on">Library</b><b class="feeds">Feeds</b><b class="search">Search</b></div>
+  <div class="tabs tint"><b class="icon open"><svg class="doc"><use href="#doc"/></svg><span class="n">3</span></b><b class="library">Library</b><b class="feeds on">Feeds</b><b class="search">Search</b></div>
+  <div class="tabs tint"><b class="icon open none"><svg class="doc"><use href="#doc"/></svg></b><b class="library">Library</b><b class="feeds">Feeds</b><b class="search on">Search</b></div>
+</div>
+
+<div class="row"><span class="label">B · underline</span>
+  <span class="steps"><span>‹</span><span>›</span></span>
+  <div class="tabs bar"><b class="icon open on"><svg class="doc"><use href="#doc"/></svg><span class="n">3</span></b><b class="library">Library</b><b class="feeds">Feeds</b><b class="search">Search</b></div>
+  <div class="tabs bar"><b class="icon open"><svg class="doc"><use href="#doc"/></svg><span class="n">3</span></b><b class="library on">Library</b><b class="feeds">Feeds</b><b class="search">Search</b></div>
+  <div class="tabs bar"><b class="icon open"><svg class="doc"><use href="#doc"/></svg><span class="n">3</span></b><b class="library">Library</b><b class="feeds on">Feeds</b><b class="search">Search</b></div>
+</div>
+
+<h2>2 · The Open tab, a PDF in front, details shown</h2>
+<p class="note">Its own sidebar: the papers open (now the <i>Open</i> section of the Library's sidebar). Toolbar: the PDF's controls as now, then the three new ones (dashed): <b>Details</b> toggles the right pane (⌘⌥I), <b>Show in Library</b> (⌘⇧L) selects the paper in the Library tab, <b>Cite ▾</b> copies (click: the citation in the CSL style; the menu: the rest). The Library tab is then the list alone, its sidebar without <i>Open</i>.</p>
+
+<div class="window">
+  <div class="toolbar">
+    <span class="steps"><span>‹</span><span>›</span></span>
+    <div class="tabs tint"><b class="icon open on"><svg class="doc"><use href="#doc"/></svg><span class="n">3</span></b><b class="library">Library</b><b class="feeds">Feeds</b><b class="search">Search</b></div>
+    <span class="btn">Outline</span>
+    <span class="find">Find in the PDF</span>
+    <span class="muted">Page 2 of 14</span>
+    <span class="btn">−</span><span class="btn">Fit</span><span class="btn">+</span>
+    <span class="spacer"></span>
+    <span class="btn on new">Details</span>
+    <span class="btn new">Show in Library</span>
+    <span class="btn new">Cite ▾</span>
+    <span class="btn">↗</span>
+    <span class="btn" style="color:var(--accent)">✕</span>
+  </div>
+  <aside class="side">
+    <h4>Open</h4>
+    <div class="it sel">Robinson et al. 2012<small>Multistability and critical thresholds of the Greenland ice sheet</small></div>
+    <div class="it">Ganopolski &amp; Brovkin 2017<small>Simulation of climate, ice sheets and CO2 evolution during the last four glacial cycles</small></div>
+    <div class="it">Gregory et al. 2020<small>Large and irreversible future decline of the Greenland ice sheet</small></div>
+  </aside>
+  <main class="pdf">
+    <div class="page">
+      <h3>Multistability and critical thresholds of the Greenland ice sheet</h3>
+      <div class="bars"><i style="width:60%"></i><i></i><i></i><i style="width:85%"></i><i></i><i></i><i style="width:70%"></i><i></i><i></i><i style="width:40%"></i><i></i><i></i><i style="width:90%"></i></div>
+    </div>
+  </main>
+  <aside class="details">
+    <h3>Multistability and critical thresholds of the Greenland ice sheet</h3>
+    <div class="muted">Robinson, Calov, Ganopolski · Nature Climate Change · 2012</div>
+    <div class="f"><span>Tags</span><i class="chip">greenland</i><i class="chip">thresholds</i><i class="chip">★</i></div>
+    <div class="f"><span>DOI</span>10.1038/nclimate1449</div>
+    <div class="f"><span>Key</span>robinson2012</div>
+    <div class="f"><span>File</span>robinson2012.pdf · Reveal</div>
+    <div class="f"><span>Citation</span>Robinson, A., Calov, R., and Ganopolski, A.: Multistability and critical thresholds of the Greenland ice sheet, Nat. Clim. Change, 2, 429–432, 2012.</div>
+    <div class="f"><span>BibTeX ▸</span></div>
+  </aside>
+</div>
+
+<h2>3 · Cite ▾, its menu</h2>
+<div class="menu">
+  <div>Citation (Copernicus)<kbd>⌘⌥C</kbd></div>
+  <div>[@robinson2012]<kbd>⌘.</kbd></div>
+  <div>\cite{robinson2012}<kbd>⌘L</kbd></div>
+  <div>Key<kbd>⌘⇧C</kbd></div>
+  <div>BibTeX<kbd>⌘B</kbd></div>
+  <div>DOI link<kbd></kbd></div>
+</div>
+<p class="note">The same copies as the quick panel's actions; the shortcuts shown are those the panel already has, where they exist.</p>
+
+<h2>4 · The quick panel: the library at once, OpenAlex on demand</h2>
+<p class="note">The filter of the library as now, instant. One more row at the end of the list (and ⌘⇧↵ from anywhere in it): <i>Search OpenAlex</i> opens the main window's Search tab with the query, where the works found mark those already in the library.</p>
+<div class="panel">
+  <div class="q"><span class="s">greenland thresholds</span><span class="online">OpenAlex ⌘⇧↵</span></div>
+  <div class="hit sel"><span class="y">2012</span><span><b>Greenland</b> multistability and critical <b>thresholds</b> · Robinson et al.</span></div>
+  <div class="hit"><span class="y">2020</span><span>Large and irreversible decline of the <b>Greenland</b> ice sheet · Gregory et al.</span></div>
+  <div class="hit"><span class="y">2023</span><span>Overshooting the critical <b>threshold</b> for the <b>Greenland</b> ice sheet · Höning et al.</span></div>
+  <div class="more"><span>Search OpenAlex for “greenland thresholds” in the main window</span><span>⌘⇧↵</span></div>
+  <div class="foot">↵ open · ⌘↵ reveal · ⌘I in the main window · ⌘O library · ⌘⇧↵ OpenAlex</div>
+</div>
+</body>
+</html>
