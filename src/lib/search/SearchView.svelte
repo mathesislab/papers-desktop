@@ -350,6 +350,15 @@
     await menu.popup();
   }
 
+  /** A search asked from elsewhere (the panel's Search OpenAlex): the query in the search field, the other fields
+   *  blank, run. */
+  export function ask(query: string) {
+    search.query = query;
+    search.authors = "";
+    search.year = "";
+    run();
+  }
+
   /** ⌘F, /: the search field. */
   export function focusSearch() {
     list.focusSearch();

@@ -25,6 +25,11 @@ the matches per year, a preview (first page, citation in a CSL style,
 BibTeX), and actions (open, reveal, DOI page, copy key, `[@key]`,
 `\cite{key}`, BibTeX). The library reloads when the bibtex file changes.
 
+The panel searches the library alone, at once. Under its list, *Search
+OpenAlex for …* (`⌘⇧Enter`) opens the main window's Search tab (shown if
+hidden) with the query, less what OpenAlex has not (`tag:`, `key:`, `has:`;
+`first:` as `a:`; `onlineOf`), and runs it there.
+
 ## The main window (P0, read-only; 0.5)
 
 Two windows with different jobs:

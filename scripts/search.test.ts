@@ -12,6 +12,7 @@ import {
   composed,
   inOrder,
   namesOf,
+  onlineOf,
   plainWords,
   moreText,
   recentText,
@@ -142,4 +143,11 @@ test("a next page after the rows shown, those there already left out", () => {
   const r = (id: string) => ({ id });
   assert.deepEqual(appended([r("a"), r("b")], [r("b"), r("c")]), [r("a"), r("b"), r("c")]);
   assert.deepEqual(appended([], [r("a")]), [r("a")]);
+});
+
+test("the query of the panel asked of OpenAlex: what OpenAlex has of it", () => {
+  assert.equal(onlineOf("greenland a:robinson y:2010-2015"), "greenland a:robinson y:2010-2015");
+  assert.equal(onlineOf('ice tag:amoc,ice k:rob12 has:pdf "tipping point"'), 'ice "tipping point"');
+  assert.equal(onlineOf("f:Robinson -first:Calov"), "a:Robinson -a:Calov");
+  assert.equal(onlineOf("  "), "");
 });

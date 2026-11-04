@@ -5,7 +5,7 @@
 
 import type { StarWords } from "../feeds/actions.ts";
 import type { FeedDetail } from "../feeds/api.ts";
-import { anyOf } from "../query.ts";
+import { FIELDS, anyOf, queryTerms } from "../query.ts";
 import type { Order } from "./api.ts";
 
 /** The order of the works found: one OpenAlex gives, or the score (`score`): the works OpenAlex finds most relevant,
@@ -96,6 +96,19 @@ export function composed(s: Pick<Typed, "query" | "authors" | "year">): string {
   const years = s.year.replace(/\s+/g, "");
   const names = namesOf(s.authors).map((name) => (name.includes(" ") ? `a:"${name}"` : `a:${name}`));
   return [s.query.trim(), ...names, years && `y:${years}`].filter(Boolean).join(" ");
+}
+
+/** The fields of the library's search OpenAlex has not (a tag, a key, a file), left out of the query of the panel
+ *  asked of it; `first:` asks for an author. */
+const LIBRARY_ONLY = new Set(["tag", "key", "k", "has"]);
+
+/** The query of the panel asked of OpenAlex (Search OpenAlex, ⌘⇧↵): its words and the filters OpenAlex has; a first
+ *  author an author. */
+export function onlineOf(query: string): string {
+  return queryTerms(query, FIELDS)
+    .filter((t) => !(t.field && LIBRARY_ONLY.has(t.field)))
+    .map((t) => (t.field === "first" || t.field === "f" ? t.text.replace(/^(-?)(first|f):/i, "$1a:") : t.text))
+    .join(" ");
 }
 
 /** The search in plain words, as a reference is written: the text, the names, the years (the library's papers are

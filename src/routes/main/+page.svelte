@@ -20,7 +20,7 @@
   import { setTabContext } from "$lib/list/tab";
   import { NO_HISTORY, goBack, goForward, kept, placeOf, placeText, went, type History, type Place } from "$lib/navigation";
   import SearchView from "$lib/search/SearchView.svelte";
-  import { onToggle, toggles, type Toggle } from "$lib/toggles";
+  import { onToggle, setToggle as saveToggle, toggles, type Toggle } from "$lib/toggles";
   import { CheckMenuItem, Menu } from "@tauri-apps/api/menu";
   import { WINDOW_COLOURS, cssOf, onWindowColour, setWindowColour, windowColour, type WindowColour } from "$lib/windowColour";
 
@@ -117,6 +117,7 @@
       used();
     });
     const unlistenSettings = listen("settings", readClearAfter);
+    const unlistenOnline = listen<string>("search-online", (e) => searchOnline(e.payload));
     const unlistenColour = onWindowColour((c) => (colour = c));
     windowColour().then((c) => (colour = c));
     load();
@@ -127,6 +128,7 @@
       unlistenToggle();
       unlistenFocus.then((f) => f());
       unlistenSettings.then((f) => f());
+      unlistenOnline.then((f) => f());
       unlistenColour();
     };
   });
@@ -165,9 +167,23 @@
     const window = getCurrentWindow();
     await window.show();
     await window.setFocus();
-    // the window made for the library hotkey ("main?library")
-    if (new URLSearchParams(location.search).has("library")) searchLibrary();
+    // the window made for the library hotkey ("main?library"), or for a search of OpenAlex ("main?online=QUERY")
+    const asked = new URLSearchParams(location.search);
+    const online = asked.get("online");
+    if (asked.has("library")) searchLibrary();
+    else if (online !== null) searchOnline(online);
     else if (layout.tab === "library") library?.focusSearch();
+  }
+
+  /** The panel's Search OpenAlex: the Search tab (shown if it was hidden), searching for `query`. */
+  async function searchOnline(query: string) {
+    if (!shownTabs.search) {
+      setToggle("search-tab", true);
+      saveToggle("search-tab", true).catch(() => {});
+    }
+    showTab("search");
+    await tick();
+    search?.ask(query);
   }
 
   /** The library hotkey: the Library tab, the list in front of the papers, its search field ready (its text

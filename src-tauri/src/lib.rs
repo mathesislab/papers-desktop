@@ -546,6 +546,13 @@ async fn open_library(app: AppHandle) {
     main_window::show(&app);
 }
 
+/// The Search tab of the main window, searching OpenAlex, from the panel
+/// (⌘⇧Enter).
+#[tauri::command]
+async fn search_openalex(app: AppHandle, query: String) {
+    main_window::search_openalex(&app, &query);
+}
+
 /// The main window with a paper open in it, from the panel (⌘I).
 #[tauri::command]
 async fn open_paper(app: AppHandle, id: String) {
@@ -1244,6 +1251,7 @@ pub fn run() {
             open_settings,
             open_welcome,
             open_library,
+            search_openalex,
             open_paper,
             pdf_path,
             files_of,
