@@ -1464,7 +1464,7 @@
     <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
   {/if}
   <div class="right">
-    <header>
+    <header class="reading">
       {@render tabs()}
       {#if reader}
         <ReaderBar {reader} onclose={closeActive} />
@@ -1477,12 +1477,26 @@
         <div class="actions">
           {#if notice}{#key notice}<span class="pill" role="status">{notice}</span>{/key}{/if}
           <button
-          class="tool"
-          class:on={layout.paperDetails}
-          title="The details of the paper beside its PDF ({label(commands.details)})"
-          onclick={() => (layout.paperDetails = !layout.paperDetails)}>Details</button
+            class="tool icon"
+            class:on={layout.paperDetails}
+            title="Details: those of the paper beside its PDF ({label(commands.details)})"
+            aria-label="Details"
+            onclick={() => (layout.paperDetails = !layout.paperDetails)}
           >
-          <button class="tool" title="Show in Library: the paper selected there" onclick={() => show(id, false)}>In Library</button>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+              ><rect x="1.7" y="2.7" width="12.6" height="10.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3" /><path
+                d="M9.8 2.7v10.6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.3"
+              /></svg
+            >
+          </button>
+          <button class="tool in-library" title="Show in Library: the paper selected there" aria-label="Show in Library" onclick={() => show(id, false)}
+            ><span class="wide">In Library</span><svg class="narrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+              ><path d="M2 3.5h7M2 8h7M2 12.5h7M11.5 5.5 14 8l-2.5 2.5M14 8H9.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg
+            ></button
+          >
           <span class="split">
             <button class="tool cite" title="Copy the citation, in the style of the settings" onclick={() => citeCopy(() => copyCited([id]))}
               >{citeCopied ? "✓" : "Cite"}</button
@@ -1572,6 +1586,26 @@
     height: 46px;
     padding: 0 12px;
     border-bottom: 1px solid var(--line);
+  }
+  /* the Papers tab's: the PDF's controls and its buttons, closer, so they fit beside the sidebar */
+  header.reading {
+    gap: 7px;
+    container-type: inline-size;
+  }
+  /* In Library: its words, or in a narrow bar its mark */
+  .tool.in-library .narrow {
+    display: none;
+  }
+  @container (max-width: 1080px) {
+    .tool.in-library {
+      padding: 4px 7px;
+    }
+    .tool.in-library .wide {
+      display: none;
+    }
+    .tool.in-library .narrow {
+      display: block;
+    }
   }
   /* the search keeps its width: what is next to it stays in place */
   .search {
@@ -1752,6 +1786,12 @@
   }
   .actions .tool {
     white-space: nowrap;
+  }
+  .actions .tool.icon {
+    padding: 4px 7px;
+  }
+  .actions .tool.icon svg {
+    display: block;
   }
   .pill {
     position: absolute;

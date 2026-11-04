@@ -101,11 +101,14 @@ with none (and then off, but as a place to drop rows on: below).
   cannot; a × closes one, a dot says its BibTeX is being edited), its main
   pane shows the PDF of the one in front (`layout.active`), and its toolbar
   the PDF's controls (outline, find, page, zoom, ↗ the default app, ✕), then
-  *Details* (`⌘⌥I` here: the details of the paper beside its PDF,
+  *Details* (an icon; `⌘⌥I` here: the details of the paper beside its PDF,
   `layout.paperDetails`), *In Library* (Show in Library: the paper selected
   in the Library tab, the filters taken off if they hide it) and *Cite ▾*
   (Cite copies the citation in the style of the settings; ▾ the key,
-  `[@key]`, `\cite{key}`, the BibTeX, the DOI link), on one line. A copy
+  `[@key]`, `\cite{key}`, the BibTeX, the DOI link), on one line. The find
+  field gives the room; a bar narrower than 1080 px (the window, the sidebar)
+  drops the page count and shows In Library as its mark (a container query
+  on the bar). A copy
   made, Cite says ✓ for 1.5 s; anything else to say (a failure) floats in
   the bar left of them, as a pill that fades: nothing moves, and under the
   bar the PDF view of macOS would hide it. Space (or *Open*) in the library
