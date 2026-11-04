@@ -43,6 +43,32 @@ pub fn show(app: &AppHandle) {
     }
 }
 
+/// Show the library of the main window, its search field ready (the library
+/// hotkey): told to its page, or in the URL of a window made for it
+/// ("main?library").
+pub fn search_library(app: &AppHandle) {
+    if app.get_webview_window(MAIN).is_some() {
+        show(app);
+        let _ = app.emit_to(MAIN, "command", "search-library");
+    } else {
+        crate::hide_window(app);
+        make(app, "main?library");
+    }
+}
+
+/// Show the Search tab of the main window, searching OpenAlex for `query`
+/// (the panel's Search OpenAlex): told to its page, or in the URL of a
+/// window made for it ("main?online=QUERY").
+pub fn search_openalex(app: &AppHandle, query: &str) {
+    if app.get_webview_window(MAIN).is_some() {
+        show(app);
+        let _ = app.emit_to(MAIN, "search-online", query);
+    } else {
+        crate::hide_window(app);
+        make(app, &format!("main?online={}", encode(query)));
+    }
+}
+
 /// Show the main window with a paper open in it: told to its page, or in
 /// the URL of a window made for it ("main#ID").
 pub fn open_paper(app: &AppHandle, id: &str) {

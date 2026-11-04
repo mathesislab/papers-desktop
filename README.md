@@ -57,8 +57,8 @@ selection, or the papers shown, to a `.bib` file.
 | `Space` | open the paper |
 | `Esc` | step back: leave a field, close the PDF or the paper read, select nothing, then clear the search and filters (in every tab) |
 | `⌘W` | close the paper (the window, from the library) |
-| `⌘1`, `⌘2` | the Library tab (in it: the library), the Feeds tab |
-| `⌃Tab`, `⌃⇧Tab` | the next tab, the one before |
+| `⌘1`…`⌘4` | the Papers tab (the PDFs open), the Library, Feeds and Search tabs |
+| `⌃Tab`, `⌃⇧Tab` | the next paper open, the one before (the library between the last and the first) |
 | `⌘[`, `⌘]` | back, forward: the tabs and papers shown before (‹ › by the tabs) |
 | `⌘⌥S`, `⌘⌥I` | show or hide the sidebar, the side view |
 | `⌘=` `⌘-` `⌘0` | zoom in, out, fit the width |

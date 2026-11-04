@@ -97,8 +97,8 @@ struct AppState {
     watches: Mutex<Vec<BibWatch>>,
     /// counts the reloads: one that ends after a newer one started is dropped
     reloads: AtomicU64,
-    /// the tray's item of the panel, which shows the hotkey
-    panel_item: Mutex<Option<MenuItem<Wry>>>,
+    /// the tray's items that show a hotkey: the panel's, the library's
+    hotkey_items: Mutex<Vec<(hotkey::Hotkey, MenuItem<Wry>)>>,
     /// the menu item that tells about an update
     update_item: Mutex<Option<MenuItem<Wry>>>,
     recent: Recent,
@@ -546,6 +546,13 @@ async fn open_library(app: AppHandle) {
     main_window::show(&app);
 }
 
+/// The Search tab of the main window, searching OpenAlex, from the panel
+/// (⌘⇧Enter).
+#[tauri::command]
+async fn search_openalex(app: AppHandle, query: String) {
+    main_window::search_openalex(&app, &query);
+}
+
 /// The main window with a paper open in it, from the panel (⌘I).
 #[tauri::command]
 async fn open_paper(app: AppHandle, id: String) {
@@ -803,10 +810,12 @@ fn watch(app: &AppHandle, bibs: &[PathBuf]) {
     }
 }
 
-/// The menu item of the panel, with its hotkey.
-pub(crate) fn show_hotkey(app: &AppHandle, hotkey: &str) {
-    if let Some(item) = app.state::<AppState>().panel_item.lock().unwrap().as_ref() {
-        let _ = item.set_accelerator(Some(hotkey));
+/// The menu item of a hotkey (the panel's, the library's), with its keys.
+pub(crate) fn show_hotkey(app: &AppHandle, hotkey: hotkey::Hotkey, keys: &str) {
+    let state = app.state::<AppState>();
+    let items = state.hotkey_items.lock().unwrap();
+    if let Some((_, item)) = items.iter().find(|(h, _)| *h == hotkey) {
+        let _ = item.set_accelerator(Some(keys));
     }
 }
 
@@ -1003,17 +1012,19 @@ const TRAY_ICON: &[u8] = include_bytes!("../icons/tray.png");
 #[cfg(not(target_os = "macos"))]
 const TRAY_ICON: &[u8] = include_bytes!("../icons/tray-light.png");
 
-fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
+fn tray(app: &AppHandle, hotkey: &str, library_hotkey: &str) -> tauri::Result<()> {
     // ids of its own: the handlers of the menus are global, and the app's
     // menu has a Search, a Library and a Settings too
     let panel = MenuItem::with_id(app, "tray-search", "Search Papers", true, Some(hotkey))?;
+    let library =
+        MenuItem::with_id(app, "tray-library", "Open Library", true, Some(library_hotkey))?;
     let updates =
         MenuItem::with_id(app, "tray-updates", "Check for Updates…", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
             &panel,
-            &MenuItem::with_id(app, "tray-library", "Open Library", true, None::<&str>)?,
+            &library,
             &MenuItem::with_id(app, "tray-settings", "Settings…", true, Some("CmdOrCtrl+,"))?,
             &MenuItem::with_id(app, "tray-reload", "Reload Library", true, None::<&str>)?,
             &updates,
@@ -1022,7 +1033,8 @@ fn tray(app: &AppHandle, hotkey: &str) -> tauri::Result<()> {
             &MenuItem::with_id(app, "tray-quit", "Quit Papers", true, None::<&str>)?,
         ],
     )?;
-    *app.state::<AppState>().panel_item.lock().unwrap() = Some(panel);
+    *app.state::<AppState>().hotkey_items.lock().unwrap() =
+        vec![(hotkey::Hotkey::Panel, panel), (hotkey::Hotkey::Library, library)];
     *app.state::<AppState>().update_item.lock().unwrap() = Some(updates);
     TrayIconBuilder::with_id("tray")
         .icon(Image::from_bytes(TRAY_ICON)?)
@@ -1101,7 +1113,7 @@ pub fn run() {
                 status: RwLock::new(Status::Loading),
                 watches: Mutex::new(Vec::new()),
                 reloads: AtomicU64::new(0),
-                panel_item: Mutex::new(None),
+                hotkey_items: Mutex::new(Vec::new()),
                 update_item: Mutex::new(None),
                 recent: Recent::load(app.path().app_data_dir()?.join("recent.json")),
                 added: DatesAdded::load(app.path().app_data_dir()?.join("added.json")),
@@ -1129,7 +1141,7 @@ pub fn run() {
             app.manage(Updates::new(app.handle()));
             text_size::apply(app.handle(), settings.text_size);
             hotkey::setup(app.handle(), &settings);
-            tray(app.handle(), &settings.hotkey)?;
+            tray(app.handle(), &settings.hotkey, &settings.library_hotkey)?;
             #[cfg(target_os = "macos")]
             menu::setup(app.handle(), &settings)?;
             selection::setup(app.handle());
@@ -1239,6 +1251,7 @@ pub fn run() {
             open_settings,
             open_welcome,
             open_library,
+            search_openalex,
             open_paper,
             pdf_path,
             files_of,

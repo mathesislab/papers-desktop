@@ -122,14 +122,11 @@ export function since(date: string, now = Date.now()): string {
   return when === "now" ? "just now" : /^\d+ (min|h|d)$/.test(when) ? `${when} ago` : `on ${when}`;
 }
 
-/** The minutes after which opening the tab fetches again. */
-export const STALE_MINUTES = 15;
-
-/** Whether to fetch on opening the tab: never fetched, or longer ago than `minutes`. */
-export function stale(last: FetchSummary | null, now = Date.now(), minutes = STALE_MINUTES): boolean {
-  if (!last) return true;
-  const at = Date.parse(last.at);
-  return Number.isNaN(at) || now - at > minutes * 60000;
+/** The rows fetched since the list was last shown (`since`; none: the first time, none of them). */
+export function fetchedSince(rows: { id: string; found: string }[], since: string | null): string[] {
+  if (since === null) return [];
+  const at = Date.parse(since);
+  return Number.isNaN(at) ? [] : rows.filter((r) => Date.parse(r.found) > at).map((r) => r.id);
 }
 
 /** The status line of the last fetch: "fetched 8 min ago · 12 new · 3 not modified · 1 failed". */

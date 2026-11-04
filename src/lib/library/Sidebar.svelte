@@ -6,7 +6,6 @@
   import { foldTag, lastSegment, parentsOf, sameTag, STARRED } from "$lib/tags";
   import { fileName, type View } from "./filters";
   import type { Row, TagCount } from "$lib/types";
-  import { DROP_OPEN, rowDrag } from "./drag.svelte";
   import Downloads from "./Downloads.svelte";
 
   let {
@@ -19,19 +18,12 @@
     filtered,
     pinned,
     open,
-    tab,
-    papers,
-    active,
-    dirty,
     onlibrary,
     onview,
     ontag,
     onfold,
     onrename,
     onpin,
-    onlibrarytab,
-    onpaper,
-    onclose,
     ondownload,
     onshow,
   }: {
@@ -53,14 +45,6 @@
     pinned: (string | null)[];
     /** the parent tags unfolded, folded as `foldTag` does */
     open: string[];
-    /** the library tab, the first of the open ones: the filters it shows (none: empty), and how many papers */
-    tab: { filters: string; count: number };
-    /** the papers open, as tabs after it */
-    papers: Row[];
-    /** the paper in front; none: the library tab */
-    active: string | null;
-    /** the paper whose BibTeX has unsaved changes */
-    dirty: string | null;
     /** a library clicked (none: all libraries); with ⌘, to add it to the libraries chosen or take it out (`toggle`) */
     onlibrary: (bib: string | null, toggle: boolean) => void;
     onview: (view: View) => void;
@@ -72,10 +56,6 @@
     onrename: (tag: string, name: string) => void;
     /** a tag pinned to the key of a slot (index), or unpinned */
     onpin: (tag: string, slot: number | null) => void;
-    /** the library tab chosen */
-    onlibrarytab: () => void;
-    onpaper: (id: string) => void;
-    onclose: (id: string) => void;
     /** a PDF of the Downloads panel dropped on the table (id none) or on the empty preview of a paper, or double-clicked */
     ondownload: (path: string, id: string | null) => void;
     /** a paper of the library to show (from the Downloads panel: the paper that has a PDF) */
@@ -273,27 +253,6 @@
     {/if}
   {/each}
 
-  <!-- rows of the table dropped here open as tabs -->
-  <div class="open" class:target={rowDrag.ids.length > 0} class:over={rowDrag.over} {...{ [DROP_OPEN]: "" }}>
-  <h4>Open</h4>
-  {#if rowDrag.ids.length}<div class="hint">Drop to open {rowDrag.ids.length === 1 ? "the paper" : `${rowDrag.ids.length} papers`}</div>{/if}
-  <div class="paper" class:selected={active === null}>
-    <button class="tab home" title={tab.filters ? `Library — ${tab.filters}` : "Library"} onclick={onlibrarytab}>
-      <span class="line"><span class="name">Library</span><span class="count">{tab.count}</span></span>
-      {#if tab.filters}<span class="filters">{tab.filters}</span>{/if}
-    </button>
-  </div>
-  {#each papers as paper (paper.id)}
-    <div class="paper" class:selected={paper.id === active}>
-      <button class="tab" title={paper.title} onclick={() => onpaper(paper.id)}>
-        <span class="name">{paper.authors} {paper.year ?? ""}</span>
-        <span class="title">{paper.title}</span>
-      </button>
-      {#if paper.id === dirty}<span class="dot" title="Unsaved changes"></span>{/if}
-      <button class="close" aria-label="Close" onclick={() => onclose(paper.id)}>×</button>
-    </div>
-  {/each}
-  </div>
 </nav>
 
 <!-- at the bottom, over the list when it scrolls: the folder outside the library, then the gear -->
@@ -311,25 +270,6 @@
 </div>
 
 <style>
-  /* a drag of rows is on: the Open section says it takes them, the frame when the pointer is over it */
-  .open {
-    margin: 0 2px;
-    padding: 0 0 4px;
-    border: 1px dashed transparent;
-    border-radius: 7px;
-  }
-  .open.target {
-    border-color: var(--border);
-  }
-  .open.over {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
-  }
-  .hint {
-    padding: 0 8px 4px;
-    color: var(--accent);
-    font-size: 11px;
-  }
   /* the sidebar fills its pane: the gear stays at the bottom, over the list when it scrolls */
   .box {
     display: flex;
@@ -444,73 +384,6 @@
   }
   .star {
     color: #d9822b;
-  }
-  .paper {
-    display: flex;
-    align-items: center;
-    margin: 0 6px;
-    border-radius: 6px;
-  }
-  .paper.selected {
-    background: var(--line);
-  }
-  .tab {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 4px 4px 4px 10px;
-    border: none;
-    background: none;
-    color: var(--fg);
-    font: inherit;
-    text-align: left;
-    cursor: default;
-  }
-  /* the library tab: its count in the first line, the filters it shows in a second, indented and muted */
-  .tab.home {
-    padding: 4px 10px;
-  }
-  .tab.home .line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .tab.home .filters {
-    overflow: hidden;
-    padding-left: 10px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--muted);
-    font-size: 11.5px;
-  }
-  .tab .title {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--muted);
-    font-size: 11.5px;
-  }
-  .dot {
-    flex: none;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
-  .close {
-    flex: none;
-    width: 22px;
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--muted);
-    font-size: 15px;
-    visibility: hidden;
-  }
-  .paper:hover .close,
-  .paper.selected .close {
-    visibility: visible;
   }
   .item input {
     flex: 1;

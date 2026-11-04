@@ -17,6 +17,8 @@ export type Settings = {
    *  Score tab), as `bibtex` names them; a .bib added later counts */
   similar_skip: string[];
   hotkey: string;
+  /** shows the library of the main window */
+  library_hotkey: string;
   /** on Linux only */
   selection_hotkey?: string;
   matching: "word-start" | "inside-words";

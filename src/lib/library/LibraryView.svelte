@@ -8,7 +8,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { CheckMenuItem, Menu, PredefinedMenuItem } from "@tauri-apps/api/menu";
+  import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
   import { ask, save } from "@tauri-apps/plugin-dialog";
   import { onMount, tick, untrack, type Snippet } from "svelte";
   import { commands } from "$lib/commands";
@@ -86,6 +86,7 @@
     type View,
   } from "$lib/library/filters";
   import Sidebar from "$lib/library/Sidebar.svelte";
+  import OpenPapers from "$lib/library/OpenPapers.svelte";
   import { DROP_NEW, pdfDrag } from "$lib/library/drag.svelte";
   import Splitter from "$lib/library/Splitter.svelte";
   import { COLUMNS, firstDescending, sortText, type Column, type Sort } from "$lib/library/columns";
@@ -107,22 +108,24 @@
 
   let {
     layout = $bindable(),
-    visible,
     beside,
     tabs,
-    onfront,
+    onshow,
   }: {
-    /** the layout of the window, which the library changes and the window keeps */
+    /** the layout of the window, which the library changes and the window keeps; its tab in front says whether the
+     *  Library tab (the list) or the Papers tab (the PDFs open), both drawn here, is shown */
     layout: Layout;
-    /** whether the Library tab of the window is in front */
-    visible: boolean;
     /** the details beside the table (the switch `library-beside`), else a paper is read in place of it */
     beside: boolean;
     /** the switch of the tabs of the window, at the start of the toolbar */
     tabs: Snippet;
-    /** the Library tab to the front: a paper opened from the panel, a paper shown after it was added */
-    onfront: () => void;
+    /** the Library or the Papers tab to the front: a paper opened (from the list, the panel, the Feeds tab), the
+     *  last one closed, a paper shown in the library */
+    onshow: (tab: "library" | "papers") => void;
   } = $props();
+
+  /** the paper in front: that of the Papers tab, when it is in front */
+  let front = $derived(layout.tab === "papers" ? layout.active : null);
 
   /** a saved search of the library tab: its filters and the order of the table */
   type Saved = { name: string; filters: Filters; sort: Sort };
@@ -204,7 +207,7 @@
   /** The papers the tags in the details change: the one in front, else the
    *  selection when the focus is in it, else the paper shown. */
   let targets = $derived.by(() => {
-    const ids = layout.active ? [layout.active] : selection.focus && selection.selected.has(selection.focus) ? [...selection.selected] : item ? [item.id] : [];
+    const ids = front ? [front] : selection.focus && selection.selected.has(selection.focus) ? [...selection.selected] : item ? [item.id] : [];
     return ids.map((id) => byId.get(id)).filter((r): r is Row => r !== undefined);
   });
 
@@ -252,15 +255,15 @@
 
   /** the PDF of the paper in front */
   let reader = $derived.by(() => {
-    const id = layout.active;
+    const id = front;
     if (!id) return null;
     // PDFKit on macOS, pdf.js elsewhere
     const Kind = mac ? NativeReader : PdfjsReader;
     return untrack(() => new Kind(id, layout.pages[id] ?? 1, (page) => (layout.pages[id] = page)));
   });
 
-  // a modal of the page (the Add sheet, the delete question), or the Feeds tab in front, has the PDF step aside
-  $effect(() => reader?.cover(modalOpen() || !visible));
+  // a modal of the page (the Add sheet, the delete question) has the PDF step aside
+  $effect(() => reader?.cover(modalOpen()));
 
   /** what the search found, next to it */
   let summary = $derived(
@@ -337,7 +340,7 @@
   /** The library as the window opens, once its layout is loaded: the papers, the settings, the paper to open with
    *  the window ("library#ID"). */
   export async function load() {
-    history = initial(layout.open, layout.active);
+    history = initial(layout.open, front);
     status = await invoke<Status>("status");
     if (status.state === "ready") await loadLibrary();
     await refresh();
@@ -346,7 +349,7 @@
 
   /** The search field has the keys, unless a paper is in front. */
   export function focusSearch() {
-    if (!layout.active) input?.focus();
+    if (!front) input?.focus();
   }
 
   async function refresh() {
@@ -505,10 +508,16 @@
     search(searchOf(layout.library));
   });
 
+  // another set (a search, a tag, a view, a library): the table shows it, not the paper read in place of it
+  $effect(() => {
+    filterChips;
+    untrack(() => (reading = false));
+  });
+
   // the details of the paper in front, else of the one in focus; again
   // when the library reloads
   $effect(() => {
-    const id = layout.active ?? selection.focus;
+    const id = front ?? selection.focus;
     rows;
     if (!id) {
       item = null;
@@ -537,7 +546,7 @@
   }
 
   /** the row of the paper read in place of the table */
-  let readRow = $derived(reading && !beside && !layout.active && selection.focus ? byId.get(selection.focus) : undefined);
+  let readRow = $derived(reading && !beside && !front && selection.focus ? byId.get(selection.focus) : undefined);
 
   /** The papers of `ids` that are in the table, in its order. */
   function ordered(ids: Iterable<string>): string[] {
@@ -642,12 +651,59 @@
   /** The citations of papers on the clipboard, one to a line. */
   async function copyCitations(ids: string[]) {
     try {
-      const parts = await Promise.all(ids.map(async (id) => cite.toCopy(await cite.citation(id))));
-      await copyText(ids[0], { text: parts.map((p) => p.text).join("\n"), html: parts.map((p) => p.html).join("<br>") });
+      await copyCited(ids);
       say(`Copied ${count(ids.length, "citation")}`);
     } catch (err) {
       say(String(err));
     }
+  }
+
+  /** The citations of papers on the clipboard, one to a line; a failure thrown. */
+  async function copyCited(ids: string[]) {
+    const parts = await Promise.all(ids.map(async (id) => cite.toCopy(await cite.citation(id))));
+    await copyText(ids[0], { text: parts.map((p) => p.text).join("\n"), html: parts.map((p) => p.html).join("<br>") });
+  }
+
+  /** a copy just made by Cite or its ▾: Cite says ✓ for a moment */
+  let citeCopied = $state(false);
+  let citeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** A copy of the Papers tab (Cite, its ▾): ✓ on Cite when made, the failure said. */
+  async function citeCopy(copy: () => Promise<unknown>) {
+    try {
+      await copy();
+      citeCopied = true;
+      clearTimeout(citeTimer);
+      citeTimer = setTimeout(() => (citeCopied = false), 1500);
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** Cite ▾ of the Papers tab: the other ways to copy the paper in front. */
+  async function citeMenu(id: string) {
+    const row = byId.get(id);
+    const copyAs = (format: "key" | "pandoc" | "latex" | "bibtex") => () => citeCopy(() => invoke<string>("copy", { id, format }));
+    const items = [
+      await MenuItem.new({ text: `Citation (${await cite.styleName()})`, action: () => citeCopy(() => copyCited([id])) }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await MenuItem.new({ text: "Key", action: copyAs("key") }),
+      await MenuItem.new({ text: "[@key]", action: copyAs("pandoc") }),
+      await MenuItem.new({ text: "\\cite{key}", action: copyAs("latex") }),
+      await MenuItem.new({ text: "BibTeX", action: copyAs("bibtex") }),
+      ...(row?.doi
+        ? [
+            await MenuItem.new({
+              text: "DOI Link",
+              action: () => {
+                const link = `https://doi.org/${row.doi}`;
+                return citeCopy(() => copyText(id, { text: link, html: `<a href="${link}">${link}</a>` }));
+              },
+            }),
+          ]
+        : []),
+    ];
+    await (await Menu.new({ items })).popup();
   }
 
   /** One paper alone selected, with the details shown. Whether it was: a BibTeX being edited asks first. */
@@ -755,7 +811,7 @@
   /** ⌘Z, ⌘⇧Z out of a field: the last change of the .bib of the paper shown (of the one the app wrote last, after a
    *  delete, copy or move), else of the library tab's when it shows one, else the only one. */
   export async function stepLibrary(back: boolean) {
-    const bib = lastWrite ?? byId.get(layout.active ?? selection.focus ?? "")?.bib ?? onlyLibrary ?? (libraries.length === 1 ? libraries[0].bib : null);
+    const bib = lastWrite ?? byId.get(front ?? selection.focus ?? "")?.bib ?? onlyLibrary ?? (libraries.length === 1 ? libraries[0].bib : null);
     if (!bib) return say("Choose a paper or a library to " + (back ? "undo" : "redo") + " in");
     if (await write(() => (back ? undo(bib) : redo(bib)))) say(`${back ? "Undid" : "Redid"} the last change of ${fileName(bib)}`);
   }
@@ -765,7 +821,6 @@
     if (!ids.length || !(await leave(front))) return;
     layout.open = [...layout.open, ...ids.filter((id, i) => !layout.open.includes(id) && ids.indexOf(id) === i)];
     toFront(front);
-    onfront();
     Promise.all(ids.map((id) => invoke("opened", { id }))).then(refresh);
   }
 
@@ -812,12 +867,17 @@
     }
   }
 
-  /** The paper selected, in the library tab, with its details: the filters are taken off if they hide it. */
-  async function show(id: string) {
+  /** The paper selected, in the library tab, with its details (unless `details` is off: Show in Library of the
+   *  Papers tab, the row alone): the filters are taken off if they hide it. */
+  async function show(id: string, details = true) {
     await loadLibrary();
-    if (!shown.some((r) => r.id === id)) layout.library = restored(null);
+    if (!shown.some((r) => r.id === id)) {
+      layout.library = restored(null);
+      // the filters changed: the paper read in place let go first (an effect), then this one shown
+      await tick();
+    }
     selection.only(id);
-    showDetails();
+    if (details) showDetails();
     showLibrary();
   }
 
@@ -929,8 +989,8 @@
     return show(id);
   }
 
-  /** A place of the window's history (navigation.ts): the PDF of a paper open, or the list (none). Whether it is
-   *  shown: a BibTeX being edited asks first. */
+  /** A place of the window's history (navigation.ts): the PDF of a paper open in the Papers tab, or the list (none).
+   *  Whether it is shown: a BibTeX being edited asks first. */
   export async function showPlace(paper: string | null): Promise<boolean> {
     if (!(await leave(paper ?? selection.focus))) return false;
     toFront(paper);
@@ -959,29 +1019,35 @@
     noticeTimer = setTimeout(() => (notice = null), 4000);
   }
 
-  /** A view to the front: a paper (its PDF), or the list (null). */
+  /** A view to the front: a paper (its PDF, in the Papers tab), or the list (null, the Library tab). */
   function toFront(view: Seen) {
-    layout.active = view;
+    if (view !== null) layout.active = view;
     history = seen(history, view);
+    onshow(view === null ? "library" : "papers");
   }
 
-  /** What is in front once the papers `ids` are closed: what is now, unless it is one of them; then the view seen
-   *  before it, or the library (the setting). */
+  /** What is in front once the papers `ids` are closed, when the one in front is among them: the view seen before
+   *  it (a paper, or the list), or the list (the setting). */
   function frontAfter(ids: string[]): Seen {
-    if (layout.active === null || !ids.includes(layout.active)) return layout.active;
+    if (front === null || !ids.includes(front)) return front;
     return afterClose === "library" ? null : closed(history, ids)[0];
   }
 
-  /** Papers closed, or gone from the library: their tabs, pages and history go, `frontAfter` comes to the front. */
+  /** Papers closed, or gone from the library: their tabs, pages and history go. The Papers tab keeps one of those
+   *  left in front (the one seen last); if it was in front, `frontAfter` comes there. */
   function closePapers(ids: string[]) {
+    const wasFront = front !== null && ids.includes(front);
     const next = frontAfter(ids);
     layout.open = layout.open.filter((id) => !ids.includes(id));
     for (const id of ids) delete layout.pages[id];
     history = closed(history, ids);
-    toFront(next);
+    if (layout.active !== null && ids.includes(layout.active)) {
+      layout.active = history.find((v): v is string => v !== null) ?? layout.open.at(-1) ?? null;
+    }
+    if (wasFront) toFront(next);
   }
 
-  /** A paper closed: its tab ×, Close PDF, ⌘W. */
+  /** A paper closed: its ×, Close PDF, ⌘W. */
   async function closePaper(id: string) {
     const next = frontAfter([id]);
     // the edit of the paper goes with its tab
@@ -991,7 +1057,7 @@
 
   /** ⌘W: the paper in front, else the window. */
   async function closeActive() {
-    if (layout.active) closePaper(layout.active);
+    if (front) closePaper(front);
     else closeWindow();
   }
 
@@ -1000,10 +1066,10 @@
     if (await leave(null)) getCurrentWindow().close();
   }
 
+  /** The Library tab to the front, its search field with the keys. */
   async function showLibrary() {
     if (!(await leave(selection.focus))) return;
     toFront(null);
-    onfront();
     tick().then(() => input?.focus());
   }
 
@@ -1054,6 +1120,8 @@
         return reader ? reader.focusFind() : input?.select();
       case "library":
         return showLibrary();
+      case "papers":
+        return layout.active && activate(layout.active);
       case "export":
         return exportBib(exportTargets());
       case "next-tab":
@@ -1078,10 +1146,10 @@
    *  it), the editor of BibTeX its own; else they are the library's. */
   export function key(e: KeyboardEvent) {
     const field = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-    if (layout.active) {
+    if (front) {
       if (e.key === "Escape" && !field && !e.defaultPrevented) {
         e.preventDefault();
-        closePaper(layout.active);
+        closePaper(front);
       }
       return;
     }
@@ -1175,10 +1243,10 @@
     if (await leave(id)) toFront(id);
   }
 
-  /** ⌃Tab: the next tab, the library first; ⌃⇧Tab: the one before. */
+  /** ⌃Tab: the next paper open, after the last the library, then the first again; ⌃⇧Tab: the one before. */
   function cycle(step: number) {
     const tabs = [null, ...layout.open];
-    const at = tabs.indexOf(layout.active);
+    const at = tabs.indexOf(front);
     const next = tabs[(at + step + tabs.length) % tabs.length];
     if (next) activate(next);
     else showLibrary();
@@ -1223,7 +1291,7 @@
   </div>
 {/if}
 
-<main class:hidden={!visible}>
+<main class:hidden={layout.tab !== "library"}>
   {#if layout.showSidebar}
     <aside class="sidebar" style:width="{layout.sidebar}px">
       <Sidebar
@@ -1235,9 +1303,6 @@
         filtered={(tag) => hasTag(layout.library.tags, tag)}
         {pinned}
         open={layout.openTags}
-        tab={{ filters: tabFilters(layout.library), count: shown.length }}
-        {papers}
-        active={layout.active}
         onlibrary={(bib, toggle) => {
           layout.library.bibs = chooseLibrary(layout.library.bibs, bib, toggle);
           showLibrary();
@@ -1247,13 +1312,9 @@
           showLibrary();
         }}
         ontag={filterByTag}
-        onlibrarytab={showLibrary}
         onfold={fold}
         onrename={rename}
         onpin={pin}
-        dirty={editor.changed ? editor.id : null}
-        onpaper={activate}
-        onclose={closePaper}
         ondownload={(pdf, id) => (adding = { id, pdf, choose: false })}
         onshow={show}
       >
@@ -1275,9 +1336,6 @@
   <div class="right">
     <header>
       {@render tabs()}
-      {#if reader}
-        <ReaderBar {reader} onclose={closeActive} />
-      {:else}
         <div class="search">
           <input
             bind:this={input}
@@ -1298,7 +1356,6 @@
           onsave={(name) => keepSaved(savedAdded(savedSearches, currentSaved(name)))}
         />
         <span class="count">{notice ?? summary}</span>
-      {/if}
       <span class="spacer"></span>
       <button class="tool" title="Add a paper ({label(commands.add)}), or drop a PDF on the window"
         onclick={() => (adding = { id: null, pdf: null, choose: false })}>Add…</button
@@ -1314,7 +1371,6 @@
     </header>
     <div class="content">
       <section class="library" {...{ [DROP_NEW]: "" }}>
-        {#if !reader}
           <div class="chips">
             {#each filterChips as chip, i (chip.kind + chip.text)}
               {#if i}<span class="sep" aria-hidden="true">›</span>{/if}
@@ -1343,10 +1399,7 @@
               </div>
             {/if}
           </div>
-        {/if}
-        {#if reader}
-          {#key reader}<ReaderView {reader} />{/key}
-        {:else if status.state === "loading" && !rows.length}
+        {#if status.state === "loading" && !rows.length}
           <p class="empty">Loading the library…</p>
         {:else if status.state === "failed"}
           <p class="empty error">{status.error}</p>
@@ -1402,6 +1455,74 @@
   </div>
 </main>
 
+<!-- the Papers tab: the papers open in its sidebar, the PDF of the one in front, its details beside it on demand -->
+<main class:hidden={layout.tab !== "papers"}>
+  {#if layout.showSidebar}
+    <aside class="sidebar" style:width="{layout.sidebar}px">
+      <OpenPapers {papers} active={layout.active} dirty={editor.changed ? editor.id : null} onpaper={activate} onclose={closePaper} />
+    </aside>
+    <Splitter bind:width={layout.sidebar} side="left" min={160} max={420} />
+  {/if}
+  <div class="right">
+    <header class="reading">
+      {@render tabs()}
+      {#if reader}
+        <ReaderBar {reader} onclose={closeActive} />
+      {/if}
+      <span class="spacer"></span>
+      {#if front}
+        {@const id = front}
+        <!-- what was just done, floating over the bar left of its buttons: nothing moves (under the bar, the PDF view
+             of macOS would hide it) -->
+        <div class="actions">
+          {#if notice}{#key notice}<span class="pill" role="status">{notice}</span>{/key}{/if}
+          <button
+            class="tool icon"
+            class:on={layout.paperDetails}
+            title="Details: those of the paper beside its PDF ({label(commands.details)})"
+            aria-label="Details"
+            onclick={() => (layout.paperDetails = !layout.paperDetails)}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+              ><rect x="1.7" y="2.7" width="12.6" height="10.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3" /><path
+                d="M9.8 2.7v10.6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.3"
+              /></svg
+            >
+          </button>
+          <button class="tool in-library" title="Show in Library: the paper selected there" aria-label="Show in Library" onclick={() => show(id, false)}
+            ><span class="wide">In Library</span><svg class="narrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+              ><path d="M2 3.5h7M2 8h7M2 12.5h7M11.5 5.5 14 8l-2.5 2.5M14 8H9.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg
+            ></button
+          >
+          <span class="split">
+            <button class="tool cite" title="Copy the citation, in the style of the settings" onclick={() => citeCopy(() => copyCited([id]))}
+              >{citeCopied ? "✓" : "Cite"}</button
+            ><button class="tool" title="Copy the key, [@key], \cite{'{'}key{'}'}, the BibTeX or the DOI link" aria-label="Other ways to copy" onclick={() => citeMenu(id)}>▾</button>
+          </span>
+        </div>
+      {/if}
+    </header>
+    <div class="content">
+      <section class="pdf">
+        {#if reader}
+          {#key reader}<ReaderView {reader} />{/key}
+        {:else}
+          <p class="empty">No paper open. Space or Enter in the Library opens one.</p>
+        {/if}
+      </section>
+      {#if front && layout.paperDetails}
+        <Splitter bind:width={layout.details} side="right" min={260} max={600} />
+        <aside class="details" style:width="{layout.details}px">
+          {#if item}{@render paperDetails(item)}{/if}
+        </aside>
+      {/if}
+    </div>
+  </div>
+</main>
+
 {#snippet paperDetails(item: Item)}
   <Details
     {item}
@@ -1426,7 +1547,7 @@
     display: flex;
     height: 100vh;
   }
-  /* the Feeds tab is in front: the library keeps its state (the selection, the scroll, the edit) */
+  /* another tab in front: the library keeps its state (the selection, the scroll, the edit) */
   main.hidden {
     display: none;
   }
@@ -1449,7 +1570,8 @@
     min-height: 0;
     display: flex;
   }
-  .library {
+  .library,
+  .pdf {
     flex: 1;
     min-width: 320px;
     display: flex;
@@ -1465,11 +1587,31 @@
     padding: 0 12px;
     border-bottom: 1px solid var(--line);
   }
+  /* the Papers tab's: the PDF's controls and its buttons, closer, so they fit beside the sidebar */
+  header.reading {
+    gap: 7px;
+    container-type: inline-size;
+  }
+  /* In Library: its words, or in a narrow bar its mark */
+  .tool.in-library .narrow {
+    display: none;
+  }
+  @container (max-width: 1080px) {
+    .tool.in-library {
+      padding: 4px 7px;
+    }
+    .tool.in-library .wide {
+      display: none;
+    }
+    .tool.in-library .narrow {
+      display: block;
+    }
+  }
   /* the search keeps its width: what is next to it stays in place */
   .search {
     position: relative;
     flex: 0 1 50%;
-    min-width: 200px;
+    min-width: 160px;
     max-width: 560px;
     display: flex;
   }
@@ -1565,8 +1707,12 @@
     color: var(--fg);
   }
   /* room for "99999 papers · 999 selected": the export stays in place */
+  /* its room kept (what follows stays in place as it changes), unless the bar is too narrow: then it gives it */
   .count {
-    min-width: 23ch;
+    flex: 0 1 23ch;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--muted);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
@@ -1623,6 +1769,8 @@
     flex: 1;
   }
   .tool {
+    flex: none;
+    white-space: nowrap;
     padding: 3px 10px;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -1633,6 +1781,67 @@
   }
   .tool.on {
     background: var(--line);
+  }
+  /* the buttons of the Papers tab, on one line; what was just done floats left of them */
+  .actions {
+    position: relative;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .actions .tool {
+    white-space: nowrap;
+  }
+  .actions .tool.icon {
+    padding: 4px 7px;
+  }
+  .actions .tool.icon svg {
+    display: block;
+  }
+  .pill {
+    position: absolute;
+    right: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 360px;
+    overflow: hidden;
+    padding: 3px 10px;
+    border-radius: 11px;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    animation: pill 4s ease forwards;
+  }
+  @keyframes pill {
+    0% {
+      opacity: 0;
+    }
+    5%,
+    85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  /* Cite and its ▾, one button; Cite as wide as its ✓ after a copy */
+  .split .cite {
+    min-width: 44px;
+  }
+  .split {
+    display: flex;
+  }
+  .split .tool:first-child {
+    border-radius: 6px 0 0 6px;
+  }
+  .split .tool + .tool {
+    padding: 3px 6px;
+    border-left: none;
+    border-radius: 0 6px 6px 0;
   }
 
   .details {

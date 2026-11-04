@@ -739,33 +739,3 @@ fn snoozed_out_of_the_unread_till_its_day_then_first() {
     assert_eq!(feeds.reminder(&j3_id), None);
     assert_eq!(titles(&feeds, "is:reminder"), [j1]);
 }
-
-#[test]
-fn what_was_fetched_since_the_list_was_shown_is_held_back() {
-    let dir = tempfile::tempdir().unwrap();
-    let clock = Clock::new();
-    let mut feeds = feeds(dir.path(), &clock, Vec::new());
-    let j2_id = id_of(&feeds, J2.1);
-    feeds.set_triage(&j2_id, Triage::Removed).unwrap();
-    let before = ViewRequest {
-        shown: Some(clock.now() - TimeDelta::hours(1)),
-        ..ViewRequest::default()
-    };
-    let view = feeds.view(&before);
-    assert!(view.rows.is_empty());
-    assert_eq!(
-        (view.held, view.counts.all),
-        (4, 0),
-        "the removed one not counted"
-    );
-    let after = ViewRequest {
-        shown: Some(clock.now()),
-        ..ViewRequest::default()
-    };
-    let view = feeds.view(&after);
-    assert_eq!(
-        (view.rows.len(), view.held),
-        (4, 0),
-        "the removed one left out"
-    );
-}

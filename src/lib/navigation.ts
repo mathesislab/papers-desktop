@@ -1,10 +1,10 @@
-// Back and forward in the main window, as a browser's: the places it showed, the tab in front and, in the Library
-// tab, the PDF in front or the list. A selection, an item read in place of a list are no places. Pure functions,
+// Back and forward in the main window, as a browser's: the places it showed, the tab in front and, in the Papers
+// tab, the PDF in front. A selection, an item read in place of a list are no places. Pure functions,
 // tested by scripts/navigation.test.ts (npm test).
 
 import type { Tab } from "./layout.ts";
 
-/** A place of the window: a tab in front; in the Library tab, the PDF of a paper (its id) or the list (null). */
+/** A place of the window: a tab in front; in the Papers tab, the PDF of a paper (its id); else none. */
 export interface Place {
   tab: Tab;
   paper: string | null;
@@ -23,8 +23,8 @@ export const HISTORY_MAX = 50;
 
 export const samePlace = (a: Place, b: Place) => a.tab === b.tab && a.paper === b.paper;
 
-/** The place shown by the tab in front and the PDF in front of the library: another tab's is the tab alone. */
-export const placeOf = (tab: Tab, active: string | null): Place => ({ tab, paper: tab === "library" ? active : null });
+/** The place shown by the tab in front and the PDF in front of the Papers tab: another tab's is the tab alone. */
+export const placeOf = (tab: Tab, active: string | null): Place => ({ tab, paper: tab === "papers" ? active : null });
 
 /** Another place reached from `from`: it goes back, the places forward are dropped. */
 export function went(h: History, from: Place, to: Place): History {
@@ -57,8 +57,9 @@ export function kept(h: History, open: string[], current: Place): History {
 
 /** What a place is called: the tab, a paper by its title (`titleOf`). */
 export function placeText(p: Place, titleOf: (id: string) => string | undefined): string {
-  if (p.tab !== "library") return p.tab === "feeds" ? "Feeds" : "Search";
-  if (p.paper === null) return "the Library";
+  if (p.tab === "library") return "the Library";
+  if (p.tab !== "papers") return p.tab === "feeds" ? "Feeds" : "Search";
+  if (p.paper === null) return "a paper";
   const title = titleOf(p.paper);
   return title ? `“${title.length > 60 ? title.slice(0, 59) + "…" : title}”` : "a paper";
 }

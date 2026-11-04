@@ -45,7 +45,7 @@ import {
   scoreHint,
   since,
   snoozeUntil,
-  stale,
+  fetchedSince,
   toggled,
 } from "../src/lib/feeds/items.ts";
 import { ITEM_KINDS, SOURCE_KINDS, isItemKind, isPost, itemKinds, sourceKinds } from "../src/lib/feeds/kinds.ts";
@@ -324,7 +324,7 @@ test("what an item adds", () => {
   assert.equal(addTarget({ ...d, kind: "blog" }), null);
 });
 
-test("ages, staleness and the status line", () => {
+test("ages and the status line", () => {
   const now = Date.parse("2026-10-31T12:00:00Z");
   const at = (minutes: number) => new Date(now - minutes * 60000).toISOString();
   assert.equal(ago(at(0), now), "now");
@@ -336,15 +336,22 @@ test("ages, staleness and the status line", () => {
   assert.equal(since(at(150), now), "2 h ago");
   assert.match(since(at(30 * 24 * 60), now), /^on /);
   const summary = (minutes: number) => ({ at: at(minutes), fetched: 5, unchanged: 3, failed: [], added: 12, lookups: 0, pages: 0 });
-  assert.equal(stale(null, now), true);
-  assert.equal(stale(summary(10), now), false);
-  assert.equal(stale(summary(16), now), true);
   assert.equal(fetchLine(summary(8), now), "fetched 8 min ago · 12 new · 3 not modified");
   assert.equal(
     fetchLine({ ...summary(0), added: 0, unchanged: 0, failed: [{ subscription: "s", title: "IGS", message: "403" }] }, now),
     "fetched just now · 1 failed",
   );
   assert.equal(fetchLine(null, now), "not fetched yet");
+});
+
+test("the rows fetched since the list was last shown", () => {
+  const rows = [
+    { id: "a", found: "2026-10-31T12:00:00Z" },
+    { id: "b", found: "2026-10-31T10:00:00Z" },
+  ];
+  assert.deepEqual(fetchedSince(rows, "2026-10-31T11:00:00Z"), ["a"]);
+  assert.deepEqual(fetchedSince(rows, null), [], "the first time: none");
+  assert.deepEqual(fetchedSince(rows, "2026-10-31T12:00:00Z"), [], "at that moment: not since");
 });
 
 test("the status of an item: its version, the library, the news, in that order", () => {

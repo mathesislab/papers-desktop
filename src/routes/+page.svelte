@@ -13,6 +13,7 @@
   import { isReference } from "$lib/reference";
   import { clearYears, extendYears, onlyYears, toggleExcluded, toggleYear } from "$lib/query";
   import YearStrip from "$lib/YearStrip.svelte";
+  import { onlineOf } from "$lib/search/state";
   import type { Found, Hit, Item, Status, YearCount } from "$lib/types";
   import type { Settings } from "$lib/settings/settings.svelte";
 
@@ -101,6 +102,7 @@
   const previewShortcut: Shortcut = { key: "p", mod: true };
   const settingsShortcut: Shortcut = { key: ",", mod: true };
   const libraryShortcut: Shortcut = { key: "o", mod: true };
+  const onlineShortcut: Shortcut = { key: "Enter", mod: true, shift: true };
 
   /** the list shown in the empty panel */
   let shortcuts: [string, string][] = $derived([
@@ -108,6 +110,7 @@
     ["Preview", label(previewShortcut)],
     ["Settings", label(settingsShortcut)],
     ["Library", label(libraryShortcut)],
+    ["Search OpenAlex", label(onlineShortcut)],
     ["All actions", label(menuShortcut)],
     ["Move", "↑ ↓"],
     ["Close", "Esc"],
@@ -223,6 +226,14 @@
   }
 
   /** A query edited by a click: search it, and give the field back its focus. */
+  /** the query asked of OpenAlex by Search OpenAlex (`onlineOf`): none when the query has nothing for it */
+  let online = $derived(status.state === "ready" ? onlineOf(query).trim() : "");
+
+  /** ⌘⇧Enter, Search OpenAlex: the Search tab of the main window, searching for the query; the panel hides. */
+  function searchOnline() {
+    if (online) invoke("search_openalex", { query: online });
+  }
+
   function edit(edited: string) {
     query = edited;
     search();
@@ -278,6 +289,9 @@
     } else if (matches(e, libraryShortcut)) {
       e.preventDefault();
       invoke("open_library");
+    } else if (matches(e, onlineShortcut)) {
+      e.preventDefault();
+      searchOnline();
     } else if (menu && e.key === "Enter") {
       e.preventDefault();
       run(available[menuSelected]);
@@ -403,6 +417,12 @@
         <div class="empty">
           {#if status.state === "ready"}No match{/if}
         </div>
+      {/if}
+      {#if online}
+        <button class="online" title="The Search tab of the main window, searching OpenAlex" onclick={searchOnline}>
+          <span>Search OpenAlex for <b>{online}</b></span>
+          <kbd>{label(onlineShortcut)}</kbd>
+        </button>
       {/if}
 
       {#if menu && current}
@@ -605,6 +625,35 @@
     opacity: 0.55;
   }
 
+  /* the way out to OpenAlex, under the list: in the violet of the Search tab */
+  .online {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 6px 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--search) 10%, transparent);
+    color: var(--search);
+    font: inherit;
+    text-align: left;
+  }
+  .online span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .online b {
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .online:hover {
+    background: color-mix(in srgb, var(--search) 18%, transparent);
+  }
   .empty {
     flex: 1;
     display: flex;

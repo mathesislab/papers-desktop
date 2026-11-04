@@ -31,6 +31,10 @@ pub struct Settings {
     /// Ctrl+Alt+Space elsewhere, where Alt+Space opens the window menu (set
     /// in the settings window, it applies at once; in the file, at the next start)
     pub hotkey: String,
+    /// global shortcut that shows the library of the main window, its search
+    /// field ready: Ctrl+Alt+Space on macOS, Ctrl+Alt+Shift+L elsewhere,
+    /// where Ctrl+Alt+Space is the panel's
+    pub library_hotkey: String,
     /// global shortcut that finds the selected text (the primary selection)
     /// in the panel; on macOS, the Services menu does it
     #[cfg(target_os = "linux")]
@@ -330,6 +334,12 @@ impl Default for Settings {
                 "Ctrl+Alt+Space"
             }
             .into(),
+            library_hotkey: if cfg!(target_os = "macos") {
+                "Ctrl+Alt+Space"
+            } else {
+                "Ctrl+Alt+Shift+L"
+            }
+            .into(),
             #[cfg(target_os = "linux")]
             selection_hotkey: "Ctrl+Alt+Shift+Space".into(),
             matching: Matching::default(),
@@ -566,7 +576,8 @@ mod tests {
     #[test]
     fn the_file_keeps_its_keys_with_the_settings_set_elsewhere_nested() {
         let json = r#"{"bibtex": ["~/papers.bib"], "papers_folder": "~/Papers",
-            "similar_skip": ["~/group.bib"], "hotkey": "Alt+Space", "matching": "word-start",
+            "similar_skip": ["~/group.bib"], "hotkey": "Alt+Space",
+            "library_hotkey": "Ctrl+Alt+Space", "matching": "word-start",
             "citation_style": "apa", "check_updates": false, "after_close": "library", "open_pdf": "system",
             "clear_after_minutes": 1440,
             "text_size": "larger", "writer": "command", "papers": "/bin/papers",

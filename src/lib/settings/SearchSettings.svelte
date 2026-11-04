@@ -11,7 +11,7 @@
   let settings = $derived(prefs.settings!);
 
   /** the hotkey whose keys are being recorded */
-  type HotkeyField = "hotkey" | "selection_hotkey";
+  type HotkeyField = "hotkey" | "library_hotkey" | "selection_hotkey";
   let recording = $state<HotkeyField | null>(null);
 
   $effect(() => {
@@ -76,6 +76,13 @@
       <span class="hint">Shows the panel, from any app</span>
     </span>
     {@render recorder("hotkey", settings.hotkey)}
+  </div>
+  <div class="row">
+    <span>
+      <span class="label">Library hotkey</span>
+      <span class="hint">Shows the library of the main window, from any app, its search field ready</span>
+    </span>
+    {@render recorder("library_hotkey", settings.library_hotkey)}
   </div>
   {#if settings.selection_hotkey !== undefined}
     <div class="row">

@@ -25,6 +25,11 @@ the matches per year, a preview (first page, citation in a CSL style,
 BibTeX), and actions (open, reveal, DOI page, copy key, `[@key]`,
 `\cite{key}`, BibTeX). The library reloads when the bibtex file changes.
 
+The panel searches the library alone, at once. Under its list, *Search
+OpenAlex for …* (`⌘⇧Enter`) opens the main window's Search tab (shown if
+hidden) with the query, less what OpenAlex has not (`tag:`, `key:`, `has:`;
+`first:` as `a:`; `onlineOf`), and runs it there.
+
 ## The main window (P0, read-only; 0.5)
 
 Two windows with different jobs:
@@ -34,7 +39,10 @@ Two windows with different jobs:
   writing.
 - **Main window** (mockup: `docs/mockups/main-window.html`): a normal
   window, in the Dock and `⌘Tab` while it is open. It opens from the
-  menu-bar icon (Open Library) and with `⌘O` in the panel; `⌘I` in the
+  menu-bar icon (Open Library), with `⌘O` in the panel, and with the
+  library hotkey from any app (`library_hotkey`, `⌃⌥Space` on macOS,
+  `Ctrl+Alt+Shift+L` elsewhere; Settings → Search), which shows the Library
+  tab, the list in front, its search field ready; `⌘I` in the
   panel opens the selected paper in it. Enter in the panel opens the PDF
   there too, in a tab (`open_pdf` "app", the default), else in the default
   app of the system ("system") or Preview ("preview", macOS); ⌥Enter opens
@@ -49,9 +57,9 @@ Three panes, each resized by dragging, the right one hidden on demand:
   recently opened, recently added, no PDF, broken file links, possible
   duplicates: the same DOI, or the same title and year); the tags with their
   counts (a click filters by the tag, a second click takes the filter off;
-  `⌘`-click: below), *★ Starred* first (the tag `starred`, out of the tree);
-  *Open*: the library tab, then the open papers. The counts of the views and
-  the tags are those within the libraries chosen.
+  `⌘`-click: below), *★ Starred* first (the tag `starred`, out of the tree).
+  The counts of the views and the tags are those within the libraries
+  chosen. The papers open are the Papers tab's (below).
 - **Library**: a table of the papers of the current set (below): sortable
   columns (authors, year, title, journal, tags, a file marker that tells a
   missing file, a ☆ that stars the paper or unstars it: the tag `starred`,
@@ -80,43 +88,67 @@ Three panes, each resized by dragging, the right one hidden on demand:
 - **Details** of the selected paper: title, authors, tags, file (open,
   reveal), fields, citation, BibTeX (folded).
 
-**Tabs.** The window works as a browser does: the first tab is always the
-library, then one tab per open paper, listed in the sidebar (*Open*): author,
-year and title in full, as a tab bar cannot. Space (or *Open*) opens a
-paper; `⌘W` closes it, which shows what was shown before it, as a browser's
-back does: the list or another paper, in the order they were last shown (the
-list last; `history.ts`, not kept across launches). A setting shows the library
-at once instead (`after_close`, "next" by default, so a settings file that does
-not have it gets that). With the library in front
-`⌘W` closes the window. `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and
-*Show Previous Tab* of the Window menu) and `⌃Tab` go through the tabs,
-Library → paper 1 → … → Library; `⌘1` shows the library.
+**Tabs.** A switch at the start of the toolbar, *▢ | Library | Feeds |
+Search* (`⌘1` to `⌘4`, in the Window menu: *Open Papers*, *Library*,
+*Feeds*, *Search*), shows one of the tabs of the window, each in its colour
+(the papers orange, *Library* blue, *Feeds* green, *Search* violet): a light
+tint behind, full in front, so that each is told apart at a glance. The
+first, the **Papers** tab, is a PDF and the number of papers open, dimmed
+with none (and then off, but as a place to drop rows on: below).
 
-**Library, Feeds and Search.** A switch at the start of the toolbar, *Library |
-Feeds | Search* (`⌘1`, `⌘2`, `⌘3`, in the Window menu; *Feeds* green and
-*Search* violet when in front), shows one of the tabs of the window
-(`LibraryView.svelte`, `FeedsView.svelte`, `SearchView.svelte`; the page,
-`src/routes/main/+page.svelte`, keeps the layout, the tabs in one table
-(`TABS`) shown as their switches say, and passes the commands on). The papers open are tabs of the Library:
-`⌃Tab` and `⌘⇧]` go through them there only. `⌘1` from Feeds shows the Library
-as it was left (a paper in front stays), in it the library. The library
-stays behind the feeds, hidden, with its selection, scroll and edit; its
-PDF view steps aside (`Reader.cover`) and its keys are off. In Feeds `⌘W`
-closes the window, `⌘N` opens the Add sheet, `⌘F` goes to the search of the
-feeds, and a paper opened from the panel (or shown after it was added from
-the library) brings the Library back. The page passes the keys to the tab in
-front only (`LibraryView.key`, `FeedsView.key`, `SearchView.key`): no tab's
-keys leak into another. The layout (`src/lib/layout.ts`, pure and tested by
-`scripts/layout.test.ts`) keeps the tab in front (`tab`), the Feeds tab's own
-(`feeds: {filters, columns, shown}`, below) and the Search tab's (`search`:
-its state and columns); a layout of before (`view`, `feedColumns`,
-`feedsShown`, `searchColumns` beside the rest) is read into them.
+- **Papers** (`OpenPapers.svelte`, in `LibraryView.svelte`): its sidebar
+  lists the papers open (author, year and title in full, as a tab bar
+  cannot; a × closes one, a dot says its BibTeX is being edited), its main
+  pane shows the PDF of the one in front (`layout.active`), and its toolbar
+  the PDF's controls (outline, find, page, zoom, ↗ the default app, ✕), then
+  *Details* (an icon; `⌘⌥I` here: the details of the paper beside its PDF,
+  `layout.paperDetails`), *In Library* (Show in Library: the paper selected
+  in the Library tab, the filters taken off if they hide it) and *Cite ▾*
+  (Cite copies the citation in the style of the settings; ▾ the key,
+  `[@key]`, `\cite{key}`, the BibTeX, the DOI link), on one line. The find
+  field gives the room; a bar narrower than 1080 px (the window, the sidebar)
+  drops the page count and shows In Library as its mark (a container query
+  on the bar). A copy
+  made, Cite says ✓ for 1.5 s; anything else to say (a failure) floats in
+  the bar left of them, as a pill that fades: nothing moves, and under the
+  bar the PDF view of macOS would hide it. Space (or *Open*) in the library
+  opens a paper there, as do a paper opened from the panel and from the
+  Feeds and Search tabs.
+- `⌘W` (and Esc out of a field) closes the paper in front, which shows what
+  was shown before it, as a browser's back does: another paper, or the
+  Library tab, in the order they were last shown (`history.ts`, not kept
+  across launches). A setting shows the library at once instead
+  (`after_close`, "next" by default, so a settings file that does not have
+  it gets that). The last paper closed, the Library tab comes. With no paper
+  in front, `⌘W` closes the window.
+- `⌘⇧]` and `⌘⇧[` (Ctrl+Shift elsewhere; *Show Next Tab* and *Show Previous
+  Tab* of the Window menu) and `⌃Tab` go through the papers and the library:
+  Library → paper 1 → … → Library. `⌘1` shows the paper last in front.
+
+`LibraryView.svelte` draws both the Library and the Papers tab (the library's
+rows, the editor and the history are theirs); `FeedsView.svelte` and
+`SearchView.svelte` the others. The page, `src/routes/main/+page.svelte`,
+keeps the layout, the tabs in one table (`TABS`) shown as their switches
+say, and passes the commands on. The library stays behind the other tabs,
+hidden, with its selection, scroll and edit; the PDF of the Papers tab is
+made again when the tab comes back, at the page it was left at
+(`layout.pages`), and steps aside for a sheet (`Reader.cover`). In Feeds and
+Search `⌘W` closes the window, `⌘N` opens the Add sheet, `⌘F` goes to the
+tab's search. The page passes the keys to the tab in front only
+(`LibraryView.key`, `FeedsView.key`, `SearchView.key`): no tab's keys leak
+into another. The layout (`src/lib/layout.ts`, pure and tested by
+`scripts/layout.test.ts`) keeps the tab in front (`tab`), the papers open
+and the one in front of the Papers tab (`open`, `active`; a layout of before
+with a PDF in front of the library shows it in the Papers tab), the Feeds
+tab's own (`feeds: {filters, columns, shown}`, below) and the Search tab's
+(`search`: its state and columns); a layout of before (`view`,
+`feedColumns`, `feedsShown`, `searchColumns` beside the rest) is read into
+them.
 
 **The library tab is the current set**, and keeps it while papers are opened
 and closed: going back shows the same list, the selection and where it was
-scrolled to. Its sidebar row is `Library` with its count, and under it, in
-a second line (indented, smaller, muted, ellipsized), the filters it shows
-(`papers.bib · No PDF · amoc · "ice"`; no second line with no filter on). The set is the
+scrolled to. Another search or filter shows the list (a paper read in place
+of it let go). The set is the
 product of four filters (`src/lib/library/filters.ts`, a pure function of the
 rows, tested by `scripts/filters.test.ts`, `npm test`):
 
@@ -181,10 +213,11 @@ after the last one gone):
   button is released, as in Finder, so that they can be dragged). Above 5 papers it asks first (*Open 12 papers?*). A paper
   without a file opens its web page in the browser, as before.
 - *Drag* rows (the selection if the row is in it, else the row) onto the
-  *Open* section of the sidebar: they open as tabs. The drag is made of pointer
-  events (`drag.svelte.ts`: the page's own drag and drop is the window's drop of
-  PDFs); a label follows the pointer, the section shows a frame and *Drop to
-  open*; `Esc` cancels.
+  PDF of the tab switch: they open in the Papers tab. The drag is made of
+  pointer events (`drag.svelte.ts`: the page's own drag and drop is the
+  window's drop of PDFs); a label follows the pointer, the switch's PDF shows
+  a frame and *Drop to open*, and fills when the pointer is over it; `Esc`
+  cancels.
 - *Open in Preview* (macOS; *Open in default app* elsewhere): the PDFs of the
   selection outside the app (`open_pdfs`, the opener plugin: Preview on macOS,
   the system's default app elsewhere). A paper without a PDF is skipped, and
@@ -667,7 +700,7 @@ and the PDF dropped on the window. Left:
 ## Feeds (P1, branch `feed-reader`)
 
 The new papers of the journals, preprint servers, news sites and blogs
-followed, in a *Feeds* tab beside the *Library* tab (⌘1, ⌘2): every item
+followed, in a *Feeds* tab beside the *Library* tab (⌘2, ⌘3): every item
 comes in, filters and scores distil them, and a paper goes to the Add sheet
 without its website (which stays one key away). Proposals and the checks
 behind them: `docs/drafts/feeds-proposals.md`; mockup:
@@ -851,13 +884,13 @@ Library tab):
   and its ▾ the list, the items older than 1, 3 or 7 days, or those above. The row menu's
   *Source Is* sets the kind of its subscription (Journal, Preprint Server,
   News & Press, General), which its items take at once.
-- *Held updates*: a fetch in the background (polling) does not change the
-  list: the items first fetched after the list was last brought up to date
-  (`shown`, the layout's `feeds.shown`) are neither listed nor counted, and
-  wait behind *N new · Show*; a fetch asked for (⇧⌘R, *Fetch*, a
-  subscription) shows them at once. ⌘R brings the list up to date without
-  fetching: what was held back, the items triaged here gone from where they
-  no longer belong, sorted again.
+- *New items at once*: what a fetch brings, in the background (polling) or
+  asked for, comes into the list as soon as it is read (`feeds-changed`).
+  The items first fetched since the list was last shown (`found`, after the
+  layout's `feeds.shown`, which each answer moves on) are shaded in the
+  green of the tab, the shade fading over 5 s (`fetchedSince`); the first
+  time, none. ⌘R lets go the items triaged here, which leave where they no
+  longer belong, and sorts the list again, without fetching.
 - *Reminders*: `z` (*⏰ Later*) snoozes items 1, 3, 7 or 30 days (out of
   *Unread*, in *Snoozed*, back as new at the start of that day); `u` keeps
   them unread (a reminder due now). A due reminder is first in the list,
@@ -896,8 +929,9 @@ Library tab):
   adding, the Feeds tab stays in front (from the library, the paper is shown
   in the Library tab, as before) and the item becomes *added*. A post adds
   its linked paper.
-- *Fetch*: on opening the tab when the last fetch is older than 15 minutes,
-  and on `⇧⌘R` or ↻, in two phases: the feeds read (the list shown at
+- *Fetch*: by the polling (a setting) and on `⇧⌘R` or ↻, never by opening
+  the tab; the ↻ button says how long ago the last fetch was (*↻ Fetch 8
+  min*). In two phases: the feeds read (the list shown at
   once), then the lookups of Crossref and OpenAlex (*Looking up in Crossref
   and OpenAlex…*), the rules applied at their end; the `feeds-fetching`
   event says the phase (`reading`, `looking-up`, `done`), the
@@ -905,8 +939,7 @@ Library tab):
   1 failed*, the failures listed on hover and click); `feeds-changed` reads
   the list again. That event alone does after a change, here or elsewhere
   (a triage, a fetch, papers found, a subscription): the tab asks for the
-  list itself only when its filters change or it is brought up to date
-  (⌘R, *N new · Show*, a fetch asked for: `bringUpToDate`), and the phase
+  list itself only when its filters change or on ⌘R, and the phase
   event alone says whether a fetch is under way.
 - *Subscribe* (the button): a feed URL, a Crossref ISSN, an OpenAlex
   filter or *Words*, with the kind of its items (the user's choice, Journal
@@ -1058,9 +1091,8 @@ subscription. Removed items are rows only if the query names them
 by the view for its rows and for each saved view; the page asks for the
 query of its choices alone.
 
-**When**: on opening the Feeds tab (the tab calls `feeds_fetch` when shown
-and the last fetch, `feeds_last_fetch`, is older than 15 minutes) and on
-⇧⌘R (`feeds_fetch` with `only`: one subscription, which leaves the last
+**When**: on ⇧⌘R and ↻ (never on opening the Feeds tab), on
+*Fetch This Source* (`feeds_fetch` with `only`: one subscription, which leaves the last
 fetch's summary as it was); polling in the background is a setting (off by default: the app sends
 nothing unless asked): a thread looks each minute, the settings read each
 time, and fetches when the last fetch is older than `feeds_poll_minutes`. The page of
@@ -1213,7 +1245,7 @@ library* (core's index; `like:`, the sort, `--library`; the app and the tab).
 
 ## Search (P1, branch `feed-reading`)
 
-A third tab, *Search* (⌘3; hidden by the switch `search-tab`, Window →
+A fourth tab, *Search* (⌘4; hidden by the switch `search-tab`, Window →
 Show Search Tab): OpenAlex's works searched as a search engine of papers
 does, to find a paper and add it.
 

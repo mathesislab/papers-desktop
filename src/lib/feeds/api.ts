@@ -54,6 +54,8 @@ export interface FeedRow extends Rated {
   /** the titles of the subscriptions that listed it */
   sources: string[];
   date: string | null;
+  /** when it was first fetched */
+  found: string;
   /** the interests it matched a term of, the best first */
   interests: Scored[];
   triage: Triage;
@@ -95,15 +97,11 @@ export interface FeedGroups {
 export interface FeedView {
   rows: FeedRow[];
   counts: FeedCounts;
-  /** the items fetched since the list was shown, held back */
-  held: number;
 }
 
 export interface ViewRequest {
   query: string;
   sort: Sort;
-  /** when the list was last brought up to date (ISO): what was fetched since is held back; none: every item */
-  shown?: string | null;
 }
 
 /** A paper behind a post. */
