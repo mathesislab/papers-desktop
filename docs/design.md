@@ -105,10 +105,10 @@ with none (and then off, but as a place to drop rows on: below).
   `layout.paperDetails`), *In Library* (Show in Library: the paper selected
   in the Library tab, the filters taken off if they hide it) and *Cite ▾*
   (Cite copies the citation in the style of the settings; ▾ the key,
-  `[@key]`, `\cite{key}`, the BibTeX, the DOI link), on one line. What was
-  just done (*Copied 1 citation*) floats in the bar left of them, as a pill
-  that fades: nothing moves, and under the bar the PDF view of macOS would
-  hide it. Space (or *Open*) in the library
+  `[@key]`, `\cite{key}`, the BibTeX, the DOI link), on one line. A copy
+  made, Cite says ✓ for 1.5 s; anything else to say (a failure) floats in
+  the bar left of them, as a pill that fades: nothing moves, and under the
+  bar the PDF view of macOS would hide it. Space (or *Open*) in the library
   opens a paper there, as do a paper opened from the panel and from the
   Feeds and Search tabs.
 - `⌘W` (and Esc out of a field) closes the paper in front, which shows what

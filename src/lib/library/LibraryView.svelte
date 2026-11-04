@@ -651,9 +651,30 @@
   /** The citations of papers on the clipboard, one to a line. */
   async function copyCitations(ids: string[]) {
     try {
-      const parts = await Promise.all(ids.map(async (id) => cite.toCopy(await cite.citation(id))));
-      await copyText(ids[0], { text: parts.map((p) => p.text).join("\n"), html: parts.map((p) => p.html).join("<br>") });
+      await copyCited(ids);
       say(`Copied ${count(ids.length, "citation")}`);
+    } catch (err) {
+      say(String(err));
+    }
+  }
+
+  /** The citations of papers on the clipboard, one to a line; a failure thrown. */
+  async function copyCited(ids: string[]) {
+    const parts = await Promise.all(ids.map(async (id) => cite.toCopy(await cite.citation(id))));
+    await copyText(ids[0], { text: parts.map((p) => p.text).join("\n"), html: parts.map((p) => p.html).join("<br>") });
+  }
+
+  /** a copy just made by Cite or its ▾: Cite says ✓ for a moment */
+  let citeCopied = $state(false);
+  let citeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** A copy of the Papers tab (Cite, its ▾): ✓ on Cite when made, the failure said. */
+  async function citeCopy(copy: () => Promise<unknown>) {
+    try {
+      await copy();
+      citeCopied = true;
+      clearTimeout(citeTimer);
+      citeTimer = setTimeout(() => (citeCopied = false), 1500);
     } catch (err) {
       say(String(err));
     }
@@ -662,16 +683,9 @@
   /** Cite ▾ of the Papers tab: the other ways to copy the paper in front. */
   async function citeMenu(id: string) {
     const row = byId.get(id);
-    const copyAs = (format: "key" | "pandoc" | "latex" | "bibtex") => async () => {
-      try {
-        const text = await invoke<string>("copy", { id, format });
-        say(format === "bibtex" ? "Copied the BibTeX" : `Copied ${text}`);
-      } catch (err) {
-        say(String(err));
-      }
-    };
+    const copyAs = (format: "key" | "pandoc" | "latex" | "bibtex") => () => citeCopy(() => invoke<string>("copy", { id, format }));
     const items = [
-      await MenuItem.new({ text: `Citation (${await cite.styleName()})`, action: () => copyCitations([id]) }),
+      await MenuItem.new({ text: `Citation (${await cite.styleName()})`, action: () => citeCopy(() => copyCited([id])) }),
       await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({ text: "Key", action: copyAs("key") }),
       await MenuItem.new({ text: "[@key]", action: copyAs("pandoc") }),
@@ -681,10 +695,9 @@
         ? [
             await MenuItem.new({
               text: "DOI Link",
-              action: async () => {
+              action: () => {
                 const link = `https://doi.org/${row.doi}`;
-                await copyText(id, { text: link, html: `<a href="${link}">${link}</a>` });
-                say(`Copied ${link}`);
+                return citeCopy(() => copyText(id, { text: link, html: `<a href="${link}">${link}</a>` }));
               },
             }),
           ]
@@ -1471,7 +1484,8 @@
           >
           <button class="tool" title="Show in Library: the paper selected there" onclick={() => show(id, false)}>In Library</button>
           <span class="split">
-            <button class="tool" title="Copy the citation, in the style of the settings" onclick={() => copyCitations([id])}>Cite</button
+            <button class="tool cite" title="Copy the citation, in the style of the settings" onclick={() => citeCopy(() => copyCited([id]))}
+              >{citeCopied ? "✓" : "Cite"}</button
             ><button class="tool" title="Copy the key, [@key], \cite{'{'}key{'}'}, the BibTeX or the DOI link" aria-label="Other ways to copy" onclick={() => citeMenu(id)}>▾</button>
           </span>
         </div>
@@ -1768,7 +1782,10 @@
       opacity: 0;
     }
   }
-  /* Cite and its ▾, one button */
+  /* Cite and its ▾, one button; Cite as wide as its ✓ after a copy */
+  .split .cite {
+    min-width: 44px;
+  }
   .split {
     display: flex;
   }
