@@ -1611,7 +1611,7 @@
   .search {
     position: relative;
     flex: 0 1 50%;
-    min-width: 200px;
+    min-width: 160px;
     max-width: 560px;
     display: flex;
   }
@@ -1707,8 +1707,12 @@
     color: var(--fg);
   }
   /* room for "99999 papers · 999 selected": the export stays in place */
+  /* its room kept (what follows stays in place as it changes), unless the bar is too narrow: then it gives it */
   .count {
-    min-width: 23ch;
+    flex: 0 1 23ch;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--muted);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
@@ -1765,6 +1769,8 @@
     flex: 1;
   }
   .tool {
+    flex: none;
+    white-space: nowrap;
     padding: 3px 10px;
     border: 1px solid var(--border);
     border-radius: 6px;
