@@ -17,7 +17,7 @@ if [ -z "$rev" ]; then
   exit 1
 fi
 
-installed="$root/target/sidecar"
+installed="$root/target.noindex/sidecar"
 if [ "${TAURI_ENV_TARGET_TRIPLE:-}" = "" ]; then
   cargo install --git https://github.com/mathesislab/papers-rs --rev "$rev" --locked papers-rs-cli --root "$installed"
 else

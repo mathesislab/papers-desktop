@@ -9,7 +9,7 @@ app, driven from a terminal with the scripts of `scripts/macos` (run with
 ```sh
 npx tauri build --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
 pkill -f '/Applications/Papers Desktop.app/Contents/MacOS/papers-desktop'
-target/release/bundle/macos/Papers\ Desktop.app/Contents/MacOS/papers-desktop &
+target.noindex/release/bundle/macos/Papers\ Desktop.app/Contents/MacOS/papers-desktop &
 ```
 
 The app is single instance: a second launch of the binary shows the panel

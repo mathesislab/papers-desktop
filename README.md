@@ -245,9 +245,9 @@ TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/papers-desktop.key)" TAURI_SIGNING_PRI
 Without the key, build without the signed update archive:
 `npm run tauri build -- --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'`.
 
-The app is then `target/release/bundle/macos/Papers Desktop.app`: copy it to
-`/Applications` before turning on Start at Login, which points at the app
-where it is.
+The app is then `target.noindex/release/bundle/macos/Papers Desktop.app`
+(Spotlight indexes no `*.noindex` folder): copy it to `/Applications` before
+turning on Start at Login, which points at the app where it is.
 
 ## Linux
 

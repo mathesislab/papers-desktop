@@ -516,7 +516,7 @@ file:
 - **The command line tool**: the app ships `papers-rs` (papers-rs-cli of
   github.com/mathesislab/papers-rs, release) as a Tauri sidecar (`bundle.externalBin`, `papers-rs-cli` in
   `Contents/MacOS/` next to the executable: tauri-build copies it into
-  `target/<profile>/`, where `papers-rs` is cargo's own); `scripts/sidecar.sh`,
+  `target.noindex/<profile>/`, where `papers-rs` is cargo's own); `scripts/sidecar.sh`,
   run by `beforeBuildCommand`, installs it (`cargo install --git … --rev`, the
   revision of papers-rs in `Cargo.lock`, `--locked`) into
   `src-tauri/binaries/papers-rs-cli-<triple>` (`build.rs` puts a placeholder

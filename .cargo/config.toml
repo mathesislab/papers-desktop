@@ -1,0 +1,4 @@
+# cargo builds into target.noindex: Spotlight indexes no folder named *.noindex, so the apps Tauri bundles there
+# (bundle/macos/*.app) do not show up beside the one installed.
+[build]
+target-dir = "target.noindex"

@@ -25,7 +25,7 @@ printf '{"bibtex": ["%s"], "hotkey": "Ctrl+Alt+Space"}\n' "$work/library.bib" > 
 # the app runs until the timeout stops it (124): a crash ends it earlier
 status=0
 env HOME="$home" XDG_CONFIG_HOME="$home/.config" WEBKIT_DISABLE_DMABUF_RENDERER=1 \
-  dbus-run-session -- xvfb-run -a timeout "$seconds" target/debug/papers-desktop \
+  dbus-run-session -- xvfb-run -a timeout "$seconds" target.noindex/debug/papers-desktop \
   > "$log" 2>&1 || status=$?
 
 failures=()

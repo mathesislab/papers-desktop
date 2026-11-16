@@ -15,7 +15,7 @@ use serde::Serialize;
 /// the name of the command, and of the link
 pub const NAME: &str = "papers-rs";
 /// the name of the sidecar: not that of the command, which tauri-build would
-/// copy over cargo's own `target/<profile>/papers-rs`
+/// copy over cargo's own `target.noindex/<profile>/papers-rs`
 const SIDECAR: &str = "papers-rs-cli";
 /// the executable of the app, next to the sidecar
 const APP: &str = "papers-desktop";
