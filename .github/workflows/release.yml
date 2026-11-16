@@ -48,7 +48,7 @@ jobs:
           - os: ubuntu-22.04
             args: --bundles deb,appimage
             assets: Papers-Desktop-linux-[arch][ext]
-          - os: macos-14
+          - os: macos-15
             args: --bundles app,dmg
             assets: Papers-Desktop-macos-[arch][ext]
     steps:
