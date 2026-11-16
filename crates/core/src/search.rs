@@ -9,7 +9,7 @@ use std::sync::{Arc, OnceLock};
 
 use serde::Serialize;
 
-use crate::bib::{self, BibEntry, Snapshot};
+use crate::bib::{self, BibEntry, Dropped, Snapshot};
 use crate::fields::field;
 use crate::query::{self, Field, Query, Schema, Term};
 use crate::record::{Marks, Record, mark};
@@ -39,6 +39,8 @@ pub struct Library {
     bibs: Vec<PathBuf>,
     /// each .bib file as read, for a write to check it is still the same
     snapshots: HashMap<PathBuf, Snapshot>,
+    /// what the files have that could not be read, left out
+    dropped: Vec<Dropped>,
     /// the identities of the items, at the first ask
     pub(crate) identities: OnceLock<Arc<Identities>>,
 }
@@ -75,10 +77,12 @@ impl Library {
     pub fn load(bibs: &[PathBuf]) -> Result<Library> {
         let mut entries = Vec::new();
         let mut snapshots = HashMap::new();
+        let mut dropped = Vec::new();
         for bib in bibs {
             let file = bib::read(bib)?;
             entries.extend(file.entries);
             snapshots.insert(bib.clone(), file.snapshot);
+            dropped.extend(file.dropped);
         }
         // the key is the id, numbered when several entries have it
         let mut count: HashMap<String, usize> = HashMap::new();
@@ -100,7 +104,15 @@ impl Library {
                 Item::from_entry(e, id)
             })
             .collect();
-        Ok(Library::new(items, entries, bibs.to_vec(), snapshots))
+        let mut library = Library::new(items, entries, bibs.to_vec(), snapshots);
+        library.dropped = dropped;
+        Ok(library)
+    }
+
+    /// What the .bib files have that could not be read, and was left out: a field of an entry (the entry is there
+    /// without it), or an entry.
+    pub fn dropped(&self) -> &[Dropped] {
+        &self.dropped
     }
 
     fn new(
@@ -129,6 +141,7 @@ impl Library {
             entries,
             bibs,
             snapshots,
+            dropped: Vec::new(),
             identities: OnceLock::new(),
         }
     }

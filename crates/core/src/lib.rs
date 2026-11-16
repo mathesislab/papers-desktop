@@ -24,6 +24,7 @@ mod write;
 
 use std::path::PathBuf;
 
+pub use bib::Dropped;
 pub use item::{Cite, Item};
 pub use likeness::{Doc, Like, Likeness};
 pub use preprint::{SERVERS, Server, preprint_host, preprint_server};

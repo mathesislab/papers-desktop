@@ -401,7 +401,8 @@ pub(crate) fn given_entries(text: &str) -> Result<Vec<(String, Range<usize>)>> {
 /// entries. An error in the text given to write, at `given.0` in the new
 /// text, tells its line in that text.
 fn check(bib: &Path, text: &str, given: Option<(usize, &str)>) -> Result<Vec<BibEntry>> {
-    let (at, message) = match bib::parse(bib, text) {
+    // what is written must be read whole: a field the parser cannot read is an error here
+    let (at, message) = match bib::parse(bib, text).and_then(bib::Parsed::whole) {
         Ok(entries) => return Ok(entries),
         Err(e) => e,
     };

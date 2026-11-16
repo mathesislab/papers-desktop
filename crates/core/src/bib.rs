@@ -1,4 +1,7 @@
-//! Read a .bib file: its entries, each with the text it has in the file.
+//! Read a .bib file: its entries, each with the text it has in the file. What the BibTeX parser (the `biblatex`
+//! crate) cannot read of an entry is left out, said in `Dropped`, and the rest of the file is read: a field it
+//! cannot read (the entry stays, without it), else the entry (a key twice in the file, say). Only a file it cannot
+//! split into entries (a brace left open) is an error.
 
 use std::hash::{DefaultHasher, Hasher};
 use std::ops::Range;
@@ -25,6 +28,49 @@ pub(crate) struct BibEntry {
 pub(crate) struct BibFile {
     pub entries: Vec<BibEntry>,
     pub snapshot: Snapshot,
+    pub dropped: Vec<Dropped>,
+}
+
+/// What reading a .bib file left out: a field of an entry that the BibTeX parser cannot read (the entry is read
+/// without it), or an entry it cannot read at all; where, and why.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Dropped {
+    pub bib: PathBuf,
+    pub key: String,
+    /// the field left out (lower case); none: the whole entry
+    pub field: Option<String>,
+    pub line: usize,
+    pub message: String,
+    /// where in the text (bytes)
+    #[serde(skip)]
+    pub at: usize,
+}
+
+impl std::fmt::Display for Dropped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let file = self.bib.file_name().map_or_else(|| self.bib.display().to_string(), |n| n.to_string_lossy().into_owned());
+        match &self.field {
+            Some(field) => write!(f, "{}: its {field} left out ({file}, line {}: {})", self.key, self.line, self.message),
+            None => write!(f, "{}: left out ({file}, line {}: {})", self.key, self.line, self.message),
+        }
+    }
+}
+
+/// The entries of a text and what was left out of it.
+pub(crate) struct Parsed {
+    pub entries: Vec<BibEntry>,
+    pub dropped: Vec<Dropped>,
+}
+
+impl Parsed {
+    /// The entries, if nothing was left out; else where the first thing left out is, and why: a text given to write
+    /// must be read whole.
+    pub fn whole(self) -> std::result::Result<Vec<BibEntry>, (usize, String)> {
+        match self.dropped.into_iter().next() {
+            None => Ok(self.entries),
+            Some(d) => Err((d.at, d.message)),
+        }
+    }
 }
 
 /// The length and a hash of the bytes of a file as read: a write checks
@@ -55,18 +101,45 @@ pub(crate) fn read(bib: &Path) -> Result<BibFile> {
     let snapshot = Snapshot::of(&bytes);
     let src = String::from_utf8(bytes)
         .map_err(|e| read_error(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
-    let entries = parse(bib, &src).map_err(|(at, message)| Error::Parse {
+    let parsed = parse(bib, &src).map_err(|(at, message)| Error::Parse {
         path: bib.to_path_buf(),
-        line: src[..at.min(src.len())].lines().count().max(1),
+        line: line_at(&src, at),
         message,
     })?;
-    Ok(BibFile { entries, snapshot })
+    Ok(BibFile { entries: parsed.entries, snapshot, dropped: parsed.dropped })
 }
 
-/// The entries of the text of .bib file `bib`; else where the text does
-/// not parse, and why.
-pub(crate) fn parse(bib: &Path, src: &str) -> std::result::Result<Vec<BibEntry>, (usize, String)> {
-    let raw = RawBibliography::parse(src).map_err(|e| (e.span.start, e.kind.to_string()))?;
+/// The line (from 1) of the byte `at` of `src`: one more than the line ends before it.
+fn line_at(src: &str, at: usize) -> usize {
+    src[..at.min(src.len())].matches('\n').count() + 1
+}
+
+/// The entries of the text of .bib file `bib`, and what of them could not be read and was left out; else where the
+/// text does not split into entries, and why.
+pub(crate) fn parse(bib: &Path, src: &str) -> std::result::Result<Parsed, (usize, String)> {
+    let mut raw = RawBibliography::parse(src).map_err(|e| (e.span.start, e.kind.to_string()))?;
+    // the fields and entries the parser cannot make sense of, left out one at a time: each error says where it is
+    let mut dropped = Vec::new();
+    let typed = loop {
+        let (at, message) = match Bibliography::from_raw(raw.clone()) {
+            Ok(typed) => break typed,
+            Err(e) => (e.span.start, e.kind.to_string()),
+        };
+        let Some(i) = raw.entries.iter().position(|e| e.span.start <= at && at <= e.span.end) else {
+            return Err((at, message));
+        };
+        let entry = &mut raw.entries[i];
+        let key = entry.v.key.v.to_string();
+        let field = entry.v.fields.iter().position(|f| f.value.span.start <= at && at <= f.value.span.end);
+        let field = match field {
+            Some(j) => Some(entry.v.fields.remove(j).key.v.to_ascii_lowercase()),
+            None => {
+                raw.entries.remove(i);
+                None
+            }
+        };
+        dropped.push(Dropped { bib: bib.to_path_buf(), key, field, line: line_at(src, at), message, at });
+    };
     // the key, the text and the file links of each entry, in the order of the file
     let dir = bib.parent().unwrap_or(Path::new("."));
     let located: Vec<_> = raw
@@ -87,8 +160,7 @@ pub(crate) fn parse(bib: &Path, src: &str) -> std::result::Result<Vec<BibEntry>,
             )
         })
         .collect();
-    let typed = Bibliography::from_raw(raw).map_err(|e| (e.span.start, e.kind.to_string()))?;
-    Ok(located
+    let entries = located
         .into_iter()
         .filter_map(|(key, span, files)| {
             Some(BibEntry {
@@ -99,7 +171,8 @@ pub(crate) fn parse(bib: &Path, src: &str) -> std::result::Result<Vec<BibEntry>,
                 bib: bib.to_path_buf(),
             })
         })
-        .collect())
+        .collect();
+    Ok(Parsed { entries, dropped })
 }
 
 /// Where the text of an entry is: its span stops before the closing brace

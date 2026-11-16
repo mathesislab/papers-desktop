@@ -545,6 +545,27 @@ fn errors() {
     assert!(broken.to_string().contains("broken.bib, line"), "{broken}");
 }
 
+#[test]
+fn what_cannot_be_read_is_left_out_and_said() {
+    // a field the BibTeX parser cannot read (an abstract as Zotero exports it): the entry without it; a key twice:
+    // the second entry left out; the rest read
+    let lib = Library::load(&[fixture("unreadable.bib")]).unwrap();
+    assert_eq!(lib.len(), 2, "{:?}", lib.dropped());
+    let kocken = lib.items().iter().find(|i| i.id == "kocken_new_2026a").unwrap();
+    assert_eq!(kocken.year, Some(2026));
+    let dropped: Vec<String> = lib.dropped().iter().map(|d| d.to_string()).collect();
+    assert_eq!(
+        dropped,
+        [
+            "kocken_new_2026a: its abstract left out (unreadable.bib, line 4: unexpected end of file)",
+            "robinson2012: left out (unreadable.bib, line 17: duplicate key \"robinson2012\")",
+        ],
+        "{dropped:?}"
+    );
+    // a file that does not split into entries is still an error
+    assert!(Library::load(&[fixture("broken.bib")]).is_err());
+}
+
 /// Reads a real .bib: `PAPERS_BIB=path/to/library.bib cargo test -- --ignored`
 #[test]
 #[ignore]

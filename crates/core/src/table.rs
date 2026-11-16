@@ -159,7 +159,7 @@ impl Library {
         if given_entries(text)?.is_empty() {
             return Err(Error::NoEntry);
         }
-        let entries = bib::parse(Path::new(""), text).map_err(|(at, message)| Error::Bibtex {
+        let entries = bib::parse(Path::new(""), text).and_then(bib::Parsed::whole).map_err(|(at, message)| Error::Bibtex {
             line: text[..at.min(text.len())].matches('\n').count() + 1,
             message,
         })?;
