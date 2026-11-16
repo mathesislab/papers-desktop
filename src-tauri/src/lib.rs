@@ -757,6 +757,9 @@ fn load(app: &AppHandle) {
                 "papers-desktop: loaded {count} entries from {} .bib files",
                 bibs.len()
             );
+            for dropped in library.dropped() {
+                eprintln!("papers-desktop: {dropped}");
+            }
             *state.library.write().unwrap() = library;
             watch(app, &bibs);
             date_added(app);
